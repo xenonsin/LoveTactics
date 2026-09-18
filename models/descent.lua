@@ -1748,6 +1748,57 @@ function Descent.mapped(player)
 end
 
 -- ---------------------------------------------------------------------------
+-- What a company can carry out
+-- ---------------------------------------------------------------------------
+
+-- HOW MANY FINDS THE COMPANY CAN HOLD AT ONCE, underground.
+--
+-- THE CEILING IS BACK BECAUSE THE STAKE IT BOUNDED IS BACK. models/mule.lua owned this and was deleted,
+-- and states/game.lua records exactly why: "what it existed to create was a bet with a ceiling -- 'a bet
+-- with no ceiling is not a bet', in its own words -- against a wipe that took the haul. The wipe takes
+-- nothing now, so the ceiling was guarding a stake that no longer exists."
+--
+-- The wipe takes the haul again (Descent.dropPack), so that sentence has reversed under its own terms
+-- and the cap comes back with it -- the second system this week to be restored by the return of the
+-- thing it justified deleting, after FLOORS_PER_CIRCLE. Nothing new is claimed here that the mule did
+-- not claim first.
+--
+-- IT IS A CAP ON THE HAUL, NOT ON THE STASH. The number this counts is Descent.carried -- the diff
+-- between what the company is holding and what it walked in with (Player.atRisk) -- so the shelf at home
+-- stays unbounded and always will. A company that climbs out banks everything and walks back down with
+-- an empty ledger; the ceiling only ever bites on a trip that is going long, which is the trip it is
+-- there to make a decision out of.
+--
+-- TWENTY, AND IT IS A STARTING FIGURE RATHER THAN A DERIVATION. A floor pays roughly three to six
+-- pieces at the current rates (Spoils.SEALED_CHANCE plus rolled loot over 3-4 fights), so twenty is
+-- about four floors of finding -- deep enough that a short trip never sees it and a long one has to
+-- start choosing. The old mule ran 8-20 slots and was bought up a ladder. Measure it with a real
+-- descent before trusting it; `. board-report` cannot answer this one, because what it counts is stops
+-- rather than what they pay.
+Descent.CARRY_MAX = 20
+
+-- HOW MANY FINDS ARE ON THE COMPANY RIGHT NOW: the run's own haul, never the kit it marched down with.
+--
+-- ASKED OF Player.atRisk rather than tallied at the grant, which is the same call the mule made and for
+-- the same reason: no seam on the way in has to learn a rule. A chest, a fight's spoils, a crossroads
+-- gift, a pile picked back up and anything added later all land in the same places and none of them has
+-- to report. It is also the number the stair's toll spends (Descent.tollFor), so the ceiling and the
+-- price cannot come to different answers about what "carrying" means.
+function Descent.carried(player, run)
+    local entry = run and run.entry
+    if not (entry and player) then return 0 end
+    local n = 0
+    for _, count in pairs(require("models.player").atRisk(player, entry)) do n = n + count end
+    return n
+end
+
+-- How many more the company could pick up before the bag is full. Never negative: a company that is
+-- somehow over the line (a cap lowered between saves) reads as full rather than as owing slots.
+function Descent.carryRoom(player, run)
+    return math.max(0, Descent.CARRY_MAX - Descent.carried(player, run))
+end
+
+-- ---------------------------------------------------------------------------
 -- Camping, and what finds you while you do it
 -- ---------------------------------------------------------------------------
 

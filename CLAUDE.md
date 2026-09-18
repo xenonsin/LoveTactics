@@ -166,7 +166,7 @@ prestige in `models/building.lua`), and several doors carry a second gate on top
 trip that gives the player the problem it solves.
 
 **Two districts, and the city one is FULL.** `Building.GRID.city` is three columns by three rows with
-the Gate taking the taller middle slot: nine slots, nine cards, the last one claimed by the Ward. A new
+the Gate taking the taller middle slot: nine slots, nine cards, the last one claimed by the Inn. A new
 plaza card therefore needs a slot freed or the grid re-laid — dropping one in on top of another draws
 two plates over each other, which has shipped once already. `Building.GRID.houses` is the second board,
 reached through the Houses card: the seven shopfronts, plus the Bounty Board on a row of its own beneath

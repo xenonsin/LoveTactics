@@ -13,7 +13,7 @@
 >
 > - It is the sheet the seven houses pin their work to, so it belongs with them. A player looking for a
 >   house's errand is already on that screen.
-> - **The city plaza is full.** Nine slots in `Building.GRID.city`, nine cards; the Ward took the last
+> - **The city plaza is full.** Nine slots in `Building.GRID.city`, nine cards; the Inn took the last
 >   free one in `dc7be9df`. The alternative was two plates drawing over each other, which is a bug this
 >   repo has already shipped once.
 >

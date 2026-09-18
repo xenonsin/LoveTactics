@@ -218,12 +218,20 @@ end
 -- and always was -- the mule never kept a list of its own. Asked directly now, of the same function the
 -- toll spends (game:payToll's Player.takeAtRisk), so the number quoted in the prompt and the number
 -- actually handed over cannot drift apart.
+-- THE CEILING IS BACK TOO (Descent.CARRY_MAX), and for the reason the paragraph above gives in reverse:
+-- the wipe takes the haul again (Descent.dropPack), so the stake the mule's ceiling existed to bound
+-- exists once more. Both halves live in models/descent.lua now rather than here -- the count so a spec
+-- can reach it, and the cap beside it so the two cannot drift.
 local function haulCount(run)
-    local entry = run and run.entry
-    if not (entry and game.player) then return 0 end
-    local n = 0
-    for _, count in pairs(Player.atRisk(game.player, entry)) do n = n + count end
-    return n
+    return Descent.carried(game.player, run)
+end
+
+-- HOW MUCH MORE THE COMPANY COULD PICK UP, or unbounded off a descent -- the prologue, an authored
+-- quest and the tutorial have no run, no entry snapshot and no bag, and math.huge keeps every one of
+-- them behaving exactly as it did.
+local function carryRoom()
+    if not game.descent then return math.huge end
+    return Descent.carryRoom(game.player, game.descent)
 end
 
 local function backContains(x, y)
@@ -1991,11 +1999,18 @@ function game:openEncounter(cell, opts)
                 -- one slot short walked away from a won fight with nothing, which reads as the game
                 -- eating a reward rather than as a bag being full.
                 --
-                -- EVERYTHING FITS. There is no carry cap any more -- the mule is deleted along with the
-                -- wipe penalty its ceiling existed to bound -- so a rolled find and a sealed husk both
-                -- simply land. `left` is kept at nought rather than removed because the toast below
-                -- still names what arrived, and a count that can only be zero is cheaper than three
-                -- call sites learning a new shape.
+                -- THE CEILING IS BACK (Descent.CARRY_MAX). It was deleted with the mule on the grounds
+                -- that "the wipe takes nothing now, so the ceiling was guarding a stake that no longer
+                -- exists" -- and the wipe takes the haul again (Descent.dropPack), so the stake is back
+                -- and the bag has a bottom again.
+                --
+                -- ASKED FRESH PER PIECE rather than counted down from one reading. Descent.carryRoom
+                -- derives from Player.atRisk, which is a live diff against the entry snapshot, so a
+                -- grant that stacks into a pile the company already had moves the number by one exactly
+                -- as a new object does. A local counter would have to model stacking itself, and would
+                -- be the second thing in this file that believes it knows what "carrying" means.
+                --
+                -- UNCAPPED OFF A DESCENT -- see carryRoom at the top of this file.
                 local left = 0
                 -- ...AND A FIND ARRIVES AT THE LEVEL ITS FLOOR IMPLIES (Spoils.foundLevel). Applied at
                 -- the GRANT rather than folded into `spoils.loot`, which stays a plain list of ids --
@@ -2004,20 +2019,28 @@ function game:openEncounter(cell, opts)
                 -- Nil off a descent, so the campaign hands over base pieces exactly as it did.
                 local foundAt = game.quest and game.quest.floorLevel or nil
                 for _, id in ipairs(spoils.loot or {}) do
-                    Player.grantItem(game.player, id, Spoils.foundLevel(foundAt))
+                    if carryRoom() <= 0 then
+                        left = left + 1
+                    else
+                        Player.grantItem(game.player, id, Spoils.foundLevel(foundAt))
+                    end
                 end
                 -- ...and the unread find, on the rare stop that paid one (models/identify.lua). Granted
                 -- through Identify.grant rather than Player.grantItem: the piece goes into the stash as a
                 -- HUSK, and the id it is really built on is the one thing the player has not bought yet.
                 for _, find in ipairs(spoils.sealed or {}) do
-                    Identify.grant(game.player, find.id, find.floor)
+                    if carryRoom() <= 0 then
+                        left = left + 1
+                    else
+                        Identify.grant(game.player, find.id, find.floor)
+                    end
                 end
                 -- SAID OUT LOUD, always. A reward that silently fails to arrive reads as a bug however
                 -- correct the bookkeeping is -- the same rule the errand's spent first-clear bonus is
                 -- announced under.
                 if left > 0 then
                     game:pushToast(left .. (left == 1 and " find left behind" or " finds left behind") ..
-                        " -- the mule cannot carry it")
+                        " -- there is no room to carry it")
                 end
                 -- The salvage floor: every won fight leaves forging stock behind, so a stop that
                 -- rolled no loot is still worth having stopped at (models/spoils.lua). Banked straight
@@ -3068,6 +3091,21 @@ function game:openEncounter(cell, opts)
         local sealed = Spoils.rollSealed({ kind = "treasure", floorLevel = game.quest and game.quest.floorLevel or nil })
         -- An empty cache is one with nothing legible AND nothing unread in it.
         if #loot == 0 and #sealed == 0 then cell.cleared = true; saveRun(); return end
+
+        -- A FULL BAG REFUSES THE WHOLE CHEST, which is the opposite call to a fight's takings and the
+        -- difference is what the thing IS: a chest is one object with a lid, and a pile off several
+        -- bodies is not. Splitting a chest would mean opening it, taking two of its four and watching
+        -- the other two evaporate -- the game eating a reward in front of the player. Refusing it whole
+        -- leaves the lid shut.
+        --
+        -- AND THE CELL IS LEFT UNCLEARED, so the chest is still standing there. That is the good half of
+        -- this rule under a dungeon the company keeps: a cache you could not carry is a reason to come
+        -- back down, and the map remembers where it is (Descent.keepFloor).
+        if #loot + #sealed > carryRoom() then
+            game:pushToast("The chest stays shut -- there is no room to carry what is in it")
+            return
+        end
+
         game.activePanel = LootReveal.new({
             encounter = enc,
             loot = loot,
@@ -4674,6 +4712,35 @@ function game.drawHud()
         y = y + 44
     end
 
+    -- WHAT THE COMPANY IS CARRYING, AGAINST WHAT IT CAN (Descent.CARRY_MAX).
+    --
+    -- THIS READOUT WAS DELETED AND THE NOTE ABOVE SAYS WHY: "a wipe takes nothing material now, so
+    -- every find was already the player's the moment it landed", leaving a count that fed no decision.
+    -- Both halves of that have reversed. A wipe leaves the haul on the floor (Descent.dropPack), so the
+    -- number is a stake again; and the bag has a bottom, so it is a LIMIT -- and a limit the player
+    -- cannot see is one they meet by having a chest refuse to open.
+    --
+    -- IT IS THE SAME RULE THE PURSE ABOVE DRAWS ON: a spending limit is most worth stating at the
+    -- moment it binds, which means it has to already be on screen before it does.
+    --
+    -- THE NUMBER GOES AMBER AS IT FILLS AND RED WHEN IT IS FULL, because the thing it is warning about
+    -- is not "you have a lot" but "the next find will not come with you".
+    if game.descent then
+        local carried = haulCount(game.descent)
+        local max = Descent.CARRY_MAX
+        love.graphics.setColor(Theme.muted)
+        love.graphics.printf("Carrying", x - 240, y, 240, "right")
+        if carried >= max then
+            love.graphics.setColor(Theme.accentWeapon)
+        elseif carried >= max * 0.75 then
+            love.graphics.setColor(Theme.accentAmber)
+        else
+            love.graphics.setColor(Theme.muted)
+        end
+        love.graphics.printf(carried .. " / " .. max, x - 240, y + 18, 240, "right")
+        love.graphics.setColor(1, 1, 1)
+        y = y + 44
+    end
 
     -- Companion-ability toasts, stacked just under the party strip so ability feedback groups with the
     -- party it comes from. Newest on top; each fades over its life.

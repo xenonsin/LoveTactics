@@ -13,7 +13,7 @@
 > alternative — the argument below is sound, and it is sound for that game.
 >
 > It is not that game. The maze is a place the company maps and re-enters (`Descent.keepFloor`,
-> `Descent.entryFloor`), a trip ends because somebody needs a bone set at the Ward, and **surfacing is
+> `Descent.entryFloor`), a trip ends because somebody needs a bone set at the Inn, and **surfacing is
 > the rhythm rather than the retreat** — Wizardry's own loop, which `models/descent.lua` has cited by
 > name since it was written. A meter that charges a mark for the thing the design wants you doing
 > constantly teaches against itself, and it cannot be tuned out of that: at any price above zero it is
@@ -25,7 +25,7 @@
 > piles applies to itself: a system whose callers were deleted too is one nobody can restore.
 >
 > **What outlived it.** The law in *What it is for* below, which is the durable half of this page and
-> the reason the Ward is free: **a cost on recovery is a tax on needing to recover.** That survives the
+> the reason the Inn is free: **a cost on recovery is a tax on needing to recover.** That survives the
 > park and is what the pivot was checked against.
 >
 > ### What a wipe costs instead, since this page says it should cost nothing
