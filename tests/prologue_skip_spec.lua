@@ -50,23 +50,32 @@ end
 
 return {
     {
-        -- THE SKIP HAS TO HAND OVER THE WOUND, because the city is built on it. The Demon Champion
-        -- fells Rowan at its last stage, and that one mark is what grows the WARD on the plaza
-        -- (models/building.lua's `unlockWound`) -- and Xin is standing inside the Ward. A skip that
-        -- arrives whole opens a city with no ward, no healer, and a party of two against an expedition
-        -- of four, which is the "broken city rather than a skipped prologue" this whole grant exists to
-        -- prevent. Reported from a real play-through of the debug button, not from reading the code.
-        name = "a skipped Act 0 still arrives carrying Rowan's wound, so the Ward is on the plaza",
+        -- THE SKIP HAS TO DEAL THE WOUND, AND THEN IT WALKS IT THROUGH THE INN. The Demon Champion
+        -- fells Rowan at its last stage, and that one mark is what grows the INN on the plaza
+        -- (models/building.lua's `unlockWound`) -- and Xin is standing inside it. A skip that arrives
+        -- whole opens a city with no inn, no healer, and a party of two against an expedition of four,
+        -- which is the "broken city rather than a skipped prologue" the whole grant exists to prevent.
+        -- Reported from a real play-through of the debug button, not from reading the code.
+        --
+        -- So the order is the thing this pins, and it is not a formality: INFLICT, then mend. The mark
+        -- the door is hung on is one-way (Wound.everWounded) and survives the mending, which is what
+        -- lets the button hand over a company that is both whole and standing in a city that has an
+        -- inn. Skipping the inflict would shut the door on the room the company just came through.
+        name = "a skipped Act 0 takes Rowan's wound through the Inn: door open, bone set, Xin met",
         fn = function()
             local Wound = require("models.wound")
             local Building = require("models.building")
             local p = skipped()
 
-            local rowan
-            for _, char in ipairs(p.roster) do if char.id == "character_rowan" then rowan = char end end
+            local rowan, xin
+            for _, char in ipairs(p.roster) do
+                if char.id == "character_rowan" then rowan = char end
+                if char.id == "character_xin" then xin = char end
+            end
             assert(rowan, "the skip recruits Rowan")
-            assert(Wound.count(p, rowan.id) == 1, "and she is carried out of the last fight, exactly once")
-            assert(Wound.everWounded(p), "which sets the one-way mark the door is hung on")
+            assert(Wound.count(p, rowan.id) == 0, "and the Inn sets the bone she was carried out on")
+            assert(Wound.everWounded(p), "but the one-way mark the door is hung on outlives the mending")
+            assert(xin, "and the room's own scene hands over the healer standing in it")
 
             local open
             -- The PLAYER, not a prestige number: every deed gate reads the player, and a bare figure
@@ -74,7 +83,12 @@ return {
             for _, b in ipairs(Building.list(p)) do
                 if b.id == "the_ward" then open = not b.locked end
             end
-            assert(open, "so the Ward stands on the plaza the skip lands in")
+            assert(open, "so the Inn stands on the plaza the skip lands in")
+
+            -- The visit is recorded on both of the room's ledgers, so walking in does not replay a
+            -- scene the button already spent -- and cannot hand Xin over twice.
+            assert(p.flags["intro_the_ward"], "the first-visit scene is marked played")
+            assert(Building.seenDoor(p, "the_ward"), "and the card is marked walked into")
         end,
     },
     {
@@ -84,10 +98,16 @@ return {
         -- Ward is open on that very first frame, because Rowan is hurt before the city exists. So a
         -- first-visit scene keyed on seenDoor was consumed before anyone could walk through the door,
         -- and Xin was never met by ANY player, skipped prologue or played one.
+        --
+        -- THE PLAYED ARRIVAL IS WHAT THIS STANDS ON NOW, built by hand rather than by skipped(): the
+        -- debug button walks the Inn's door itself and spends the scene deliberately (states/prologue.lua),
+        -- so it can no longer stand in for a company that has one still owed. The mark is all the
+        -- precondition needs -- it is what opens the card that gets seeded.
         name = "seeding the city's doors does not spend the Ward's first-visit scene",
         fn = function()
             local Building = require("models.building")
-            local p = skipped()
+            local p = Player.new()
+            p.wounded = true
             Building.seedSeen(p)
             assert(Building.seenDoor(p, "the_ward"),
                 "precondition: the seed does mark it announced, which is what broke this")
@@ -126,10 +146,12 @@ return {
         fn = function()
             local player = skipped()
 
-            -- The avatar, alone until the breach, and Rowan met on the first job.
-            assert(#player.roster == 2, "the prologue ends with a company of two, got " .. #player.roster)
+            -- The avatar, Rowan met on the first job, and Xin out of the Inn's door -- which Act 0
+            -- does not itself contain, but the two clicks after it do (see the first case).
+            assert(#player.roster == 3, "the skip lands a company of three, got " .. #player.roster)
             assert(player.roster[1].id == "character_avatar", "the avatar leads the roster")
             assert(player.roster[2].id == "character_rowan", "Rowan is the second body")
+            assert(player.roster[3].id == "character_xin", "and Xin joins out of the Inn")
             for _, char in ipairs(player.roster) do
                 assert(char.level == 4, char.name .. " reaches the gate at level 4, got "
                     .. tostring(char.level))

@@ -7,7 +7,8 @@
 -- would have killed simply leaves a corpse where it stood rather than dragging one -- the honest
 -- outcome, and one the damage preview shows coming.
 --
--- No `class`/`price`: an enemy's kit, never a shelf item; only its base value is ever seen.
+-- `creature`, no `price`, `noSteal`: an enemy's kit, never a shelf item; only its base value is ever
+-- seen. The flag is what keeps it out of the drop pool -- the class alone is a label nothing reads.
 local Curve = require("models.curve")
 
 return {
@@ -17,8 +18,8 @@ return {
     sprite = "assets/items/ability_gaff_line.png", -- placeholder until its own art exists
     type = "ability",
     class = "creature",
-    dropTier = 5,
     tags = { "physical" },
+    noSteal = true, -- hers past the transform; there is nothing here to take
     activeAbility = {
         target = "enemy",
         range = 4,

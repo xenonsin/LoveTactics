@@ -18,7 +18,6 @@ return {
     sprite = "assets/items/gilded_pike.png",
     type = "weapon",
     class = "creature",
-    dropTier = 4,
     tags = { "natural", "pierce", "physical", "melee" },
     noSteal = true,
     activeAbility = {

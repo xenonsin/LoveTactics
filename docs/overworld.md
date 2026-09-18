@@ -360,10 +360,50 @@ numbers on purpose, and this is the one to read if the floor ever feels empty ra
 knobs, in the order to reach for them: the stop budget (`Descent.FLOOR_FIGHTS`, `FLOOR_TEXTURE`), then
 `Overworld.BLOCK_SHARE`, then the grid.
 
+## The ordinary fight is not on the board
+
+**A descent floor seats no ordinary combat at all.** It is rolled as the company walks — a step counter
+on the run (`Descent.PROWL_STEPS`, 16 ± 4), dealt from the floor's own weighted pool
+(`Descent.floorPool` → `Descent.wander`), and written onto the tile the company is standing on so the
+fight opens through the same seam a seated one always did. `Descent.PROWL_JITTER` keeps it off a
+metronome; `Descent.prowlBand` gives the readout (*calm → stirring → close*), banded off the window
+rather than off the leg's real target so it warns without counting down.
+
+This is Wizardry's arrangement, and Wizardry Variants Daphne's: the maze is the fixed thing, the fighting
+is rolled as you walk it, and a level is never *cleared*. It replaced the wandering-monster respawn
+(`Descent.wakeOne`), which woke one already-beaten fight every twelve steps and was a weaker answer to
+the same question.
+
+**What stays on the board is what you are meant to see coming** — the stair's general, the errands a
+house posted, the doors a circle holds shut, and the **elites**. That last is the deliberate half: a
+standing threat you can read, price against the company and route around is the job Etrian Odyssey gives
+its FOEs, and deleting it with the ordinary fight would leave a floor with nothing on it worth reading
+the map *for*. So the map answers *what is worth going to, and what stands in front of it*; the walk
+answers *what finds you on the way*.
+
+`Descent.FLOOR_SEEN` (2 → 3) is how many of a floor's fights are on it, ends included; the ends come off
+it first, so an errand-heavy floor stands fewer elites rather than more markers. The stop count moves
+with that number and nothing else — see **A fight budget, not a combat share** for the measured reason.
+
+**And the company can decline one.** A rolled fight arrives with no marker to read, so the judgement the
+muster band used to support moved to the deploy screen: a *Run Away* plate quoting its own odds
+(`models/flee.lua`, `docs/deployment.md`). It is a roll and it can fail — a guaranteed escape would make
+the deploy screen a free look at every fight — and the odds run off the muster margin, so **the fight you
+most want out of is the hardest to leave**. Failing costs a harder fight, not the fight: the enemy line
+opens it **Hasted** for two turns (`Combat.dressSide`), with the badges already on their tokens while the company
+decides whether to ring the bell anyway.
+
 ## The fights that block the way
 
 **Most of a floor's fights stand in the only way to something.** `Overworld:blockRoutes`, run after the
 stops are seated and before the tiers are stamped.
+
+> **Scope, since the ordinary fight left the board.** Everything below still runs and still holds, but on
+> a descent floor it now has only the elites and the ends to work with — the measurements in this section
+> were taken when ordinary combat was seated, and `blocked by a fight` reads about 0.45 a floor today
+> against the 3.00 quoted here. The pass is not dead: it is what keeps the floor's *visible* fighting on
+> the chokepoints rather than scattered, and it is what a campaign ground — which still seats its fights —
+> is entirely governed by. Re-measure before quoting any number in this section.
 
 The complaint that produced it, in the player's words: *"I can reveal the entire map then selectively
 choose what to encounter."* Every stop on a grid of places is optional by construction — a cell holds one
@@ -554,6 +594,67 @@ over the share where both are given:
 `. board-report N descent` counts the ends now (`ends`, `FIGHTS IN ALL`) and takes `ends=N` to stand in
 for the errands a nil player cannot have asked for. It had never once seen one before.
 
+### What this budget means now the fighting left the board
+
+**Every constant above still exists and most have moved**; read them out of `models/descent.lua` rather
+than off this page. Two changes are structural rather than numeric:
+
+- **`Descent.floorFights` no longer describes the board.** It still says what a floor costs *in all* —
+  it is what the experience ladder is priced against across a run (`tests/experience_spec.lua`) — but
+  most of that total is now dealt on the walk. What the board seats is `Descent.FLOOR_SEEN` (2 → 3),
+  ends included.
+- **`Descent.FLOOR_ROLLED_MIN` is gone.** Its job was to stop an errand-heavy floor being all objectives
+  and empty trail between them. The prowl supplies that ground now, on every floor, whatever its ends.
+
+`Descent.floorBudget` returns the stop count and the seated-fight cap as one decision, and that coupling
+is now load-bearing rather than tidy. Taking ordinary combat off the board **without** moving the stop
+count is the exact failure `FLOOR_TEXTURE`'s own header warned about, and it shipped for one pass:
+
+| | stops | services | elites |
+|---|---|---|---|
+| combat removed, stop count unmoved | 15.00 | **11.88** | 0.80 |
+| stop count moved with it | 13.00 | 10.25 | **0.45** |
+| …and lost seats promoted to elites | 13.00 | 9.78 | 0.95 |
+
+Both halves were needed. Shrinking the board alone took *more* elites off it, because the elite cap is a
+share of the stop count. The fix is in `Overworld:placeEncounters`: on a `wanderingCombat` floor an
+ordinary fight that has lost its seat is first offered the rank above it — under the same depth rule and
+budget any elite would have faced — and only then falls through to texture.
+
+### `FLOOR_TEXTURE` is 6 again, and the sweep corrected why
+
+A floor read as a shopping street once the fighting left it, and the obvious diagnosis — that the pivot
+caused it — was wrong. Swept with `. board-report 30 descent floor=4 stops=N`:
+
+| stops | 6 | 7 | 8 | 10 |
+|---|---|---|---|---|
+| services | 5.90 | 6.90 | 7.90 | 9.80 |
+
+The board *before* the pivot ran 12 stops carrying three seated fights, which is about **8.8** on that
+same row. The floor was already most-of-it-shops; the seated fights were standing in front of the
+problem. So this is a debt being paid, not a consequence being cleaned up — it was owed either way.
+
+**Six and not five**, which the sweep also decided: below six the elite count starts falling again (0.93
+→ 0.77), because the elite cap is a share of the stop count — the same coupling that bit when the board
+was first shrunk without the promotion rule. Six is the floor of the range where the standing threats
+survive intact.
+
+**Material income does not move with it**, which is the one thing this constant may not disturb: cache
+craft stock reads 22.3–23.5 flat from six stops to ten, because `Descent.FLOOR_CACHES` pins the caches
+and they land whatever this says.
+
+Measured after, at floors 1 / 4 / 8 / 12 / 15:
+
+| | floor 1 | floor 4 | floor 8 | floor 12 | floor 15 |
+|---|---|---|---|---|---|
+| stops | 10.53 | 10.00 | 11.00 | 11.00 | 11.00 |
+| seated fights | 1.00 | 0.93 | 1.93 | 1.90 | 1.97 |
+| services | 7.37 | 6.90 | 6.87 | 6.90 | 6.87 |
+| cache craft | 23.10 | 22.33 | 23.47 | 22.07 | 22.70 |
+
+Services flat across the stack, and the `FLOOR_SEEN` ramp visible in the seated fights: one standing
+threat at the top of the descent, two at the bottom.
+
 ## The stairs, both ways
 
 **The stair is found under the guardian.** A floor's own end is a body standing at the far end of the
@@ -615,8 +716,9 @@ may clear none — so extraction moved to **leaving**, whichever way you leave. 
 past: the caches' ore was banked by `Quest.complete`, so walking out with a full pack paid nothing,
 which said the exact opposite of the line above it. The ore and the Cafe's supper are the day's rather
 than any one quest's, and both settle at the exit (`game:bankHaul`). Clearing one piece of work pays
-*that* work — its gold, its relic, its house's standing — and leaves you on the map with the rest still
-out there.
+*that* work — its gold, its found piece, its house's standing — and leaves you on the map with the rest
+still out there. (It read *its relic* until 2026-09-17; the relic shelf is parked and what a piece of
+work hands over is gear — [relics.md](relics.md).)
 
 It stopped being correct when the day became the unit. With a voluntary exit keeping everything, a total
 wipe penalty turns the last fight before you turn back into an all-or-nothing coin flip, and the

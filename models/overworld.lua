@@ -107,19 +107,62 @@ Overworld.BLOCK_SHARE = 0.25
 -- shrink the world. So the extent is the constant and the cell size falls out of it -- 61 logical pixels
 -- a cell at the top of the descent, 50 at the bottom.
 --
--- 608 is what clears the HUD in the 1280x720 logical space with room either side for the readouts, and
--- it is the HEIGHT that binds: the title sits above the board and the control hint below it. Growing the
--- floor past about a dozen a side therefore costs cell size rather than screen, which is the real
--- ceiling on how big a floor can get before a marker stops being readable.
-Overworld.BOARD_EXTENT = 608
+-- IT IS A RECTANGLE NOW, AND IT WAS A SQUARE FOR NO REASON. 608 was a single number used on both axes,
+-- and the comment that defended it said "it is the HEIGHT that binds". That was true of the number and
+-- never true of the screen: the logical space is 1280x720 and the HUD does not take the two axes
+-- evenly. Measured, on a descent floor:
+--
+--   left    the party strip is 210 wide at x=16, and the checklist under it runs to about x=382
+--   right   the Gold/Carrying column is 240 wide, starting at x=1024 (states/game.lua's drawHud)
+--   top     the Back/Items/Potions row sits at x 16..370 -- LEFT of the band, so it costs nothing here
+--   bottom  nothing at all
+--
+-- So the clear band is x 382..1024 and the full height, and a square extent was spending the shorter
+-- axis on both. Sizing the two separately is most of a floor's worth of extra ground for no new pixels
+-- and no camera: the deepest floor lands at 45 logical pixels a cell, still above the 44 that
+-- tests/floor_grid_spec.lua holds as the point where a marker plate and its tier pips stop reading.
+--
+-- A FLOOR STILL FILLS THE SAME FRAME at every depth, which is the rule the square was written to hold
+-- and this keeps: the extents are the constants and the cell size falls out of whichever axis binds
+-- first, so a 12x13 and a 14x15 both read as THE FLOOR rather than the deep ones quietly shrinking.
+-- WIDER THAN IT IS TALL, AND THE VERTICAL MARGIN IS THE POINT.
+--
+-- THE WIDTH IS NOT "WHAT THE HUD LEAVES", and that was the mistake in the first cut. Reserving the
+-- full-height band between the readouts (382..1024) prices the board against the WIDEST the HUD ever
+-- gets at any height, and the HUD is not that wide for most of the board's height: the party strip is
+-- 210 across and stops at y=188, the purse column is 240 across and stops at about y=150, and below
+-- those two the whole 1280 is empty. Everything from y=200 down was being given away to clear two
+-- readouts that end long before the board does.
+--
+-- So the board runs 820 wide, centred on the SCREEN (Overworld.BOARD_CX), which puts its left edge at
+-- x=232 -- clear of the party strip by six pixels -- and its right edge about half a cell into the
+-- purse column's dead air at the top right. That is the only overlap, it is at most two cells of the
+-- top row, and both readouts draw over the board on their own backings already.
+--
+-- THE HEIGHT IS DELIBERATELY SHORT of what the screen would allow, because a board run to the frame
+-- reads as crowded even when every cell is legible. 572 leaves 74 logical pixels above and below -- up
+-- from the 56 the square extent left.
+Overworld.BOARD_W = 820
+Overworld.BOARD_H = 572
+
+-- WHERE THE MIDDLE OF THE BOARD SITS. It was pushed 63 pixels right of centre while the board was
+-- narrow, to sit inside the band between the readouts; a board that uses the width does not fit in that
+-- band at all and is better off symmetrical -- off-centre it would eat the purse column on the right
+-- while leaving dead air on the left. ui/overworld_map.lua's updateCamera is the only reader.
+Overworld.BOARD_CX = 640
+
+-- The old name, kept because Descent's sizing prose still cites it and because a caller that wants one
+-- number for "how big is a board" is asking about the axis that binds. Read nothing else into it.
+Overworld.BOARD_EXTENT = Overworld.BOARD_W
 
 -- The grid a board needs when the caller does not pin one. A descent floor always pins (see
 -- Descent.floorDims), so this is the fallback for a spec or a tool that just wants a board: the square
 -- that holds the content at about half occupancy, which is the density the whole shape is pitched at --
 -- half the floor is somewhere with something in it, the rest is what you route through.
--- The cap is the deepest floor the descent itself asks for (Descent.floorDims tops out at 12), so a
--- caller that does not pin can never be handed a grid the mode would not draw.
-local DIM_MIN, DIM_MAX = 5, 12
+-- The cap is what the mode would actually draw: this returns a SQUARE, and a square is bound by the
+-- shorter axis, so it is Overworld.BOARD_H that sets it (572 / 44 = 13) rather than the width. A caller
+-- that does not pin can never be handed a grid the frame could not show.
+local DIM_MIN, DIM_MAX = 5, 13
 local function deriveDims(content)
     local places = math.max(1, content) * 2
     local span = math.ceil(math.sqrt(places / (1 - Overworld.BLOCK_SHARE)))
@@ -170,8 +213,11 @@ function Overworld.generate(params)
     -- and then ate a coastline out of the padding; a grid of places has no edge to hug -- the rim cells
     -- are places like any other, and the way up stands on one of them.
     self.margin = 0
+    -- WHICHEVER AXIS BINDS FIRST. The frame is a rectangle (Overworld.BOARD_W/BOARD_H) and a floor is
+    -- not required to be square, so the cell size is the smaller of what each axis can afford -- which
+    -- is what keeps the whole floor on the screen with no camera at every depth.
     self.size = params.tileSize
-        or math.floor(Overworld.BOARD_EXTENT / math.max(self.cols, self.rows))
+        or math.floor(math.min(Overworld.BOARD_W / self.cols, Overworld.BOARD_H / self.rows))
 
     self.tilesetId = biomeDef.tileset      -- which data/tilesets/<id> draws this floor
     self.tilesetDef = Tileset.get(self.tilesetId) -- merged types + this biome's art
@@ -1521,6 +1567,34 @@ function Overworld:placeEncounters(params)
                 pick = self:pickOrdinaryCombat(pool) or pick
             end
         end
+        -- THE ORDINARY FIGHT IS NOT SEATED AT ALL where the caller rolls its combat on the walk
+        -- (Descent.PROWL_STEPS). Last of the three rules, and it has to be: an elite the rank rule just
+        -- demoted to a plain fight two lines up is an ordinary fight, and would otherwise be the one
+        -- kind of seated combat that slipped through.
+        --
+        -- PROMOTED WHERE THE BOARD STILL WANTS A FIGHT, demoted where it does not, and the order of those
+        -- two is the whole of what makes such a floor read. What the board keeps is the fight you can
+        -- SEE -- so an ordinary fight that has lost its seat is first offered the rank above it, under
+        -- the same depth rule and the same budget any elite would have had to pass. Only once those are
+        -- spent does it fall through to texture.
+        --
+        -- Without the promotion the demotion alone is a floor of merchants, and that is measured rather
+        -- than feared. `. board-report 40 descent floor=4`, across this pass:
+        --
+        --   demotion only, stop count unmoved    15.00 stops   11.88 services   0.80 elites
+        --   demotion only, stop count moved      13.00 stops   10.25 services   0.45 elites
+        --   with the promotion                   13.00 stops    9.78 services   0.95 elites
+        --
+        -- The middle row is the trap: shrinking the board alone took MORE elites off it, because the
+        -- elite cap is a share of the stop count and the stops it removed were the ones the rank could
+        -- have landed on. A floor with 0.45 elites on it is a dungeon with nothing standing in it.
+        -- See Descent.FLOOR_SEEN for what the count is supposed to be.
+        if params.wanderingCombat and pick.kind == "combat" then
+            local depth = (startDist[cellKey(c)] or 0) / farthest
+            local promoted = (depth >= ELITE_MIN_DEPTH and elitePlaced < eliteCap
+                and combatPlaced < combatCap) and self:pickElite(pool) or nil
+            pick = promoted or self:pickNonCombat(pool) or pick
+        end
         if pick.kind == "elite" then elitePlaced = elitePlaced + 1 end
         if pick then
             c.encounter = { kind = pick.kind, id = pick.id, name = pick.name }
@@ -1852,6 +1926,19 @@ function Overworld:pickNonCombat(pool)
     return self:pickEncounter(sub)
 end
 
+-- The PROMOTION partner to the two below, and the one a floor that rolls its combat on the walk needs.
+-- There an ordinary fight has no seat -- it is dealt as the company walks (Descent.PROWL_STEPS) -- so
+-- the thing the board still wants from the pool is the rank above it: the standing threat the player is
+-- meant to see and route around. Nil on a pool with no elite in it, and the caller falls back.
+function Overworld:pickElite(pool)
+    local sub = {}
+    for _, e in ipairs(pool) do
+        if e.kind == "elite" then sub[#sub + 1] = e end
+    end
+    if #sub == 0 then return nil end
+    return self:pickEncounter(sub)
+end
+
 -- The demotion partner to pickNonCombat: an elite rolled onto shallow ground is re-seated as a plain
 -- fight rather than dropped, so the floor keeps the fight and loses only its rank.
 function Overworld:pickOrdinaryCombat(pool)
@@ -1958,7 +2045,7 @@ function Overworld.fromLayout(params)
     self.rows = #map
     self.cols = #map[1]
     self.size = params.tileSize or layout.tileSize
-        or math.floor(Overworld.BOARD_EXTENT / math.max(self.cols, self.rows))
+        or math.floor(math.min(Overworld.BOARD_W / self.cols, Overworld.BOARD_H / self.rows))
 
     local stops = {}
     self.cells = {}
@@ -2085,7 +2172,7 @@ end
 function Overworld.fromSnapshot(data)
     local self = setmetatable({}, Overworld)
     self.cols, self.rows = data.cols, data.rows
-    self.size = data.size or math.floor(Overworld.BOARD_EXTENT / math.max(self.cols, self.rows))
+    self.size = data.size or math.floor(math.min(Overworld.BOARD_W / self.cols, Overworld.BOARD_H / self.rows))
     self.margin = data.margin or 0
     self.biome = data.biome
     self.tilesetId = data.tilesetId

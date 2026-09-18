@@ -38,6 +38,7 @@ local RestChoice = require("ui.panels.rest_choice")
 local RestReveal = require("ui.panels.rest")
 local EncounterModel = require("models.encounter")
 local Muster = require("models.muster")                     -- how the company stands against a fight
+local Flee = require("models.flee")                         -- ...and whether it can get out before the bell
 local EncounterBattle = require("models.encounter_battle")  -- the board + the payout, shared with states/battle.lua
 local Autobattle = require("models.autobattle")             -- and the fight itself, run with nobody watching
 local Combat = require("models.combat")
@@ -46,6 +47,7 @@ local BattleSummary = require("ui.panels.battle_summary")
 local Party = require("ui.panels.party")
 local Consumables = require("ui.panels.consumables")
 local PartyStatus = require("ui.party_status")
+local EncounterTooltip = require("ui.encounter_tooltip") -- the hover card for a stop on the board
 local RelicStrip = require("ui.relic_strip")
 local OverworldAbility = require("models.overworld_ability")
 local Descent = require("models.descent") -- a run as a stack of floors, their circles, the landing between
@@ -408,9 +410,10 @@ local function openLoadout()
     if game.coach == "loadout" then game.coach = "equip" end
     game.activePanel = Party.new({
         player = game.player,
-        -- The Tactics tab is hidden until the company has been down once (Descent.tacticsUnlocked) --
-        -- the rule list is a shortcut past the thing being taught until the player has felt the thing.
-        -- The flight leg is doubly excluded: it is before the city, and before any floor.
+        -- The Tactics tab is hidden until the first trip ends -- home to the city, or down onto floor
+        -- two, whichever comes first (Descent.tacticsUnlocked) -- because the rule list is a shortcut
+        -- past the thing being taught until the player has felt the thing. The flight leg is doubly
+        -- excluded: it is before the city, and before any floor.
         tactics = game.tutorial ~= "flight" and Descent.tacticsUnlocked(game.player),
         -- The roll is the city's lesson too: a body on the flight leg has one job and no ladder to
         -- read, so the tab arrives with the town that explains it (Descent.classesUnlocked, stamped on
@@ -1274,6 +1277,19 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
         end
     end
 
+    -- THE POOL THE WALK ROLLS ITS FIGHTS FROM (Descent.PROWL_STEPS, rolled in game:onArrive). The same
+    -- weighted table the generator fills a board from, kept on the state because on a descent floor it
+    -- outlives generation: the fighting is dealt a step at a time for as long as the company is down
+    -- here, not once when the floor is laid.
+    --
+    -- SET ABOVE THE BRANCH, ON PURPOSE. Only one of the four routes below actually generates a board --
+    -- the other three resume a run, re-enter a floor out of the map book, or lay an authored map -- and
+    -- a floor re-entered from the book is exactly the floor that MOST needs this: its seated fights are
+    -- re-armed (Descent.rearmFloor) but its ordinary combat was never seated at all, so a pool hung off
+    -- the generate branch would leave every walked-back floor silently quiet. That is the shape of bug
+    -- Descent.FLOOR_FEATURE_KEYS exists to prevent, one layer up.
+    game.floorPool = game.descent and Descent.floorPool(ctx) or nil
+
     -- A resumed run brings its own board (the exact map, with fog and cleared stops) rather than rolling
     -- or laying out a fresh one -- see Save.restoreRun. Its token position and keys are seated onto the map
     -- widget below; the encounter pool / always list above is built but unused (harmless).
@@ -1320,7 +1336,7 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
             -- A descent floor reweights the same pool -- more fights, fewer set-pieces, almost no
             -- texture -- because a floor is not a roadside. See Descent.floorPool for the argument;
             -- this is the dispatch.
-            encounters = game.descent and Descent.floorPool(ctx) or EncounterModel.pool(ctx),
+            encounters = game.floorPool or EncounterModel.pool(ctx),
             -- ...and raises the share cap to match. Absent (every campaign leg) the generator keeps
             -- its own 0.6.
             combatShare = mp.combatShare,
@@ -1462,21 +1478,34 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
                 game:pushToast("The wall gives. There is a way through here.")
                 saveRun()
             end
-            -- SOMETHING WANDERS BACK (Descent.RESPAWN_STEPS). Every so many tiles covered, one fight
-            -- the company already put down gets back up somewhere else on the floor -- so clearing a
-            -- floor buys quiet rather than safety, and a company that wants to grind a floor it knows
-            -- has something to grind. Counted here for the reason the Dark is: this is the one callback
-            -- that fires on a landed tile and on nothing else.
+            -- SOMETHING FINDS YOU (Descent.PROWL_STEPS). The ordinary fighting on a floor is not seated
+            -- on tiles at all any more -- it is rolled here, a step at a time, which is Wizardry's own
+            -- arrangement and the reason a level down there is never finished with you.
             --
-            -- ANNOUNCED, ALWAYS. A fight that reappears behind the player with no line would read as a
-            -- stop they had somehow missed, and the next time they walked into it they would think the
-            -- board had lied about being clear.
-            if game.descent then
+            -- HERE FOR THE REASON THE DARK IS: this is the one callback that fires on a landed tile and
+            -- on nothing else, so it is the only honest place to measure ground covered.
+            --
+            -- SEATED ONTO THE TILE THE COMPANY IS STANDING ON rather than launched straight into a
+            -- battle, and that is what makes the whole change cheap. OverworldMap:arrive fires this hook
+            -- BEFORE it checks the cell for an encounter, so a fight written onto the cell here is
+            -- picked up by the very next line of the widget and opened through the same seam a seated
+            -- fight has always come through -- the approach autosave, the entry edge, the arena roll,
+            -- the spoils, the wounds. Nothing downstream learns a new way to start a battle.
+            --
+            -- NOT ONTO AN OCCUPIED PLACE. A cell holds one thing (docs/overworld.md), and writing a
+            -- fight over a merchant would delete the merchant. The meter stays full instead and fires on
+            -- the next clear tile, which costs a step or two of accuracy and never costs a stop.
+            if game.descent and game.floorPool then
                 game.descent.steps = (game.descent.steps or 0) + 1
-                if game.descent.steps % Descent.RESPAWN_STEPS == 0 then
-                    local woke = Descent.wakeOne(game.descent, game.grid, game.map.px, game.map.py)
-                    if woke then
-                        game:pushToast("Something moves, somewhere you had already been")
+                if Descent.stepProwl(game.descent) then
+                    local free = not (cell.encounter or cell.cache or cell.key or cell.gate)
+                        and not (cell.trap and not cell.trap.sprung)
+                    local rolled = free and Descent.wander(game.descent, game.floorPool) or nil
+                    if rolled then
+                        Descent.calmProwl(game.descent)
+                        cell.encounter = rolled
+                        cell.cleared = nil
+                        game:pushToast("Something has found you.")
                         saveRun()
                     end
                 end
@@ -2220,6 +2249,17 @@ function game:openEncounter(cell, opts)
         -- The battle launch itself, deferred behind the walk-off offer for a fight the company has
         -- outgrown (below).
         local function startBattle()
+        -- THE PROWL MEASURES TIME SINCE THE LAST FIGHT, not time since the last ROLLED fight, so walking
+        -- into a seated one resets it too (Descent.calmProwl). Without this a company that had just
+        -- fought the floor's elite could be found by a wanderer four tiles later, which reads as the
+        -- floor piling on rather than as the floor being dangerous.
+        --
+        -- ...but not one the meter itself just dealt: that one was calmed as it was dealt (game:onArrive)
+        -- and calming it twice would advance the leg twice, which re-deals the next interval and the next
+        -- monster off a salt nothing walked to.
+        if game.descent and not (cell.encounter and cell.encounter.wandering) then
+            Descent.calmProwl(game.descent)
+        end
         -- Tutorial leg only (the prologue's flight): snapshot the party BEFORE the fight so the defeat
         -- panel's "Try Again" can restart THIS same encounter with a whole party -- consumed potions and
         -- any downed member undone. In-memory only, no disk save. The cell is not yet marked `cleared`
@@ -2311,6 +2351,53 @@ function game:openEncounter(cell, opts)
             -- two is shown is decided by the board at the moment the fight is decided, since only it knows
             -- whether anybody was left (states/battle.lua's lose stamps `battle.routed`).
             routedLabel = game.descent and "Fall Back" or nil,
+            -- THE WAY OUT, offered on the deploy screen (models/flee.lua, ui/deploy_phase.lua).
+            --
+            -- A DESCENT ONLY, and the narrowness is the point. Down here the ordinary fighting is rolled
+            -- as the company walks (Descent.PROWL_STEPS) and arrives with no marker to read, so the
+            -- judgement the muster band used to support has nowhere else left to be made. A campaign
+            -- ground still deals its fights onto tiles you can see, price and route around, so nothing
+            -- there has lost anything that needs giving back -- and handing every quest leg a free exit
+            -- would re-price the campaign as a side effect of a dungeon problem.
+            --
+            -- THE ODDS ARE THE MARKER'S OWN NUMBER (game:musterMargin), which is what keeps this from
+            -- becoming a second opinion about how strong the company is.
+            fleeChance = game.descent and Flee.allowed(cell.encounter)
+                and Flee.chance(game:musterMargin(cell)) or nil,
+            onFlee = (game.descent and Flee.allowed(cell.encounter)) and function()
+                local run = game.descent
+                local chance = Flee.chance(game:musterMargin(cell))
+                if not Flee.roll(run and run.seed, run and run.leg, chance) then
+                    -- CAUGHT. The enemy line opens the fight Hasted (Combat.dressSide), and the badges
+                    -- land on their tokens now, on the deploy screen, so the company can see what it is
+                    -- walking into before it rings the bell. Nothing else changes -- same board, same
+                    -- spoils, same win condition -- because what was gambled was the shape of the fight,
+                    -- not the fight.
+                    Combat.dressSide(game.battle and game.battle.combat, "enemy", Flee.CAUGHT_STATUS,
+                        { duration = Flee.CAUGHT_TICKS })
+                    return "They cut you off. They start this fight Hasted."
+                end
+                -- AWAY. A rolled fight is not a PLACE -- it was dealt onto the tile the company was
+                -- standing on and it was never part of the floor -- so getting out takes it off the
+                -- board entirely. A seated elite IS a place: it stays exactly where it is, uncleared,
+                -- still standing in the corridor to be walked around or come back for.
+                if cell.encounter and cell.encounter.wandering then
+                    cell.encounter, cell.cleared = nil, nil
+                end
+                -- The meter back to nothing, so a company that just broke away is not found again four
+                -- tiles later. A fight fled is a fight met.
+                Descent.calmProwl(run)
+                ScreenFx.reset()
+                game.activePanel = nil
+                -- Back onto the tile they came from. The same step-off the tutorial retry uses, and for
+                -- the same reason: it puts the company one tile shy with nothing re-fired.
+                game.map:retreatFromEncounter()
+                require("models.sound").music("music.overworld")
+                game.endFight()
+                game:pushToast("You break away.")
+                saveRun()
+                return nil
+            end or nil,
             -- The sponsor's stock, for the salvage every won fight leaves behind (models/spoils.lua).
             -- Same value the map's caches were laid out with, so a run's fights and its dead ends pay
             -- into the same house.
@@ -4080,23 +4167,26 @@ function game:openEncounter(cell, opts)
         if not run then cell.cleared = true; return end
         local depth = Descent.depth(run)
         local below = Descent.nameOf(run, depth + 1)
-        -- Phrased so the place NAMES itself rather than being slotted after an article: a sin takes
-        -- none ("Below you is Wrath"). The bottom is the one exception and takes its article, because
-        -- it is a thing rather than a place -- and naming the Hollow Crown is the whole of the warning
-        -- a player gets before the last floor of the run. It is said HERE, on the step itself, rather
-        -- than on the boon card a floor earlier where there was nothing to do about it.
+        -- Phrased so what is below NAMES itself rather than being slotted after an article, which is
+        -- why Descent.nameOf returns "floor 12" rather than the bare number. It used to name the circle
+        -- and no longer does: depth is the figure the player is chasing and the only one the Gate, the
+        -- landing and this panel all speak. The bottom is the one exception and takes its article,
+        -- because it is a thing rather than a place -- and naming the Hollow Crown is the whole of the
+        -- warning a player gets before the last floor of the run. It is said HERE, on the step itself,
+        -- rather than on the boon card a floor earlier where there was nothing to do about it.
         local last = Descent.isBottom(depth + 1)
         game.activePanel = Choice.new({
             title = "The Stair Down",
             prompt = last
-                and ("There are no more circles. Below you is " .. below ..
+                and ("This is the last stair. Below you is " .. below ..
                      ", and beating it ends the descent.")
                 or ("Below you is " .. below .. "."),
             options = {
                 {
                     label = "Go down",
-                    desc = "Floor " .. (depth + 1) .. ". Whatever is still standing on this floor " ..
-                        "stays on it.",
+                    -- The floor number moved into the prompt above (Descent.nameOf), so this says the
+                    -- thing the prompt does not: what walking down costs you on the floor you are on.
+                    desc = "Whatever is still standing on this floor stays on it.",
                     accent = { 0.83, 0.73, 0.45 },
                     cb = function()
                         game.activePanel = nil
@@ -4923,62 +5013,37 @@ function game.drawHud()
         love.graphics.printf("Keys: " .. held .. " / " .. total, 0, 52, Scale.WIDTH, "center")
     end
 
-    -- THE FIGHT YOU ARE WEIGHING UP, in words. The marker is the at-a-glance read across
-    -- the whole board; this is the exact one, for the moment you are actually deciding. Docked here,
-    -- under the quest name with the keys count -- both are facts about the board rather than about a
-    -- point on it -- rather than floating at the cursor, so it is always found in the same place
-    -- however the player is driving (see ui/overworld_map.lua's hoveredFight for what "weighing up"
-    -- means with a pad, which has no pointer to hover with).
-    local fight = game.map:hoveredFight()
-    if fight then
-        local band = game:musterBand(fight)
-        local line = fight.encounter.name or "A fight"
-        if fight.encounter.tier then line = line .. "  -  Tier " .. fight.encounter.tier end
-        if band then line = line .. "  -  " .. (Muster.BAND_LABEL[band] or band) end
-        -- ...AND WHAT IT LEAVES BEHIND. A stop is a proposition, and until now this line gave only
-        -- half of it: how dangerous, never how worthwhile. Naming the salvage is what turns eight
-        -- fights on a floor from a treadmill into eight routing decisions -- the Hades rule that the
-        -- source is telegraphed BEFORE you commit, which docs/progression.md already cites as the one
-        -- thing its material economy was missing.
-        --
-        -- Only the SALVAGE is named, and that is a correctness point rather than a shortcut: it is
-        -- computed and never rolled (models/spoils.lua -- "no RNG, no zero case"), so this is the exact
-        -- payout rather than an estimate of one. Gold carries +/-15% jitter and naming a figure the
-        -- fight then missed would teach the player to distrust the line.
-        --
-        -- Deliberately NOT a glyph on the marker: at a 32px tile a mark is under 2px across, which is
-        -- the lesson the muster pips already paid for (see models/muster.lua's notes). The marker is
-        -- the read across the whole board; this is the read at the moment of deciding.
-        local pays = game:payoutPhrase(fight.encounter)
-        if pays then line = line .. "  -  leaves " .. pays end
-        love.graphics.setFont(hudFont)
-        love.graphics.setColor(0.72, 0.72, 0.66)
-        love.graphics.printf(line, 0, total > 0 and 72 or 52, Scale.WIDTH, "center")
-    else
-        -- ...AND THE SAME LINE FOR A PIECE OF POSTED WORK, which is where the FIRST-CLEAR BONUS is told.
-        --
-        -- An errand pays a purse the first time it is cleared and losing the fight spends that purse for
-        -- good (models/errand.lua's Errand.fail), so it is a figure the player weighs BEFORE committing --
-        -- exactly the thing this readout was added for, and exactly the thing that cannot go on the
-        -- marker: at a 32px tile a mark is under two pixels across, which is the lesson the muster pips
-        -- already paid for. So the bonus is named here, in words, at the moment of deciding, and once it
-        -- is spent the clause is simply absent -- every errand carries one, so its absence is the mark.
-        --
-        -- The NUMBER rather than "bonus rewards", because a figure is what a decision is made against: 80
-        -- gold is worth walking into a fight under-strength for and a word is not.
-        local work = game.map:hoveredWork()
-        local def = work and Quest.defs[work.encounter.questId]
-        if def then
-            local line = work.encounter.name or def.name or "Somebody's work"
-            if (def.rewardGold or 0) > 0 and not Errand.failedOnce(game.player, work.encounter.questId) then
-                line = line .. "  -  first clear pays " .. def.rewardGold .. " gold"
-            end
-            local pays = game:payoutPhrase(work.encounter)
-            if pays then line = line .. "  -  leaves " .. pays end
-            love.graphics.setFont(hudFont)
-            love.graphics.setColor(0.72, 0.72, 0.66)
-            love.graphics.printf(line, 0, total > 0 and 72 or 52, Scale.WIDTH, "center")
+    -- THE STOP YOU ARE WEIGHING UP, as a card in the bottom-left (ui/encounter_tooltip.lua).
+    --
+    -- The marker is the at-a-glance read across the whole board; this is the exact one, for the moment
+    -- you are actually deciding. It is the FIGHT'S hover card on this screen -- same widget, same
+    -- corner, same width as states/battle.lua's tile readout -- so "what is under the pointer" has one
+    -- shape in this game rather than three.
+    --
+    -- A CENTRED LINE STOOD HERE and this replaced it, which is a widening rather than a move. That line
+    -- named a fight and a house's errand -- two of the twenty-two kinds of mark this board draws -- and
+    -- went silent over the other twenty: the cold forge, the weeping stone, the three hazards that share
+    -- one colour on purpose, both ways off the floor. A board whose whole vocabulary is a hue and a
+    -- fourteen-pixel mark, with nothing anywhere putting either beside a word, can only be learned by
+    -- walking onto things. Everything the line said is a row in the card, off the same two functions.
+    --
+    -- Fed by :hoveredStop, which answers with the pointer for a mouse and with the adjacent tile for a
+    -- pad -- the same two answers the line was fed by, for the same reason (there is no cursor out here
+    -- to hover with). The three figures are computed HERE and handed in: the widget must not reach for
+    -- the run state to recompute a salvage list, or the card and the win could disagree.
+    local stop = game.map:hoveredStop()
+    if stop then
+        local enc = stop.encounter
+        local bonus
+        local def = enc.questId and Quest.defs[enc.questId]
+        if def and (def.rewardGold or 0) > 0 and not Errand.failedOnce(game.player, enc.questId) then
+            bonus = def.rewardGold
         end
+        EncounterTooltip.draw(stop, {
+            band = game:musterBand(stop),
+            payout = game:payoutPhrase(enc),
+            bonus = bonus,
+        }, mx, my)
     end
 
     love.graphics.setFont(hudFont)

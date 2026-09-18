@@ -17,7 +17,7 @@ local function arena(cols, rows, opts)
         for x = 1, cols do tiles[y][x] = { type = "ground", walkable = true } end
     end
     for _, o in ipairs(opts.obstacles or {}) do
-        tiles[o.y][o.x] = { type = "obstacle", walkable = false }
+        tiles[o.y][o.x] = { type = "mountain", walkable = false }
     end
     return { cols = cols, rows = rows, tiles = tiles, enemies = opts.enemies or {},
              party = opts.party }

@@ -21,7 +21,6 @@ return {
     sprite = "assets/items/carrion_jaws.png",
     type = "weapon",
     class = "creature",
-    dropTier = 7,
     tags = { "natural", "bite", "physical", "melee" },
     noSteal = true,
     activeAbility = {

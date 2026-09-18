@@ -67,6 +67,18 @@ local function obtainableIds()
         add(drop.minor)
     end
 
+    -- AND WHAT IS MADE ON THE FIELD. The fifth route, and the only one that reaches a grid without a
+    -- shelf, a quest or a roll: the Herbalist brews her reagent out of the ground she is standing on
+    -- (data/traits/trait_field_still.lua's `brewsEachTurn`, ability_distil, trait_cullers_kit).
+    --
+    -- It is read off the declared field rather than off the abilities that call Combat.grantItem,
+    -- because only the field can be asked a question -- an id buried in an effect closure is invisible
+    -- to anything but a source sweep. An item reachable ONLY through a grant nothing declares is
+    -- exactly the dead data this file exists to catch, so the narrow reading is the correct one.
+    for _, def in pairs(require("models.trait").defs) do
+        if type(def.brewsEachTurn) == "string" then got[def.brewsEachTurn] = true end
+    end
+
     return got
 end
 
@@ -79,11 +91,13 @@ local function questOnly()
         -- they were excluded by having no `class` at all, which is a state the fold ended
         -- (docs/class-fold.md). Naming the bucket is what that exclusion looks like written down.
         --
-        -- Six items sit in the bucket and should not: ability_haste, ability_omnislash, ability_pull,
-        -- armor_padded_vest, consumable_wildcraft_reagent and utility_decoy are ordinary player gear
-        -- that happened to carry no class, so the creature pass swept them up. They are ALSO genuinely
-        -- unreachable -- no price, no grant, no drop tier -- and that was true before this file could
-        -- see them. Re-home them and this case will say so.
+        -- SIX ITEMS SAT IN THE BUCKET AND HAVE BEEN RE-HOMED. ability_haste, ability_omnislash,
+        -- ability_pull, armor_padded_vest, consumable_wildcraft_reagent and utility_decoy were ordinary
+        -- player gear that happened to carry no class, so the creature pass swept them up; this comment
+        -- named them and said "re-home them and this case will say so", and it did -- the reagent came
+        -- back red the moment it stopped being creature kit, because brewing was a route nothing here
+        -- could see. The other five carry a price or a dropTier now. The brew sweep above is the rest
+        -- of the answer.
         if def.class and def.class ~= "creature" and not def.price and not def.bound then
             out[#out + 1] = id
         end

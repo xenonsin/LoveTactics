@@ -161,13 +161,13 @@ return {
     {
         name = "curated arenas join the random pool (not always picked, not never)",
         fn = function()
-            -- forest_01.lua (data/arenas) is tagged biome = "forest" with a 2x2 obstacle
+            -- forest_01.lua (data/arenas) is tagged biome = "forest" with a 2x2 mountain
             -- block at rows 4-5, cols 4-5 -- a signature the procedural generator will
             -- not reproduce. Over many seeds we should see BOTH the curated layout and
             -- fresh procedural ones, confirming a mixed pool rather than "always curated".
             local function isCurated(a)
-                return a.tiles[4][4].type == "obstacle" and a.tiles[4][5].type == "obstacle"
-                    and a.tiles[5][4].type == "obstacle" and a.tiles[5][5].type == "obstacle"
+                return a.tiles[4][4].type == "mountain" and a.tiles[4][5].type == "mountain"
+                    and a.tiles[5][4].type == "mountain" and a.tiles[5][5].type == "mountain"
             end
             local curatedHits, proceduralHits = 0, 0
             for seed = 1, 60 do
@@ -357,7 +357,7 @@ return {
         name = "a rolled board never strands a spawn from the fight",
         fn = function()
             -- A4. The channel cannot cut a board -- water is walkable -- but the `block` scatter lays
-            -- genuinely impassable tiles (obstacle, and lava on a volcanic floor), and the rock profile
+            -- genuinely impassable tiles (mountain, and lava on a volcanic floor), and the rock profile
             -- raises that count. So the connectivity this asserts is real and it is the block scatter's
             -- to break: every party spawn must be able to reach every enemy spawn.
             local function walkable(t)

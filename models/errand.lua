@@ -88,7 +88,7 @@ end
 --
 -- IT ASKS THE ROSTER TOO, AND THAT HALF IS LOAD-BEARING. The quest ledger answers "did they finish the
 -- posting"; every caller actually wants "are they walking with us", and those came apart the moment a
--- companion could join anywhere but underground. Amana now joins ABOVE ground, in the prologue's
+-- companion could join anywhere but underground. Xin now joins ABOVE ground, in the prologue's
 -- Cathedral scene (states/prologue.lua), so her opener is never completed -- and on the ledger alone
 -- this would report her door shut forever: the descent would keep standing her on a floor to be met by
 -- a company she is already in, and the deck would keep dealing the Cathedral instead of one of the six

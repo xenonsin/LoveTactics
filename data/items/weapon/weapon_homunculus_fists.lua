@@ -11,7 +11,6 @@ return {
     sprite = "assets/items/homunculus_fists.png",
     type = "weapon",
     class = "creature",
-    dropTier = 7,
     tags = { "natural", "poison", "physical", "melee" },
     noSteal = true,
     activeAbility = {

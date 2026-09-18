@@ -27,7 +27,6 @@ return {
     sprite = "assets/items/briar_lash.png",
     type = "weapon",
     class = "creature",
-    dropTier = 8,
     tags = { "natural", "pierce", "physical", "melee" },
     noSteal = true,
     activeAbility = {

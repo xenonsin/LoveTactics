@@ -7,7 +7,7 @@
 --
 -- THE BLOW IS ALREADY ON HER. This plays in the middle of the Demon Champion's last stage, between
 -- the strike landing and the body going down -- beat 5 of the six states/battle.lua walks through
--- (battle.SCRIPT_BEATS; the beat itself is described in data/status/status_champion_fixation.lua).
+-- (battle.SCRIPT_BEATS; the beat itself is described in models/combat.lua's Combat.spendScriptedFell).
 -- The board is frozen under it, the demon is standing where it hit her, and she is still on her feet
 -- and still on the timeline, because her death cue is being HELD for exactly as long as this scene is
 -- up. It is dismissed, and she drops.

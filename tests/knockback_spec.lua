@@ -21,7 +21,7 @@ local function arena(cols, rows, blocked)
         end
     end
     for _, b in ipairs(blocked or {}) do
-        tiles[b.y][b.x] = { type = "obstacle", moveCost = 99, walkable = false, sightCost = 99 }
+        tiles[b.y][b.x] = { type = "mountain", moveCost = 99, walkable = false, sightCost = 99 }
     end
     return { cols = cols, rows = rows, tiles = tiles, objective = { type = "killAll" } }
 end
@@ -351,9 +351,9 @@ return {
     {
         name = "pull needs a clear line of sight",
         fn = function()
-            -- A mountain (sightCost 2) between the two blocks the line on its own.
+            -- A hill (sightCost 2) between the two blocks the line on its own.
             local a = arena(8, 8)
-            a.tiles[4][4] = { type = "mountain", moveCost = 2, walkable = true, sightCost = 2 }
+            a.tiles[4][4] = { type = "hill", moveCost = 2, walkable = true, sightCost = 2 }
             local c = Combat.new(a, { unit("character_rowan", 4, 3) }, { unit("character_bandit", 4, 6) })
             local knight, bandit = c.units[1], c.units[2]
 
@@ -530,7 +530,7 @@ return {
             knight.inventory = {}
             Character.addItem(knight, Item.instantiate("ability_pull"))
             local a = arena(8, 8)
-            a.tiles[4][4] = { type = "mountain", moveCost = 2, walkable = true, sightCost = 2 }
+            a.tiles[4][4] = { type = "hill", moveCost = 2, walkable = true, sightCost = 2 }
             local c = Combat.new(a, { unit(knight, 4, 3) }, { unit("character_bandit", 4, 6) })
             local ku, bandit = c.units[1], c.units[2]
             c.turn = { unit = ku, moved = false, moveCost = 0 }
@@ -563,7 +563,7 @@ return {
         name = "pullObject needs a clear line of sight, same as pulling a body",
         fn = function()
             local a = arena(8, 8)
-            a.tiles[4][4] = { type = "mountain", moveCost = 2, walkable = true, sightCost = 2 }
+            a.tiles[4][4] = { type = "hill", moveCost = 2, walkable = true, sightCost = 2 }
             local c = Combat.new(a, { unit("character_rowan", 4, 3) }, { unit("character_bandit", 8, 8) })
             local knight = c.units[1]
             local crate = Prop.place(c, 4, 6, "prop_crate")

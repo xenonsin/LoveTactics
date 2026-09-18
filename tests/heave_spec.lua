@@ -22,7 +22,7 @@ local function arena(cols, rows, blocked)
         end
     end
     for _, b in ipairs(blocked or {}) do
-        tiles[b.y][b.x] = { type = "obstacle", moveCost = 99, walkable = false, sightCost = 99 }
+        tiles[b.y][b.x] = { type = "mountain", moveCost = 99, walkable = false, sightCost = 99 }
     end
     return { cols = cols, rows = rows, tiles = tiles, objective = { type = "killAll" } }
 end

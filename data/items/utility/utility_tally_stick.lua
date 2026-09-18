@@ -20,7 +20,6 @@ return {
     sprite = "assets/items/tally_stick.png",
     type = "utility",
     class = "creature",
-    dropTier = 5,
     tags = { "relic" },
     noSteal = true,
     traits = { "trait_assayers_tally" },

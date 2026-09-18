@@ -400,7 +400,12 @@ return {
             -- shoulder stands on a diagonal. A diamond footprint answered that corner with "not that
             -- one", so the fix is checked as a body falling rather than as a field reading "square".
             local c = Combat.new(arena(8, 8),
-                { mkunit(4, 4, { stats = { stamina = 50 }, items = { "ability_clear_out" } }) },
+                -- The axe is not decoration: Clear Out requires a melee weapon beside it in the grid
+                -- and takes the ring's width off that weapon, so a spinner holding nothing spins
+                -- nothing (data/items/ability/ability_clear_out.lua). An iron axe is the plain case --
+                -- one tile, which is the box this case is about.
+                { mkunit(4, 4, { stats = { stamina = 50 },
+                    items = { "ability_clear_out", "weapon_iron_axe" } }) },
                 { mkunit(5, 5, { stats = { defense = 0, health = 100 } }),   -- the corner
                   mkunit(4, 3, { stats = { defense = 0, health = 100 } }) }) -- the orthogonal neighbour
             local fighter, corner, side = c.units[1], c.units[2], c.units[3]

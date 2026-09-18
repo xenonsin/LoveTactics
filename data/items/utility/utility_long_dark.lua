@@ -13,7 +13,6 @@ return {
     sprite = "assets/items/long_dark.png",
     type = "utility",
     class = "creature",
-    dropTier = 2,
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_boss_phases" },

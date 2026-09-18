@@ -13,7 +13,6 @@ return {
     sprite = "assets/items/antler_crown.png",
     type = "weapon",
     class = "creature",
-    dropTier = 8,
     tags = { "natural", "pierce", "physical", "melee" },
     noSteal = true,
     activeAbility = {

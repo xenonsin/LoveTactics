@@ -16,7 +16,6 @@ return {
     sprite = "assets/items/gorge_bite.png",
     type = "weapon",
     class = "creature",
-    dropTier = 6,
     tags = { "natural", "bite", "physical", "melee" },
     noSteal = true,
     activeAbility = {

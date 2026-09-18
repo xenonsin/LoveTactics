@@ -16,7 +16,6 @@ return {
     sprite = "assets/items/weapon_blight_spitter.png",
     type = "weapon",
     class = "creature",
-    dropTier = 5,
     tags = { "natural", "poison", "physical" },
     noSteal = true, -- it is part of the stake, not equipment
     activeAbility = {

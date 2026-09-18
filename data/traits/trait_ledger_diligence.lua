@@ -13,7 +13,7 @@
 -- stats read low, so enemy targeting and the mirror alike take her for a weak mage not worth measuring --
 -- and the Release on her relic (data/items/utility/utility_ledger.lua) is where she drops it and the
 -- banked practice lands at once, on the enemy that dismissed her. This is also her foil-immunity, stated
--- as cleanly as Amana's "not one of the made": Pride answers only what is SHOWN
+-- as cleanly as Xin's "not one of the made": Pride answers only what is SHOWN
 -- (data/traits/trait_counter_magic.lua), and Gyeom shows nothing worth taking -- a spell answered off her
 -- is answered off her suppressed value, which is nothing. You can glance a spell; you cannot glance the
 -- hours she never put on display.

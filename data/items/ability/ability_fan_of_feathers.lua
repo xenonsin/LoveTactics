@@ -26,7 +26,6 @@ return {
     sprite = "assets/items/ability_fan_of_feathers.png",
     type = "ability",
     class = "creature",
-    dropTier = 8,
     tags = { "natural", "pierce", "physical" },
     noSteal = true,
     activeAbility = {

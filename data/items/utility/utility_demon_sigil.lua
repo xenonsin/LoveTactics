@@ -14,7 +14,7 @@
 --   66%  the guard's spell is spoken and the Champion starts winding up the Roar (status_roaring, which
 --        its AI cast-rule reads) -- it calls Bomblets and quickens itself unless you break the channel.
 --   33%  it stops roaring, turns FAST (status_hasted), ENRAGES (the wrath curve), and MARKS ROWAN
---        (status_champion_fixation). On its next turn it crosses the board and puts her down. It now
+--        (the `mark` phase response). On its next turn it crosses the board and puts her down. It now
 --        hunts your softest body, and it has just removed the one body that stood in front of them.
 --
 -- WHY THE STAGE ANNOUNCES ITSELF BY KILLING THE KNIGHT. Stage 3's authored answers were all Rowan --
@@ -27,11 +27,11 @@
 --
 -- IT FIRES AT 33% AND NOT 66% FOR AN ARITHMETIC REASON. The party here is two bodies, the avatar and
 -- Rowan, putting roughly 40 a round into 150 health (character_demon_champion.lua does this sum). Felled
--- at 66% the avatar finishes 100 health alone through the Roar AND the Fixation -- five rounds solo, and
+-- at 66% the avatar finishes 100 health alone through the Roar AND the crossing -- five rounds solo, and
 -- a loss restarts the fight, so the player loops on something the script made unwinnable. At 33% it is
 -- about 50 health: two or three rounds, alone, which is a climax.
 --
--- THE FIXATION ENTRY IS PROLOGUE-ONLY, and this relic is the one thing standing between that and a bug.
+-- THE `mark` ENTRY IS PROLOGUE-ONLY, and this relic is the one thing standing between that and a bug.
 -- The Champion's header offers it as a reusable mid-tier demon boss, and today the flight leg is its only
 -- composer (states/prologue.lua). The moment a second fight fields it, Rowan -- who is in the party for
 -- the rest of the game -- gets felled again, silently, in a scene nobody wrote. Reuse the Champion by
@@ -67,10 +67,18 @@ return {
             -- ...AND IT MARKS HER, rather than killing her here. A phase crosses inside Trait.onDamaged,
             -- which runs inside the resolution of the PLAYER's blow -- so felling on the crossing put the
             -- teleport and the kill on top of the sword that caused them, with no turn boundary between.
-            -- The status spends itself on the CHAMPION'S OWN TURN instead (Status.onTurnStart), which is
-            -- where a scripted moment belongs: shake, blink, fell, with the board settled around it. It
-            -- also buys the player a full turn of warning, because Rowan speaks when this lands.
-            { kind = "status", id = "status_champion_fixation" },
+            -- The mark is spent on the CHAMPION'S OWN TURN instead (Combat.spendScriptedFell, called from
+            -- Combat.startTurn), which is where a scripted moment belongs: shake, run, fell, with the
+            -- board settled around it. It also buys the player a full turn of warning, because `scene`
+            -- is Rowan speaking the moment this lands.
+            --
+            -- WHO, and both lines she speaks, are authored HERE rather than in the engine: the beat
+            -- belongs to one scene, and the ids should be readable from the phase script that fires it.
+            { kind = "mark",
+              victim   = "character_rowan",
+              scene    = "conversation_flight_champion_turn",
+              hitScene = "conversation_flight_champion_fall",
+              seconds  = 0.9 }, -- how long the wind-up shake runs before the body commits to the crossing
         } },
     },
 }

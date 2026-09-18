@@ -17,8 +17,8 @@
 --
 -- WHY THE CONTENTS ARE AUTHORED HERE rather than rolled at placement: a vault whose contents are rolled
 -- is just a differently-shaped patch of the same floor. The shape is not what anybody remembers -- the
--- thing in it is. (Daphne's own rule, in its community guide's words: what is on a tile "will always
--- appear at the same place within the tile".)
+-- thing in it is. (Wizardry Variants Daphne's own rule, in its community guide's words: what is on a
+-- tile "will always appear at the same place within the tile".)
 --
 -- IT ASKS FOR NO PARTICULAR BIOME. A ring of cells round a well reads in a swamp, a castle and an
 -- underworld alike, and the first vault should be one that can turn up anywhere -- a library gated to

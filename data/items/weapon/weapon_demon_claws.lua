@@ -28,7 +28,6 @@ return {
     sprite = "assets/items/great_claws.png", -- placeholder until its own art exists (as demon_cleave does)
     type = "weapon",
     class = "creature",
-    dropTier = 5,
     tags = { "natural", "slash", "physical", "melee", "fire" },
     noSteal = true, -- a pickpocket does not get a hand into a demon's
     activeAbility = {

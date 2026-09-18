@@ -12,7 +12,6 @@ return {
     sprite = "assets/items/beloveds_devotion.png",
     type = "utility",
     class = "creature",
-    dropTier = 1,
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_boss_phases" },

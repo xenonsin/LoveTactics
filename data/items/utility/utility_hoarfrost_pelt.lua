@@ -8,7 +8,6 @@ return {
     sprite = "assets/items/hoarfrost_pelt.png",
     type = "utility",
     class = "creature",
-    dropTier = 2,
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_conduction" },

@@ -295,59 +295,150 @@ return {
         end,
     },
     {
-        -- Clearing a floor used to make it safe for good while you stood on it, so the back half of
-        -- every floor was a walk -- and re-treading to close a level gap paid nothing on ground you had
-        -- already beaten. Wizardry's answer is that the level is never finished with you.
-        name = "a fight the company put down gets back up, away from them, and replays from the seed",
+        -- The ordinary fight is not seated on a tile at all: it is rolled as the company walks
+        -- (Descent.PROWL_STEPS), which is Wizardry's own arrangement and the reason a level down there
+        -- is never finished with you.
+        name = "the prowl throws a fight on a bounded interval, and the same run replays it",
         fn = function()
-            local player = Player.new()
-            local run = Descent.new(player, 606)
-            run.steps = 0
+            local run = Descent.new(Player.new(), 606)
 
-            -- A floor with four cleared fights spread to the far corner, and the company at (1,1).
-            local function board()
-                local g = { cols = 9, rows = 9, cells = {} }
-                for y = 1, 9 do
-                    g.cells[y] = {}
-                    for x = 1, 9 do g.cells[y][x] = { x = x, y = y } end
-                end
-                for _, p in ipairs({ { 8, 8 }, { 9, 7 }, { 7, 9 }, { 8, 6 } }) do
-                    local c = g.cells[p[2]][p[1]]
-                    c.encounter = { kind = "combat" }
-                    c.cleared = true
-                end
-                return g
+            -- BOUNDED BOTH WAYS. Too short and a floor is a treadmill; too long and a company crosses
+            -- one without ever being found, which is the safe-once-cleared floor this exists to end.
+            local seen = {}
+            for leg = 0, 59 do
+                run.leg = leg
+                local t = Descent.prowlTarget(run)
+                assert(t >= Descent.PROWL_STEPS - Descent.PROWL_JITTER
+                    and t <= Descent.PROWL_STEPS + Descent.PROWL_JITTER,
+                    "leg " .. leg .. " runs " .. t .. " steps, outside the declared window")
+                seen[t] = true
+            end
+            local distinct = 0
+            for _ in pairs(seen) do distinct = distinct + 1 end
+            -- NOT A METRONOME. A fixed interval is one the player counts on their fingers, and the
+            -- readout stops being a warning and becomes a countdown.
+            assert(distinct >= 4,
+                "sixty legs ran only " .. distinct .. " distinct lengths -- the jitter is not jittering")
+
+            -- SAME SEED, SAME WALK. A trip replayed off one save has to meet the same fights at the same
+            -- spacing, or a bug report about one cannot be replayed.
+            local twin = Descent.new(Player.new(), 606)
+            twin.leg = 7
+            run.leg = 7
+            assert(Descent.prowlTarget(twin) == Descent.prowlTarget(run),
+                "two runs on one seed disagree about the same leg; the roll is not off the seed")
+
+            -- IT FIRES, and only once the meter is full.
+            run.leg, run.prowl = 0, 0
+            local fired, steps = false, 0
+            for _ = 1, Descent.PROWL_STEPS + Descent.PROWL_JITTER do
+                steps = steps + 1
+                if Descent.stepProwl(run) then fired = true break end
+            end
+            assert(fired, "the company walked a full window and nothing found them")
+            assert(steps >= Descent.PROWL_STEPS - Descent.PROWL_JITTER,
+                "something found them after " .. steps .. " steps, inside the floor of the window")
+
+            -- ...and the meter goes back to nothing, on a fresh leg.
+            local before = run.leg or 0
+            Descent.calmProwl(run)
+            assert(run.prowl == 0, "the meter stayed full after a fight")
+            assert(run.leg == before + 1, "the leg did not advance, so the next roll repeats this one")
+        end,
+    },
+    {
+        name = "what the prowl throws is an ordinary fight -- never an elite, never a place",
+        fn = function()
+            local run = Descent.new(Player.new(), 4242)
+            local pool = {
+                { kind = "combat", id = "wolves", name = "Wolves", weight = 3 },
+                { kind = "combat", id = "rats", name = "Rats", weight = 3 },
+                { kind = "combat", id = "shades", name = "Shades", weight = 3 },
+                -- Everything the meter may not deal, weighted heavily enough that a pick which ignored
+                -- kind would land on one almost every time.
+                { kind = "elite", id = "ogre", name = "Ogre", weight = 40 },
+                { kind = "treasure", id = "chest", name = "Chest", weight = 40 },
+                { kind = "rest", id = "camp", name = "Camp", weight = 40 },
+            }
+
+            local ids = {}
+            for leg = 0, 39 do
+                run.leg = leg
+                local enc = Descent.wander(run, pool)
+                assert(enc, "the meter topped out and nothing was dealt")
+                -- AN ELITE IS A THING YOU ARE MEANT TO SEE. One thrown by the meter would be the worst
+                -- of both designs: a fight you can neither prepare for nor route around.
+                assert(enc.kind == "combat",
+                    "the prowl dealt a " .. tostring(enc.kind) .. "; only ordinary fights may be rolled")
+                assert(enc.id == "wolves" or enc.id == "rats" or enc.id == "shades",
+                    "the prowl dealt " .. tostring(enc.id) .. ", which is not an ordinary fight")
+                -- Tagged, so everything downstream can tell a rolled fight from a seated one -- the
+                -- flee offer reads it first.
+                assert(enc.wandering, "a rolled fight is not marked as one")
+                ids[enc.id] = true
             end
 
-            local g = board()
-            local woke = Descent.wakeOne(run, g, 1, 1)
-            assert(woke, "nothing woke on a floor full of cleared fights")
-            assert(not woke.cleared, "the woken cell is still marked cleared")
-            assert(woke.encounter and woke.encounter.kind == "combat", "something that is not a fight woke")
+            local distinct = 0
+            for _ in pairs(ids) do distinct = distinct + 1 end
+            assert(distinct >= 2,
+                "forty legs dealt " .. distinct .. " distinct fight(s) from a pool of three -- the "
+                .. "weighted pick is stuck, which is what a per-leg walk over a linear hash does when "
+                .. "consecutive salts come out correlated")
 
-            -- SAME SEED, SAME WANDERER. A floor walked twice off one save has to wake the same fight in
-            -- the same place, or a bug report about one cannot be replayed.
-            local g2 = board()
-            local again = Descent.wakeOne(run, g2, 1, 1)
-            assert(again and again.x == woke.x and again.y == woke.y,
-                "the same run and step woke a different cell; the roll is not off the seed")
+            -- A floor whose pool holds no ordinary fight deals nothing rather than reaching for an
+            -- elite to fill the gap.
+            assert(Descent.wander(run, { { kind = "elite", id = "ogre", weight = 1 } }) == nil,
+                "a pool with no ordinary fight in it still dealt something")
+        end,
+    },
+    {
+        name = "the readout warms before the fight lands, and never counts down to it",
+        fn = function()
+            local run = Descent.new(Player.new(), 77)
+            local earliest = Descent.PROWL_STEPS - Descent.PROWL_JITTER
 
-            -- NEVER ON TOP OF THE COMPANY. A wanderer has to read as something that walked back into a
-            -- room behind you, not as the floor spawning a fight on your head.
-            local near = board()
-            assert(Descent.wakeOne(run, near, 8, 8) == nil,
-                "a fight woke inside RESPAWN_MIN_DIST of the company")
+            run.prowl = 0
+            assert(Descent.prowlBand(run) == "calm", "a company that just fought is not calm")
 
-            -- ONLY WHAT LIVES ON A FLOOR. A spent cache is a place, not an inhabitant, and a floor that
-            -- regrew its chests would be a faucet.
-            local shop = { cols = 9, rows = 9, cells = {} }
-            for y = 1, 9 do
-                shop.cells[y] = {}
-                for x = 1, 9 do shop.cells[y][x] = { x = x, y = y } end
+            -- IT WARMS BEFORE IT CAN BITE. The gauge has to turn over PROWL_WARN steps before the
+            -- earliest a fight can possibly land, or the shortest leg there is arrives on the same step
+            -- the warning does -- which is a notification, not a warning.
+            run.prowl = earliest - Descent.PROWL_WARN
+            assert(Descent.prowlBand(run) == "close",
+                "the gauge is still " .. Descent.prowlBand(run) .. " with " .. Descent.PROWL_WARN
+                .. " steps to go before a fight can land; the shortest leg gets no warning at all")
+            run.prowl = earliest - Descent.PROWL_WARN - 1
+            assert(Descent.prowlBand(run) ~= "close",
+                "the gauge tops out earlier than the window it is warning about")
+
+            -- ...AND THEN IT SAYS NOTHING MORE, which is the half that keeps it a warning rather than a
+            -- countdown. Every step from there to the far end of the window reads the same, so two
+            -- things are true at once: something can find you from here on, and nothing on screen says
+            -- when. A gauge that kept climbing would hand the player the exact step.
+            for p = earliest - Descent.PROWL_WARN, Descent.PROWL_STEPS + Descent.PROWL_JITTER do
+                run.prowl = p
+                assert(Descent.prowlBand(run) == "close",
+                    "the gauge reads " .. Descent.prowlBand(run) .. " at " .. p .. " steps -- inside "
+                    .. "the window it must read the same at every step, or it is counting down")
             end
-            shop.cells[8][8].encounter = { kind = "treasure" }
-            shop.cells[8][8].cleared = true
-            assert(Descent.wakeOne(run, shop, 1, 1) == nil, "a spent chest came back")
+
+            -- AND THE WINDOW IS WIDE ENOUGH TO HIDE IN. One possible step is a countdown however it is
+            -- banded.
+            assert(2 * Descent.PROWL_JITTER + 1 >= 5,
+                "a window of " .. (2 * Descent.PROWL_JITTER + 1) .. " steps is short enough to count")
+
+            -- The whole window is actually used: legs land short of the base and long of it, so the
+            -- jitter is sampling rather than walking a short cycle (Descent.prowlTarget hashes twice).
+            local short, long = nil, nil
+            for leg = 0, 59 do
+                run.leg = leg
+                local t = Descent.prowlTarget(run)
+                if t == earliest then short = t end
+                if t == Descent.PROWL_STEPS + Descent.PROWL_JITTER then long = t end
+            end
+            assert(short and long,
+                "sixty legs never reached both ends of the window -- the roll is walking a cycle "
+                .. "instead of sampling it")
         end,
     },
     {
@@ -356,27 +447,43 @@ return {
             local player = Player.new()
             local run = Descent.new(player, 11)
             run.steps = 37
+            run.prowl = 9
+            run.leg = 4
             player.descentRun = run
 
             local back = Save.restore(Save.snapshot(player)).descentRun
             assert(back and back.steps == 37,
                 "the step clock came back at " .. tostring(back and back.steps) ..
                 " -- a player could reload to keep a cleared floor clear")
+            -- THE METER IS THE WHOLE FEATURE, so it has to ride or the feature is optional. A player
+            -- who can see the readout go red and knows a reload empties it will quit and Continue
+            -- rather than fight, and the prowl becomes a tax on people who do not know that.
+            assert(back.prowl == 9,
+                "the prowl meter came back at " .. tostring(back.prowl) ..
+                " -- a reload empties it, so every fight is dodgeable from the pause menu")
+            -- ...and the LEG, or the next interval and the next monster are re-dealt identically after
+            -- every load: the same fight, at the same spacing, forever.
+            assert(back.leg == 4,
+                "the leg came back at " .. tostring(back.leg) .. " -- the walk repeats itself on reload")
         end,
     },
     {
-        name = "the wander clock is slow enough to be a choice and fast enough to be felt",
+        name = "the prowl clock is slow enough to be a choice and fast enough to be felt",
         fn = function()
-            -- Measured: a floor is ~91 places with a 23-step crossing (`. board-report`). At this rate a
-            -- company crossing one meets about two, and pacing a cleared floor to farm earns roughly one
-            -- fight per crossing -- a time cost rather than a faucet.
-            assert(Descent.RESPAWN_STEPS >= 6,
-                "at " .. Descent.RESPAWN_STEPS .. " steps a cleared floor is a treadmill")
-            assert(Descent.RESPAWN_STEPS <= 30,
-                "at " .. Descent.RESPAWN_STEPS .. " steps a company can cross a whole floor without "
-                .. "meeting one, which is the safe-once-cleared floor this exists to end")
-            assert(Descent.RESPAWN_MIN_DIST >= 2,
-                "a wanderer this close spawns on the company's head")
+            -- Measured: a floor is ~91 places with a 23-step crossing (`. board-report`), so clearing
+            -- one is somewhere near 70 steps of walking. This is the rate the ordinary fighting arrives
+            -- at now that none of it is seated (Descent.PROWL_STEPS).
+            assert(Descent.PROWL_STEPS >= 8,
+                "at " .. Descent.PROWL_STEPS .. " steps a floor is a treadmill -- a company cannot cross "
+                .. "a room without being found, and the flee roll becomes the whole game")
+            assert(Descent.PROWL_STEPS <= 30,
+                "at " .. Descent.PROWL_STEPS .. " steps a company can cross a whole floor without "
+                .. "meeting anything, which is the safe-once-cleared floor this exists to end")
+            -- THE JITTER MAY NOT EAT THE WINDOW. At jitter >= base the interval could roll to nothing
+            -- and a fight would land on the tile the last one ended on.
+            assert(Descent.PROWL_JITTER >= 1 and Descent.PROWL_JITTER < Descent.PROWL_STEPS / 2,
+                "a jitter of " .. Descent.PROWL_JITTER .. " against a base of " .. Descent.PROWL_STEPS
+                .. " is not a window, it is a coin flip")
         end,
     },
 }

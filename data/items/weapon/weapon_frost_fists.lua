@@ -10,7 +10,6 @@ return {
     sprite = "assets/items/frost_fists.png",
     type = "weapon",
     class = "creature",
-    dropTier = 3,
     tags = { "natural", "ice", "magical", "melee" },
     noSteal = true,
     activeAbility = {

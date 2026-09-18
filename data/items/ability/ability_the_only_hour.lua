@@ -9,7 +9,8 @@
 -- held back now. Modeled on Desperate Strike (data/items/ability/ability_desperate_strike.lua), which pins
 -- the missing-health scaling that this reads live off her current/max at the moment it resolves.
 --
--- No `class`/`price`: an enemy's kit, never a shelf item; only its base value is ever seen.
+-- `creature`, no `price`, `noSteal`: an enemy's kit, never a shelf item; only its base value is ever
+-- seen. The flag is what keeps it out of the drop pool -- the class alone is a label nothing reads.
 local Curve = require("models.curve")
 
 return {
@@ -19,8 +20,8 @@ return {
     sprite = "assets/items/ability_desperate_strike.png", -- placeholder until its own art exists
     type = "ability",
     class = "creature",
-    dropTier = 1,
     tags = { "slash", "physical", "melee" },
+    noSteal = true, -- her whole rule made a swing -- nobody else gets to throw it
     activeAbility = {
         target = "enemy",
         range = 1,

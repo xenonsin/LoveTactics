@@ -83,7 +83,7 @@ Hazard.FRIENDLY_BIAS = 6
 -- that makes the promise true.
 --
 -- 4 is read off the two figures it sits between. The roughest walkable ground on the board charges 3
--- (models/terrain.lua's mountain), so a zone is dearer than the worst footing there is and a detour is
+-- (models/terrain.lua's hill and mire), so a zone is dearer than the worst footing there is and a detour is
 -- always worth taking when one exists. A body's whole move is 3-5, so the detour it will pay for is
 -- bounded by one turn's walking: a body properly hemmed in by fire walks through and takes the burn
 -- rather than standing still forever, which is the failure the hard stop would have.

@@ -1,7 +1,7 @@
 -- A bogswallow's grip: it does not chase, it holds.
 --
--- The swamp's floor is `mire` -- ground that charges a mountain's price and gives back none of a
--- mountain's reach -- so a crossing already costs more here than anywhere else. This makes the crossing
+-- The swamp's floor is `mire` -- ground that charges a hill's price and gives back none of a
+-- hill's reach -- so a crossing already costs more here than anywhere else. This makes the crossing
 -- stop being possible at all: it Roots, and a Rooted body cannot walk out of reach of the thing that
 -- heals when things die near it.
 --
@@ -16,7 +16,6 @@ return {
     sprite = "assets/items/swallowing_grip.png",
     type = "weapon",
     class = "creature",
-    dropTier = 6,
     tags = { "natural", "impact", "physical", "melee" },
     noSteal = true,
     activeAbility = {

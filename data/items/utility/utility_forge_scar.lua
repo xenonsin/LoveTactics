@@ -16,7 +16,6 @@ return {
     sprite = "assets/items/forge_scar.png",
     type = "utility",
     class = "creature",
-    dropTier = 3,
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_kindling" },

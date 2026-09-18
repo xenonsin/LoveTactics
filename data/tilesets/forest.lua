@@ -23,7 +23,6 @@ return {
         forest = { color = { 0.22, 0.42, 0.20 } },  -- walkable scrub: cover you can stand in, and it burns
         grass  = { color = { 0.16, 0.32, 0.16 } },
         rock   = { color = { 0.34, 0.32, 0.30 } },
-        mountain = { color = { 0.54, 0.52, 0.48 } }, -- walkable high ground, paler than the rock below it
         path   = { color = { 0.42, 0.30, 0.18 } }, -- dirt trail
         bridge = { color = { 0.55, 0.40, 0.22 } },
         river  = { color = { 0.18, 0.34, 0.55 } }, -- river

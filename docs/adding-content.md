@@ -924,8 +924,8 @@ return {
     biome = "forest",              -- used to match this arena to a quest's biome
     tiles = {                      -- 8 rows x 8 cols of Arena.TILE_PROPS types
         { "ground", "ground", "ground", "ground", "ground", "ground", "ground", "ground" },
-        -- "forest"/"rough"/"water" = move penalty, "obstacle" = blocked. Terrain also shapes LINE
-        -- OF SIGHT (each type carries a `sightCost`): "obstacle"/"mountain" block a ranged shot,
+        -- "forest"/"rough"/"water" = move penalty, "mountain" = blocked (a flier still crosses it).
+        -- Terrain also shapes LINE OF SIGHT (each carries a `sightCost`): "mountain"/"hill" block a shot,
         -- "forest" is soft cover that only lowers it (two stacked tiles block). See below.
         -- Terrain also carries TILE TAGS: "water" conducts lightning, "forest" catches fire.
     },
@@ -963,7 +963,7 @@ writes back any authored `traps` and `props`). See `data/arenas/forest_01.lua`.
 Every arena tile carries a `sightCost` (set per type in `Arena.TILE_PROPS`, alongside `moveCost`
 and `walkable`). When a **sight-requiring** ability fires, `models/combat.lua` sums the `sightCost`
 of the tiles the straight line crosses (endpoints excluded); the line is blocked once the sum
-reaches `Combat.SIGHT_BLOCK` (2). So `obstacle`/`mountain` block a shot on their own, while
+reaches `Combat.SIGHT_BLOCK` (2). So `mountain`/`hill` block a shot on their own, while
 `forest` (1) is **soft cover** that only lowers the line — a lone copse is see-through, but two
 stacked tiles screen the lane. Cover shapes both the board and how the enemy AI positions.
 
@@ -976,7 +976,7 @@ clear line. Adjacent (range-1) melee has no tile between attacker and target, so
 ### Positional buffs (high ground & field objects)
 
 A tile can also grant a **positional bonus** to whatever unit stands on it, via an optional `bonus`
-bag in its `Arena.TILE_PROPS` entry — `mountain` uses `bonus = { range = 1 }` so high ground
+bag in its `Arena.TILE_PROPS` entry — `hill` uses `bonus = { range = 1 }` so high ground
 extends a unit's reach by a tile. `Combat.fieldBonus(combat, x, y)` aggregates these, and
 `Combat.abilityRange` folds the `range` bonus into every reach measurement (targeting, the threat/
 range highlights, enemy planning), so a unit atop high ground both threatens and can strike one
@@ -985,7 +985,7 @@ tile farther, and the overlay shows it.
 The `range` bonus is the one key that is **not** granted unconditionally: `Combat.fieldRangeBonus`
 hands it only to an ability that declares `requiresSight`. A vantage buys a longer sightline, so it
 lengthens what travels along one — an arrow, a bolt, a thrown flask — and leaves a sword, a mace and
-a spear at their own reach. (Without that gate a range-1 blade on a mountain struck two tiles away,
+a spear at their own reach. (Without that gate a range-1 blade on a hill struck two tiles away,
 through whoever stood between.) Every reader of the bonus goes through that one helper, so the gate,
 the highlights and the AI can never disagree about how far a weapon reaches.
 
@@ -1582,6 +1582,27 @@ and the arenas a fight on it rolls.
 
 1. `data/biomes/<id>.lua` — a `tileset` and whatever the arena pool reads.
 2. `data/tilesets/<id>.lua` for the art.
+
+### Reskinning a tile for one ground
+
+A tileset entry may go further than a colour. Per type it may also carry:
+
+| field | what it changes |
+|---|---|
+| `color` / `index` | the flat fallback tone, and the sheet cell |
+| `skin` | which **mark** is drawn on it — a key in `TerrainArt.SKINS` ([ui/terrain_art.lua](../ui/terrain_art.lua)) |
+| `name` / `desc` | what the **tile tooltip** calls it |
+
+It may change none of a tile's **rules** — not its cost, its walkability or its sight. Those belong to
+`Terrain.TYPES` and are merged in over the top, so a solid a flier clears on one ground clears on every
+ground. `tests/terrain_art_spec.lua` enforces both halves: a `skin` naming a mark that does not exist
+fails, a mark no tileset asks for fails, and a tileset entry that tries to re-price a tile fails.
+
+The shipped case is `mountain`, the board's impassable sight-blocking solid. In open country it is a
+rock face and draws a peak. Inside a fortress or an arena the same tile is a piece of *building*, so
+`data/tilesets/castle.lua` calls it a **Rampart** and `data/tilesets/colosseum.lua` a **Pillar**, and
+both draw set masonry. Neither is called a "wall": [models/wall.lua](../models/wall.lua) walls are a
+different thing wearing that word — conjured, destructible, and the one blocker flight does *not* open.
 3. Measure, do not eyeball: `& "E:\LOVE\lovec.exe" . board-report 20 biome=<id>` for the numbers and
    `. board-render <id> [seed]` for the shape.
 

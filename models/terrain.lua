@@ -20,6 +20,14 @@
 --            cost and carrying a charge. So `river` is the barrier and `water` stays the ford --
 --            which means bridges keep being doors and the tundra keeps its conduction.
 --
+-- AND ONE NAME WAS WRONG TWICE OVER. `mountain` was the walkable rise -- three move, +1 reach, the tile
+-- you fight for -- and `obstacle` was the anonymous solid beside it, which is a word for a role and not
+-- for a thing. A mountain you stroll up is not a mountain, and "obstacle" tells the player nothing
+-- about what is in front of them. So the rise is a `hill` and the solid is the `mountain`, which is the
+-- reading anyone already had: the small rise is the one you take, the rock face is the one you go
+-- around -- unless you are flying, and then the mountain is the one thing on the board a pair of
+-- Zephyr Striders is genuinely FOR.
+--
 -- The properties, in full:
 --   * moveCost   terrain-weighted enter cost (Dijkstra reach + the initiative timeline; models/combat)
 --   * walkable   may a unit occupy the tile at all. On the map this is also what makes a maze a maze.
@@ -57,10 +65,18 @@ Terrain.TYPES = {
     forest  = { moveCost = 2, walkable = true, sightCost = 1, tags = { "burnable" },
                 bonus = { avoid = 20 },
                 index = 1, color = { 0.10, 0.24, 0.12 } },
-    -- Steep high ground: blocks the view behind it, but whoever holds it sees and strikes one further.
-    -- The best tile on the board and priced like it: three move to enter, and it now pays twice.
-    mountain = { moveCost = 3, walkable = true, sightCost = 2, bonus = { range = 1, avoid = 30 },
-                index = 3, color = { 0.40, 0.38, 0.36 } },
+    -- A hill: steep high ground you can actually take. Blocks the view behind it, but whoever holds it
+    -- sees and strikes one further. The best tile on the board and priced like it: three move to
+    -- enter, and it pays twice. Named `hill` and not `mountain` because a mountain is the thing you
+    -- cannot climb (below) -- one word per shape, and the rise you fight for is the smaller one.
+    -- GREEN, and the stone it used to be painted in has gone to the tiles nobody can enter. Colour is
+    -- not this board's identity channel -- the mark is (ui/terrain_art.lua) -- but it is doing one job
+    -- now: GREY MEANS YOU CANNOT GO THERE. The hill is the heaviest floor there is and it was drawn in
+    -- the same rock tone as the mountain that stops you dead, which is the one confusion a tile this
+    -- valuable cannot afford. It is a grassy slope, so it is green like the rest of the ground you may
+    -- stand on, and the cost is said by the wash and the mark instead.
+    hill    = { moveCost = 3, walkable = true, sightCost = 2, bonus = { range = 1, avoid = 30 },
+                index = 2, color = { 0.28, 0.42, 0.22 } },
     -- Legacy penalty floor, still named by curated arenas. Broken ground: a modest edge to whoever is
     -- willing to pick their way across it.
     rough   = { moveCost = 2, walkable = true, sightCost = 0, bonus = { avoid = 10 },
@@ -76,8 +92,13 @@ Terrain.TYPES = {
     -- makes them walkable, not this one.
     grass   = { moveCost = SOLID, walkable = false, sightCost = SOLID, index = 2, color = { 0.16, 0.32, 0.16 } },
     rock    = { moveCost = SOLID, walkable = false, sightCost = SOLID, index = 3, color = { 0.34, 0.32, 0.30 } },
-    -- Solid: blocks the tile and the sight through it.
-    obstacle = { moveCost = SOLID, walkable = false, sightCost = SOLID, index = 3, color = { 0.30, 0.28, 0.26 } },
+    -- A mountain: sheer rock face. Impassable and it blocks the sight through it, so it is the tile
+    -- a room is given sides with and the tile a board is given a wall with. A FLIER CROSSES IT --
+    -- nothing special is written here for that, because `walkable = false` is exactly what
+    -- Combat.isFlying overrides (models/combat.lua's moveGraph and route validator); a mountain bars
+    -- the way by being poor footing on a grand scale, which is the argument the Zephyr Striders
+    -- decline. What a flier still cannot cross is a WALL (models/wall.lua), which is an object.
+    mountain = { moveCost = SOLID, walkable = false, sightCost = SOLID, index = 3, color = { 0.30, 0.28, 0.26 } },
     -- A river: the map's barrier, crossed at a bridge. Impassable but sightCost 0 -- you can see the
     -- far bank perfectly well, you simply cannot get to it here.
     river   = { moveCost = SOLID, walkable = false, sightCost = 0, tags = { "conductable" },
@@ -101,10 +122,10 @@ Terrain.TYPES = {
     -- a lightning line that would clip one body on grass sweeps a whole frozen front.
     ice     = { moveCost = 1, walkable = true, sightCost = 0, tags = { "conductable" },
                 index = 2, color = { 0.80, 0.86, 0.90 } },
-    -- Sucking bog: ties the mountain for the heaviest walkable floor and gives back LESS than nothing --
+    -- Sucking bog: ties the hill for the heaviest walkable floor and gives back LESS than nothing --
     -- no reach, no sight, and a body floundering in it is easier to hit than one on open ground. The
     -- only negative `avoid` in the table, and the tile's whole character: expensive to cross, worse
-    -- than worthless to hold, the exact inverse of the mountain it costs the same to enter.
+    -- than worthless to hold, the exact inverse of the hill it costs the same to enter.
     -- Wet through, so it conducts.
     mire    = { moveCost = 3, walkable = true, sightCost = 0, tags = { "conductable" },
                 bonus = { avoid = -10 },
@@ -115,7 +136,7 @@ Terrain.TYPES = {
 -- open field: a tile nobody can name is a hole in the data, and a hole that reads as walkable puts a
 -- body inside a wall, where a hole that reads as solid merely puts a wall on the board.
 function Terrain.get(t)
-    return Terrain.TYPES[t] or Terrain.TYPES.obstacle
+    return Terrain.TYPES[t] or Terrain.TYPES.mountain
 end
 
 function Terrain.walkable(t)

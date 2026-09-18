@@ -7,7 +7,7 @@
 -- something else, and the thing behind Saber's ask is Saber (quest_colosseum_slot_01's objective).
 --
 -- SHE IS ROLLED LIKE THE REST, so depth is hers to talk about. The scripted floor-one meeting is
--- Amana's now (Descent.SCRIPTED_COMPANION), which is what lets Saber turn up deep and be surprised to
+-- Xin's now (Descent.SCRIPTED_COMPANION), which is what lets Saber turn up deep and be surprised to
 -- see anybody down there with her.
 --
 -- THE VIBE IS THE AUTHOR'S, from a two-line sketch: bored, cocky, delighted to see a party rather than

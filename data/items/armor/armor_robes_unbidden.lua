@@ -14,7 +14,7 @@
 -- nothing, and that is the trade: breadth for price.
 --
 -- The story is in the name (docs/story.md, the Cathedral and Lust). Devotion unbidden is not devotion
--- that was asked for -- and the whole of Amana's line is about what the church does to people who were
+-- that was asked for -- and the whole of Xin's line is about what the church does to people who were
 -- never asked. The robes are the one place the Cathedral's own doctrine protects somebody from it.
 --
 -- Cloth: a square of pace.

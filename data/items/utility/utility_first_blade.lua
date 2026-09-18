@@ -14,7 +14,6 @@ return {
     sprite = "assets/items/first_blade.png",
     type = "utility",
     class = "creature",
-    dropTier = 2,
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_single_combat" },

@@ -475,12 +475,13 @@ end
 -- the whole of a tutorial fight -- a lesson exists to make the student take the actions themselves, so
 -- the Auto control is hidden, its key/pad bindings go dead, and any per-unit autoBattle flag is ignored.
 --
--- AND UNTIL THE FIRST DESCENT IS DONE, for the reason Descent.tacticsUnlocked gives: Auto is the switch
--- that hands the turn to the rule list, so it appears with the tab that edits it and never before. Both
--- halves of one feature, gated on one predicate, so the button can never stand there with no Tactics
--- tab behind it to explain what it will do.
+-- AND UNTIL THE TACTICS WINDOW HAS BEEN READ (Descent.autoUnlocked, which is the `tacticsTaught` mark).
+-- Auto is the switch that hands the turn to the rule list, so it arrives one step BEHIND the tab that
+-- edits it rather than beside it: the tab opens first and wears its pip, and opening it plays the window
+-- that says what the switch will do. The button can therefore never stand on the board as three letters
+-- nobody has had explained.
 local function autoAllowed()
-    return not battle.tutorial and require("models.descent").tacticsUnlocked(battle.player)
+    return not battle.tutorial and require("models.descent").autoUnlocked(battle.player)
 end
 
 -- Whether a point is over one of the drawer's entries (never the hamburger itself, which is handled
@@ -1710,8 +1711,8 @@ end
 -- only the UI overlays are recomputed for the continued turn.
 local function beginTurn(resume)
     -- A LINE THE FIGHT OWES THE PLAYER, PAID AT THE TURN BOUNDARY. `combat.pendingScene` is set by
-    -- whatever happened during the last action -- today only the Demon Champion's fixation
-    -- (data/status/status_champion_fixation.lua), which marks Rowan and wants her warned before the
+    -- whatever happened during the last action -- today only the Demon Champion's last stage
+    -- (models/combat.lua's Combat.spendScriptedFell), which marks Rowan and wants her warned before the
     -- Champion spends the mark. Played HERE and not where it was raised, for two reasons: a model may
     -- not reach into the UI, and the blow that raised it is still resolving at that point, so a scene
     -- opened from there would land on top of its own cause -- the same defect that moved the felling
@@ -1731,7 +1732,7 @@ local function beginTurn(resume)
     battle.current = current
     -- A SCRIPTED BEAT THE TURN JUST OPENED WITH. Combat.startTurn fires the statuses a unit wears
     -- before it may act, and one of them resolves a whole story beat on the spot (the Demon Champion's
-    -- last stage, data/status/status_champion_fixation.lua) -- the crossing and the felling both, in a
+    -- last stage, models/combat.lua's Combat.spendScriptedFell) -- the crossing and the felling both, in a
     -- single call, as the model resolves everything. What it leaves behind is the staging, and this is
     -- where it is picked up: battle.playScripted holds the cues and plays the beat out in moments the
     -- player can actually follow. Claimed off the combat so it can never play twice, and read here
@@ -2450,7 +2451,7 @@ end
 -- with moments in it. A SCRIPT needs the same treatment and more of it, because it is the one kind of
 -- action nobody is allowed to answer -- so all it has to offer the player is the watching.
 --
--- The Demon Champion's last stage is the one that exists (data/status/status_champion_fixation.lua):
+-- The Demon Champion's last stage is the one that exists (models/combat.lua's Combat.spendScriptedFell):
 -- the mark is spent at the top of its turn, and the model crosses the board and fells Rowan in a
 -- single call. Left to play itself that reads as a demon appearing beside her and a corpse, in one
 -- frame, with no blow in between -- reported by the author as a death that is "too sudden".
@@ -4449,7 +4450,9 @@ refreshView = function()
     end
     overlays.current = { x = current.x, y = current.y, unit = current }
     local hover = battle.hoverUnit
-    if hover and hover.alive then overlays.hover = { x = hover.x, y = hover.y } end
+    -- Carries the unit itself, not just its anchor cell, so the ring can be drawn round a 2x2 body
+    -- whole -- the same thing overlays.current does one line above.
+    if hover and hover.alive then overlays.hover = { x = hover.x, y = hover.y, unit = hover } end
     -- ...and the board points BACK at the timeline: whoever stands under the tile cursor gets their
     -- strip card ringed in the same cyan (ui/combat_panel's boardHover), so the pair answers "which
     -- one is this" in both directions rather than only card -> board. Read off the CURSOR, not the
@@ -5087,7 +5090,7 @@ local function commitDeploy(opts, deployed, front, placed)
             -- ...and then the rare tier's structural inversions, which move the POOLS rather than the
             -- stats and so cannot be a fold. Applied after applyPassives on purpose: both of them read
             -- Combat.unreservedMax, which is only correct once every bonus and maxBonus is in place.
-            Combat.applyRelicRules(battle.combat)
+            Combat.applyUnitRules(battle.combat)
         end
 
         -- Whoever was not placed waits on the bench, in company order, and can be rotated in.
@@ -5135,6 +5138,31 @@ local function commitDeploy(opts, deployed, front, placed)
             if unit.side == "party" and unit.char == boon.char and unit.alive then
                 Status.apply(battle.combat, unit, boon.id, boon.opts)
                 break
+            end
+        end
+    end
+    -- ...AND THE ONES THE BEARER BROUGHT THEMSELVES (`item.openingBoon`, 2026-09-17). Four relics used
+    -- to open a fight by dressing the front line in Regen, Haste, Heroism or a barrier; they are items
+    -- now, so the boon comes off the wearer's own grid and lands on the wearer alone.
+    --
+    -- READ OFF THE UNITS RATHER THAN PASSED IN, which is what makes this work in every fight however it
+    -- was entered -- a campaign battle, a descent stop, the arena, a draft -- where the queue above only
+    -- ever reaches a fight that a descent's resolveOpening built. A body's gear is a property of the
+    -- body, so the fight does not have to be told about it.
+    --
+    -- EVERY SIDE, not just the party: an enemy authored wearing one of these opens the fight in it too.
+    -- Same call as the queue above, so a boon is indistinguishable from a queued one once applied.
+    for _, unit in ipairs(battle.combat.units) do
+        if unit.alive and unit.char then
+            for _, item in ipairs(Character.eachItem(unit.char)) do
+                local boon = item.openingBoon
+                -- One entry, or a list of them. A single table is the overwhelmingly common shape, so
+                -- it is written bare rather than wrapped in a one-element list by every author.
+                if boon then
+                    for _, b in ipairs(boon.id and { boon } or boon) do
+                        Status.apply(battle.combat, unit, b.id, b.opts)
+                    end
+                end
             end
         end
     end
@@ -5211,9 +5239,10 @@ function battle.openDeployLoadout(player)
         -- them with a bar -- so "am I kitting someone who is actually in this fight?" is answered on
         -- the screen the kit is changed on.
         fielded = standing,
-        -- Rule lists are hidden until the company has been down once (Descent.tacticsUnlocked), and
-        -- during a tutorial fight on top of that -- the same line states/game.lua draws over the
-        -- overworld, and the same one autoAllowed draws for the switch that runs them.
+        -- Rule lists are hidden until the company has come home from a trip or reached floor two
+        -- (Descent.tacticsUnlocked), and during a tutorial fight on top of that -- the same line
+        -- states/game.lua draws over the overworld. The SWITCH that runs them waits one step longer
+        -- (autoAllowed), which is the tab explaining itself before the board offers the shortcut.
         tactics = not battle.tutorial and require("models.descent").tacticsUnlocked(battle.player),
         -- ...and the roll with it, for the same reason: before the city this screen is the equip lesson
         -- and nothing else. Gated on the company having reached the town rather than on this fight
@@ -5331,6 +5360,12 @@ local function openDeployPhase(opts)
         -- preference and the same gears the drawer's own cycler steps, for the same reason: two controls
         -- over one setting, never two settings.
         autoSpeed = battle.autoSpeed, speedSteps = SPEED_STEPS,
+        -- THE WAY OUT, and this screen owns none of it. The host decides whether the fight may be fled
+        -- at all, what the attempt is worth, what a success does to the floor and what a failure does to
+        -- the board -- because every one of those is a fact about the overworld the fight was found on
+        -- (states/game.lua), and a battle reached from a draft, a duel or a debug board has no overworld
+        -- behind it to flee back onto. Absent, the plate simply does not draw.
+        onFlee = opts.onFlee, fleeChance = opts.fleeChance,
         onCommit = function(deployed, front, placed, auto, speed)
             if autoAllowed() then battle.autoAll = auto and true or false end
             battle.autoSpeed = speed or battle.autoSpeed
@@ -6684,6 +6719,11 @@ function battle.drawTileTooltip(mx, my)
     local tr, tg, tb = battle.map:tileTone(cx, cy)
     local terrainInfo = { cell = cell, bonus = Combat.fieldBonus(battle.combat, cx, cy),
                           tone = tr and { tr, tg, tb } or nil,
+                          -- ...and what this ground CALLS that type, when the biome has lent it a
+                          -- mark and a word of its own (BattleMap:tileSkin -- a castle's rampart in
+                          -- place of the mountain). Presentation only; every figure below it is
+                          -- still read off the live cell.
+                          skin = battle.map:tileSkin(cell.type),
                           hazards = Hazard.allAt(battle.combat, cx, cy),
                           watched = watched > 0 and watched or nil,
                           objective = Combat.objectiveTileInfo(battle.combat, cx, cy),

@@ -9,7 +9,6 @@ return {
     sprite = "assets/items/sleepers_weight.png",
     type = "utility",
     class = "creature",
-    dropTier = 2,
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_torpor" },

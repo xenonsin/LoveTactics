@@ -89,6 +89,35 @@ return {
         end,
     },
     {
+        name = "a weapon of a hand-to-hand family says so: every one of them carries the `melee` tag",
+        fn = function()
+            -- THE TAG IS WHAT A PREDICATE READS, AND A MISSING ONE FAILS SILENTLY. Seven abilities are
+            -- gated on `requiresAdjacent = { type = "weapon", tag = "melee" }` -- Cleave, Power Strike,
+            -- Exploit, Penetrating Strike, Shatter Strike, Coup de Grace, Clear Out -- and Clear Out
+            -- now takes the width of its ring from that same neighbour. A sword without the tag does
+            -- not refuse those abilities loudly; it simply stops answering them, which reads as the
+            -- kit switching itself off beside one particular blade. The Long Bout (Elio's bound sword)
+            -- and the Throughline (a rogue's dagger) both shipped that way.
+            --
+            -- Family-driven, not authored per file, so the claim cannot rot: the reach tag is a peer of
+            -- the family tag on the item (see the sweep above), and these nine families fight at arm's
+            -- length by definition. `natural` is out on purpose -- a creature's body is whatever the
+            -- creature is, and the bestiary has spitters and stingers among the claws.
+            local HAND_TO_HAND = { sword = true, greatsword = true, axe = true, mace = true,
+                hammer = true, dagger = true, spear = true, staff = true, censer = true }
+            for _, w in ipairs(eachWeapon()) do
+                if HAND_TO_HAND[Item.archetype(w.def)] then
+                    local melee = false
+                    for _, tag in ipairs(w.def.tags or {}) do
+                        if tag == "melee" then melee = true end
+                    end
+                    assert(melee, w.id .. " is a " .. Item.archetype(w.def) .. " with no `melee` tag --"
+                        .. " every melee-gated ability beside it in the grid goes quietly dead")
+                end
+            end
+        end,
+    },
+    {
         name = "every weapon keeps the base mechanics its archetype owes (docs/weapons.md)",
         fn = function()
             -- One assertion per family, run against every weapon that claims it. Each is the mechanic

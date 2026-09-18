@@ -6,8 +6,13 @@
 -- testable.
 --
 -- ctx = {
---   grantRelic(tier?) -> names the relic granted (or nil if the shelf was bare),
 --   grantSealed()     -> true if an unread piece was handed up (models/identify.lua),
+--     THE ONLY FIND-A-THING STAKE, since 2026-09-17. `grantRelic(tier?)` used to sit beside it and is
+--     gone with the relic system (models/relic.lua's park note); its eight dilemmas were repointed here
+--     rather than deleted, because every one of them is written about finding an OBJECT -- something
+--     slept on top of, something walled in, the one good thing in a hoard -- and an unread piece is
+--     what that is now. Two of the eight were a coin-flip against `drainParty`, so leaving the stake
+--     empty would have turned a gamble into a pure trap rather than a parked reward.
 --   addGold(n), gold() -> the purse -- which is the RUN's purse, scrip, since the economy split
 --     (models/scrip.lua). The two helpers keep their old names because a dilemma has never known or
 --     needed to know which coin it was playing for; states/game.lua decides that at the seam.
@@ -69,7 +74,7 @@ Crossroads.SHARED = {
         options = {
             { label = "Go in on your belly", desc = "Whatever has slept that long has slept on top of something.",
                 resolve = function(ctx)
-                    if ctx.rnd() < 0.55 and ctx.grantRelic("rare") then
+                    if ctx.rnd() < 0.55 and ctx.grantSealed() then
                         -- the grant speaks for itself
                     else
                         ctx.drainParty(7)
@@ -121,7 +126,7 @@ Crossroads.SHARED = {
         options = {
             { label = "Open it", desc = "Whatever is walled in was walled in by somebody. It may be grateful.",
                 resolve = function(ctx)
-                    if ctx.rnd() < 0.5 and ctx.grantRelic() then
+                    if ctx.rnd() < 0.5 and ctx.grantSealed() then
                         -- the grant speaks for itself
                     else
                         ctx.drainParty(6)
@@ -202,7 +207,7 @@ Crossroads.BY_SIN = {
                     resolve = function(ctx) ctx.addGold(20); ctx.notify("You take what will keep") end },
                 { label = "Find whose it is", desc = "An orderly larder has an owner. Owners have better things.",
                     resolve = function(ctx)
-                        if not ctx.grantRelic() then ctx.notify("Whoever kept it has not been back in a long time") end
+                        if not ctx.grantSealed() then ctx.notify("Whoever kept it has not been back in a long time") end
                     end },
             },
         },
@@ -215,7 +220,7 @@ Crossroads.BY_SIN = {
                     resolve = function(ctx)
                         if (ctx.gold and ctx.gold() or 0) >= 20 then
                             ctx.addGold(-20)
-                            if not ctx.grantRelic() then ctx.notify("The plate is grateful and empty-handed") end
+                            if not ctx.grantSealed() then ctx.notify("The plate is grateful and empty-handed") end
                         else
                             ctx.notify("You have nothing to put down")
                         end
@@ -229,7 +234,7 @@ Crossroads.BY_SIN = {
             options = {
                 { label = "Read it aloud", desc = "A name written that often was meant to be said.",
                     resolve = function(ctx)
-                        if ctx.rnd() < 0.5 and ctx.grantRelic("rare") then
+                        if ctx.rnd() < 0.5 and ctx.grantSealed() then
                             -- the grant speaks for itself
                         else
                             ctx.drainParty(6)
@@ -265,7 +270,7 @@ Crossroads.BY_SIN = {
                     resolve = function(ctx) ctx.addGold(45) end },
                 { label = "Take the one good thing", desc = "Leave the rest of it lying there and do not look back.",
                     resolve = function(ctx)
-                        if not ctx.grantRelic("rare") then ctx.notify("You go through all of it. It is all coin.") end
+                        if not ctx.grantSealed() then ctx.notify("You go through all of it. It is all coin.") end
                     end },
             },
         },
@@ -291,7 +296,7 @@ Crossroads.BY_SIN = {
             options = {
                 { label = "Reach in", desc = "Take from it what it has and you do not.",
                     resolve = function(ctx)
-                        if ctx.rnd() < 0.55 and ctx.grantRelic("rare") then
+                        if ctx.rnd() < 0.55 and ctx.grantSealed() then
                             -- the grant speaks for itself
                         else
                             ctx.drainParty(8)
@@ -361,7 +366,7 @@ Crossroads.BY_SIN = {
             options = {
                 { label = "Cut your names in", desc = "It costs an hour and a good chisel. Everyone who comes after reads it.",
                     resolve = function(ctx)
-                        if not ctx.grantRelic() then ctx.notify("The company signs. Nothing answers, which is the point.") end
+                        if not ctx.grantSealed() then ctx.notify("The company signs. Nothing answers, which is the point.") end
                     end },
                 { label = "Read the roll", desc = "Every name up there learned something before they stopped.",
                     resolve = function(ctx) ctx.reveal(); ctx.notify("You read the names, and where they were going") end },

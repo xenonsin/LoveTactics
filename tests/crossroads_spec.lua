@@ -17,7 +17,12 @@ local Descent = require("models.descent")
 -- cross-checked against that file below, so this spec fails if either side moves without the other.
 local BOUND = {
     rnd = true, notify = true, gold = true, addGold = true,
-    reveal = true, drainParty = true, grantRelic = true, grantSealed = true,
+    -- `grantRelic` STOOD HERE and is gone with the relic system (parked 2026-09-17, models/relic.lua).
+    -- Its eight dilemmas were repointed onto `grantSealed`, which hands up an unread piece -- the same
+    -- find-a-thing beat, paid in gear now that the shelf's contents are gear. This list is the contract
+    -- between the two files and both directions are asserted below, so dropping the verb here is what
+    -- makes the park provable rather than merely done.
+    reveal = true, drainParty = true, grantSealed = true,
     -- Sets a bone off everybody carrying one (models/wound.lua). One of exactly two things underground
     -- that sheds a wound -- the other is a Rest spent on Bind -- and both are taken instead of
     -- something else, which is the property the deleted Inn never had.
@@ -34,7 +39,9 @@ end
 -- strictly stronger than asserting it did not raise, and the two cases at the bottom are that spec's,
 -- rehomed onto the dilemmas that replaced the ones they were written against.
 local function recorder(rndValue)
-    local log = { gold = 0, drained = 0, mended = 0, revealed = false, relics = 0, sealed = 0, notes = {} }
+    -- `relics` is gone with the relic system (parked 2026-09-17). A counter nothing can increment is a
+    -- column that reads as enforced and is not, so it goes rather than standing at a permanent zero.
+    local log = { gold = 0, drained = 0, mended = 0, revealed = false, sealed = 0, notes = {} }
     return log, {
         rnd = function() return rndValue or 0 end,
         notify = function(m) log.notes[#log.notes + 1] = m end,
@@ -45,7 +52,6 @@ local function recorder(rndValue)
         -- that branches on "was anybody hurt" is exercised on the paying side here.
         mendWound = function(n) log.mended = log.mended + (n or 1); return 1 end,
         reveal = function() log.revealed = true end,
-        grantRelic = function() log.relics = log.relics + 1; return "Test Relic" end,
         grantSealed = function() log.sealed = log.sealed + 1; return true end,
     }
 end
@@ -180,13 +186,15 @@ return {
             -- The old altar's case, rehomed onto the dilemma that replaced it: the silted crawl with
             -- something breathing at the end of it. Same shape, same two branches, and the assertion is
             -- what the branch DID rather than that it survived.
+            -- The stake is an unread piece since the relic park (2026-09-17). What this case is FOR is
+            -- the two-sided gamble, not the kind of object it pays in, so it follows the dilemma across.
             local hole = Crossroads.SHARED[2]
             local log, ctx = recorder(0.9) -- above the 0.55 gate -> it wakes
             hole.options[1].resolve(ctx)
-            assert(log.drained > 0 and log.relics == 0, "a losing wager wounds the party and grants nothing")
+            assert(log.drained > 0 and log.sealed == 0, "a losing wager wounds the party and grants nothing")
             log, ctx = recorder(0.1) -- below it -> the find
             hole.options[1].resolve(ctx)
-            assert(log.relics == 1 and log.drained == 0, "a winning wager grants, and costs no blood")
+            assert(log.sealed == 1 and log.drained == 0, "a winning wager grants, and costs no blood")
         end,
     },
     {
@@ -213,10 +221,9 @@ return {
                 for _, purse in ipairs({ 0, 500 }) do
                     local log, ctx = recorder(roll)
                     ctx.gold = function() return purse end
-                    -- A bare shelf and a full one both have to be survivable: grantRelic answers nil when
-                    -- the run already holds everything eligible, and a resolve that assumes a name came
-                    -- back raises on exactly the run that has been going best.
-                    ctx.grantRelic = function() log.relics = log.relics + 1; return roll > 0.5 and "A Relic" or nil end
+                    -- A find that comes up EMPTY has to be survivable: grantSealed answers false when
+                    -- there is no unread piece to hand up, and a resolve that assumes one came back
+                    -- raises on exactly the run that has been going best. Driven both ways by `roll`.
                     ctx.grantSealed = function() log.sealed = log.sealed + 1; return roll > 0.5 end
                     for _, d in ipairs(everyDilemma()) do
                         for _, o in ipairs(d.options) do
@@ -225,7 +232,7 @@ return {
                                 :format(d.prompt, o.label, tostring(err)))
                         end
                     end
-                    assert(log.gold ~= 0 or log.drained > 0 or log.relics > 0 or log.sealed > 0,
+                    assert(log.gold ~= 0 or log.drained > 0 or log.sealed > 0,
                         "no dilemma did anything at all")
                 end
             end

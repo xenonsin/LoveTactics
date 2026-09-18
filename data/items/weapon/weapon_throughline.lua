@@ -27,7 +27,7 @@ return {
     flavor = "The Undercroft teaches the angle, not the blade. The angle is the part that costs money.",
     sprite = "assets/items/weapon_throughline.png",
     type = "weapon",
-    tags = { "dagger", "pierce", "physical" },
+    tags = { "dagger", "pierce", "physical", "melee" },
     class = "rogue",
     dropTier = 8,
     -- Quest-only: `class` with no `price` tallies toward rogue growth but sits on no shelf, and the

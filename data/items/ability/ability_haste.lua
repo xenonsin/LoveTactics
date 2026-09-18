@@ -12,8 +12,9 @@ return {
     flavor = "The Arcanum's kindest spell, and the one it least enjoys being asked for.",
     sprite = "assets/items/ability_haste.png",
     type = "ability",
-    class = "creature",
-    dropTier = 1,
+    class = "mage",
+    price = 575,
+    unlockQuests = 6,
     tags = { "support", "magical" },
     activeAbility = {
         target = "ally", -- includes the caster

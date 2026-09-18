@@ -15,10 +15,10 @@ return {
     sprite = "assets/items/great_claws.png", -- placeholder until its own art exists
     type = "ability",
     class = "creature",
-    dropTier = 6,
     -- Fire, and deliberately not `magical` -- see the header of data/items/weapon/weapon_rending_claws.lua,
     -- which carries the whole argument. The Champion's heavy burns for the same reason her claws do.
     tags = { "slash", "physical", "melee", "fire" },
+    noSteal = true, -- the Champion's own art, not a thing she is carrying
     activeAbility = {
         target = "tile",       -- aim an adjacent tile: it sets the facing the arc sweeps
         allowOccupied = true,

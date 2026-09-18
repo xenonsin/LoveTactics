@@ -651,9 +651,10 @@ end
 -- forget to reset.
 -- HOW MANY TIMES THIS COMPANY HAS BEEN OUT AND FINISHED WHAT IT WENT FOR, by either door.
 --
--- The one number the city grows on (models/building.lua's `unlockExpeditions`) and the one the Tactics
--- tab waits for. It reads BOTH doors and takes the larger, which is what makes it survive the rift
--- being parked without stranding a save that was made while the rift was the game:
+-- The one number the city grows on (models/building.lua's `unlockExpeditions`), and the one the hub
+-- asks to decide whether an arrival is a coming home (Descent.markReturnedToCity). It reads BOTH doors
+-- and takes the larger, which is what makes it survive the rift being parked without stranding a save
+-- that was made while the rift was the game:
 --
 --   bounties finished   the board's count (models/bounty.lua's Bounty.finished)
 --   deepest floor       the rift's high-water mark (models/descent.lua's Descent.deepest)

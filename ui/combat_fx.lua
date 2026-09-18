@@ -597,7 +597,7 @@ function CombatFx:playBeat(events, actor)
             -- A SHAKE NOBODY HIT ANYBODY FOR. :hit raises the same cue as a flinch -- 0.26s, decaying,
             -- read as "that landed" -- and this is the opposite statement: a body winding UP, held long
             -- enough to be read as intent rather than as impact. The Demon Champion rattles like this
-            -- before it crosses the board (data/status/status_champion_fixation.lua).
+            -- before it crosses the board (models/combat.lua's Combat.spendScriptedFell).
             --
             -- It reuses shakeT rather than earning a field of its own, because the jitter, the card
             -- rumble and the :busy gate are all already wired to it -- a second timer would have to be

@@ -19,8 +19,9 @@
 -- Arcanum's loudest argument, and a common enemy should not be able to close a lane for the rest of
 -- the fight.
 --
--- No `class` and no `price`: an enemy's kit, never a shelf item, exactly like the Champion's Roar and
--- Cleave. And 8 mana out of a 24-mana grunt is three castings for the whole battle, because mana does
+-- `creature` and no `price`: an enemy's kit, never a shelf item, exactly like the Champion's Roar and
+-- Cleave. The class is the label and `noSteal` is the GATE -- the pool reads the flag, not the bucket
+-- (models/spoils.lua), so a grunt that carried this unflagged was handing its own art over as loot. And 8 mana out of a 24-mana grunt is three castings for the whole battle, because mana does
 -- not regenerate (Combat.regenerate) -- so a Drain Mana thrown at a grunt is a lane it does not get to
 -- burn.
 local Curve = require("models.curve")
@@ -32,8 +33,8 @@ return {
     sprite = "assets/items/ability_fireball.png", -- placeholder until its own art exists
     type = "ability",
     class = "creature",
-    dropTier = 8,
     tags = { "fire", "magical" }, -- `magical` routes the damage through magicDamage/magicDefense
+    noSteal = true, -- a demon's own art, not a scroll in its pocket
     activeAbility = {
         target = "tile", -- ground, not a body: what it is aimed at is the retreat, not the retreater
         allowOccupied = true,

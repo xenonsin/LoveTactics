@@ -13,7 +13,6 @@ return {
     sprite = "assets/items/rendered_hide.png",
     type = "utility",
     class = "creature",
-    dropTier = 2,
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_engorge" },

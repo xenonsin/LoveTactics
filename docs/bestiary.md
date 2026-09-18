@@ -48,9 +48,18 @@ The single split that keeps the catalogue from becoming a class list with hit po
   outside every family roster, and **never** a discipline item. A wolf is not a Beastmaster; a wolf is
   what a Beastmaster *has*.
 
-The engine enforces this, and **`noSteal` is now the gate rather than a side effect of pricing.** 92
+The engine enforces this, and **`noSteal` is the gate rather than a side effect of pricing.** 99
 items carry the flag; `models/spoils.lua`'s pool refuses them outright, and `tools/drop_tier.lua`
 skips them so nothing mints them a depth in the first place.
+
+**But the gate is not the rule, and the second time that mattered it cost seventeen items.** The
+rule is `class = "creature"` — kit that belongs to no job (`data/classes/creature.lua`). `noSteal`
+is one way of *keeping* that rule, and an item can wear the class without wearing the flag. Seventeen
+did: a demon grunt's Brimstone, the Champion's Cleave and Roar, Ira's signature blow, Gula's knife,
+the bare fist every unit falls back to. A body's own grid feeds the drop pool directly
+(`models/spoils.lua`'s `add`), so **a boss's whole rule was a thing you could be handed for killing
+her.** Creature kit now carries no axis at all — no `price`, no `dropTier` — which shuts the Market
+counter as well as the pool, since `sellsAll` means that shelf asks no class question.
 
 > **It used to be enforced by accident, and the accident expired.** This paragraph read "`spoils.lua`
 > uses `price` as the shoppable marker, so an unpriced natural weapon can never enter the drop pool."
@@ -60,10 +69,17 @@ skips them so nothing mints them a depth in the first place.
 > home. Nothing failed, because the only thing asserting the rule was this sentence.
 >
 > A proxy gate is worth exactly as much as the thing it proxies for. `price` meant "shoppable" and then
-> stopped meaning it. `tests/spoils_spec.lua`'s *a natural weapon never enters the drop pool, at any
-> depth* is what holds the rule now, and it asserts on the **pool** rather than on sampled rolls —
-> a 92-in-N draw would need thousands of fights to fail reliably, which is a test that stays green on a
-> broken build.
+> stopped meaning it — and the replacement made the same move one level down. The case written to hold
+> the rule built its set from `noSteal` and asserted that the pool refuses it, which is the pool's own
+> test quoted back: **circular, and green against a body part nobody had flagged.** It asks
+> `class == "creature"` now, because that is what the rule is *about*, and it is authored rather than
+> derived from the gate — so the two are independent and one can check the other.
+>
+> `tests/spoils_spec.lua`'s *creature kit never enters the drop pool, at any depth* holds it, and it
+> asserts **structurally** — every creature item carries a gate and no axis — before it rolls anything;
+> a 99-in-N draw would need thousands of fights to fail reliably, which is a test that stays green on a
+> broken build. The rolls it does throw now include bodies that actually carry creature kit, because
+> the door that leaked reads the dead body's own grid and a bandit could never have opened it.
 
 The rule above is a naming of existing practice; the enforcement is not.
 

@@ -23,7 +23,7 @@ local function arena(cols, rows, blocked)
         end
     end
     for _, b in ipairs(blocked or {}) do
-        tiles[b.y][b.x] = { type = "obstacle", moveCost = 99, walkable = false, sightCost = 99 }
+        tiles[b.y][b.x] = { type = "mountain", moveCost = 99, walkable = false, sightCost = 99 }
     end
     return { cols = cols, rows = rows, tiles = tiles, objective = { type = "killAll" } }
 end
@@ -421,6 +421,85 @@ return {
             assert(out and out.damage == 24, "the tooltip reads the prop's own effect, not a copy of it")
             assert(Prop.preview("prop_crate").damage == 0, "an inert prop previews as inert")
             assert(Prop.preview("no such prop") == nil, "and an unknown id previews as nothing")
+        end,
+    },
+
+    -- -----------------------------------------------------------------------
+    -- Salvage: what breaking the furniture is worth
+    -- -----------------------------------------------------------------------
+    {
+        name = "breaking a supply crate banks craft stock on the fight; a barrel banks none",
+        fn = function()
+            local c = Combat.new(arena(8, 8),
+                { unit("character_rowan", 1, 1) }, { unit("character_bandit", 8, 8) })
+            assert((c.salvaged or 0) == 0, "a fight starts owing nothing")
+
+            Prop.damage(c, Prop.place(c, 4, 4, "prop_crate"), 99)
+            assert(c.salvaged == 1, "a crate is full of something, and breaking it says what")
+
+            Prop.damage(c, Prop.place(c, 6, 6, "prop_explosive_barrel"), 1)
+            assert(c.salvaged == 1, "a keg is full of powder, which is not stock the Forge bills in")
+        end,
+    },
+    {
+        name = "the crate pays whoever wins the fight, not whoever broke it",
+        fn = function()
+            -- A prop takes no side (models/prop.lua), so the supplies are simply on the floor: a crate
+            -- splintered by the ENEMY's blast is banked exactly as one the party prised open.
+            local c = Combat.new(arena(8, 8),
+                { unit("character_rowan", 1, 1) }, { unit("character_bandit", 8, 8) })
+            local crate = Prop.place(c, 5, 4, "prop_crate")
+            Prop.damage(c, Prop.place(c, 4, 4, "prop_explosive_barrel"), 1)
+            assert(not crate.alive and c.salvaged == 1,
+                "the crate the bomb splintered still pays -- nobody owns a crate")
+        end,
+    },
+    {
+        name = "one fight can only break so much open",
+        fn = function()
+            local c = Combat.new(arena(10, 10),
+                { unit("character_rowan", 1, 1) }, { unit("character_bandit", 10, 10) })
+            for i = 1, Prop.SALVAGE_CAP + 3 do
+                Prop.damage(c, Prop.place(c, 2 + i, 5, "prop_crate"), 99)
+            end
+            assert(c.salvaged == Prop.SALVAGE_CAP,
+                "a yard full of crates cannot out-pay a cache: the tally stops at the cap")
+        end,
+    },
+    {
+        name = "a broken crate's stock rides out with the fight's own salvage",
+        fn = function()
+            local Spoils = require("models.spoils")
+            local floor = Spoils.materials({ kind = "combat", tier = 1 })
+            local withCrates = Spoils.materials({ kind = "combat", tier = 1, salvage = 2 })
+            local id = next(floor)
+            assert(withCrates[id] == floor[id] + 2,
+                "the crates add to the craft entry the floor already pays, at the same grade")
+            local ids = 0
+            for _ in pairs(withCrates) do ids = ids + 1 end
+            assert(ids == 1, "and add no second pile to read: it is the same stuff out of a box")
+        end,
+    },
+    {
+        name = "the crates a fight broke open reach its spoils",
+        fn = function()
+            local EncounterBattle = require("models.encounter_battle")
+            local Spoils = require("models.spoils")
+            local enc = { kind = "combat", tier = 1 }
+            local bare = EncounterBattle.spoils({ encounter = enc, enemyUnits = {}, day = 1 })
+            local opened = EncounterBattle.spoils({ encounter = enc, enemyUnits = {}, day = 1,
+                combat = { salvaged = 2 } })
+            local id = next(Spoils.materials({ kind = "combat", tier = 1 }))
+            assert(opened.materials[id] == bare.materials[id] + 2,
+                "the win seam pays for what the board gave up as well as for what the roster did")
+        end,
+    },
+    {
+        name = "Prop.preview quotes what is in the box before the turn is spent on it",
+        fn = function()
+            assert(Prop.preview("prop_crate").salvage == 1,
+                "the tooltip names the crate's contents, like the Forge names a breakdown")
+            assert(Prop.preview("prop_explosive_barrel").salvage == 0, "a keg previews as empty")
         end,
     },
 }

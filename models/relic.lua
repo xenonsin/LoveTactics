@@ -1,3 +1,30 @@
+-- ============================================================================================
+-- PARKED 2026-09-17. NOTHING IN A RUN GRANTS A RELIC ANY MORE, and every word below this banner
+-- describes the system as it was built rather than as it is reachable. Read this first.
+--
+-- WHAT WAS PARKED, and it is a reachability cut rather than a deletion -- this module, all 36
+-- blueprints in data/relics/, the four UI modules (ui/relic_card, ui/relic_strip,
+-- ui/panels/relic_offer, ui/panels/relic_reveal) and both specs are untouched and still load:
+--   * the three stops whose only payload was a relic -- the Reliquary, the Sin's Altar and the
+--     Weeping Stone -- carry `parked = true`, read by models/encounter.lua's `eligible`;
+--   * `relic_cache` and `weeping_stone` are struck from models/descent.lua's `guaranteeKinds`;
+--   * the Merchant's relic shelf, the Crossroads' `grantRelic` stake and the Rest's Sharpen verb
+--     are cut in states/game.lua -- those three stops stay live, so each needed its own edit;
+--   * ui/relic_strip.lua no longer draws, so the run screen stops reserving a band for it.
+-- The combat fold is deliberately LEFT WIRED. `unit.relicBonus` is simply never populated now, so
+-- it costs nothing standing and is the half a revert would otherwise have to rebuild.
+--
+-- WHY. The shelf's effects were re-premised as ordinary ITEMS, worn by one body rather than felt by
+-- the whole company -- see docs/relics.md for the mapping, blueprint by blueprint. The 11 relics
+-- that were a flat always-on number with no strings (the pure-stat commons) were CUT rather than
+-- converted: a +1 that every body gets for free is the thing an item shelf already sells, and a
+-- second copy of it is not a decision. The other 25 became items and are live.
+--
+-- DO NOT quote this file's design notes as current behaviour. `Relic.PARKED` below is the flag the
+-- call sites read; the prose from the next line down is history, kept because a revert needs the
+-- reasoning and not just the code.
+-- ============================================================================================
+--
 -- RELICS: the roguelike inner-loop content. Where a companion's OVERWORLD ABILITY (models/overworld_-
 -- ability.lua) is keyed to WHO is in your party, a relic is FOUND on the expedition -- dropped by a
 -- cache, bought off a merchant, bled for at a stone -- and carried only for THIS run. It is the thing
@@ -66,6 +93,13 @@ local Player = require("models.player")
 local Relic = {}
 
 Relic.defs = require("models.registry").load("data/relics", "data.relics")
+
+-- PARKED (see the banner at the head of this file). A DECLARATION THE CALL SITES READ, never a switch
+-- inside this module: every function below behaves exactly as it always did, so both specs still
+-- exercise the real thing and a revert is proved green before it is reachable. Parking a system by
+-- gutting its model instead would have left the tests asserting against the parked behaviour, which is
+-- how a parked system quietly becomes unrevertable.
+Relic.PARKED = true
 
 -- ---------------------------------------------------------------------------
 -- The ladder

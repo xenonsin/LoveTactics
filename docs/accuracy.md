@@ -114,13 +114,13 @@ would have done.
 | Tile | Avoid | |
 |---|---:|---|
 | `forest` | +20 | Already soft cover for line of sight — the two readings finally agree |
-| `mountain` | +30 | Already grants `range = 1`; costs 3 to enter and now pays twice |
+| `hill` | +30 | Already grants `range = 1`; costs 3 to enter and now pays twice |
 | `rough` | +10 | Broken ground, a modest edge |
-| `mire` | −10 | The one negative: slow **and** exposed, the mountain's exact inverse |
+| `mire` | −10 | The one negative: slow **and** exposed, the hill's exact inverse |
 
 Authored in `Terrain.TYPES` ([models/terrain.lua](../models/terrain.lua)) and read through
 `Combat.fieldBonus`, which already aggregated tile bonuses and field objects into one bag for the
-mountain's range. So a placed field or a smoke cloud can grant cover later with no new code.
+hill's range. So a placed field or a smoke cloud can grant cover later with no new code.
 
 A forest tile is worth about as much as the gap between a good weapon and a bad one. That is the
 calibration that makes ground a thing you spend a turn to reach.

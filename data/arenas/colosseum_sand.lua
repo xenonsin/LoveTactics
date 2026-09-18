@@ -8,7 +8,7 @@
 -- out of. Every cell here answers that, and the board is read as a bowl the house rigged against the
 -- newcomer:
 --
---   * THE FUNNEL (obstacle at x1/x8 on y4-5, plus shoulder pillars at the corners of the mid-field).
+--   * THE FUNNEL (`mountain` at x1/x8 on y4-5, plus shoulder pillars at the corners of the mid-field).
 --     The flanks are walled, so there is no open ground to drift a line out of sideways -- the killing
 --     floor is the central columns, and a body dodging Saber's swing is pushed toward the walls rather
 --     than away into space. This is the load-bearing fix: fewer lanes, not unavoidable blows. The
@@ -36,12 +36,12 @@ return {
     -- x:  1          2         3         4         5         6         7         8
     tiles = {
         { "ground",   "ground", "ground", "ground", "ground", "ground", "ground",   "ground" }, -- y1 enemy back line / gate
-        { "ground",   "obstacle","ground","ground", "ground", "ground", "obstacle", "ground" }, -- y2 shoulder pillars
+        { "ground",   "mountain","ground","ground", "ground", "ground", "mountain", "ground" }, -- y2 shoulder pillars
         { "ground",   "ground", "ground", "ground", "ground", "ground", "ground",   "ground" }, -- y3 approach
-        { "obstacle", "ground", "ground", "ground", "ground", "ground", "ground",   "obstacle" }, -- y4 THE FUNNEL (walls x1/x8)
-        { "obstacle", "ground", "ground", "ground", "ground", "ground", "ground",   "obstacle" }, -- y5 THE FUNNEL (walls x1/x8)
+        { "mountain", "ground", "ground", "ground", "ground", "ground", "ground",   "mountain" }, -- y4 THE FUNNEL (walls x1/x8)
+        { "mountain", "ground", "ground", "ground", "ground", "ground", "ground",   "mountain" }, -- y5 THE FUNNEL (walls x1/x8)
         { "ground",   "ground", "ground", "ground", "ground", "ground", "ground",   "ground" }, -- y6 approach
-        { "ground",   "obstacle","ground","ground", "ground", "ground", "obstacle", "ground" }, -- y7 shoulder pillars
+        { "ground",   "mountain","ground","ground", "ground", "ground", "mountain", "ground" }, -- y7 shoulder pillars
         { "ground",   "ground", "ground", "ground", "ground", "ground", "ground",   "ground" }, -- y8 party back line
     },
     -- Slot 1 = avatar, slot 2 = the second party member (Arena.build binds in party order); the rest

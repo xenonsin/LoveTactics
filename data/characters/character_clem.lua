@@ -20,7 +20,7 @@
 -- is her way out of the middle of the board she strikes into.
 --
 -- `boss = true` gives the recruit fight its integrity (immune to execute + Charm); best her and she is
--- yours (Player.recruit), exactly as the Cathedral keeps Amana and the Colosseum keeps Saber. Inert once
+-- yours (Player.recruit), exactly as the Cathedral keeps Xin and the Colosseum keeps Saber. Inert once
 -- she is an ally.
 --
 -- TODO (see docs/story.md): her flaw -- she forgives every debt but her own -- and the Borrowed Time's

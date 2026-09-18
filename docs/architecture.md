@@ -140,7 +140,7 @@ the same three-layer split as the overworld:
   `composition(ctx)`, binds party + enemy ids onto the layout's spawns, and returns
   `{ cols, rows, tiles[y][x]={type,moveCost,walkable}, party, enemies, objective, … }`.
   `Arena.TILE_PROPS` is the (intentionally small, extensible) tile palette — `ground`, `rough`
-  (move penalty), `obstacle` (blocked). `Arena.serialize`/`Arena.save` write an arena back out
+  (move penalty), `hill` (high ground), `mountain` (blocked). `Arena.serialize`/`Arena.save` write an arena back out
   as a curated `data/arenas/<id>.lua` for hand-editing (dev-only; see below).
 - **`ui/battle_map.lua`** — renderer + three-input widget. Draws the grid flavoured by the
   quest's biome tileset (each arena tile type maps to an overworld tileset type for art, with a

@@ -9,7 +9,6 @@ return {
     sprite = "assets/items/rotting_claws.png",
     type = "weapon",
     class = "creature",
-    dropTier = 3,
     tags = { "natural", "physical", "melee" },
     noSteal = true,
     activeAbility = {

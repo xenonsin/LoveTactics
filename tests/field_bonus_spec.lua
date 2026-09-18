@@ -70,7 +70,7 @@ return {
         end,
     },
     {
-        -- The bug this gate exists for: a range-1 sword swung from a mountain reached two tiles and
+        -- The bug this gate exists for: a range-1 sword swung from a hill reached two tiles and
         -- struck a foe standing on the far side of an ally. High ground is a sightline, not a longer arm.
         name = "high ground does NOT lengthen a melee swing (no sight, no vantage)",
         fn = function()
@@ -84,7 +84,7 @@ return {
             local ar = Combat.attackReach(c, u, 1, {}, false)
             assert(ar["2,1"] and ar["1,1"] == nil, "melee reach from high ground is still one tile")
 
-            -- The whole board case: sword-wielder on the mountain, ally between, foe two tiles off.
+            -- The whole board case: sword-wielder on the hill, ally between, foe two tiles off.
             local board = Combat.new(arena(6, 1, { { x = 3, y = 1, bonus = { range = 1 } } }),
                 { unit("character_rowan", 3, 1), unit("character_rowan", 2, 1) },
                 { unit("character_bandit", 1, 1) })

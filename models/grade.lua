@@ -1190,6 +1190,23 @@ function Grade.of(idOrDef)
     if type(idOrDef) == "string" then def = Item.defs[idOrDef] else id = nil end
     if not def then return nil end
 
+    -- AN AUTHORED JUDGEMENT WINS OUTRIGHT, exactly as it does for a status (Grade.statusValue) and a
+    -- trait (Grade.traitValue), and for the same reason those two have the hatch: some effects are not
+    -- derivable by a dry run, and a number a designer argued for beats a number an instrument could not
+    -- read. `grade` is in TURNS, the unit everything here converts through.
+    --
+    -- WHAT NEEDS IT, as of 2026-09-17: the items converted off the parked relic shelf that rewrite a
+    -- RULE (Item.RULE_NAMES -- health pinned at 1, no walking, mana paid in blood) and the ones that act
+    -- between fights. A rule rewrite has no damage figure to replay: its whole worth is in what it lets
+    -- the rest of the grid do, which is a build, not a swing. Without this they all scored a confident
+    -- 0.0 and a recut would have filed The Rooted Oath at tier 1 beside a broken wand.
+    local authored = tonumber(def.grade)
+    if authored then
+        local total = authored * Grade.turnValue()
+        return total, { rows = { { "authored", total } }, estimated = false,
+            active = 0, passive = total, blind = false }
+    end
+
     local rows = {}
     local item = id and Item.instantiate(id, 1, 0) or nil
     local active = item and activeValue(def, item, rows) or 0
@@ -1214,8 +1231,21 @@ function Grade.of(idOrDef)
         if row[2] > 0 then positive = true break end
     end
 
+    -- A PASSIVE CAN BE BLIND TOO, and until 2026-09-17 only an active could be. The test above was
+    -- `item.activeAbility ~= nil`, which made the whole idea of "this instrument cannot see it" a
+    -- property of having an ability -- so a passive whose mechanism is unreadable scored a confident
+    -- zero instead of admitting it could not be read. Three mechanisms are unreadable by a dry run and
+    -- a blueprint may carry one without an ability: a rule rewrite, an opening boon, and a
+    -- between-fight hook. Any of them with nothing positive in the breakdown is blindness, not worth.
+    --
+    -- An item that would rather say a number than be set aside authors `grade` above and skips all of
+    -- this. This branch is the safety net for the ones nobody has judged yet.
+    local unreadable = (item ~= nil)
+        and (item.activeAbility ~= nil or item.rules ~= nil or item.openingBoon ~= nil
+             or item.encounterCleared ~= nil)
+
     return total, { rows = rows, estimated = estimated, active = active, passive = passive,
-        blind = (not positive) and (item ~= nil) and (item.activeAbility ~= nil) or false }
+        blind = (not positive) and unreadable or false }
 end
 
 -- ---------------------------------------------------------------------------

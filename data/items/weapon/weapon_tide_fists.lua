@@ -10,7 +10,6 @@ return {
     sprite = "assets/items/tide_fists.png",
     type = "weapon",
     class = "creature",
-    dropTier = 6,
     tags = { "natural", "water", "magical", "melee" },
     noSteal = true,
     activeAbility = {

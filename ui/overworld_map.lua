@@ -22,7 +22,7 @@ local Sprite = require("models.sprite")
 local Tileset = require("models.tileset")
 local Muster = require("models.muster") -- for BAND -> pip count; the comparison itself is the caller's
 local Quest = require("models.quest") -- sponsorOf: which house posted the work standing on a cell
-local Encounter = require("models.encounter") -- opensBattle: the one question the combat border asks
+local Encounter = require("models.encounter") -- opensBattle (the combat border) + markerKind (the plate)
 local VendorIcons = require("ui.vendor_icons") -- ...and that house's own mark, which is what draws
 local Theme = require("ui.theme")
 
@@ -255,7 +255,11 @@ end
 function OverworldMap:updateCamera()
     local mapW = self.grid.cols * self.grid.size
     local mapH = self.grid.rows * self.grid.size
-    self.camTargetX = (mapW - Scale.WIDTH) / 2
+    -- CENTRED IN THE BAND THE HUD LEAVES, not in the screen. The readouts are not symmetrical -- the
+    -- party strip and checklist take the left, the purse takes the right -- so the clear space runs
+    -- 382..1024 and its middle is 63 pixels right of the screen's (Overworld.BOARD_CX). A square board
+    -- narrow enough to clear both was fine centred; one that uses the width is not.
+    self.camTargetX = mapW / 2 - Overworld.BOARD_CX
     self.camTargetY = (mapH - Scale.HEIGHT) / 2
     self.camX, self.camY = self.camTargetX, self.camTargetY
 end
@@ -638,6 +642,27 @@ local function markerColor(kind, enc)
     return 0.85, 0.25, 0.25 -- combat
 end
 
+-- WHAT THE MARK SAYS, which is not always what the encounter IS -- an end, a house's errand and a ward
+-- are one `objective` to everything downstream and three different plates out here.
+--
+-- IT MOVED TO THE MODEL (Encounter.markerKind), and the note at its new home says why: the split was
+-- made in the draw layer while it was a question about drawing and nothing else, and the hover readout
+-- (ui/encounter_tooltip.lua) now has to call a tile what the plate calls it. One function, so the mark
+-- and the words under it cannot disagree about which tile holds the boss. This alias is kept because
+-- the four call sites below read better for it and a local is free.
+local markerKind = Encounter.markerKind
+
+-- THE PLATE'S HUE FOR AN ENCOUNTER, for a surface that is not the board.
+--
+-- The hover readout heads its card in this colour (ui/encounter_tooltip.lua), which is the whole of
+-- how the board's colour language is ever learned: twenty-two kinds are told apart out there by a hue
+-- and a fourteen-pixel mark, and nothing anywhere put either beside a word. Read through the same
+-- markerKind the marker pass reads, off the same table, so the card cannot be headed in a colour no
+-- tile wears. Returns the three channels the way markerColor does.
+function OverworldMap.plateColor(enc)
+    return markerColor(markerKind(enc), enc)
+end
+
 -- Per-kind marker glyphs, so an encounter reads by its SHAPE and not only its colour -- and no two
 -- kinds share the old catch-all "?". Each draws a small vector mark into the box (x, y, w, h) it is
 -- handed, the way ui/glyphs.lua does; the caller sets the base colour, and a mark shades its own
@@ -959,34 +984,6 @@ local function drawMarkerPlate(wx, wy, s, r, g, b, a, border)
     end
     love.graphics.rectangle("line", px, py, pw, pw, MARKER_RADIUS, MARKER_RADIUS)
     love.graphics.setLineWidth(1)
-end
-
--- WHAT THE MARK SAYS, which is not always what the encounter IS.
---
--- A board carries as many ends as the day has work in it and every one of them is stamped `objective`
--- (models/overworld.lua), because to everything downstream -- the arena's cap, the salvage, the payout
--- -- they are one thing: a set-piece. Splitting the KIND would have to be done in the model, where a
--- dozen `kind == "objective"` tests would then quietly stop matching an errand and size it as roadside
--- traffic. So the split is made here, where it is a question about drawing and nothing else.
---
--- The discriminator was already on the cell: a spec that belongs to a piece of work carries the id of
--- that work (`questId`), and the board's own end carries nothing. A campaign ground, where every end IS
--- a quest, therefore draws writs across the board and no pennant at all -- which is the truth about it.
---
--- AND THE SECOND SPLIT IS THE WARD, made here for the same reason and off the same sort of mark. A
--- circle that bars its stair with a body (Descent.GATES' `ward`) seats TWO ends carrying no questId --
--- the guard on the way down and the lieutenant standing in front of her -- and until this test existed
--- they drew the same gold pennant on the same floor with nothing anywhere saying which was which. The
--- ward is not on the checklist either (game:worklist is quests only) and names nothing on hover
--- (hoveredWork wants a questId), so the map was the only surface that could have told them apart and it
--- was drawing them identical. The player found out by walking into one and being told the gate held.
---
--- `wardFor` is the discriminator the model already carries (models/descent.lua), and it is asked FIRST:
--- a ward is stamped `objective` like every other end, so the pennant below would swallow it.
-local function markerKind(enc)
-    if enc and enc.wardFor then return "ward" end
-    if enc and enc.kind == "objective" and enc.questId then return "quest" end
-    return enc and enc.kind
 end
 
 -- The mark, drawn in white on top of the plate so the SHAPE reads even where two kinds sit close in
@@ -1611,17 +1608,39 @@ end
 --   * otherwise (keyboard, gamepad), a marker on an ADJACENT tile -- the fight one step away, which
 --     is the beat where a pad player actually decides.
 -- A cleared stop answers nothing: there is no fight left on it to weigh.
-function OverworldMap:hoveredFight()
-    local function fightAt(c)
-        return isFight(c) and c or nil
-    end
+--
+-- THE TWO ANSWERS ARE WRITTEN ONCE (`weighing`, below) and asked three times. They were three copies
+-- of the same eight lines, which is how the pad's half of a readout rots: a fix to one of them is a
+-- fix a player driving with a stick never sees.
+local ADJACENT = { { 0, -1 }, { 0, 1 }, { -1, 0 }, { 1, 0 } }
 
-    if InputMode.isMouse() then return fightAt(self:mapped(self.hoverX, self.hoverY)) end
-    for _, d in ipairs({ { 0, -1 }, { 0, 1 }, { -1, 0 }, { 1, 0 } }) do
-        local c = fightAt(self:mapped(self.px + d[1], self.py + d[2]))
+function OverworldMap:weighing(test)
+    if InputMode.isMouse() then return test(self:mapped(self.hoverX, self.hoverY)) end
+    for _, d in ipairs(ADJACENT) do
+        local c = test(self:mapped(self.px + d[1], self.py + d[2]))
         if c then return c end
     end
     return nil
+end
+
+function OverworldMap:hoveredFight()
+    return self:weighing(function(c) return isFight(c) and c or nil end)
+end
+
+-- THE STOP THE PLAYER IS WEIGHING UP, whatever kind it is -- the cell the hover readout describes
+-- (ui/encounter_tooltip.lua). The same two answers as the two above, over the widest set of the three:
+-- every stop the board has DRAWN, which is `markedStop` and therefore exactly the marks on screen. A
+-- readout that answered off a narrower test than the pass that paints the marks would go silent under
+-- half of them, which is the state this replaced -- two kinds of stop out of twenty-two had words.
+--
+-- A CLEARED STOP STILL ANSWERS, unlike the two above, and that is the difference in what is being
+-- asked. Those two price a decision and a spent stop has none left; this one says what a mark MEANS,
+-- and the faded plates a company leaves behind it are most of what a mapped floor is made of. What it
+-- is worth is then a row inside the card, which is where "nothing left here" belongs.
+function OverworldMap:hoveredStop()
+    return self:weighing(function(c)
+        return c and self:markedStop(c.x, c.y) or nil
+    end)
 end
 
 -- THE PIECE OF POSTED WORK the player is weighing up, or nil. The same two answers hoveredFight gives
@@ -1643,12 +1662,7 @@ function OverworldMap:hoveredWork()
         return c
     end
 
-    if InputMode.isMouse() then return workAt(self:mapped(self.hoverX, self.hoverY)) end
-    for _, d in ipairs({ { 0, -1 }, { 0, 1 }, { -1, 0 }, { 1, 0 } }) do
-        local c = workAt(self:mapped(self.px + d[1], self.py + d[2]))
-        if c then return c end
-    end
-    return nil
+    return self:weighing(workAt)
 end
 
 return OverworldMap

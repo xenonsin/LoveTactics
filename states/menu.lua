@@ -373,10 +373,12 @@ local DEBUG_MARGIN = 16
 local function buildDebugMenu()
     if not DEBUG then return nil end
     return Menu.new({
-        -- Straight into the city with Act 0 already paid for: the avatar and Rowan at the level the
-        -- prologue's four fights pay, the road's kit in the stash, and the hub open in free play. The
-        -- grants are the prologue's own (states/prologue.lua's `skip`), so what this hands over cannot
-        -- drift from what playing it hands over.
+        -- Straight into the city with Act 0 already paid for AND ITS FIRST DOOR ALREADY OPENED: the
+        -- avatar and Rowan at the level the prologue's four fights pay, the road's kit in the stash,
+        -- Xin met in the Inn and Rowan's wound set there, and the hub open in free play. The grants
+        -- are the prologue's own (states/prologue.lua's `skip`), so what this hands over cannot drift
+        -- from what playing it hands over -- and the Inn's visit is on top of that, because the button
+        -- is for reaching a company that can walk down rather than one two clicks short of it.
         { label = "Skip Prologue", action = skipPrologue },
         -- DRAFT, alone now. It shares none of the campaign's progression and is still being built, which
         -- is what this column is for: a mode lives here until it is worth putting in front of a player.

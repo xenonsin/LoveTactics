@@ -324,6 +324,16 @@ Balance.MAGNITUDE_WAIVERS = {
         .. " so a player who learned the number off one they shot is not surprised by one that jumped"
         .. " them. tests/demon_champion_spec.lua pins the two together -- this figure is a cross-item"
         .. " promise rather than a rung on a shelf.",
+    ability_omnislash = "its magnitude IS the multiplier, and the ladder cannot see one. The authored"
+        .. " hit is Curve.ramp(6, 16) -- fire_bolt's own curve, which is to say the slot-0 number"
+        .. " exactly -- because the item is not the swing: `adjacencyScaling` adds a full multiple of"
+        .. " it per WEAPON sitting beside it in the 3x3 grid, so the same blueprint lands at 2x in a"
+        .. " grid that bought into it and 1x in one that did not. Reading the base alone grades the"
+        .. " build-around at the cost of not building around it. Its two neighbours need no waiver"
+        .. " because their authored damage happens to match their rung (ability_held_reaction, slot 7;"
+        .. " ability_culling_stroke, slot 1); this one carries its whole weight in the scaler."
+        .. " Raising the base to the slot-7 target of 15 would price the UNBUILT swing at a fighter"
+        .. " apex and the built one well past the top of the ladder -- a rebalance, not a re-tier.",
     ability_bolas = "the throw is the delivery, not the purchase: the Poacher's whole shelf is paid out"
         .. " by the Root it lands (weapon_poachers_kris puts half its swing again through a Rooted body,"
         .. " utility_quarrys_end opens on the snare), so the weight itself is nearly nothing on purpose."
@@ -602,7 +612,7 @@ function Balance.isFrozen(id) return Balance.FROZEN[id] ~= nil end
 -- grants through `rewardCharacter`?
 --
 -- These are tuned as PLAYER units and must never be retuned as enemies, even though several are
--- fought once before they join (Rowan at the Cathedral's slot 5, Amana at its slot 2, Saber at the
+-- fought once before they join (Rowan at the Cathedral's slot 5, Xin at its slot 2, Saber at the
 -- Colosseum's first bout). Balancing Rowan's defense down because she is briefly an opponent would
 -- weaken the knight the player fights the rest of the campaign with -- the same blueprint is both.
 --
@@ -628,7 +638,7 @@ end
 --   no offensive statline at all   `damage = 0, magicDamage = 0` IS the statement "this does not
 --                                  attack" -- the straw sentry and the gaunt vigil are standing
 --                                  objects that never strike, and that is their entire design.
---   archetype = "support"          the AI posture for a body whose job is not damage. Amana's
+--   archetype = "support"          the AI posture for a body whose job is not damage. Xin's
 --                                  blueprint annotates her damage stat "feeble on purpose: she does
 --                                  not kill".
 --

@@ -355,10 +355,12 @@ local function launchPanel(building)
         -- The Armory (Loadout) shelf gets a weapon-type / discipline filter over the stash; other
         -- buildings' panels ignore the field.
         filters = (moduleName == "party") and armoryFilters(hub.player) or nil,
-        -- THE TACTICS TAB IS NOT THERE ON THE FIRST MORNING. It arrives with the first descent
-        -- (Descent.tacticsUnlocked), together with the Auto button it drives -- a rule list offered
-        -- before the player has taken a turn is a shortcut past the thing being taught. The panel's
-        -- own default is on, so this is the only place the city says otherwise.
+        -- THE TACTICS TAB IS NOT THERE ON THE FIRST MORNING. It arrives when the first trip ends, by
+        -- whichever exit comes first -- home to the city, or down onto floor two (Descent.tacticsUnlocked)
+        -- -- because a rule list offered before the player has taken a turn is a shortcut past the thing
+        -- being taught. The Auto button it drives waits one step longer still, for the window behind this
+        -- tab to be read (Descent.autoUnlocked). The panel's own default is on, so this is the only place
+        -- the city says otherwise.
         tactics = (moduleName ~= "party") or Descent.tacticsUnlocked(hub.player),
         -- THE HIRING HALL HANDS THE SCREEN OVER MID-VISIT. A pull opens a reveal
         -- (ui/panels/hire_reveal.lua) that owns the whole screen, and the hall goes back UNDER it
@@ -542,6 +544,15 @@ function hub.enter()
     -- back through Act 0 because nothing out there can answer it (Descent.classesUnlocked). Stamped
     -- before any panel is built, so the first visit's own Armory already has it.
     Descent.markCityReached(hub.player)
+    -- ...and SEPARATELY, whether this arrival is a coming HOME: the same screen, asked of a company that
+    -- has already been out (Player.expeditionsOut -- a floor descended or a bounty finished). That is
+    -- the first half of the Tactics gate (Descent.tacticsUnlocked), and it can only be stamped here --
+    -- the run is gone by the time the town is drawn, so nothing later can tell a first morning from a
+    -- return. Persisted below with the rest of the visit's bookkeeping.
+    if not Descent.returnedToCity(hub.player) and Player.expeditionsOut(hub.player) >= 1 then
+        Descent.markReturnedToCity(hub.player)
+        Player.save()
+    end
     -- A run resumes into states.game, never here; reaching the hub means the quest is over, so drop any
     -- resumable-run autosave (states/game.lua). A backstop for exit paths that don't clear it themselves,
     -- and for a resume descriptor left unconsumed. Persist only when there was one, so an ordinary hub
@@ -640,11 +651,13 @@ function hub.enter()
                 return false
             end
             -- THE ARMORY carries two things: stash nobody has read, and a TAB nobody has met. The
-            -- second is why this branch is an `or` -- Tactics and Auto unlock on the first descent,
-            -- which happens underground, so the door itself is the only thing that can say the room
-            -- has grown a control since the player last stood in it. It clears when the window
-            -- explaining them has been read (Descent.tacticsTaught), not on being seen, for the same
-            -- reason the voucher's does: an unread feature is a thing you still have to look at.
+            -- second is why this branch is an `or` -- Tactics unlocks on a trip ending, which may well
+            -- have happened underground (floor two), so the door itself is the only thing that can say
+            -- the room has grown a control since the player last stood in it. It clears when the window
+            -- explaining it has been read (Descent.tacticsTaught), not on being seen, for the same
+            -- reason the voucher's does: an unread feature is a thing you still have to look at. That
+            -- same reading is what then puts Auto on the board (Descent.autoUnlocked), so this dot is
+            -- the one errand standing between the unlock and the button.
             if b.panel == "party" then
                 return Player.hasNewStash(hub.player)
                     or (Descent.tacticsUnlocked(hub.player) and not Descent.tacticsTaught(hub.player))

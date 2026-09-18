@@ -17,7 +17,6 @@ return {
     sprite = "assets/items/coffer_shell.png",
     type = "weapon",
     class = "creature",
-    dropTier = 4,
     tags = { "natural", "impact", "physical", "melee" },
     noSteal = true,
     activeAbility = {

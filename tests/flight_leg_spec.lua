@@ -530,7 +530,7 @@ return {
             -- ...and NOTHING ELSE. The chest used to pay a second gift for "an item with no button"
             -- (utility_second_wind), cut for two reasons: the worn armor on both bodies has been
             -- teaching that since the first fight, and one refusal to fall does not belong one stop
-            -- ahead of a scripted felling it cannot answer (data/status/status_champion_fixation.lua
+            -- ahead of a scripted felling it cannot answer (Combat.spendScriptedFell
             -- -- Combat.fell zeroes the body outside the damage pipeline and never reaches
             -- Trait.trySurvive, so the charm stays silent through the exact blow it is sold against).
             -- Pinned as a COUNT so the cut gift cannot drift back in as a second entry.

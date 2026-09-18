@@ -61,10 +61,10 @@ local TILE_INFO = {
     bridge   = { name = "Bridge",      desc = "A built crossing -- the only way over a river." },
     forest   = { name = "Forest",      desc = "Slow to cross. Soft cover that hampers line of sight. It catches fire." },
     thicket  = { name = "Dense Wood",  desc = "Too thick to enter, and nothing sees through it. It catches fire." },
-    mountain = { name = "High Ground", desc = "Steep and slow, but grants extra reach and blocks the view behind it." },
+    hill     = { name = "Hill",        desc = "High ground. Steep and slow, but grants extra reach and blocks the view behind it." },
     rough    = { name = "Rough Terrain", desc = "Broken ground that slows movement and makes a body harder to hit." },
     rock     = { name = "Standing Rock", desc = "Solid stone. Blocks movement and line of sight." },
-    obstacle = { name = "Obstacle",    desc = "Solid terrain. Blocks movement and line of sight." },
+    mountain = { name = "Mountain",    desc = "Sheer rock. Blocks movement and line of sight -- only a flier crosses it." },
     grass    = { name = "Scrub",       desc = "Growth too dense to push through. Blocks movement and line of sight." },
     river    = { name = "River",       desc = "Impassable except at a bridge -- but you can see the far bank perfectly well." },
     water    = { name = "Shallow Water", desc = "Wadeable but slow. Conducts lightning: a bolt striking beside it arcs in." },
@@ -74,9 +74,10 @@ local TILE_INFO = {
     ice      = { name = "Ice",         desc = "The one floor that costs nothing to cross. It conducts: a bolt sweeps the whole sheet." },
 }
 
--- Accent per terrain type (title + border tint). Cool for what stops you, warm for what merely slows
--- you, and each family shaded off the one above it so the list reads as four kinds of ground rather
--- than sixteen colours. The MARK is what identifies a terrain (see ui/terrain_art.lua); this only has
+-- Accent per terrain type (title + border tint). Cool and grey for what stops you, green or warm for
+-- what merely slows you -- the same division the board itself now draws, where the `rock` art role is
+-- reserved for the two types nobody can enter (ui/battle_map.lua's ART). Each family is shaded off the
+-- one above it so the list reads as four kinds of ground rather than sixteen colours. The MARK is what identifies a terrain (see ui/terrain_art.lua); this only has
 -- to keep the heading legible and roughly in the right key.
 local TILE_COLOR = {
     ground   = { 0.80, 0.78, 0.62 },
@@ -84,10 +85,10 @@ local TILE_COLOR = {
     bridge   = { 0.82, 0.66, 0.44 },
     forest   = { 0.55, 0.80, 0.55 },
     thicket  = { 0.42, 0.66, 0.44 },
-    mountain = { 0.72, 0.74, 0.82 },
+    hill     = { 0.62, 0.84, 0.46 },
     rough    = { 0.80, 0.66, 0.45 },
     rock     = { 0.66, 0.64, 0.62 },
-    obstacle = { 0.62, 0.62, 0.68 },
+    mountain = { 0.72, 0.74, 0.82 },
     grass    = { 0.60, 0.76, 0.50 },
     river    = { 0.45, 0.68, 0.95 },
     water    = { 0.45, 0.68, 0.95 },
@@ -121,7 +122,10 @@ local function drawSwatch(b, x, y, size)
     local t = b.tone
     love.graphics.setColor(t[1], t[2], t[3], 1)
     love.graphics.rectangle("fill", x, y, size, size, 2, 2)
-    TerrainArt.draw(b.swatch, x, y, size, size, t[1], t[2], t[3], 3, 5)
+    -- `b.skin` is the biome's stand-in mark when it has lent this type one (a castle's rampart in
+    -- place of the mountain). It must be the SAME argument the board draws with, or the swatch would
+    -- teach a picture the ground never shows -- which is worse than no swatch at all.
+    TerrainArt.draw(b.swatch, x, y, size, size, t[1], t[2], t[3], 3, 5, b.skin)
     Theme.set(Theme.frame, 0.45) -- the same hairline the box itself is trimmed in
     love.graphics.setLineWidth(1)
     love.graphics.rectangle("line", x + 0.5, y + 0.5, size - 1, size - 1, 2, 2)
@@ -306,16 +310,29 @@ local function appendTerrain(blocks, info, asHead)
     local meta = TILE_INFO[cell.type] or { name = titleCase(cell.type or "Tile"), desc = "" }
     local col = TILE_COLOR[cell.type] or DEFAULT_COLOR
 
+    -- WHAT THIS GROUND CALLS IT. A biome may lend a type its own mark and its own words -- the castle's
+    -- `mountain` is a rampart, the colosseum's is a pillar (data/tilesets/*.lua, handed over by
+    -- BattleMap:tileSkin). Presentation only, and it reaches no further than this heading and its
+    -- swatch: every number below is read off the live cell exactly as it was, because the tile still
+    -- costs what it costs and stops whom it always stopped.
+    --
+    -- Each field falls back on its own, so a tileset that renames a tile without redrawing it (or the
+    -- reverse) gets what it asked for and keeps the terrain's answer for the rest.
+    local skin = info.skin
+    local name = (skin and skin.name) or meta.name
+    local desc = (skin and skin.desc) or meta.desc
+
     -- The heading carries the board's own swatch when the caller handed one over (`info.tone`, from
     -- BattleMap:tileTone): the exact tone that tile is painted in, with its mark on it. This is the
     -- dwell surface for ui/terrain_art.lua's vocabulary -- the player meets the picture here, next to
     -- the words and the move cost, and afterwards recognises it on the ground at a glance. Absent
     -- whenever the board is drawing a real tileset sheet instead, and the heading is then just a
     -- heading, exactly as it was.
-    blocks[#blocks + 1] = { kind = asHead and "head" or "title", text = meta.name, color = col,
-                            swatch = info.tone and cell.type or nil, tone = info.tone }
-    if meta.desc and meta.desc ~= "" then
-        blocks[#blocks + 1] = { kind = "desc", text = meta.desc }
+    blocks[#blocks + 1] = { kind = asHead and "head" or "title", text = name, color = col,
+                            swatch = info.tone and cell.type or nil, tone = info.tone,
+                            skin = skin and skin.skin or nil }
+    if desc and desc ~= "" then
+        blocks[#blocks + 1] = { kind = "desc", text = desc }
     end
 
     -- THE TWO THINGS EVERY TILE SAYS -- what it costs to walk on and what it does to a sightline --
@@ -765,6 +782,15 @@ local function buildBlocks(info)
         if pp and pp.damage > 0 then
             blocks[#blocks + 1] = { kind = "stat", label = "Blast", value = tostring(pp.damage) }
             blocks[#blocks + 1] = { kind = "stat", label = "Radius", value = tostring(pdef.radius or 1) }
+        end
+        -- What is IN it, for the furniture that holds something (a supply crate). Named before the turn
+        -- is spent rather than discovered after, exactly as the Forge quotes a breakdown before the
+        -- button (models/salvage.lua): prying a crate open costs the better part of a turn, so the
+        -- payout has to be on the box. The material itself is not named because the crate does not
+        -- decide it -- the fight's own tier grades the stock it falls in with (Spoils.materials).
+        if pp and (pp.salvage or 0) > 0 then
+            blocks[#blocks + 1] = { kind = "stat", label = "Salvage",
+                value = pp.salvage == 1 and "1 material" or (pp.salvage .. " materials") }
         end
         for _, st in ipairs(pp and pp.statuses or {}) do
             local def = st.def or {}

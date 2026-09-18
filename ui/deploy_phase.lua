@@ -45,9 +45,12 @@ local Scale = require("scale")
 local Theme = require("ui.theme")
 local InputMode = require("input_mode")
 local TileTooltip = require("ui.tile_tooltip")
+local NoteTooltip = require("ui.note_tooltip")
+local StatusTooltip = require("ui.status_tooltip")
 local Combat = require("models.combat")
 local Hazard = require("models.hazard")
 local Player = require("models.player")
+local Flee = require("models.flee")
 
 local DeployPhase = {}
 DeployPhase.__index = DeployPhase
@@ -133,6 +136,17 @@ local TITLE_SIZE, TITLE_MIN = 16, Theme.MIN_DISPLAY
 --   onPotions           opens the Potions screen (the overworld's own potion panel) over the phase;
 --                       nil hides that button on the same terms, and for the same reason -- a fight
 --                       with nobody behind it carries no flasks.
+--   onFlee              try to break off before the fight starts; nil hides the plate outright, which
+--                       is every fight that may not be fled (models/flee.lua's Flee.allowed -- an
+--                       objective is work the company chose to walk onto, not something it is cornered
+--                       by) and every board with no overworld behind it to flee back ONTO. The host
+--                       owns the roll and everything after it; the phase only offers the plate.
+--   fleeChance          what that attempt is worth, in percent, for the plate to say out loud. The
+--                       player is being asked to gamble a round of initiative, so the odds are on the
+--                       button and not in a tooltip -- a wager whose price is hidden is not a decision
+--                       (docs/readouts: numbers name their decision). The note that opens beside the
+--                       plate (FLEE_NOTE) says what is being STAKED; the number itself never moves off
+--                       the button into it.
 function DeployPhase.new(opts)
     opts = opts or {}
     local self = setmetatable({}, DeployPhase)
@@ -144,6 +158,8 @@ function DeployPhase.new(opts)
     self.onCommit = opts.onCommit
     self.onLoadout = opts.onLoadout
     self.onPotions = opts.onPotions
+    self.onFlee = opts.onFlee
+    self.fleeChance = opts.fleeChance
     self.gutter = opts.gutter or { x = 0, y = 0, w = 0, h = 0 }
     self.column = opts.column or { x = 16, y = 104, w = 130 }
 
@@ -498,6 +514,17 @@ function DeployPhase:controls()
     if self.allowAuto and self.autoBattle then
         addBeside("speed", tostring(self.autoSpeed) .. "x", true, true)
     end
+    -- THE WAY OUT, directly above the bell, because it is the other answer to the same question. Every
+    -- plate above it is about how to take this fight; these two are whether to. Ordering them together
+    -- is what makes the pair read as a choice rather than making the escape a utility hidden among the
+    -- tools -- and it puts the riskier option first, where the eye lands before the default.
+    --
+    -- THE ODDS ARE ON THE PLATE. The player is being asked to stake a round of initiative on a roll, so
+    -- the number that decides it belongs on the thing they press. A button reading only "Run Away" is
+    -- asking for a wager at a price it will not quote.
+    if self.onFlee then
+        add("flee", "Run Away (" .. tostring(self.fleeChance or 0) .. "%)")
+    end
     -- The bell says which fight it is ringing for. A player who armed auto and then pressed a button
     -- reading "Begin Battle" would have been told nothing about the fight they were about to not play.
     add("begin", self.autoBattle and "Begin (Auto)" or "Begin Battle", #self.placed > 0, nil, true)
@@ -524,6 +551,18 @@ function DeployPhase:press(key)
     elseif key == "autofill" then self:autoFill()
     elseif key == "auto" then self:toggleAuto()
     elseif key == "speed" then self:cycleSpeed()
+    -- The host owns the roll and everything after it. A success leaves this screen entirely, so there is
+    -- nothing to report; a failure hands back the LINE to show, which the phase prints in the same place
+    -- it prints a refused drag -- one hint line, whatever refused, so the player never has to learn a
+    -- second place to look for an answer.
+    --
+    -- ONE ATTEMPT, and retiring the plate is how that is said. A second press would be the same roll on
+    -- a fresh salt, which is a company standing on a live board rolling until it likes the answer.
+    elseif key == "flee" then
+        if self.onFlee then
+            local refused = self.onFlee()
+            if refused then self.message, self.onFlee = refused, nil end
+        end
     elseif key == "begin" then self:begin() end
 end
 
@@ -812,6 +851,7 @@ function DeployPhase:draw(bounds)
 
     self:drawHover(bounds)
     self:drawHeld()
+    self:drawFleeNote()
 
     -- The carried portrait rides the cursor above everything else.
     if self.drag and self.drag.active and self.drag.char then
@@ -870,6 +910,79 @@ function DeployPhase:drawHeld()
 end
 
 -- ---------------------------------------------------------------------------
+-- The escape, explained
+-- ---------------------------------------------------------------------------
+
+-- WHAT "RUN AWAY (55%)" IS ACTUALLY OFFERING. The plate quotes a price and names no stake: the percent
+-- says how likely the attempt is, and nothing anywhere says what losing it does.
+--
+-- ONE LINE, AND THEN THE STATUS ITSELF. The whole cost is a status the game has already taught, so the
+-- note says which one and hands the reading over to the status's own tooltip -- the identical box the
+-- player gets off the badge on an enemy token, in the log and in the turn strip. Naming Hasted and then
+-- paraphrasing what Hasted does would be a second gloss to keep in step with the first, and the two
+-- would drift the day the status is tuned.
+local FLEE_NOTE = { "If you fail to run away, enemies start combat Hasted." }
+
+-- The status as the note shows it -- built by the model that also applies it (Flee.caughtStatus), so
+-- the hourglass here is the one the badge will carry and neither surface names the duration itself.
+-- Memoized: it is read-only, and the note is drawn every frame the pointer rests on the plate.
+local fleeStatus
+local function fleeCaughtStatus()
+    if not fleeStatus then fleeStatus = Flee.caughtStatus() end
+    return fleeStatus
+end
+
+-- The gap between the note and the status box under it: the same 6px the docked hover boxes keep
+-- between their own two (hoverDock's `gap` is 8 against a wider column; these two are narrow and read
+-- as one stack).
+local NOTE_GAP = 6
+
+-- WHETHER THE NOTE STANDS THIS FRAME, and the plate it hangs off: the rect, or nil. Asked the same two
+-- ways every other readout in the phase is -- the pointer on the plate, or the keyboard/pad selection
+-- sitting on it -- so the explanation is reachable on a pad, which has no pointer to hover with.
+--
+-- Never while a body is IN HAND. The carried portrait rides the cursor and the player is mid-placement,
+-- not mid-decision; a box opening under the thing they are carrying is in the way of the move, not an
+-- answer to it.
+--
+-- Pure (it measures, it never draws), on the model of hoverDock above and for the same reason: the
+-- gating IS what the player gets, and it can be pinned without a window (tests/deploy_flee_spec.lua).
+function DeployPhase:fleeNotePlate()
+    if not self.onFlee then return nil end
+    if self.held or (self.drag and self.drag.active) then return nil end
+    local rect
+    for _, c in ipairs(self:controls()) do
+        if c.key == "flee" then rect = c.rect break end
+    end
+    if not rect then return nil end
+    if InputMode.isMouse() then
+        -- A finger has no hover: on touch the press IS the answer, and a box that could only appear
+        -- under a fingertip already on the plate would teach nobody anything.
+        if InputMode.touch or not rectHas(rect, self.mx, self.my) then return nil end
+    elseif self.focus ~= "flee" then
+        return nil
+    end
+    return rect
+end
+
+-- Anchored off the plate's RIGHT edge rather than off the cursor, so it opens over the board, beside
+-- the thing it is about, and at the same place whether a pointer or a pad asked for it. NoteTooltip
+-- flips it back across the plate where the screen has no room on that side.
+--
+-- The status box is then stacked UNDER the note at the note's own left edge (StatusTooltip's `origin`),
+-- so the two read as one column rather than two boxes that happen to be near each other. Placed off the
+-- rect the note reports rather than off a second guess at where it went, which is what keeps them
+-- together when the note has flipped sides or been clamped by the screen.
+function DeployPhase:drawFleeNote()
+    local rect = self:fleeNotePlate()
+    if not rect then return end
+    local box = NoteTooltip.draw("Run Away", FLEE_NOTE, rect.x + rect.w, rect.y - 16, Scale.WIDTH)
+    if not box then return end
+    StatusTooltip.draw(fleeCaughtStatus(), 0, 0, Scale.WIDTH,
+        { x = box.x, y = box.y + box.h + NOTE_GAP })
+end
+
+-- ---------------------------------------------------------------------------
 -- Hover readout
 -- ---------------------------------------------------------------------------
 
@@ -918,6 +1031,10 @@ function DeployPhase:drawHover(bounds)
     local terrainInfo = { cell = cell,
                           bonus = Combat.fieldBonus(self.combat, cx, cy),
                           tone = tr and { tr, tg, tb } or nil,
+                          -- What this ground calls the type, when the biome has lent it one (see
+                          -- BattleMap:tileSkin). The line is chosen against the ground here, so the
+                          -- room has to name itself here too, not only once the fight starts.
+                          skin = self.map and self.map.tileSkin and self.map:tileSkin(cell.type) or nil,
                           hazards = Hazard.allAt(self.combat, cx, cy),
                           -- Marked objective ground, so "hold this" is read while choosing who stands on it.
                           objective = Combat.objectiveTileInfo(self.combat, cx, cy) }

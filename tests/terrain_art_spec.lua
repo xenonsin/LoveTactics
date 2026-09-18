@@ -16,6 +16,16 @@ local Terrain = require("models.terrain")
 local TerrainArt = require("ui.terrain_art")
 local TileTooltip = require("ui.tile_tooltip")
 local BattleMap = require("ui.battle_map")
+local Tileset = require("models.tileset")
+
+-- Every biome that has a tileset, so the skin cases below walk the real set rather than a list here
+-- that would fall behind the day a ninth ground landed.
+local function tilesetIds()
+    local out = {}
+    for id in pairs(Tileset.defs) do out[#out + 1] = id end
+    table.sort(out)
+    return out
+end
 
 local function sortedKeys(t)
     local out = {}
@@ -90,6 +100,95 @@ return {
             for _, blk in ipairs(without) do if blk.kind == "title" then b = blk break end end
             assert(a and a.swatch == "forest", "a tile with a tone should teach its mark")
             assert(b and b.swatch == nil, "a tile with no tone should carry no swatch")
+        end,
+    },
+    {
+        -- A biome may lend a type a different PICTURE and different WORDS (models/tileset.lua's
+        -- `skin`/`name`/`desc`): the castle's `mountain` is a rampart of set stone, the colosseum's a
+        -- pillar. A skin naming a mark that has been deleted or renamed draws NOTHING and says so
+        -- nowhere -- TerrainArt.markFor falls back to the terrain's own mark on purpose, so the board
+        -- would quietly go back to putting a snow-capped peak inside a fortress and look fine.
+        name = "every skin a tileset names is a mark that exists, and every mark has a taker",
+        fn = function()
+            local named = {}
+            local bad = {}
+            for _, id in ipairs(tilesetIds()) do
+                local def = Tileset.get(id)
+                for _, kind in ipairs(sortedKeys(def.tiles)) do
+                    local skin = def.tiles[kind].skin
+                    if skin then
+                        named[skin] = true
+                        if not TerrainArt.SKINS[skin] then
+                            bad[#bad + 1] = id .. "." .. kind .. " -> " .. skin
+                        end
+                    end
+                end
+            end
+            assert(#bad == 0, "tileset names a mark that does not exist: " .. table.concat(bad, ", "))
+
+            -- ...and the other direction. A skin nobody asks for is dead art, and dead art in a file
+            -- whose whole contract is "one mark per type" is how the masonry got deleted in the first
+            -- place: it was orphaned by a rename and there was no case that could see it.
+            local orphans = {}
+            for _, skin in ipairs(sortedKeys(TerrainArt.SKINS)) do
+                if not named[skin] then orphans[#orphans + 1] = skin end
+            end
+            assert(#orphans == 0, "no tileset uses the skin: " .. table.concat(orphans, ", "))
+
+            -- A skin id may never collide with a terrain type, or markFor's override would silently
+            -- shadow a real tile's own mark everywhere the skin is named.
+            for _, skin in ipairs(sortedKeys(TerrainArt.SKINS)) do
+                assert(not Terrain.TYPES[skin], skin .. " is both a skin and a terrain type")
+            end
+        end,
+    },
+    {
+        -- What the skin may NOT do. A biome dresses the ground; it does not re-rule it, and the one
+        -- way that promise could break quietly is a tileset entry growing a `walkable`, a `moveCost`
+        -- or a `sightCost` that some future reader starts honouring.
+        name = "a reskinned tile keeps every rule the terrain table gave it",
+        fn = function()
+            for _, id in ipairs(tilesetIds()) do
+                local def = Tileset.get(id)
+                for _, kind in ipairs(sortedKeys(def.tiles)) do
+                    local tile = def.tiles[kind]
+                    assert(tile.walkable == Terrain.TYPES[kind].walkable,
+                        id .. " re-rules " .. kind .. "'s walkability")
+                    assert(tile.moveCost == nil and tile.sightCost == nil,
+                        id .. " tries to re-price " .. kind)
+                end
+            end
+        end,
+    },
+    {
+        -- The heading and the swatch have to move TOGETHER. A box that draws set stone over the word
+        -- "Mountain", or says "Rampart" over a snow-capped peak, is worse than either alone: the
+        -- tooltip is the one surface where the mark is taught beside its name, so a pair that
+        -- disagrees teaches the wrong picture for the word.
+        name = "a biome's own word for a tile arrives with the biome's own mark",
+        fn = function()
+            local cell = { type = "mountain", walkable = false, moveCost = math.huge,
+                           sightCost = math.huge }
+            local skin = Tileset.get("castle").tiles.mountain
+            assert(skin.skin == "masonry" and skin.name == "Rampart",
+                "the castle is supposed to be the case this is asserted on")
+
+            local blocks = TileTooltip.blocks({ cell = cell, tone = { 0.3, 0.3, 0.34 }, skin = skin })
+            local head, desc
+            for _, blk in ipairs(blocks) do
+                if blk.kind == "title" and not head then head = blk end
+                if blk.kind == "desc" and not desc then desc = blk end
+            end
+            assert(head and head.text == "Rampart", "the castle names its own solid")
+            assert(head.skin == "masonry", "...and hands the swatch the mark the board is drawing")
+            assert(desc and desc.text == skin.desc, "the biome's sentence rides with its name")
+
+            -- No skin, and the terrain answers for itself again -- both fields, not just the one.
+            local plain = TileTooltip.blocks({ cell = cell, tone = { 0.3, 0.3, 0.34 } })
+            local ph
+            for _, blk in ipairs(plain) do if blk.kind == "title" then ph = blk break end end
+            assert(ph and ph.text == "Mountain" and ph.skin == nil,
+                "open country calls the same tile a mountain and draws the peak")
         end,
     },
 }

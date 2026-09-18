@@ -2,7 +2,7 @@
 -- flows running through the gaps. Distinct from the underworld, which is the Gate's own place and
 -- reached once: this is a surface a quest can be set on.
 --
--- Its blocker is `lava` rather than `obstacle` (models/arena.lua), and that one substitution is the
+-- Its blocker is `lava` rather than `mountain` (models/arena.lua), and that one substitution is the
 -- whole board. Lava is impassable but does NOT block a line of sight -- the only barrier in the game
 -- that separates two lines without also hiding them from each other. Both sides spend the fight in
 -- full view of an enemy they cannot reach except the long way round, which is a shape no other biome

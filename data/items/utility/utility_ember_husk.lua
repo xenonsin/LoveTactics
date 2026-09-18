@@ -15,7 +15,6 @@ return {
     sprite = "assets/items/ember_husk.png",
     type = "utility",
     class = "creature",
-    dropTier = 1,
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_cinderfall" },

@@ -525,7 +525,12 @@ Descent.FLOORS_PER_CIRCLE = 2
 -- WHAT DOES NOT CHANGE IS THE SPAN -- still one rung between the top and the bottom in proportion, for
 -- the reason three paragraphs up: difficulty already climbs on every other axis, so the fight count must
 -- not charge twice for the same descent.
-Descent.FLOOR_FIGHTS = 3
+-- FOUR NOW, RAISED FROM THREE, and the span above is what says the bottom moves with it. A floor was
+-- costing three fights at the top and four at the bottom; it costs four and five. The paragraphs above
+-- are unchanged in their reasoning -- a floor is a sitting, and a sitting is priced in fights -- what
+-- moved is how long a sitting should be, which is a call about the floor and not about the curve.
+-- The run's whole bill goes with it, from about 53 fights end to end to about 68.
+Descent.FLOOR_FIGHTS = 4
 
 -- WHAT THE BOTTOM HOLDS, and the whole argument is in how little it is above the top.
 --
@@ -554,7 +559,11 @@ Descent.FLOOR_FIGHTS = 3
 -- was authored so the run's length could move without re-pricing anything, and under the distance
 -- premise the length moved to "as far as you get" -- which is the largest move it could make. The ramp
 -- restretched itself; nothing else here had to be touched. See FLOOR_FIGHTS above for why three.
-Descent.FLOOR_FIGHTS_DEEP = 4
+-- FIVE, which is FLOOR_FIGHTS plus the same one rung it has always been above it. The pair move
+-- together and neither is meaningful alone: the span is the thing this constant exists to state, and
+-- raising the base without raising this would have flattened the descent's one fight-count ramp as a
+-- side effect of a decision about how long floor one should take.
+Descent.FLOOR_FIGHTS_DEEP = 5
 
 -- How many fights floor `f` may hold in all -- its ends included. Linear between the two constants
 -- above and rounded, so the climb is the same shape whatever the run's length turns out to be.
@@ -565,14 +574,52 @@ function Descent.floorFights(f)
         + t * (Descent.FLOOR_FIGHTS_DEEP - Descent.FLOOR_FIGHTS) + 0.5)
 end
 
--- ...AND THE FLOOR UNDER THE ROLLED SHARE. A floor deep in the errand ladder can carry the stair and
--- four asked jobs, which spends the whole budget on ends before the pool is dealt a card -- and a board
--- whose only fights are its objectives is four markers on dead ends with empty trail between them.
+-- HOW MANY OF A FLOOR'S FIGHTS STAND WHERE THE PLAYER CAN SEE THEM COMING -- its ends included.
 --
--- So the budget is a ceiling on the ROLLED fights and the ends are subtracted from it, but never below
--- this: an errand-heavy floor overshoots six and is the longer sitting, which is the right way round.
--- The ends are the work the player chose to come down for; the two rolled fights are the ground.
-Descent.FLOOR_ROLLED_MIN = 2
+-- Descent.floorFights above says what a floor costs IN ALL, and still does: it is what the experience
+-- ladder is priced against across a whole run (tests/experience_spec.lua). This says how much of that
+-- total is ON THE BOARD. The rest is dealt as the company walks (Descent.PROWL_STEPS), which is where
+-- the ordinary fighting lives now, and the two numbers answer different questions -- what a floor costs,
+-- and what you can see before you pay it.
+--
+-- WHAT IS SEEN IS THE ENDS PLUS THE ELITES, in that order of priority. The ends are the work the player
+-- came down for -- the stair's general, the errands a house posted, the doors a circle holds shut -- and
+-- an elite is the floor's own standing threat, the one thing on it worth reading the map to route
+-- around. So the ends are taken out of this first and the elites are what is left, which means an
+-- errand-heavy floor stands fewer elites rather than more markers: it is already carrying its visible
+-- fighting.
+--
+-- THE STOP COUNT MOVES WITH THIS AND WITH NOTHING ELSE, and Descent.FLOOR_TEXTURE's own header is the
+-- reason that has to be said out loud. It warns that "capping the fights hard would have re-seated all
+-- of them as merchants and left a floor with ten shops on it" -- and taking the ordinary fight off the
+-- board without moving the stop count did precisely that, measured: 15.00 stops carrying 11.88 services
+-- (`. board-report 40 descent floor=4`), because every fight the pool dealt was demoted into texture to
+-- fill a place that no longer had a fight to put in it. The stop count is FLOOR_TEXTURE plus what is
+-- seated, so a fight that moved to the walk takes its PLACE with it: 13.00 stops and 9.78 services.
+--
+-- WHAT IS STILL OPEN, and it is a question about FLOOR_TEXTURE rather than about this. Nine texture
+-- stops was authored while the board also carried three or four fights, and its header's argument --
+-- "a sparser floor is meant to be a floor with less FIGHTING on it, not a floor with less on it" --
+-- assumed the fighting stayed. It has not. A floor is now nine texture stops, one elite and the stair,
+-- which is a dungeon where most of what you walk into is a shop. Lowering FLOOR_TEXTURE is the obvious
+-- answer and it is a decision about what a floor IS, not a consequence of this one, so it is left
+-- standing and named here rather than taken quietly.
+--
+-- TWO, CLIMBING TO THREE. Against the stair alone that is one elite at the top of the stack and two at
+-- the bottom, which is the density Etrian Odyssey's floors carry and the reason its FOEs stay legible:
+-- a floor with four standing threats on it is a floor you route through, and a floor with one is a
+-- floor you route AROUND it.
+Descent.FLOOR_SEEN = 2
+Descent.FLOOR_SEEN_DEEP = 3
+
+-- How many fights floor `f` stands on its board, ends included. Linear between the two above, rounded,
+-- and the same shape as Descent.floorFights so the two ramps cannot drift apart.
+function Descent.floorSeen(f)
+    local span = math.max(1, Descent.FLOORS - 1)
+    local t = math.min(1, math.max(0, ((f or 1) - 1) / span))
+    return math.floor(Descent.FLOOR_SEEN
+        + t * (Descent.FLOOR_SEEN_DEEP - Descent.FLOOR_SEEN) + 0.5)
+end
 
 -- HOW MANY NON-FIGHT STOPS A FLOOR HOLDS, which is the other half of what the old stop count was doing
 -- and the half nobody is complaining about. The rest, the reliquary, the recruit, a merchant, a shrine,
@@ -590,26 +637,56 @@ Descent.FLOOR_ROLLED_MIN = 2
 -- for the same tile, so capping the fights hard would have re-seated all of them as merchants and left a
 -- floor with ten shops on it. Two separate numbers cannot do that to each other.
 -- NINE, raised with the frame (FLOOR_COLS). See that constant for why the two move together.
-Descent.FLOOR_TEXTURE = 9
+--
+-- SIX AGAIN, and the measurement that sent it back is worth keeping because it corrects the reason it
+-- was re-opened. Moving the ordinary fight off the board (Descent.PROWL_STEPS) made a floor look like a
+-- shopping street, and the obvious diagnosis was that the pivot had caused it. Swept against the report
+-- -- `. board-report 30 descent floor=4 stops=N` -- it had not:
+--
+--   stops   6      7      8      10
+--   services 5.90   6.90   7.90   9.80      (the row counts the rest and the way up as services)
+--
+-- ...and the board BEFORE the pivot ran 12 stops carrying three seated fights, which is about 8.8 on
+-- that same row. So the floor was already most-of-it-shops; the fights were standing in front of it.
+-- What the pivot did was take the screen away from the thing hiding the problem. The re-cut is a debt
+-- being paid, not a consequence being cleaned up, and it would have been owed either way.
+--
+-- SIX AND NOT FIVE, which the sweep also decided. Below six the elite count starts falling again (0.93
+-- to 0.77), because the elite cap is a share of the stop count -- the same coupling that bit once
+-- already when the board was shrunk without the promotion rule (Overworld:placeEncounters). Six is the
+-- floor of the range where the standing threats survive intact.
+--
+-- MATERIAL INCOME DOES NOT MOVE WITH IT, which is the one thing this constant is forbidden to disturb
+-- and the reason the sweep printed it: cache craft stock reads 22.3-23.5 flat from six stops to ten,
+-- because Descent.FLOOR_CACHES pins the caches and they land whatever this says. The paragraph above
+-- claimed that; the sweep is what checked it.
+Descent.FLOOR_TEXTURE = 6
 
 -- The board's stop count and its absolute fight cap, for a floor carrying `ends` objectives -- the stair
 -- plus whatever Descent.floorObjectives seated beside it. Returns both because they are one decision:
 -- the generator sizes and fills the board off the stop count and holds combat to the budget, and a stop
--- count that did not move with the budget would just re-seat the difference as texture.
+-- count that did not move with the budget would just re-seat the difference as texture. That is not a
+-- hypothetical -- it is the measured failure Descent.FLOOR_SEEN records.
 --
--- `ends` counts the stair, so the ordinary first floor passes 1 and rolls five.
+-- `ends` counts the stair, so an ordinary floor deep in the stack passes 1.
 --
--- THE RAMP REACHES THE ERRAND FLOORS FIRST, which is the reason it is applied here rather than to the
--- rolled count alone. The budget is a ceiling the ends are taken out of, so a deeper floor does not
--- merely deal more fights -- it has more ROOM for the work a house asked for before FLOOR_ROLLED_MIN
--- starts overshooting. Floor 3 carrying the stair and three errands rolls the minimum two and comes to
--- six; floor 11 carrying the same four ends rolls four and comes to eight. The climb lands where the
--- ladder is thickest, which is where a company notices it.
+-- WHAT IS CAPPED HERE IS THE ELITES, and that is the whole of what changed when the ordinary fight left
+-- the board. Nothing else seated is combat: Overworld:placeEncounters demotes an ordinary fight to
+-- texture on any floor that rolls its fighting on the walk (`wanderingCombat`), so the only thing this
+-- ceiling can still bind is the rank above it.
+--
+-- THE ENDS COME OFF IT FIRST, which is the old rule kept for its old reason and one new one. A floor
+-- deep in the errand ladder can carry the stair and four asked jobs, and standing two elites on top of
+-- five objective markers is a floor of nothing but markers. The new reason is that an end and an elite
+-- are now the SAME KIND of thing -- a fight the player can see and price before walking into it -- so
+-- they belong in one budget rather than competing across two. The ground fighting no longer comes out
+-- of this number at all, which is why the old floor under it (a minimum rolled share, so an errand-heavy
+-- floor was never all objectives and empty trail) could go: the prowl supplies the ground now, on every
+-- floor, whatever its ends.
 function Descent.floorBudget(ends, floor)
-    local rolled = math.max(Descent.FLOOR_ROLLED_MIN,
-        Descent.floorFights(floor) - math.max(1, ends or 1))
-    local stops = Descent.FLOOR_TEXTURE + rolled
-    return { min = stops, max = stops }, rolled
+    local seated = math.max(0, Descent.floorSeen(floor) - math.max(1, ends or 1))
+    local stops = Descent.FLOOR_TEXTURE + seated
+    return { min = stops, max = stops }, seated
 end
 
 -- CACHES ARE PINNED, and this is the thing the density bump above would otherwise have moved in
@@ -702,6 +779,10 @@ Descent.FLOOR_VAULTS = { min = 1, max = 1 }
 -- floorQuest's map without being named here.
 Descent.FLOOR_FEATURE_KEYS = {
     "trapCount", "trappedChestChance", "sideGateCount", "dropCount", "vaultCount",
+    -- Not a feature the generator PLACES but one it withholds: no ordinary fight is dealt onto a tile,
+    -- because the floor rolls its combat on the walk instead (Descent.PROWL_STEPS). It rides this list
+    -- for the reason the list exists -- so the instruments roll the same floor the game does.
+    "wanderingCombat",
 }
 
 -- Copy every one of them from a floor's map onto a generate params table. Returns `params`.
@@ -1088,7 +1169,23 @@ end
 --
 -- (The note above still describes floor one as 26x26 and the bottom as 33x33. That is prose left over
 -- from the retired warren carve -- there is no carve, and these are the sector grid.)
-Descent.FLOOR_COLS, Descent.FLOOR_ROWS = 11, 11
+-- TWELVE BY ELEVEN, WIDER THAN IT IS TALL. This was 11x11 under a square drawing frame; the frame is a
+-- rectangle now (Overworld.BOARD_W/BOARD_H) because the HUD never took the two axes evenly and because
+-- a board run to the top and bottom of the screen reads as crowded. The screen is 16:9 and the floor
+-- now sits the way the screen is shaped, with 74 logical pixels of air above and below it.
+--
+-- WHAT BINDS IS THE HEIGHT, not the width, and the first cut of this had it backwards. The board is
+-- 820 wide and 572 tall (Overworld.BOARD_W/BOARD_H), so at the 44 pixels a cell that
+-- tests/floor_grid_spec.lua holds as legible the ceilings are EIGHTEEN COLUMNS AND THIRTEEN ROWS.
+-- FLOOR_SPAN adds two to each axis across the run, which is what sets the pair here.
+--
+-- WHAT IT BUYS is ground: 176 cells against 121 at the top and 234 against 169 at the bottom, half as
+-- much floor again at both ends. WHAT IT COSTS is density, and that is the number to watch --
+-- FLOOR_TEXTURE did not move, so the same content spreads across more places and the `full` column in
+-- `. board-report` falls from 22% to about 16% at the top and 12% at the bottom. A floor that reads as
+-- EMPTY rather than unexplored is this change gone too far, and the lever when it does is the stop
+-- budget (FLOOR_TEXTURE) rather than the grid.
+Descent.FLOOR_COLS, Descent.FLOOR_ROWS = 16, 11
 
 -- HOW MUCH WIDER EACH FLOOR IS THAN THE ONE ABOVE IT: one tile of span per floor, laid on alternating
 -- axes, so floor 1's 26x26 becomes 27x26, then 27x27, and the bottom is fought on 33x33.
@@ -1506,11 +1603,16 @@ function Descent.new(player, seed, startFloor)
         -- The deepest floor this run has actually cleared, which is what a new depth record is measured
         -- against at extraction. Distinct from `floor`, which is where the party is standing.
         cleared = 0,
-        -- HOW MANY TILES THE COMPANY HAS WALKED THIS TRIP, which is the clock the wandering monsters
-        -- run on (Descent.RESPAWN_STEPS). On the run rather than the floor: a company that walks up and
-        -- down between two floors is still covering ground, and a counter that reset per floor would
-        -- make stair-pacing the way to avoid ever meeting one.
+        -- HOW MANY TILES THE COMPANY HAS WALKED THIS TRIP. On the run rather than the floor: a company
+        -- that walks up and down between two floors is still covering ground, and a counter that reset
+        -- per floor would make stair-pacing the way to avoid ever meeting anything.
         steps = 0,
+        -- THE PROWL METER (Descent.PROWL_STEPS): how much walking has gone by since the last fight, and
+        -- which leg of the walk this is -- the salt the next interval and the next monster are dealt
+        -- off. On the run for the same reason `steps` is, and with more force: a meter that emptied at
+        -- the stairs would make pacing between two floors the way to never be found.
+        prowl = 0,
+        leg = 0,
         -- Iselle's tally: what this company has left forming behind it. Climbs when they come back up
         -- early, falls when they go deeper. See the count section below.
         count = 0,
@@ -1814,64 +1916,136 @@ end
 -- (Experience.STEP), never the reward for a fight actually fought. The floor's PLACES stay
 -- spent, so re-treading pays combat and nothing else -- no second cache, no second relic -- which is
 -- most of the answer on its own.
--- HOW MANY STEPS BETWEEN WANDERERS: every this-many tiles walked, one fight the company has already
--- put down gets back up somewhere else on the floor (Descent.wakeOne).
---
--- WHY A FLOOR REFILLS AT ALL. rearmFloor already brings a floor back when you LEAVE and return, which
--- keeps a re-entered floor dangerous -- but while you are standing on one, clearing it made it safe for
--- good, so the back half of every floor was a walk. Wizardry's answer is the wandering monster: the
--- level is never finished with you, it just gets quieter for a while.
---
--- AND IT IS WHAT MAKES RE-TREADING A REAL ANSWER, which is the gap this closes. A company that is
--- underlevelled for the floor below could always go back up and grind -- re-armed fights pay in full,
--- deliberately -- but nothing ASKED them to, and a cleared shallow floor paid nothing while you walked
--- it. Now the ground you know keeps offering, which is the legitimate way to close a level gap.
---
--- TWELVE, AGAINST A MEASURED FLOOR. `. board-report` puts a floor at ~91 places with a 23-step crossing,
--- so a company that walks the length of one meets about two wanderers, and a company that paces a
--- cleared floor to farm gets roughly one fight per crossing. That is slow enough that grinding is a
--- choice with a time cost rather than a faucet, and frequent enough that "I cleared this floor" never
--- means "this floor is now a corridor".
-Descent.RESPAWN_STEPS = 12
+-- ---------------------------------------------------------------------------
+-- The prowl: where the ordinary fighting lives
+-- ---------------------------------------------------------------------------
 
--- How far from the company a woken fight has to be. Four, so a wanderer never appears in the tile you
--- are about to step onto or the one you just left -- it has to read as something that walked back into
--- a room behind you, not as the floor spawning a fight on your head.
-Descent.RESPAWN_MIN_DIST = 4
+-- HOW MANY TILES OF WALKING BUY A FIGHT. The prowl meter fills a step at a time, and when it tops out
+-- something finds the company where it stands.
+--
+-- THE FIGHTING IS NO LONGER ON THE BOARD, and that is the pivot this constant belongs to. Ordinary
+-- combat used to be SEATED -- dealt onto tiles at generation and drawn on the map -- so a floor was a
+-- list you could read, price and pick from. Wizardry does not seat its monsters: the maze is the fixed
+-- thing and the fighting is rolled as you walk it, which is why a level is never "cleared" and why
+-- walking back down to seven is exactly as dangerous as the first trip down it. Seating was the last
+-- thing in this dungeon still arguing the other way, and it lost to the complaint Overworld:blockRoutes
+-- was built for and only half answered: *I can reveal the entire map then selectively choose what to
+-- encounter.* Blocking made 60% of the fights unavoidable; it could not stop the map being read.
+--
+-- WHAT STAYS ON THE BOARD is everything you are meant to see coming -- the stair's general, the errands
+-- a house posted, the doors a circle holds shut, and the ELITES. That last one is the deliberate half
+-- of the split: a standing threat you can see, judge against your company and walk around is the job
+-- Etrian Odyssey gives its FOEs, and deleting it along with the ordinary fight would leave a floor with
+-- nothing on it worth reading the map FOR. So the map answers "what is worth going to and what is
+-- standing in front of it", and the walk answers "what finds you on the way".
+--
+-- A COUNTER RATHER THAN A PER-STEP CHANCE, and the difference is whether a company can be unlucky twice
+-- running. A flat probability streaks -- three fights inside six tiles is a trip-ender and reads as the
+-- game cheating -- where a counter guarantees the spacing and spends its randomness on WHERE inside the
+-- window the fight lands. Same mean, no cliff.
+--
+-- SIXTEEN, AND THIS IS THE FIRST NUMBER TO TUNE. `. board-report` puts a floor near 91 places with a
+-- 23-step crossing, so clearing one is somewhere around 70 steps of walking and this deals about four
+-- fights into it, on top of the elites and the ends the board still seats. That lands a floor near six
+-- fights against the four-to-five Descent.FLOOR_FIGHTS used to buy alone -- deliberately up, because
+-- half the point of a rolled fight is that you may decline it (the flee roll on the deploy screen), so
+-- the number DEALT and the number FOUGHT stopped being the same number. Neither the board report nor
+-- any spec can measure this one: it is steps-per-fight over a real walk, so it wants a playtest.
+Descent.PROWL_STEPS = 16
 
--- WAKE ONE CLEARED FIGHT somewhere on this floor, away from the company. Returns the cell, or nil when
--- there is nothing eligible (a floor whose fights are all still standing, or all too close).
---
--- ONLY COMBAT AND ELITES, which is rearmFloor's own rule and for its reason: what comes back is what
--- LIVES on a floor. A spent cache, a taken recruit, a found secret and a paid crossroads are places
--- rather than inhabitants, and a floor that regrew its chests would be a faucet.
---
--- DEALT OFF THE RUN'S SEED AND THE STEP COUNT, not math.random, so a floor walked twice from one save
--- wakes the same fights in the same places. A bug report about a wanderer can be replayed, which is the
+-- How far either side of PROWL_STEPS a leg may actually run, so the meter is not a metronome the player
+-- can count on their fingers. Twelve to twenty.
+Descent.PROWL_JITTER = 4
+
+-- HOW LONG THIS PARTICULAR LEG RUNS, in steps. Dealt off the run's seed and the LEG NUMBER -- how many
+-- fights the prowl has already thrown -- rather than off math.random, so a floor walked twice from one
+-- save meets the same fights at the same tiles and a bug report about one can be replayed. That is the
 -- rule every other roll down here keeps (models/seed.lua).
-function Descent.wakeOne(run, grid, px, py)
-    if not (run and grid and grid.cells) then return nil end
-    local cands = {}
-    for y = 1, grid.rows do
-        for x = 1, grid.cols do
-            local c = grid.cells[y][x]
-            local e = c.encounter
-            if e and c.cleared and (e.kind == "combat" or e.kind == "elite")
-                and math.abs(x - (px or 0)) + math.abs(y - (py or 0)) >= Descent.RESPAWN_MIN_DIST then
-                cands[#cands + 1] = c
-            end
-        end
+function Descent.prowlTarget(run)
+    local j = Descent.PROWL_JITTER
+    -- HASHED TWICE, and the second pass is not superstition. `hash` is one multiply-and-add, so
+    -- consecutive legs come out of it a fixed stride apart -- and a fixed stride taken modulo a small
+    -- window walks the window in a short cycle instead of sampling it, which is a leg length the player
+    -- could learn by counting. Folding the first result back through decorrelates the neighbours.
+    local n = hash(hash((run and run.seed) or 0, 4093, (run and run.leg) or 0), 7717, 0) % (2 * j + 1)
+    return Descent.PROWL_STEPS - j + n
+end
+
+-- HOW MANY STEPS OF WARNING the gauge owes before a fight could possibly land. Two, so the shortest leg
+-- there is still turns the readout over before it fires -- a gauge that reached its top band on the same
+-- step the fight arrived would be a notification, not a warning.
+Descent.PROWL_WARN = 2
+
+-- WHAT THE READOUT SAYS: "calm" | "stirring" | "close". The company can feel the floor getting ready.
+--
+-- BANDED OFF THE WINDOW, NOT OFF THIS LEG'S TARGET, and the difference is whether the gauge is a warning
+-- or a countdown. Against the real target the reading would turn over at the same fraction of every leg
+-- and the player could read the exact step the fight lands on -- the jitter would be visible in the
+-- gauge and would stop being jitter.
+--
+-- So "close" begins PROWL_WARN steps before the EARLIEST a fight can arrive, and everything after that
+-- is one undifferentiated band covering the whole window. Two facts hold at once inside it: something
+-- can find you from here on, and nothing in the readout says when. That is the reading Etrian Odyssey's
+-- gauge gives, and it is what makes it a decision -- press on, or turn back for the stair -- rather than
+-- an announcement.
+function Descent.prowlBand(run)
+    local p = (run and run.prowl) or 0
+    local close = Descent.PROWL_STEPS - Descent.PROWL_JITTER - Descent.PROWL_WARN
+    if p >= close then return "close" end
+    if p >= close / 2 then return "stirring" end
+    return "calm"
+end
+
+-- One tile walked. True when the meter has topped out and this step is the one something finds you on.
+function Descent.stepProwl(run)
+    if not run then return false end
+    run.prowl = (run.prowl or 0) + 1
+    return run.prowl >= Descent.prowlTarget(run)
+end
+
+-- The meter back to nothing and the leg counter on, which re-rolls the next interval. Called when the
+-- prowl throws a fight -- and ALSO whenever a seated fight is entered, because a company that has just
+-- been in a battle should not walk four tiles into another one: what the meter measures is time since
+-- the last fight, not time since the last ROLLED fight.
+function Descent.calmProwl(run)
+    if not run then return end
+    run.prowl = 0
+    run.leg = (run.leg or 0) + 1
+end
+
+-- WHAT FINDS YOU. A weighted pick of one ordinary fight from the floor's own pool (Descent.floorPool),
+-- returned as the plain encounter table a cell carries, tagged `wandering` so everything downstream can
+-- tell a rolled fight from a seated one -- the flee offer reads it, and so does the spoils path.
+--
+-- ELITES ARE NOT ELIGIBLE, which is the split above held at the one seam that could quietly undo it. An
+-- elite is a thing you are meant to SEE; one thrown by the meter would be an unseen elite, which is the
+-- worst of both designs -- the fight you cannot prepare for and cannot route around.
+--
+-- SORTED BY ID BEFORE THE PICK, and this is not tidiness. Encounter.pool is keyed off the registry and
+-- says outright that its order is not guaranteed, so an unsorted weighted walk would deal a different
+-- monster after any change that reshuffles the table -- the same seed, the same leg, a different fight.
+-- The sort is what makes this reproducible at all.
+function Descent.wander(run, pool)
+    if not (run and pool) then return nil end
+    local sub = {}
+    for _, e in ipairs(pool) do
+        if e.kind == "combat" and (e.weight or 1) > 0 then sub[#sub + 1] = e end
     end
-    if #cands == 0 then return nil end
-    -- Sorted before the pick: the walk above is row-major and stable, but keeping the ordering explicit
-    -- is what makes "same seed, same wanderer" a property of this function rather than of a loop.
-    table.sort(cands, function(a, b)
-        if a.y ~= b.y then return a.y < b.y end
-        return a.x < b.x
-    end)
-    local pick = cands[(hash(run.seed or 0, 983, run.steps or 0) % #cands) + 1]
-    pick.cleared = nil
-    return pick
+    if #sub == 0 then return nil end
+    table.sort(sub, function(a, b) return tostring(a.id) < tostring(b.id) end)
+
+    local total = 0
+    for _, e in ipairs(sub) do total = total + (e.weight or 1) end
+    -- ONE hash for the draw, scaled across the whole pool -- not one per candidate. A per-iteration walk
+    -- over a linear hash is not a roll: consecutive salts come out correlated and the pick creeps through
+    -- the list in order instead of sampling it.
+    local r = (hash(run.seed or 0, 6151, run.leg or 0) % 1000000) / 1000000 * total
+    local pick = sub[#sub]
+    for _, e in ipairs(sub) do
+        r = r - (e.weight or 1)
+        if r <= 0 then pick = e break end
+    end
+    return { kind = "combat", id = pick.id, name = pick.name, wandering = true }
 end
 
 function Descent.rearmFloor(grid)
@@ -2160,9 +2334,10 @@ end
 
 -- THE DEEPEST STAIR THIS COMPANY MAY WALK IN BY, which is 1 until it has mapped something below.
 --
--- WIZARDRY'S SHAFT AND DAPHNE'S ELEVATOR, and it is the payoff for the map book existing at all. Without
--- it a persistent dungeon means only that you re-walk ground you have already cleared to reach the part
--- you have not -- which is the map's cost with none of its benefit, and gets worse every floor.
+-- WIZARDRY'S SHAFT AND DAPHNE'S ELEVATOR -- the original and Wizardry Variants Daphne, the same lineage
+-- two generations apart -- and it is the payoff for the map book existing at all. Without it a
+-- persistent dungeon means only that you re-walk ground you have already cleared to reach the part you
+-- have not -- which is the map's cost with none of its benefit, and gets worse every floor.
 --
 -- READ OFF THE MAP RATHER THAN OFF THE DEPTH RECORD, and the two differ in the case that matters: a
 -- company wiped on arrival has STOOD on that floor (Descent.reached writes `deepest`) without having
@@ -2656,10 +2831,19 @@ function Descent.biomeAt(run, floor)
     return sin and sin.biome or "underworld"
 end
 
--- What the landing calls the floor below it: the circle's name, or the thing waiting under all of them.
+-- What the landing calls the floor below it, AND IT IS A NUMBER NOW.
+--
+-- It was the circle's name -- "Below you is Wrath" -- which read as a place and was the one thing the
+-- player could be told about the ground they were about to commit to. The circles are no longer the
+-- unit anybody navigates by: a company re-enters at the deepest floor it has mapped (Descent.entryFloor)
+-- and the Gate's own rows are numbered, so naming a sin here made the stair speak a vocabulary nothing
+-- else on the route used. Depth is the figure the player is actually chasing, so the stair states it.
+--
+-- THE BOTTOM KEEPS ITS NAME, because the Hollow Crown is not a circle -- it is the thing under all of
+-- them, and naming it is the whole of the warning a player gets before the last floor of the run.
 function Descent.nameOf(run, floor)
-    local sin = Descent.sinAt(run, floor)
-    return sin and sin.name or "the Hollow Crown"
+    if Descent.isBottom(floor) then return "the Hollow Crown" end
+    return "floor " .. tostring(floor)
 end
 
 function Descent.floorId(floor)
@@ -2789,7 +2973,7 @@ function Descent.floorQuest(run, player)
     if not sin then
         return {
             id = Descent.floorId(floor),
-            name = "The Descent — The Hollow Crown",
+            name = "Floor " .. floor .. " — The Hollow Crown",
             description = "The bottom.",
             -- No house holds this floor, so nothing tags its materials. Deliberate: the last floor is
             -- not anybody's errand.
@@ -2823,8 +3007,12 @@ function Descent.floorQuest(run, player)
                 -- Places that read as absent until somebody looks (Overworld:placeSecrets).
                 secrets = true,
                 -- An absolute cap, not a share -- and the Crown's own end is already subtracted from it
-                -- above. See Descent.FLOOR_FIGHTS.
+                -- above. See Descent.FLOOR_FIGHTS. With the ordinary fight rolled on the walk this
+                -- binds the ELITES and nothing else, which is the only seated combat left.
                 combatBudget = rolled,
+                -- NO ORDINARY FIGHT IS DEALT ONTO A TILE. It is rolled as the company walks instead
+                -- (Descent.PROWL_STEPS); the board keeps the Crown, the elites and the places.
+                wanderingCombat = true,
                 guaranteeKinds = guaranteeKinds(player, floor),
                 guarantee = { rest = { count = Descent.FLOOR_RESTS } },
                 objective = {
@@ -2846,7 +3034,12 @@ function Descent.floorQuest(run, player)
 
     return {
         id = Descent.floorId(floor),
-        name = "The Descent — " .. sin.name,
+        -- THE TITLE OVER THE BOARD IS THE FLOOR NUMBER. It named the circle ("The Descent — Wrath")
+        -- and the circles stopped being how anybody navigates: the Gate's rows are numbered, a
+        -- company re-enters at the deepest floor it has mapped, and depth is the figure being chased.
+        -- The sin still decides the ground, the house and the guardian -- it simply no longer labels
+        -- the screen. See Descent.nameOf for the same move on the stair.
+        name = "Floor " .. floor,
         description = "Down.",
         -- The circle's house. states/game.lua resolves `game.houseMaterial` from this through
         -- Vendor.get(...).class, so naming the vendor is the whole of the material tagging: the floor's
@@ -2896,8 +3089,13 @@ function Descent.floorQuest(run, player)
             secrets = true,
             -- HOW MANY FIGHTS THE POOL MAY DEAL, absolute, and the stair and every errand and opener on
             -- this floor have already been taken off it (Descent.floorBudget). A share could not do this
-            -- job: the ends are seated by a different pass and were never inside the fraction.
+            -- job: the ends are seated by a different pass and were never inside the fraction. With the
+            -- ordinary fight rolled on the walk it binds the ELITES, the only seated combat left.
             combatBudget = rolled,
+            -- NO ORDINARY FIGHT IS DEALT ONTO A TILE -- it is rolled as the company walks instead
+            -- (Descent.PROWL_STEPS). What the board still seats is what the player is meant to see
+            -- coming: this floor's ends, its elites, and the places.
+            wanderingCombat = true,
             -- The reliquary, the rest, and -- while there is room in the company -- somebody to join it.
             guaranteeKinds = guaranteeKinds(player, floor),
             -- ...and how many of each, where a floor differs from a ground. See Descent.FLOOR_RESTS.
@@ -3096,9 +3294,8 @@ function Descent.reached(player, floor)
     return player.deepest
 end
 
--- WHAT A COMPANY HAS TO HAVE DONE BEFORE IT IS SHOWN THE AI CONTROLS -- the Armory's Tactics tab and
--- the fight's Auto button (ui/panels/party.lua, states/battle.lua's autoAllowed). One floor: the very
--- first descent unlocks them, and until then neither control is drawn anywhere.
+-- WHAT A COMPANY HAS TO HAVE DONE BEFORE IT IS SHOWN THE AI CONTROLS -- the Armory's Tactics tab and,
+-- one step behind it, the fight's Auto button (ui/panels/party.lua, states/battle.lua's autoAllowed).
 --
 -- WHY THEY ARE HIDDEN AT ALL. Tactics and Auto are the same feature seen twice -- a rule list, and the
 -- switch that hands the turn to it -- and they are the one part of this game that plays it FOR you.
@@ -3107,20 +3304,33 @@ end
 -- has now asked themselves ("do I have to move all four of these every turn?"). Nothing about the
 -- feature changes; what changes is that it has become a decision.
 --
--- Read off `deepest` rather than a flag of its own, so it is the same ledger every other depth gate in
--- the game uses (models/building.lua's unlockDepth, models/market.lua's stock).
-Descent.TACTICS_DEPTH = 1
+-- THE TAB OPENS ON WHICHEVER OF TWO THINGS HAPPENS FIRST, and the pair is the point: the question the
+-- feature answers is asked by a trip, and a trip can end in either direction.
+--
+--   came back up      the company is standing in the city having been out (Descent.returnedToCity)
+--   went deeper       it is standing on floor two (Descent.deepest)
+--
+-- A company that surfaces after one floor has finished a trip and is reading its screens; a company
+-- that presses straight on has answered the same question underground and would otherwise be held at
+-- the old gate until it chose to climb. Neither route can be the only one.
+--
+-- WHY NOT `expeditionsOut`, WHICH THIS USED TO READ. That number takes the high-water floor, so it hit
+-- one the instant the party set foot on floor ONE -- the tab and the button both arrived inside the
+-- first fight of the first descent, which is exactly the "before the player has felt the thing" case
+-- the paragraph above exists to prevent. The bounty door it was reading for is not lost: a finished
+-- bounty ends in the city, so the first clause covers it.
+Descent.TACTICS_DEPTH = 2
 
--- READ OFF EXPEDITIONS RATHER THAN FLOORS, for the reason Player.expeditionsOut gives: the stair is no
--- longer the only way out of the city, and a gate that only a descent could open would leave Auto and
--- the rule lists behind a door most companies never walk through.
 function Descent.tacticsUnlocked(player)
-    return require("models.player").expeditionsOut(player) >= Descent.TACTICS_DEPTH
+    if not player then return false end
+    if Descent.returnedToCity(player) then return true end
+    return Descent.deepest(player) >= Descent.TACTICS_DEPTH
 end
 
 -- ...and whether the window explaining them has been read. A one-way mark of the same shape as
--- `tallyTaught`: set when the tutorial window is closed (states/hub.lua), and until then the Armory
--- wears the red dot so an unlock that happened underground is still announced in the city.
+-- `tallyTaught`: set when the tutorial window is closed (ui/panels/party.lua's openNote), and until
+-- then the Armory wears the red dot so an unlock that happened underground is still announced in the
+-- city.
 function Descent.tacticsTaught(player)
     return (player and player.tacticsTaught) or false
 end
@@ -3128,6 +3338,40 @@ end
 function Descent.markTacticsTaught(player)
     if not player then return false end
     player.tacticsTaught = true
+    return true
+end
+
+-- THE SWITCH IS ONE STEP BEHIND THE TAB, and this is the whole of that step.
+--
+-- Auto hands the turn to the rule list. A button that does that, standing on the board next to a tab
+-- the player has never opened, is a control whose only description is its own three letters -- press it
+-- and the game plays itself for reasons nobody has explained. So the button waits for the window: the
+-- Tactics tab arrives first, wearing its pip, and reading what is behind it is what puts Auto on the
+-- board.
+--
+-- Read off `tacticsTaught` ALONE rather than anded with the unlock, because the mark cannot be set
+-- without it -- the only thing that sets it is closing a window opened from a tab that only exists once
+-- the gate is open -- and an `and` here would be a second copy of that reasoning to keep in step.
+function Descent.autoUnlocked(player)
+    return Descent.tacticsTaught(player)
+end
+
+-- WHETHER THE COMPANY HAS WALKED INTO THE CITY WITH A TRIP BEHIND IT -- the first half of the Tactics
+-- gate above, and the only thing in the game that asks it.
+--
+-- A ONE-WAY MARK rather than a reading of some other ledger, for the reason `cityReached` below gives
+-- about itself: nothing else answers this. `deepest` is the same number on the stair down and the stair
+-- up, the day does not move, and the run is gone by the time the town is drawn -- so "has been below"
+-- and "is home again" can only be told apart by the screen that is the coming home. Stamped by
+-- states/hub.lua on any hub entry made by a company that has been out (Player.expeditionsOut, so a
+-- bounty finished counts as the trip it is).
+function Descent.returnedToCity(player)
+    return (player and player.returnedToCity) or false
+end
+
+function Descent.markReturnedToCity(player)
+    if not player then return false end
+    player.returnedToCity = true
     return true
 end
 
@@ -3755,8 +3999,18 @@ function Descent.snapshot(run)
         companion = (run.companion and run.companion.house) and
             { house = run.companion.house, floor = run.companion.floor or 1 } or nil,
         cleared = run.cleared or 0,
-        -- ...and the step clock the wanderers run on, or a reload would hand the company a quiet floor.
+        -- ...and the step clock, or a reload would hand the company a quiet floor.
         steps = run.steps or 0,
+        -- THE PROWL METER AND ITS LEG NUMBER (Descent.PROWL_STEPS), and both have to ride or the whole
+        -- thing is optional. `prowl` is how full the meter is; without it a reload empties it, and a
+        -- player who could see the readout go red would learn to quit and Continue rather than fight.
+        -- `leg` is what the next interval and the next monster are dealt off, so a run that dropped it
+        -- would re-deal the same fight at the same spacing after every load.
+        --
+        -- Purely additive: an older save reads both as nil and starts its meter empty, which is exactly
+        -- what a company that has just walked in should have. Save.VERSION does not move.
+        prowl = run.prowl or 0,
+        leg = run.leg or 0,
         pending = pending,
         -- (Iselle's tally STOOD HERE and has moved to the player -- see Descent.count for why. A run
         -- that resets on extraction cannot carry a number the city has to keep reading. models/save.lua
@@ -3819,6 +4073,10 @@ function Descent.restore(snap)
             { house = snap.companion.house, floor = tonumber(snap.companion.floor) or 1 } or nil,
         cleared = snap.cleared or 0,
         steps = snap.steps or 0, -- absent on a save from before wanderers, which reads as a fresh clock
+        -- The prowl meter and its leg, both absent on a save written before the fighting moved off the
+        -- board (Descent.PROWL_STEPS) and both reading as a company that has just walked in.
+        prowl = snap.prowl or 0,
+        leg = snap.leg or 0,
         pending = pending,
         -- (No `count` -- the tally is the player's. models/save.lua carries an old save's forward.)
         tollPaid = (function()                                              -- ...and see snapshot

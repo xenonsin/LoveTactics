@@ -269,6 +269,15 @@ function EncounterBattle.spoils(opts)
     -- The husk pity tally is written HERE rather than at each branch, on the way out -- see the tail of
     -- this function. Held so the branches below can stay about what a fight pays.
     local run = opts.run
+    -- What the party broke OPEN on the way through: craft stock prised out of the board's supply crates
+    -- (models/prop.lua's creditSalvage), tallied on the combat as the crates went. Read here rather
+    -- than at the tail beside the skim and the bounty, because unlike those two it is not coin -- it
+    -- lands in the salvage each branch already computes, so it has to be in hand before they run.
+    --
+    -- A walked-off fight passes its combat too (states/game.lua), so a stop resolved without watching
+    -- pays for whatever the AI happened to splinter -- the same rule the played board follows, since a
+    -- prop takes no side and the supplies are simply on the floor when the last enemy falls.
+    local salvaged = (opts.combat and opts.combat.salvaged) or 0
 
     if kind == "combat" or kind == "elite" then
         spoils = Spoils.roll({
@@ -283,6 +292,8 @@ function EncounterBattle.spoils(opts)
             rewardScale = EncounterBattle.TIER_GOLD[encounter.tier or 1] or 1.0,
             tier = encounter.tier,
             houseMaterial = opts.houseMaterial,
+            salvage = salvaged, -- ...plus whatever crates were broken open on the board
+
             -- So a body with an authored `drops` list gives what the company does not already hold
             -- before it repeats itself (docs/drops.md). Optional on the roll, and the walk-off path
             -- reaches this same function, so both routes read the same ledger.
@@ -303,6 +314,9 @@ function EncounterBattle.spoils(opts)
         spoils = { gold = Spoils.endPurse("general", opts.floorLevel or opts.day),
         loot = {}, materials = Spoils.materials({
             kind = kind, tier = encounter.tier, houseMaterial = opts.houseMaterial,
+            -- A general's chamber has crates in it like anywhere else, and the fight you came for is
+            -- not the one to make an exception of -- the same argument the salvage floor above makes.
+            salvage = salvaged,
         }) }
     end
 
@@ -342,6 +356,12 @@ function EncounterBattle.spoils(opts)
     end
 
     local combat = opts.combat
+    -- (A fight that pays NOTHING pays no crate salvage either -- the two branches above are the only
+    -- ones that build a materials table, and a kind with no spoils of its own does not grow one here.
+    -- Deliberate, and the opposite call to the skim below: coin is coin whoever handed it over, but
+    -- minting a salvage table for a scripted leg would drop forging stock into the prologue, which
+    -- teaches no such thing and has no Forge to spend it at.)
+    --
     -- Gold picked off the enemy DURING the fight (Combat.skimGold, the Skimmer's Cut) rides out on
     -- the spoils rather than through a purse-path of its own. Folded in after the roll so it is
     -- added to the takings rather than replacing them, and a table is minted when the fight rolled

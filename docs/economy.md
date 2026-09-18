@@ -105,12 +105,14 @@ burning coin the Forge is waiting for is a real decision taken at the moment of 
 
 One claim, and it is about what *cannot* happen: **nothing underground is ever priced against a
 permanent upgrade.** The failure mode is silent — an ask that drifts over the ceiling does not crash, it
-just puts a floor-three relic beside a forge rung — so it is pinned in
+just puts a floor-three find beside a forge rung — so it is pinned in
 [tests/economy_spec.lua](../tests/economy_spec.lua) rather than left to reading.
 
 What holds it up, each one line somewhere and each invisible if it broke:
 
-- `Spoils.askingPrice` clamps every underground quote, or a relic slate reaches a forge rung again.
+- `Spoils.askingPrice` clamps every underground quote, or a merchant's shelf reaches a forge rung
+  again. (It was a *relic slate* that first made this bite; that shelf is parked — [relics.md](relics.md)
+  — and the clamp still holds the gear the road sells.)
 - `Spoils.endPurse` is the only place an end's income is decided, and it is capped at floor 11, or a
   late campaign road out-pays the bottom of the rift.
 - **Every price in the game is a shelf price**, so every price needs a shelf

@@ -2,8 +2,12 @@
 -- wrings it out of a hazard, the Culler's Kit renders it off a body -- and it exists as a blueprint only
 -- so that what you make is a real item rather than a special case.
 --
--- Unpriced and classless, so no vendor stocks it and Spoils.lootCandidates cannot roll it: the only way
--- into a grid is to have brewed it (Combat.grantItem, which stamps `ephemeral` on the instance so it is
+-- It carries the Herbalist's class -- it IS her craft -- but NEITHER AXIS: no `price`, so no vendor
+-- stocks it and the supply track cannot draw it, and no `dropTier`, so no rank pool holds it
+-- (models/spoils.lua reads those two fields, never the class). It used to say "unpriced and
+-- classless" and lean on the class half, which stopped being the gate the day `class` became
+-- mandatory and every bare item was bucketed `creature`; the tier it was minted then put it in the
+-- pool it says here it cannot reach. The only way into a grid is to have brewed it (Combat.grantItem, which stamps `ephemeral` on the instance so it is
 -- stripped at the gate). That is the whole reason it can afford to be generous -- it is never bought,
 -- never sold, and never leaves the field it was made on.
 --
@@ -19,8 +23,7 @@ return {
     flavor = "Whatever the ground was doing, it was doing it very vigorously. That is most of herbalism.",
     sprite = "assets/items/consumable_wildcraft_reagent.png",
     type = "consumable",
-    class = "creature",
-    dropTier = 7,
+    class = "herbalist",
     tags = { "draught", "restorative" },
     ephemeral = true, -- belt and braces: the grant stamps the instance too
     maxStack = 5,

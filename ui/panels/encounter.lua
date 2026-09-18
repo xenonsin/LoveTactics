@@ -13,6 +13,7 @@
 --   })
 
 local CloseButton = require("ui.close_button")
+local EncounterModel = require("models.encounter") -- the shared per-kind gloss; see below
 local Scale = require("scale")
 local Theme = require("ui.theme")
 
@@ -21,14 +22,14 @@ Encounter.__index = Encounter
 
 local BOX_W, BOX_H = 460, 240
 
-local KIND_TEXT = {
-    combat = "A hostile blocks the trail. Stand and fight.",
-    elite = "A fearsome foe lurks here. Great risk, great reward.",
-    town = "A safe waystation. Rest and resupply.",
-    treasure = "An unguarded cache sits here. Claim what's inside.",
-    rest = "Your party makes camp. Rest, and heal what the road cost you.",
-    objective = "Your quarry awaits. Defeat it to complete the quest.",
-}
+-- WHAT THE STOP IS, read out of Encounter.GLOSS rather than written here.
+--
+-- Six sentences of this panel's own stood in this spot, covering six of the twenty-two kinds a board
+-- can put a mark down for. The map has grown a hover readout that has to say the same thing about the
+-- same tile (ui/encounter_tooltip.lua), and two tables of prose about one stop are two surfaces that
+-- agree until somebody edits one of them -- so the sentence went to the model that owns the kind and
+-- both read it. Asked through Encounter.gloss, so the ward standing in front of a stair and the end
+-- behind it are told apart here exactly as the plate on the map tells them apart.
 
 -- Verb shown on the resolve button for non-combat encounters.
 local RESOLVE_LABEL = {
@@ -88,7 +89,7 @@ function Encounter:draw()
 
     love.graphics.setFont(self.bodyFont)
     Theme.set(Theme.ink)
-    love.graphics.printf(KIND_TEXT[self.encounter.kind] or "",
+    love.graphics.printf(EncounterModel.gloss(self.encounter) or "",
         self.boxX + 30, self.boxY + 96, BOX_W - 60, "center")
 
     -- Resolve button.

@@ -12,7 +12,7 @@
 --                 Cleave down the lane. Answer: the bow from the high ground, and brace / step the Cleave.
 --   2  (66-33%)   The Roar: a telegraphed channel that calls self-destruct Bomblets and quickens it.
 --                 Answer: Stun or shove to break the channel; AoE to pop the Bomblets at range.
---   3  (33-0%)    The Fixation: fast and enraged, it hunts your softest body. Answer: Taunt it onto the
+--   3  (33-0%)    The Hunt: fast and enraged, it goes for your softest body. Answer: Taunt it onto the
 --                 knight, defang it (Disarm), intercept (Oathward), sustain (Heal), finish (a wall-slam).
 -- Heave is a GENERIC throw (data/items/ability/ability_heave.lua) it merely uses -- to lob an adjacent
 -- Bomblet at your line -- not a demon-only trick; players can carry the same verb.

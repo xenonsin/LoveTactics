@@ -88,7 +88,20 @@ end
 local function twoShallowItems()
     local out = {}
     for id, def in pairs(Item.defs) do
-        if def.dropTier and not def.bound and Spoils.depthOf(def) <= 1 then out[#out + 1] = id end
+        -- THE SAME THREE REFUSALS THE AUTHORED ROUTE ITSELF MAKES (models/spoils.lua's `add`): bound,
+        -- noSteal, and consumable -- supply is not a find, so a potion never occupies a rank slot.
+        -- Picking outside that domain is picking a fixture the route CANNOT pay whatever it does,
+        -- which reddens the case for a reason that has nothing to do with unowned-first.
+        --
+        -- It used to ask only `not def.bound`, and was green on a domain accident: the two alphabetically
+        -- first shallow ids were ability_haste and ability_omnislash -- ordinary spells mis-bucketed as
+        -- `creature` and carrying a dropTier. Re-homing them onto real shelves slid the pick down onto
+        -- consumable_bannerets_steel, which no authored drop can ever hand over. The fixture moved; the
+        -- rule did not.
+        if def.dropTier and not def.bound and not def.noSteal and def.type ~= "consumable"
+            and Spoils.depthOf(def) <= 1 then
+            out[#out + 1] = id
+        end
     end
     table.sort(out)
     return out[1], out[2]
@@ -725,38 +738,72 @@ return {
         -- unpriced items a `dropTier`, because the pool admits either. All 92 natural weapons in the
         -- game were in the drop table, and nothing said so.
         --
-        -- Asserted on the POOL rather than on a roll: at a 92-in-N draw a sampling test would need
-        -- thousands of fights to fail reliably, which is a test that goes green on a bad build.
-        name = "a natural weapon never enters the drop pool, at any depth",
+        -- IT ASKS THE CLASS NOW, AND THAT IS THE WHOLE POINT OF THE REWRITE. This case used to build
+        -- its set from `def.noSteal` and call the result "natural weapons" -- which made it circular:
+        -- it asserted that flagged items are refused by a pool whose only test IS the flag, so it
+        -- could never see a body part that had not been flagged. Seventeen had not been. A demon
+        -- grunt's Brimstone, the Champion's Cleave and Roar, Ira's own signature blow and Gula's
+        -- knife all sat in their carriers' grids carrying a `dropTier` and no gate, and a body's grid
+        -- feeds the pool directly (models/spoils.lua's `add`) -- so a boss's whole rule was a drop.
+        --
+        -- `class == "creature"` is the thing the rule is actually about (data/classes/creature.lua:
+        -- kit that belongs to no job), and it is authored rather than derived from the gate. So the
+        -- two are independent again, and the second can be checked against the first.
+        name = "creature kit never enters the drop pool, at any depth",
         fn = function()
             local Class = require("models.class")
-            local natural, tiered = {}, 0
+            local creature = {}
             for id, def in pairs(Item.defs) do
-                if def.noSteal then
-                    natural[id] = true
-                    if def.dropTier then tiered = tiered + 1 end
-                end
+                if def.class == "creature" then creature[id] = true end
             end
             local n = 0
-            for _ in pairs(natural) do n = n + 1 end
-            assert(n > 50, "only " .. n .. " noSteal items -- this case is measuring almost nothing")
+            for _ in pairs(creature) do n = n + 1 end
+            assert(n > 100, "only " .. n .. " creature items -- this case is measuring almost nothing")
+
+            -- THE STRUCTURAL HALF, and the one that holds without throwing a single die. Un-droppable
+            -- is not a property to sample for; it is two fields. `noSteal`/`bound` is what both pool
+            -- doors read, and the absence of an axis is what keeps the ware off the Market counter as
+            -- well -- Vendor.stock lists on `price or dropTier`, and the Market's `sellsAll` means
+            -- that shelf asks no class question at all.
+            local bad = {}
+            for id in pairs(creature) do
+                local def = Item.defs[id]
+                if not (def.noSteal or def.bound) then
+                    bad[#bad + 1] = id .. " carries neither `noSteal` nor `bound`"
+                end
+                if def.dropTier then
+                    bad[#bad + 1] = id .. " carries a dropTier, so a rank pool holds it"
+                end
+                if def.price then
+                    bad[#bad + 1] = id .. " carries a price, so a shelf can stock it"
+                end
+            end
+            table.sort(bad)
+            assert(#bad == 0, "creature kit is not for sale and not for finding (docs/bestiary.md):\n  "
+                .. table.concat(bad, "\n  "))
 
             -- Sweep the whole ladder, because the leak was depth-gated rather than absent: a natural
             -- weapon with a deep dropTier simply waited for a deep floor.
             for tier = 1, Class.CLASS_LEVEL_CAP do
                 for _, entry in ipairs(Spoils.shelf({ day = 40, floorLevel = tier, count = 400 })) do
-                    assert(not natural[entry], entry .. " is a body part and reached a shelf at tier "
+                    assert(not creature[entry], entry .. " is creature kit and reached a shelf at tier "
                         .. tier)
                 end
             end
 
-            -- ...and off a real roll, which reads the same pool through a different door.
-            for _ = 1, 300 do
-                for _, got in ipairs(Spoils.roll({
-                    enemyUnits = realRoster("character_bandit", 3),
-                    day = 30, floorLevel = 8, kind = "elite",
-                }).loot) do
-                    assert(not natural[got], got .. " is a body part and fell out of a fight")
+            -- ...and off a real roll, which reads the same pool through a different door. Rolled
+            -- against bodies that ACTUALLY CARRY creature kit as well as against chaff: the door that
+            -- leaked reads the dead body's own grid, and a bandit's grid could never have exercised it.
+            for _, who in ipairs({ "character_bandit", "character_demon_champion", "character_wolf_grunt" }) do
+                assert(Character.defs[who], who .. " is gone -- this case names it deliberately")
+                for _ = 1, 150 do
+                    for _, got in ipairs(Spoils.roll({
+                        enemyUnits = realRoster(who, 3),
+                        day = 30, floorLevel = 8, kind = "elite",
+                    }).loot) do
+                        assert(not creature[got],
+                            got .. " is creature kit and fell out of a fight against " .. who)
+                    end
                 end
             end
         end,

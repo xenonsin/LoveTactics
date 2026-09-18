@@ -19,8 +19,8 @@ return {
     sprite = "assets/items/unarmed.png", -- never rendered (hidden from the grid); ok if missing
     type = "weapon",
     class = "creature",
-    dropTier = 1,
     tags = { "unarmed", "physical", "melee" },
+    noSteal = true, -- a bare fist is what a body IS, not kit it carries
     activeAbility = {
         target = "enemy",
         range = 1,

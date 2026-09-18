@@ -8,7 +8,9 @@
 -- data/items/utility/utility_maw_of_the_unfed.lua), so the grind that feeds her in her own grid is the
 -- grind she hands you when you wear her key.
 --
--- A boss weapon: no `class`, no `price`. It is fast and cheap so she swings often -- every swing a meal.
+-- A boss weapon: `creature`, no `price`, `noSteal`. It is fast and cheap so she swings often -- every
+-- swing a meal. The flag is the half that matters: a body's own grid feeds the drop pool directly
+-- (models/spoils.lua), so without it her knife fell out of her own corpse.
 local Curve = require("models.curve")
 
 return {
@@ -18,12 +20,12 @@ return {
     sprite = "assets/items/gralloch_knife.png",
     type = "weapon",
     class = "creature",
-    dropTier = 7,
     -- `relic`, like every general's weapon (armor_mail_of_the_unappeased, weapon_forsworn_pike): it says
     -- in the data what this file's header has always said in prose, which is that this is Gula's and not
     -- part of the dagger family's ten (docs/weapons.md). Nothing reads the tag mechanically -- it is what
     -- keeps a sin's weapon out of a count of the shelf.
     tags = { "dagger", "pierce", "physical", "melee", "relic" },
+    noSteal = true, -- Gula's, and she is still holding it
     activeAbility = {
         target = "enemy",
         range = 1,

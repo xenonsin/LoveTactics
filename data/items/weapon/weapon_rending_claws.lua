@@ -28,7 +28,6 @@ return {
     sprite = "assets/items/rending_claws.png",
     type = "weapon",
     class = "creature",
-    dropTier = 6,
     -- FIRE, ON A MELEE WEAPON, and not `magical`. Every demon on the sweep spits hellfire
     -- (data/items/weapon/weapon_cinder_spit.lua, ability_demon_brimstone.lua) and the thing that
     -- WALKS UP to you was the one attack in the bestiary that did not burn -- so the elemental coats

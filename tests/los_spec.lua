@@ -61,9 +61,9 @@ return {
                 { { x = 3, y = 1, sightCost = 1 }, { x = 4, y = 1, sightCost = 1 } }), {}, {})
             assert(not Combat.hasLineOfSight(two, 1, 1, 6, 1), "two stacked forests block")
 
-            -- A single mountain (sightCost 2) reaches the threshold on its own.
+            -- A single hill (sightCost 2) reaches the threshold on its own.
             local mtn = Combat.new(arena(6, 1, { { x = 3, y = 1, sightCost = 2 } }), {}, {})
-            assert(not Combat.hasLineOfSight(mtn, 1, 1, 5, 1), "a lone mountain blocks the line")
+            assert(not Combat.hasLineOfSight(mtn, 1, 1, 5, 1), "a lone hill blocks the line")
         end,
     },
     {
@@ -85,20 +85,20 @@ return {
         end,
     },
     {
-        name = "a lone mountain does not shadow one diagonal while leaving its mirror open",
+        name = "a lone hill does not shadow one diagonal while leaving its mirror open",
         fn = function()
-            -- Regression: (1,3) and (3,3) are exact mirrors about a mountain at (2,2), shooting the
+            -- Regression: (1,3) and (3,3) are exact mirrors about a hill at (2,2), shooting the
             -- same foe at (2,1) from the same distance -- but hasLineOfSight canonicalised its
             -- endpoints (smaller x first), which made the trace START from the foe for the right-hand
             -- tile and from the stand tile for the left. Bresenham's half-step tie hugs the starting
-            -- column, so (3,3) crossed the mountain while (1,3) slipped past via (1,2): two identical
+            -- column, so (3,3) crossed the hill while (1,3) slipped past via (1,2): two identical
             -- shots disagreed. Tracing both directions and taking the cheaper line settles it.
             local c = Combat.new(arena(3, 3, { { x = 2, y = 2, sightCost = 2 } }), {}, {})
             local left, right = Combat.hasLineOfSight(c, 1, 3, 2, 1), Combat.hasLineOfSight(c, 3, 3, 2, 1)
             assert(left == right, "mirrored stand tiles agree about the same target")
             assert(left, "a lone blocker never seals a diagonal (permissive: the cheaper line wins)")
 
-            -- Permissive must not mean blind: straight through the mountain is still blocked.
+            -- Permissive must not mean blind: straight through the hill is still blocked.
             assert(not Combat.hasLineOfSight(c, 2, 3, 2, 1), "the tile behind it stays hidden")
         end,
     },

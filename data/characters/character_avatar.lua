@@ -99,7 +99,14 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 4, luck = 8,
     },
-    startingItems = { "weapon_iron_sword", "armor_leather_armor" },
+    -- POSITIONAL (models/character.lua), and CELL 2 IS LEFT OPEN ON PURPOSE. Rowan hands Clear Out
+    -- over mid-fight in the village (data/tutorials/village.lua) and a gift takes the first empty cell
+    -- (Character.addItem) -- with the coat at 2 that was cell 3, and cell 3 does not touch cell 1.
+    -- Clear Out needs a melee weapon beside it now, so that arrangement would have handed the player a
+    -- dead ability in the one fight that exists to teach it, and sized its ring off nothing. The coat
+    -- drops to cell 4, under the blade; the gift lands at 2, shoulder to shoulder with it.
+    -- tests/tutorial_spec.lua holds the seat.
+    startingItems = { "weapon_iron_sword", false, false, "armor_leather_armor" },
     defaultAction = "weapon_iron_sword",
     -- Basic tactics (models/ai.lua): the starting instinct under auto-battle -- go finish the foe
     -- already closest to falling before spreading damage around. The player overrides all of this from

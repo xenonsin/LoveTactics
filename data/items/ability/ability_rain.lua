@@ -9,8 +9,9 @@ return {
     flavor = "The setup for a Jolt, and the Arcanum's one concession to patience.",
     sprite = "assets/items/ability_rain.png",
     type = "ability",
-    class = "creature",
-    dropTier = 1,
+    class = "mage",
+    price = 575,
+    unlockQuests = 6,
     tags = { "water", "magical" },
     activeAbility = {
         target = "tile",

@@ -10,7 +10,6 @@ return {
     sprite = "assets/items/demonic_essence.png",
     type = "utility",
     class = "creature",
-    dropTier = 1,
     tags = { "demon" },
     noSteal = true,
     noCopy = true,

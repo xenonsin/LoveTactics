@@ -4,7 +4,7 @@
 -- any input source, and the owning state (states/battle.lua) interprets confirm presses.
 --
 -- Tiles are flavoured by the quest's biome: each arena tile type maps to an overworld
--- tileset type (ground->path, forest->forest, mountain/obstacle->rock, rough->grass) so the
+-- tileset type (ground->path, forest->forest, mountain->rock, hill/rough->grass) so the
 -- biome's art/colours carry through. If the tileset art is missing, it falls back to colored
 -- rects. Costly terrain also gets a translucent wash so its slowness reads at a glance.
 --
@@ -117,23 +117,34 @@ end
 --
 -- The map's own tiles are listed too, now that a board is carved out of them and both layers read one
 -- terrain table (models/terrain.lua). They map to themselves.
+--
+-- AND THE `rock` ROLE IS RESERVED. It is the only grey a biome paints, and the two types that borrow
+-- it -- `mountain` and `rock` -- are the two nobody can walk into. The hill used to borrow it as well,
+-- which made the best tile on the board the same colour as the wall beside it; it takes the biome's
+-- `grass` now, alongside the other broken ground. So on any board, grey means you cannot go there, and
+-- tests/biome_spec.lua fails the moment a walkable type reaches for that role again.
 BattleMap.ART = {
-    ground = "path", forest = "thicket", mountain = "rock",
-    rough = "grass", obstacle = "rock", water = "river",
+    ground = "path", forest = "thicket", hill = "grass",
+    rough = "grass", mountain = "rock", water = "river",
     sand = "thicket", ice = "thicket", mire = "river", lava = "river",
     path = "path", bridge = "bridge", thicket = "thicket",
     grass = "grass", rock = "rock", river = "river",
 }
 
 -- Translucent wash over costly terrain (drawn on walkable tiles) so a tile's move penalty
--- reads at a glance: leafy green for forest, cold grey for mountain, brown for legacy rough,
+-- reads at a glance: leafy green for forest, a deeper shaded green for the hill, brown for rough,
 -- river blue for the shallows a bolt would carry through (see Combat.tileHasTag).
 -- Keyed by COST, not by biome: a tile earns a wash by charging more than open field, so `ice` is
 -- deliberately absent (it costs exactly what plain ground costs, and washing it would promise a penalty
--- that is not there) and so is `lava` (unwalkable, so it takes the dark overlay below instead).
+-- that is not there) and so are `lava` and `mountain` (unwalkable, so they take the dark overlay
+-- below instead).
 BattleMap.TERRAIN_TINT = {
     forest   = { 0.10, 0.35, 0.12, 0.28 },
-    mountain = { 0.30, 0.30, 0.34, 0.35 },
+    -- The hill ties the mire for the heaviest walkable floor, so it carries close to the heaviest
+    -- wash -- but in its own green rather than the cold grey it wore while it was drawn as stone. A
+    -- hillside in shadow: darker and less saturated than the forest's leafy wash above it, which is
+    -- what keeps the two apart on a board that has both.
+    hill     = { 0.12, 0.28, 0.10, 0.34 },
     rough    = { 0.20, 0.15, 0.05, 0.25 },
     water    = { 0.12, 0.34, 0.58, 0.34 },
     sand     = { 0.52, 0.40, 0.14, 0.26 }, -- dry ochre: heavy going, no cover
@@ -751,6 +762,10 @@ end
 -- highlights) so it stays legible like the HP bars it stands in for. Nothing draws for a corpse gone
 -- cold (no status, its petrified sprite is the read) or a never-revivable one (never had the status) --
 -- the clock's presence or absence is what tells a body you can still save from one you cannot.
+--
+-- Which is also why a SCRIPTED felling wears none (models/combat.lua's Combat.fell lays the body down
+-- sealed and skips the status): she is lying there and she is not coming back this fight, and a running
+-- number over her would be the board offering the rescue the script exists to deny.
 function BattleMap:drawDownedClock(u, cx, cy)
     local st = Status.get(u, "status_downed")
     if not st then return end
@@ -1016,6 +1031,25 @@ function BattleMap:tileTone(x, y)
     return groundTone(self.tilesetDef, cell, BattleMap.ART[cell.type] or "path", x, y)
 end
 
+-- What this BIOME says a terrain type is: `{ skin, name, desc }`, any of them nil, or nil outright
+-- when the ground has no opinion (data/tilesets/*.lua -- the castle's `mountain` is a rampart, the
+-- colosseum's a pillar). Presentation only; the cell's own cost, walkability and sight are the
+-- terrain table's and are never read from here.
+--
+-- Handed to the tooltip rather than looked up there, for the same reason the tone is: the widget owns
+-- the tileset, the readout owns the words, and a second copy of the biome lookup in ui/tile_tooltip is
+-- a second place for the two surfaces to disagree about what the player is standing on.
+--
+-- Unlike tileTone this answers even while a real sheet is loaded. A sheet replaces the MARK, not the
+-- NAME -- a castle drawing photographed stone should still call it a rampart in the box.
+function BattleMap:tileSkin(kind)
+    local def = self.tilesetDef
+    local over = def and def.tiles and def.tiles[kind]
+    if not over then return nil end
+    if not (over.skin or over.name or over.desc) then return nil end
+    return over
+end
+
 function BattleMap:drawTiles()
     local s = self.size
     for y = 1, self.arena.rows do
@@ -1045,9 +1079,10 @@ function BattleMap:drawTiles()
                 -- WHICH ground it is (ui/terrain_art.lua). Drawn only on this path -- a real tileset
                 -- carries its own pictures, and two sets of them on one tile is one too many.
                 local r, g, b = groundTone(self.tilesetDef, cell, artType, x, y)
+                local skin = self:tileSkin(cell.type)
                 love.graphics.setColor(r, g, b)
                 love.graphics.rectangle("fill", wx, wy, s, s)
-                TerrainArt.draw(cell.type, wx, wy, s, s, r, g, b, x, y)
+                TerrainArt.draw(cell.type, wx, wy, s, s, r, g, b, x, y, skin and skin.skin)
             end
             -- Grid line.
             love.graphics.setColor(0, 0, 0, 0.25)
@@ -1319,9 +1354,13 @@ function BattleMap:drawUnits()
     -- killing blow the fx controller is still holding back -- the body must not drop before the counter
     -- lands. See corpseVisible for the full gate.
     --
-    -- Only a body that STILL MEANS something -- one you can still revive (incapacitated) -- is drawn as
-    -- its own battle sprite, drained of life, so the party reads WHO is down while there is a window to
-    -- reach them (drawFallenSprite). Every COLD body draws the same plain corpse token: a former-revivable
+    -- Only a body that STILL MEANS something -- one that is down rather than gone (incapacitated) -- is
+    -- drawn as its own battle sprite, drained of life, so the party reads WHO is down while there is a
+    -- window to reach them (drawFallenSprite). A body the script has sealed is drawn the same way and
+    -- for the other half of the same reason: there is no reaching her, but she is the person the next
+    -- scene is about, and a generic token on her tile would lose her.
+    --
+    -- Every COLD body draws the same plain corpse token: a former-revivable
     -- body whose window closed and an ordinary never-revivable corpse (a demon) are indistinguishable
     -- once past reviving, so they leave the same marker -- present enough to mark the tile for a Raise
     -- Dead, subtle enough not to clutter the board with bodies no one is going to act on.
@@ -1862,12 +1901,15 @@ function BattleMap:drawHighlights()
     local s = self.size
     local hover = self.overlays.hover
     if hover then
-        local wx, wy = self:cellToPixel(hover.x, hover.y)
+        -- Over the body's whole footprint, like the gold ring below: the card being pointed at on the
+        -- timeline is one body, so the answer on the board is one body-sized box.
+        local wx, wy, hw, hh = self:cellBox(hover.x, hover.y,
+            hover.unit and hover.unit.w, hover.unit and hover.unit.h)
         love.graphics.setColor(0.75, 0.95, 1.0, 0.16)
-        love.graphics.rectangle("fill", wx + 2, wy + 2, s - 4, s - 4, 4, 4)
+        love.graphics.rectangle("fill", wx + 2, wy + 2, hw - 4, hh - 4, 4, 4)
         love.graphics.setColor(0.75, 0.95, 1.0, 0.95)
         love.graphics.setLineWidth(2)
-        love.graphics.rectangle("line", wx + 2, wy + 2, s - 4, s - 4, 4, 4)
+        love.graphics.rectangle("line", wx + 2, wy + 2, hw - 4, hh - 4, 4, 4)
         love.graphics.setLineWidth(1)
     end
     local current = self.overlays.current
@@ -1927,22 +1969,28 @@ function BattleMap:drawHighlights()
     local subjects = self.overlays.logSubjects
     if subjects and #subjects > 0 then
         local pulse = 0.55 + 0.45 * math.sin((self.time or 0) * 5)
-        local ax, ay = self:cellToPixel(subjects[1].x, subjects[1].y)
+        -- Each mark names a BODY, so each ring is that body's whole footprint and the thread between
+        -- two of them runs centre to centre of those boxes -- the same reading as the gold and cyan
+        -- rings above. A one-tile box on a 2x2 striker would point at its shoulder.
+        local function box(m)
+            return self:cellBox(m.x, m.y, m.unit and m.unit.w, m.unit and m.unit.h)
+        end
+        local ax, ay, aw, ah = box(subjects[1])
         if #subjects > 1 then
             love.graphics.setColor(1, 1, 1, 0.20 + 0.25 * pulse)
             love.graphics.setLineWidth(2)
             for i = 2, #subjects do
-                local bx, by = self:cellToPixel(subjects[i].x, subjects[i].y)
-                love.graphics.line(ax + s / 2, ay + s / 2, bx + s / 2, by + s / 2)
+                local bx, by, bw, bh = box(subjects[i])
+                love.graphics.line(ax + aw / 2, ay + ah / 2, bx + bw / 2, by + bh / 2)
             end
         end
         for _, m in ipairs(subjects) do
-            local wx, wy = self:cellToPixel(m.x, m.y)
+            local wx, wy, mw, mh = box(m)
             love.graphics.setColor(1, 1, 1, 0.10)
-            love.graphics.rectangle("fill", wx + 2, wy + 2, s - 4, s - 4, 4, 4)
+            love.graphics.rectangle("fill", wx + 2, wy + 2, mw - 4, mh - 4, 4, 4)
             love.graphics.setColor(1, 1, 1, 0.55 + 0.40 * pulse)
             love.graphics.setLineWidth(2)
-            love.graphics.rectangle("line", wx + 1, wy + 1, s - 2, s - 2, 4, 4)
+            love.graphics.rectangle("line", wx + 1, wy + 1, mw - 2, mh - 2, 4, 4)
         end
         love.graphics.setLineWidth(1)
     end
@@ -2058,12 +2106,19 @@ function BattleMap:drawIntentBadge(intent, cx, cy)
     love.graphics.setColor(1, 1, 1)
 end
 
+-- The tile cursor frames the tile it stands on -- and the whole BODY, when that tile belongs to one
+-- bigger than a tile. A 2x2 ogre is one target with one sheet and one turn: a box around a quarter of
+-- it points at ground the player cannot address on its own, and reads as "this corner" when the only
+-- thing there is the ogre. The acting unit's gold ring already claims its footprint whole
+-- (drawHighlights), so this is the same claim made from the pointing surface.
 function BattleMap:drawCursor()
-    local wx, wy = self:cellToPixel(self.cursor.x, self.cursor.y)
-    local s = self.size
+    local cx, cy = self.cursor.x, self.cursor.y
+    local u = self.combat and Combat.unitAt(self.combat, cx, cy)
+    if u then cx, cy = u.x, u.y end -- ring from the ANCHOR, whichever of its cells was pointed at
+    local wx, wy, cw, ch = self:cellBox(cx, cy, u and u.w, u and u.h)
     love.graphics.setColor(0.98, 0.92, 0.55, 0.95)
     love.graphics.setLineWidth(2)
-    love.graphics.rectangle("line", wx + 1, wy + 1, s - 2, s - 2, 4, 4)
+    love.graphics.rectangle("line", wx + 1, wy + 1, cw - 2, ch - 2, 4, 4)
     love.graphics.setLineWidth(1)
 end
 

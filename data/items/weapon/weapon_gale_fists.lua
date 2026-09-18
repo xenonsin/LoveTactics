@@ -10,7 +10,6 @@ return {
     sprite = "assets/items/gale_fists.png",
     type = "weapon",
     class = "creature",
-    dropTier = 2,
     tags = { "natural", "wind", "magical", "melee" },
     noSteal = true,
     activeAbility = {

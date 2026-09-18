@@ -675,7 +675,7 @@ return {
             local map = arena(9, 9)
             for x = 3, 7 do
                 for y = 4, 5 do
-                    map.tiles[y][x] = { type = "obstacle", moveCost = math.huge,
+                    map.tiles[y][x] = { type = "mountain", moveCost = math.huge,
                                         walkable = false, sightCost = math.huge }
                 end
             end
@@ -707,7 +707,7 @@ return {
             -- again every turn for the rest of the fight, which is what made Summon Wall a stalemate
             -- button rather than a delay.
             local map = arena(7, 7)
-            map.tiles[1][2] = { type = "obstacle", moveCost = math.huge, walkable = false, sightCost = math.huge }
+            map.tiles[1][2] = { type = "mountain", moveCost = math.huge, walkable = false, sightCost = math.huge }
             local raider = swordsman()
             local c = Combat.new(map, { unit(swordsman(), 5, 5) }, { unit(raider, 1, 1) })
             local bandit = c.units[2]
@@ -735,7 +735,7 @@ return {
             local function board(hole)
                 local map = arena(15, 15)
                 for x = 1, 14 do
-                    map.tiles[8][x] = { type = "obstacle", moveCost = math.huge,
+                    map.tiles[8][x] = { type = "mountain", moveCost = math.huge,
                                         walkable = false, sightCost = math.huge }
                 end
                 map.tiles[8][2] = { type = "ground", moveCost = 1, walkable = true, sightCost = 0 }

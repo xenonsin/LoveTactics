@@ -26,7 +26,6 @@ return {
     sprite = "assets/items/cold_forge.png",
     type = "utility",
     class = "creature",
-    dropTier = 4,
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_kindling", "trait_boss_phases" },

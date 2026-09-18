@@ -30,6 +30,15 @@ local function traitOn(u, id)
     for _, t in ipairs(u.traits or {}) do if t.id == id then return t end end
 end
 
+-- ARM THE MARK THE WAY THE FIGHT DOES: by crossing the last stage with a real blow. The `mark`
+-- response (data/traits/trait_boss_phases.lua) is the only thing that writes unit.scriptedFell, so a
+-- case that pokes the field directly would still pass with the phase entry deleted.
+local function crossLastStage(c, boss)
+    local hp = boss.char.stats.health
+    hp.current = math.floor(hp.max * 0.32) + 1
+    Combat.dealFlatDamage(c, boss, 1, nil, "test")
+end
+
 local function countAlive(c, id)
     local n = 0
     for _, u in ipairs(c.units) do if u.alive and u.char.id == id then n = n + 1 end end
@@ -352,8 +361,8 @@ return {
             -- The neck (row 4): a wall with a two-wide central gap.
             assert(not a.tiles[4][1].walkable and not a.tiles[4][8].walkable, "the neck's flanks are solid wall")
             assert(a.tiles[4][4].walkable and a.tiles[4][5].walkable, "the gap at x4-5 is passable")
-            -- The high ground (row 7): mountains the bow shoots from.
-            assert(a.tiles[7][3].type == "mountain" and a.tiles[7][6].type == "mountain", "two mountain vantages")
+            -- The high ground (row 7): hills the bow shoots from.
+            assert(a.tiles[7][3].type == "hill" and a.tiles[7][6].type == "hill", "two hill vantages")
 
             -- The hazard seam: the authored smouldering treeline is carried into the built arena.
             assert(#a.hazards == 2, "both authored hazards were carried (models/arena.lua)")
@@ -392,20 +401,19 @@ return {
                 { unit("character_rowan", 1, 1) },
                 { unit("character_demon_champion", 8, 8) })
             local rowan, boss = c.units[1], c.units[2]
-            local hp = boss.char.stats.health
-            hp.current = math.floor(hp.max * 0.32) + 1
-            Combat.dealFlatDamage(c, boss, 1, nil, "test")
+            crossLastStage(c, boss)
 
             assert(rowan.alive, "the blow that crossed the phase does not also kill somebody")
-            assert(Status.get(boss, "status_champion_fixation"), "it has picked her instead")
+            assert(boss.scriptedFell and boss.scriptedFell.victim == "character_rowan",
+                "it has picked her instead")
             assert(math.max(math.abs(boss.x - rowan.x), math.abs(boss.y - rowan.y)) > 1,
                 "and it has not moved yet -- the crossing is a decision, not a turn")
         end,
     },
     {
         -- ...AND SPENDS IT AT THE TOP OF ITS OWN TURN, through every answer she could be wearing.
-        -- Status.onTurnStart is fired by Combat.startTurn before the unit may act, so the board is
-        -- settled and nothing else is mid-resolution.
+        -- Combat.spendScriptedFell is called from Combat.startTurn before the unit may act, so the
+        -- board is settled and nothing else is mid-resolution.
         name = "it spends the mark on its own turn, through a ward and an interpose alike",
         fn = function()
             local c = Combat.new(arena(8, 8),
@@ -416,19 +424,47 @@ return {
             for _, u in ipairs(c.units) do
                 if u.side == "party" then u.guard = { kind = "oathward", cooldown = 0 } end
             end
-            Status.apply(c, boss, "status_champion_fixation")
+            crossLastStage(c, boss)
             assert(rowan.alive, "arming it changes nothing on its own")
 
-            Status.onTurnStart(c, boss)
+            Combat.spendScriptedFell(c, boss)
             assert(not rowan.alive, "her turn opens and she is down, ward and interpose notwithstanding")
             assert(rowan.noRevive, "sealed, so nothing puts her back up this battle")
+            -- DOWN, NOT DEAD. She is lying on the tile for the rest of the fight -- the state the party
+            -- carries off a won board -- and not a body on the necromancer's shelf.
+            assert(rowan.incapacitated and not rowan.corpse,
+                "she is laid down incapacitated, not turned into a corpse where she fell")
+            assert(not Status.get(rowan, "status_downed"),
+                "and wears no window: there is no reaching a body the script has sealed")
             assert(math.max(math.abs(boss.x - rowan.x), math.abs(boss.y - rowan.y)) <= 1,
                 "it crossed the ground to reach her rather than killing from where it stood")
 
             -- ONCE. A Champion that lives to a second turn does not keep teleporting onto a corpse.
+            -- Spending CLEARS the field, which is the whole of the latch.
+            assert(not boss.scriptedFell, "the mark is gone the moment it is spent")
             local x, y = boss.x, boss.y
-            Status.onTurnStart(c, boss)
+            Combat.spendScriptedFell(c, boss)
             assert(boss.x == x and boss.y == y, "the mark is spent; it does not fire again")
+        end,
+    },
+    {
+        -- ...AND IT IS THE TURN BOUNDARY THAT SPENDS IT, which a direct call cannot pin. The mark is
+        -- armed inside the resolution of the player's own blow, so a turn opening is the ONLY thing
+        -- allowed to cash it -- and if a later pass stops calling it from there, the Champion marks
+        -- Rowan and then simply never comes for her, in silence.
+        name = "the Champion's own turn opening is what spends the mark",
+        fn = function()
+            local c = Combat.new(arena(8, 8),
+                { unit("character_rowan", 1, 1) },
+                { unit("character_demon_champion", 8, 8) })
+            local rowan, boss = c.units[1], c.units[2]
+            crossLastStage(c, boss)
+            assert(boss.scriptedFell and rowan.alive, "marked, and she is still on her feet")
+
+            rowan.initiative, boss.initiative = 99, 0 -- the Champion is up next
+            assert(Combat.startTurn(c) == boss, "its turn opens")
+            assert(not rowan.alive, "and she is down before it may act")
+            assert(not boss.scriptedFell, "the mark is spent by the opening, not by anything the AI does")
         end,
     },
     {
@@ -448,17 +484,17 @@ return {
                 { unit("character_rowan", 1, 1) },
                 { unit("character_demon_champion", 8, 8) })
             local rowan, boss = c.units[1], c.units[2]
-            Status.apply(c, boss, "status_champion_fixation")
+            crossLastStage(c, boss)
             assert(not c.scriptedStrike, "nothing is staged before the mark is spent")
 
-            Status.onTurnStart(c, boss)
+            Combat.spendScriptedFell(c, boss)
             local staged = c.scriptedStrike
             assert(staged, "the spent mark leaves the view a beat to play")
             assert(staged.unit == boss and staged.victim == rowan, "who crossed, and who it reached")
             assert(staged.fromX == 8 and staged.fromY == 8,
                 "and WHERE IT STOOD, which the model has already overwritten -- without it the wind-up "
                 .. "and the walk would both play on the destination tile")
-            assert(staged.windup and staged.windup > 0, "the wind-up is timed by the status, not the view")
+            assert(staged.windup and staged.windup > 0, "the wind-up is timed by the script, not the view")
 
             -- THE ROUTE, which is what makes it a crossing rather than a blink.
             local route = staged.route
@@ -481,7 +517,7 @@ return {
     },
     {
         -- THE ROUTE IS ROAD, NOT A RULER. A straight line between two tiles walks through the arena's
-        -- own walls -- and THE NECK (data/arenas/demon_champion.lua's y4 obstacle wall, gap at x4-5) is
+        -- own walls -- and THE NECK (data/arenas/demon_champion.lua's y4 mountain wall, gap at x4-5) is
         -- the wall this fight is built around, so the one board the beat actually plays on is the board
         -- that would show it.
         name = "a scripted route goes around a wall rather than through it",
@@ -489,7 +525,7 @@ return {
             local a = arena(8, 8)
             for x = 1, 8 do
                 if x ~= 4 and x ~= 5 then
-                    a.tiles[4][x] = { type = "obstacle", moveCost = 1, walkable = false, sightCost = 2 }
+                    a.tiles[4][x] = { type = "mountain", moveCost = 1, walkable = false, sightCost = 2 }
                 end
             end
             local c = Combat.new(a, { unit("character_rowan", 1, 8) },
@@ -510,7 +546,7 @@ return {
             -- to gliding the body across instead of walking it through a wall.
             local sealed = arena(8, 8)
             for x = 1, 8 do
-                sealed.tiles[4][x] = { type = "obstacle", moveCost = 1, walkable = false, sightCost = 2 }
+                sealed.tiles[4][x] = { type = "mountain", moveCost = 1, walkable = false, sightCost = 2 }
             end
             local c2 = Combat.new(sealed, { unit("character_rowan", 1, 8) },
                 { unit("character_demon_champion", 1, 1) })
@@ -518,10 +554,10 @@ return {
         end,
     },
     {
-        -- THE WARNING IS QUEUED, NOT PLAYED. A status is pure logic and may not reach the UI, so it
-        -- leaves the scene id on the combat and states/battle.lua's beginTurn plays it at the next turn
-        -- boundary -- which is also the only moment it COULD play, since the blow that armed it is still
-        -- resolving when the mark lands.
+        -- THE WARNING IS QUEUED, NOT PLAYED. Data is pure logic and may not reach the UI, so the
+        -- response leaves the scene id on the combat and states/battle.lua's beginTurn plays it at the
+        -- next turn boundary -- which is also the only moment it COULD play, since the blow that armed
+        -- it is still resolving when the mark lands.
         name = "marking her queues Rowan's warning for the turn boundary",
         fn = function()
             local c = Combat.new(arena(8, 8),
@@ -529,7 +565,7 @@ return {
                 { unit("character_demon_champion", 8, 8) })
             local boss = c.units[2]
             assert(not c.pendingScene, "nothing is owed before the stage turns")
-            Status.apply(c, boss, "status_champion_fixation")
+            crossLastStage(c, boss)
             assert(c.pendingScene, "the mark owes the player a line before it is spent")
             local Conversation = require("models.conversation")
             assert(Conversation.defs[c.pendingScene], "and the scene it names is a scene that exists")
@@ -543,6 +579,18 @@ return {
             local rowan = c.units[1]
             assert(Combat.fell(c, rowan), "the scripted beat puts her down")
             assert(not rowan.alive and rowan.noRevive, "sealed for the rest of the fight")
+            assert(rowan.incapacitated and not rowan.corpse, "lying there, rather than a body to harvest")
+
+            -- THE SEAL HOLDS ON A BODY THAT IS LYING DOWN. It used to hold by implication -- a sealed
+            -- body went straight to the corpse path, which reanimate refuses anyway -- and a scripted
+            -- felling now lands in the very state reanimate otherwise says yes to.
+            assert(not Combat.reanimate(c, rowan), "no Revive, scroll or Salts stands her back up")
+            assert(not Combat.rescuableAt(c, rowan.x, rowan.y),
+                "and a revive cast is not even offered her tile, so nothing promises what it cannot do")
+            -- ...but the body is still THERE. The hover readout reads the same two fallen layers
+            -- (states/battle.lua), and the tile of the body this whole scene is about must not go quiet.
+            assert(Combat.downedAt(c, rowan.x, rowan.y) == rowan,
+                "she is still lying on her tile, and hovering it still opens her")
 
             -- The seal is a BATTLE rule. Combat.reviveFallenParty reads char.revivable, not this flag,
             -- which is what lets the story fell somebody it needs walking around in the next scene.
@@ -554,47 +602,49 @@ return {
         end,
     },
     {
-        name = "the fixation is prologue-only: one mark, on the Champion's own relic, at the last stage",
+        name = "the scripted felling is prologue-only: one mark, on the Champion's relic, at the last stage",
         fn = function()
             -- The Champion's header offers it as a reusable mid-tier demon boss. Rowan is in the party
             -- for the rest of the game, so a second fight fielding THIS relic would fell her again in a
             -- scene nobody wrote. Reuse it with a twin relic that drops this entry; never with this one.
             local Item = require("models.item")
-            local MARK = "status_champion_fixation"
             local sigil = Item.defs["utility_demon_sigil"]
             local found = {}
             for _, phase in ipairs(sigil.phases or {}) do
                 for _, r in ipairs(phase.responses or {}) do
-                    if r.kind == "status" and r.id == MARK then found[#found + 1] = phase.at end
+                    if r.kind == "mark" then found[#found + 1] = { at = phase.at, r = r } end
                 end
             end
             assert(#found == 1, "one scripted felling, not two")
-            assert(found[1] == 0.33,
+            assert(found[1].at == 0.33,
                 "at the LAST stage: felled at two-thirds the avatar finishes 100 health solo and loops")
 
-            -- WHO it takes is authored on the status rather than on the phase, so the phase entry alone
-            -- cannot say. Read it off the def, because "aimed at the body the scene is about" is the
+            -- WHO it takes, read off the entry itself. "Aimed at the body the scene is about" is the
             -- half a seed assertion can never catch.
-            local Status = require("models.status")
-            local def = Status.defs[MARK]
-            assert(def and def.victim == "character_rowan",
+            local mark = found[1].r
+            assert(mark.victim == "character_rowan",
                 "the mark is aimed at the body the Cathedral scene is written about")
-            -- Spent on the bearer's TURN, never where it was armed. `onApply` may only queue the
-            -- warning line -- if a later pass moves the felling back into it, the beat lands inside the
-            -- player's own blow again and this is the assertion that says so.
-            assert(def.onTurnStart, "the mark is spent at the top of the Champion's turn")
-            assert(def.scene and def.duration, "it owes a warning first, and outlives the round to pay it")
-            -- ...and a second line, spoken with the blow on her, between the strike and the body going
-            -- down (states/battle.lua's SCRIPT_BEATS). Named here for the same reason `scene` is: the
-            -- beat is one thing, and both halves of what it says should be readable off one def.
-            assert(def.hitScene, "she speaks AFTER she is hit, or the felling reads as sudden again")
+            -- IT ONLY ARMS. The felling belongs to Combat.spendScriptedFell, a turn later -- if a later
+            -- pass moves it back into a response that ACTS, the beat lands inside the player's own blow
+            -- again, and this is the assertion that says so.
+            assert(Combat.spendScriptedFell, "the act is the engine's, at the turn boundary")
+            local Conversation = require("models.conversation")
+            -- The warning line, owed a full turn before anything is spent...
+            assert(mark.scene and Conversation.defs[mark.scene],
+                "it owes a warning first, and the scene it names is one that exists")
+            -- ...and the second line, spoken with the blow on her, between the strike and the body going
+            -- down (states/battle.lua's SCRIPT_BEATS). Named beside the first for the same reason: the
+            -- beat is one thing, and both halves of what it says should be readable off one entry.
+            assert(mark.hitScene and Conversation.defs[mark.hitScene],
+                "she speaks AFTER she is hit, or the felling reads as sudden again")
+            assert((mark.seconds or 0) > 0, "and the body winds up first, for a length the script sets")
 
             -- Nothing else in the game may carry a scripted felling without a scene to justify it.
             local bearers = {}
             for id, item in pairs(Item.defs) do
                 for _, phase in ipairs(item.phases or {}) do
                     for _, r in ipairs(phase.responses or {}) do
-                        if r.kind == "status" and r.id == MARK then bearers[#bearers + 1] = id end
+                        if r.kind == "mark" then bearers[#bearers + 1] = id end
                     end
                 end
             end

@@ -9,7 +9,7 @@ return {
     flavor = "Quilted cloth over the vitals: what you wear before anyone has decided you are worth armouring.",
     sprite = "assets/items/padded_vest.png",
     type = "armor",
-    class = "creature",
+    class = "mage",
     dropTier = 2,
     tags = { "cloth" },
     -- Light tier: minimal protection, and a single square of pace.

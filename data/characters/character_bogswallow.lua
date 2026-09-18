@@ -1,7 +1,7 @@
 -- A bogswallow: the Gluttony circle's line body, and a grappler rather than a bruiser.
 --
--- The swamp's floor is `mire` -- ground that charges a mountain's price and gives back none of a
--- mountain's reach (data/biomes/swamp.lua) -- so crossing is already the expensive thing here. The
+-- The swamp's floor is `mire` -- ground that charges a hill's price and gives back none of a
+-- hill's reach (data/biomes/swamp.lua) -- so crossing is already the expensive thing here. The
 -- bogswallow makes it impossible: it Roots on hit, and a Rooted body cannot walk out of a trade with
 -- something that grows on trades.
 --

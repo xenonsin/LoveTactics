@@ -129,7 +129,8 @@ ends; the encounter's own name comes back the instant the bell rings.
   they stand *open*: there is no hamburger on this screen, because a fold over two always-legal
   controls hides nothing and costs a click on the beat where turning the board is the first thing a
   player wants to do. The drawer returns with the fight. The controls read top to bottom in the
-  order the decisions are made in: **Loadout**, **Potions**, **Reset Line**, **Auto**, and the bell
+  order the decisions are made in: **Loadout**, **Potions**, **Reset Line**, **Auto**, **Run Away**
+  where the fight may be fled, and the bell
   last. The bell is **not one of the plates**: the four above it are settings on the line, and it is
   the control that ends the screen, so it is **lit** — lettered a size larger on a warm face, inside
   a doubled gold frame, with a slow amber halo breathing off its edges. With nobody on the board it
@@ -156,6 +157,52 @@ ends; the encounter's own name comes back the instant the bell rings.
   the only way back to that arrangement once the player has shuffled, which is why it survives with
   nothing left to fill from. **Clear** went with the strip: a board you can empty with no card to
   refill it from is a phase you can lock yourself out of. **Begin Battle** commits.
+- **Run Away** is the other answer to the bell's question, and it sits directly above it because the two
+  are a pair: every plate higher up is about *how* to take this fight, and these two are *whether*.
+  It appears only where the fight may be fled — a rolled fight or a standing elite on a descent floor
+  (`models/flee.lua`'s `Flee.allowed`) — and never on an objective, which is work the company chose to
+  walk onto rather than something it is cornered by.
+
+  **The odds are on the plate** (`Run Away (25%)`), because the player is being asked to stake a round of
+  initiative on a roll and a wager whose price is hidden is not a decision. The chance is read off the
+  muster margin — the same number that colours a marker on the map — so it runs the **wrong way on
+  purpose**: the fight you most want out of is the hardest to leave. It is bounded at both ends
+  (`Flee.MIN`/`MAX`, 20–90) because a plate whose answer is known before it is pressed is not a decision
+  either way.
+
+  **The stake is in a note beside the plate**, opened by the pointer resting on it or by the pad
+  selection sitting on it (`DeployPhase:fleeNotePlate`, drawn through `ui/note_tooltip.lua`). The
+  number stays on the button, where the press is; the note is one line — *"If you fail to run away,
+  enemies start combat Hasted."* — and under it the **status's own tooltip**, the identical box the
+  player gets off a badge on an enemy token, in the log or in the turn strip — built by the model that
+  applies it (`Flee.caughtStatus`), so the hourglass read before the press is the one the badge carries
+  after it. Naming Hasted and then paraphrasing it would be a second gloss to keep in step with the
+  first. A finger never opens the
+  note: a box that could only appear under a fingertip already on the plate would teach nobody
+  anything.
+
+  **One attempt.** A success leaves the screen — the company steps back onto the tile it came from, and a
+  *rolled* fight goes off the board entirely while a *seated* elite stays exactly where it was, still
+  standing in the corridor. A failure prints in the same hint line a refused drag uses (*"They cut you
+  off. They start this fight Hasted."*), retires the plate, and dresses the enemy line in **Hasted**
+  (`Combat.dressSide` with `Flee.CAUGHT_STATUS`) for `Flee.CAUGHT_TICKS` — **10 ticks, two turns**, half
+  the status's own clock. What a catch prices is the *opening*: the beat the company would have had to
+  itself had it never pressed the button. Four quickened turns is what a bought Haste hands one body,
+  and a whole enemy line wearing that is a different fight rather than a worse one. The badges land
+  **on the deploy screen**, on the enemy tokens, so the company sees what it is walking into before it
+  rings the bell. Nothing else changes — same board, same spoils, same win condition — because what was
+  gambled was the shape of the fight, not the fight.
+
+  It used to be a number on the clock: six initiative ticks onto the company, so the enemy moved and
+  swung first. Right in the model and **invisible on the screen** — a shuffle inside a countdown the
+  player cannot see until after the bell, which no label could name without teaching the initiative
+  system first. A status is a word the game has already taught, so the wager can state itself. The host owns all of it; the phase only offers the plate and shows
+  the line it is handed back (`states/game.lua`'s `onFlee`).
+
+  Why it exists at all: when the ordinary fighting moved off the board (`docs/overworld.md`), a fight
+  stopped arriving with a marker the player could read and price from across the floor. The judgement the
+  muster band was built to support did not get deleted, it **moved** — from the map, one tile early, to
+  the deploy screen, over the real board, with the enemy already standing on it.
 - **Loadout** (`I`, pad `X`) opens the Armory's own screen (`ui/panels/party.lua`) over the phase, on
   the same roster and stash the hub and the overworld edit. Gear is the other half of the question this
   phase asks: where a body should stand is answered against what it is carrying, and until this button
@@ -284,15 +331,18 @@ only the party ever had a bench.
 
 ## The front line
 
-A `frontRow`-scoped relic (the Martyr's Bell) and Rowan's Vigil both resolve against *the line you
-actually put forward* — the deployed units standing nearest the enemy — which does not exist until the
-phase commits. `states/game.lua` hands battle a `resolveOpening(deployed, front)` callback instead of
-pre-computed traits and boons, and battle calls it at the commit. `models/relic.lua` and
-`models/overworld_ability.lua` take the front line as `ctx.frontRow`, falling back to everyone deployed
-where no line has formed (a test, a dispatch with no board).
+Rowan's Vigil resolves against *the line you actually put forward* — the deployed units standing
+nearest the enemy — which does not exist until the phase commits. `states/game.lua` hands battle a
+`resolveOpening(deployed, front)` callback instead of pre-computed traits and boons, and battle calls
+it at the commit. `models/overworld_ability.lua` takes the front line as `ctx.frontRow`, falling back
+to everyone deployed where no line has formed (a test, a dispatch with no board).
 
-Relic traits are resolved over the **whole company**, bench included: a party-scope relic is worn by
-everyone who marched, and a benched member has to arrive already wearing it.
+> **The relic half of this is parked** (2026-09-17, [relics.md](relics.md)). A `frontRow`-scoped relic
+> — the Martyr's Bell — used to resolve here too, and relic traits were resolved over the **whole
+> company**, bench included, because a party-scope relic was worn by everyone who marched.
+> `models/relic.lua` still takes `ctx.frontRow` and the callback still carries the relic fields; they
+> are simply never populated. The four items that now open a fight with a boon read off the **bearer's
+> own grid** in `states/battle.lua` instead, so they need no line and no callback at all.
 
 ## Where it lives
 

@@ -23,7 +23,6 @@ return {
     sprite = "assets/items/flung_quills.png",
     type = "weapon",
     class = "creature",
-    dropTier = 3,
     tags = { "natural", "pierce", "physical", "ranged" },
     noSteal = true, -- a creature's body is not loot
     activeAbility = {

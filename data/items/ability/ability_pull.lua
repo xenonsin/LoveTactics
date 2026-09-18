@@ -15,8 +15,9 @@ return {
     flavor = "Pulls an archer out of its dead zone, or a healer out of the back line and into the noise.",
     sprite = "assets/items/ability_pull.png",
     type = "ability",
-    class = "creature",
-    dropTier = 1,
+    class = "bulwark",
+    price = 575,
+    unlockQuests = 6,
     tags = { "impact", "physical" },
     activeAbility = {
         target = "tile",       -- a tile in reach, so what is hauled in may be a body or furniture

@@ -20,8 +20,8 @@ return {
     sprite = "assets/items/ability_meteor_storm.png", -- placeholder until its own art exists
     type = "ability",
     class = "creature",
-    dropTier = 8,
     tags = { "summon" },
+    noSteal = true, -- the Champion's own art, not a thing she is carrying
     activeAbility = {
         target = "tile",
         allowOccupied = true,

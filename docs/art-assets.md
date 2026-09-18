@@ -166,7 +166,7 @@ requirement: it must stay crisp at **480px** (`ui/dialogue.lua`'s `PORTRAIT_H`),
 than when the first one lands. See
 [The board still is also the portrait](commission-board-sprites.md#the-board-still-is-also-the-portrait).
 
-> amana · avatar_1 · clem · gyeom · kaya · knight · ren · saber ·
+> avatar_1 · clem · gyeom · kaya · knight · ren · saber · xin ·
 > general_envy · general_gluttony · general_greed · general_lust · general_pride · general_sloth ·
 > general_wrath · demon_lord
 
@@ -279,8 +279,8 @@ type onto an overworld tileset type, so one set of tiles dresses both surfaces:
 |--|--|--|--|
 | `ground` | `path` | `sand` | `forest` |
 | `forest` | `forest` | `ice` | `forest` |
-| `mountain` / `obstacle` | `rock` | `mire` | `water` |
-| `rough` | `grass` | `lava` | `water` |
+| `mountain` / `rock` | `rock` | `mire` | `water` |
+| `hill` / `rough` | `grass` | `lava` | `water` |
 | `water` | `water` | | |
 
 The four on the right are the biome floors added with the desert/tundra/volcanic/swamp pass — each

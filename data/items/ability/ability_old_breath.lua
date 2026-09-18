@@ -27,7 +27,6 @@ return {
     sprite = "assets/items/old_breath.png",
     type = "ability",
     class = "creature",
-    dropTier = 8,
     tags = { "natural", "primal" },
     noSteal = true,
     activeAbility = {

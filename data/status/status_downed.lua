@@ -27,6 +27,11 @@
 -- And it is deliberately NOT a `debuff`, so Cure / Panacea can't strip it (reviving is not curing) and
 -- so cleanse can never mis-fire the teardown the way it could on Knell.
 --
+-- ONE BODY ON THE GROUND WEARS NO CLOCK: a scripted felling (Combat.fell) seals the body where it
+-- lies, and a window is a promise that somebody can reach it in time. There is no reaching this one, so
+-- killUnit lays it down incapacitated and skips this status entirely -- no hourglass, and no "goes
+-- cold" line for a deadline that was never real. The state is the same; only the offer is withdrawn.
+--
 -- `lingers`, for symmetry with the rest: there is no ground to step off -- the appointment is with the
 -- body where it lies.
 return {

@@ -12,7 +12,7 @@
 --
 -- `bound = true` (models/item.lua): never moved, stowed, given, sold, or stolen -- only forged. It is
 -- in no blueprint's starting grid, the generic priest's included (character_priest.lua is deliberately
--- relic-free). Amana carries utility_reliquary_kept_trust instead, which grants this same trait plus
+-- relic-free). Xin carries utility_reliquary_kept_trust instead, which grants this same trait plus
 -- her own giving loop -- so this is the plain version of the presence, and hers is the built-out one.
 --
 -- No `class`/`price`: no vendor stocks or buys it. Forged at the Blacksmith, its ward against magic

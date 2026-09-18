@@ -16,7 +16,7 @@
 -- the Aqua Vitae's GIVEN tally), a panacea for the party, and the Aqua Vitae in the center.
 --
 -- `boss = true` gives the recruit fight its integrity (immune to execute + Charm); best her and she is
--- yours (Player.recruit), exactly as the Cathedral keeps Amana and the Colosseum keeps Saber. It goes
+-- yours (Player.recruit), exactly as the Cathedral keeps Xin and the Colosseum keeps Saber. It goes
 -- inert the moment she is an ally.
 --
 -- TODO (see docs/story.md): her flaw -- the giver who never RECEIVES -- and the Aqua Vitae's second,

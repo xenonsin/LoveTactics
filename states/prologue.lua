@@ -489,6 +489,12 @@ end
 -- a sweep's worth of kit -- and a level-1 pair with an empty stash reads as a broken city rather than a
 -- skipped prologue.
 --
+-- ONE BEAT PAST THE PROLOGUE, deliberately: the trip through the Inn's door is taken too, which is
+-- where Xin joins and where Rowan's wound is set. That is not something Act 0 grants, it is the two
+-- clicks every played run makes on arriving, and the button is for reaching a company that can walk
+-- down the stair rather than one standing two clicks short of it. The tail of `skip` argues it in
+-- place, and states/menu.lua's card says it to whoever presses the button.
+--
 -- DERIVED WHERE IT CAN BE. The two abilities Rowan hands over mid-fight, the chests, the loot the two
 -- objective lessons carry and the rescue purse are all read off their own sources -- the village
 -- lesson's steps, FLIGHT_QUEST, the encounter blueprints -- so a beat that gives one more thing gives
@@ -612,6 +618,7 @@ function prologue.skip(player)
     local Conversation = require("models.conversation")
     local Tutorial = require("models.tutorial")
     local Item = require("models.item")
+    local Building = require("models.building")
 
     -- The avatar, built exactly as begin() builds it: the typed name and chosen body when character
     -- creation ran, the blueprint's own "Stranger" and body 1 when it did not -- the skip does not stop
@@ -732,6 +739,32 @@ function prologue.skip(player)
             require("models.wound").inflict(player, { char })
         end
     end
+
+    -- ...AND THE FIRST TRIP THROUGH THE INN'S DOOR IS TAKEN TOO, which is the one beat this function
+    -- hands over that Act 0 does not contain. The button exists to put a company at the Gate ready to
+    -- walk down, and a played prologue's very next two clicks are the Inn -- Xin joins out of it
+    -- (data/buildings/the_ward.lua's `grants`, played by states/hub.lua's launchVendor) and the bone
+    -- Rowan came up with gets set. A skip that stops one door short lands a party of two, one of them
+    -- hurt, against an expedition of four, so the skip takes those two clicks.
+    --
+    -- THE WOUND IS STILL INFLICTED ABOVE AND THEN MENDED HERE, in that order, rather than never dealt:
+    -- `Wound.everWounded` is the one-way mark the Inn's own card is hung on (`unlockWound`), and it
+    -- survives the mending. Skipping the inflict would shut the door on the room the company has just
+    -- been through.
+    --
+    -- Walked the way the door walks it: the scene's flag and the card's seen-mark recorded, the
+    -- companion read off the blueprint rather than named again here, and her join banner dropped on the
+    -- floor -- the scene it would have folded onto is one of the ones not being played, and left queued
+    -- it prints over whatever the city opens first.
+    local ward = Building.defs["the_ward"]
+    if ward then
+        player.flags["intro_the_ward"] = true
+        Building.markSeen(player, "the_ward")
+        if ward.grants then Player.recruit(player, ward.grants) end
+        local wardJoins = Conversation.pendingJoins
+        for i = #wardJoins, 1, -1 do wardJoins[i] = nil end
+    end
+    require("models.wound").mend(player, 1)
 
     -- ...and the city opens in FREE PLAY. begin() sets `hubIntro = "arrival"`, which plays the guard and
     -- the sponsor over the plaza and then shuts every door but the Gate until they have been read

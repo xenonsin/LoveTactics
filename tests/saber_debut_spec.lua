@@ -465,8 +465,8 @@ return {
                 seed = 1,
             })
 
-            -- The funnel: obstacle walls a rolled board would never place at the flanks.
-            assert(built.tiles[4][1].type == "obstacle" and built.tiles[4][8].type == "obstacle",
+            -- The funnel: mountain walls a rolled board would never place at the flanks.
+            assert(built.tiles[4][1].type == "mountain" and built.tiles[4][8].type == "mountain",
                 "the flank walls that funnel a dodging body are on the board")
             -- The rigged edges: two hidden snares, owned by the enemy so they never bite Saber's team.
             local snares = 0

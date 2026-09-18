@@ -65,8 +65,8 @@ return {
         { "ground", "ground",   "ground", "ground", "ground", "ground", "ground", "ground"   },
         { "ground", "ground",   "ground", "ground", "ground", "ground", "ground", "ground"   },
         -- Column 7 is deliberately CLEAR all the way down: it is the third imp's run at Rowan's
-        -- flank, and an obstacle in it would leave the poor thing shuffling in the open.
-        { "ground", "obstacle", "ground", "ground", "ground", "ground", "ground", "obstacle" },
+        -- flank, and a rock in it would leave the poor thing shuffling in the open.
+        { "ground", "mountain", "ground", "ground", "ground", "ground", "ground", "mountain" },
         { "ground", "ground",   "ground", "ground", "ground", "ground", "ground", "ground"   },
         { "ground", "ground",   "ground", "ground", "ground", "ground", "ground", "ground"   },
     },

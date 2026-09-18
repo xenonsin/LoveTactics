@@ -561,10 +561,14 @@ local NOTES = {
     },
 }
 
--- IS THIS TAB'S LESSON STILL UNREAD? The Tactics tab and the Auto button it drives unlock underground
--- (Descent.tacticsUnlocked), and the Roll is a tab nobody has opened yet, so either can be on this
--- strip as a control the player has never met -- it wears a red pip until the window behind it has
--- been read, and opening it plays that window once. Both halves ask this one question.
+-- IS THIS TAB'S LESSON STILL UNREAD? The Tactics tab unlocks on a trip ending and may well do so
+-- underground (Descent.tacticsUnlocked), and the Roll is a tab nobody has opened yet, so either can be
+-- on this strip as a control the player has never met -- it wears a red pip until the window behind it
+-- has been read, and opening it plays that window once. Both halves ask this one question.
+--
+-- For Tactics the window is load-bearing rather than courteous: reading it is the only thing that puts
+-- the fight's Auto button on the board (Descent.autoUnlocked), so this pip is the whole of the step
+-- between the tab arriving and the switch appearing.
 --
 -- Only for a real campaign player: `persist` is already this panel's word for "this is the save file's
 -- company", so the draft's synthetic roster and the debug character editor (which points the tab at a

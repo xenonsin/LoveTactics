@@ -1,11 +1,21 @@
 -- The one terrain table (models/terrain.lua). The map and the board are the same ground, so these pin
 -- the thing that made merging them possible: both layers read one table, and the two words that meant
 -- two different things each became two tiles.
+--
+-- And the rise-and-rock cases at the bottom, which are a THIRD word that was wrong. `mountain` was
+-- the walkable vantage and `obstacle` the anonymous solid beside it; they are now `hill` and
+-- `mountain`. Renaming costs nothing here on its own -- the fingerprint case below pins walkability
+-- rather than names for exactly that reason -- but one of the three claims the new names make is
+-- true only by way of ANOTHER FILE, and that one needed a test.
 
 local Terrain = require("models.terrain")
 local Tileset = require("models.tileset")
 local Arena = require("models.arena")
 local Overworld = require("models.overworld")
+local Character = require("models.character")
+local Item = require("models.item")
+local Combat = require("models.combat")
+local Wall = require("models.wall")
 
 -- A board with NO content on it: every placement pass that reads the encounter pool is skipped, so what
 -- is left is pure carved geometry. That matters because the pool is built with `pairs` over a registry
@@ -33,6 +43,35 @@ local function walkPrint(grid)
         end
     end
     return sum, n
+end
+
+-- A flat BATTLE board with the named cells replaced by one terrain type (mirrors
+-- tests/knockback_spec.lua's). Nothing to do with bareBoard above, which rolls an overworld.
+local function board(cols, rows, kind, cells)
+    local tiles = {}
+    for y = 1, rows do
+        tiles[y] = {}
+        for x = 1, cols do
+            tiles[y][x] = { type = "ground", moveCost = 1, walkable = true, sightCost = 0 }
+        end
+    end
+    local def = Terrain.get(kind)
+    for _, c in ipairs(cells or {}) do
+        tiles[c.y][c.x] = { type = kind, moveCost = def.moveCost, walkable = def.walkable,
+                            sightCost = def.sightCost, bonus = def.bonus }
+    end
+    return { cols = cols, rows = rows, tiles = tiles, objective = { type = "killAll" } }
+end
+
+-- A body with a generous move budget, so nothing below fails merely for running out of steps.
+local function walker(itemIds)
+    local char = Character.instantiate("character_rowan")
+    if itemIds then
+        char.inventory = {}
+        for _, id in ipairs(itemIds) do Character.addItem(char, Item.instantiate(id)) end
+    end
+    char.stats.movement = 8
+    return { char = char, x = 3, y = 5 }
 end
 
 return {
@@ -187,6 +226,71 @@ return {
                 assert(seen == walkable, string.format(
                     "seed %d: %d of %d walkable tiles are cut off", seed * 91, walkable - seen, walkable))
             end
+        end,
+    },
+    {
+        name = "the hill is the rise you take and the mountain is the rock you go around",
+        fn = function()
+            local hill, mountain = Terrain.TYPES.hill, Terrain.TYPES.mountain
+
+            assert(hill.walkable, "a hill is high ground you can actually stand on")
+            assert(hill.moveCost == 3, "and it charges for the climb")
+            assert(hill.bonus and hill.bonus.range == 1, "which is what the reach pays for")
+            assert(hill.sightCost >= Combat.SIGHT_BLOCK, "a hill screens the lane behind it on its own")
+
+            assert(not mountain.walkable, "a mountain bars the tile")
+            assert(mountain.sightCost >= Combat.SIGHT_BLOCK, "and the sight through it")
+            assert(mountain.bonus == nil, "nothing stands on it, so it pays nobody anything")
+
+            -- The old names are GONE rather than aliased, and that is deliberate. `mountain` is now
+            -- Terrain.get's fallback for an unknown type, so a leftover "obstacle" left standing as a
+            -- second door would keep an old arena loading while quietly meaning something new. Better
+            -- it be a name nobody uses, and the parse pass names the file that still types it.
+            assert(Terrain.TYPES.obstacle == nil, "`obstacle` was renamed, not kept as a second door")
+            assert(Terrain.get("no_such_tile") == Terrain.TYPES.mountain, "unknown reads as solid")
+            assert(Terrain.get(nil) == Terrain.TYPES.mountain, "and so does nil")
+        end,
+    },
+    {
+        -- THE CLAIM NOTHING IN THIS FILE COULD SEE. models/terrain.lua says nothing about flight; a
+        -- mountain is crossed because Combat.isFlying overrides `walkable` in the move graph, which is
+        -- a fact about models/combat.lua. So the tooltip's "only a flier crosses it" and the Zephyr
+        -- Striders' "mountains included" could both have gone false the day that graph tightened, and
+        -- every guard reading the terrain table would have stayed green.
+        name = "a flier crosses a mountain and a walker does not",
+        fn = function()
+            local ridge = {} -- a wall of mountain across y3 with no gap: over it or nowhere
+            for x = 1, 6 do ridge[#ridge + 1] = { x = x, y = 3 } end
+
+            local cWalk = Combat.new(board(6, 6, "mountain", ridge), { walker() }, {})
+            local onFoot = Combat.reachable(cWalk, cWalk.units[1])
+            assert(onFoot["3,4"], "the walker moves freely on its own side")
+            assert(not onFoot["3,3"], "but it cannot enter the mountain")
+            assert(not onFoot["3,1"], "and nothing beyond the ridge is reachable either")
+
+            local cFly = Combat.new(board(6, 6, "mountain", ridge),
+                { walker({ "utility_zephyr_striders" }) }, {})
+            local u = cFly.units[1]
+            assert(Combat.isFlying(u), "the Striders are what lift it")
+            local aloft = Combat.reachable(cFly, u)
+            assert(aloft["3,3"], "a flier may stand on the mountain itself")
+            assert(aloft["3,1"], "and crosses to the far side of the ridge")
+        end,
+    },
+    {
+        -- The other half of the same line, and the reason the mountain opening is not a hole: terrain
+        -- bars the way by being poor footing, an object bars it by being IN the way. The Striders buy
+        -- "the ground stops mattering", never "nothing stops you".
+        name = "a wall still stops the flier the mountain did not",
+        fn = function()
+            local c = Combat.new(board(6, 6, "ground", {}),
+                { walker({ "utility_zephyr_striders" }) }, {})
+            for x = 1, 6 do Wall.place(c, x, 3, "illusory_wall") end
+
+            local aloft = Combat.reachable(c, c.units[1])
+            assert(aloft["3,4"], "the near side is still open")
+            assert(not aloft["3,3"], "a flier cannot end its turn inside a wall")
+            assert(not aloft["3,1"], "nor pass through one to the far side")
         end,
     },
 }

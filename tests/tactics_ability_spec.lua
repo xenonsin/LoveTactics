@@ -409,4 +409,80 @@ return {
             end
         end,
     },
+    {
+        name = "Clear Out spins as wide as the melee weapon beside it, and refuses to spin without one",
+        fn = function()
+            local clear = Item.defs.ability_clear_out.activeAbility
+            local pred = clear.radiusFromAdjacent
+            assert(pred, "Clear Out borrows its ring from the grid")
+            assert(clear.requiresAdjacent, "...and needs the weapon it borrows from")
+
+            -- A ring armed by `weaponId`, and whether it reaches the foe standing `gap` tiles away.
+            -- Read through the CAST rather than off the field, because the footprint is what every
+            -- surface shares (Combat.aoeCells): the red preview, fx.aoeUnits and the AI all ask this.
+            local function ring(weaponId)
+                local char = withGrid("character_fighter", { "ability_clear_out", weaponId })
+                local c = Combat.new(arena(10, 10), { unit(char, 4, 4) },
+                    { unit(dummy("character_bandit"), 5, 4),    -- one tile out: inside any ring
+                      unit(dummy("character_bandit"), 6, 4) })  -- two tiles out: only a long one
+                local u = c.units[1]
+                local it = itemOf(u.char, "ability_clear_out")
+                return c, u, it
+            end
+            local function hurt(u) return u.char.stats.health.max - u.char.stats.health.current end
+
+            -- An axe is an arm's length, and an arm's length is the authored floor: the near foe falls
+            -- in the ring, the far one is not in the fight.
+            local c, u, it = ring("weapon_iron_axe")
+            refresh(c, u)
+            assert(Combat.useItem(c, u, it, u.x, u.y), "the axe arms the spin")
+            assert(hurt(c.units[2]) > 0, "the foe at the shoulder is cut")
+            assert(hurt(c.units[3]) == 0, "the foe two tiles out is not")
+
+            -- A hooked bell fights at two, so the spin does: the same cast now takes both.
+            local c2, u2, it2 = ring("weapon_gathering_bell")
+            refresh(c2, u2)
+            assert(Combat.useItem(c2, u2, it2, u2.x, u2.y), "the bell arms the same spin")
+            assert(hurt(c2.units[2]) > 0 and hurt(c2.units[3]) > 0,
+                "a weapon that reaches two tiles clears two tiles")
+
+            -- And a bow arms nothing: the gate refuses the cast outright rather than letting a spin
+            -- happen around a weapon nobody is holding.
+            local c3, u3, it3 = ring("weapon_iron_bow")
+            refresh(c3, u3)
+            assert(not Combat.adjacencyMet(u3.char, it3), "a bow does not answer the requirement")
+            assert(not Combat.useItem(c3, u3, it3, u3.x, u3.y), "so the ring is refused")
+            assert(hurt(c3.units[2]) == 0, "and nothing is cut")
+
+            -- BOTH ENDS OF THE DERIVED SET ARE PINNED, because the ring's area grows with the square of
+            -- what the grid lends it and the data file quotes only one number.
+            --
+            -- The FLOOR is the authored radius, which the shelf and the stash draw with no grid to
+            -- read: it is honest only while every weapon the predicate reaches clears it.
+            --
+            -- The CEILING is a claim about how wide this cast can ever get. Nothing the player can
+            -- carry swings past two tiles, so the widest ring a party ever spins is 5x5; the fours are
+            -- monster naturals (the Suppliant's bough), which never sit in a grid holding this ability.
+            -- A new melee weapon longer than either figure should land here as a decision, not as a
+            -- 9x9 blast somebody notices in a fight.
+            local floor = clear.aoe.radius
+            local widest, widestCarried, widestId = 0, 0, nil
+            for id, def in pairs(Item.defs) do
+                if Combat.matchesAdjacency(def, pred) then
+                    local r = (def.activeAbility and def.activeAbility.range) or 0
+                    assert(r >= floor, id .. " is shorter than Clear Out's authored floor of " .. floor)
+                    if r > widest then widest, widestId = r, id end
+                    local natural = false
+                    for _, t in ipairs(def.tags or {}) do
+                        if t == "natural" or t == "unarmed" then natural = true end
+                    end
+                    if not natural and r > widestCarried then widestCarried = r end
+                end
+            end
+            assert(widestCarried == 2,
+                "the widest ring the party can spin moved to " .. widestCarried .. " tiles -- re-price it")
+            assert(widest == 4, "the longest melee reach in the game is now " .. widest
+                .. " (" .. tostring(widestId) .. ") -- Clear Out's ceiling moved with it")
+        end,
+    },
 }

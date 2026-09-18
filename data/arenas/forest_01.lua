@@ -4,8 +4,8 @@
 -- enemySpawns (extras beyond the listed spawns are dropped). Hand-edit freely, or
 -- capture a fresh one in-battle with the F5 debug save. See models/arena.lua.
 return {
-    -- Terrain shapes the fight through both movement AND line of sight: the central `obstacle`
-    -- rocks are solid (block movement + sight), while `forest` is soft cover that only LOWERS
+    -- Terrain shapes the fight through both movement AND line of sight: the central `mountain`
+    -- rock is solid (blocks movement + sight), while `forest` is soft cover that only LOWERS
     -- sight -- a single copse still lets an arrow through, but the stacked pair at column 3
     -- (rows 4-5) fully screens that lane. Ranged abilities (bow / fireball / jolt) need a clear
     -- line, so units angle around cover. See models/arena.lua TILE_PROPS + models/combat.lua.
@@ -14,8 +14,8 @@ return {
         { "ground", "ground", "ground", "ground",   "ground",   "ground", "ground", "ground" },
         { "ground", "ground", "ground", "forest",   "ground",   "ground", "ground", "ground" },
         { "ground", "forest", "ground", "ground",   "ground",   "ground", "forest", "ground" },
-        { "ground", "ground", "forest", "obstacle", "obstacle", "forest", "ground", "ground" },
-        { "ground", "ground", "forest", "obstacle", "obstacle", "forest", "ground", "ground" },
+        { "ground", "ground", "forest", "mountain", "mountain", "forest", "ground", "ground" },
+        { "ground", "ground", "forest", "mountain", "mountain", "forest", "ground", "ground" },
         { "ground", "forest", "ground", "ground",   "ground",   "ground", "forest", "ground" },
         { "ground", "ground", "ground", "ground",   "forest",   "ground", "ground", "ground" },
         { "ground", "ground", "ground", "ground",   "ground",   "ground", "ground", "ground" },

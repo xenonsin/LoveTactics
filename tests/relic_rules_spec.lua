@@ -45,7 +45,7 @@ local function fightWith(ids, opts)
         if u.side == "party" then u.relicBonus = bag end
     end
     Combat.applyPassives(combat)
-    Combat.applyRelicRules(combat)
+    Combat.applyUnitRules(combat)
     return combat, hero, foe, bag
 end
 
@@ -147,7 +147,7 @@ return {
             local bag = bagFor({ "relic_yoked_company" })
             for _, u in ipairs(combat.units) do if u.side == "party" then u.relicBonus = bag end end
             Combat.applyPassives(combat)
-            Combat.applyRelicRules(combat)
+            Combat.applyUnitRules(combat)
 
             -- The BUILT units, not the descriptors Fixture.unit returns: `sharedPool` is stamped on the
             -- unit, and damage is dealt to a unit.

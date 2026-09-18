@@ -177,7 +177,8 @@ return {
             local lava = Arena.TILE_PROPS.lava
             assert(not lava.walkable, "lava must be impassable")
             assert(lava.sightCost == 0, "lava must NOT block line of sight -- that is the whole point of it")
-            assert(Arena.TILE_PROPS.obstacle.sightCost > 0, "an obstacle should still block sight")
+            assert(Arena.TILE_PROPS.mountain.sightCost > 0, "a mountain should still block sight")
+            assert(not Arena.TILE_PROPS.mountain.walkable, "a mountain must be impassable on foot")
 
             for _, t in ipairs({ "sand", "ice", "mire" }) do
                 assert(Arena.TILE_PROPS[t].walkable, t .. " must be walkable")
@@ -193,16 +194,16 @@ return {
             -- unlimited movement across it. Ice is free in the sense that matters: alone among terrain
             -- features it charges nothing extra, so a board scattered with it has no movement obstacles.
             assert(Arena.TILE_PROPS.ice.moveCost == ground, "ice must cost exactly what open field costs")
-            for _, t in ipairs({ "forest", "water", "mountain", "rough", "sand", "mire" }) do
+            for _, t in ipairs({ "forest", "water", "hill", "rough", "sand", "mire" }) do
                 assert(Arena.TILE_PROPS[t].moveCost > ground, t .. " must cost more than open field")
             end
-            -- Mire ties the mountain rather than beating it: a cost above 3 would make the scattered
-            -- fill of a swamp board effectively impassable for ordinary move budgets, which is an
-            -- obstacle wearing a floor's name. What makes it distinct is what it gives back, not its price.
-            assert(Arena.TILE_PROPS.mire.moveCost == Arena.TILE_PROPS.mountain.moveCost,
-                "mire should tie the mountain for the heaviest walkable floor")
-            assert(Arena.TILE_PROPS.mountain.bonus, "the mountain is supposed to pay for its cost")
-            -- Mire used to assert `bonus == nil` -- "charges a mountain's price and grants nothing".
+            -- Mire ties the hill rather than beating it: a cost above 3 would make the scattered
+            -- fill of a swamp board effectively impassable for ordinary move budgets, which is a wall
+            -- wearing a floor's name. What makes it distinct is what it gives back, not its price.
+            assert(Arena.TILE_PROPS.mire.moveCost == Arena.TILE_PROPS.hill.moveCost,
+                "mire should tie the hill for the heaviest walkable floor")
+            assert(Arena.TILE_PROPS.hill.bonus, "the hill is supposed to pay for its cost")
+            -- Mire used to assert `bonus == nil` -- "charges a hill's price and grants nothing".
             -- Accuracy gave it a bonus table, so the letter of that is gone, but the CLAIM it was
             -- making is not, and it is now sharper: mire does not merely fail to pay for its cost, it
             -- charges twice. Assert the thing actually worth defending -- that nothing in the bag is
@@ -281,6 +282,34 @@ return {
                 assert(Tileset.TYPES[artType],
                     "arena tile '" .. tile .. "' maps to a non-existent overworld role: " .. tostring(artType))
             end
+        end,
+    },
+    {
+        name = "grey means you cannot go there: the rock role is reserved for the impassable",
+        fn = function()
+            -- `rock` is the only GREY a biome paints -- every other role is a floor, a wood, or water
+            -- (data/tilesets/*.lua). Colour is not this board's identity channel, the mark is
+            -- (ui/terrain_art.lua), but colour carries exactly one promise and this is it.
+            --
+            -- The hill is why the promise needed writing down. It borrowed `rock` for its whole life,
+            -- because it was called `mountain` and drawn as stone -- so the best tile on the board, the
+            -- one you spend three move to reach, was painted the same grey as the wall beside it. It
+            -- takes the biome's `grass` now. A later type reaching for `rock` because it happens to be
+            -- made of stone would put that confusion straight back, and nothing else here would notice.
+            local BattleMap = require("ui.battle_map")
+            local bad = {}
+            for tile, props in pairs(Arena.TILE_PROPS) do
+                if props.walkable and BattleMap.ART[tile] == "rock" then bad[#bad + 1] = tile end
+            end
+            table.sort(bad)
+            assert(#bad == 0, "walkable terrain drawn in the impassable grey: " .. table.concat(bad, ", "))
+
+            -- ...and the role is not left unused at the other end, or the reservation is vacuous.
+            local claimed = false
+            for tile, props in pairs(Arena.TILE_PROPS) do
+                if not props.walkable and BattleMap.ART[tile] == "rock" then claimed = true end
+            end
+            assert(claimed, "nothing draws in the rock role: the grey has stopped meaning anything")
         end,
     },
     {

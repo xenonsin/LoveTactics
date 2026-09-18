@@ -716,9 +716,16 @@ function Save.snapshot(player)
         -- coaching (states/gate.lua's bubble on the descend row). Same one-way shape: without it here, a
         -- player who quits on floor one is taught the button again on the way back up.
         gateCoached = player.gateCoached or nil,
-        -- ...and whether the window explaining Tactics and Auto has been read. The UNLOCK itself is not
-        -- saved: it is read off `deepest`, which already rides this snapshot (Descent.tacticsUnlocked).
+        -- ...and whether the window explaining Tactics and Auto has been read. It is TWO gates now, not
+        -- one: this mark is what puts the Auto button on the board (Descent.autoUnlocked), and the tab
+        -- that opens the window rides on `returnedToCity` below plus `deepest`, which is already here.
         tacticsTaught = player.tacticsTaught or nil,
+        -- ...and whether this company has ever walked into the city with a trip behind it, which is the
+        -- half of the Tactics gate no other field can answer (Descent.returnedToCity). Same one-way
+        -- shape as the marks around it, and purely additive: an older save restores unmarked and its
+        -- next hub visit stamps it -- which, for a company with any depth at all, is the very next
+        -- screen.
+        returnedToCity = player.returnedToCity or nil,
         -- ...and whether the window explaining the Roll has been read (Descent.classesTaught). No
         -- unlock rides beside this one: the Classes tab is on the strip from the first morning.
         classesTaught = player.classesTaught or nil,
@@ -1163,6 +1170,10 @@ function Save.restore(snap)
         -- wrong: the worst case is one bubble over a button that company has pressed before.
         gateCoached = snap.gateCoached == true,
         tacticsTaught = snap.tacticsTaught == true, -- ...nor read the Tactics window, same worst case
+        -- ...nor come home from a trip, as far as this field knows. False is the safe read: the next hub
+        -- entry re-stamps it off `expeditionsOut`, so an old save loses the tab for as long as it takes
+        -- to walk into the city.
+        returnedToCity = snap.returnedToCity == true,
         classesTaught = snap.classesTaught == true, -- ...nor the Roll's, which costs one window at worst
         relicsTaught = snap.relicsTaught == true,   -- ...nor been told what a relic is, same worst case
         -- An older save has no field here, and it reads as TRUE rather than as the false every other

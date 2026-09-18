@@ -9,17 +9,19 @@
 -- them reaches any vantage on the field; a knight in them stops being a thing you can wall off.
 --
 -- What it deliberately does NOT do, and the line is worth stating because it is the difference between
--- a strong item and a broken one: it does not open a WALL, a rock face, or an occupied tile. Those bar
--- the way by being in it, not by being poor footing. The rule these boots buy is "the ground stops
--- mattering" -- not "nothing stops you" -- so cover, chokepoints and bodies still do their jobs, and a
--- flier can never end its turn inside a mountain.
+-- a strong item and a broken one: it does not open a WALL (models/wall.lua) or an occupied tile. Those
+-- bar the way by being IN it -- an object, a body -- not by being poor footing, however grand. The rule
+-- these boots buy is "the ground stops mattering" -- not "nothing stops you" -- so chokepoints held by
+-- bodies and rooms given sides by walls still do their jobs. What DOES open is every landform on the
+-- table, the `mountain` included: a flier goes over the rock face the rest of the company walks around,
+-- and that is the single clearest thing this item is for.
 --
 -- Hazards still bite, too: fire on a tile burns a flier that stops over it, and traps still spring
 -- unless the wearer ALSO has Feather Boots. These lift you over the terrain, not out of the world --
 -- which is what keeps them a movement item rather than an immunity.
 return {
     name = "Zephyr Striders",
-    description = "Every tile costs one to cross, and no ground is impassable. Walls still stop you.",
+    description = "Every tile costs one to cross, and no ground is impassable -- mountains included. Walls still stop you.",
     flavor = "Terrain is the arena's argument. These decline it, politely, a handspan off the ground.",
     sprite = "assets/items/zephyr_striders.png",
     type = "utility",

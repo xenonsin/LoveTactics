@@ -17,7 +17,6 @@ return {
     sprite = "assets/items/glutted_bulk.png",
     type = "weapon",
     class = "creature",
-    dropTier = 8,
     tags = { "natural", "impact", "physical", "melee" },
     noSteal = true,
     activeAbility = {

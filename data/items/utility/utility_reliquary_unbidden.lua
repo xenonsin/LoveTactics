@@ -20,7 +20,6 @@ return {
     sprite = "assets/items/reliquary_unbidden.png",
     type = "utility",
     class = "creature",
-    dropTier = 4,
     tags = { "relic" },
     noSteal = true, -- nothing takes this off you; you took it off her
     traits = { "trait_rapture" },

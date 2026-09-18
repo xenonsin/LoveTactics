@@ -222,9 +222,11 @@ silently drops its oldest is a shelf that steals.*
 
 The top of the found ladder is meant to be a handful of **authored rule-breakers** — pieces that sit on
 no counter ever, drop only deep, and change what a body is allowed to do. That is what a Diablo unique
-actually is, and `models/relic.lua` already argues the principle for the within-run layer: its three
-rungs are *a gift, a trade, an inversion*, each a different **kind** of thing rather than a different
-size.
+actually is, and the parked relic shelf already argued the principle for the within-run layer: its
+three rungs were *a gift, a trade, an inversion*, each a different **kind** of thing rather than a
+different size. The argument stands and the shelf does not — `models/relic.lua` is parked
+([relics.md](relics.md)), and its inversions are now the eight `rules` items, which are exactly the
+authored rule-breakers this section is asking for.
 
 **One flag was missing and now exists.** `unstocked = true` on a blueprint keeps a piece out of the
 money economy in both directions: `Vendor.foundPrice` refuses to quote one, so no counter deals it

@@ -22,7 +22,6 @@ return {
     sprite = "assets/items/distended_hide.png",
     type = "utility",
     class = "creature",
-    dropTier = 1,
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_boss_phases" },

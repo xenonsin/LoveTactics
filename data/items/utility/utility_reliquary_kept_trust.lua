@@ -1,4 +1,4 @@
--- Amana's signature relic (docs/story.md, "The other seven": the priest answers lust with devotion).
+-- Xin's signature relic (docs/story.md, "The other seven": the priest answers lust with devotion).
 -- A reliquary she carries but keeps nothing from -- the build-around at the center of her loadout grid.
 --
 -- It carries her giving loop as a passive (data/traits/trait_sanctified_presence.lua): she and the
@@ -14,7 +14,7 @@
 -- casts of mercy open the reliquary. Note the ward it lays does NOT feed itself -- Aegis and Regeneration
 -- heal on the status clock (Combat.regenerate/onTick), which never routes through fx.heal, so the payoff
 -- can't re-charge on its own smoke. It is the inverse of Lust's arithmetic: Luxuria takes the reserves a
--- foe withheld (data/traits/trait_rapture.lua); Amana spends her own turns handing wards away, and takes
+-- foe withheld (data/traits/trait_rapture.lua); Xin spends her own turns handing wards away, and takes
 -- nothing back.
 --
 -- It also carries the other half of her rule (data/traits/trait_devotion_unbidden.lua): her will cannot

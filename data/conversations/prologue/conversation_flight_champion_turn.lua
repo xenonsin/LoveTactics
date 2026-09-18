@@ -6,7 +6,7 @@
 -- ============================================================================
 --
 -- THE WARNING, PLAYED OVER THE BOARD, ONE TURN BEFORE IT HAPPENS. The Demon Champion crosses 33% health,
--- the stage turns, and it marks Rowan (data/status/status_champion_fixation.lua). This plays at the next
+-- the stage turns, and it marks Rowan (models/combat.lua's Combat.spendScriptedFell). This plays at the next
 -- turn boundary (states/battle.lua's beginTurn reads combat.pendingScene), and on the turn after it the
 -- Champion shakes, crosses the ground and puts her down.
 --

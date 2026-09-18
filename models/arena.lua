@@ -47,7 +47,7 @@ Arena.TILE_SIZE = 64 -- logical pixels per cell (8*64 = 512, centered in 1280x72
 --   * sightCost -- how much this tile obstructs a line of sight that passes THROUGH it. Combat
 --     sums it over the tiles between shooter and target; a line is blocked once the sum reaches
 --     Combat.SIGHT_BLOCK. 0 = transparent, forest (1) is soft cover that only LOWERS sight (two
---     stacked block), mountain/obstacle carry enough to block a shot on their own.
+--     stacked block), the hill (2) and the mountain (solid) carry enough to block a shot on their own.
 --   * bonus     -- optional positional modifiers granted to a unit STANDING on the tile, e.g.
 --     { range = 1 } for high ground. Combat aggregates these (with any placed field objects) via
 --     Combat.fieldBonus; a generic bag so future tiles/objects can grant other buffs the same way.
@@ -63,15 +63,15 @@ Arena.TILE_PROPS = Terrain.TYPES
 -- counts still come from the same rng draws in the same order, so every previously generated board
 -- reproduces from its seed unchanged. A biome absent here falls back to the original three.
 Arena.BIOME_TERRAIN = {
-    default  = { fill = "forest", rise = "mountain", block = "obstacle" },
-    desert   = { fill = "sand",   rise = "mountain", block = "obstacle" },
-    tundra   = { fill = "ice",    rise = "mountain", block = "obstacle" },
-    volcanic = { fill = "rough",  rise = "mountain", block = "lava" },
-    swamp    = { fill = "mire",   rise = "forest",   block = "obstacle" },
-    -- The bowl. Sand underfoot like the desert, but the rise is an `obstacle` rather than a mountain
-    -- and so is the blocker: there is no high ground in an arena and no landform of any kind --
-    -- everything standing on this floor was carried in and set down for the card.
-    colosseum = { fill = "sand",  rise = "obstacle", block = "obstacle" },
+    default  = { fill = "forest", rise = "hill", block = "mountain" },
+    desert   = { fill = "sand",   rise = "hill", block = "mountain" },
+    tundra   = { fill = "ice",    rise = "hill", block = "mountain" },
+    volcanic = { fill = "rough",  rise = "hill", block = "lava" },
+    swamp    = { fill = "mire",   rise = "forest", block = "mountain" },
+    -- The bowl. Sand underfoot like the desert, but the rise is a blocker rather than a hill, and so
+    -- is the blocker: there is no high ground in an arena and no landform anyone climbs -- everything
+    -- standing on this floor was carried in and set down for the card.
+    colosseum = { fill = "sand",  rise = "mountain", block = "mountain" },
 }
 
 -- The terrain palette for `biome`, always a complete table (see Arena.BIOME_TERRAIN).
@@ -794,7 +794,7 @@ local function requireSeed(seed, who)
     return seed
 end
 
--- Procedurally generate a layout: all `ground`, with a few `forest`/`mountain`/`obstacle`
+-- Procedurally generate a layout: all `ground`, with a few `forest`/`hill`/`mountain`
 -- tiles scattered across the middle rows (never on a spawn tile). Deterministic off
 -- `params.seed` (required -- see requireSeed). `params.party` / `params.enemies` are unit *counts*.
 function Arena.generateLayout(params)

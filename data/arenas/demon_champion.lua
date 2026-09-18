@@ -18,11 +18,11 @@
 --
 -- Every cell is load-bearing (like data/arenas/tutorial_village.lua), and each terrain lever answers a
 -- stage of the fight (see data/characters/character_demon_champion.lua):
---   * THE NECK (y4): a wall of `obstacle` with a two-wide gap at x4-5 -- the only north-south passage,
---     so the slow Champion must squeeze it (the stage-1 kite/brace beat). The flanking obstacles double
+--   * THE NECK (y4): a wall of `mountain` with a two-wide gap at x4-5 -- the only north-south passage,
+--     so the slow Champion must squeeze it (the stage-1 kite/brace beat). The flanking rock doubles
 --     as knockback walls: shove the Champion north when it stands at x3 or x6 and it slams into them for
 --     doubled impact (the stage-3 finisher).
---   * HIGH GROUND (y7): two `mountain` tiles (+1 range, sight-screening) -- the bow perches that
+--   * HIGH GROUND (y7): two `hill` tiles (+1 range, sight-screening) -- the bow perches that
 --     overlook the lane while the Champion approaches.
 --   * BURNABLE TREELINE (y2 / y5): `forest` clumps -- the Fire Bolt ignition target and the soft cover
 --     the Bomblets use. The Roar's Bomblets arrive beside the Champion around y5, into AoE range.
@@ -39,10 +39,10 @@ return {
         { "ground",   "ground", "ground",   "ground", "ground", "ground",   "ground", "ground" }, -- y1 enemy back line
         { "ground",   "ground", "forest",   "ground", "ground", "forest",   "ground", "ground" }, -- y2 smouldering treeline
         { "ground",   "ground", "ground",   "ground", "ground", "ground",   "ground", "ground" }, -- y3 approach
-        { "obstacle", "obstacle","obstacle", "ground", "ground", "obstacle", "obstacle","obstacle" }, -- y4 THE NECK (gap x4-5)
+        { "mountain", "mountain","mountain", "ground", "ground", "mountain", "mountain","mountain" }, -- y4 THE NECK (gap x4-5)
         { "ground",   "ground", "forest",   "ground", "ground", "forest",   "ground", "ground" }, -- y5 burnable shoulders
         { "ground",   "forest", "ground",   "water",  "water",  "ground",   "forest", "ground" }, -- y6 pool + treeline
-        { "ground",   "ground", "mountain", "ground", "ground", "mountain", "ground", "ground" }, -- y7 PLAYER HIGH GROUND
+        { "ground",   "ground", "hill",     "ground", "ground", "hill",     "ground", "ground" }, -- y7 PLAYER HIGH GROUND
         { "ground",   "ground", "ground",   "ground", "ground", "ground",   "ground", "ground" }, -- y8 party back line
     },
     -- Slot 1 = avatar, slot 2 = Rowan (Arena.build binds in party order); the rest are spare.

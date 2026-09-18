@@ -14,7 +14,6 @@ return {
     sprite = "assets/items/cinder_brand.png",
     type = "weapon",
     class = "creature",
-    dropTier = 7,
     tags = { "natural", "fire", "physical", "melee" },
     noSteal = true,
     activeAbility = {

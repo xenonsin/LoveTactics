@@ -31,7 +31,6 @@ return {
     sprite = "assets/items/offered_nothing.png",
     type = "utility",
     class = "creature",
-    dropTier = 2,
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_unasked", "trait_boss_phases" },

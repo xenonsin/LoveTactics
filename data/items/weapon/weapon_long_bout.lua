@@ -21,7 +21,7 @@ return {
     flavor = "Everybody else on the field is weather. He has been having one conversation all day.",
     sprite = "assets/items/sig_long_bout.png",
     type = "weapon",
-    tags = { "signature", "sword", "slash", "physical" },
+    tags = { "signature", "sword", "slash", "physical", "melee" },
     class = "duelist",
     -- Swords parry (docs/weapons.md), and a duellist's above all: the family contract is that a blade
     -- answers a melee blow, and Main-Gauche on the same shelf banks Tempo off exactly those parries.

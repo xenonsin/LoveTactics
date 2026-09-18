@@ -1260,6 +1260,44 @@ return {
         end,
     },
     {
+        name = "the Clear Out the lesson hands over lands beside the sword, armed and full width",
+        fn = function()
+            -- THE GIFT HAS A REQUIREMENT NOW, AND THE GRID IT LANDS IN HAS TO ANSWER IT. Clear Out
+            -- needs a melee weapon touching it and takes the ring's width from that weapon
+            -- (data/items/ability/ability_clear_out.lua). states/battle.lua hands it over with
+            -- Character.addItem, which seats a gift in the FIRST EMPTY CELL -- so where the avatar's
+            -- coat sits decides whether the prologue's closing beat works at all. It is a seating
+            -- rule two files apart agreeing silently, and the failure is invisible: an ability that is
+            -- merely greyed out on the one turn the lesson is about.
+            local avatar = Character.instantiate("character_avatar")
+            local sword = Character.slotIndex(avatar, (function()
+                for _, it in ipairs(Character.eachItem(avatar)) do
+                    if it.id == "weapon_iron_sword" then return it end
+                end
+            end)())
+            assert(sword, "the avatar opens with the iron sword in the grid")
+
+            Character.addItem(avatar, Item.instantiate("ability_clear_out"))
+            local ring
+            for _, it in ipairs(Character.eachItem(avatar)) do
+                if it.id == "ability_clear_out" then ring = it end
+            end
+            assert(ring, "the gift found a cell")
+            local seat = Character.slotIndex(avatar, ring)
+            local touching = false
+            for _, i in ipairs(Character.adjacentIndices(seat)) do
+                if i == sword then touching = true end
+            end
+            assert(touching, "the granted Clear Out landed in cell " .. seat
+                .. ", which does not touch the sword in cell " .. sword)
+            assert(Combat.adjacencyMet(avatar, ring), "so the ring is castable the turn it arrives")
+
+            -- ...and the sword sizes it: one tile, the ring the lesson's two imps are stood in.
+            assert(Combat.borrowedRadius(avatar, ring) == 1,
+                "the spin the village teaches is the eight cells around the avatar")
+        end,
+    },
+    {
         name = "the grunt's health is spent exactly, and the player's own blow is the one that ends it",
         fn = function()
             -- The closing beat of the prologue, checked as a sum. The lesson leaves the grunt alive

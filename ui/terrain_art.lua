@@ -29,7 +29,7 @@
 --   * a floor that CHARGES you speaks up -- ripples, dune crests, scree -- roughly in step with the
 --     translucent cost wash it is drawn under (BattleMap.TERRAIN_TINT);
 --   * a tile you cannot enter at all is the loudest thing on the ground: the canopy, the boulders and
---     the masonry are near-opaque and run edge to edge, so a wall reads as a wall at arm's length
+--     the mountain are near-opaque and run edge to edge, so a wall reads as a wall at arm's length
 --     without waiting for the darkening to be noticed.
 --
 -- SILHOUETTE AND GAPS, NOT DETAIL. Same lesson the house sigils learned at 14px (ui/vendor_icons.lua):
@@ -42,6 +42,7 @@
 -- identically every frame and reproduces from its seed. Nothing here calls math.random.
 --
 --   TerrainArt.draw("forest", x, y, w, h, r, g, b, col, row)
+--   TerrainArt.draw("mountain", x, y, w, h, r, g, b, col, row, "masonry")  -- the castle's rampart
 --
 -- `r,g,b` is the ground tone the tile has ALREADY been painted in -- after its cost wash or its
 -- impassable darkening -- so the mark is shaded against what is actually underneath it rather than
@@ -192,23 +193,135 @@ function Marks.thicket(x, y, w, h, r, g, b, col, row)
     love.graphics.rectangle("fill", x, y + h * 0.86, w, h * 0.14)
 end
 
--- HIGH GROUND -- a peak with a lit face, a shadow face and a bright cap. The best tile on the board and
--- the only mark with a true HIGHLIGHT on it, which is what makes it the thing the eye finds first: a
--- rise is the one terrain you go out of your way to take.
+-- A HILL -- high ground you can take: two LOW, WIDE mounds, the taller one lit along its crest.
+--
+-- Three marks on this board are lumps of rock and the eye has to tell them apart in one glance, so
+-- each takes a different proportion and nothing else:
+--   * the mountain below is TALL -- one silhouette reaching the top of the tile, and you go around it;
+--   * the boulders are ROUND -- three separate stones scattered flat, and you go around those too;
+--   * the hill is LOW and WIDE -- it spans the tile edge to edge and rises barely a third of it,
+--     which is the shape of ground that goes up rather than of a thing standing on the ground.
+--
+-- The first cut was one dome with two contour lines round its foot, borrowed from a map. At 64 logical
+-- pixels the nested arcs read as a spiral and the tile came out looking like a seashell -- a rebus, and
+-- for the one terrain the player is meant to go out of their way to take. Contours want a whole
+-- hillside to sit on; a single cell has room for a silhouette and a highlight, and nothing else.
+--
+-- It keeps the true HIGHLIGHT along its crest, which is what makes it the thing the eye finds first.
+function Marks.hill(x, y, w, h, r, g, b)
+    local base = y + h * 0.84
+    -- A wide, shallow half-ellipse on the tile's floor. Drawn as a polygon rather than an arc because
+    -- an arc is a circle, and a circle at this size is the boulder two marks down.
+    local function mound(cx, rx, ry)
+        local pts = {}
+        for i = 0, 18 do
+            local a = math.pi + (i / 18) * math.pi
+            pts[#pts + 1] = cx + math.cos(a) * rx
+            pts[#pts + 1] = base + math.sin(a) * ry
+        end
+        pts[#pts + 1] = cx + rx; pts[#pts + 1] = base
+        pts[#pts + 1] = cx - rx; pts[#pts + 1] = base
+        love.graphics.polygon("fill", pts)
+    end
+    -- The lit crest: the same curve again, one band thinner and lifted, so the light sits ON the ridge
+    -- instead of washing the whole face. Two calls, one shape -- the highlight can never drift off it.
+    local function crest(cx, rx, ry, lift)
+        love.graphics.setLineWidth(math.max(1.5, w * 0.05))
+        local pts = {}
+        for i = 0, 14 do
+            local a = math.pi * 1.06 + (i / 14) * math.pi * 0.70
+            pts[#pts + 1] = cx + math.cos(a) * rx
+            pts[#pts + 1] = base + math.sin(a) * ry - lift
+        end
+        love.graphics.line(pts)
+        love.graphics.setLineWidth(1)
+    end
+
+    -- Every radius stays inside the cell. The first cut hung the near mound's left flank a tenth of a
+    -- tile over the edge, and a mark that crosses its own boundary stops being ground and starts being
+    -- a thing lying across two tiles -- which on a board where the tile IS the unit of decision is the
+    -- one thing a terrain mark may never do.
+    dark(r, g, b, 0.50, 0.95) -- the far rise, behind and to the right
+    mound(x + w * 0.76, w * 0.22, h * 0.28)
+    dark(r, g, b, 0.70, 0.97) -- the near rise: the taller of the two, and the one the light finds.
+    mound(x + w * 0.42, w * 0.40, h * 0.42) -- Lighter than any solid here -- it is a floor, not a wall.
+    love.graphics.rectangle("fill", x, base, w, h * 0.16) -- the ground the pair sits on
+    pale(r, g, b, 0.40, 0.9)
+    crest(x + w * 0.42, w * 0.38, h * 0.40, h * 0.015)
+    dark(r, g, b, 0.52, 0.55) -- the shadow the near rise throws onto the far one
+    crest(x + w * 0.76, w * 0.20, h * 0.26, -h * 0.015)
+end
+
+-- A MOUNTAIN -- a peak with a lit face, a shadow face and a bright cap, edge to edge and near-opaque
+-- like everything else you cannot enter. IMPASSABLE and it screens the view, so unlike the hill above
+-- it leaves no floor to stand on: the silhouette runs from one tile edge to the other and the apex
+-- reaches the top. The one solid on the board a FLIER crosses, which the mark does not try to say --
+-- the tooltip says it in words (ui/tile_tooltip.lua), because "except for a flier" is not a shape.
 function Marks.mountain(x, y, w, h, r, g, b)
-    local cx, base = x + w * 0.50, y + h * 0.88
-    local apex = y + h * 0.12
+    local cx, base = x + w * 0.50, y + h * 1.0
+    local apex = y + h * 0.06
+    -- A second, lower peak behind the shoulder, so the tile reads as a RANGE rather than as one
+    -- triangle -- a lone triangle at this size is an arrowhead, and the board already spends
+    -- chevrons on hostile zones (ui/field_fx.lua).
+    dark(r, g, b, 0.44, 0.95)
+    love.graphics.polygon("fill", x + w * 0.78, y + h * 0.28, x + w * 1.0, base, x + w * 0.42, base)
     dark(r, g, b, 0.55, 0.95) -- shadow face (right)
-    love.graphics.polygon("fill", cx, apex, x + w * 0.94, base, cx, base)
+    love.graphics.polygon("fill", cx, apex, x + w * 0.98, base, cx, base)
     pale(r, g, b, 0.22, 0.95) -- lit face (left)
-    love.graphics.polygon("fill", cx, apex, x + w * 0.06, base, cx, base)
+    love.graphics.polygon("fill", cx, apex, x + w * 0.02, base, cx, base)
     pale(r, g, b, 0.62, 0.95) -- the cap: snow, or simply the light on a bare summit
     love.graphics.polygon("fill", cx, apex,
-        cx + w * 0.12, apex + h * 0.24, cx, apex + h * 0.15, cx - w * 0.12, apex + h * 0.24)
+        cx + w * 0.13, apex + h * 0.26, cx, apex + h * 0.16, cx - w * 0.13, apex + h * 0.26)
     dark(r, g, b, 0.38, 0.6)  -- the line the two faces meet on
     love.graphics.polygon("fill", cx - w * 0.015, apex, cx + w * 0.015, apex, cx + w * 0.015, base,
         cx - w * 0.015, base)
 end
+
+-- ---------------------------------------------------------------------------
+-- The skins
+-- ---------------------------------------------------------------------------
+--
+-- A skin is a mark a BIOME may lend a terrain type in place of the type's own (data/tilesets/*.lua).
+-- It changes the picture and the words and never the rules -- the tile is still whatever
+-- models/terrain.lua says it is, costs what it costs and stops or passes exactly whom it always did.
+--
+-- It exists because one solid means different things in different country. A `mountain` is the board's
+-- impassable, sight-blocking landform, and on a forest or a tundra board it is literally that: a rock
+-- face. Inside a fortress or an arena the same tile is a piece of BUILDING -- the wall that gives the
+-- room its sides -- and a snow-capped peak standing in a colosseum is not a stylistic quibble, it is
+-- the board telling the player they are somewhere they are not.
+--
+-- Kept in its own table rather than folded into MARKS, which is keyed by terrain type and enforced
+-- complete in both directions (tests/terrain_art_spec.lua). A skin is keyed by its own id and is
+-- allowed to have no terrain of its own -- that is the whole point of it.
+
+-- MASONRY -- set stone: three courses of block with mortar between them, the joints staggered. Solid,
+-- and SQUARED OFF, which is the whole of what tells it from the peak and the boulders it stands in for:
+-- those two are landform and rounded or pointed, this was cut and set down, and at 64 logical pixels
+-- the corner is the only thing anyone reads.
+function Marks.masonry(x, y, w, h, r, g, b)
+    local left, wide = x + w * 0.08, w * 0.84
+    dark(r, g, b, 0.38, 0.95) -- the mortar, which is simply what shows between the blocks
+    love.graphics.rectangle("fill", left, y + h * 0.10, wide, h * 0.80, 2, 2)
+    -- Three courses. The odd one is offset by half a block so the vertical joints never line up,
+    -- which is the whole of what makes a stack of rectangles read as a built wall.
+    for i = 0, 2 do
+        local by = y + h * (0.135 + i * 0.262)
+        local edges = (i % 2 == 0) and { 0.00, 0.50 } or { -0.25, 0.25, 0.75 }
+        for _, f in ipairs(edges) do
+            local bx = math.max(left, left + wide * f)
+            local bw = math.min(left + wide, left + wide * (f + 0.50)) - bx
+            if bw > w * 0.02 then
+                pale(r, g, b, 0.18, 0.95)
+                love.graphics.rectangle("fill", bx + w * 0.015, by, bw - w * 0.03, h * 0.205)
+            end
+        end
+    end
+end
+
+-- ---------------------------------------------------------------------------
+-- The marks, continued
+-- ---------------------------------------------------------------------------
 
 -- ROUGH GROUND -- scree. Broken chips scattered flat across the whole tile, none of them big enough to
 -- stand on or hide behind: this floor charges you for picking your way over it and gives back a little
@@ -229,9 +342,9 @@ function Marks.rough(x, y, w, h, r, g, b, col, row)
     end
 end
 
--- BOULDERS -- three rounded masses filling the tile. Impassable, and ROUND where the obstacle below is
--- squared: one is landform, the other was cut and set down, and at this size the corner is the only
--- thing that tells them apart.
+-- BOULDERS -- three rounded masses filling the tile. Impassable, and SCATTERED where the mountain is
+-- one mass rising to a point: a rock field is something a board is littered with, a mountain is
+-- something a board runs into, and at this size the count is what tells them apart.
 function Marks.rock(x, y, w, h, r, g, b, col, row)
     local function stone(cx, cy, rr)
         dark(r, g, b, 0.44, 0.97) -- the shadow side, and the seam between two stones that touch
@@ -244,29 +357,6 @@ function Marks.rock(x, y, w, h, r, g, b, col, row)
     stone(x + w * (0.33 + rnd(col, row, 1) * 0.06), y + h * 0.62, w * 0.29)
     stone(x + w * (0.70 + rnd(col, row, 2) * 0.06), y + h * 0.70, w * 0.24)
     stone(x + w * (0.56 + rnd(col, row, 3) * 0.08), y + h * 0.32, w * 0.22)
-end
-
--- AN OBSTACLE -- set masonry: three courses of block with mortar between them, the joints staggered.
--- Solid, and squared off on purpose (see the boulders above). This is the wall a curated arena names
--- when it wants a room to have sides.
-function Marks.obstacle(x, y, w, h, r, g, b)
-    local left, wide = x + w * 0.08, w * 0.84
-    dark(r, g, b, 0.38, 0.95) -- the mortar, which is simply what shows between the blocks
-    love.graphics.rectangle("fill", left, y + h * 0.10, wide, h * 0.80, 2, 2)
-    -- Three courses. The odd one is offset by half a block so the vertical joints never line up,
-    -- which is the whole of what makes a stack of rectangles read as a built wall.
-    for i = 0, 2 do
-        local by = y + h * (0.135 + i * 0.262)
-        local edges = (i % 2 == 0) and { 0.00, 0.50 } or { -0.25, 0.25, 0.75 }
-        for _, f in ipairs(edges) do
-            local bx = math.max(left, left + wide * f)
-            local bw = math.min(left + wide, left + wide * (f + 0.50)) - bx
-            if bw > w * 0.02 then
-                pale(r, g, b, 0.18, 0.95)
-                love.graphics.rectangle("fill", bx + w * 0.015, by, bw - w * 0.03, h * 0.205)
-            end
-        end
-    end
 end
 
 -- SCRUB -- tufts. The fill's soft cosmetic variant, laid by noise beside the thicket; solid in the
@@ -438,17 +528,33 @@ end
 TerrainArt.MARKS = {
     ground = Marks.bare, path = Marks.bare, bridge = Marks.bridge,
     forest = Marks.forest, thicket = Marks.thicket,
-    mountain = Marks.mountain, rough = Marks.rough,
-    rock = Marks.rock, obstacle = Marks.obstacle, grass = Marks.grass,
+    hill = Marks.hill, mountain = Marks.mountain, rough = Marks.rough,
+    rock = Marks.rock, grass = Marks.grass,
     river = Marks.river, water = Marks.water, lava = Marks.lava, mire = Marks.mire,
     sand = Marks.sand, ice = Marks.ice,
 }
 
--- Draw `kind`'s mark into the box, shaded against the ground tone already painted there. An unknown
--- type draws NOTHING rather than a fallback mark: a wrong picture on the ground is worse than a plain
--- tile, and tests/terrain_art_spec.lua is what keeps the set complete so this never happens in play.
-function TerrainArt.draw(kind, x, y, w, h, r, g, b, col, row)
-    local mark = TerrainArt.MARKS[kind]
+-- Skin id -> mark, for the pictures a biome may lend a type in place of its own (see "The skins"
+-- above, and the `skin` field in data/tilesets/*.lua). Keyed by skin, not by terrain: `masonry` is a
+-- picture, not a tile, and no entry in models/terrain.lua answers to that name.
+TerrainArt.SKINS = {
+    masonry = Marks.masonry,
+}
+
+-- Which mark draws `kind` under `skin`. A skin the table does not know is IGNORED rather than drawn
+-- blank -- a castle whose tileset names a picture that was deleted should fall back to the honest
+-- mountain, not to nothing. tests/terrain_art_spec.lua walks every tileset and fails on a skin that
+-- no longer exists, so that fallback is a belt and not the plan.
+function TerrainArt.markFor(kind, skin)
+    return (skin and TerrainArt.SKINS[skin]) or TerrainArt.MARKS[kind]
+end
+
+-- Draw `kind`'s mark into the box, shaded against the ground tone already painted there, using the
+-- biome's `skin` for it when there is one. An unknown type draws NOTHING rather than a fallback mark:
+-- a wrong picture on the ground is worse than a plain tile, and tests/terrain_art_spec.lua is what
+-- keeps the set complete so this never happens in play.
+function TerrainArt.draw(kind, x, y, w, h, r, g, b, col, row, skin)
+    local mark = TerrainArt.markFor(kind, skin)
     if not mark then return end
     mark(x, y, w, h, r, g, b, col or 0, row or 0)
     love.graphics.setColor(1, 1, 1)

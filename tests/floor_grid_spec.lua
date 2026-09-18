@@ -155,18 +155,22 @@ return {
     {
         name = "the whole floor fits one screen, at every depth",
         fn = function()
-            -- The cell size is derived from Overworld.BOARD_EXTENT so a 6x6 and an 8x8 fill the same
-            -- frame; a floor that outgrew it would need a camera back, which is the thing the shape was
-            -- changed to be rid of.
+            -- The cell size is derived from Overworld.BOARD_W/BOARD_H so a 6x6 and a 14x15 fill the
+            -- same frame; a floor that outgrew it would need a camera back, which is the thing the
+            -- shape was changed to be rid of. BOTH AXES ARE ASSERTED, because the frame stopped being
+            -- square: a floor can now be taller than it is wide, and a check on the longer side alone
+            -- would pass a board that hangs off the bottom of the screen.
             local Descent = require("models.descent")
             for f = 1, Descent.FLOORS do
                 local cols, rows = Descent.floorDims(f)
                 local grid = floor({ cols = cols, rows = rows, seed = 100 + f })
-                assert(grid.size * math.max(cols, rows) <= Overworld.BOARD_EXTENT,
+                assert(grid.size * cols <= Overworld.BOARD_W,
                     "floor " .. f .. " draws wider than the frame it is given")
-                -- FORTY-FOUR, which is the floor rather than a target. The extent is fixed and the
-                -- floor grows inside it, so cell size falls as the descent deepens (61 at the top,
-                -- 50 at the bottom) -- and the thing that breaks first is a marker plate with its
+                assert(grid.size * rows <= Overworld.BOARD_H,
+                    "floor " .. f .. " draws taller than the frame it is given")
+                -- FORTY-FOUR, which is the floor rather than a target. The extents are fixed and the
+                -- floor grows inside them, so cell size falls as the descent deepens (53 at the top,
+                -- 45 at the bottom) -- and the thing that breaks first is a marker plate with its
                 -- tier pips under it. The old tile board drew its markers at 32, so there is real
                 -- headroom here; what this guards is a floor grown so far that the frame stops being
                 -- able to show what is standing in it.

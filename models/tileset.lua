@@ -17,6 +17,14 @@ local Tileset = {}
 -- Canonical tile types: walkability plus the default 1-based sheet index and a pre-art fallback colour.
 -- A biome tileset may override `index`/`color` per type; behaviour is fixed.
 --
+-- IT MAY ALSO OVERRIDE WHAT THE TILE IS -- `skin`, `name` and `desc`. Not what it DOES: the same solid
+-- that is a rock face in the forest is a piece of building inside a fortress, and drawing a snow-capped
+-- peak in a colosseum tells the player they are somewhere they are not. So a tileset may lend a type a
+-- different mark (ui/terrain_art.lua's SKINS) and a different word for it in the tooltip, and may never
+-- touch its cost, its walkability or its sight. The line is exactly the one already drawn for colour:
+-- a biome dresses the ground, it does not re-rule it -- a wall a flier clears in one country and not in
+-- another is not a rule, it is a bug.
+--
 -- READ OFF models/terrain.lua RATHER THAN DECLARED HERE, because the map and the board are the same
 -- ground now (docs/overworld.md, one map): a fight is fought on an 8x8 window of these very tiles, so a
 -- second opinion about whether one is walkable would be a second opinion about the battlefield. This
@@ -31,7 +39,7 @@ local DEFAULT = { image = "assets/overworld/tileset.png", tileSize = 16 }
 local cache = {}
 
 -- Merge the canonical types with a biome tileset's art into a full descriptor:
---   { image, tileSize, tiles = { <type> = { index, walkable, color } } }
+--   { image, tileSize, tiles = { <type> = { index, walkable, color, skin, name, desc } } }
 local function build(def)
     def = def or DEFAULT
     local tiles = {}
@@ -41,6 +49,14 @@ local function build(def)
             index = (over and over.index) or base.index,
             walkable = base.walkable, -- universal, never overridden by a biome
             color = (over and over.color) or base.color,
+            -- Presentation, and nil for all but the handful of types a biome restyles. `skin` names a
+            -- mark in ui/terrain_art.lua's SKINS; `name`/`desc` replace the words in the tile tooltip.
+            -- No defaults folded in here on purpose -- a nil means "this biome had no opinion", which
+            -- is what lets every reader fall back to the terrain's own answer rather than to a copy of
+            -- it that would have to be kept in step.
+            skin = over and over.skin or nil,
+            name = over and over.name or nil,
+            desc = over and over.desc or nil,
         }
     end
     return {

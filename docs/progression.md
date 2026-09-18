@@ -81,7 +81,7 @@ three ways.
 **The expedition is a place, not a piece of work.** The board lists where the company can travel today;
 the quests every house has posted on that ground are all standing on the map when you arrive, each at
 the end of its own spur, ticked off a checklist as they are taken (`Quest.trip`,
-[docs/overworld.md](overworld.md)). Clearing one pays *that* quest — gold, relic, that house's standing —
+[docs/overworld.md](overworld.md)). Clearing one pays *that* quest — gold, a found piece, that house's standing —
 and leaves you on the map with the others still out there. So the greed dial is inside the day now as
 well as across it: not only *which ground*, but *how much of it* before the company is too worn to
 continue.

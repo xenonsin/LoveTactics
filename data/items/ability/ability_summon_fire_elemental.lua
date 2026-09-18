@@ -15,8 +15,9 @@ return {
     flavor = "A binding lapses. The Arcanum finds that reassuring; the elemental does not.",
     sprite = "assets/items/ability_summon_fire_elemental.png",
     type = "ability",
-    class = "creature",
-    dropTier = 8,
+    class = "summoner",
+    price = 740,
+    unlockQuests = 8,
     tags = { "summon", "fire" },
     activeAbility = {
         target = "tile",

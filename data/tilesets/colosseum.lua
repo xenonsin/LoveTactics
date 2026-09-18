@@ -11,11 +11,21 @@
 --
 -- Until assets/overworld/colosseum.png exists, the widget draws the `color` rects (see models/sprite.lua's
 -- tolerant loader), so the map is playable before art.
+--
+-- AND ONE TILE IS RESKINNED, for the same reason the castle's is (data/tilesets/castle.lua, which
+-- carries the full note). `mountain` is the board's impassable solid; in this bowl there is no
+-- landform of any kind, so it draws set stone and is called a pillar -- which is what the arenas
+-- already call it in their own comments (data/arenas/colosseum_sand.lua's shoulder pillars and funnel
+-- walls). Everything standing on this floor was carried in and set down for the card, and a
+-- snow-capped peak in the middle of it would say the opposite.
 return {
     image = "assets/overworld/colosseum.png",
     tileSize = 16,
     tiles = {
         thicket = { color = { 0.34, 0.32, 0.31 } }, -- the stands: the wall the bowl is cut out of
+        -- No `color`: an impassable tile's tone comes from the `rock` art role above.
+        mountain = { skin = "masonry", name = "Pillar",
+                     desc = "Set stone, carried in for the card. Blocks movement and line of sight -- only a flier gets over it." },
         grass  = { color = { 0.42, 0.40, 0.38 } }, -- worn stone, pale where the seats have been sat on
         rock   = { color = { 0.52, 0.49, 0.45 } }, -- the barriers and pillars set out on the sand
         path   = { color = { 0.82, 0.72, 0.52 } }, -- the sand itself, raked

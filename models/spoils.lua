@@ -1078,6 +1078,14 @@ end
 --   opts.houseMaterial the run's house stock -- the quest sponsor's, resolved by the caller exactly as
 --                      the map's caches resolve it (states/game.lua). Absent on an unsponsored leg
 --                      (the prologue), where the fight simply pays craft stock alone.
+--   opts.salvage       craft stock broken out of the BOARD during the fight -- supply crates prised
+--                      open (models/prop.lua's creditSalvage), tallied on the combat and handed over
+--                      here. Added to the floor's own craft entry rather than carried as a second one,
+--                      because it is the same stuff at the same grade: what a fight leaves lying
+--                      around does not get finer for having been in a box. It is also the only half of
+--                      this table the player can MOVE -- the floor is paid for winning and this is
+--                      paid for spending turns on the furniture -- which is why it is allowed to
+--                      roughly double a common fight's stock and no more (Prop.SALVAGE_CAP)
 --
 -- Exposed separately from Spoils.roll because the objective fight takes this half and not the other:
 -- a quest's gold and loot flow through Quest.complete, but the general still has to leave something on
@@ -1086,7 +1094,8 @@ function Spoils.materials(opts)
     opts = opts or {}
     local kind = opts.kind or "combat"
     local out = {}
-    out[craftGradeFor(kind, opts.tier)] = SALVAGE_CRAFT[kind] or SALVAGE_CRAFT.combat
+    local salvaged = math.max(0, math.floor(tonumber(opts.salvage) or 0))
+    out[craftGradeFor(kind, opts.tier)] = (SALVAGE_CRAFT[kind] or SALVAGE_CRAFT.combat) + salvaged
     local house = SALVAGE_HOUSE[kind] or 0
     -- An id no longer in data/materials is dropped rather than granted, the same rule the loot
     -- override follows -- a stale save or a removed house must not mint a phantom resource.
@@ -1110,6 +1119,8 @@ end
 --                    Absent/1 reproduces the pre-tier payout exactly. Overrides ignore it.
 --   opts.tier        the encounter's difficulty tier 1..3, for the salvage grade (see Spoils.materials)
 --   opts.houseMaterial the run's house stock, for an elite's salvage (see Spoils.materials)
+--   opts.salvage     craft stock broken out of the board's own crates (see Spoils.materials). Passed
+--                    straight through: it draws no RNG and touches neither the gold nor the loot
 --   opts.player      OPTIONAL, and only the authored `drops` route reads it: a body with something new
 --                    the company already holds is dropped from the rank's candidate pool, so a farmed
 --                    body goes quiet without the floor going quiet with it (rankCandidates). Absent,
@@ -1177,6 +1188,7 @@ function Spoils.roll(opts)
         sealed = Spoils.rollSealed(opts),
         materials = Spoils.materials({
             kind = kind, tier = opts.tier, houseMaterial = opts.houseMaterial,
+            salvage = opts.salvage,
         }),
     }
 end

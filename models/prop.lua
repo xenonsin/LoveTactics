@@ -30,6 +30,10 @@
 --                      is what a chain reaction looks for; `flammable` marks what fire should catch
 --                      (descriptive today -- a damaging cast breaks whatever prop stands in its
 --                      footprint whatever element it was made of; see resolveCast).
+--   * salvage       -- craft stock breaking it banks toward the win (default 0: most furniture is
+--                      furniture). Sideless, like everything else here -- whoever broke it, the
+--                      supplies are on the floor and the company that wins the fight walks out with
+--                      them. Paid at the victory seam rather than on the spot (Prop.creditSalvage)
 --   * biomes        -- { forest = 2, castle = 3 }: which arena biomes scatter this prop, and how
 --                      heavily. A prop with NO biomes table scatters everywhere at weight 1; a prop WITH
 --                      one appears only where it is listed. That table IS "which props a biome has" --
@@ -54,6 +58,39 @@ Prop.defs = Registry.load("data/props", "data.props")
 -- WHICH props a biome fields is the per-prop `biomes` table's business.
 Prop.SCATTER_MIN = 0
 Prop.SCATTER_MAX = 3
+
+-- ---------------------------------------------------------------------------
+-- Salvage: what breaking the furniture is worth
+-- ---------------------------------------------------------------------------
+
+-- THE CEILING ON WHAT ONE FIGHT MAY BREAK OPEN, in craft stock.
+--
+-- A scattered board can only field three props at all (SCATTER_MAX), so this never binds on a rolled
+-- one -- it is here for the AUTHORED board, where a map can stand as many crates as it likes and a
+-- yard full of them would otherwise out-pay a cache (Overworld:placeCaches, 1-4 craft) for no risk.
+-- The salvage floor a won fight already pays is 1-2 (models/spoils.lua's SALVAGE_CRAFT), so three is
+-- "a good board roughly doubles it" and no more.
+--
+-- WHAT KEEPS IT HONEST ON A ROLLED BOARD IS THE TEMPO, not this number: a crate has 10 HP and no
+-- trigger, so prying one open costs the better part of a turn somebody was going to spend on a demon.
+-- That is the decision the payout is for -- it is why a crate is worth walking to, and why breaking
+-- every one of them is not automatically right.
+Prop.SALVAGE_CAP = 3
+
+-- Bank what breaking `prop` was worth onto the fight, returning what was actually credited (0 for
+-- ordinary furniture, or once the cap above is reached). Tallied on `combat.salvaged` and paid out at
+-- the victory seam beside the skim and the bounty (models/encounter_battle.lua's spoils), which is
+-- what makes it a haul rather than a reward: a fight that is LOST pays nothing, however many crates
+-- were opened on the way down.
+function Prop.creditSalvage(combat, prop)
+    local n = math.floor(tonumber(prop and prop.def and prop.def.salvage) or 0)
+    if not combat or n <= 0 then return 0 end
+    local banked = combat.salvaged or 0
+    n = math.min(n, math.max(0, Prop.SALVAGE_CAP - banked))
+    if n <= 0 then return 0 end
+    combat.salvaged = banked + n
+    return n
+end
 
 local function hasTag(tags, want)
     for _, t in ipairs(tags or {}) do
@@ -181,7 +218,14 @@ function Prop.destroy(combat, prop, source, text)
     prop.health = 0
     prop.alive = false
     local Combat = require("models.combat")
-    Combat.logEvent(combat, "trap", text or string.format("%s breaks apart.", prop.name or "A prop"))
+    -- Banked BEFORE the line is written, so a crate that pays says so and one that pays nothing --
+    -- an ordinary prop, or the fourth crate on a board that has already hit the cap -- reads as the
+    -- plain break it is. The only readout a haul this quiet gets during the fight (the panel names it
+    -- again at the end), so it has to be the true one.
+    local salvaged = Prop.creditSalvage(combat, prop)
+    Combat.logEvent(combat, "trap", text or (salvaged > 0
+        and string.format("%s breaks open -- supplies recovered.", prop.name or "A crate")
+        or string.format("%s breaks apart.", prop.name or "A prop")))
     if prop.def.onDestroy then prop.def.onDestroy(ctxFor(combat, prop, source)) end
 end
 
@@ -251,13 +295,19 @@ end
 -- raw (pre-mitigation) damage it throws off and any status it applies -- WITHOUT a real combat. Mirrors
 -- Trap.preview and Hazard.preview: the prop's own effect is the source of truth, so the tooltip for the
 -- ability that PLACES a barrel quotes the barrel's real numbers rather than a copy of them. pcall-guarded
--- so a data quirk can never crash a tooltip. Returns { damage, statuses = { { id, def } } }, or nil for
--- an unknown id. `amount` (optional) is the item-level-scaled magnitude it would be placed with.
+-- so a data quirk can never crash a tooltip. Returns { damage, salvage, statuses = { { id, def } } },
+-- or nil for an unknown id. `amount` (optional) is the item-level-scaled magnitude it would be placed
+-- with.
+--
+-- `salvage` is read off the blueprint rather than dry-run, because it is not an effect: it is what the
+-- box HAS in it. Quoted for the same reason the Forge quotes a breakdown before the button is pressed
+-- (models/salvage.lua) -- the player is told what breaking a thing pays before they spend the turn.
 function Prop.preview(id, amount)
     local def = Prop.defs[id]
     if not def then return nil end
     local Status = require("models.status")
-    local out = { damage = 0, statuses = {} }
+    local out = { damage = 0, salvage = math.max(0, math.floor(tonumber(def.salvage) or 0)),
+                  statuses = {} }
     local bystander = { alive = true, side = "enemy", char = { name = "target" } }
     local prop = { id = id, name = def.name, def = def, tags = def.tags or {}, amount = amount,
                    x = 0, y = 0, alive = true }

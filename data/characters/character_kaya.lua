@@ -1,7 +1,7 @@
 -- Kaya, the hunter companion (temperance), and the answer to Gluttony at the head of the Hunter's Lodge
 -- line (docs/story.md, "The Hunter's Lodge"). A woman, a gender-neutral name, the virtue buried and not
 -- stamped: Kaya is Arabic kifaya -- sufficiency, "it is enough" -- the way Saber's name is patience and
--- Amana's is a trust (character_saber.lua, character_amana.lua). The models are Golden Kamuy's Asirpa and
+-- Xin's is a trust (character_saber.lua, character_xin.lua). The models are Golden Kamuy's Asirpa and
 -- Mononoke's San, who runs with wolves as Kaya runs with the one on her horn.
 --
 -- THE ANSWER TO THE GENERAL SHE FACES, but not her kin. Gula (character_general_gluttony.lua) is a Grand
@@ -10,7 +10,7 @@
 -- temperance is the hunt that knows when to stop. She is the one hunter the curse can never claim -- proof
 -- the beast is a choice, not a fate.
 --
--- SHE IS RECRUITED AS A GUIDE, NOT A KILL. Unlike Amana or Saber she is never a boss objective: the
+-- SHE IS RECRUITED AS A GUIDE, NOT A KILL. Unlike Xin or Saber she is never a boss objective: the
 -- Lodge's board pushes the player deeper than any outsider can go, and Kaya and her wolf turn back the
 -- wild that would swallow them, then she agrees to lead them to the beast at the wood's heart
 -- (data/quests/the_guide.lua). So no `boss = true`: nothing ever fights her.

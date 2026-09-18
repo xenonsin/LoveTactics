@@ -14,11 +14,38 @@
 -- She turns on the church not by resisting a corruption but as a WITNESS: she saw the blooding kill
 -- children and the bodies dumped in pits (docs/story.md, "The Cathedral").
 --
--- HER KIT IS GIVING MADE MECHANICAL, and she bears no edge (the cleric taboo, docs/classes.md): a censer,
--- not a blade. Rowan decides where you stand; Xin decides who survives. Heal at range (which also opens
--- her signature), the Martyr's Icon to take a mortal blow for the ally beside her, and the Reliquary of
--- the Kept Trust in the center (data/items/utility/utility_reliquary_kept_trust.lua), which wards the
--- whole company once she has given three times and keeps nothing back for herself.
+-- HER KIT IS GIVING MADE MECHANICAL, and she bears no edge (the cleric taboo, docs/classes.md): a
+-- crozier, not a blade. Rowan decides where you stand; Xin decides who survives. Heal at range (which
+-- also opens her signature), and the Reliquary of the Kept Trust in the center
+-- (data/items/utility/utility_reliquary_kept_trust.lua), which wards the whole company once she has
+-- given three times and keeps nothing back for herself.
+--
+-- SHE DOES NOT ARRIVE WITH THE MARTYR'S ICON, and the reason is the size of the gift rather than the fit
+-- of it. It fits her exactly -- an unconditional once-per-battle death-save spent on the body beside her
+-- IS her vow written as an item -- and that is the problem. Handed over with an early recruit it is a
+-- larger thing than her own signature, on a body the player did not build toward it, and it answers the
+-- question her whole kit is supposed to keep asking: whether the company can afford to lose somebody.
+-- The Icon is still in the game and still hers to carry if the player finds one
+-- (data/items/utility/utility_martyrs_icon.lua, dropTier 2, and the Bulwark's kit) -- the cell is left
+-- open rather than refilled. Nothing about her reads differently for its absence: the Reliquary already
+-- says "keeps none of it for herself," at a price a recruit can be handed.
+--
+-- THE CROZIER IS HERE BECAUSE THE RELIQUARY IS ALREADY THE AURA. She carried the plain censer until the
+-- two of them read as one idea said twice: walking smoke that Blesses whoever stands beside her, under a
+-- ward that lays Aegis and Regeneration on whoever stands beside her. The censer stays with the generic
+-- priest (character_priest.lua), whose centre is deliberately empty and who needs an ambient verb to
+-- have one at all. Hers is full, and a second aura only made the first one quieter.
+--
+-- What the crozier hands her instead is the turn economy her own loop cannot pay for. Her pool is 40 and
+-- it does not regenerate: three Heals at 10 open the Reliquary at 18, which is 48. The giving she is
+-- built around does not fit in the body she was authored with, and the Focus swap
+-- (data/items/weapon/weapon_crozier.lua) is where the rest of it comes from -- a turn spent not acting,
+-- which is the only kind of turn she was ever going to be able to spare. `covers` then hands four of
+-- that mana to every adjacent ally, so where she plants to meditate is still a decision about somebody
+-- else: a different currency from the ward, paid on a beat she chooses rather than laid down wherever
+-- she happens to walk. (Under auto-battle the swap is inert -- an AI plan's `wait` ends in Combat.pass
+-- and never Combat.focus, so models/ai.lua cannot Focus at all. That hole is engine-wide and older than
+-- this kit: Rowan's shield sits in it too.)
 --
 -- The other half of her rule -- she cannot be taken -- rides on that same bound reliquary
 -- (data/traits/trait_devotion_unbidden.lua): Charm sheds off her, and Lust's Rapture finds no purchase,
@@ -56,18 +83,18 @@ return {
         skill = 3, luck = 9,
     },
     -- The 3x3 loadout grid (row-major); false = an empty cell. The Reliquary is the build-around in the
-    -- center; Heal beside it is what opens it, and the Martyr's Icon is the giving she can make with her
-    -- body when there is no mana left to heal with.
+    -- center; Heal beside it is what opens it, and the crozier above is what pays for the three casts.
+    -- The cells around that trio are open on purpose -- see the Martyr's Icon note in the header.
     startingItems = {
-        "ability_heal",         "weapon_censer",                "consumable_healing_potion",
-        "utility_martyrs_icon", "utility_reliquary_kept_trust", false,
+        "ability_heal",         "weapon_crozier",               "consumable_healing_potion",
+        false,                  "utility_reliquary_kept_trust", false,
         false,                  false,                          false,
     },
     defaultAction = "ability_heal",
     -- THE TWO ITEMS THAT ARE THIS UNIT, named for the same reason every hall hero names them: a base
     -- class is met at their house's own posting on a floor now (models/errand.lua) and joins at that
     -- house's counter (models/vendor_visit.lua), and this is the pair its card is written from.
-    signatureWeapon  = "weapon_censer",
+    signatureWeapon  = "weapon_crozier",
     signatureAbility = "utility_reliquary_kept_trust",
     -- Basic tactics (models/ai.lua): giving made mechanical. Reach for Heal the instant an ally slips
     -- below two-thirds -- the Reliquary and the Martyr's Icon carry the rest of her giving themselves.

@@ -1,8 +1,8 @@
 -- Biome blueprint. Swamp is loose, wet and slow: wide trails through standing water, more rivers than
 -- any other biome above ground.
 --
--- Its battle floor is `mire` (models/arena.lua) -- ground that charges a mountain's price and gives back
--- none of a mountain's reach. Its rises are forest rather than mountain, so there is no high ground on a
+-- Its battle floor is `mire` (models/arena.lua) -- ground that charges a hill's price and gives back
+-- none of a hill's reach. Its rises are forest rather than hill, so there is no high ground on a
 -- swamp board at all: nothing here grants a unit extra range, and the only thing terrain does is take
 -- steps away. That makes it the exact inverse of the desert, which is also slow but at least lets
 -- everyone see; here the cover is thick and the footing is worse.

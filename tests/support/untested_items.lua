@@ -204,7 +204,6 @@ return {
     "weapon_frost_fists",
     "weapon_frostfall_hammer",
     "weapon_gale_fists",
-    "weapon_gathering_bell",
     "weapon_given_hour",
     "weapon_golem_fists",
     "weapon_gralloch_knife",

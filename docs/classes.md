@@ -565,7 +565,7 @@ per-turn hook) and is the one it was closed for; it now rises as a rank forms an
 
 ### Two items may change what the ground costs
 
-`models/arena.lua` has priced forest at 2 and mountain at 3 since the first arena, and for most of the
+`models/arena.lua` has priced forest at 2 and the hill at 3 since the first arena, and for most of the
 project nothing in the catalog cared. Two fields now do, both read by `Combat.terrainEase` and both
 **caps** rather than discounts, so neither can make a tile cheaper than open field:
 

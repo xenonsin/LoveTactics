@@ -13,7 +13,7 @@
 -- -- her diligence is the flavor, but the badge is the only place the requirement is ever stated, so it
 -- names the deed and lets `flavor` carry her voice -- until earned, and re-locks after each use
 -- (Combat.unlockMet / itemBlockReason), exactly as the Knight's Sworn Aegis re-locks after its sweep
--- (data/items/armor/armor_sworn_aegis.lua) and Amana's reliquary after its ward
+-- (data/items/armor/armor_sworn_aegis.lua) and Xin's reliquary after its ward
 -- (data/items/utility/utility_reliquary_kept_trust.lua). Because the Release scales off her MagicDamage,
 -- every Diligence stack banked before it makes the reveal hit harder -- the practice is the payoff.
 --

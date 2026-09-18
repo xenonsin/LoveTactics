@@ -1,3 +1,9 @@
+-- PARKED 2026-09-17. The Stone sells a run relic for a permanent cut to the company's maximum health,
+-- and models/relic.lua is parked (see the dated note at its head), so the price buys nothing. `parked =
+-- true` is read by models/encounter.lua's `eligible`; the blueprint and its handler in states/game.lua
+-- remain on disk. It was also GUARANTEED from floor two -- models/descent.lua's `guaranteeKinds` -- and
+-- that entry is struck there, so lifting this one takes an edit in both places.
+--
 -- Encounter blueprint. THE WEEPING STONE: a relic sold for blood rather than coin.
 --
 -- The third and last way a floor lets a company SPEND on the pile, and deliberately the only one whose
@@ -17,6 +23,7 @@
 return {
     name = "The Weeping Stone",
     kind = "weeping_stone",
+    parked = true,
     weight = 2,
     minDay = 2,
 }

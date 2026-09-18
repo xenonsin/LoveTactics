@@ -1546,6 +1546,40 @@ function Combat.new(arena, partyUnits, enemyUnits, opts)
     return combat
 end
 
+-- DRESSED: every body on `side` opens the fight already wearing `statusId`. Returns how many were
+-- dressed, so a caller can tell a line it landed on from an empty board.
+--
+-- IT EXISTS FOR THE FAILED BREAK-AWAY (models/flee.lua), and it is the SECOND answer that question has
+-- had. The first was a number on the clock: push the caught company's initiative out past the speed of
+-- an opening action and the enemy line moves and swings first. That was right in the model and invisible
+-- on the screen -- the price of pressing Run Away was a shuffle inside a countdown the player cannot see
+-- until after the bell, and no readout could name it without teaching the initiative system first.
+--
+-- A STATUS IS A THING THE PLAYER ALREADY KNOWS. Hasted wears a badge, has a colour, files a line in the
+-- log and carries its own tooltip everywhere else in the game, so "they open this fight Hasted" needs no
+-- gloss of its own -- and the promise is kept OUT LOUD, because the badges are on the enemy tokens
+-- during the deploy phase, before the press that commits to the fight.
+--
+-- CALLABLE AFTER CONSTRUCTION, and that is not a convenience. The board is built before the deploy phase
+-- opens (states/battle.lua), and the thing that decides whether the company was caught happens ON that
+-- phase. So the fight is already standing when the answer arrives, and an opts-only flag on Combat.new
+-- could never have been set in time.
+--
+-- No rebase, unlike the initiative shove this replaced: nothing here moves anybody on the countdown, so
+-- the invariant that the next actor sits at zero is never disturbed in the first place.
+function Combat.dressSide(combat, side, statusId, opts)
+    if not (combat and side and statusId and combat.units) then return 0 end
+    local n = 0
+    for _, u in ipairs(combat.units) do
+        -- Status.apply hands back nil where a body refused it (an immunity, a full resist), so a line
+        -- that shrugged the status off is not counted as dressed in it.
+        if u.side == side and Combat.inTimeline(u) and Status.apply(combat, u, statusId, opts) then
+            n = n + 1
+        end
+    end
+    return n
+end
+
 -- Ring the opening bell on a built board: normalize the timeline, apply everyone's passives, and fire
 -- the battle openers. Everything here is about WHO IS STANDING, which is why it is separable from
 -- Combat.new at all -- a battle built with `deferOpen` has its ground but not its party, and the

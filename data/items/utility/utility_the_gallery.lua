@@ -18,7 +18,6 @@ return {
     sprite = "assets/items/the_gallery.png",
     type = "utility",
     class = "creature",
-    dropTier = 3,
     tags = { "natural" },
     noSteal = true,
     traits = { "trait_formation_fighter", "trait_close_ranks", "trait_boss_phases" },

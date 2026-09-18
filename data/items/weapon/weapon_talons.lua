@@ -20,7 +20,6 @@ return {
     sprite = "assets/chars/hawk.png",
     type = "weapon",
     class = "creature",
-    dropTier = 1,
     tags = { "natural", "slash", "physical", "melee" },
     noSteal = true, -- a hawk's talons cannot be lifted off it
     activeAbility = {

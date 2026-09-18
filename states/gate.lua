@@ -134,8 +134,9 @@ function gate:build()
         -- THE STAIRS YOU HAVE OPENED, and on a fresh expedition there may be two of them.
         --
         -- A company that has mapped its way down to floor five walks back in AT floor five -- Wizardry's
-        -- shaft, Daphne's elevator (Descent.entryFloor). Re-walking four cleared floors to reach the one
-        -- you stopped on is the map book's cost with none of its benefit, and it gets worse every trip.
+        -- shaft, Wizardry Variants Daphne's elevator (Descent.entryFloor). Re-walking four cleared
+        -- floors to reach the one you stopped on is the map book's cost with none of its benefit, and
+        -- it gets worse every trip.
         --
         -- BOTH ROWS ARE NAMED AND BOTH ARE ALWAYS LEGAL when a deeper stair exists -- no fold, no
         -- default that hides the other (ui/menu.lua's own standard). Going in at the top is a real

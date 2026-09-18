@@ -1215,26 +1215,50 @@ return {
         assert(quest.map.objectives[1].enemyCap == false, "...and so is the one on the ends list")
     end },
 
-    { name = "the AI controls unlock on the first floor reached, not before", fn = function()
-        -- Tactics (the rule list) and Auto (the switch that hands the turn to it) are one feature seen
-        -- twice, so ONE predicate gates both -- states/battle.lua's autoAllowed and the party panel's
-        -- `tactics` opt both call this. A button that could stand there with no tab behind it to
-        -- explain what it does is the failure this pins.
+    { name = "the Tactics tab unlocks when the first trip ends, by either exit", fn = function()
+        -- The tab is the rule list, and the question it answers ("must I move all four of these every
+        -- turn?") is asked by a trip -- which can end in either direction. So two clauses, and the
+        -- failure this pins is the old ONE: reading `deepest >= 1` put the tab (and the button with it)
+        -- on screen inside the very first fight of the very first floor.
         local p = Player.new()
-        assert(not Descent.tacticsUnlocked(p), "a company that has never gone down is not offered them")
+        assert(not Descent.tacticsUnlocked(p), "a company that has never gone out is not offered it")
         Descent.reached(p, 1)
-        assert(Descent.tacticsUnlocked(p), "one floor is the whole gate (Descent.TACTICS_DEPTH)")
-        -- Read off `deepest`, which is monotone, so climbing out cannot take the feature away again.
+        assert(not Descent.tacticsUnlocked(p), "...nor one still standing on the floor it went down to")
+        Descent.markReturnedToCity(p)
+        assert(Descent.tacticsUnlocked(p), "coming home from that first floor opens it")
+
+        -- ...and the other exit, on a company that never surfaced: straight on down to floor two.
+        local q = Player.new()
+        Descent.reached(q, 1)
+        Descent.reached(q, 2)
+        assert(Descent.tacticsUnlocked(q), "so does pressing on to floor two without coming up")
+        assert(Descent.deepest(q) >= Descent.TACTICS_DEPTH, "which is the whole of the second clause")
+
+        -- Both halves are monotone -- `deepest` never falls and the mark is one-way -- so neither
+        -- descending again nor climbing out can take the tab away once it has arrived.
         Descent.reached(p, 1)
-        assert(Descent.tacticsUnlocked(p), "and coming back up does not re-lock it")
+        assert(Descent.tacticsUnlocked(p), "and neither exit re-locks afterwards")
+    end },
+
+    { name = "the Auto button waits for the Tactics window, one step behind the tab", fn = function()
+        -- Tactics and Auto are one feature seen twice, but they are NOT one gate: the tab arrives on
+        -- the unlock wearing a pip, and reading what is behind the pip is what puts the switch on the
+        -- board. The failure this pins is a button standing on the board as three letters nobody has
+        -- had explained (states/battle.lua's autoAllowed).
+        local p = Player.new()
+        Descent.markReturnedToCity(p)
+        assert(Descent.tacticsUnlocked(p) and not Descent.autoUnlocked(p),
+            "unlocked and unread offers the tab and withholds the switch")
+        Descent.markTacticsTaught(p)
+        assert(Descent.autoUnlocked(p), "and reading the window is what hands the switch over")
     end },
 
     { name = "the Tactics window is a one-way mark, independent of the unlock", fn = function()
-        -- Two marks and not one, for the same reason the tally's pair are: the unlock happens
+        -- Two marks and not one, for the same reason the tally's pair are: the unlock can happen
         -- underground and the window is read in the city, so between them sits a red dot on the Armory
         -- (states/hub.lua's badge) that only the second mark puts out.
         local p = Player.new()
-        Descent.reached(p, 1)
+        Descent.reached(p, 2)
         assert(Descent.tacticsUnlocked(p) and not Descent.tacticsTaught(p),
             "unlocked and unread is exactly the state the dot draws on")
         Descent.markTacticsTaught(p)
@@ -1242,6 +1266,27 @@ return {
         local back = Save.restore(reserialize(Save.snapshot(p)))
         assert(Descent.tacticsUnlocked(back), "the unlock rides the save on `deepest`...")
         assert(Descent.tacticsTaught(back), "...and the window is not shown a second time")
+        assert(Descent.autoUnlocked(back), "...so the button is still on the board after a load")
+    end },
+
+    { name = "the coming-home mark rides the save on its own field", fn = function()
+        -- A company that surfaced after ONE floor has nothing in `deepest` to distinguish it from one
+        -- still standing down there, so the mark is the only thing carrying the unlock across a load.
+        -- Without this field in the snapshot the tab would vanish on every restart until the player
+        -- either walked into town again or went deeper.
+        local p = Player.new()
+        Descent.reached(p, 1)
+        Descent.markReturnedToCity(p)
+        local back = Save.restore(reserialize(Save.snapshot(p)))
+        assert(Descent.returnedToCity(back), "the mark survives the round trip...")
+        assert(Descent.tacticsUnlocked(back), "...and with it the tab it is the whole gate for")
+        -- An older save carries no field at all, and reads as a company that has not been home yet --
+        -- which costs it the tab for exactly as long as it takes to walk into the city (states/hub.lua
+        -- re-stamps off Player.expeditionsOut on entry).
+        local snap = Save.snapshot(p)
+        snap.returnedToCity = nil
+        assert(not Descent.returnedToCity(Save.restore(reserialize(snap))),
+            "and an older save restores unmarked rather than guessing")
     end },
 
     { name = "the Roll's window is its own mark, and rides the save", fn = function()

@@ -86,12 +86,12 @@ return {
             local layout = flatLayout(8, 8)
             -- Bury the whole centre under obstacles: a generated board is allowed to be unlucky.
             for y = 4, 5 do
-                for x = 4, 5 do layout.tiles[y][x] = "obstacle" end
+                for x = 4, 5 do layout.tiles[y][x] = "mountain" end
             end
             local tiles = Arena.resolveRegion("center", layout)
             assert(#tiles > 0, "a buried region must fall back to some walkable tile, not empty")
             for _, t in ipairs(tiles) do
-                assert(layout.tiles[t.y][t.x] ~= "obstacle", "never hand back a tile nobody can stand on")
+                assert(layout.tiles[t.y][t.x] ~= "mountain", "never hand back a tile nobody can stand on")
             end
         end,
     },

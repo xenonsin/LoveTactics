@@ -6,7 +6,7 @@
 -- trail BEHIND the wearer, the Pilgrim's Sandals hallow it, Feather Boots refuse to spring a trap, and
 -- the Sidelong Greaves walk through bodies. Every one of them changes what the ground does TO you, or
 -- what you do to it. None change what it COSTS. Meanwhile models/arena.lua has priced forest at 2 and
--- mountain at 3 since the first arena, and for the whole life of the project nothing could be bought
+-- the hill at 3 since the first arena, and for the whole life of the project nothing could be bought
 -- that cared. Terrain was a fact about maps rather than a thing a player could get good at.
 --
 -- HOW IT WORKS: a `terrainEase` of 1 -- the most the ground may charge this body (Combat.terrainEase,

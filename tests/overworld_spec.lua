@@ -184,17 +184,18 @@ return {
         fn = function()
             -- Growth is sub-linear and hard-capped. The ceiling was 37x25 of TILES with a margin ring
             -- and a coastline surplus padded around it; a grid has neither -- every cell is play area --
-            -- and the cap is TWELVE a side, which is the deepest floor the descent itself asks for
-            -- (Descent.floorDims) -- so a caller that does not pin can never be handed a grid the mode
-            -- would not draw. See deriveDims.
+            -- and the cap is FOURTEEN a side, which is the deepest floor the descent itself asks for
+            -- (Descent.floorDims tops out at 14x15) -- so a caller that does not pin can never be
+            -- handed a grid the mode would not draw. Fourteen and not fifteen because deriveDims
+            -- returns a SQUARE and the width is the axis that binds (Overworld.BOARD_W). See deriveDims.
             for seed = 1, 15 do
                 local grid = Overworld.generate({
                     seed = seed, biome = "forest", encounterCount = 40, keyCount = 4,
                     encounters = { { kind = "combat", weight = 1 } },
                     objective = { name = "Boss" },
                 })
-                assert(grid.cols <= 12, "cols exceeded the cap: " .. grid.cols)
-                assert(grid.rows <= 12, "rows exceeded the cap: " .. grid.rows)
+                assert(grid.cols <= 14, "cols exceeded the cap: " .. grid.cols)
+                assert(grid.rows <= 14, "rows exceeded the cap: " .. grid.rows)
                 assert(grid.margin == 0, "a grid of places has no frame to pad")
             end
         end,

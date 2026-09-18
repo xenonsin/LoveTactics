@@ -25,7 +25,13 @@ end
 
 -- Draw the tooltip for `status` anchored near (mx, my). `maxRight` caps the box's right edge so
 -- it never slides under a side panel (defaults to the screen width). No-op when status is nil.
-function StatusTooltip.draw(status, mx, my, maxRight)
+--
+-- `origin` ({ x, y }) places the box's own top-left instead, with no cursor offsets -- for a caller
+-- STACKING this under something else it has already placed (ui/deploy_phase.lua's Run Away note) rather
+-- than hanging it off a pointer. Still clamped on screen, so an origin near an edge is safe to pass.
+--
+-- Returns the rect it drew, so a caller can go on stacking beneath it.
+function StatusTooltip.draw(status, mx, my, maxRight, origin)
     if not status then return end
     local def = status.def or {}
     local name = def.name or status.name or "Status"
@@ -50,8 +56,10 @@ function StatusTooltip.draw(status, mx, my, maxRight)
     local bx = mx + 14
     local maxX = maxRight - w - 4
     if bx > maxX then bx = mx - w - 14 end
+    local by = my + 16
+    if origin then bx, by = origin.x, origin.y end
     bx = math.max(4, math.min(bx, maxX))
-    local by = math.max(4, math.min(my + 16, Scale.HEIGHT - h - 4))
+    by = math.max(4, math.min(by, Scale.HEIGHT - h - 4))
 
     Theme.set(Theme.panel)
     love.graphics.rectangle("fill", bx, by, w, h, Theme.R, Theme.R)
@@ -82,6 +90,7 @@ function StatusTooltip.draw(status, mx, my, maxRight)
         love.graphics.print(fmtDuration(status.remaining), bx + pad + gw + 4, ty)
     end
     love.graphics.setColor(1, 1, 1)
+    return { x = bx, y = by, w = w, h = h }
 end
 
 return StatusTooltip

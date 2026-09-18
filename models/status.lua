@@ -1057,8 +1057,7 @@ function Status.tick(combat, elapsed)
         -- somebody. Keyed on `disablesReactions` because that flag already names exactly this set (Stun,
         -- Frozen, and any future Sleep) and models/trait.lua already gates every reflex on it, so the
         -- carve-out and the thing it protects read off one field rather than two lists that can drift.
-        local persists = e.unit.relicBonus and e.unit.relicBonus.rules
-            and e.unit.relicBonus.rules.statusesPersist
+        local persists = e.unit.rules and e.unit.rules.statusesPersist
             and not s.def.disablesReactions
         if not s.source and not persists then
             s.remaining = s.remaining - elapsed

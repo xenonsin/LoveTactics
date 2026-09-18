@@ -23,7 +23,6 @@ return {
     sprite = "assets/items/tunnel.png",
     type = "ability",
     class = "creature",
-    dropTier = 1,
     tags = { "natural", "primal", "utility" },
     noSteal = true,
     activeAbility = {
