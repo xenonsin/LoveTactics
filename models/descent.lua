@@ -440,12 +440,18 @@ end
 -- constant and nothing else. (`gate` stays on the general's own floor: it is an independent mechanism
 -- -- carry, worth, toll -- and it reads correctly at either depth.)
 --
--- THE FIGHT COUNT DOES NOT MOVE WITH IT THIS TIME, and that is the arithmetic worth stating. At the
--- shipped 3-and-4 (FLOOR_FIGHTS below), fifteen floors bill 7x3 + 8x4 = 53 fights, against 28 for
--- eight. The old objection to a big stack was that "there is no hub anywhere in the stack, so whatever
--- number stands here is spent fifteen times over" -- and there is a hub in the middle of it now. 53 is
--- not one sitting and is not meant to be; it is a place walked over many, which is the premise.
--- Reproduce it with `. board-report 60 descent` rather than trusting this paragraph.
+-- THE FIGHT COUNT DOES NOT MOVE WITH IT THIS TIME, and this is MEASURED rather than derived. At the
+-- shipped 3-and-4 (FLOOR_FIGHTS below), `. board-report 60 descent` rolls 3.00 fights on floor one and
+-- `. board-report 60 descent floor=15` rolls 4.00 on the bottom -- both endpoints exactly on the
+-- constants, so fifteen floors bill 7x3 + 8x4 = 53 against 28 for eight.
+--
+-- The old objection to a big stack was that "there is no hub anywhere in the stack, so whatever number
+-- stands here is spent fifteen times over" -- and there is a hub in the middle of it now. 53 is not one
+-- sitting and is not meant to be; it is a place walked over many, which is the premise.
+--
+-- The same pass measured one rest per 2.0 fights at the top and per 3.0 at the bottom, which is why
+-- camping stopped being free (Descent.ambushChance): a guaranteed full heal every second fight is not
+-- attrition, it is a pause button.
 Descent.FLOORS_PER_CIRCLE = 2
 
 -- HOW MANY FIGHTS A FLOOR HOLDS, and it counts EVERY fight -- the stair, the errands, the openers and
