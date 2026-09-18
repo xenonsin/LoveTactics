@@ -429,6 +429,78 @@ function Forge.equipped(player)
     return out
 end
 
+-- ---------------------------------------------------------------------------
+-- Mending: the other thing a forge is for
+-- ---------------------------------------------------------------------------
+
+-- WHAT A FULL MEND COSTS, in gold, or nil for a piece that needs none.
+--
+-- GOLD AND NOTHING ELSE, which is what separates mending from the ladder above it. Every other bill on
+-- this bench spends TECHNIQUE and STOCK because it buys DEPTH -- a rung is standing you played for.
+-- Mending buys nothing: it puts a thing back the way it was. Charging technique for it would price
+-- an hour at the anvil against a rung of a discipline, and a company that had to choose between
+-- mending its armour and climbing its shelf would simply stop mending.
+--
+-- SO IT IS THE GOLD SINK. One currency, and the campaign has few places that take real money off a
+-- company between trips (docs/economy.md) -- this is one, it recurs, and it scales with how good the
+-- gear is, which is exactly the shape a sink wants: the richer the company, the more it costs to keep
+-- what makes it rich.
+--
+-- PRICED OFF THE PIECE'S OWN VALUE AND WHAT IS MISSING. A full bar on a 740g blade is
+-- Forge.MEND_SHARE of its price; half a bar is half that. So the bill is legible without a table --
+-- "mending costs about a tenth of what the thing is worth" -- and a rusted knife is never a decision.
+--
+-- A BROKEN PIECE COSTS NO MORE THAN A NEARLY-BROKEN ONE, deliberately. There is no penalty rung for
+-- letting it go to zero: the piece is already unusable, which is the cost, and a surcharge on top
+-- would be a price on having been caught out.
+Forge.MEND_SHARE = 0.10
+
+function Forge.mendCost(item)
+    local Item = require("models.item")
+    local max = Item.durabilityMax(item)
+    if not (max and item.durability and item.durability < max) then return nil end
+    local missing = (max - item.durability) / max
+    return math.max(1, math.floor((item.price or 0) * Forge.MEND_SHARE * missing + 0.5))
+end
+
+-- Mend it. Returns true, or false + "whole" | "cannot" | "poor".
+--
+-- IN PLACE, never as a fresh instance. Forge.upgrade hands back a new item because a rung re-bakes
+-- every scaling magnitude off the blueprint; a mend changes one number and must not disturb anything
+-- else -- a husk stays sealed, a bag keeps its contents, a charge item keeps its count.
+function Forge.mend(player, item)
+    local Item = require("models.item")
+    local max = Item.durabilityMax(item)
+    if not max then return false, "cannot" end
+    if (item.durability or max) >= max then return false, "whole" end
+    local cost = Forge.mendCost(item)
+    if (player.gold or 0) < cost then return false, "poor" end
+    player.gold = player.gold - cost
+    item.durability = max
+    return true
+end
+
+-- Give a piece up for parts: it leaves the grid and its stock lands in the player's materials.
+--
+-- THE ONLY WAY GEAR LEAVES A GRID WITHOUT BEING SOLD, and it is offered because a broken piece a
+-- company cannot afford to mend is otherwise a dead cell they cannot clear. What it pays back is
+-- deliberately meagre (Item.SCRAP_COUNT) -- a consolation for a thing that failed, not a way to farm
+-- ore by buying gear to break it.
+--
+-- ANY piece, not only a broken one: a player who wants the cell back for something better should not
+-- have to swing a blade until it snaps first.
+function Forge.scrap(player, char, cell)
+    local Item = require("models.item")
+    local item = char and char.inventory and char.inventory[cell]
+    local pay = item and Item.scrapFor(item)
+    if not pay then return false, "cannot" end
+    char.inventory[cell] = nil -- a hole, never a shuffle: the grid's shape is the player's arrangement
+    -- Through Player.addMaterial rather than into the table, so stock from a scrapped piece lands by
+    -- the same path a cache's does and anything that ever hangs off that seam sees this too.
+    require("models.player").addMaterial(player, pay.id, pay.count)
+    return true, pay
+end
+
 -- Raise `item` one rung for FREE: no gold, no technique, no craft or house stock. Returns a fresh
 -- instance at the new level -- the caller swaps it into the cell it came from, exactly as Forge.upgrade
 -- does -- or nil + one of "not forgeable" | "max level" | "locked".

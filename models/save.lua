@@ -115,6 +115,13 @@ local function snapshotItem(item)
     -- sitting in the field it will still be sitting in after somebody pays to look at it. A husk
     -- therefore needs no second hiding place: the save stores the truth and the game withholds it.
     if item.unidentified and item.unidentified > 0 then snap.unidentified = item.unidentified end
+    -- WHAT IT HAS LEFT IN IT (models/item.lua's Item.wear). Written only when the piece has taken wear,
+    -- so a fresh blade diffs clean and the field never appears on the four fifths of the catalogue that
+    -- does not wear at all. A ZERO has to survive: a broken piece is the one state this system exists
+    -- to produce, and `durability or nil` would quietly mend every one of them on save.
+    if item.durability ~= nil and item.durability < (Item.durabilityMax(item) or 0) then
+        snap.durability = item.durability
+    end
     return snap
 end
 
@@ -838,7 +845,13 @@ local function restoreItem(itemSnap)
         local husk = Identify.sealed(itemSnap.id, itemSnap.unidentified, itemSnap.level)
         if husk then return husk end
     end
-    return Item.instantiate(itemSnap.id, itemSnap.quantity, itemSnap.level)
+    local item = Item.instantiate(itemSnap.id, itemSnap.quantity, itemSnap.level)
+    -- ...and the wear it came back with. Absent on a fresh piece and on every save written before
+    -- durability existed, both of which read as "unworn" -- which is what they are.
+    if item and itemSnap.durability ~= nil and item.durability ~= nil then
+        item.durability = math.max(0, math.min(itemSnap.durability, Item.durabilityMax(item) or 0))
+    end
+    return item
 end
 
 local function restoreCharacter(snap)

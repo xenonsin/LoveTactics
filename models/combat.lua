@@ -146,7 +146,7 @@ Combat.DEFEND_SPEED = 3
 
 -- Line-of-sight block threshold: a line is obstructed once the summed `sightCost` of the tiles
 -- it crosses (endpoints excluded) REACHES this. Soft cover (forest, sightCost 1) only lowers a
--- line, so two stacked tiles block; mountain (2) / obstacle (huge) block on their own. See
+-- line, so two stacked tiles block; the hill (2) and the mountain (huge) block on their own. See
 -- Arena.TILE_PROPS and Combat.hasLineOfSight.
 Combat.SIGHT_BLOCK = 2
 
@@ -477,7 +477,7 @@ end
 -- tiles. Taking the cheaper of the two makes sight depend only on the pair of cells, which buys
 -- two properties the callers rely on: A->B and B->A always agree (the threat highlight and
 -- overwatch need that reciprocity), and two stand tiles mirrored about a blocker agree too --
--- a lone mountain no longer shadows one diagonal while leaving its mirror open.
+-- a lone hill no longer shadows one diagonal while leaving its mirror open.
 --
 -- The permissive choice (cheaper line, not stricter) matches traceLine's corner-threading: a
 -- single 1-tile blocker never seals a line. Ability targeting (Combat.useItem / abilityTargets),
@@ -669,7 +669,7 @@ local function flatStat(unit, name)
     -- company holding The Full Skin is missing MORE, and so is armoured more, which is the interaction
     -- the relic should have and would silently lose if this read the base `max`.
     if name == "defense" or name == "magicDefense" then
-        local rate = unit.relicBonus and unit.relicBonus.rules and unit.relicBonus.rules.pinHealth
+        local rate = unit.rules and unit.rules.pinHealth
         if type(rate) == "number" then
             local hp = unit.char.stats.health
             local max = Combat.unreservedMax(unit.char, "health")
@@ -723,7 +723,7 @@ function Combat.moveBudget(unit)
     -- because a bonus big enough to guarantee zero would also read as "-97 movement" on the Loadout
     -- screen -- and the clamp below would then be hiding an authored number rather than expressing one.
     -- This is a rule, so it answers as a rule.
-    local rules = unit.relicBonus and unit.relicBonus.rules
+    local rules = unit.rules
     if rules and rules.noMove then return 0 end
     local m = flatStat(unit, "movement")
     return m > 0 and m or 0
@@ -826,7 +826,7 @@ end
 -- VANTAGE: it buys you a longer sightline, so it lengthens the things that travel along one -- an
 -- arrow, a bolt, a thrown flask, everything that already declares `requiresSight`. It does nothing
 -- for a blade. Standing on a rock does not make your arm longer, and without this gate a range-1
--- sword on a mountain reached two tiles and stabbed straight THROUGH the ally in between, which is
+-- sword on a hill reached two tiles and stabbed straight THROUGH the ally in between, which is
 -- what sent someone looking for a range bug.
 --
 -- `requiresSight` is the gate rather than "base range > 1" on purpose: it is already the flag that
@@ -860,8 +860,8 @@ function Combat.abilityRange(combat, unit, ab, x, y)
     -- contact, the Rooted Oath buys three and charges the whole movement system. Both land here, on the
     -- one reader every ability's reach resolves through, so a bow, a spell and a bare fist all grow
     -- together -- and nil for every enemy, since only the party carries relics.
-    if unit and unit.relicBonus and unit.relicBonus.rules then
-        local bonus = unit.relicBonus.rules.abilityRange
+    if unit and unit.rules then
+        local bonus = unit.rules.abilityRange
         if type(bonus) == "number" then range = range + bonus end
     end
     -- A range-cutting debuff (Blind) shortens the reach, but never below 1: a blinded unit is groping
@@ -963,7 +963,12 @@ function Combat.aoeCells(combat, ab, tx, ty, unit)
         return cells
     end
 
-    local r = (aoe and aoe.radius) or 0
+    -- The radius is asked for rather than read, because it is not always the authored one: an ability
+    -- carrying `radiusFromAdjacent` takes the ring's reach from the weapon beside it in the grid
+    -- (Combat.aoeRadius). Folded in HERE, at the one function that owns the footprint, so the cast,
+    -- the red preview, fx.aoeUnits and the AI all widen together -- a highlight that disagreed with
+    -- what the spin actually caught would read as a bug.
+    local r = Combat.aoeRadius(ab, unit)
     local diamond = shape == "diamond"
     for dx = -r, r do
         for dy = -r, r do
@@ -999,6 +1004,17 @@ end
 -- (tag -> flat damage reduction) onto the unit WITHOUT mutating the shared character instance, so
 -- a member's base stats never drift battle-to-battle. Split out so a unit that joins mid-battle
 -- (Combat.addUnit) gets the same treatment as one placed at setup.
+-- THE RULE BAG: the game's own rules rewritten for one body -- health pinned at 1, no walking at all,
+-- mana paid in blood. The names live on Item.RULE_NAMES and the merge policy on Item.mergeRules, so a
+-- blueprint, this fold and the parked relic shelf all read one definition.
+--
+-- IT USED TO BE THE RELIC SHELF'S ALONE and it is gear's now (2026-09-17). The rare tier was the only
+-- thing in the game that could rewrite a rule, it applied to the whole company at once, and it was
+-- parked with the rest of models/relic.lua; the eight relics that did the rewriting became eight ITEMS,
+-- so the same inversions arrive through a loadout grid and land on THE BEARER instead of on everybody.
+-- That scope change is the whole substance of the move: a company that cannot move is a puzzle, and one
+-- knight who cannot move while the other three can is a position.
+
 local function applyUnitPassives(unit)
     unit.bonus, unit.resist = {}, {}
     -- THE BODY'S OWN HIDE, seeded before anything is layered over it (Character.instantiate's `resist`).
@@ -1016,7 +1032,11 @@ local function applyUnitPassives(unit)
     -- shared character instance's base stats are never mutated.
     unit.unarmedBonus = { damage = 0, range = 0, hits = 0, drunkDamage = 0 }
     local maxBonus = {}
+    -- The bearer's own rule rewrites, gathered off the grid beside the flat stats (Item.mergeRules).
+    -- Nil for the overwhelming majority of bodies: eight items in the game declare a rule at all.
+    local itemRules = nil
     for _, item in ipairs(Character.eachItem(unit.char)) do
+        itemRules = Item.mergeRules(itemRules, item.rules)
         for stat, amount in pairs(item.bonus or {}) do
             unit.bonus[stat] = (unit.bonus[stat] or 0) + amount
         end
@@ -1072,12 +1092,17 @@ local function applyUnitPassives(unit)
         end
     end
     unit.char.maxBonus = maxBonus
+    -- THE ONE RULE BAG EVERY CONSUMER READS, and it is per-UNIT: the bearer's gear first, then whatever
+    -- the run's relics declared. Relics come second so that first-wins resolves in the item's favour --
+    -- gear is the live source and the shelf is parked, so an item must never be quietly overridden by a
+    -- revert. Nil when nothing rewrote anything, which is the common case and what every read tests for.
+    unit.rules = Item.mergeRules(itemRules, unit.relicBonus and unit.relicBonus.rules)
     -- The rare tier's inversions, onto the CHARACTER as well as the unit. Combat.unreservedMax is asked
     -- about a char rather than a unit -- it is called from the hub, the loadout screen and the wound
     -- ledger, none of which have a board -- so a rule that moves a ceiling has to arrive the way
     -- `maxBonus` and `woundShare` already do. Cleared to nil rather than left stale when a fight is
     -- fought without them, so a relic traded away stops applying the moment the next setup runs.
-    unit.char.relicRules = relics and relics.rules or nil
+    unit.char.rules = unit.rules
 end
 
 function Combat.applyPassives(combat)
@@ -1102,37 +1127,51 @@ end
 --
 -- Applied in Relic.RULE_ORDER's sequence -- maxima, then pooling, then the pin -- which is why the pin
 -- reads last and always does exactly what its card says.
-function Combat.applyRelicRules(combat)
-    local party, rules = {}, nil
+function Combat.applyUnitRules(combat)
+    -- ONE COLLECTIVE RULE, AND ONE PER-BEARER ONE, and the split is the whole point of this function
+    -- since the shelf became gear (2026-09-17). When these rules arrived on relics they were held by
+    -- the RUN, so "read any party member's bag and apply it to all of them" was simply true. An item is
+    -- worn by one body, so that shortcut would now pin four bodies' health because one knight put on a
+    -- gorget. Each rule is applied at the scope it actually means.
+    local party, yoke = {}, nil
     for _, unit in ipairs(combat.units) do
-        if unit.side == "party" and unit.relicBonus and unit.relicBonus.rules then
+        if unit.side == "party" then
             party[#party + 1] = unit
-            rules = rules or unit.relicBonus.rules
+            -- THE YOKE IS COLLECTIVE BY CONSTRUCTION -- it is one health bar for the company, so it
+            -- cannot be scoped to a bearer without ceasing to be the thing it is. This is the single
+            -- documented exception to the bearer rule, and the item says so in its own description: one
+            -- body wears the yoke and the whole company shares the pool. First wearer wins; a second
+            -- copy cannot pool an already-pooled company twice.
+            if unit.rules and unit.rules.sharedPool and not yoke then yoke = unit.rules.sharedPool end
         end
     end
-    if not rules or #party == 0 then return end
+    if #party == 0 then return end
 
-    local surcharge = rules.sharedPool
-    if type(surcharge) == "number" then
+    if type(yoke) == "number" then
         local pool = 0
         for _, unit in ipairs(party) do
             pool = pool + Combat.unreservedMax(unit.char, "health")
         end
-        pool = math.max(1, math.floor(pool * (1 + surcharge / 100)))
+        pool = math.max(1, math.floor(pool * (1 + yoke / 100)))
         for _, unit in ipairs(party) do
             local hp = unit.char.stats.health
             if type(hp) == "table" then
                 hp.max, hp.current = pool, pool
-                -- The grid's and the relics' own health maxBonus is already inside `pool`; leaving it on
-                -- the char as well would add it a second time through unreservedMax.
+                -- The grid's own health maxBonus is already inside `pool`; leaving it on the char as
+                -- well would add it a second time through unreservedMax.
                 if unit.char.maxBonus then unit.char.maxBonus.health = nil end
             end
             unit.sharedPool = true
         end
     end
 
-    if rules.pinHealth then
-        for _, unit in ipairs(party) do
+    -- ...AND THE PIN LANDS ON THE BEARER ALONE. Run over every unit rather than over `party`, because
+    -- gear is not the party's alone: an enemy authored wearing a pinning item is pinned by it, which is
+    -- a thing the relic shelf could never express and an item shelf gets for free.
+    --
+    -- LAST, as it was under Relic.RULE_ORDER, so a body that is both yoked and pinned reads as pinned.
+    for _, unit in ipairs(combat.units) do
+        if unit.rules and unit.rules.pinHealth then
             local hp = unit.char.stats.health
             if type(hp) == "table" then hp.current = 1 end
         end
@@ -2981,8 +3020,8 @@ function Combat.startTurn(combat)
     --
     -- Granted at turn start (n - 1, since the turn already carries its own action) and only to the
     -- company, since only the party holds relics.
-    if unit and unit.alive and unit.relicBonus and unit.relicBonus.rules then
-        local actions = unit.relicBonus.rules.burstActions
+    if unit and unit.alive and unit.rules then
+        local actions = unit.rules.burstActions
         if type(actions) == "number" and actions > 1 then
             Combat.grantExtraAction(unit, math.floor(actions) - 1)
         end
@@ -2992,6 +3031,10 @@ function Combat.startTurn(combat)
     -- drew no blood last turn opens this one out of sight. After onTurnStart, or the sweep that ends
     -- LAST turn's invisibility would end this turn's in the same breath.
     if veil then Status.apply(combat, unit, "status_invisible") end
+    -- A SCRIPTED FELLING, armed by a boss phase and spent here (Combat.spendScriptedFell). Past the
+    -- status sweep above, because the beat wants the board settled under it: nothing mid-resolution,
+    -- no expiry still to run, and a full turn gone by since the phase that armed it.
+    if unit and unit.scriptedFell then Combat.spendScriptedFell(combat, unit) end
     -- CONTAGION (the Plague Knight's): at the top of the bearer's turn, every poisoned body on the
     -- field infects the bearer's enemies standing next to it. A passive rather than a cast (rule R4) --
     -- standing beside you sickens, and you never press a button for it.
@@ -3132,7 +3175,7 @@ local function endTurn(combat, unit, actionCost, defer)
         -- charge twice for the same actions -- and the emergent price was a wash anyway, which is the
         -- reason that relic states its cost instead of inheriting one. Every other source of an extra
         -- action (a fighter's Surge, a boss phase) still banks normally.
-        if not (unit.relicBonus and unit.relicBonus.rules and unit.relicBonus.rules.initiativeCost) then
+        if not (unit.rules and unit.rules.initiativeCost) then
             unit.tempoDebt = (unit.tempoDebt or 0) + moveCost + actionCost
         end
         -- `moved = true`: a surge buys an ACTION, never a second walk. The unit acts from where the
@@ -3161,7 +3204,7 @@ local function endTurn(combat, unit, actionCost, defer)
     -- would not make the wait longer, it would make it land somewhere the player did not ask for and
     -- break the one promise the control makes. Passing the turn stays cheap; ACTING is what costs.
     local turnCost = moveCost + actionCost
-    local mult = unit.relicBonus and unit.relicBonus.rules and unit.relicBonus.rules.initiativeCost
+    local mult = unit.rules and unit.rules.initiativeCost
     if type(mult) == "number" and mult > 1 then turnCost = math.floor(turnCost * mult + 0.5) end
     unit.initiative = unit.initiative + turnCost
     combat.turnCount = combat.turnCount + 1
@@ -3704,9 +3747,11 @@ end
 -- that is merely UNWALKABLE (a river, a chasm, a bog) is crossed as if it were open field. Mirrors
 -- Combat.ignoresTraps in shape -- a grid scan for a tag, at the one chokepoint that reads it.
 --
--- Deliberately does NOT open a wall, a solid rock face, or an occupied tile: those bar the way by
--- being IN it, not by being poor footing, and a thing that could end its turn inside a wall would
--- break far more than it fixed. The rule is "the ground stops mattering", not "nothing stops you".
+-- Deliberately does NOT open a WALL (models/wall.lua) or an occupied tile: those bar the way by
+-- being IN it -- an object, a body -- not by being poor footing, and a thing that could end its turn
+-- inside a wall would break far more than it fixed. Every LANDFORM does open, the `mountain`
+-- included: a rock face is poor footing on a grand scale, and going over it is the single clearest
+-- thing the Striders are for. The rule is "the ground stops mattering", not "nothing stops you".
 function Combat.isFlying(unit)
     if not (unit and unit.char) then return false end
     for _, item in ipairs(Character.eachItem(unit.char)) do
@@ -3961,7 +4006,7 @@ end
 --
 -- Not a move and never priced as one -- no budget is spent, no turn is claimed, nothing is checked for
 -- legality -- because the caller is a script and the model has already decided the body ends up there
--- (data/status/status_champion_fixation.lua blinks it with Combat.teleportUnit). What this answers is
+-- (Combat.spendScriptedFell blinks it with Combat.teleportUnit). What this answers is
 -- the VIEW's question, and only the view's: a beat the player is meant to watch happen has to be
 -- walked across the board rather than blinked, and a straight line between the two tiles would take
 -- the demon through the arena's own walls. So the route is traced down Combat.travelField -- the same
@@ -5684,9 +5729,7 @@ end
 -- nil rather than 0 when nothing qualifies, so a caller can tell "borrows nothing" from "borrows a
 -- reach of zero" -- the ability's own `range` stands as the floor in that case, which for anything
 -- carrying `requiresAdjacent` is a state the cast gate has already refused anyway.
-function Combat.borrowedRange(char, item)
-    local ab = item and item.activeAbility
-    local pred = ab and ab.rangeFromAdjacent
+local function longestAdjacentReach(char, item, pred)
     local idx = pred and char and Character.slotIndex(char, item)
     if not idx then return nil end
     local best
@@ -5697,6 +5740,48 @@ function Combat.borrowedRange(char, item)
         end
     end
     return best
+end
+
+function Combat.borrowedRange(char, item)
+    local ab = item and item.activeAbility
+    return longestAdjacentReach(char, item, ab and ab.rangeFromAdjacent)
+end
+
+-- The same borrowing, spent on a RING instead of on a reach: the radius of a centred footprint, taken
+-- from the longest authored range among the adjacent items answering `radiusFromAdjacent`. Clear Out
+-- is the case -- a spin has no reach to lengthen (it is aimed at the tile you stand on), so what the
+-- weapon in your hand decides is how wide the circle it cuts is. A pike sweeps further round you than
+-- a dagger, and the ability that exists for being surrounded should say which arm is doing the work.
+--
+-- Read AUTHORED, like the reach borrow above and for the same reason: a charm lengthening the weapon
+-- beside it is paid out on that weapon's own swing, and folding it in here would bill one aura twice.
+--
+-- nil when nothing qualifies, so the caller can keep the authored radius as its floor.
+function Combat.borrowedRadius(char, item)
+    local ab = item and item.activeAbility
+    return longestAdjacentReach(char, item, ab and ab.radiusFromAdjacent)
+end
+
+-- The radius a centred footprint actually covers for `unit`: the authored `aoe.radius` unless the
+-- ability borrows one from the grid and the grid has something to lend.
+--
+-- Handed the ability and the caster because that is what Combat.aoeCells has -- every reader of a
+-- footprint passes those two and never the item -- so the owning slot is found by identity here.
+-- `Item.instantiate` deep-copies `activeAbility` per instance, so the table IS the slot's fingerprint;
+-- a def's own table (the shelf's dry-run tooltip, the grade report) matches nothing and falls through
+-- to the authored radius, which is the floor the data file is written to quote.
+function Combat.aoeRadius(ab, unit)
+    local aoe = ab and ab.aoe
+    local authored = (aoe and aoe.radius) or 0
+    local char = ab and ab.radiusFromAdjacent and unit and unit.char
+    if not char then return authored end
+    for i = 1, Character.MAX_INVENTORY do
+        local it = char.inventory[i]
+        if it and it.activeAbility == ab then
+            return Combat.borrowedRadius(char, it) or authored
+        end
+    end
+    return authored
 end
 
 -- The range a neighboring charm's aura adds to a cast of `item` from `char`'s grid (a Long-Fuse
@@ -5980,7 +6065,7 @@ end
 -- tile is worth about as much as the gap between a good weapon and a bad one (see Terrain.TYPES), and
 -- that is deliberate: it makes the ground a thing you spend a turn to reach. It arrives here through
 -- Combat.fieldBonus, which already summed tile bonuses and field objects into one bag for the
--- mountain's `range`, so a smoke cloud or a placed field can grant cover later with no new code.
+-- hill's `range`, so a smoke cloud or a placed field can grant cover later with no new code.
 --
 -- NOTHING WITHOUT AN ATTACKER ROLLS. A trap, a Burn tick, a hazard and a collision all reach the
 -- damage path through Combat.dealFlatDamage with no `attacker`, and none of them asks the dice --
@@ -6496,9 +6581,24 @@ local function killUnit(combat, target)
         -- harvestable at once -- no Revive, no scroll, no Salts this battle. It reads exactly like a
         -- demon's death: there was never a window to reach. Stamped just before this in dealFlatDamage's
         -- fatal branch, and (for the necromancer) the payoff is that the corpse is raisable NOW.
-        if target.char.revivable and not target.noRevive then
+        --
+        -- `laidDown` is the SCRIPT's felling (Combat.fell), and it is the one thing that overrules that.
+        -- A story putting a body on the ground is not the story making a corpse: the companion it is
+        -- about has to be lying there to be carried off the won board and walked into the next scene, so
+        -- it lands INCAPACITATED whatever the seal says. The seal still holds -- Combat.reanimate refuses
+        -- a `noRevive` body wherever it finds it -- it simply no longer decides which of the two states
+        -- the body is in.
+        if target.char.revivable and (target.laidDown or not target.noRevive) then
             target.incapacitated = true
-            Status.apply(combat, target, "status_downed")
+            -- ...AND THE ONE BODY THAT IS LAID DOWN WITHOUT A CLOCK. status_downed is a window: three
+            -- turns to reach the body, and the badge says so with an hourglass. On a sealed scripted
+            -- felling there is nothing to reach -- so a count there would be the UI offering a rescue
+            -- the engine has already refused, and then printing "her body goes cold" mid-fight for a
+            -- deadline that was never real. No status, no hourglass, nothing to run out: she lies where
+            -- she fell until the fight ends and the party carries her off it.
+            if not (target.laidDown and target.noRevive) then
+                Status.apply(combat, target, "status_downed")
+            end
         else
             target.corpse = true
         end
@@ -6590,22 +6690,144 @@ end
 -- reads as their own misplay. So the pipeline is skipped rather than overwhelmed: no roll to beat, no
 -- number to out-armor, nothing to position around.
 --
--- `opts.denyRevival` (default TRUE here, unlike a felling blow's) also seals the incapacitation
--- window, so no Revive, scroll or Salts puts the body back up this battle. That is the same seam the
--- Necromancer's severing kit uses (see dealFlatDamage's fatal branch), and for the same reason: the
--- script has to hold for the rest of the fight or it is not a script. Pass `denyRevival = false` for a
--- scripted downing that the party IS meant to be able to answer.
+-- IT PUTS THE BODY DOWN; IT DOES NOT MAKE A CORPSE. A revivable body felled here lands INCAPACITATED
+-- -- lying on the tile, carried off a won board, walked into the next scene -- and not on the corpse
+-- path a killing blow would send it down. That is the difference the beat is about: the story is that
+-- she is out of this fight, not that there is a body on the ground for a necromancer to read. killUnit
+-- keeps the two apart on the `laidDown` stamp below.
 --
--- The body still comes back after the battle like any other party casualty (Combat.reviveFallenParty,
--- which reads `char.revivable` and not this flag), so
--- this fells a companion without killing them -- which is what makes it usable on somebody the story
--- needs walking around afterwards.
+-- `opts.denyRevival` (default TRUE here, unlike a felling blow's) seals her where she lies: no Revive,
+-- scroll or Salts puts the body back up this battle (Combat.reanimate refuses it, and
+-- Combat.rescuableAt will not even offer it as a target). The script has to hold for the rest of the
+-- fight or it is not a script. Pass `denyRevival = false` for a scripted downing the party IS meant to
+-- be able to answer -- that one lands incapacitated too, and carries the ordinary window with it.
+--
+-- The body comes back after the battle like any other party casualty (Combat.reviveFallenParty, which
+-- reads `char.revivable` and not this flag), so this fells a companion without killing them -- which is
+-- what makes it usable on somebody the story needs walking around afterwards.
 function Combat.fell(combat, target, opts)
     if not (target and target.alive) then return false end
     opts = opts or {}
     if opts.denyRevival ~= false then target.noRevive = true end
+    -- Read by killUnit: a felling by script lays the body down rather than turning it into one.
+    target.laidDown = true
     target.char.stats.health.current = 0
     killUnit(combat, target)
+    return true
+end
+
+-- SPEND A SCRIPTED FELLING: the bearer crosses the board to the body it marked and puts it down.
+--
+-- The mark is armed by a boss phase (the `mark` response in data/traits/trait_boss_phases.lua, authored
+-- on the relic that grants the phases -- data/items/utility/utility_demon_sigil.lua is the one that
+-- ships it) and spent HERE, at the top of the marker's own turn, from Combat.startTurn.
+--
+-- WHY IT IS DEFERRED AT ALL -- the bug this shape fixes. The felling used to be a response ON THE
+-- PHASE, and a phase crosses inside Trait.onDamaged, which runs inside the resolution of the PLAYER's
+-- blow. So the Champion teleported and killed somebody in the same instant the sword that wounded it
+-- was still mid-swing: two animations on top of each other, no turn boundary between them, and a beat
+-- the player could not read because nothing had finished happening. A scripted moment has to OWN a
+-- turn. It cannot be a side effect of the hit that triggered it. Combat.startTurn is the seam -- it
+-- runs before the unit may act, with the board settled and nothing else moving.
+--
+-- THE SHAPE OF THE BEAT, and it is six separate moments on purpose:
+--   1. THE PHASE CROSSES (the player's blow). The mark goes on and Rowan says the thing is wrong --
+--      `scene`, queued onto combat.pendingScene by the response and played by states/battle.lua before
+--      the next turn opens. A full turn of warning.
+--   2. THE MARKER'S TURN OPENS. It SHAKES -- a long wind-up shake, not the 0.26s flinch a hit draws
+--      (ui/combat_fx.lua's shake cue takes a duration) -- so the tell is on the body itself.
+--   3. IT COMES ACROSS THE GROUND, tile by tile, at a run.
+--   4. IT SWINGS, and she takes it: a lunge, an impact and a recoil, with no number on it because
+--      nothing was billed -- this is Combat.fell above, not damage.
+--   5. SHE SPEAKS, with the blow already on her -- `hitScene`.
+--   6. AND THEN SHE GOES DOWN.
+-- Telegraph the STAGE, never the strike: the player is told twice, in words and then in the body, and
+-- still cannot stop it. That is the trade a scripted beat makes, and both halves of it have to be paid.
+--
+-- MOMENTS 2-6 ARE THE VIEW'S, AND THE MODEL DOES NOT TRY TO TIME THEM. It resolves the crossing and
+-- the felling in one pass here, as it resolves every exchange, and leaves `combat.scriptedStrike`
+-- behind -- a plain table naming who crossed, from where, along which route, and what the body says
+-- when the blow lands. states/battle.lua (battle.playScripted) plays that out over the seconds it
+-- takes to read, holding the death cue back until the last of them. Authored the other way round --
+-- with the model sleeping between beats -- it would be a model that knows what a second is.
+--
+-- WHAT IT LOOKED LIKE BEFORE, and why that was not enough: the body blinked to her tile and she died
+-- in the same frame. Every moment of it was correct and none of it was legible -- reported by the
+-- author as the death being "too sudden", with nothing to watch between the shake and the corpse.
+--
+-- IT IS NOT INTERRUPTIBLE AND DELIBERATELY NOT A WIND-UP. A channel is the right shape for the Roar,
+-- whose whole stage is the DENIAL -- break it and no Bomblets. This is the opposite: it must land, so
+-- it must not be offered through machinery whose entire point is that it can be broken.
+--
+-- SINGLE USE, BECAUSE SPENDING IT CLEARS THE FIELD. The mark is a plain table on the unit rather than
+-- a status, and that is what keeps the latch honest: a status would have to pull itself out of the
+-- list its own hook was being walked from (Status.remove fires onExpire and pops the instance), so it
+-- needed a `spent` flag to stand in for removal. A field can simply go. What it buys either way -- a
+-- marker that survives to a second turn does not keep teleporting onto a body that is already down.
+--
+-- WHO IT TAKES IS AUTHORED (`victim`), not looked up by role: the stage's own line is that it fixes on
+-- your softest body, and what it actually does is remove the WALL that stands in front of them.
+function Combat.spendScriptedFell(combat, unit)
+    local mark = unit and unit.scriptedFell
+    if not mark then return false end
+    unit.scriptedFell = nil -- once, whatever comes of it
+    if not (combat and unit.alive) then return false end
+
+    local victim
+    for _, u in ipairs(combat.units or {}) do
+        if u.alive and u.char and u.char.id == mark.victim then victim = u break end
+    end
+    -- If she is already down -- the player's own fight killed her, or a later pass moved her off the
+    -- board -- the stage simply turns and nothing is owed. The field is already cleared above, so this
+    -- spends the mark either way.
+    if not victim then return false end
+
+    -- 1. THE CROSSING. Beside her, not on her; a hemmed-in victim is reached from where it stands,
+    --    because the crossing is the beat's staging and not its mechanism. Resolved as a blink --
+    --    no budget, no legality -- with the ROUTE it covers read off the board first, while the body
+    --    is still standing on the far end of it. That route is the whole of what the view needs to
+    --    walk the thing across instead of snapping it there.
+    local logMark = #(combat.log or {})
+    local x, y = Combat.openTileNear(combat, victim.x, victim.y)
+    local fromX, fromY = unit.x, unit.y
+    local route = x and Combat.scriptedRoute(combat, unit, x, y)
+    -- Silent, because the next line is the one about this movement and "it leaps to (4, 7)" would be
+    -- the engine contradicting the run the player is watching (Combat.teleportUnit's opts).
+    if x then Combat.teleportUnit(combat, unit, x, y, { silent = true }) end
+    -- ...and this line stops at the crossing. It used to finish "-- and Rowan does not get up", which
+    -- is the felling's own line (killUnit prints "Rowan is defeated!") said early, in the one readout
+    -- the staging below cannot hold back for nothing.
+    Combat.logEvent(combat, "action",
+        "It is across the ground before she can set her feet.", { unit, victim })
+
+    -- 2. THE STAGING, HANDED TO THE VIEW AS DATA. The model has just resolved the whole beat in one
+    --    pass, as it resolves every exchange -- which on the board means the demon appeared beside her
+    --    and she died in the same instant, with no blow in between. So the moments the player is owed
+    --    are named here and states/battle.lua plays them out: the wind-up, the walk across, the strike,
+    --    her recoil, her line, and only then the body going down.
+    --
+    --    A plain table on the combat, read by the battle state (battle.playScripted) and by nothing
+    --    else, so a headless run simply never looks at it. Same seam as `pendingScene`.
+    combat.scriptedStrike = {
+        unit = unit, victim = victim,
+        fromX = fromX, fromY = fromY,
+        route = route,
+        windup = mark.seconds,
+        scene = mark.hitScene,
+    }
+
+    -- 3. THE BLOW, which is not a blow. See Combat.fell above. Its cues (the death fade, the bar) are
+    --    held by the view until the staging above has played its way down to them -- exactly as an
+    --    approach walk holds a blow that was struck at the end of it.
+    Combat.fell(combat, victim)
+
+    -- 4. HOW MUCH OF THE LOG THIS BEAT JUST WROTE. The combat log is the one readout the fx holds
+    --    cannot reach, and it gives the whole thing away: left alone it prints the crossing and
+    --    "Rowan is defeated!" while the demon is still standing at the top of the board winding up.
+    --    So the view lifts these lines back off the tail and re-files them under the beats they belong
+    --    to (states/battle.lua's SCRIPT_BEATS). Counted from the END rather than held as an index, so
+    --    the log's own cap (Combat.LOG_CAP trims from the front) cannot shift it.
+    combat.scriptedStrike.logAdded = math.max(0, #(combat.log or {}) - logMark)
     return true
 end
 
@@ -7289,7 +7511,7 @@ end
 -- explicit instruction to mirror the real hit exactly or the hover under-promises. Two copies of this
 -- arithmetic is the drift that instruction is warning about.
 local function relicOutgoing(user, target, base)
-    local rr = user and user.relicBonus and user.relicBonus.rules
+    local rr = user and user.rules
     if not rr then return base end
     local pen = rr.contactPenalty
     if type(pen) == "number" and target and user.x and target.x
@@ -7675,6 +7897,22 @@ function Combat.downedAt(combat, x, y)
     return nil
 end
 
+-- The incapacitated body at (x, y) THAT SOMETHING CAN STILL ACT ON: Combat.downedAt minus the ones the
+-- script has sealed where they lie (Combat.fell). This is what the effects target through (fx.downedAt
+-- -- Revive, the scroll, the Salts, the Carrion Jaws' feeding), because a body they name is a body they
+-- are claiming to be able to stand up or eat, and Combat.reanimate would refuse this one.
+--
+-- TWO FINDERS BECAUSE THERE ARE TWO QUESTIONS, and they had the same answer right up until a sealed
+-- body started lying down instead of going straight to a corpse. "What is lying on this tile" is the
+-- HOVER's question and Rowan is still the answer to it -- her readout is the one the whole scene is
+-- about, and narrowing the one finder to suit the casts quietly made her tile say nothing at all.
+-- "What can I put back on its feet" is the cast's, and it is this one.
+function Combat.rescuableAt(combat, x, y)
+    local body = Combat.downedAt(combat, x, y)
+    if body and body.noRevive then return nil end
+    return body
+end
+
 -- Every reachable corpse standing on the given cells (a list of { x, y }) -- what Raise Dead sweeps
 -- across its footprint. Skips a tile a living unit occupies (Combat.corpseAt's rule).
 function Combat.corpsesIn(combat, cells)
@@ -7701,6 +7939,12 @@ function Combat.reanimate(combat, corpse, fraction)
     -- A successful revive wipes the body's statuses below, which is what silently cancels its
     -- status_downed countdown (so onExpire never fires and it never turns to a corpse).
     if not corpse or corpse.alive or not corpse.incapacitated then return false end
+    -- ...AND A SEALED BODY IS REFUSED WHEREVER IT LIES. `noRevive` used to imply the corpse path, so
+    -- the test above covered it by accident; a scripted felling (Combat.fell) now lays a sealed body
+    -- down INCAPACITATED, which is the state this function otherwise says yes to. The seal is the whole
+    -- of what makes a scripted beat hold, so it is asked about directly rather than inferred from which
+    -- of the two states the body landed in.
+    if corpse.noRevive then return false end
     if Combat.unitAt(combat, corpse.x, corpse.y) then return false end
     fraction = fraction or 0.5
     corpse.alive = true
@@ -8215,7 +8459,7 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
         random = function() return 1 end,
         cleanse = function() touchesBoard() return 0 end,
         corpseAt = function(x, y) return Combat.corpseAt(combat, x, y) end,
-        downedAt = function(x, y) return Combat.downedAt(combat, x, y) end,
+        downedAt = function(x, y) return Combat.rescuableAt(combat, x, y) end,
         corpsesIn = function(cells)
             return Combat.corpsesIn(combat, cells or Combat.aoeCells(combat, ab, tx, ty, unit))
         end,
@@ -9087,7 +9331,7 @@ function Combat.spendCost(combat, unit, cost)
     --     fraction that falls as the relic is deepened. Rewritten before the mana branch below, so a
     --     cast under the Overdraft is not a mana cost any more and the oath, the battle-casting discount
     --     and the potion reflex correctly stop applying to it. That is the point of an inversion.
-    local rr = unit.relicBonus and unit.relicBonus.rules
+    local rr = unit.rules
     if rr and cost.amount and cost.amount > 0 then
         if cost.stat == "mana" and type(rr.manaToHealth) == "number" then
             local paid = math.max(1, math.floor(cost.amount * rr.manaToHealth + 0.5))
@@ -9330,7 +9574,7 @@ function Combat.unreservedMax(char, stat)
     -- Floored at 1, because a divisor deep enough to reach zero would fell the company by arithmetic
     -- rather than by anything that happened in a fight.
     if stat == "health" then
-        local div = char.relicRules and char.relicRules.halveMaxHealth
+        local div = char.rules and char.rules.halveMaxHealth
         if type(div) == "number" and div > 1 then max = math.max(1, math.floor(max / div)) end
     end
     return math.max(0, max - Combat.reservedAmount(char, stat))
@@ -9736,6 +9980,17 @@ function Combat.itemBlockReason(unit, item)
     -- strictly-better Stun. Mirrors the silenced gate above.
     if item.type == "weapon" and not hasTag(item.tags, "unarmed") and Status.disarmed(unit) then
         return { kind = "disarmed", reason = "disarmed", text = "Disarmed -- cannot use weapons" }
+    end
+
+    -- BROKEN: the piece wore out and has not been to the forge (models/item.lua's Item.wear). Refused
+    -- here, beside Disarmed, because it is the same shape of answer -- "that is in your hand and you
+    -- cannot swing it" -- and routing it through this one gate is what makes the grid slot grey itself,
+    -- the click refuse and the tooltip agree without any of them learning what durability is.
+    --
+    -- ARMOUR IS NOT GATED HERE and cannot be: a coat has no ability to refuse. What a broken coat loses
+    -- is its stats, which Item.isBroken is read for wherever those are folded in.
+    if Item.isBroken(item) then
+        return { kind = "broken", reason = "broken", text = "Broken -- mend it at the Forge" }
     end
 
     local cost = costBlock(unit, ab)
@@ -10969,7 +11224,7 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
         corpseAt = function(x, y) return Combat.corpseAt(combat, x, y) end,
         -- The reachable INCAPACITATED body on a tile, or nil (Revive / Reviving Salts pick the body they
         -- stand over -- one still inside its window, which fx.reanimate then brings back).
-        downedAt = function(x, y) return Combat.downedAt(combat, x, y) end,
+        downedAt = function(x, y) return Combat.rescuableAt(combat, x, y) end,
         -- Every corpse under a set of cells, defaulting to this ability's own AoE footprint (Raise Dead
         -- sweeping its blast for bodies).
         corpsesIn = function(cells)

@@ -318,6 +318,30 @@ local function buildBlocks(item, actor, innerW, out, owner, warn)
         blocks[#blocks + 1] = { kind = "stat", label = "Quantity", value = "x" .. qty }
     end
 
+    -- WHAT IT HAS LEFT IN IT (models/item.lua's Item.wear). Weapons and armour only -- nothing else in
+    -- the catalogue wears -- and drawn only once the piece has actually taken some, so a fresh blade's
+    -- tooltip is exactly as long as it was before durability existed.
+    --
+    -- BROKEN SAYS THE WORD RATHER THAN THE NUMBER. "0 / 30" is a reading; "Broken" is the fact, and it
+    -- is the one state that changes what the player can do with the thing. The mend is named beside it
+    -- because a player looking at a dead weapon needs to know it is fixable and where, not just that it
+    -- is dead.
+    local durMax = Item.durabilityMax(item)
+    if durMax and item.durability and item.durability < durMax then
+        blocks[#blocks + 1] = { kind = "sep" }
+        if item.durability <= 0 then
+            blocks[#blocks + 1] = { kind = "stat", label = "Condition",
+                value = "Broken -- mend it at the Forge", valueColor = WARN }
+        else
+            -- Amber under a quarter left, which is the band where the player still has time to do
+            -- something about it -- a warning that arrives at zero is a report, not a warning.
+            local low = item.durability <= durMax * 0.25
+            blocks[#blocks + 1] = { kind = "stat", label = "Condition",
+                value = item.durability .. " / " .. durMax .. " fights",
+                valueColor = low and WARN or nil }
+        end
+    end
+
     local ab = item.activeAbility
     if ab then
         blocks[#blocks + 1] = { kind = "sep" }
@@ -469,6 +493,18 @@ local function buildBlocks(item, actor, innerW, out, owner, warn)
         -- a picture, not the description. Skipped for a single-target cast (no aoe) and for a
         -- board-dependent footprint (aoe.cells), which FootprintDiagram cannot picture off-board.
         local aoe = ab.aoe
+        -- A BORROWED RING is pictured as the grid grants it, for the same reason the Range row above
+        -- quotes a borrowed reach: Clear Out cuts as wide as the melee weapon beside it, and a card
+        -- that always drew the authored one-tile box would be showing a smaller spin than the board
+        -- lights. With no owner to read -- the shelf, the stash -- the authored radius stands, which is
+        -- the floor every weapon the predicate reaches clears.
+        local ringR = owner and Combat.borrowedRadius(owner, item)
+        if aoe and ringR and ringR ~= aoe.radius then
+            local widened = {}
+            for k, v in pairs(aoe) do widened[k] = v end
+            widened.radius = ringR
+            aoe = widened
+        end
         if aoe and not aoe.cells and (aoe.shape or (aoe.radius and aoe.radius > 0)) then
             blocks[#blocks + 1] = { kind = "footprintdiag", aoe = aoe, box = 60, color = bandColor }
         end

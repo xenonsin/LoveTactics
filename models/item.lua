@@ -855,6 +855,16 @@ function Item.instantiate(id, quantity, level)
         bound = def.bound,                     -- bound to its holder: never moved, stowed, sold, or stolen (a signature relic)
         bag = def.bag,                         -- { capacity }: this item HOLDS items (see Item.bagRoom)
         traits = deepCopy(def.traits),         -- combat reactions granted to whoever carries it
+        -- THE THREE SEAMS THE PARKED RELIC SHELF LEFT BEHIND (2026-09-17, models/relic.lua). All three
+        -- must be copied onto the INSTANCE like everything else here: every consumer is handed live
+        -- items off a grid, never blueprints, so a field left off this list is a field that parses,
+        -- ships, and silently does nothing.
+        rules = deepCopy(def.rules),           -- rewrites a rule of the game for the bearer (Item.RULE_NAMES)
+        openingBoon = deepCopy(def.openingBoon), -- { id, opts } | a list: statuses the bearer opens a fight in
+        -- ...and the between-fight hook, copied by REFERENCE rather than deep-copied: it is a function,
+        -- and deepCopy would hand every instance the same closure anyway. Called with (item, ctx) by
+        -- models/item_hook.lua on the run loop's own events.
+        encounterCleared = def.encounterCleared,
         -- Tunables for those traits, named by THIS item (Trait.param). What lets one trait blueprint
         -- serve two items that agree on the rule and disagree only about a figure -- the golem's guard
         -- waiting nine ticks where a knight's waits six, Sublimitas answering a spell sooner and for
@@ -888,9 +898,91 @@ function Item.instantiate(id, quantity, level)
     -- can count it without first checking whether anything has been put in -- an empty bag is a bag.
     if item.bag then item.contents = {} end
 
+    -- WHAT IT HAS LEFT IN IT (Item.durabilityMax). Stamped at instantiate rather than lazily, so every
+    -- reader -- the tooltip, the forge's repair bill, the wear pass -- can subtract without first
+    -- deciding whether the field exists. Nil on everything that does not wear, which is most of the
+    -- catalogue and is the fast path for all of them.
+    local dur = Item.durabilityMax(item)
+    if dur then item.durability = dur end
+
     applyLevel(item) -- fold the upgrade into the scaling stats and the display name
     return item
 end
+
+-- ---------------------------------------------------------------------------
+-- Durability: what wears out, how fast, and what is left when it does
+-- ---------------------------------------------------------------------------
+
+-- ONLY WEAPONS AND ARMOUR WEAR. Everything else in the catalogue is either spent by being used (a
+-- consumable has a quantity, which is the same idea wearing different clothes), or is not a thing that
+-- takes blows at all -- an ability is a technique, a utility is a charm or a book or a lamp. Widening
+-- this later is one table; widening it by accident is a repair bill on a spellbook.
+Item.WEARS = { weapon = true, armor = true }
+
+-- HOW MANY FIGHTS A PIECE IS GOOD FOR before it needs the forge.
+--
+-- THIRTY AND FORTY, AGAINST A MEASURED TRIP. A floor bills 3-4 fights (`. board-report`), so a company
+-- four floors down and back has fought about fourteen -- a little under half a weapon's bar. That is
+-- the shape this is for: a repair is a thing you do between trips, out of the purse the trip paid,
+-- rather than a thing you think about while underground. A full stack is ~53 fights, so nothing
+-- survives a whole descent unmaintained, which is the point of a sink.
+--
+-- ARMOUR OUTLASTS A WEAPON because it is hit rather than hitting, and because a company has four
+-- weapons swinging and four coats standing -- even bars would make armour the louder bill for no
+-- reason anybody would be able to name.
+--
+-- DERIVED, NOT AUTHORED. 752 blueprints exist and none of them says anything about wear; a field would
+-- mean 752 edits and a default that lies for every file that forgot it. If a piece ever wants its own
+-- number -- a glass blade that shatters, an ancestral plate that never does -- it declares `durability`
+-- and this reads it.
+Item.DURABILITY = { weapon = 30, armor = 40 }
+
+-- What `item` starts with, or nil for a thing that does not wear at all.
+--
+-- A NATURAL WEAPON NEVER WEARS. A beast's fangs and a wyrm's breath are body parts (`noSteal`): they
+-- cannot be taken off, sold, or repaired, so a bar counting down to a forge visit nobody can make
+-- would be a countdown to an unusable body. Same for anything bound to its bearer.
+function Item.durabilityMax(item)
+    if not item or not Item.WEARS[item.type] then return nil end
+    if item.noSteal or item.bound then return nil end
+    return item.durability0 or item.durabilityMax or Item.DURABILITY[item.type]
+end
+
+-- Is this piece worn out? Only ever true of something that wears in the first place.
+function Item.isBroken(item)
+    return item ~= nil and item.durability ~= nil and item.durability <= 0
+end
+
+-- SPEND `n` fights of wear. Returns true when this is the blow that broke it, so a caller can say so
+-- once rather than testing before and after.
+--
+-- IT STOPS AT NOUGHT AND STAYS THERE. A broken piece is not destroyed by this function -- it is left
+-- in the grid, at zero, useless until the forge mends it or the player scraps it. Deleting gear out
+-- from under a player at the end of a fight, with no screen and no line, is the one thing this system
+-- must never do; Forge/scrap is a decision made in town, in front of the item.
+function Item.wear(item, n)
+    if item == nil or item.durability == nil then return false end
+    if item.durability <= 0 then return false end
+    item.durability = math.max(0, item.durability - (n or 1))
+    return item.durability <= 0
+end
+
+-- WHAT IS LEFT WHEN A PIECE IS GIVEN UP FOR PARTS: { id = <material>, count = n }, or nil.
+--
+-- THE GRADE IS THE ITEM'S OWN (Material.gradeFor), so a mythril sword scraps into mythril and a rusted
+-- knife into iron. That is the same question the forge already asks to bill an upgrade, which means a
+-- scrapped piece pays back into exactly the stock that would have improved it, and no new table has to
+-- agree with an old one about what a thing is made of.
+function Item.scrapFor(item)
+    if not (item and Item.WEARS[item.type]) then return nil end
+    local Material = require("models.material")
+    return { id = Material.gradeFor(item), count = Item.SCRAP_COUNT }
+end
+
+-- How much stock a broken piece gives back. ONE, deliberately meagre: this is a consolation for a
+-- thing that failed, not a way to farm ore. A company that could scrap its way to a forge rung would
+-- buy gear to break it, which is the opposite of what a durability system is for.
+Item.SCRAP_COUNT = 1
 
 -- ---------------------------------------------------------------------------
 -- Hot reload
@@ -969,6 +1061,62 @@ function Item.restamp(item, staleDef)
     -- rather than keep a pocket on an item that no longer has one.
     if not item.bag then item.contents = nil end
     return true
+end
+
+-- ---------------------------------------------------------------------------
+-- Rule rewrites (the parked relic shelf's rare tier, as gear)
+-- ---------------------------------------------------------------------------
+
+-- THE RULE NAMES an item may declare -- the twelve ways a blueprint is allowed to rewrite a rule of the
+-- game for whoever is wearing it, plus the two that move a health POOL rather than a stat. Each is read
+-- by exactly one code path (Combat.flatStat, Combat.applyUnitRules, models/status.lua's tick, and so
+-- on); a name not on this list is a field nothing reads, so tests/item_rules_spec.lua pins the list
+-- against the blueprints rather than letting a typo be silently inert.
+--
+-- THE MECHANIC CAME FROM THE RELIC SHELF, which is parked (models/relic.lua, 2026-09-17). Eight relics
+-- rewrote rules for the whole company; they are eight items now and rewrite them for one body.
+Item.RULE_NAMES = {
+    "pinHealth", "noMove", "abilityRange", "contactPenalty", "manaSurcharge", "staminaSurcharge",
+    "manaToHealth", "noRecovery", "statusesPersist", "burstActions", "initiativeCost",
+    "damageMultiplier", "sharedPool", "halveMaxHealth",
+}
+
+-- Fold one source of rules into another.
+--
+-- MERGED THE WAY THE PARKED SHELF MERGED, term for term (Relic.resolvedRules), so the live path and the
+-- revert path can never disagree about what two sources of one rule mean: `damageMultiplier` MULTIPLIES
+-- (two bodies' worth of doubling is 4x, not 3x) and every other name is FIRST-WINS, because a rule
+-- fires once -- nothing can be more unable to move than unable to move. That is the rule/magnitude
+-- split the shelf was built on, kept because it is the correct reading and not merely the old one.
+function Item.mergeRules(into, from)
+    if not from then return into end
+    for name, value in pairs(from) do
+        if value ~= false then
+            into = into or {}
+            if name == "damageMultiplier" then
+                local n = (type(value) == "number") and value or 1
+                into[name] = (into[name] or 1) * n
+            elseif into[name] == nil then
+                into[name] = value
+            end
+        end
+    end
+    return into
+end
+
+-- Every rule the gear on `char` declares, merged. Nil when nothing does, which is almost every body in
+-- the game -- eight blueprints carry a rule at all -- and is what every caller tests for.
+--
+-- READ OFF THE GRID EVERY TIME rather than cached on the character: gear is swapped at a camp, at a
+-- merchant and on the loadout screen, and a rule cached at the mouth of the stair would outlive the
+-- item that granted it. The walk is a dozen slots and the callers are setup seams, not hot paths.
+function Item.rulesFor(char)
+    local Character = require("models.character") -- lazily: character.lua requires this file
+    local out = nil
+    for _, item in ipairs(Character.eachItem(char)) do
+        out = Item.mergeRules(out, item.rules)
+    end
+    return out
 end
 
 return Item

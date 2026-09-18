@@ -109,6 +109,47 @@ function Player.noteDeployed(player, chars)
         if char and char.id then ids[#ids + 1] = char.id end
     end
     player.lastDeployed = ids
+    -- ...AND THEIR KIT TAKES A FIGHT'S WEAR (models/item.lua's Item.wear).
+    --
+    -- HERE BECAUSE THIS IS THE ONE SEAM THAT NAMES WHO ACTUALLY FOUGHT. A pass over the whole roster
+    -- would bill the benched, and the win and loss paths are two places that would have to agree
+    -- forever. Deployment is the commitment to a fight, and it fires exactly once per battle.
+    --
+    -- A RETRY DOES NOT CHARGE TWICE. states/game.lua's onRetry restores the player from a snapshot
+    -- taken before the fight, so the bars roll back with everything else and re-deploying spends the
+    -- same fight once. That matters: charging a company for losing is the one thing docs/the-count.md
+    -- forbids, and wear billed per attempt would be exactly that.
+    Player.wearKit(player, chars)
+end
+
+-- Spend one fight of wear on everything `chars` are carrying that wears, and hand back the pieces that
+-- broke doing it, as a list of { char, item }.
+--
+-- IT BREAKS NOTHING OUT OF THE GRID. A broken piece sits where it is at zero -- useless, visible, and
+-- still the player's to mend or scrap in town. Gear deleted out from under somebody at the end of a
+-- fight, with no screen and no line, is the failure mode this whole system has to avoid.
+function Player.wearKit(player, chars)
+    local Item = require("models.item")
+    local broke = {}
+    for _, char in ipairs(chars or {}) do
+        for _, item in ipairs(Character.eachItem(char)) do
+            if Item.wear(item, 1) then broke[#broke + 1] = { char = char, item = item } end
+        end
+    end
+    return broke
+end
+
+-- Every piece in the company that is worn out, as { char, item } -- what the forge's repair list is
+-- built from, and what a warning before a descent counts.
+function Player.brokenKit(player)
+    local Item = require("models.item")
+    local out = {}
+    for _, char in ipairs((player and player.roster) or {}) do
+        for _, item in ipairs(Character.eachItem(char)) do
+            if Item.isBroken(item) then out[#out + 1] = { char = char, item = item } end
+        end
+    end
+    return out
 end
 
 -- Was `char` on the field last fight? Drives the deployment phase's opening selection; false for a
