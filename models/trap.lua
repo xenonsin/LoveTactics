@@ -231,4 +231,93 @@ function Trap.damage(combat, trap, amount)
     return amount
 end
 
+-- ---------------------------------------------------------------------------
+-- Traps on the FLOOR, above the arena
+-- ---------------------------------------------------------------------------
+
+-- Everything above this line is a trap inside a BATTLE -- a tile object owned by a side, placed by an
+-- ability, destructible, resolved against combat units. What follows is the other kind: a trap laid in
+-- the dungeon itself, met while walking a floor rather than while fighting on one.
+--
+-- THEY SHARE THE BLUEPRINTS AND THE DETECTOR, AND NOTHING ELSE. `data/traps/*.lua` already describes
+-- what a spike trap is and how hard it bites, and `Trap.DETECT_TAG` already describes the charm that
+-- finds one -- so a corridor trap reads its damage off the same file a planted one does, and the Trap
+-- Sense Charm works in both places, which is what a player would assume the moment they own one.
+--
+-- WHAT THEY DO NOT SHARE is the resolution. A floor trap has no combat to run `onTrigger` against:
+-- there is no grid, no initiative, no victim unit. So it is not called -- the floor reads the def's
+-- `damage` and `tags` directly and spends them on the company through Trap.springOn.
+
+-- THE BEST DETECTOR IN THE PACKS, as a radius, or 0 for a company carrying none.
+--
+-- BEST RATHER THAN SUM, exactly as Player.visionBonus is: two charms are not twice the warning, and a
+-- company that has found a better one should feel the upgrade rather than the stack.
+--
+-- WALKS THE WHOLE ROSTER AND THE STASH, which is the same reach Player.visionBonus takes and is right
+-- for the same reason: this is a thing the company OWNS rather than a thing a body wields, and which
+-- pocket it is in is not a decision anybody made.
+function Trap.detectRadiusFor(player)
+    local Character = require("models.character")
+    local best = 0
+    local function consider(item)
+        if item and hasTag(item.tags, Trap.DETECT_TAG) then
+            local r = item.detectRadius or Trap.DEFAULT_DETECT_RADIUS
+            if r > best then best = r end
+        end
+    end
+    for _, char in ipairs((player and player.roster) or {}) do
+        for _, item in ipairs(Character.eachItem(char)) do consider(item) end
+    end
+    for _, item in ipairs((player and player.stash) or {}) do consider(item) end
+    return best
+end
+
+-- WHICH BLUEPRINTS CAN BE LAID ON A FLOOR: the ones that state a bite in damage. A trap whose whole
+-- effect lives in an `onTrigger` closure (a snare that Roots, a charge that knocks back) has nothing to
+-- spend out of combat, so it is skipped rather than fired into a context that has no board under it.
+-- Sorted, because `pairs` order is unspecified and a floor must lay out the same way twice.
+function Trap.floorable()
+    local out = {}
+    for id, def in pairs(Trap.defs or {}) do
+        if (def.damage or 0) > 0 then out[#out + 1] = id end
+    end
+    table.sort(out)
+    return out
+end
+
+-- SPRING ONE ON THE COMPANY, and hand back what it cost as { [charId] = damage } for the readout.
+--
+-- IT HURTS EVERYBODY WHO WALKED DOWN, which is the honest reading of a corridor: the party is moving as
+-- one token on this board, so a pit under that token is a pit under all of them. Spreading it over the
+-- company also keeps a trap from being a coin flip that deletes one body -- the damage is real and the
+-- decision it feeds is "do I keep walking blind", not "did I lose the priest".
+--
+-- NEVER TO NOUGHT. A trap on a floor cannot kill: there is no battle to lose, no defeat screen to route
+-- to, and a company wiped by a corridor would be a game over arriving with no fight attached to it.
+-- One health is the floor, and a company walked down to it is in real trouble without being finished.
+-- IT IS NOT MITIGATED, and that is a limit of where it happens rather than a claim about armour.
+-- Combat.mitigatedDamage takes a UNIT -- a body standing on a board, with a side, statuses and
+-- barriers hanging off it -- and there is no board here: the company is one token walking a floor.
+-- Faking a unit to get armour applied would mean inventing the half-dozen fields that function reads
+-- and keeping them right forever after, to deliver a number nobody could check.
+--
+-- So a floor trap bites for exactly what its blueprint says, and the answer to it is the charm that
+-- finds it rather than the coat that softens it (Trap.detectRadiusFor). That is also the more honest
+-- reading of the fiction: a pit does not care what you are wearing.
+function Trap.springOn(player, def, share)
+    local out = {}
+    if not (player and def) then return out end
+    local raw = math.max(1, math.floor((def.damage or 0) * (share or 1) + 0.5))
+    for _, char in ipairs((player and player.roster) or {}) do
+        local hp = char.stats and char.stats.health
+        if type(hp) == "table" and (hp.current or 0) > 0 then
+            -- Clamped to leave one, which is the floor stated in the header.
+            local after = math.max(0, math.min(raw, (hp.current or 0) - 1))
+            hp.current = hp.current - after
+            if after > 0 then out[char.id] = after end
+        end
+    end
+    return out
+end
+
 return Trap

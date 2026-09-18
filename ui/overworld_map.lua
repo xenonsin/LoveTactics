@@ -100,6 +100,7 @@ function OverworldMap.new(grid, opts)
     local self = setmetatable({}, OverworldMap)
     self.grid = grid
     self.onEncounter = opts.onEncounter
+    self.onTrap = opts.onTrap -- bad ground sprung by arriving (see arrive)
     self.onDoorPosting = opts.onDoorPosting -- a house asks at the door of the room its work stands in
     self.onArrive = opts.onArrive -- fired on EVERY landed tile (per-step abilities: forage, scouting)
     -- Fired the instant BEFORE the token steps onto an un-engaged encounter, while it still stands on
@@ -350,6 +351,17 @@ function OverworldMap:arrive(revealed)
         c.picked = true
         -- Announced AFTER the haul is banked, so the line a player reads is the haul they now hold.
         if self.onPickup then self.onPickup("cache", c.cache, c) end
+    end
+    -- THE BAD GROUND, sprung by standing on it (Overworld:placeTraps). Before the encounter check and
+    -- after the pickups, which is the order the tile actually happens in: the floor gives way as you
+    -- arrive, and whatever is here to be met is met by a company that has already taken it.
+    --
+    -- A DETECTED TRAP IS NOT SPRUNG. Finding one is the whole reward for carrying the charm, so a
+    -- company that can see it walks onto it deliberately and steps over -- `found` is set by the
+    -- detector sweep (states/game.lua's applyVision), never by arriving.
+    if c.trap and not c.trap.sprung and not c.trap.found and self.onTrap then
+        c.trap.sprung = true
+        self.onTrap(c)
     end
     if c.encounter and not c.cleared and self.onEncounter then
         self.onEncounter(c)
@@ -1372,6 +1384,28 @@ function OverworldMap:drawMarkers()
                     love.graphics.setColor(1, 0.86, 0.62)
                     love.graphics.setLineWidth(1.5)
                     love.graphics.polygon("line", x1, y1, x2, y2, x3, y3)
+                    love.graphics.setLineWidth(1)
+                end
+
+                -- BAD GROUND THE COMPANY HAS FOUND (Overworld:placeTraps, Trap.detectRadiusFor). An
+                -- X of two strokes rather than a letter or a pip: it is not a place, it is a warning
+                -- about the tile itself, and the only mark on this board that says "do not". Drawn in
+                -- the hostile red every other "this will hurt you" surface uses.
+                --
+                -- ONLY WHEN FOUND, which is the entire payoff for carrying the charm -- an unfound trap
+                -- is indistinguishable from clean road, which is what makes walking blind a risk. A
+                -- SPRUNG one keeps its mark and goes dim: the ground is safe now, and a player looking
+                -- at a floor they have walked should be able to read where it bit them.
+                if c.trap and (c.trap.found or c.trap.sprung) then
+                    local pad = s * 0.28
+                    if c.trap.sprung then
+                        love.graphics.setColor(0.45, 0.30, 0.28, 0.65)
+                    else
+                        love.graphics.setColor(0.88, 0.32, 0.26)
+                    end
+                    love.graphics.setLineWidth(2)
+                    love.graphics.line(wx + pad, wy + pad, wx + s - pad, wy + s - pad)
+                    love.graphics.line(wx + s - pad, wy + pad, wx + pad, wy + s - pad)
                     love.graphics.setLineWidth(1)
                 end
 

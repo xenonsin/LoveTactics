@@ -625,6 +625,19 @@ end
 -- `. board-report N descent` before moving it again.
 Descent.FLOOR_CACHES = { min = 3, max = 4 }
 
+-- HOW MUCH BAD GROUND A FLOOR IS LAID WITH (Overworld:placeTraps).
+--
+-- THREE TO FIVE AGAINST A MEASURED 91 PLACES, so roughly one cell in twenty bites -- often enough that
+-- walking a floor blind is a real risk taken repeatedly, rare enough that it reads as bad luck rather
+-- than as a minefield. A floor holds 3-4 fights (`. board-report`), so at this rate a company meets
+-- about as much bad ground as it meets fighting, which is the balance the Trap Sense Charm is priced
+-- against: the charm has to be worth a grid cell, and one trap a floor would not make it.
+--
+-- THEY ARE NOT STOPS AND DO NOT COMPETE FOR THE BUDGET. placeTraps runs after every other pass and
+-- takes only cells that hold nothing, so raising this cannot quietly thin the fights or the caches --
+-- what it eats is empty road. See Descent.floorBudget for the things that DO compete.
+Descent.FLOOR_TRAPS = { min = 3, max = 5 }
+
 -- WHAT A FLOOR IS MADE OF, which is not what a quest board's leg is made of.
 --
 -- The generator draws its stops from a weighted pool, and the campaign's authored weights describe a
@@ -2593,6 +2606,7 @@ function Descent.floorQuest(run, player)
                 rows = rows,
                 encounters = stops,
                 cacheCount = { min = Descent.FLOOR_CACHES.min, max = Descent.FLOOR_CACHES.max },
+                trapCount = { min = Descent.FLOOR_TRAPS.min, max = Descent.FLOOR_TRAPS.max },
                 keyCount = 0,
                 -- The way back up, standing on the tile the party walks in on. See EXIT below.
                 exitAtStart = true,
@@ -2655,6 +2669,7 @@ function Descent.floorQuest(run, player)
             -- The texture count plus whatever fights the ends left unspent. See Descent.floorBudget.
             encounters = stops,
             cacheCount = { min = Descent.FLOOR_CACHES.min, max = Descent.FLOOR_CACHES.max },
+            trapCount = { min = Descent.FLOOR_TRAPS.min, max = Descent.FLOOR_TRAPS.max },
             -- keyCount 0 because a floor is not a lock puzzle: the stair is always reachable.
             keyCount = 0,
             -- The way back up, standing on the tile the party walks in on. See EXIT below.

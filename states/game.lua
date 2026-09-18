@@ -56,6 +56,7 @@ local Relic = require("models.relic")
 local ItemHook = require("models.item_hook") -- the between-fight half of the parked relic shelf, as gear
 local Meal = require("models.meal") -- the Cafe's supper: one platter, worn by the company all run
 local Wound = require("models.wound") -- what a body that went down carries out of the run
+local Trap = require("models.trap")   -- ...and the bad ground a floor is laid with (Overworld:placeTraps)
 local CoachBubble = require("ui.coach_bubble")
 local TutorialNote = require("ui.panels.tutorial_note") -- the window the first relic opens with
 local Locale = require("models.locale")
@@ -754,6 +755,60 @@ function game:applyVision()
     if game.grid and r > (was or 0) then
         game.grid:reveal(game.map.px, game.map.py, r)
     end
+
+    -- THE CHARM SWEEPS FOR BAD GROUND, from wherever the company is standing.
+    --
+    -- Here rather than on a step for the same reason the torch's ring is: a Trap Sense Charm pulled out
+    -- of a chest should light up the floor around the company at once, not at their next move -- a
+    -- purchase that reads as broken while you stand looking at it is the thing this seam exists to
+    -- prevent.
+    --
+    -- FOUND IS FOUND, AND IT STAYS FOUND. The mark rides in the cell and therefore in the kept board
+    -- (Descent.keepFloor), so a trap the company mapped on one trip is still marked on the next even if
+    -- the charm has since been sold. That is the same promise a found secret door carries, and it is
+    -- most of what makes the charm worth its grid cell: it is buying MAP, not a permanent sense.
+    --
+    -- A FOUND TRAP IS NEVER SPRUNG BY WALKING ON IT (ui/overworld_map.lua's arrive), so the reveal is
+    -- the whole mechanic -- there is no separate disarm verb and nothing to press.
+    local reach = Trap.detectRadiusFor(game.player)
+    if game.grid and reach > 0 then
+        for y = 1, game.grid.rows do
+            for x = 1, game.grid.cols do
+                local c = game.grid.cells[y][x]
+                if c.trap and not c.trap.found and not c.trap.sprung
+                    and math.abs(x - game.map.px) + math.abs(y - game.map.py) <= reach then
+                    c.trap.found = true
+                end
+            end
+        end
+    end
+end
+
+-- THE FLOOR GAVE WAY. Spend the trap on the company and say what it cost.
+--
+-- SAID AS A LINE RATHER THAN A PANEL, and that is the whole register of the thing. A trap is not a
+-- decision -- by the time this runs the company is standing on it and there is nothing to press -- so a
+-- modal would stop the game to report weather. The party strip is already on screen showing the bars
+-- this just moved, which is the readout; the toast names WHY they moved.
+--
+-- THE NAME IS THE BLUEPRINT'S, so "Spike Trap" here and "Spike Trap" in a battle are the same object
+-- to a player who has met one planted (data/traps/, models/trap.lua).
+function game:springTrap(cell)
+    local def = cell and cell.trap and Trap.defs[cell.trap.id]
+    if not def then return end
+    local hurt = Trap.springOn(game.player, def)
+    local n = 0
+    for _ in pairs(hurt) do n = n + 1 end
+    if n > 0 then
+        game:pushToast((def.name or "A trap") .. " -- " .. n ..
+            (n == 1 and " body hurt" or " bodies hurt"))
+    else
+        -- It fired and everybody shrugged it off. Said anyway: a trap that reports nothing reads as a
+        -- trap that did not go off, and the player would go on walking blind believing the ground safe.
+        game:pushToast((def.name or "A trap") .. " -- the company takes it and walks on")
+    end
+    require("models.sound").play("battle.hit")
+    saveRun()
 end
 
 -- Piles are gone (models/descent.lua, "What the company dropped where it fell -- DELETED"), so there is
@@ -1362,6 +1417,7 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
     game:refreshMuster()
     game.map = OverworldMap.new(game.grid, {
         onEncounter = function(cell) game:openEncounter(cell) end,
+        onTrap = function(cell) game:springTrap(cell) end,
         -- A house's posted work asks at the doorway of the room it is in, and accepting opens the way
         -- rather than starting the job. Returns true when it took the step (the token stays on the
         -- threshold until the scene answers). See game:askErrandAtDoor.

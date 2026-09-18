@@ -196,6 +196,7 @@ function Overworld.generate(params)
     self:placeSecrets(params)     -- ...and the places that read as absent until somebody finds them
     self:placeSecretRewards(params)
     self:placeExit(params)        -- ...and, on a floor you can leave, the way back up you came in by
+    self:placeTraps(params)       -- ...and the bad ground between all of it, laid LAST (see the function)
 
     -- The floor is finished: no pass after this rewrites a cell.
     self.sealed = true
@@ -704,6 +705,46 @@ function Overworld:placeSecrets(params)
         c.secret = true
         c.secretEnd = true -- generation-only scaffolding; consumed below
         self.secretCells[#self.secretCells + 1] = c
+    end
+end
+
+-- THE BAD GROUND: cells that bite the company for walking onto them, hidden until found or sprung.
+--
+-- LAID LAST, AFTER EVERYTHING ELSE INCLUDING THE EXIT, and that ordering is the whole safety argument.
+-- A trap takes no cell that holds anything -- no stop, no cache, no gate, no key, no secret, no stair,
+-- no way out, and never the tile the company walks in on. By running after every other pass, "holds
+-- something" is a fact that can simply be read off the board rather than predicted, so no future pass
+-- can seat a stop on top of a trap by not knowing about it.
+--
+-- ON ORDINARY GROUND ON PURPOSE. A trap guarding a reward would be a toll, and this game already has
+-- tolls; a trap on the road between two rewards is a tax on WALKING, which is the thing it is for --
+-- it makes covering ground cost something, so a detector and a lit lookahead start being worth their
+-- cells. It is also why they are not put on dead ends: a dead end is somewhere you chose to go.
+function Overworld:placeTraps(params)
+    local n = params.trapCount and resolveCount(params.trapCount, self.rng) or 0
+    if n <= 0 then return end
+    local ids = require("models.trap").floorable()
+    if #ids == 0 then return end
+
+    local cands = {}
+    for y = 1, self.rows do
+        for x = 1, self.cols do
+            local c = self.cells[y][x]
+            local free = self:typeWalkable(c.tile) and not c.encounter and not c.cache
+                and not c.gate and not c.key and not c.secret
+                and not (self.start and self.start.x == x and self.start.y == y)
+            -- ...and never a cut, which is a cell that is the ONLY way to somewhere. A trap there is
+            -- not bad ground the company can route around, it is a toll on the rest of the floor --
+            -- and an undetected one would be a toll nobody was offered.
+            if free and #self:pathNeighbors(x, y) > 1 then cands[#cands + 1] = c end
+        end
+    end
+    for i = #cands, 2, -1 do
+        local j = self.rng:random(i)
+        cands[i], cands[j] = cands[j], cands[i]
+    end
+    for i = 1, math.min(n, #cands) do
+        cands[i].trap = { id = ids[self.rng:random(#ids)] }
     end
 end
 
@@ -1636,7 +1677,12 @@ end
 -- discovery persists. `secretEnd` deliberately does NOT -- it is generation-only scaffolding, consumed
 -- by placeSecretRewards before the floor is ever saved.
 local CELL_FIELDS = { "tile", "seen", "cleared", "picked", "encounter", "gate", "key", "cache",
-                      "secret", "errandAnswered" }
+                      "secret", "errandAnswered",
+                      -- The bad ground (Overworld:placeTraps). Carries its own `found` and `sprung`, so
+                      -- a trap the company detected on one trip is still marked on the next and one
+                      -- they already ate is still spent -- which is the whole point of keeping a floor
+                      -- (models/descent.lua's Descent.keepFloor).
+                      "trap" }
 
 -- Snapshot the floor to plain data (no metatable, no love objects, no functions). It cannot be
 -- regenerated from a seed on load -- the encounter pool is drawn in an unspecified (`pairs`) order --
