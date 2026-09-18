@@ -161,4 +161,67 @@ return {
                 "floor " .. floor .. " asks for no vault")
         end
     end },
+    { name = "A FLOOR LAID BY AN OLDER GENERATOR IS THROWN AWAY, and what was on it is rescued",
+      fn = function()
+        -- THE BUG THIS EXISTS FOR, reported from play: "the dungeon still goes to the old generation
+        -- method". It was not a generation bug at all -- the generator was fine and the FLOOR was a
+        -- photograph of an older one. Descent.keepFloor stores a board whole and re-enters it verbatim,
+        -- which is the whole pivot, and which also means every pass added since is simply absent from
+        -- the floors a player has already walked. Forever, with nothing on screen to say why.
+        local Overworld = require("models.overworld")
+        local Item = require("models.item")
+        local player = Player.new()
+
+        -- A board from before any of this: no `gen` stamp at all, which is what every save written
+        -- before today looks like.
+        local old = { cols = 3, rows = 3, cells = {} }
+        for y = 1, 3 do
+            old.cells[y] = {}
+            for x = 1, 3 do old.cells[y][x] = { x = x, y = y } end
+        end
+        -- ...and the company had left a pack on it, which they fully intend to walk back for.
+        old.cells[2][2].encounter = {
+            kind = "pack", count = 1,
+            items = { require("models.save").snapshotItem(Item.instantiate("weapon_iron_sword")) },
+        }
+        player.floors["4"] = old
+
+        -- A current board, which must survive untouched.
+        local fresh = Overworld.generate({
+            biome = "forest", cols = 9, rows = 9, seed = 5, encounterCount = 4,
+            cacheCount = 1, keyCount = 0, ascent = true,
+            encounters = { { kind = "combat", weight = 1 } },
+        }):snapshot()
+        player.floors["5"] = fresh
+        assert(fresh.gen == Overworld.GEN_VERSION, "a freshly rolled board carries no generation stamp")
+
+        local held = #player.stash
+        local dropped, rescued = Descent.pruneStaleFloors(player)
+
+        assert(dropped == 1, "expected one stale floor dropped, got " .. tostring(dropped))
+        assert(player.floors["4"] == nil, "the stale floor survived the prune")
+        assert(player.floors["5"], "a current floor was thrown away with the stale one")
+
+        -- NOTHING THE PLAYER OWNS IS DESTROYED BY A GENERATION MISMATCH. Silently deleting somebody's
+        -- gear to repair a version skew would be a far worse bug than the one this fixes.
+        assert(rescued == 1, "the pack on the stale floor was not rescued, got " .. tostring(rescued))
+        assert(#player.stash == held + 1, "the rescued piece did not reach the stash")
+    end },
+
+    { name = "a floor laid today is never thrown away", fn = function()
+        local Overworld = require("models.overworld")
+        local player = Player.new()
+        for f = 1, 3 do
+            player.floors[tostring(f)] = Overworld.generate({
+                biome = "forest", cols = 9, rows = 9, seed = 40 + f, encounterCount = 4,
+                cacheCount = 1, keyCount = 0, ascent = true,
+                encounters = { { kind = "combat", weight = 1 } },
+            }):snapshot()
+        end
+        local dropped = Descent.pruneStaleFloors(player)
+        assert(dropped == 0, "the prune threw away " .. dropped .. " current floors")
+        for f = 1, 3 do
+            assert(player.floors[tostring(f)], "floor " .. f .. " went missing")
+        end
+    end },
 }

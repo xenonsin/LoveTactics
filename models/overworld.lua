@@ -2033,6 +2033,20 @@ local CELL_FIELDS = { "tile", "seen", "cleared", "picked", "encounter", "gate", 
 -- regenerated from a seed on load -- the encounter pool is drawn in an unspecified (`pairs`) order --
 -- so the whole floor is stored as-is. `tilesetDef` carries render data and is re-resolved from
 -- `tilesetId` on restore rather than serialized.
+-- WHAT GENERATION LAID A BOARD, so a floor kept from before a feature existed can be told apart from
+-- one laid after it.
+--
+-- THE KEPT MAP MADE THIS NECESSARY AND NOTHING ELSE DOES. Descent.keepFloor stores a board whole and
+-- Descent.floorBoard re-enters it verbatim -- which is the entire point, and which also means a floor
+-- walked on Tuesday is still a Tuesday floor on Friday. Every pass added to this generator since is
+-- simply absent from it: no traps, no locks, no holes, no set-pieces, forever, on exactly the floors a
+-- player has spent the most time in.
+--
+-- BUMP IT whenever a pass is added, removed or re-seated here. The cost of bumping is that players lose
+-- the maps they had drawn of floors laid under the old number, which is real and is the lesser loss --
+-- the alternative is a save where the newest half of the dungeon is invisible and nothing says why.
+Overworld.GEN_VERSION = 1
+
 function Overworld:snapshot()
     local cells = {}
     for y = 1, self.rows do
@@ -2046,6 +2060,9 @@ function Overworld:snapshot()
     end
 
     return {
+        -- Which generation laid this board (Overworld.GEN_VERSION). Read by Descent.floorBoard, which
+        -- refuses a board older than the generator that would lay one now.
+        gen = Overworld.GEN_VERSION,
         cols = self.cols, rows = self.rows, size = self.size,
         margin = self.margin,
         tilesetId = self.tilesetId, biome = self.biome,

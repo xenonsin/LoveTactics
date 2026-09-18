@@ -1872,6 +1872,58 @@ function Descent.floorBoard(player, floor)
     return (player and player.floors or {})[tostring(floor or 1)]
 end
 
+-- THROW AWAY THE FLOORS AN OLDER GENERATOR LAID, and rescue anything the company left on one.
+--
+-- WHY THIS HAS TO EXIST. The kept map is the whole pivot: a board is stored whole and re-entered
+-- verbatim, which is what makes the maze a place. It also means a floor keeps the generator it was laid
+-- by -- so every pass added since (the traps, the side locks, the holes, the set-pieces) is simply
+-- absent from the floors a player has already walked, forever, with nothing on screen to say why. That
+-- is the symptom "the dungeon still uses the old generation", and it is not a generation bug at all --
+-- the generator is fine and the floor is a photograph of an older one.
+--
+-- WHAT IT COSTS is the map of those floors, once. That is the lesser loss against a save where the
+-- newest half of the dungeon never appears, and it is the same trade models/save.lua's VERSION makes.
+--
+-- NOTHING THE PLAYER OWNS IS DESTROYED BY IT. A stale board may be holding a pack the company dropped
+-- when it wiped (Descent.dropPack) -- items they intend to walk back for -- so those are lifted into
+-- the stash before the board goes. Silently deleting somebody's gear to fix a generation mismatch
+-- would be a far worse bug than the one this repairs.
+--
+-- CALLED WHEN A COMPANY IS ABOUT TO GO DOWN (states/gate.lua), which is the one moment the answer can
+-- change and the one moment nobody is standing on a floor.
+function Descent.pruneStaleFloors(player)
+    local floors = player and player.floors
+    if not floors then return 0 end
+    local Overworld = require("models.overworld")
+    local Save = require("models.save")
+    local Player = require("models.player")
+
+    local dropped, rescued = 0, 0
+    for key, board in pairs(floors) do
+        if type(board) ~= "table" or board.gen ~= Overworld.GEN_VERSION then
+            -- Everything the company was going to come back for.
+            for y = 1, ((board and board.rows) or 0) do
+                for x = 1, (board.cols or 0) do
+                    local cell = board.cells and board.cells[y] and board.cells[y][x]
+                    local e = cell and cell.encounter
+                    if e and e.kind == "pack" then
+                        for _, snap in ipairs(e.items or {}) do
+                            local item = Save.restoreItem(snap)
+                            if item then
+                                Player.addToStash(player, item)
+                                rescued = rescued + 1
+                            end
+                        end
+                    end
+                end
+            end
+            floors[key] = nil
+            dropped = dropped + 1
+        end
+    end
+    return dropped, rescued
+end
+
 -- HOW DEEP THE PLACE GOES FOR THIS COMPANY: the deepest floor it holds a map of.
 --
 -- Distinct from Descent.deepest, which is the deepest floor ever STOOD on. They agree almost always and

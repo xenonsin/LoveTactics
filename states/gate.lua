@@ -219,6 +219,24 @@ function gate.enter(self, opts)
     -- separate game mode that banked nothing. It is the game now: the prologue's avatar and the Rowan
     -- sworn beside her walk into this city and down this stair, so there is ONE company, ONE save, and
     -- the floor stack rides on the player like everything else it owns.
+    -- FLOORS AN OLDER GENERATOR LAID ARE THROWN AWAY HERE (Descent.pruneStaleFloors), which is the one
+    -- moment it is safe: nobody is standing on a floor, and the company is about to be handed a fresh
+    -- one anyway. A board kept from before a pass existed is a photograph of an older dungeon -- the
+    -- newest half of the floor simply never appears on it, with nothing on screen to say why.
+    --
+    -- SAID OUT LOUD when it happens, because it takes maps the player drew. Anything they had left
+    -- lying on one of those floors is in the stash rather than gone.
+    local stale, rescued = Descent.pruneStaleFloors(gate.player)
+    local staleNotice
+    if (stale or 0) > 0 then
+        staleNotice = "The rift has shifted. " .. stale ..
+            (stale == 1 and " floor is" or " floors are") .. " not as you mapped them"
+            .. ((rescued or 0) > 0
+                and (", and what you had left down there is back in the stash.")
+                or ".")
+        Player.save()
+    end
+
     local fresh = not (opts.run or gate.player.descentRun)
     -- Kept on the state because gate:build reads it: which stairs the menu may offer depends on whether
     -- this is a new expedition or one already standing on a floor (see the descend rows).
@@ -261,6 +279,12 @@ function gate.enter(self, opts)
         gate.notice = "The company was routed on floor " .. opts.wiped .. ". They walked out with "
             .. "everything they walked in with"
             .. (pack and "; what they found down there stayed where they fell." or ".")
+    end
+    -- THE TWO NOTICES COEXIST. A company can wake here routed AND find the rift re-laid, and the
+    -- block above owns this band by clearing it -- so the stale-floor line is appended rather than
+    -- assigned, or a rout would silently swallow the one message that explains a map going missing.
+    if staleNotice then
+        gate.notice = gate.notice and (gate.notice .. "  " .. staleNotice) or staleNotice
     end
     require("models.sound").music("music.menu")
     require("ui.screen_fx").reset()
