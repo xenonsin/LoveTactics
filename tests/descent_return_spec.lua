@@ -294,4 +294,89 @@ return {
                 .. "own complaint: a bet with no ceiling is not a bet")
         end,
     },
+    {
+        -- Clearing a floor used to make it safe for good while you stood on it, so the back half of
+        -- every floor was a walk -- and re-treading to close a level gap paid nothing on ground you had
+        -- already beaten. Wizardry's answer is that the level is never finished with you.
+        name = "a fight the company put down gets back up, away from them, and replays from the seed",
+        fn = function()
+            local player = Player.new()
+            local run = Descent.new(player, 606)
+            run.steps = 0
+
+            -- A floor with four cleared fights spread to the far corner, and the company at (1,1).
+            local function board()
+                local g = { cols = 9, rows = 9, cells = {} }
+                for y = 1, 9 do
+                    g.cells[y] = {}
+                    for x = 1, 9 do g.cells[y][x] = { x = x, y = y } end
+                end
+                for _, p in ipairs({ { 8, 8 }, { 9, 7 }, { 7, 9 }, { 8, 6 } }) do
+                    local c = g.cells[p[2]][p[1]]
+                    c.encounter = { kind = "combat" }
+                    c.cleared = true
+                end
+                return g
+            end
+
+            local g = board()
+            local woke = Descent.wakeOne(run, g, 1, 1)
+            assert(woke, "nothing woke on a floor full of cleared fights")
+            assert(not woke.cleared, "the woken cell is still marked cleared")
+            assert(woke.encounter and woke.encounter.kind == "combat", "something that is not a fight woke")
+
+            -- SAME SEED, SAME WANDERER. A floor walked twice off one save has to wake the same fight in
+            -- the same place, or a bug report about one cannot be replayed.
+            local g2 = board()
+            local again = Descent.wakeOne(run, g2, 1, 1)
+            assert(again and again.x == woke.x and again.y == woke.y,
+                "the same run and step woke a different cell; the roll is not off the seed")
+
+            -- NEVER ON TOP OF THE COMPANY. A wanderer has to read as something that walked back into a
+            -- room behind you, not as the floor spawning a fight on your head.
+            local near = board()
+            assert(Descent.wakeOne(run, near, 8, 8) == nil,
+                "a fight woke inside RESPAWN_MIN_DIST of the company")
+
+            -- ONLY WHAT LIVES ON A FLOOR. A spent cache is a place, not an inhabitant, and a floor that
+            -- regrew its chests would be a faucet.
+            local shop = { cols = 9, rows = 9, cells = {} }
+            for y = 1, 9 do
+                shop.cells[y] = {}
+                for x = 1, 9 do shop.cells[y][x] = { x = x, y = y } end
+            end
+            shop.cells[8][8].encounter = { kind = "treasure" }
+            shop.cells[8][8].cleared = true
+            assert(Descent.wakeOne(run, shop, 1, 1) == nil, "a spent chest came back")
+        end,
+    },
+    {
+        name = "the step clock rides in the save, so a reload does not hand back a quiet floor",
+        fn = function()
+            local player = Player.new()
+            local run = Descent.new(player, 11)
+            run.steps = 37
+            player.descentRun = run
+
+            local back = Save.restore(Save.snapshot(player)).descentRun
+            assert(back and back.steps == 37,
+                "the step clock came back at " .. tostring(back and back.steps) ..
+                " -- a player could reload to keep a cleared floor clear")
+        end,
+    },
+    {
+        name = "the wander clock is slow enough to be a choice and fast enough to be felt",
+        fn = function()
+            -- Measured: a floor is ~91 places with a 23-step crossing (`. board-report`). At this rate a
+            -- company crossing one meets about two, and pacing a cleared floor to farm earns roughly one
+            -- fight per crossing -- a time cost rather than a faucet.
+            assert(Descent.RESPAWN_STEPS >= 6,
+                "at " .. Descent.RESPAWN_STEPS .. " steps a cleared floor is a treadmill")
+            assert(Descent.RESPAWN_STEPS <= 30,
+                "at " .. Descent.RESPAWN_STEPS .. " steps a company can cross a whole floor without "
+                .. "meeting one, which is the safe-once-cleared floor this exists to end")
+            assert(Descent.RESPAWN_MIN_DIST >= 2,
+                "a wanderer this close spawns on the company's head")
+        end,
+    },
 }

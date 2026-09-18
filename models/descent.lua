@@ -1433,6 +1433,11 @@ function Descent.new(player, seed, startFloor)
         -- The deepest floor this run has actually cleared, which is what a new depth record is measured
         -- against at extraction. Distinct from `floor`, which is where the party is standing.
         cleared = 0,
+        -- HOW MANY TILES THE COMPANY HAS WALKED THIS TRIP, which is the clock the wandering monsters
+        -- run on (Descent.RESPAWN_STEPS). On the run rather than the floor: a company that walks up and
+        -- down between two floors is still covering ground, and a counter that reset per floor would
+        -- make stair-pacing the way to avoid ever meeting one.
+        steps = 0,
         -- Iselle's tally: what this company has left forming behind it. Climbs when they come back up
         -- early, falls when they go deeper. See the count section below.
         count = 0,
@@ -1736,6 +1741,66 @@ end
 -- (Experience.STEP), never the reward for a fight actually fought. The floor's PLACES stay
 -- spent, so re-treading pays combat and nothing else -- no second cache, no second relic -- which is
 -- most of the answer on its own.
+-- HOW MANY STEPS BETWEEN WANDERERS: every this-many tiles walked, one fight the company has already
+-- put down gets back up somewhere else on the floor (Descent.wakeOne).
+--
+-- WHY A FLOOR REFILLS AT ALL. rearmFloor already brings a floor back when you LEAVE and return, which
+-- keeps a re-entered floor dangerous -- but while you are standing on one, clearing it made it safe for
+-- good, so the back half of every floor was a walk. Wizardry's answer is the wandering monster: the
+-- level is never finished with you, it just gets quieter for a while.
+--
+-- AND IT IS WHAT MAKES RE-TREADING A REAL ANSWER, which is the gap this closes. A company that is
+-- underlevelled for the floor below could always go back up and grind -- re-armed fights pay in full,
+-- deliberately -- but nothing ASKED them to, and a cleared shallow floor paid nothing while you walked
+-- it. Now the ground you know keeps offering, which is the legitimate way to close a level gap.
+--
+-- TWELVE, AGAINST A MEASURED FLOOR. `. board-report` puts a floor at ~91 places with a 23-step crossing,
+-- so a company that walks the length of one meets about two wanderers, and a company that paces a
+-- cleared floor to farm gets roughly one fight per crossing. That is slow enough that grinding is a
+-- choice with a time cost rather than a faucet, and frequent enough that "I cleared this floor" never
+-- means "this floor is now a corridor".
+Descent.RESPAWN_STEPS = 12
+
+-- How far from the company a woken fight has to be. Four, so a wanderer never appears in the tile you
+-- are about to step onto or the one you just left -- it has to read as something that walked back into
+-- a room behind you, not as the floor spawning a fight on your head.
+Descent.RESPAWN_MIN_DIST = 4
+
+-- WAKE ONE CLEARED FIGHT somewhere on this floor, away from the company. Returns the cell, or nil when
+-- there is nothing eligible (a floor whose fights are all still standing, or all too close).
+--
+-- ONLY COMBAT AND ELITES, which is rearmFloor's own rule and for its reason: what comes back is what
+-- LIVES on a floor. A spent cache, a taken recruit, a found secret and a paid crossroads are places
+-- rather than inhabitants, and a floor that regrew its chests would be a faucet.
+--
+-- DEALT OFF THE RUN'S SEED AND THE STEP COUNT, not math.random, so a floor walked twice from one save
+-- wakes the same fights in the same places. A bug report about a wanderer can be replayed, which is the
+-- rule every other roll down here keeps (models/seed.lua).
+function Descent.wakeOne(run, grid, px, py)
+    if not (run and grid and grid.cells) then return nil end
+    local cands = {}
+    for y = 1, grid.rows do
+        for x = 1, grid.cols do
+            local c = grid.cells[y][x]
+            local e = c.encounter
+            if e and c.cleared and (e.kind == "combat" or e.kind == "elite")
+                and math.abs(x - (px or 0)) + math.abs(y - (py or 0)) >= Descent.RESPAWN_MIN_DIST then
+                cands[#cands + 1] = c
+            end
+        end
+    end
+    if #cands == 0 then return nil end
+    -- Sorted before the pick: the walk above is row-major and stable, but keeping the ordering explicit
+    -- is what makes "same seed, same wanderer" a property of this function rather than of a loop.
+    table.sort(cands, function(a, b)
+        if a.y ~= b.y then return a.y < b.y end
+        return a.x < b.x
+    end)
+    local pick = cands[(hash(run.seed or 0, 983, run.steps or 0) % #cands) + 1]
+    pick.cleared = nil
+    return pick
+end
+
 function Descent.rearmFloor(grid)
     if not grid then return 0 end
     local n = 0
@@ -3526,6 +3591,8 @@ function Descent.snapshot(run)
         companion = (run.companion and run.companion.house) and
             { house = run.companion.house, floor = run.companion.floor or 1 } or nil,
         cleared = run.cleared or 0,
+        -- ...and the step clock the wanderers run on, or a reload would hand the company a quiet floor.
+        steps = run.steps or 0,
         pending = pending,
         -- (Iselle's tally STOOD HERE and has moved to the player -- see Descent.count for why. A run
         -- that resets on extraction cannot carry a number the city has to keep reading. models/save.lua
@@ -3587,6 +3654,7 @@ function Descent.restore(snap)
         companion = (type(snap.companion) == "table" and snap.companion.house) and
             { house = snap.companion.house, floor = tonumber(snap.companion.floor) or 1 } or nil,
         cleared = snap.cleared or 0,
+        steps = snap.steps or 0, -- absent on a save from before wanderers, which reads as a fresh clock
         pending = pending,
         -- (No `count` -- the tally is the player's. models/save.lua carries an old save's forward.)
         tollPaid = (function()                                              -- ...and see snapshot

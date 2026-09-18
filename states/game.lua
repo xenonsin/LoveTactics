@@ -1454,6 +1454,25 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
                 game:pushToast("The wall gives. There is a way through here.")
                 saveRun()
             end
+            -- SOMETHING WANDERS BACK (Descent.RESPAWN_STEPS). Every so many tiles covered, one fight
+            -- the company already put down gets back up somewhere else on the floor -- so clearing a
+            -- floor buys quiet rather than safety, and a company that wants to grind a floor it knows
+            -- has something to grind. Counted here for the reason the Dark is: this is the one callback
+            -- that fires on a landed tile and on nothing else.
+            --
+            -- ANNOUNCED, ALWAYS. A fight that reappears behind the player with no line would read as a
+            -- stop they had somehow missed, and the next time they walked into it they would think the
+            -- board had lied about being clear.
+            if game.descent then
+                game.descent.steps = (game.descent.steps or 0) + 1
+                if game.descent.steps % Descent.RESPAWN_STEPS == 0 then
+                    local woke = Descent.wakeOne(game.descent, game.grid, game.map.px, game.map.py)
+                    if woke then
+                        game:pushToast("Something moves, somewhere you had already been")
+                        saveRun()
+                    end
+                end
+            end
             -- The Dark burns down in STEPS, here, because this is the one callback that fires on a
             -- landed tile and on nothing else. It is what the hazard is measured in: ground covered
             -- blind, rather than seconds a player might have spent reading a tooltip.
