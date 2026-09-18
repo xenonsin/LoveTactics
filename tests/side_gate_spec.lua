@@ -151,6 +151,27 @@ return {
         assert(checked > 0, "no floor in 60 seeds laid a gate; this case proved nothing")
     end },
 
+    { name = "EVERY descent floor asks for a lock, not just one branch of floorQuest", fn = function()
+        -- THIS CASE EXISTS BECAUSE THE FIRST CUT SHIPPED WITHOUT IT AND WAS WRONG. floorQuest has two
+        -- map blocks -- the bottom floor's and every other floor's -- and the param was added to one of
+        -- them. Every case above drives Overworld.generate directly with explicit params, so not one of
+        -- them could see it: the generator was perfect and the floors never asked.
+        --
+        -- The lesson generalises past this row. A spec that hands the generator its own params tests the
+        -- GENERATOR; what wires a floor to it is a different question and needs asking of floorQuest.
+        local Player = require("models.player")
+        local player = Player.new()
+        local run = Descent.new(player, 2024)
+        for floor = 1, Descent.FLOORS do
+            run.floor = floor
+            local mp = Descent.floorQuest(run, player).map
+            assert(mp.sideGateCount, "floor " .. floor .. " asks for no side gate")
+            assert(mp.keyCount == 0,
+                "floor " .. floor .. " turned keyCount on -- that gates the STAIR, which is the one "
+                .. "thing this whole pass exists to avoid")
+        end
+    end },
+
     { name = "a descent floor asks for one lock and leaves keyCount alone", fn = function()
         -- keyCount gates the OBJECTIVE and stays off; this is the separate dial.
         assert(Descent.FLOOR_SIDE_GATES.min >= 1, "a floor that can roll no lock has no errand to leave")

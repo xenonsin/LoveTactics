@@ -654,6 +654,21 @@ Descent.FLOOR_TRAPS = { min = 3, max = 5 }
 -- a map of (Descent.keepFloor) and re-enters at its own stair (Descent.entryFloor), it is an errand.
 Descent.FLOOR_SIDE_GATES = { min = 1, max = 1 }
 
+-- HOW MANY HOLES A FLOOR HAS IN IT (Overworld:placeDrops, Descent.fall).
+--
+-- ZERO TO ONE, so most floors have none and meeting one is an event. A hole on every floor would make
+-- the stack a chute and the stair decorative; a hole on no floor is a feature nobody meets.
+--
+-- THEY ARE DRAWN, NOT HIDDEN, and that is a departure from Wizardry's trapdoor on purpose. A hidden
+-- one is a gotcha that moves the company a whole floor with no decision in it -- and this is a
+-- top-down board where the player can see the cell, so hiding it would mean drawing nothing on a tile
+-- that plainly has something on it. Visible, it is an OFFER: go down now, poorer and faster, or finish
+-- the floor and take the stair. That is the same trade the landing asks, put on the board.
+--
+-- NEVER ON A GENERAL'S FLOOR AND NEVER AT THE BOTTOM -- see floorQuest, which withholds the param
+-- rather than making the generator ask.
+Descent.FLOOR_DROPS = { min = 0, max = 1 }
+
 -- HOW OFTEN A CHEST IS WIRED, as a percent (Overworld:placeTraps' second half).
 --
 -- A THIRD, which is the rate that makes the question worth asking every time without making "open it"
@@ -2700,9 +2715,12 @@ function Descent.floorQuest(run, player)
                 encounters = stops,
                 cacheCount = { min = Descent.FLOOR_CACHES.min, max = Descent.FLOOR_CACHES.max },
                 trapCount = { min = Descent.FLOOR_TRAPS.min, max = Descent.FLOOR_TRAPS.max },
-            sideGateCount = { min = Descent.FLOOR_SIDE_GATES.min, max = Descent.FLOOR_SIDE_GATES.max },
                 sideGateCount = { min = Descent.FLOOR_SIDE_GATES.min, max = Descent.FLOOR_SIDE_GATES.max },
-            trappedChestChance = Descent.TRAPPED_CHEST_CHANCE,
+                -- A HOLE IN THE FLOOR, but never on a floor whose stair a sin is standing on and never
+                -- at the bottom. Withheld here rather than refused at the seam: a hole the player can
+                -- walk into and be told "not this one" is worse than a floor that simply has none.
+                dropCount = (not Descent.isGeneralFloor(floor) and not Descent.isBottom(floor))
+                    and { min = Descent.FLOOR_DROPS.min, max = Descent.FLOOR_DROPS.max } or nil,
                 trappedChestChance = Descent.TRAPPED_CHEST_CHANCE,
                 keyCount = 0,
                 -- The way back up, standing on the tile the party walks in on. See EXIT below.
@@ -2767,6 +2785,12 @@ function Descent.floorQuest(run, player)
             encounters = stops,
             cacheCount = { min = Descent.FLOOR_CACHES.min, max = Descent.FLOOR_CACHES.max },
             trapCount = { min = Descent.FLOOR_TRAPS.min, max = Descent.FLOOR_TRAPS.max },
+            sideGateCount = { min = Descent.FLOOR_SIDE_GATES.min, max = Descent.FLOOR_SIDE_GATES.max },
+            -- A HOLE IN THE FLOOR, but never on a floor whose stair a sin is standing on and never
+            -- at the bottom. Withheld here rather than refused at the seam: a hole the player can
+            -- walk into and be told "not this one" is worse than a floor that simply has none.
+            dropCount = (not Descent.isGeneralFloor(floor) and not Descent.isBottom(floor))
+                and { min = Descent.FLOOR_DROPS.min, max = Descent.FLOOR_DROPS.max } or nil,
             trappedChestChance = Descent.TRAPPED_CHEST_CHANCE,
             -- keyCount 0 because a floor is not a lock puzzle: the stair is always reachable.
             keyCount = 0,
@@ -3480,6 +3504,32 @@ end
 
 -- The party has cleared a floor and is standing on its landing. Called before the extract-or-descend
 -- prompt so both branches agree on what has been beaten.
+-- FALL TO THE FLOOR BELOW, having beaten nothing (Overworld:placeDrops).
+--
+-- NOT Descent.advance, and the difference is one line that matters: advance credits `cleared`, because
+-- taking the stair means the floor is behind you. A company that stepped into a hole has not finished
+-- anything -- the stair still stands unopened, its guard still stands on it, and the floor's spoils are
+-- still lying up there. Crediting it would report a floor beaten by a party that fell through it.
+--
+-- SO THE TRADE IS DEPTH FOR EVERYTHING ELSE. A drop is faster than the stair and arrives poorer: you
+-- skip the rest of the floor, its finds, its fights and the xp in them. That is a real decision on a
+-- floor going badly and a bad one on a floor going well, which is the shape a shortcut should have.
+--
+-- IT NEVER SKIPS A GENERAL, and that is enforced where drops are SEATED rather than here -- a floor
+-- whose stair is held by a sin gets no drops at all (Descent.floorQuest). Guarding it at the seam would
+-- be a refusal the player could walk into and not understand; guarding it at the generator means the
+-- hole is simply not there on those floors.
+function Descent.fall(run, player)
+    if not run then return end
+    run.floor = (run.floor or 1) + 1
+    -- A new floor is a new dry spell, exactly as on the stair (see advance).
+    run.sealedDrought = 0
+    -- ...and the pruning is the same either way: the rift does not care which way you got deeper.
+    -- Inert while the tally is parked (Descent.COUNT_PARKED).
+    Descent.countBy(player, -1)
+    return run
+end
+
 function Descent.clearFloor(run, player)
     if not run then return end
     local floor = run.floor or 1

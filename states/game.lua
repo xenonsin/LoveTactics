@@ -4206,6 +4206,43 @@ function game:openEncounter(cell, opts)
         return
     end
 
+    -- A HOLE IN THE FLOOR (Overworld:placeDrops). Asked rather than sprung: the tile is drawn, so a
+    -- player standing on it has walked there on purpose and the only honest thing to do is offer the
+    -- trade. Backing out leaves the cell uncleared and the company where they are.
+    --
+    -- WHAT IT COSTS IS THE FLOOR, and the prompt says so in those words. Descent.fall does not credit
+    -- `cleared`, so the stair up there stays unopened and its guard stays standing -- what the company
+    -- gives up is the rest of this floor's finds, fights and the xp in them.
+    --
+    -- THE BOARD GOES IN THE BOOK FIRST, exactly as every other way off a floor does, or a company that
+    -- fell would lose the map of the floor they fell out of.
+    if kind == "drop" and game.descent then
+        local below = Descent.depth(game.descent) + 1
+        game.activePanel = Choice.new({
+            title = cell.encounter.name or "A Hole in the Floor",
+            prompt = "It goes down to floor " .. below .. ". Nothing up here comes with you -- the "
+                .. "stair is still shut, its guard is still standing, and whatever is left on this "
+                .. "floor stays on it.",
+            options = {
+                { label = "Go down", desc = "Faster, and poorer.",
+                  accent = { 0.86, 0.66, 0.30 },
+                  cb = function()
+                      game.activePanel = nil
+                      Descent.keepFloor(game.player, Descent.depth(game.descent), game.grid:snapshot())
+                      Descent.fall(game.descent, game.player)
+                      Player.save()
+                      State.switch(require("states.game"),
+                          Descent.floorQuest(game.descent, game.player), game.day, game.player)
+                  end },
+                { label = "Step around it", desc = "Finish the floor and take the stair.",
+                  accent = { 0.62, 0.72, 0.86 },
+                  cb = function() game.activePanel = nil end },
+            },
+            onClose = function() game.activePanel = nil end,
+        })
+        return
+    end
+
     -- THE COMPANY'S OWN PACK, picked back up (models/descent.lua's Descent.takePack).
     --
     -- This is the far end of the only thing a wipe costs: the trip's haul stays on the tile the party

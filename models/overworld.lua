@@ -197,6 +197,7 @@ function Overworld.generate(params)
     self:placeSecretRewards(params)
     self:placeExit(params)        -- ...and, on a floor you can leave, the way back up you came in by
     self:placeSideGates(params)   -- ...a side route shut behind a key, never the road to the stair
+    self:placeDrops(params)       -- ...and the hole that takes you down without the stair
     self:placeTraps(params)       -- ...and the bad ground between all of it, laid LAST (see the function)
 
     -- The floor is finished: no pass after this rewrites a cell.
@@ -719,6 +720,51 @@ function Overworld:walkableTotal()
         end
     end
     return n
+end
+
+-- A HOLE IN THE FLOOR: step onto it and you are on the next floor down, having beaten nothing.
+--
+-- DRAWN RATHER THAN HIDDEN (see Descent.FLOOR_DROPS for the argument). On a top-down board the player
+-- can see the cell, so a hidden hole would mean drawing nothing on a tile that plainly has something on
+-- it. Visible, it is an offer: go deeper now and poorer, or finish the floor and take the stair.
+--
+-- FAR FROM THE WAY IN, because a hole beside the door is not an offer -- it is a floor the player can
+-- skip before they have seen any of it, every time, which makes the whole stack optional.
+--
+-- ...AND NEVER THE ONLY WAY ONWARD. It takes no cut, for the reason a trap takes none: a hole on the
+-- one route through is a toll, and this one bills a whole floor.
+function Overworld:placeDrops(params)
+    local want = params.dropCount and resolveCount(params.dropCount, self.rng) or 0
+    if want <= 0 then return end
+
+    local dist = self:bfsDistances(self:startCell())
+    local far = 0
+    for _, d in pairs(dist) do if d > far then far = d end end
+    -- Past the halfway mark of this floor's own crossing, so the offer arrives once the company has
+    -- some idea what they would be leaving behind.
+    local near = math.floor(far * 0.5)
+
+    local cands = {}
+    for y = 1, self.rows do
+        for x = 1, self.cols do
+            local c = self.cells[y][x]
+            local d = dist[cellKey(c)]
+            local free = self:typeWalkable(c.tile)
+                and not c.encounter and not c.cache and not c.gate and not c.key
+                and not c.secret and not c.trap
+                and not (self.start.x == x and self.start.y == y)
+            if free and d and d >= near and #self:pathNeighbors(x, y) > 1 then
+                cands[#cands + 1] = c
+            end
+        end
+    end
+    for i = #cands, 2, -1 do
+        local j = self.rng:random(i)
+        cands[i], cands[j] = cands[j], cands[i]
+    end
+    for i = 1, math.min(want, #cands) do
+        cands[i].encounter = { kind = "drop", name = "A Hole in the Floor" }
+    end
 end
 
 -- A SIDE ROUTE BEHIND A LOCK: a cut whose far side holds something worth having, and NEVER the stair.

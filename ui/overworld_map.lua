@@ -629,7 +629,10 @@ local function markerColor(kind, enc)
     -- geography is a category the player learns to recognise ("something is wrong with this square"),
     -- not three things to memorise. The MARK says which; the colour says only that it is not a fight and
     -- not a gift. A sour green-grey, kept well away from the treasure jade and the rest's teal.
-    if kind == "dark" or kind == "spinner" or kind == "translation" then
+    -- A HOLE JOINS THE HAZARD FAMILY, because that is what it is to the eye: something wrong with this
+    -- square. It is the one of the four the company can DECIDE about (states/game.lua asks before it
+    -- drops them), but a fourth colour would make the family four things to learn instead of one.
+    if kind == "dark" or kind == "spinner" or kind == "translation" or kind == "drop" then
         return 0.45, 0.52, 0.44
     end
     return 0.85, 0.25, 0.25 -- combat
@@ -816,6 +819,20 @@ end
 function MarkerIcon.dark(x, y, w, h, r, g, b, a)
     love.graphics.setColor(r, g, b, a)
     love.graphics.arc("fill", x + w / 2, y + h / 2, w * 0.42, math.pi * 0.35, math.pi * 1.65)
+end
+
+-- A HOLE IN THE FLOOR: three arcs narrowing away from the eye, which reads as a shaft going down.
+-- Deliberately not an arrow -- every other downward thing on this board is the STAIR, and a hole is the
+-- other way down rather than a second one of those.
+function MarkerIcon.drop(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a)
+    love.graphics.setLineWidth(math.max(1.5, w * 0.10))
+    local cx, cy = x + w / 2, y + h / 2
+    for i, k in ipairs({ 0.44, 0.28, 0.14 }) do
+        love.graphics.setColor(r, g, b, (a or 1) * (1 - (i - 1) * 0.25))
+        love.graphics.circle("line", cx, cy, w * k)
+    end
+    love.graphics.setLineWidth(1)
 end
 
 -- THE TURNING FLOOR: an arrow bent back on itself. Direction, made unreliable.
