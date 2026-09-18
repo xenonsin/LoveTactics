@@ -196,6 +196,7 @@ function Overworld.generate(params)
     self:placeSecrets(params)     -- ...and the places that read as absent until somebody finds them
     self:placeSecretRewards(params)
     self:placeExit(params)        -- ...and, on a floor you can leave, the way back up you came in by
+    self:placeSideGates(params)   -- ...a side route shut behind a key, never the road to the stair
     self:placeTraps(params)       -- ...and the bad ground between all of it, laid LAST (see the function)
 
     -- The floor is finished: no pass after this rewrites a cell.
@@ -705,6 +706,131 @@ function Overworld:placeSecrets(params)
         c.secret = true
         c.secretEnd = true -- generation-only scaffolding; consumed below
         self.secretCells[#self.secretCells + 1] = c
+    end
+end
+
+-- How many cells of this floor anybody can stand on. Counted rather than stored: nothing else needs
+-- it, and a cached figure would be one more thing that can disagree with the board after a hollow.
+function Overworld:walkableTotal()
+    local n = 0
+    for y = 1, self.rows do
+        for x = 1, self.cols do
+            if self:typeWalkable(self.cells[y][x].tile) then n = n + 1 end
+        end
+    end
+    return n
+end
+
+-- A SIDE ROUTE BEHIND A LOCK: a cut whose far side holds something worth having, and NEVER the stair.
+--
+-- WHY THIS IS NOT Overworld:chokeAndGate. That one walks back from the OBJECTIVE and locks the road to
+-- it, which is why a descent floor has always passed `keyCount = 0` -- "a floor is not a lock puzzle:
+-- the stair is always reachable" (models/descent.lua). That rule is still right and this pass keeps it:
+-- every gate here is tested to leave the objective and the way out reachable without its key.
+--
+-- WHAT CHANGED IS THE MAP. When a floor was walked once, a locked side route was a reward you either
+-- opened on the pass or never saw, so the only honest place for a lock was the critical path. The map
+-- is kept now (models/descent.lua's Descent.keepFloor) and the stair you opened stays open
+-- (Descent.entryFloor) -- so a door you could not open today is a REASON TO COME BACK, which is the
+-- thing a persistent dungeon most wants and had none of.
+--
+-- THE KEY IS NOT NECESSARILY ON THIS FLOOR'S NEAR SIDE, and that is the point of the `keyId` being a
+-- plain string: a key found on floor five opens what it opens wherever that is. This pass seats one
+-- locally so a floor is always solvable on its own terms; nothing stops a later pass seating one deeper.
+
+function Overworld:placeSideGates(params)
+    local want = params.sideGateCount and resolveCount(params.sideGateCount, self.rng) or 0
+    if want <= 0 then return end
+
+    -- What the far side of a lock has to be worth. A gate on an empty spur is a door with nothing
+    -- behind it, which teaches the player that doors are not worth the walk.
+    local function worthLocking(c)
+        return (c.cache ~= nil) or (c.encounter ~= nil) or (c.secret == true)
+    end
+
+    -- Everything reachable from the door with `blocked` shut. Restores the tile before returning, so
+    -- this is a pure question however many times it is asked.
+    local function distancesWithout(blocked)
+        local was = blocked.tile
+        blocked.tile = Overworld.BLOCKED
+        local dist = self:bfsDistances(self:startCell())
+        blocked.tile = was
+        return dist
+    end
+
+    local objKey = self.objective and cellKey(self.objective) or nil
+
+    local cands = {}
+    for y = 1, self.rows do
+        for x = 1, self.cols do
+            local c = self.cells[y][x]
+            local free = self:typeWalkable(c.tile)
+                and not c.encounter and not c.cache and not c.gate and not c.key
+                and not c.secret and not c.trap
+                and not (self.start.x == x and self.start.y == y)
+            if free then
+                local dist = distancesWithout(c)
+                -- THE STAIR SURVIVES. This is the whole promise, asked directly rather than inferred.
+                local endOk = (objKey == nil) or (dist[objKey] ~= nil)
+                if endOk then
+                    -- What falls off the map when this door shuts, and whether any of it is a reward.
+                    local cut, prize = 0, false
+                    for yy = 1, self.rows do
+                        for xx = 1, self.cols do
+                            local o = self.cells[yy][xx]
+                            if o ~= c and self:typeWalkable(o.tile) and dist[cellKey(o)] == nil then
+                                cut = cut + 1
+                                if worthLocking(o) then prize = true end
+                            end
+                        end
+                    end
+                    -- BOUNDED ON BOTH SIDES. A lock that cuts off two empty tiles is not a lock; one
+                    -- that cuts off half the floor is the critical path wearing a side route's clothes,
+                    -- and a company without the key would find most of the level shut.
+                    if prize and cut >= 2 and cut <= math.floor(self:walkableTotal() * 0.35) then
+                        cands[#cands + 1] = { cell = c, dist = dist, cut = cut }
+                    end
+                end
+            end
+        end
+    end
+    if #cands == 0 then return end
+
+    for i = #cands, 2, -1 do
+        local j = self.rng:random(i)
+        cands[i], cands[j] = cands[j], cands[i]
+    end
+
+    for i = 1, math.min(want, #cands) do
+        local pick = cands[i]
+        local c = pick.cell
+        -- Re-tested against the board as it now stands: an earlier gate in this same loop may have
+        -- shut the only other way round, which would turn this one into a second lock on one door.
+        if not c.gate and self:typeWalkable(c.tile) then
+            local keyId = "key" .. (#self.keyIds + 1)
+            c.gate = { keyId = keyId }
+            self.gateCells[keyId] = c
+            self.keyIds[#self.keyIds + 1] = keyId
+
+            -- THE KEY GOES ON THE NEAR SIDE, which is what `pick.dist` already is: every cell it can
+            -- still reach with this door shut. A key behind its own lock is the one failure this pass
+            -- can produce that nothing downstream would catch.
+            local spots = {}
+            for yy = 1, self.rows do
+                for xx = 1, self.cols do
+                    local o = self.cells[yy][xx]
+                    if self:typeWalkable(o.tile) and pick.dist[cellKey(o)]
+                        and not o.encounter and not o.cache and not o.gate and not o.key
+                        and not o.trap and not (self.start.x == xx and self.start.y == yy) then
+                        spots[#spots + 1] = o
+                    end
+                end
+            end
+            if #spots > 0 then
+                local k = spots[self.rng:random(#spots)]
+                k.key = { keyId = keyId }
+            end
+        end
     end
 end
 

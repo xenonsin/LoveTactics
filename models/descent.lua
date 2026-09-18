@@ -638,6 +638,22 @@ Descent.FLOOR_CACHES = { min = 3, max = 4 }
 -- what it eats is empty road. See Descent.floorBudget for the things that DO compete.
 Descent.FLOOR_TRAPS = { min = 3, max = 5 }
 
+-- HOW MANY SIDE ROUTES A FLOOR SHUTS BEHIND A KEY (Overworld:placeSideGates).
+--
+-- ONE, AND NEVER THE ROAD TO THE STAIR. `keyCount` stays 0 and always will: that gates the OBJECTIVE,
+-- and "a floor is not a lock puzzle: the stair is always reachable" is still the rule. What this gates
+-- is a spur with something on it, tested to leave the stair and the way out reachable without the key.
+--
+-- WHY ONE. A locked door is worth something because it is unusual -- two a floor and the player stops
+-- reading them as an event and starts reading them as a tax on having the right key. It is also the
+-- number that keeps the failure case cheap: a floor whose key seats badly costs the company one spur,
+-- not the floor.
+--
+-- AND IT IS A REASON TO COME BACK, which is the only thing that makes this legal on a floor at all. A
+-- door you could not open today is a wasted reward on a floor walked once; on a floor the company keeps
+-- a map of (Descent.keepFloor) and re-enters at its own stair (Descent.entryFloor), it is an errand.
+Descent.FLOOR_SIDE_GATES = { min = 1, max = 1 }
+
 -- HOW OFTEN A CHEST IS WIRED, as a percent (Overworld:placeTraps' second half).
 --
 -- A THIRD, which is the rate that makes the question worth asking every time without making "open it"
@@ -2684,6 +2700,8 @@ function Descent.floorQuest(run, player)
                 encounters = stops,
                 cacheCount = { min = Descent.FLOOR_CACHES.min, max = Descent.FLOOR_CACHES.max },
                 trapCount = { min = Descent.FLOOR_TRAPS.min, max = Descent.FLOOR_TRAPS.max },
+            sideGateCount = { min = Descent.FLOOR_SIDE_GATES.min, max = Descent.FLOOR_SIDE_GATES.max },
+                sideGateCount = { min = Descent.FLOOR_SIDE_GATES.min, max = Descent.FLOOR_SIDE_GATES.max },
             trappedChestChance = Descent.TRAPPED_CHEST_CHANCE,
                 trappedChestChance = Descent.TRAPPED_CHEST_CHANCE,
                 keyCount = 0,
