@@ -13,6 +13,7 @@
 -- Read-only and seeded, so two runs with the same arguments print the same floor.
 
 local Overworld = require("models.overworld")
+local Descent = require("models.descent")   -- what a real floor asks its generator for
 local Encounter = require("models.encounter")
 local Biome = require("models.biome")
 
@@ -26,6 +27,8 @@ local DEFAULT_DAY = 20
 local MARK = {
     combat = "c", elite = "E", objective = "X", treasure = "t", relic_cache = "R",
     rest = "r", merchant = "m", crossroads = "+", shrine = "s", town = "T",
+    -- The hazards and the hole. `drop` is the one stop on a floor that moves the company off it.
+    dark = "d", spinner = "@", translation = "w", drop = "v",
 }
 
 -- The SOLID half is spelled out rather than flattened to one `#`, because the fill's variants are laid
@@ -38,7 +41,7 @@ local function groundChar(grid, cell)
     if cell.tile == "grass" then return "," end
     if not grid:typeWalkable(cell.tile) then return "#" end
     if cell.tile == "forest" then return "f" end
-    if cell.tile == "mountain" then return "m" end
+    if cell.tile == "hill" then return "h" end
     if cell.tile == "water" then return "w" end
     return "."
 end
@@ -96,6 +99,17 @@ function M.run(args)
         houseMaterial = "material_salt_iron",
         keyCount = 1,
         objective = { name = "Boss" },
+        -- WHAT A DESCENT FLOOR ACTUALLY ASKS FOR. Without these this tool drew a board with none of
+        -- the floor's own features on it -- no traps, no side locks, no holes, no set-pieces -- which
+        -- is exactly the blindness tools/board_report had, and it was found the same way: by looking
+        -- at the picture and not seeing the thing that was supposed to be in it.
+        --
+        -- Read off the constants rather than restated, so a re-tune shows up here the day it lands.
+        trapCount = { min = Descent.FLOOR_TRAPS.min, max = Descent.FLOOR_TRAPS.max },
+        trappedChestChance = Descent.TRAPPED_CHEST_CHANCE,
+        sideGateCount = { min = Descent.FLOOR_SIDE_GATES.min, max = Descent.FLOOR_SIDE_GATES.max },
+        dropCount = { min = Descent.FLOOR_DROPS.min, max = Descent.FLOOR_DROPS.max },
+        vaultCount = { min = Descent.FLOOR_VAULTS.min, max = Descent.FLOOR_VAULTS.max },
         seed = seed,
     })
 
@@ -113,7 +127,12 @@ function M.run(args)
             elseif c.encounter and MARK[c.encounter.kind] then ch = MARK[c.encounter.kind]
             elseif c.gate then ch = "G"
             elseif c.key then ch = "K"
-            elseif c.cache then ch = "$" end
+            elseif c.cache then ch = "$"
+            elseif c.trap then ch = "!"
+            -- AN AUTHORED ROOM'S OWN FLOOR, drawn so the SHAPE reads. Last, so anything standing in the
+            -- room wins the cell -- what is worth seeing is the outline, and the outline is the cells
+            -- with nothing on them (Overworld:placeVaults).
+            elseif c.vault then ch = "o" end
             row[#row + 1] = ch
         end
         print("  " .. table.concat(row))
@@ -121,6 +140,7 @@ function M.run(args)
     print("")
     print("  S start  X objective  c fight  E elite  $ cache  K key  G gate")
     print("  r rest  t treasure  R reliquary  m merchant  + crossroads  s shrine")
+    print("  o vault floor  v hole  ! trap  d dark  @ spinner  w translation")
     print("  . trail  # fill  ~ water  = bridge")
     print("")
 

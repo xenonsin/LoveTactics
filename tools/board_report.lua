@@ -73,6 +73,25 @@ local BOON_KINDS = { treasure = true, relic_cache = true }
 -- is the thing at the end. Occupancy is the number the whole design is pitched at (about half the places
 -- holding something, the rest what you route through) and `steps to the stair` is what replaced forty
 -- tiles of corridor.
+-- EVERYTHING A DESCENT FLOOR ASKS FOR THAT IS NOT A STOP, copied onto a report's params.
+--
+-- ONE FUNCTION, TWO CALLERS, AND THAT IS THE POINT OF IT. Both sites used to copy `mp` field by
+-- field, and five params were added to a floor over one week without either list learning them --
+-- so this tool measured a board with no traps, no locks, no holes and no set-pieces on it, while
+-- its numbers were being quoted as evidence for all four. Two hand-maintained lists is how that
+-- happens; one is how it stops.
+--
+-- Round 4's X-1 states the rule: the instrument moves BEFORE any tuning is read off it. Anything
+-- new on Descent.floorQuest's map belongs in here the same day it lands.
+local function copyFloorFeatures(params, mp)
+    if not mp then return params end
+    params.trapCount = mp.trapCount
+    params.trappedChestChance = mp.trappedChestChance
+    params.sideGateCount = mp.sideGateCount
+    params.dropCount = mp.dropCount
+    params.vaultCount = mp.vaultCount
+    return params
+end
 local function measure(grid)
     local r = {
         fights = 0, boons = 0, rest = 0, stops = 0,
@@ -492,6 +511,7 @@ function M.run(args)
             params.combatBudget = fightsOverride or mp.combatBudget
             params.guaranteeKinds = mp.guaranteeKinds
             params.guarantee = mp.guarantee
+            copyFloorFeatures(params, mp)
             params.ascent, params.keyCount = true, 0
             params.secrets, params.exitAtStart = mp.secrets, mp.exitAtStart
             params.objective = mp.objective
@@ -733,6 +753,7 @@ function M.run(args)
                     params.combatBudget = mp.combatBudget
                     params.combatShare, params.guarantee = mp.combatShare, mp.guarantee
                     params.objective, params.objectives = mp.objective, mp.objectives
+                    copyFloorFeatures(params, mp)
                     params.ascent, params.keyCount = true, 0
                 end
                 local grid = Overworld.generate(params)

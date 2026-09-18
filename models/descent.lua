@@ -669,6 +669,19 @@ Descent.FLOOR_SIDE_GATES = { min = 1, max = 1 }
 -- rather than making the generator ask.
 Descent.FLOOR_DROPS = { min = 0, max = 1 }
 
+-- HOW MANY AUTHORED SET-PIECES A FLOOR IS BUILT AROUND (Overworld:placeVaults, data/vaults/).
+--
+-- ONE, AND IT IS THE PROBE. The bet is that a floor with one authored thing in it reads differently
+-- from a floor with none -- and the honest way to answer that is one vault, one floor, and a walk,
+-- before anybody builds a library. If it does not read, this constant goes to zero and the generator is
+-- exactly what it was.
+--
+-- ONE ALSO BECAUSE OF THE ARITHMETIC. A floor is 91 places (measured) and a 5x5 vault is a fifth of the
+-- frame; two of them would be most of a floor and the generator would have nowhere left to put a road.
+-- If the library grows, this number does not have to -- a vocabulary of twenty pieces placed one at a
+-- time still makes twenty kinds of floor.
+Descent.FLOOR_VAULTS = { min = 1, max = 1 }
+
 -- HOW OFTEN A CHEST IS WIRED, as a percent (Overworld:placeTraps' second half).
 --
 -- A THIRD, which is the rate that makes the question worth asking every time without making "open it"
@@ -2715,6 +2728,7 @@ function Descent.floorQuest(run, player)
                 encounters = stops,
                 cacheCount = { min = Descent.FLOOR_CACHES.min, max = Descent.FLOOR_CACHES.max },
                 trapCount = { min = Descent.FLOOR_TRAPS.min, max = Descent.FLOOR_TRAPS.max },
+                vaultCount = { min = Descent.FLOOR_VAULTS.min, max = Descent.FLOOR_VAULTS.max },
                 sideGateCount = { min = Descent.FLOOR_SIDE_GATES.min, max = Descent.FLOOR_SIDE_GATES.max },
                 -- A HOLE IN THE FLOOR, but never on a floor whose stair a sin is standing on and never
                 -- at the bottom. Withheld here rather than refused at the seam: a hole the player can
@@ -2785,6 +2799,7 @@ function Descent.floorQuest(run, player)
             encounters = stops,
             cacheCount = { min = Descent.FLOOR_CACHES.min, max = Descent.FLOOR_CACHES.max },
             trapCount = { min = Descent.FLOOR_TRAPS.min, max = Descent.FLOOR_TRAPS.max },
+            vaultCount = { min = Descent.FLOOR_VAULTS.min, max = Descent.FLOOR_VAULTS.max },
             sideGateCount = { min = Descent.FLOOR_SIDE_GATES.min, max = Descent.FLOOR_SIDE_GATES.max },
             -- A HOLE IN THE FLOOR, but never on a floor whose stair a sin is standing on and never
             -- at the bottom. Withheld here rather than refused at the seam: a hole the player can

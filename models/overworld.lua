@@ -50,6 +50,7 @@ local Tileset = require("models.tileset")
 local Biome = require("models.biome")
 local Material = require("models.material") -- cache payloads: craft grades + the sponsoring house's stock
 local Encounter = require("models.encounter") -- guaranteed stops resolve by kind off the blueprints
+local Registry = require("models.registry")    -- ...and the authored set-pieces a floor is built round
 
 local Overworld = {}
 Overworld.__index = Overworld
@@ -188,6 +189,7 @@ function Overworld.generate(params)
     end
 
     self:hollow()                 -- the silhouette, and the chokepoints under it
+    self:placeVaults(params)      -- the authored pieces FIRST: they decide their own walls
     self:placeObjectiveAndGates(params) -- the ends, the road back from them, and the lock on the deepest
     self:placeCaches(params)      -- the finds take the dead ends FIRST
     self:placeEncounters(params)  -- then the stops fill the places between them
@@ -710,6 +712,140 @@ function Overworld:placeSecrets(params)
     end
 end
 
+-- ---------------------------------------------------------------------------
+-- Vaults: the authored things a rolled floor is made of
+-- ---------------------------------------------------------------------------
+
+-- The blueprints, one file per set-piece (data/vaults/*.lua). Loaded the way every other content type
+-- is, so ADDING ONE IS A FILE AND NOTHING ELSE -- which is the whole of round 4's X-2, and the thing
+-- that decides whether this library ever grows past the first.
+Overworld.vaults = Registry.load("data/vaults", "data.vaults")
+
+-- STAMP ONE AUTHORED SET-PIECE INTO A ROLLED FLOOR.
+--
+-- THE BET THIS EXISTS TO SETTLE: a generated floor can still be made of authored things. Today the
+-- generator hollows a rectangle and deals sixteen stops onto it, so every floor has the same texture
+-- and only the biome tint tells one from another -- small AND forgettable, which is the worst pairing,
+-- because small was supposed to be buying memorability. A vault is a piece with intent in it.
+--
+-- IT KEEPS THE SEED. Which vault, and where it lands, are dealt off the floor's own rng like everything
+-- else here -- so floor three of one save and floor three of another are different floors, and floor
+-- three of THIS save is the same floor forever (models/seed.lua, Descent.keepFloor). That is the
+-- constraint this was designed under and it costs nothing: a library is a vocabulary the generator
+-- speaks, not a script it reads.
+--
+-- PLACED EARLY, right after the silhouette and before anything is seated. The vault decides its own
+-- walls, so it has to shape the floor rather than be fitted around one -- and every pass after it sees
+-- an ordinary board with some cells already spoken for.
+--
+-- NOTHING ROLLED EVER LANDS INSIDE ONE (round 4's A-3). Every cell it stamps carries `vault`, and the
+-- seeding passes skip it -- a merchant in the middle of the ring would be the generator talking over
+-- the author, and the shape is only worth authoring if it survives.
+--
+-- IT REFUSES RATHER THAN FORCES. A floor with nowhere to put one gets none: the alternative is carving
+-- a hole for it in a silhouette that was already connected, which is how a generator ends up with
+-- stranded cells and a report that says so three passes later.
+function Overworld:placeVaults(params)
+    local want = params.vaultCount and resolveCount(params.vaultCount, self.rng) or 0
+    if want <= 0 then return end
+
+    local ids = {}
+    for id in pairs(Overworld.vaults or {}) do ids[#ids + 1] = id end
+    if #ids == 0 then return end
+    -- Sorted before the pick: `pairs` order is unspecified, and a floor must lay out the same way twice
+    -- from the same seed. The same rule every other deal in this file keeps.
+    table.sort(ids)
+
+    for _ = 1, want do
+        local def = Overworld.vaults[ids[self.rng:random(#ids)]]
+        local rows = def and def.map
+        if rows and #rows > 0 then
+            local vh, vw = #rows, #rows[1]
+            -- Anchors that fit wholly inside the frame with a one-cell margin, so a vault never runs
+            -- into the rim where the hollow has already decided there is nothing.
+            local spots = {}
+            for y = 2, self.rows - vh do
+                for x = 2, self.cols - vw do
+                    spots[#spots + 1] = { x = x, y = y }
+                end
+            end
+            for i = #spots, 2, -1 do
+                local j = self.rng:random(i)
+                spots[i], spots[j] = spots[j], spots[i]
+            end
+
+            for _, at in ipairs(spots) do
+                if self:stampVault(def, at.x, at.y) then break end
+            end
+        end
+    end
+end
+
+-- Try to stamp `def` with its top-left at (ox, oy). Returns true if it took.
+--
+-- TESTED BEFORE IT IS WRITTEN, and then tested again: the footprint must not swallow anything already
+-- decided (the way in, the way out, an end), and the floor must still be ONE REGION afterwards. A vault
+-- that strands part of the board is the failure this generator's whole hollow pass exists to avoid, and
+-- it is invisible until board-report's `stranded` row says so.
+function Overworld:stampVault(def, ox, oy)
+    local rows = def.map
+    local vh, vw = #rows, #rows[1]
+
+    -- Nothing already spoken for may be underneath.
+    for ry = 1, vh do
+        for rx = 1, vw do
+            local c = self.cells[oy + ry - 1] and self.cells[oy + ry - 1][ox + rx - 1]
+            if not c then return false end
+            if c.encounter or c.cache or c.gate or c.key or c.secret or c.vault then return false end
+            if self.start and self.start.x == c.x and self.start.y == c.y then return false end
+            if self.objective and self.objective.x == c.x and self.objective.y == c.y then return false end
+        end
+    end
+
+    -- Remember the ground so a refusal puts it all back exactly as it was.
+    local was = {}
+    for ry = 1, vh do
+        for rx = 1, vw do
+            local c = self.cells[oy + ry - 1][ox + rx - 1]
+            was[#was + 1] = { cell = c, tile = c.tile }
+        end
+    end
+
+    for ry = 1, vh do
+        local row = rows[ry]
+        for rx = 1, vw do
+            local ch = row:sub(rx, rx)
+            local c = self.cells[oy + ry - 1][ox + rx - 1]
+            c.tile = (ch == "#") and Overworld.BLOCKED or Overworld.PLACE
+        end
+    end
+
+    if not self:oneRegion() then
+        for _, u in ipairs(was) do u.cell.tile = u.tile end
+        return false
+    end
+
+    -- It took. Claim the footprint and seat what the author put in it.
+    for ry = 1, vh do
+        local row = rows[ry]
+        for rx = 1, vw do
+            local ch = row:sub(rx, rx)
+            local c = self.cells[oy + ry - 1][ox + rx - 1]
+            if ch ~= "#" then
+                c.vault = def.name or true
+                local n = tonumber(ch)
+                local content = n and def.contents and def.contents[n]
+                if content then
+                    local enc = {}
+                    for k, v in pairs(content) do enc[k] = v end
+                    c.encounter = enc
+                end
+            end
+        end
+    end
+    return true
+end
+
 -- How many cells of this floor anybody can stand on. Counted rather than stored: nothing else needs
 -- it, and a cached figure would be one more thing that can disagree with the board after a hollow.
 function Overworld:walkableTotal()
@@ -751,7 +887,7 @@ function Overworld:placeDrops(params)
             local d = dist[cellKey(c)]
             local free = self:typeWalkable(c.tile)
                 and not c.encounter and not c.cache and not c.gate and not c.key
-                and not c.secret and not c.trap
+                and not c.secret and not c.vault and not c.trap
                 and not (self.start.x == x and self.start.y == y)
             if free and d and d >= near and #self:pathNeighbors(x, y) > 1 then
                 cands[#cands + 1] = c
@@ -812,7 +948,7 @@ function Overworld:placeSideGates(params)
             local c = self.cells[y][x]
             local free = self:typeWalkable(c.tile)
                 and not c.encounter and not c.cache and not c.gate and not c.key
-                and not c.secret and not c.trap
+                and not c.secret and not c.vault and not c.trap
                 and not (self.start.x == x and self.start.y == y)
             if free then
                 local dist = distancesWithout(c)
@@ -906,7 +1042,7 @@ function Overworld:placeTraps(params)
         for x = 1, self.cols do
             local c = self.cells[y][x]
             local free = self:typeWalkable(c.tile) and not c.encounter and not c.cache
-                and not c.gate and not c.key and not c.secret
+                and not c.gate and not c.key and not c.secret and not c.vault
                 and not (self.start and self.start.x == x and self.start.y == y)
             -- ...and never a cut, which is a cell that is the ONLY way to somewhere. A trap there is
             -- not bad ground the company can route around, it is a toll on the rest of the floor --
@@ -1045,6 +1181,7 @@ function Overworld:placeCaches(params)
         for x = 1, self.cols do
             local c = self.cells[y][x]
             if self:typeWalkable(c.tile) and not c.encounter and not c.gate and not c.key
+                and not c.vault -- an authored room is not ground the generator may seat on
                 and not (self.start.x == x and self.start.y == y) then
                 if #self:pathNeighbors(x, y) == 1 then
                     deadEnds[#deadEnds + 1] = c
@@ -1210,6 +1347,8 @@ function Overworld:placeEncounters(params)
             -- `not c.cache` matters because caches are placed FIRST: a stop dropped onto one would bury
             -- the find under it.
             if self:typeWalkable(c.tile) and not c.encounter and not c.gate and not c.key and not c.cache
+                and not c.vault -- ...and a stop in the middle of one is the generator talking over
+                              -- the author, which is the whole of what a vault is for
                 and not (self.start.x == x and self.start.y == y) then
                 cands[#cands + 1] = c
             end
@@ -1492,7 +1631,12 @@ function Overworld:blockRoutes(params)
         for x = 1, self.cols do
             local c = self.cells[y][x]
             if self:typeWalkable(c.tile) and c ~= start
-                and not c.encounter and not c.cache and not c.gate and not c.key then
+                and not c.encounter and not c.cache and not c.gate and not c.key
+                -- ...AND NEVER INSIDE AN AUTHORED ROOM. A vault makes cuts by construction -- a ring
+                -- with four ways in is four of them -- so this pass finds its cells first and most
+                -- attractive, and a fight moved into the middle of somebody's set-piece is the exact
+                -- thing placeVaults marks the footprint to prevent.
+                and not c.vault then
                 -- A campaign ground keeps its promise that the road to an end is walkable: combat stays
                 -- off the spine there, so a cut ON the spine is not a candidate. A descent floor sets
                 -- `ascent`, where combat IS the route, and every cut is fair.
@@ -1875,6 +2019,10 @@ end
 -- by placeSecretRewards before the floor is ever saved.
 local CELL_FIELDS = { "tile", "seen", "cleared", "picked", "encounter", "gate", "key", "cache",
                       "secret", "errandAnswered",
+                      -- Which cells an authored set-piece claimed (Overworld:placeVaults). It rides so
+                      -- a kept floor still knows, and so a re-armed floor cannot seat a rolled stop
+                      -- inside a room somebody wrote.
+                      "vault",
                       -- The bad ground (Overworld:placeTraps). Carries its own `found` and `sprung`, so
                       -- a trap the company detected on one trip is still marked on the next and one
                       -- they already ate is still spent -- which is the whole point of keeping a floor
