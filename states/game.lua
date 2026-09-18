@@ -3162,12 +3162,39 @@ function game:openEncounter(cell, opts)
             return
         end
 
+        -- A WIRED LID, AND WHETHER THE COMPANY CAN SEE IT (Overworld:placeTraps' second half).
+        --
+        -- The charm's real job. Bad road can be walked around once it is seen; a chest is a DECISION --
+        -- open it anyway, or leave it standing and come back better kitted -- and a company carrying no
+        -- charm is never offered that decision, because they do not know there is one.
+        --
+        -- SAID IN THE PANEL'S OWN DESCRIPTION rather than as a second modal in front of it. The panel
+        -- already opens on a CLOSED chest with an Open button; the warning belongs on that screen,
+        -- beside the button it is about, and cancelling already leaves the cell uncleared -- so
+        -- "leave it for now" needs no new control at all.
+        local wired = enc.trapped and Trap.defs[enc.trapped]
+        local seen = wired and Trap.detectRadiusFor(game.player) > 0
         game.activePanel = LootReveal.new({
             encounter = enc,
             loot = loot,
             sealed = sealed,
+            description = seen
+                and ("The lid is wired -- " .. (wired.name or "a trap") ..
+                     ". Open it anyway, or leave it and come back for it.")
+                or nil,
             onCollect = function()
                 cell.cleared = true
+                -- SPRUNG BEFORE THE HAUL LANDS, so the toast order reads the way the moment happens:
+                -- the lid bites, then the chest is emptied. Fires whether or not the company saw it
+                -- coming -- seeing it buys the choice, never the disarm.
+                if wired then
+                    local hurt = Trap.springOn(game.player, wired)
+                    local n = 0
+                    for _ in pairs(hurt) do n = n + 1 end
+                    game:pushToast((wired.name or "A trap") .. " on the lid -- " .. n ..
+                        (n == 1 and " body hurt" or " bodies hurt"))
+                    require("models.sound").play("battle.hit")
+                end
                 for _, id in ipairs(loot) do
                     Player.grantItem(game.player, id)
                 end

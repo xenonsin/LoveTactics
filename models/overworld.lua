@@ -721,10 +721,13 @@ end
 -- it makes covering ground cost something, so a detector and a lit lookahead start being worth their
 -- cells. It is also why they are not put on dead ends: a dead end is somewhere you chose to go.
 function Overworld:placeTraps(params)
-    local n = params.trapCount and resolveCount(params.trapCount, self.rng) or 0
-    if n <= 0 then return end
     local ids = require("models.trap").floorable()
-    if #ids == 0 then return end
+    if #ids == 0 then return end -- no blueprint can bite out of combat; nothing to lay or wire
+
+    -- THE TWO HALVES ARE INDEPENDENT, and this used to be one early return that gated both -- so a
+    -- floor asking for wired chests and no bad road got neither, silently. They answer different
+    -- params and a caller may reasonably want either alone.
+    local n = params.trapCount and resolveCount(params.trapCount, self.rng) or 0
 
     local cands = {}
     for y = 1, self.rows do
@@ -739,12 +742,34 @@ function Overworld:placeTraps(params)
             if free and #self:pathNeighbors(x, y) > 1 then cands[#cands + 1] = c end
         end
     end
-    for i = #cands, 2, -1 do
-        local j = self.rng:random(i)
-        cands[i], cands[j] = cands[j], cands[i]
+    if n > 0 then
+        for i = #cands, 2, -1 do
+            local j = self.rng:random(i)
+            cands[i], cands[j] = cands[j], cands[i]
+        end
+        for i = 1, math.min(n, #cands) do
+            cands[i].trap = { id = ids[self.rng:random(#ids)] }
+        end
     end
-    for i = 1, math.min(n, #cands) do
-        cands[i].trap = { id = ids[self.rng:random(#ids)] }
+
+    -- ...AND SOME OF THE CHESTS ARE WIRED (params.trappedChestChance, a percent).
+    --
+    -- On the ENCOUNTER rather than on the cell, because a trapped chest is a property of the thing with
+    -- the lid and not of the ground it stands on -- the cell's own `trap` is bad road, and a tile could
+    -- honestly carry both. It also means the mark rides wherever the encounter does.
+    --
+    -- THIS IS THE HALF THE CHARM IS REALLY FOR. Bad road can be walked around once it is seen, which is
+    -- useful; a wired lid is a DECISION -- open it anyway, or leave it and come back better -- and a
+    -- company without the charm never knows it was offered one (states/game.lua's treasure branch).
+    local chance = params.trappedChestChance or 0
+    if chance <= 0 then return end
+    for y = 1, self.rows do
+        for x = 1, self.cols do
+            local e = self.cells[y][x].encounter
+            if e and e.kind == "treasure" and self.rng:random(100) <= chance then
+                e.trapped = ids[self.rng:random(#ids)]
+            end
+        end
     end
 end
 

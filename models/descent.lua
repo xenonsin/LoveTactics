@@ -638,6 +638,18 @@ Descent.FLOOR_CACHES = { min = 3, max = 4 }
 -- what it eats is empty road. See Descent.floorBudget for the things that DO compete.
 Descent.FLOOR_TRAPS = { min = 3, max = 5 }
 
+-- HOW OFTEN A CHEST IS WIRED, as a percent (Overworld:placeTraps' second half).
+--
+-- A THIRD, which is the rate that makes the question worth asking every time without making "open it"
+-- the wrong answer. Below about a fifth the charm is insurance nobody buys and the player stops
+-- thinking about lids; above a half, opening an unread chest is simply a mistake, and a reward the
+-- correct play is to walk past is not a reward.
+--
+-- IT IS THE HALF THE CHARM IS REALLY FOR. Bad road is useful to see; a wired lid is a DECISION -- open
+-- it anyway, or leave it standing and come back better -- and the map keeps the chest where it is
+-- (Descent.keepFloor), so coming back is a real option rather than a lost reward.
+Descent.TRAPPED_CHEST_CHANCE = 33
+
 -- WHAT A FLOOR IS MADE OF, which is not what a quest board's leg is made of.
 --
 -- The generator draws its stops from a weighted pool, and the campaign's authored weights describe a
@@ -2607,6 +2619,8 @@ function Descent.floorQuest(run, player)
                 encounters = stops,
                 cacheCount = { min = Descent.FLOOR_CACHES.min, max = Descent.FLOOR_CACHES.max },
                 trapCount = { min = Descent.FLOOR_TRAPS.min, max = Descent.FLOOR_TRAPS.max },
+            trappedChestChance = Descent.TRAPPED_CHEST_CHANCE,
+                trappedChestChance = Descent.TRAPPED_CHEST_CHANCE,
                 keyCount = 0,
                 -- The way back up, standing on the tile the party walks in on. See EXIT below.
                 exitAtStart = true,
@@ -2670,6 +2684,7 @@ function Descent.floorQuest(run, player)
             encounters = stops,
             cacheCount = { min = Descent.FLOOR_CACHES.min, max = Descent.FLOOR_CACHES.max },
             trapCount = { min = Descent.FLOOR_TRAPS.min, max = Descent.FLOOR_TRAPS.max },
+            trappedChestChance = Descent.TRAPPED_CHEST_CHANCE,
             -- keyCount 0 because a floor is not a lock puzzle: the stair is always reachable.
             keyCount = 0,
             -- The way back up, standing on the tile the party walks in on. See EXIT below.

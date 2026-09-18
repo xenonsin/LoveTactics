@@ -141,4 +141,61 @@ return {
             .. "ground on it")
         assert(Descent.FLOOR_TRAPS.min <= Descent.FLOOR_TRAPS.max, "the trap range is inverted")
     end },
+    { name = "some chests are wired, and the mark rides on the lid rather than the ground", fn = function()
+        local grid = Overworld.generate({
+            biome = "forest", cols = 13, rows = 13, seed = 31337,
+            encounterCount = 14, cacheCount = 2, keyCount = 0, ascent = true,
+            trapCount = { min = 0, max = 0 },        -- no bad road: this case is only about lids
+            trappedChestChance = 100,                -- every chest, so the case is not a coin flip
+            encounters = { { kind = "treasure", weight = 1 } },
+        })
+        local chests, wired = 0, 0
+        for y = 1, grid.rows do
+            for x = 1, grid.cols do
+                local e = grid.cells[y][x].encounter
+                if e and e.kind == "treasure" then
+                    chests = chests + 1
+                    if e.trapped then
+                        wired = wired + 1
+                        assert(Trap.defs[e.trapped], "a chest is wired to a trap that does not exist")
+                    end
+                end
+            end
+        end
+        assert(chests > 0, "the fixture laid no chests -- this case proves nothing")
+        assert(wired == chests, "at 100% every chest should be wired; " .. wired .. " of " .. chests)
+
+        -- ON THE ENCOUNTER, NOT THE CELL. A wired lid is a property of the thing with the lid; the
+        -- cell's own `trap` is bad road, and one tile could honestly carry both.
+        for y = 1, grid.rows do
+            for x = 1, grid.cols do
+                assert(not grid.cells[y][x].trap,
+                    "a floor asked for no road traps grew one anyway")
+            end
+        end
+    end },
+
+    { name = "no chest is wired when nobody asked, so an authored quest never grows one", fn = function()
+        local grid = Overworld.generate({
+            biome = "forest", cols = 11, rows = 11, seed = 5150,
+            encounterCount = 10, cacheCount = 1, keyCount = 0, ascent = true,
+            encounters = { { kind = "treasure", weight = 1 } },
+        })
+        for y = 1, grid.rows do
+            for x = 1, grid.cols do
+                local e = grid.cells[y][x].encounter
+                assert(not (e and e.trapped), "a board that never mentioned traps wired a chest")
+            end
+        end
+    end },
+
+    { name = "the wired-chest rate leaves opening one the right default", fn = function()
+        -- Below about a fifth the charm is insurance nobody buys and lids stop being thought about;
+        -- above a half, opening an unread chest is simply a mistake -- and a reward whose correct play
+        -- is to walk past it is not a reward.
+        assert(Descent.TRAPPED_CHEST_CHANCE >= 20,
+            "at " .. Descent.TRAPPED_CHEST_CHANCE .. "% a wired lid is too rare to be worth a charm")
+        assert(Descent.TRAPPED_CHEST_CHANCE <= 50,
+            "at " .. Descent.TRAPPED_CHEST_CHANCE .. "% not opening chests becomes the correct play")
+    end },
 }
