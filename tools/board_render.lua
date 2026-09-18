@@ -88,7 +88,10 @@ function M.run(args)
         return
     end
 
-    local grid = Overworld.generate({
+    -- A REAL FLOOR'S OWN PARAMS, so this draws the dungeon rather than an idea of it.
+    local probe = { floor = 1, seed = seed, cleared = 0, standing = {}, pending = {} }
+    local floorMap = Descent.floorQuest(probe).map
+    local params = {
         biome = biome,
         cols = size,
         rows = size,
@@ -99,19 +102,13 @@ function M.run(args)
         houseMaterial = "material_salt_iron",
         keyCount = 1,
         objective = { name = "Boss" },
-        -- WHAT A DESCENT FLOOR ACTUALLY ASKS FOR. Without these this tool drew a board with none of
-        -- the floor's own features on it -- no traps, no side locks, no holes, no set-pieces -- which
-        -- is exactly the blindness tools/board_report had, and it was found the same way: by looking
-        -- at the picture and not seeing the thing that was supposed to be in it.
-        --
-        -- Read off the constants rather than restated, so a re-tune shows up here the day it lands.
-        trapCount = { min = Descent.FLOOR_TRAPS.min, max = Descent.FLOOR_TRAPS.max },
-        trappedChestChance = Descent.TRAPPED_CHEST_CHANCE,
-        sideGateCount = { min = Descent.FLOOR_SIDE_GATES.min, max = Descent.FLOOR_SIDE_GATES.max },
-        dropCount = { min = Descent.FLOOR_DROPS.min, max = Descent.FLOOR_DROPS.max },
-        vaultCount = { min = Descent.FLOOR_VAULTS.min, max = Descent.FLOOR_VAULTS.max },
+        -- WHAT A DESCENT FLOOR ACTUALLY ASKS FOR is taken off a real descriptor below
+        -- (Descent.applyFloorFeatures) rather than restated here. Restating it is how this tool
+        -- came to draw a board with none of the floor's own features on it.
         seed = seed,
-    })
+    }
+    Descent.applyFloorFeatures(params, floorMap)
+    local grid = Overworld.generate(params)
 
     print(string.format("BOARD RENDER -- %s, seed %d, %dx%d",
         biome, seed, grid.cols, grid.rows))

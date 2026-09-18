@@ -304,10 +304,24 @@ end
 -- So a floor trap bites for exactly what its blueprint says, and the answer to it is the charm that
 -- finds it rather than the coat that softens it (Trap.detectRadiusFor). That is also the more honest
 -- reading of the fiction: a pit does not care what you are wearing.
+-- WHAT SHARE OF A BLUEPRINT'S BITE A FLOOR TRAP ACTUALLY SPENDS, per body.
+--
+-- MEASURED BY WALKING ONE. A spike trap is authored at 18 damage against a single unit on a battle
+-- board. Out here it hits the WHOLE company -- the party is one token and a pit under it is a pit under
+-- all four -- so the same number is four times the bill. A floor carries three to five of them
+-- (Descent.FLOOR_TRAPS), and a sweep of one floor left a 70-health body on 10: not a cost, a wipe
+-- arranged in advance.
+--
+-- A THIRD. Three traps at six a body is about a quarter of a floor-one company's health for walking a
+-- floor blind, which is a real price against a camp that gives back a share and a Charm that avoids it
+-- entirely -- and it leaves the company able to take the stair. Re-measure by walking, not by reading:
+-- the whole reason this constant exists is that the authored number looked fine on paper.
+Trap.FLOOR_SHARE = 0.35
+
 function Trap.springOn(player, def, share)
     local out = {}
     if not (player and def) then return out end
-    local raw = math.max(1, math.floor((def.damage or 0) * (share or 1) + 0.5))
+    local raw = math.max(1, math.floor((def.damage or 0) * (share or Trap.FLOOR_SHARE) + 0.5))
     for _, char in ipairs((player and player.roster) or {}) do
         local hp = char.stats and char.stats.health
         if type(hp) == "table" and (hp.current or 0) > 0 then

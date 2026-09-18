@@ -1372,6 +1372,14 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
                 and Seed.mix(game.descent.seed, Descent.depth(game.descent))
                 or Seed.mix(Seed.lap(player), game.day or 1, Seed.text(quest and quest.id or "")),
         }
+        -- ...AND EVERYTHING THE FLOOR ASKS FOR THAT IS NOT A STOP (Descent.FLOOR_FEATURE_KEYS).
+        --
+        -- The params above are copied off `mp` field by field, which is fine for the dozen that have
+        -- been here since the beginning and was catastrophic for the five added in one week: the traps,
+        -- the wired chests, the side locks, the holes and the set-pieces were in the model, in the
+        -- generator and under spec, and in NO FLOOR ANYBODY COULD WALK, because this list never learned
+        -- them. One call, one list, and the same one tools/board_report and tools/board_render use.
+        Descent.applyFloorFeatures(params, mp)
         game.grid = Overworld.generate(params)
     end
     game.activePanel = nil

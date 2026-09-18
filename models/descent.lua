@@ -682,6 +682,35 @@ Descent.FLOOR_DROPS = { min = 0, max = 1 }
 -- time still makes twenty kinds of floor.
 Descent.FLOOR_VAULTS = { min = 1, max = 1 }
 
+-- ---------------------------------------------------------------------------
+-- What a floor asks its generator for, in ONE list
+-- ---------------------------------------------------------------------------
+
+-- EVERY PARAM ON A FLOOR'S MAP THAT IS NOT A STOP, NAMED ONCE.
+--
+-- THIS LIST EXISTS BECAUSE ITS ABSENCE COST A WEEK OF WORK. Three separate places build an
+-- Overworld.generate params table by copying Descent.floorQuest's map FIELD BY FIELD -- states/game.lua,
+-- tools/board_report.lua and tools/board_render.lua. Five params were added to a floor over one week
+-- and none of the three learned them, so the traps, the wired chests, the side locks, the holes and the
+-- set-pieces were in the model, in the generator, under spec, and in NO FLOOR ANYBODY COULD WALK.
+--
+-- The specs could not see it either, and that is the part worth remembering: each of them drove
+-- Overworld.generate with its own params, which tests the GENERATOR. What wires a floor to it is a
+-- different question, and it had three answers that all had to be right.
+--
+-- SO: one list, one copier, and tests/floor_features_spec.lua fails the day a sixth param is added to
+-- floorQuest's map without being named here.
+Descent.FLOOR_FEATURE_KEYS = {
+    "trapCount", "trappedChestChance", "sideGateCount", "dropCount", "vaultCount",
+}
+
+-- Copy every one of them from a floor's map onto a generate params table. Returns `params`.
+function Descent.applyFloorFeatures(params, mp)
+    if not (params and mp) then return params end
+    for _, key in ipairs(Descent.FLOOR_FEATURE_KEYS) do params[key] = mp[key] end
+    return params
+end
+
 -- HOW OFTEN A CHEST IS WIRED, as a percent (Overworld:placeTraps' second half).
 --
 -- A THIRD, which is the rate that makes the question worth asking every time without making "open it"

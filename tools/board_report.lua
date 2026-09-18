@@ -84,13 +84,11 @@ local BOON_KINDS = { treasure = true, relic_cache = true }
 -- Round 4's X-1 states the rule: the instrument moves BEFORE any tuning is read off it. Anything
 -- new on Descent.floorQuest's map belongs in here the same day it lands.
 local function copyFloorFeatures(params, mp)
-    if not mp then return params end
-    params.trapCount = mp.trapCount
-    params.trappedChestChance = mp.trappedChestChance
-    params.sideGateCount = mp.sideGateCount
-    params.dropCount = mp.dropCount
-    params.vaultCount = mp.vaultCount
-    return params
+    -- DELEGATED to models/descent.lua, which owns the list (Descent.FLOOR_FEATURE_KEYS). This function
+    -- kept its own copy for exactly as long as it took to discover that states/game.lua had a THIRD
+    -- one and none of the three agreed -- so the list lives with the floor that declares it now, and
+    -- this is a name for it.
+    return require("models.descent").applyFloorFeatures(params, mp)
 end
 local function measure(grid)
     local r = {
