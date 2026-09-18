@@ -62,13 +62,17 @@ local CONTENT_TOP = 112 -- below the title and the category strip
 -- It belongs at the FORGE and not at a counter of its own, because this is the only screen in the city
 -- that spends stock, and the place that spends it is the place that should make it. See
 -- models/salvage.lua for what a break pays and docs/drops.md for why the faucet exists.
-local MODES = { "gear", "ability", "recipe", "break" }
-local MODE_LABEL = { gear = "Gear", ability = "Abilities", recipe = "Recipes", ["break"] = "Break" }
+local MODES = { "gear", "ability", "recipe", "mend", "break" }
+local MODE_LABEL = { gear = "Gear", ability = "Abilities", recipe = "Recipes",
+                     mend = "Mend", ["break"] = "Break" }
 local EMPTY_LABEL = {
     gear = "No weapons, armor or gear to forge.",
     ability = "No abilities to hone.",
     recipe = "No recipes to refine.",
     ["break"] = "Nothing here can be broken down.",
+    -- The happy empty state: a company whose kit is whole has nothing to do here, and the line
+    -- should read as good news rather than as a missing feature.
+    mend = "Every piece the company carries is whole.",
 }
 
 local DIM = Theme.muted
@@ -198,7 +202,29 @@ function ForgePanel:refresh()
     local keep = self.sel or 1
     self.rows = {}
 
-    if self.mode == "break" then
+    if self.mode == "mend" then
+        -- EVERY WORN PIECE THE COMPANY HOLDS, dearest repair first, so the decision the bench is really
+        -- asking -- "which of these can I afford today" -- is the order the list arrives in.
+        --
+        -- The refusals live in models/forge.lua's Forge.mendCost, which answers nil for a whole piece
+        -- and for anything that does not wear at all: a row appears only where there is work to buy,
+        -- which is the same rule the Break tab beside it keeps.
+        for _, up in ipairs(self:collect(function(item)
+            return Forge.mendCost(item) ~= nil
+        end)) do
+            local cost = Forge.mendCost(up.item)
+            -- `tail` and `state` are the CARD's contract, not this tab's -- the row renderer prints the
+            -- tail on the right of every card and tints it by the state, so a row that omits them draws
+            -- a nil. A mend's tail is its bill, and a bill the purse cannot cover wears the same red a
+            -- rung the player cannot afford does.
+            local afford = (self.player.gold or 0) >= cost
+            self.rows[#self.rows + 1] = { kind = "mend", item = up.item, up = up,
+                level = up.item.level or 0, mendCost = cost,
+                tail = cost .. "g", state = afford and "ok" or "short",
+                broken = Item.isBroken(up.item), where = up.where }
+        end
+        table.sort(self.rows, function(a, b) return (a.mendCost or 0) > (b.mendCost or 0) end)
+    elseif self.mode == "break" then
         -- Everything the company holds that models/salvage.lua will take. The refusals live there and
         -- not here, so the bench and the model can never disagree about what is breakable -- and a
         -- husk, a bound relic and a piece worth nothing simply do not appear rather than appearing
@@ -443,6 +469,7 @@ function ForgePanel:commit()
     local row = self:current()
     if not row then return end
     if row.kind == "break" then self:breakRow(row)
+    elseif row.kind == "mend" then self:mendRow(row)
     elseif row.kind == "recipe" then self:refine(row)
     else self:upgrade(row) end
 end
@@ -453,6 +480,22 @@ end
 -- The model banks the yield and stamps the discovery ledger; removing the piece is this panel's job,
 -- because only the panel knows where it was sitting. Salvage.breakDown deliberately does not reach
 -- into a grid or a stash for exactly that reason.
+-- Mend the highlighted piece. ONE PRESS, unlike Break beside it: mending is not destructive and there
+-- is nothing to be sure about -- the worst outcome of a misclick is that a whole piece cost some gold,
+-- and Forge.mendCost refuses that case before it can happen.
+function ForgePanel:mendRow(row)
+    local ok, why = Forge.mend(self.player, row.item)
+    if not ok then
+        self:setMsg(why == "poor" and "Not enough gold to mend it."
+            or why == "whole" and "It is already whole."
+            or "It cannot be mended.", false)
+        return
+    end
+    Player.save()
+    self:setMsg((row.item.name or "It") .. " mended for " .. row.mendCost .. " gold.", true)
+    self:refresh()
+end
+
 function ForgePanel:breakRow(row)
     local item = row.item
     if self.breakArmed ~= item then
@@ -587,9 +630,22 @@ function ForgePanel:draw()
 
     love.graphics.setFont(self.smallFont)
     Theme.set(Theme.muted)
-    local hint = InputMode.isGamepad()
-        and "A: forge    D-pad up/down: pick    left/right: aim a rung    LB/RB: category    B: close"
-        or "Hover a rung to preview, click to pick    Enter: forge    Tab: category    Esc: close"
+    -- THE HINT NAMES THIS TAB'S VERBS AND NO OTHERS. Mend and Break have no track to aim at, so the
+    -- rung half of the line is a control that is not on this screen -- and a hint that lists a key
+    -- doing nothing is worse than no hint, because the player presses it and concludes the panel is
+    -- broken. (A control appears only where it is legal; so does its instruction.)
+    local trackless = self.mode == "mend" or self.mode == "break"
+    local verb = self.mode == "mend" and "mend" or self.mode == "break" and "break" or "forge"
+    local hint
+    if InputMode.isGamepad() then
+        hint = trackless
+            and ("A: " .. verb .. "    D-pad up/down: pick    LB/RB: category    B: close")
+            or "A: forge    D-pad up/down: pick    left/right: aim a rung    LB/RB: category    B: close"
+    else
+        hint = trackless
+            and ("Enter: " .. verb .. "    Tab: category    Esc: close")
+            or "Hover a rung to preview, click to pick    Enter: forge    Tab: category    Esc: close"
+    end
     love.graphics.printf(hint, self.boxX, self.boxY + BOX_H - 30, BOX_W, "center")
 
     self.closeButton:draw()
@@ -683,7 +739,8 @@ function ForgePanel:drawList()
             love.graphics.printf("+" .. (row.level or 0), r.x, r.y + 8, r.w - 10, "right")
             love.graphics.setFont(self.smallFont)
             if row.state == "max" then love.graphics.setColor(UP[1], UP[2], UP[3], alpha)
-            elseif row.state == "locked" then love.graphics.setColor(SHORT[1], SHORT[2], SHORT[3], alpha)
+            elseif row.state == "locked" or row.state == "short" then
+                love.graphics.setColor(SHORT[1], SHORT[2], SHORT[3], alpha)
             else Theme.set(Theme.muted, alpha) end
             love.graphics.printf(row.tail, r.x, r.y + 31, r.w - 10, "right")
         end
@@ -813,11 +870,56 @@ function ForgePanel:drawBreakDetail(row, x, y, w)
         bx, y + 28, bw, "center")
 end
 
+-- THE MEND PANE: what is wrong with it, what putting it right costs, and the button.
+--
+-- Deliberately plain beside the upgrade track next to it. A rung is a decision with a shape -- how far
+-- up, at what price, against a ceiling -- and the track exists to draw that shape. A mend has no shape:
+-- it is one price and one outcome, and dressing it as a choice would be the panel inventing a decision
+-- to make itself look busier.
+function ForgePanel:drawMendDetail(row, x, y, w)
+    local item = row.item
+    local max = Item.durabilityMax(item) or 0
+    local left = item.durability or 0
+
+    love.graphics.setFont(self.nameFont)
+    Theme.set(Theme.ink)
+    love.graphics.printf(item.name or "?", x, y, w, "left")
+
+    love.graphics.setFont(self.cardFont)
+    Theme.set(row.broken and SHORT or Theme.muted)
+    love.graphics.printf(row.broken and "Broken -- it cannot be used until it is mended"
+        or (left .. " of " .. max .. " fights left in it"), x, y + 30, w, "left")
+
+    -- THE BAR, because a fraction is what this screen is actually about and two numbers side by side
+    -- are a worse picture of one than a line is.
+    local bw, bh = w, 8
+    local by = y + 58
+    Theme.set(Theme.panel2)
+    love.graphics.rectangle("fill", x, by, bw, bh, 2, 2)
+    Theme.set(row.broken and SHORT or Theme.accentAmber)
+    love.graphics.rectangle("fill", x, by, bw * math.max(0, math.min(1, left / math.max(1, max))), bh, 2, 2)
+    Theme.set(Theme.frame, 0.7)
+    love.graphics.rectangle("line", x, by, bw, bh, 2, 2)
+
+    local afford = (self.player.gold or 0) >= (row.mendCost or 0)
+    love.graphics.setFont(self.cardFont)
+    Theme.set(afford and Theme.ink or SHORT)
+    love.graphics.printf("Mend  -  " .. (row.mendCost or 0) .. " gold", x, by + 24, w, "left")
+    if not afford then
+        love.graphics.setFont(self.smallFont)
+        Theme.set(Theme.muted, 0.8)
+        love.graphics.printf("The purse is short.", x, by + 48, w, "left")
+    end
+end
+
 function ForgePanel:drawDetail()
     local row = self:current()
     if not row then return end
     if row.kind == "break" then
         return self:drawBreakDetail(row, self.detailX, self.boxY + CONTENT_TOP, self.detailW)
+    end
+    if row.kind == "mend" then
+        return self:drawMendDetail(row, self.detailX, self.boxY + CONTENT_TOP, self.detailW)
     end
     local item = row.item
     local x, w = self.detailX, self.detailW

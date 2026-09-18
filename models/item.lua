@@ -967,22 +967,10 @@ function Item.wear(item, n)
     return item.durability <= 0
 end
 
--- WHAT IS LEFT WHEN A PIECE IS GIVEN UP FOR PARTS: { id = <material>, count = n }, or nil.
---
--- THE GRADE IS THE ITEM'S OWN (Material.gradeFor), so a mythril sword scraps into mythril and a rusted
--- knife into iron. That is the same question the forge already asks to bill an upgrade, which means a
--- scrapped piece pays back into exactly the stock that would have improved it, and no new table has to
--- agree with an old one about what a thing is made of.
-function Item.scrapFor(item)
-    if not (item and Item.WEARS[item.type]) then return nil end
-    local Material = require("models.material")
-    return { id = Material.gradeFor(item), count = Item.SCRAP_COUNT }
-end
-
--- How much stock a broken piece gives back. ONE, deliberately meagre: this is a consolation for a
--- thing that failed, not a way to farm ore. A company that could scrap its way to a forge rung would
--- buy gear to break it, which is the opposite of what a durability system is for.
-Item.SCRAP_COUNT = 1
+-- (WHAT A BROKEN PIECE IS WORTH IS models/salvage.lua's QUESTION, not this file's. Salvage already
+-- prices a piece in its own house stock and its own craft grade, and already refuses the cases that
+-- matter -- a bound relic, an unread husk. A second yield table here would be a second answer to one
+-- question, and the two would drift.)
 
 -- ---------------------------------------------------------------------------
 -- Hot reload

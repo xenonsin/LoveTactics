@@ -480,26 +480,16 @@ function Forge.mend(player, item)
     return true
 end
 
--- Give a piece up for parts: it leaves the grid and its stock lands in the player's materials.
+-- (THERE IS NO SCRAP VERB HERE, AND THAT IS DELIBERATE. "A broken piece turns to scrap material" is
+-- already a thing this game does: models/salvage.lua breaks a piece into its own house's stock AND its
+-- own quality's craft stock, stamps the discovery ledger on the way so a first copy broken underground
+-- is not lost to the counter, and reads the BLUEPRINT rather than the instance's level to refuse a
+-- forge-up/break-down arbitrage. It is pinned by tests/salvage_spec.lua and it is already a row on the
+-- bench's panel.
 --
--- THE ONLY WAY GEAR LEAVES A GRID WITHOUT BEING SOLD, and it is offered because a broken piece a
--- company cannot afford to mend is otherwise a dead cell they cannot clear. What it pays back is
--- deliberately meagre (Item.SCRAP_COUNT) -- a consolation for a thing that failed, not a way to farm
--- ore by buying gear to break it.
---
--- ANY piece, not only a broken one: a player who wants the cell back for something better should not
--- have to swing a blade until it snaps first.
-function Forge.scrap(player, char, cell)
-    local Item = require("models.item")
-    local item = char and char.inventory and char.inventory[cell]
-    local pay = item and Item.scrapFor(item)
-    if not pay then return false, "cannot" end
-    char.inventory[cell] = nil -- a hole, never a shuffle: the grid's shape is the player's arrangement
-    -- Through Player.addMaterial rather than into the table, so stock from a scrapped piece lands by
-    -- the same path a cache's does and anything that ever hangs off that seam sees this too.
-    require("models.player").addMaterial(player, pay.id, pay.count)
-    return true, pay
-end
+-- A second scrap path beside it would pay a different number for the same gesture and one of the two
+-- would go stale. What durability adds is the REASON to break something -- a piece too dear to mend --
+-- not a new way to do it.)
 
 -- Raise `item` one rung for FREE: no gold, no technique, no craft or house stock. Returns a fresh
 -- instance at the new level -- the caller swaps it into the cell it came from, exactly as Forge.upgrade

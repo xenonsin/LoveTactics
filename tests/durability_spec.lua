@@ -127,29 +127,36 @@ return {
             .. " against a quoted " .. full)
     end },
 
-    { name = "a piece given up for parts pays stock of its OWN grade, and leaves a hole", fn = function()
+    { name = "a broken piece can still be broken down, through the one salvage path", fn = function()
+        -- "WHEN THEY BREAK THEY TURN TO SCRAP" IS ALREADY A THING THIS GAME DOES (models/salvage.lua),
+        -- and durability's job is to create the REASON to do it -- a piece too dear to mend -- rather
+        -- than a second way. This case exists to stop anyone adding that second way: if a scrap verb
+        -- ever appears on the Forge beside Salvage, the two will pay different numbers for one gesture.
+        local Salvage = require("models.salvage")
         local player = Player.new()
         local char = Character.instantiate("character_knight")
         player.roster = { char }
+        local weapon = firstWorn(char)
+        assert(weapon, "no wearing piece on the fixture")
 
-        local cell, weapon
-        for c = 1, Character.MAX_INVENTORY do
-            local it = char.inventory and char.inventory[c]
-            if it and (it.type == "weapon" or it.type == "armor") then cell, weapon = c, it break end
-        end
-        assert(weapon, "no gear to scrap on the fixture")
-        local want = Material.gradeFor(weapon)
-        -- A fresh company already holds Player.defaults.startingMaterials, so this is measured as a
-        -- DELTA rather than against zero -- the absolute count is somebody else's number.
-        local before = Player.materialCount(player, want)
+        weapon.durability = 0
+        assert(Item.isBroken(weapon), "the fixture piece is not broken")
+        assert(Salvage.canBreak(player, weapon),
+            "a broken piece cannot be salvaged, so a company that cannot afford the mend is stuck "
+            .. "with a dead grid cell: " .. tostring(Salvage.refusal(player, weapon)))
 
-        local ok, pay = Forge.scrap(player, char, cell)
-        assert(ok, "scrapping a piece of gear was refused")
-        assert(pay.id == want, "a piece scrapped into " .. pay.id .. " rather than its own grade "
-            .. want .. " -- the stock it pays back must be the stock that would have improved it")
-        assert(Player.materialCount(player, want) == before + pay.count,
-            "the stock did not land: " .. before .. " -> " .. Player.materialCount(player, want))
-        assert(char.inventory[cell] == nil, "the scrapped cell was not emptied")
+        local before = Player.materialCount(player, Salvage.craftGradeFor(Item.defs[weapon.id]))
+        local yield = Salvage.breakDown(player, weapon)
+        assert(yield and next(yield), "breaking a broken piece paid nothing")
+        local after = Player.materialCount(player, Salvage.craftGradeFor(Item.defs[weapon.id]))
+        assert(after > before, "the craft stock did not land: " .. before .. " -> " .. after)
+
+        -- AND THERE IS NO SECOND PATH. Forge.scrap was written and deleted on exactly this reasoning.
+        assert(require("models.forge").scrap == nil,
+            "a second scrap verb has appeared on the Forge beside models/salvage.lua -- two answers "
+            .. "to one question, and one of them will go stale")
+        assert(Item.scrapFor == nil,
+            "Item.scrapFor is back; what a broken piece is worth is Salvage's question")
     end },
 
     { name = "wear survives the real serializer, and a broken piece does not mend itself on save",
