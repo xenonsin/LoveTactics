@@ -43,7 +43,7 @@ return {
         local Status = require("models.status")
         if not target or not target.alive
             or Status.ownSide(target) == Status.ownSide(ctx.unit) then return end
-        -- A will that gave everything away holds nothing back to seize -- Amana's rule, honoured here
+        -- A will that gave everything away holds nothing back to seize -- Xin's rule, honoured here
         -- exactly as Rapture honours it, so the one counter to the sin works on both its ranks.
         if require("models.trait").has(target, "trait_devotion_unbidden") then return end
 

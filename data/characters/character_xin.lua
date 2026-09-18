@@ -1,19 +1,21 @@
--- Amana, the priest companion (devotion), and the answer to Lust at the head of the Cathedral's line
+-- Xin, the priest companion (devotion), and the answer to Lust at the head of the Cathedral's line
 -- (docs/story.md, "The other seven"). A woman, a gender-neutral name, the virtue buried and not stamped:
--- Amana is the Arabic amana -- a trust placed in your hands, to be returned intact and never drawn from
--- -- which is her whole rule, "gives what is offered, refuses what is not," the way Saber's name is
--- patience in another tongue (character_saber.lua).
+-- Xin is the Chinese 信 -- trustworthiness, the character drawn as a person standing beside their own
+-- word, and one of the Confucian Five Constants the alchemist's 仁 was taken from (character_ren.lua).
+-- It is her whole rule, "gives what is offered, refuses what is not," the way Saber's name is patience
+-- in another tongue (character_saber.lua) -- and it is the exact word for what the Cathedral is not,
+-- a house whose register says one thing while its pit says another.
 --
 -- THE ANSWER TO THE GENERAL SHE FACES, but not her kin. Luxuria (character_general_lust.lua) is an
--- outside human who pacted with the Demon Lord and posed as the Cathedral's revered Saint. Amana was
+-- outside human who pacted with the Demon Lord and posed as the Cathedral's revered Saint. Xin was
 -- taken by the Cathedral as a child like many, but raised on the ACOLYTE (clergy) track -- never made a
--- soldier, never blooded. Luxuria is the sin, "takes what is not offered"; Amana is its answer, "gives
+-- soldier, never blooded. Luxuria is the sin, "takes what is not offered"; Xin is its answer, "gives
 -- what is offered, refuses what is not." Same axis, opposite verbs; she is the answer the general refused.
 -- She turns on the church not by resisting a corruption but as a WITNESS: she saw the blooding kill
 -- children and the bodies dumped in pits (docs/story.md, "The Cathedral").
 --
 -- HER KIT IS GIVING MADE MECHANICAL, and she bears no edge (the cleric taboo, docs/classes.md): a censer,
--- not a blade. Rowan decides where you stand; Amana decides who survives. Heal at range (which also opens
+-- not a blade. Rowan decides where you stand; Xin decides who survives. Heal at range (which also opens
 -- her signature), the Martyr's Icon to take a mortal blow for the ally beside her, and the Reliquary of
 -- the Kept Trust in the center (data/items/utility/utility_reliquary_kept_trust.lua), which wards the
 -- whole company once she has given three times and keeps nothing back for herself.
@@ -28,11 +30,11 @@
 -- exactly as the Colosseum keeps Saber. It goes inert the moment she is an ally, when only the reliquary's
 -- refusal still stands.
 return {
-    name = "Amana",
+    name = "Xin",
     kind = "humanoid",
     tier = 2,
-    sprite = "assets/chars/amana.png",
-    portrait = "assets/portraits/amana.png", -- large VN portrait for conversations (falls back if missing)
+    sprite = "assets/chars/xin.png",
+    portrait = "assets/portraits/xin.png", -- large VN portrait for conversations (falls back if missing)
     class = "priest",
     boss = true,
     -- She does not kill (damage 5), so she must not be left on the aggressive default that would send

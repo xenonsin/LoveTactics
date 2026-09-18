@@ -22,7 +22,7 @@ return {
         name = "an empty Reliquary of Tallies is refused, and fills as allies fall",
         fn = function()
             local map = Fixture.new(8, 8)
-            local hero = Fixture.unit("character_amana", 2, 2,
+            local hero = Fixture.unit("character_xin", 2, 2,
                 { isolate = "bare", items = { "utility_reliquary_of_tallies" }, stats = { mana = 40 } })
             local foe = Fixture.unit("character_bandit", 2, 4, { isolate = "bare" })
             local combat = Fixture.combat(map, hero, foe)
@@ -346,7 +346,7 @@ return {
         name = "an unaffordable empty purse is told about the mana first, not the empty",
         fn = function()
             local map = Fixture.new(8, 8)
-            local hero = Fixture.unit("character_amana", 2, 2,
+            local hero = Fixture.unit("character_xin", 2, 2,
                 { isolate = "bare", items = { "utility_reliquary_of_tallies" }, stats = { mana = 0 } })
             local foe = Fixture.unit("character_bandit", 2, 4, { isolate = "bare" })
             local combat = Fixture.combat(map, hero, foe)

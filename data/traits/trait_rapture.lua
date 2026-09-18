@@ -6,7 +6,7 @@
 --
 -- The counterplay is the sin stated as tactics: SPEND. A party that pours its reserves out each turn has
 -- nothing held back for her to find; a party that husbands them for the big turn is feeding her the whole
--- time. And the one unit she can never draw from is the one that already gave everything away -- Amana
+-- time. And the one unit she can never draw from is the one that already gave everything away -- Xin
 -- (data/traits/trait_devotion_unbidden.lua), whose Unbidden rule this hook checks and passes over.
 --
 -- Fired from onCast (Trait.onCast), so it rides on any offensive action and, like every general's rule,
@@ -25,7 +25,7 @@ return {
         local Status = require("models.status")
         if not target or not target.alive
             or Status.ownSide(target) == Status.ownSide(ctx.unit) then return end
-        -- A will that gave everything away holds nothing back to seize (Amana's Unbidden rule).
+        -- A will that gave everything away holds nothing back to seize (Xin's Unbidden rule).
         if require("models.trait").has(target, "trait_devotion_unbidden") then
             ctx.log("action", string.format("%s has held nothing back.", (target.char and target.char.name) or "The target"))
             return

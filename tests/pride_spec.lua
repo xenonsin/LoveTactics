@@ -83,7 +83,7 @@ return {
 
             -- ...and the ordering that says she is the MAGE. Both of these read their own headers as
             -- bodies that do not kill, so a mage below either of them is the class not working.
-            for _, id in ipairs({ "character_amana", "character_ren" }) do
+            for _, id in ipairs({ "character_xin", "character_ren" }) do
                 local support = Character.instantiate(id)
                 assert((gyeom.char.stats.magicDamage or 0) > (support.stats.magicDamage or 0),
                     "the mage's base magic outranks " .. id .. ", who does not kill for a living")

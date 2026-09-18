@@ -63,7 +63,7 @@ return {
 
             -- Somebody who is not in the company has no row, and the caller draws nothing rather than
             -- pointing at whatever happened to be first.
-            assert(PartyStatus.rowRect(player, "character_amana", 16, 60) == nil,
+            assert(PartyStatus.rowRect(player, "character_xin", 16, 60) == nil,
                 "a body that is not marching has no row")
             assert(PartyStatus.rowRect(player, nil, 16, 60) == nil, "and neither has nobody")
         end,

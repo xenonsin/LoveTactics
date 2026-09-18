@@ -68,7 +68,7 @@ listed so the branches have something to branch *from*.
 | rogue | Clem | `character_clem` |
 | hunter | Kaya | `character_kaya` |
 | mage | Gyeom | `character_mage` (Gyeom) |
-| priest | Amana | `character_amana` |
+| priest | Xin | `character_xin` |
 | alchemist | Ren | `character_ren` |
 
 ## The subclasses (17)
@@ -98,13 +98,13 @@ chain and fails the build below the floor.
 | **Summoner** | mage | a conjurer with an elemental court | N | boss | `donor_roll` · slot 5 |
 | **Necromancer** | mage | an Adept of the inner circle | N | boss | `the_inner_circle` · slot 4 |
 | **Monk** | priest | a fist-and-litany ascetic | N | mentor | `purge_in_the_fold` · slot 4 |
-| **Exorcist** | priest | Amana (`character_amana`)* | E | mentor / ally | `rite_of_ashes` · slot 3 |
+| **Exorcist** | priest | Xin (`character_xin`)* | E | mentor / ally | `rite_of_ashes` · slot 3 |
 | **Poisoner** | alchemist | a vat-master | N | boss | `the_vats` · slot 5 |
 | **Bombardier** | alchemist | a counterfeit-bomb runner | N | boss | `by_the_dram` · slot 4 |
 
 \* Reusing a *companion* as a discipline exemplar changes the beat: the "first meet" is with someone
 already in your party, so the unlock quest becomes a **companion quest** deepening them (Kaya learns to
-call the pack; Amana learns to banish). Flagged as a choice, not baked — swap for a fresh NPC if you'd
+call the pack; Xin learns to banish). Flagged as a choice, not baked — swap for a fresh NPC if you'd
 rather keep companions as roots only. **10 new subclass NPCs** if the three starred reuses stand; 13 if
 they don't.
 
@@ -642,7 +642,7 @@ spelling belongs in quest stock, not on the rack), not an oversight. Priest 33 �
 
 | | Existing exemplar | New NPC | New quest |
 |---|---|---|---|
-| 17 subclasses | 6 (Warlord, Sentinel, Bulwark, Mammonite; +Kaya, Gyeom, Amana if starred reuses stand) | 10–13 | 0 (all gate on existing quests) |
+| 17 subclasses | 6 (Warlord, Sentinel, Bulwark, Mammonite; +Kaya, Gyeom, Xin if starred reuses stand) | 10–13 | 0 (all gate on existing quests) |
 | 21 multiclasses | 3 (Champion, Plague Knight, Apothecary) | ~17 | ~~21~~ **0 — all written** |
 
 The quest column is paid. What is left of the bill is **exemplars**: ~27 NPCs across both tiers, each
@@ -665,7 +665,7 @@ The tree enforces most of it: no multiclass ships before both its parents have a
 
 ## Open calls
 
-- ~~**Starred companion reuses** (Kaya→Beastmaster, Gyeom→Elementalist, Amana→Exorcist, Ren→Apothecary):
+- ~~**Starred companion reuses** (Kaya→Beastmaster, Gyeom→Elementalist, Xin→Exorcist, Ren→Apothecary):
   keep companions as roots only, or let a few double as discipline exemplars via companion quests?~~
   **Settled: companions stay roots only.** Dedicated bodies were authored — `character_apothecary`,
   `character_beastmaster`, `character_elementalist`, `character_exorcist` — and the four `exemplar` pointers

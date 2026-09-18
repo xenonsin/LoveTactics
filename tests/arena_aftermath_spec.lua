@@ -90,12 +90,12 @@ return {
     },
 
     -- THE PADDED CARD IS GONE. Four cases stood below this line -- that quest_colosseum_slot_02 earned
-    -- Amana and handed off to an epilogue, that its win was overruled by an unkillable Ira, that Amana's
+    -- Xin and handed off to an epilogue, that its win was overruled by an unkillable Ira, that Xin's
     -- join banner survived the overrule scene and landed on the waking, and that the Cathedral's first
     -- job waited on the revival that introduced her.
     --
     -- Slot 2 was reachable only through the Quest Board and went with it. What that costs is worth
-    -- writing down rather than quietly losing: Amana has no recruit scene any more, and the beat where
+    -- writing down rather than quietly losing: Xin has no recruit scene any more, and the beat where
     -- a company is wiped on the sand and wakes on a Cathedral ceiling is not played by anything. She is
     -- met at the Cathedral's own posting like the other six companions (models/vendor_visit.lua reads each
     -- house's `companion`), so the character is reachable and the SCENE is what was lost.

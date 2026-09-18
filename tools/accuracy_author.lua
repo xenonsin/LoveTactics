@@ -135,9 +135,9 @@ local NAMED = {
     character_kaen = { skill = 9, luck = 7, why = "the assassin proper: both halves of the rogue" },
     character_clem = { skill = 6, luck = 8, why = "reckless and gets away with it" },
     character_gyeom = { skill = 6, luck = 4, why = "a disciplined mage" },
-    -- The witness. The lowest skill of the seven and the highest luck: Amana survives things rather
+    -- The witness. The lowest skill of the seven and the highest luck: Xin survives things rather
     -- than winning them, which is the whole shape of the Lust line.
-    character_amana = { skill = 3, luck = 9, why = "the witness -- survives what she cannot fight" },
+    character_xin = { skill = 3, luck = 9, why = "the witness -- survives what she cannot fight" },
     character_ren = { skill = 6, luck = 3, why = "kindness with measured hands" },
     -- The arena champion the player fights and can then recruit. character_saber_bout inherits this
     -- by shallow copy and must not be written to separately.

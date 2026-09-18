@@ -53,7 +53,7 @@ return {
     {
         name = "tokenId strips the character_ prefix (so the token lands at the sprite's path)",
         fn = function()
-            assert(Char.tokenId("character_amana") == "amana", "prefix should be stripped")
+            assert(Char.tokenId("character_xin") == "xin", "prefix should be stripped")
             assert(Char.tokenId("character_fire_elemental") == "fire_elemental", "only the leading prefix")
         end,
     },
@@ -150,15 +150,15 @@ return {
         end,
     },
     {
-        -- ... but a boss that HAS a class keeps its role look -- Amana is priest + boss, and should read
+        -- ... but a boss that HAS a class keeps its role look -- Xin is priest + boss, and should read
         -- priest, not overlord. Class wins; the gold badge still marks the boss.
         name = "a classed boss keeps its class silhouette, not the overlord",
         fn = function()
             local def, id = resolve("character_priest")
             assert(def.class == "priest", "fixture: the generic priest")
             assert(Char.slugFor(def, id) == "lorc/prayer", "priest -> prayer")
-            local am, amid = resolve("character_amana")
-            assert(am.class == "priest" and am.boss, "fixture: amana is a priest boss")
+            local am, amid = resolve("character_xin")
+            assert(am.class == "priest" and am.boss, "fixture: xin is a priest boss")
             assert(Char.slugFor(am, amid) ~= Char.BOSS_SILHOUETTE, "a classed boss is never lifted to the overlord")
         end,
     },

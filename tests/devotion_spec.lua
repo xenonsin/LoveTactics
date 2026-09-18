@@ -1,6 +1,6 @@
 -- The Cathedral line's two rules, read the two ways (docs/story.md, "The other seven": the priest
 -- answers lust with devotion). Luxuria's Rapture takes the reserves a foe held back
--- (data/traits/trait_rapture.lua); Amana's Unbidden rule holds nothing back to take and sheds any seizure
+-- (data/traits/trait_rapture.lua); Xin's Unbidden rule holds nothing back to take and sheds any seizure
 -- of her will (data/traits/trait_devotion_unbidden.lua); and her signature opens only once she has given
 -- (data/items/utility/utility_reliquary_kept_trust.lua). Headless.
 
@@ -46,33 +46,33 @@ return {
         end,
     },
     {
-        name = "Amana holds nothing back: Rapture passes over her, taking nothing",
+        name = "Xin holds nothing back: Rapture passes over her, taking nothing",
         fn = function()
             local c = Combat.new(arena(6, 6),
                 { { char = Character.instantiate("character_general_lust"), x = 1, y = 1 } },
-                { { char = Character.instantiate("character_amana"), x = 2, y = 1 } })
-            local luxuria, amana = c.units[1], c.units[2]
-            assert(Trait.has(amana, "trait_devotion_unbidden"), "Amana carries the Unbidden rule")
+                { { char = Character.instantiate("character_xin"), x = 2, y = 1 } })
+            local luxuria, xin = c.units[1], c.units[2]
+            assert(Trait.has(xin, "trait_devotion_unbidden"), "Xin carries the Unbidden rule")
 
-            local stamBefore = Combat.resource(amana.char, "stamina")
-            local manaBefore = Combat.resource(amana.char, "mana")
+            local stamBefore = Combat.resource(xin.char, "stamina")
+            local manaBefore = Combat.resource(xin.char, "mana")
 
-            Trait.onCast(c, luxuria, { tx = amana.x, ty = amana.y })
+            Trait.onCast(c, luxuria, { tx = xin.x, ty = xin.y })
 
-            assert(Combat.resource(amana.char, "stamina") == stamBefore, "her stamina is untouched")
-            assert(Combat.resource(amana.char, "mana") == manaBefore, "and her mana too")
+            assert(Combat.resource(xin.char, "stamina") == stamBefore, "her stamina is untouched")
+            assert(Combat.resource(xin.char, "mana") == manaBefore, "and her mana too")
         end,
     },
     {
-        name = "Amana's will cannot be taken: Charm sheds the instant it lands (a foe's does not)",
+        name = "Xin's will cannot be taken: Charm sheds the instant it lands (a foe's does not)",
         fn = function()
             local c = Combat.new(arena(6, 6),
-                { { char = Character.instantiate("character_amana"), x = 1, y = 1 } },
+                { { char = Character.instantiate("character_xin"), x = 1, y = 1 } },
                 { { char = Character.instantiate("character_bandit"), x = 2, y = 1 } })
-            local amana, bandit = c.units[1], c.units[2]
+            local xin, bandit = c.units[1], c.units[2]
 
-            Status.apply(c, amana, "status_charm")
-            assert(not Status.has(amana, "status_charm"), "Charm slides off Amana")
+            Status.apply(c, xin, "status_charm")
+            assert(not Status.has(xin, "status_charm"), "Charm slides off Xin")
 
             -- Control: an ordinary unit with no such rule keeps the status.
             Status.apply(c, bandit, "status_charm")
@@ -83,18 +83,18 @@ return {
         name = "the Reliquary of the Kept Trust opens only after three heals",
         fn = function()
             local c = Combat.new(arena(6, 6),
-                { { char = Character.instantiate("character_amana"), x = 1, y = 1 } },
+                { { char = Character.instantiate("character_xin"), x = 1, y = 1 } },
                 { { char = Character.instantiate("character_bandit"), x = 4, y = 4 } })
-            local amana = c.units[1]
-            local relic = amana.char.inventory[5]
+            local xin = c.units[1]
+            local relic = xin.char.inventory[5]
             assert(relic and relic.id == "utility_reliquary_kept_trust", "the signature sits in the center cell")
 
-            assert(not Combat.unlockMet(amana, relic, c), "locked before she has given")
-            Combat.tally(amana, "healDone", 1)
-            Combat.tally(amana, "healDone", 1)
-            assert(not Combat.unlockMet(amana, relic, c), "still locked at two heals")
-            Combat.tally(amana, "healDone", 1)
-            assert(Combat.unlockMet(amana, relic, c), "open at the third")
+            assert(not Combat.unlockMet(xin, relic, c), "locked before she has given")
+            Combat.tally(xin, "healDone", 1)
+            Combat.tally(xin, "healDone", 1)
+            assert(not Combat.unlockMet(xin, relic, c), "still locked at two heals")
+            Combat.tally(xin, "healDone", 1)
+            assert(Combat.unlockMet(xin, relic, c), "open at the third")
         end,
     },
 }

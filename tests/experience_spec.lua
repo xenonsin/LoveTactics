@@ -130,25 +130,31 @@ return {
         -- fighting its way down should arrive at the bottom ready for it -- correct when one descent WAS
         -- the campaign and the bottom was an ending you were meant to reach.
         --
-        -- The premise is a DISTANCE RUN: how far can you go. Cutting the floor budget to three-and-four
-        -- (models/descent.lua's FLOOR_FIGHTS) cut what a body earns on the way down with it, so the
-        -- world's ladder -- LEVEL_PER_FLOOR, two a floor -- now climbs about twice as fast as the company
-        -- does. The gap IS the run's clock: you descend until the floor outruns you, and the only thing
-        -- you have to close it with is the snowball you picked up on the way.
+        -- IT WAS 5-9 AND IT IS 2-6, BECAUSE THE GAP STOPPED BEING A CLOCK. Under the distance run the
+        -- world outrunning the company WAS the design -- "you descend until the floor outruns you, and
+        -- the only thing you have to close it with is the snowball you picked up on the way." A run
+        -- ended when the gap beat you, so a wide gap was the point.
         --
-        -- SO WHAT IS PINNED IS THE GAP, not the match, and it is pinned for the same reason the match
-        -- was: a retune of EITHER ladder has to fail here rather than silently re-price how deep a run
-        -- gets. Read off both constants, never off literals.
+        -- The maze is a place now (Descent.keepFloor). There is no clock to be outrun by: you go down,
+        -- you come back to the Ward and the Touchstone, and you walk in again at the stair you opened
+        -- (Descent.entryFloor). So a company is not meant to arrive at the bottom underlevelled and
+        -- lose -- it is meant to arrive when it is ready, which is many trips later.
         --
-        -- WHAT IS NOT CLAIMED: that seven is the right gap. Nobody has played it. It puts the company
-        -- roughly three to four levels under the world around floor four or five, which is where a
-        -- fifty-five-minute run would want to end -- but that is arithmetic agreeing with a target, not
-        -- a measurement, and the number to watch is how deep a real attempt actually reaches.
+        -- WHAT CLOSES THE REMAINING GAP IS RE-TREADING, and that is why this is a small positive number
+        -- rather than zero. The figure above is ONE PASS down a fifteen-floor stack; a re-walked floor
+        -- re-arms its fights and pays them in full (Descent.rearmFloor's header states this and argues
+        -- for it), so the company's real ladder is one pass plus however much of the shallow end it
+        -- chooses to walk again. A gap of a few levels is exactly the amount of re-treading the loop is
+        -- asking for. Zero would mean one pass suffices and the dungeon need never be re-entered, which
+        -- is the Wizardry loop deleted.
+        --
+        -- WHAT IS NOT CLAIMED: that four is the right gap. Nobody has played it. The number to watch is
+        -- how many trips a real company takes to reach the bottom, not this arithmetic.
         local gap = wanted - reached
-        assert(gap >= 5 and gap <= 9, string.format(
-            "the world's ladder should outrun a descending company by 5-9 levels by floor %d " ..
-            "(it wants %d, the company earns %d, gap %d) -- if this moved, one of the two ladders " ..
-            "was retuned and the run's length moved with it",
+        assert(gap >= 2 and gap <= 6, string.format(
+            "one pass down should leave a company 2-6 levels under the world at floor %d " ..
+            "(it wants %d, one pass earns %d, gap %d) -- if this moved, one of the two ladders was " ..
+            "retuned and how much re-treading the loop asks for moved with it",
             Descent.FLOORS, wanted, reached, gap))
     end },
 
@@ -258,11 +264,11 @@ return {
         -- The victory panel's bars fill from these rows (ui/panels/battle_summary.lua). Everything a
         -- bar needs has to come out of the report, because the panel has no other view of the fight.
         local rowan = { name = "Rowan", xp = Experience.totalFor(4) + 9 }
-        local amana = { name = "Amana", xp = 40 }
-        local rows = Experience.report({ [rowan] = 5, [amana] = 40 })
+        local xin = { name = "Xin", xp = 40 }
+        local rows = Experience.report({ [rowan] = 5, [xin] = 40 })
 
         assert(#rows == 2, "one row per body that banked something, got " .. #rows)
-        assert(rows[1].char == amana, "the body that took the most heads the list")
+        assert(rows[1].char == xin, "the body that took the most heads the list")
         assert(rows[1].from == 0 and rows[1].to == 40, "a bar fills from where the fight found it")
         assert(rows[2].from == rowan.xp - 5,
             "the start is the total MINUS the fight, since combat already banked it")

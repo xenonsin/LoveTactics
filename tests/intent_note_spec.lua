@@ -65,7 +65,7 @@ return {
     {
         name = "a cast reads as an ability, not an attack, and rounds its figure the way the card does",
         fn = function()
-            local title, lines = noteFor({ kind = "cast", target = body("Amana"), amount = 6.4 })
+            local title, lines = noteFor({ kind = "cast", target = body("Xin"), amount = 6.4 })
             assert(title == "Intent: Ability", "the note is titled " .. tostring(title))
             assert(joined(lines):find("Deals 6", 1, true), "the figure is not the card's: " .. joined(lines))
         end,

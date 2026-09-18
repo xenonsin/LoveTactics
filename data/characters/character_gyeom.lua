@@ -72,7 +72,7 @@ return {
     -- the caster's MagicDamage - MagicDefense` (models/combat.lua), so on floor one the AVATAR threw HER
     -- Fire Bolt for 6+16 = 22 and she threw it for 6+6+2 = 14. A classless body that was handed a sword
     -- out-cast the specialist by half again, from turn one, with the same spell. And 6 sat below both
-    -- healers (Amana 9, Ren 8), each of whose header says outright that she does not kill. A mage who is
+    -- healers (Xin 9, Ren 8), each of whose header says outright that she does not kill. A mage who is
     -- the worst caster in the game is not understated, she is broken.
     --
     -- "SHE READS WEAK ON PURPOSE" WAS BUYING NOTHING, and that is what settles the number. The claim was

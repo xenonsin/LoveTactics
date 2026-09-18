@@ -67,7 +67,7 @@ return {
         --
         -- Then the WARD took a stage (INTRO_STAGES.ward) and inherited that path. So the one coached
         -- door in the game that hands over a companion was the one door that skipped the code which
-        -- hands one over: the scene never played, Amana never joined, and the room opened straight onto
+        -- hands one over: the scene never played, Xin never joined, and the room opened straight onto
         -- its two rows with nobody standing in it. Every ledger involved was correct -- the flag was
         -- unspent, the blueprint carried `intro` and `grants` -- and the player still never met her,
         -- which is why the fact asserted here is the CALL and not the data around it.

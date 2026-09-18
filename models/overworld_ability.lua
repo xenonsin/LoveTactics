@@ -7,14 +7,14 @@
 --
 -- CURRENTLY DETACHED. No character blueprint carries an `overworldAbility` field any more, so every
 -- dispatch below is a no-op and the party strip draws no badge -- the definitions are kept for now
--- rather than deleted. The mapping, if it is reattached: Rowan/vigil, Saber/held_swing, Amana/
+-- rather than deleted. The mapping, if it is reattached: Rowan/vigil, Saber/held_swing, Xin/
 -- kept_trust, Ren/aqua_vitae, Kaya/forage, Gyeom/ledger, Clem/jubilee.
 --
 -- This is a registry + dispatcher, headless-safe (no love.graphics at require-time; RNG falls back to
 -- math.random when love.math is absent). states/game.lua calls OverworldAbility.dispatch(event, ctx) on
 -- four traversal events:
 --   "step"             every landed tile (Kaya forages, Saber's held swing banks steps, ...)
---   "encounterCleared" a combat/elite win (Amana heals, Ren distils a dose, Rowan banks a vigil, ...)
+--   "encounterCleared" a combat/elite win (Xin heals, Ren distils a dose, Rowan banks a vigil, ...)
 --   "battleStart"      just before a fight launches (Rowan/Saber spend their banked readiness)
 --   "objectiveReached" just before the boss (Ren pours the doses into a whole-party lift)
 -- A handler gets (char, bucket, ctx): `bucket` is the ability's per-RUN scratch (auto-created, keyed by
@@ -90,7 +90,7 @@ local function isCombat(cell)
     local e = cell and cell.encounter
     -- `pack` is the fight standing over a company's own dropped kit (models/descent.lua). It reaches
     -- the arena on the ordinary path and costs the same health and potions, so the companions who
-    -- react to a cleared fight -- Rowan's Vigil, Saber's patience, Amana's triage -- react to this one.
+    -- react to a cleared fight -- Rowan's Vigil, Saber's patience, Xin's triage -- react to this one.
     return e and (e.kind == "combat" or e.kind == "elite" or e.kind == "pack")
 end
 
@@ -138,7 +138,7 @@ local A = {}
 -- a casualty breaks it. At the next fight the front row opens with a HEALTH buffer per vigil -- the
 -- bodyguard steels the line before the blow. (Health carries into the fight; stamina would not -- combat
 -- refills stamina at the bell, models/combat.lua.) Front-row + clean-streak-scaled + pre-fight, distinct
--- from Amana's flat after-fight triage of whoever is worst off.
+-- from Xin's flat after-fight triage of whoever is worst off.
 A.vigil = {
     encounterCleared = function(_, bucket, ctx)
         if not isCombat(ctx.cell) then return end
@@ -173,7 +173,7 @@ A.held_swing = {
     end,
 }
 
--- AMANA -- The Kept Trust (devotion). "Gives what is offered, returned intact": after each fight she
+-- XIN -- The Kept Trust (devotion). "Gives what is offered, returned intact": after each fight she
 -- heals the most-wounded, keeping nothing for herself. Softens the very attrition her line answers.
 A.kept_trust = {
     encounterCleared = function(_, _, ctx)
@@ -181,7 +181,7 @@ A.kept_trust = {
         local t = mostWounded(ctx.party)
         if t then
             local healed = restore(t, "health", 12)
-            if healed > 0 then say(ctx, "Amana heals " .. (t.name or "an ally") .. " (+" .. healed .. ")") end
+            if healed > 0 then say(ctx, "Xin heals " .. (t.name or "an ally") .. " (+" .. healed .. ")") end
         end
     end,
 }
@@ -321,7 +321,7 @@ local INFO = {
         blurb = "The more new ground Saber covers between fights, the more she heals herself on her next "
             .. "win. Patience, not haste -- pacing in place mints nothing." },
     kept_trust = { name = "Kept Trust",
-        blurb = "After every fight, Amana heals the most-wounded ally. Given freely, kept from no one." },
+        blurb = "After every fight, Xin heals the most-wounded ally. Given freely, kept from no one." },
     aqua_vitae = { name = "Aqua Vitae",
         blurb = "Each side-fight won distils a dose. On reaching the boss, every dose is poured into "
             .. "the whole party at once." },
@@ -342,7 +342,7 @@ function OverworldAbility.info(char)
 end
 
 -- The raw banked quantity for `char`'s ability this run (given its scratch bucket), or nil if nothing
--- is pending. Drives the little counter on the party-strip badge. (Amana/Clem bank nothing -- they fire
+-- is pending. Drives the little counter on the party-strip badge. (Xin/Clem bank nothing -- they fire
 -- instantly -- so they never show a counter.)
 function OverworldAbility.bankedCount(char, bucket)
     if not bucket then return nil end

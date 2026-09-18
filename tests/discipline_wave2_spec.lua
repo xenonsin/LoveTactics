@@ -421,9 +421,9 @@ return {
         name = "the Totem-Carver's Kit stands a post up tougher, ceiling and current together",
         fn = function()
             local map = Fixture.new(10, 10)
-            local plain = Fixture.unit("character_amana", 3, 3,
+            local plain = Fixture.unit("character_xin", 3, 3,
                 { isolate = "bare", items = { "ability_raise_totem" } })
-            local carver = Fixture.unit("character_amana", 3, 5,
+            local carver = Fixture.unit("character_xin", 3, 5,
                 { isolate = "bare", items = { "ability_raise_totem", "utility_totem_carvers_kit" } })
             local foe = Fixture.unit("character_bandit", 9, 9, { isolate = "bare", stats = { health = 300 } })
             local combat = Combat.new(map, { plain, carver }, { foe })
@@ -444,7 +444,7 @@ return {
         name = "Totem of Renewal grants Regeneration the ally carries away, unlike Raise Totem's ground",
         fn = function()
             local map = Fixture.new(10, 10)
-            local hero = Fixture.unit("character_amana", 3, 3,
+            local hero = Fixture.unit("character_xin", 3, 3,
                 { isolate = "bare", items = { "ability_totem_of_renewal" } })
             local ally = Fixture.unit("character_rowan", 3, 4, { isolate = "bare" })
             local foe = Fixture.unit("character_bandit", 9, 9, { isolate = "bare", stats = { health = 300 } })
@@ -464,7 +464,7 @@ return {
         name = "Ley Line joins two standing posts and refuses when there is only one",
         fn = function()
             local map = Fixture.new(12, 12)
-            local hero = Fixture.unit("character_amana", 3, 3,
+            local hero = Fixture.unit("character_xin", 3, 3,
                 { isolate = "bare", items = { "ability_ley_line", "ability_raise_totem" } })
             local foe = Fixture.unit("character_bandit", 11, 11, { isolate = "bare", stats = { health = 300 } })
             local combat = Fixture.combat(map, hero, foe)

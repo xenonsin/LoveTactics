@@ -24,8 +24,8 @@ return {
     },
     -- Starting loadout as the 3x3 grid the player sees (row-major); false = an empty cell. This is the
     -- RELIC-FREE generic priest: NO Hallowed Chalice in the center (a bound relic belongs to no template.
-    -- Amana's own centre is the Kept Trust, which grants the same Sanctified Presence plus her giving
-    -- loop -- see character_amana.lua; the Chalice sits in nobody's default kit). It carries the PLAIN censer
+    -- Xin's own centre is the Kept Trust, which grants the same Sanctified Presence plus her giving
+    -- loop -- see character_xin.lua; the Chalice sits in nobody's default kit). It carries the PLAIN censer
     -- instead, the way the other templates carry their `weapon_iron_<family>`: the censer is the priest's
     -- own arm and belongs to this shelf and no other (data/items/weapon/weapon_censer.lua), so a body that
     -- fought with a staff was borrowing the mage's. Around it, a support caster's kit: Heal at

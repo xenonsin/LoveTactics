@@ -197,7 +197,7 @@ return {
         name = "chi is banked by bare hands only, and caps",
         fn = function()
             local map = Fixture.new(8, 8)
-            local hero = Fixture.unit("character_amana", 2, 2, { isolate = "bare" })
+            local hero = Fixture.unit("character_xin", 2, 2, { isolate = "bare" })
             local foe = Fixture.unit("character_bandit", 2, 3, { isolate = "bare", stats = { defense = 0, health = 300 } })
             local combat = Fixture.combat(map, hero, foe)
             local h, f = combat.units[1], combat.units[2]
@@ -221,7 +221,7 @@ return {
         name = "Asura Strike scales with chi held and empties the pool, overflow included",
         fn = function()
             local map = Fixture.new(8, 8)
-            local hero = Fixture.unit("character_amana", 2, 2, { isolate = "bare", items = { "ability_asura_strike" } })
+            local hero = Fixture.unit("character_xin", 2, 2, { isolate = "bare", items = { "ability_asura_strike" } })
             local foe = Fixture.unit("character_bandit", 2, 3, { isolate = "bare", stats = { defense = 0, health = 500 } })
             local combat = Fixture.combat(map, hero, foe)
             local h, f = combat.units[1], combat.units[2]
@@ -242,7 +242,7 @@ return {
         name = "Flurry needs three chi and throws three bare-handed blows",
         fn = function()
             local map = Fixture.new(8, 8)
-            local hero = Fixture.unit("character_amana", 2, 2, { isolate = "bare", items = { "ability_flurry" } })
+            local hero = Fixture.unit("character_xin", 2, 2, { isolate = "bare", items = { "ability_flurry" } })
             local foe = Fixture.unit("character_bandit", 2, 3, { isolate = "bare", stats = { defense = 0, health = 300 } })
             local combat = Fixture.combat(map, hero, foe)
             local h, f = combat.units[1], combat.units[2]

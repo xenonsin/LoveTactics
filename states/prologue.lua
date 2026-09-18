@@ -397,9 +397,9 @@ local function buildBeats()
         -- THE CHAMPION FELLS ROWAN AT ITS LAST STAGE, and this is where that is collected on. The
         -- `fell` response on its relic puts her down by script at 33% (utility_demon_sigil.lua), the
         -- objective's win writes the wound to the ledger (states/game.lua's inflictWounds), and the
-        -- company carries her into the Cathedral -- which is where Amana is, and why she comes.
+        -- company carries her into the Cathedral -- which is where Xin is, and why she comes.
         --
-        -- ...AND THE PROLOGUE ENDS THERE. Amana is NOT recruited here.
+        -- ...AND THE PROLOGUE ENDS THERE. Xin is NOT recruited here.
         --
         -- She was, for one pass: a Cathedral scene stood between this leg and the hub, the company
         -- carried Rowan in, and the healer standing there left with them. It is deleted because the
@@ -409,7 +409,7 @@ local function buildBeats()
         -- because there was no room that could.
         --
         -- There is a room now. The WARD (data/buildings/the_ward.lua) arrives on the plaza the first
-        -- time anybody is carried up broken -- which is Rowan, off this fight -- and Amana is met inside
+        -- time anybody is carried up broken -- which is Rowan, off this fight -- and Xin is met inside
         -- it, standing where healing actually happens. The player walks in holding the problem, meets
         -- the person whose whole kit is that problem, and takes her. That is the same recruit with a
         -- better reason and a room to have it in.
@@ -718,10 +718,10 @@ function prologue.skip(player)
     Player.restore(player)
 
     -- ...EXCEPT ROWAN, WHO IS CARRIED OUT OF THE LAST FIGHT. The Demon Champion fells her by script at
-    -- its final stage (data/status/status_champion_fixation.lua) and the objective's win writes it to
+    -- its final stage (models/combat.lua's Combat.spendScriptedFell) and the objective's win writes it to
     -- the ledger, so a company that skipped Act 0 has to arrive carrying the same wound -- and this is
     -- not flavour the skip can decline. The WARD's card is hung on that mark (models/building.lua's
-    -- `unlockWound`), and AMANA IS INSIDE THE WARD: a skip without this opens a city with no ward, no
+    -- `unlockWound`), and XIN IS INSIDE THE WARD: a skip without this opens a city with no ward, no
     -- healer, and a party of two against an expedition of four, which is exactly the "broken city rather
     -- than a skipped prologue" this whole function exists to prevent.
     --

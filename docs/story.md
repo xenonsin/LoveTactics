@@ -293,7 +293,7 @@ straight after it, one per pattern:
   line's to give, three slots later, standing over it. The first time the player ever sees the
   Cathedral is from a slab, and its door does not exist in the hub before that scene.
 
-All seven companions now have blueprints on disk — Rowan (knight), Saber (gladiator), Amana (priest),
+All seven companions now have blueprints on disk — Rowan (knight), Saber (gladiator), Xin (priest),
 Gyeom (mage), Kaya (hunter), Ren (alchemist) and Clem (rogue) — each with its signature relic and its
 recruit and finale scenes. What is not yet built is the *middle* of every line: slots 3–9, the
 second-form finale mechanics, and the second relics. The same discipline applies: author one end to end
@@ -716,7 +716,7 @@ the **second relic is still new work** — the chosen strike of slot 8.
 | # | Slot | Rank | The Colosseum's ten | What it costs Saber |
 |---|---|---|---|---|
 | 1 | Introduction | 1 | **Debut on the Sand** — beat the hired veteran; she signs with the only house that isn't one | nothing yet; she is enjoying herself |
-| 2 | The recruit | 1 | **The Padded Card** — `killAll`+`protect`; the card padded with slaughter. Won, then **overruled on the board**: Ira walks on as the win is declared, cuts the refugees down and is then fought — a scripted loss she cannot be killed out of. The wipe fades to black and the epilogue wakes them in the Cathedral with **Amana** recruited | the first crack in "the sport is clean", and her one law broken twice, the second time under her own feet |
+| 2 | The recruit | 1 | **The Padded Card** — `killAll`+`protect`; the card padded with slaughter. Won, then **overruled on the board**: Ira walks on as the win is declared, cuts the refugees down and is then fought — a scripted loss she cannot be killed out of. The wipe fades to black and the epilogue wakes them in the Cathedral with **Xin** recruited | the first crack in "the sport is clean", and her one law broken twice, the second time under her own feet |
 | 3 | Complication | 1 | stable against stable, the sport at its best | the player learns why she loves it |
 | 4 | Escalation | 2 | **The Perennial's Roster** — `killAll`; met as opponents | reads them cold; they move like people not allowed to choose |
 | 5 | The discovery | 2 | **The Intake** — `reach`; the house, not its output | names it aloud — bought, not schooled; kept, not trained |
@@ -823,16 +823,16 @@ into herself as health — so a party that husbands resources for the big turn f
 time. The counterplay is the sin read as tactics: **spend; let nothing sit unspent near her.** The
 finale adds a second half — she **turns the blooded**: a unit she has drained enough flips to her
 side (reusing `status_charm`), the "army turns on humankind" made playable. The one soul she can
-never touch is Amana, who **carries none of her blood** (see the foil, below). See *Engine work* in
+never touch is Xin, who **carries none of her blood** (see the foil, below). See *Engine work* in
 the plan and the drain-and-turn note; both are new work over the shipped Rapture.
 
 **Killing her frees nothing automatically.** The blooded stay blooded and hers; the sleeper army is a
 standing threat that survives into Act 2 (`quest_the_gate_below` / the Hollow Crown). You cannot break ten
 thousand seedings from the outside.
 
-### Amana, the witness — the same sin answered the other way
+### Xin, the witness — the same sin answered the other way
 
-Amana is an **acolyte, not a soldier** — clergy track, **never blooded.** There was never any of
+Xin is an **acolyte, not a soldier** — clergy track, **never blooded.** There was never any of
 Luxuria's blood in her to command, so there is nothing in her to turn: her immunity is not willpower
 and not a corruption she fought off, **she is simply not one of the made.**
 `trait_devotion_unbidden` makes charm and seizure **shed off her** for exactly that reason — no blood,
@@ -846,23 +846,24 @@ branded her a **fallen** Confessor and sent the player to purge her. She is a **
 a chosen one who resisted.**
 
 Her quieter cost is the mark of the house that raised her: taken as a child, **renamed for a virtue**
-(*Amana* — Arabic *amāna*, a trust returned intact — is the Cathedral's brand, not her name), taught
+(*Xin* — Chinese *信*, trustworthiness, the word and the deed being one thing — is the Cathedral's
+brand, not her name), taught
 to want **nothing** for herself. The line's quiet question is whether she can keep **one** thing
 without it being a theft. The answer is her birth-name, and the finale is where she keeps it.
 
 ### The line's rhyme, and the finale
 
 Every line has a rhyme; the Cathedral **opens and closes on "refuses what is not offered."** At the
-head, on the intake road, Amana and the party refuse to let a house **take** people who were not
+head, on the intake road, Xin and the party refuse to let a house **take** people who were not
 offered — a Colosseum press-gang working the same road for the same reason, with the same nets the
 debut taught the player to read. At the end Luxuria — who
-holds the intake rolls and knows the birth-name behind the cloth — offers Amana **her own self back,**
+holds the intake rolls and knows the birth-name behind the cloth — offers Xin **her own self back,**
 *"Kneel, and it is yours again."* It is a taking dressed as a gift: to accept the name from the hand
-that dumps children in pits is to let the monster be the one who *gives* Amana a self, and so be owed.
-Amana refuses — and the refusal is a **choice of character,** not a mechanic. Her shipped lines carry
+that dumps children in pits is to let the monster be the one who *gives* Xin a self, and so be owed.
+Xin refuses — and the refusal is a **choice of character,** not a mechanic. Her shipped lines carry
 it: *"That name is not yours to give… I gave it to myself. And that, I am keeping."*
 (`data/conversations/cathedral_general_lust_confront.lua` — **needs a rewrite**: it currently frames
-Luxuria as Amana's emptied cohort-sister, which the *outside demon* decision above has retired.)
+Luxuria as Xin's emptied cohort-sister, which the *outside demon* decision above has retired.)
 
 ### The ten slots
 
@@ -870,14 +871,14 @@ Ten against the four-rank ladder (`ranks = { 0, 40, 100, 200 }`; Penitent → Ac
 Saint), the general behind rank 4 — the same standing that puts the **Dawn Chrism** on the shelf,
 whose file comment is the spec. Reuses four shipped quests; six are new.
 
-**Amana is not recruited in this line.** She joins in the Colosseum's second slot, at the revival that
+**Xin is not recruited in this line.** She joins in the Colosseum's second slot, at the revival that
 opens this building at all (*Raised, then kept*, above), and she arrives carrying exactly one fact:
 the intake register says *ascended to the Light* and the pit behind the almshouse says otherwise. So
 the line no longer opens by proving her honest; it opens with her already trusted and the player not
 yet knowing what the wording covers. The plea that used to be her recruit scene is now slot 4's
 `outro`, said over the failed bloodings themselves rather than over her own defeat — the player learns
 the **lie** first and only then **what it hides**, which is the better order and was not available
-while the reveal had to double as a job interview. The middle traces it upward to the one fact Amana
+while the reveal had to double as a job interview. The middle traces it upward to the one fact Xin
 cannot yet face (slot 7): the Saint she still believes in is the demon.
 
 | # | Slot | Rank | The Cathedral's ten | What it costs / reveals |
@@ -885,10 +886,10 @@ cannot yet face (slot 7): the Saint she still believes in is the demon.
 | 1 | Introduction | 1 | **The Haunted Mill** — `assassinate` | child ghosts scream clues about the church's sins; horror planted before it is understood |
 | 2 | The taking | 1 | **The Intake Road** — `killAll`+`protect` | walk the Cathedral's charity cart home past a Colosseum press-gang working the same road; the player **delivers** it, and slots 4–5 are what send them back to count who they delivered |
 | 3 | Complication | 1 | **The Rite of Ashes** — `survive` | hold consecrated ground; why must the censer burn throughout? |
-| 4 | Escalation | 2 | **The Purge in the Fold** — `killAll` | the "corrupted" are **failed bloodings** — the church's own children; **Amana's plea plays here** as the `outro`, over the bodies |
+| 4 | Escalation | 2 | **The Purge in the Fold** — `killAll` | the "corrupted" are **failed bloodings** — the church's own children; **Xin's plea plays here** as the `outro`, over the bodies |
 | 5 | The discovery | 2 | **The Roll of the Given** — `reach`/`killAll` | the register of "ascended saints" set against the **pit** — it is a casualty list |
 | 6 | Complicity | 2 | **Cleansing Work** — `killAll`; the diocese tidied before the Feast of the Ascended | purge the failed bloodings; the player becomes the hand that buries the evidence |
-| 7 | **The turn** | 3 | *(no fight)* | **the Saint knew; the Saint is the demon** — Amana's last belief falls |
+| 7 | **The turn** | 3 | *(no fight)* | **the Saint knew; the Saint is the demon** — Xin's last belief falls |
 | 8 | The break | 3 | **The Kept Trust** — `assassinate` | the Kept-Trust beat: she keeps one thing for herself, and it is not a theft |
 | 9 | The approach | 3 | **The Saint Unmasked** — `assassinate` | the scale of what her death will **not** stop |
 | 10 | The general | 4 | **Luxuria, the Unbidden** — `assassinate` | two-phase (human Saint → demon); she turns your anointed escort; the sleepers remain |
@@ -911,10 +912,10 @@ adjacent allies, à la the Muster Roll) and one from slot 8. All carry `class = 
 ### What is built, and what is not
 
 **Built:** all ten slots; `general_lust` (finale, rank-4, drops the Reliquary + `gateHint`); the
-characters; Amana's signature `utility_reliquary_kept_trust`; the traits `trait_rapture` /
+characters; Xin's signature `utility_reliquary_kept_trust`; the traits `trait_rapture` /
 `trait_devotion_unbidden`; `tests/devotion_spec.lua`. Written scenes: the **plea** (slot 4's `outro`),
 slot 2's road opening, and the two general confronts. Her recruit itself is the Colosseum's
-(`quest_colosseum_slot_02.lua`, `rewardCharacter = character_amana`).
+(`quest_colosseum_slot_02.lua`, `rewardCharacter = character_xin`).
 
 **Not built:** every mid-line scene except the plea; the `character_anointed` /
 `character_anointed_failed` / `character_child_ghost` blueprints, and bespoke **oblate** bodies for
@@ -991,8 +992,8 @@ Kaya is a hunter **intertwined with the deep wood.** She lives in it, not at the
 **for food, never for sport:** she takes only what she needs, wastes nothing, and the wild does not
 turn against her (the Ainu ethic of Golden Kamuy's Asirpa; Mononoke's San, who runs with wolves — as
 Kaya runs with the one on her Wolfsong Horn). Her name is Arabic *kifāya,* **sufficiency, "it is
-enough,"** the virtue buried and not stamped, the way *Saber* is patience and *Amana* is a trust
-(character_saber.lua, character_amana.lua). Same craft as Gula, opposite answer: gluttony never
+enough,"** the virtue buried and not stamped, the way *Saber* is patience and *Xin* is a trust
+(character_saber.lua, character_xin.lua). Same craft as Gula, opposite answer: gluttony never
 stops; temperance is **the hunt that knows when to stop.**
 
 She is **not Gula's kin, shares no origin with her, and is not the Lodge's outcast** — she is simply
@@ -1005,7 +1006,7 @@ is a **guide-join, not a purge** — she and her wolf turn back the wild that wo
 and she takes them in. (No branded-fugitive beat; the Lodge and Kaya are not at open war — her
 quarrel is with the *sin,* the wanton devouring, not the guild's rank and file.)
 
-Her foil-immunity, stated as cleanly as Amana's *"simply not one of the made"*: Gula's hunger feeds
+Her foil-immunity, stated as cleanly as Xin's *"simply not one of the made"*: Gula's hunger feeds
 on **excess** — on the hunter who takes more than the kill needs. **There is nothing on Kaya to
 eat.** She carries no surplus, holds nothing back, kills clean and for food alone; when Gula strikes
 her the hunger finds no purchase. Not willpower, not a corruption she fought off — she simply **wants
@@ -1092,7 +1093,7 @@ falls out of the answer-timing rule for free (a counter is thrown only once the 
 resolved, and re-checks reach; a wolf a tile away is out of it — `Combat.beginAnswers`).
 
 Still to fold in when the general is built: the **temperance trait** that makes Gula's hunger find no
-purchase on Kaya (*nothing to eat*), the way Amana's reliquary carries `trait_devotion_unbidden`. The
+purchase on Kaya (*nothing to eat*), the way Xin's reliquary carries `trait_devotion_unbidden`. The
 earlier **Wolfsong Spirit true-call** (a blood-price summon) is retired from the horn; its blueprint
 (`character_wolfsong_spirit`) and `trait_blood_price` are shelved, kept for later reuse.
 
@@ -1313,7 +1314,7 @@ a made thing bargaining to become a person; that is design, not drift: state it,
 `growth/alchemist`, the rank-4 foreshadow relic `utility_philosophers_stone` (the fragile imitation, its
 comment the boss spec), and the homunculus exemplar (`character_homunculus`, `ability_summon_homunculus`);
 the copy and transform engines ship (`Summon.copyOf`, `models/transform.lua`). Both characters —
-`character_ren` (kindness alchemist, `boss = true` at her recruit per the Amana pattern) and
+`character_ren` (kindness alchemist, `boss = true` at her recruit per the Xin pattern) and
 `character_general_envy` (**Livia**, `boss = true`). Livia's rule `trait_covetous_reflection` (the
 shipped phase-one copy, `onCombatStart` copies your strongest, *not fragile*) on her **Envious Glass**
 relic (rank-4 drop, `noSteal`, `gateHint = "below the vats, where the shapeless envy the shaped"`).
@@ -1419,7 +1420,7 @@ those marked for it — so the crown-backed Arcanum branded her a **dangerous ra
 player to bring her in. She is a **witness who broke**, but hers is the refusal of a collective excuse,
 not the exposure of a secret: everyone already knows, and she is the one who will not agree.
 
-Her **foil-immunity, stated as cleanly as Amana's "not one of the made" and Kaya's "nothing to eat":**
+Her **foil-immunity, stated as cleanly as Xin's "not one of the made" and Kaya's "nothing to eat":**
 Sublimitas answers and copies only what is **shown** — and *Gyeom shows nothing.* You can glance a
 spell; you cannot glance the ten thousand hours she never put on display. It is not willpower and not a
 corruption resisted — she simply does not fight to be seen.
@@ -1514,7 +1515,7 @@ deferred, flagged as new work.
 **Built:** the `arcanum` building + vendor (`sin = "pride"`), `growth/mage`, the rank-4 foreshadow relic
 `utility_codex_of_hubris`, and the Pride exemplar spell `ability_doppelganger` (`Summon.copy`). Both
 characters — `character_gyeom` (humility mage, the Ledger centered, `boss = true` at her recruit like
-Amana and Saber) and `character_general_pride` (**Sublimitas**, `boss = true`). Both traits —
+Xin and Saber) and `character_general_pride` (**Sublimitas**, `boss = true`). Both traits —
 Sublimitas's `trait_perfect_recall` (the `onCast` answer on the Codex Unanswered, shipped as a
 counter-magic reflex; the full learn-and-recast is deferred) and Gyeom's `trait_ledger_diligence`
 (bank-per-action + the four-cast Release on the Ledger). The relics — `utility_codex_unanswered`
@@ -1642,10 +1643,10 @@ clean-slate writ, spirit the ruined away before the men come. The collector beca
 who *can*, because she learned the machine from the enforcement side — she knows which note to burn,
 which magistrate is bought, where the true ledger is kept. She is **not the general's kin and shares no
 origin with her**; like Kaya to Gula and Ren to Livia, she is simply the one who would not keep calling
-it normal. She is a **witness who broke** (the Amana / Gyeom pattern), and the class used honestly.
+it normal. She is a **witness who broke** (the Xin / Gyeom pattern), and the class used honestly.
 
 Her name keeps the companions' rule — gender-neutral, virtue buried and not stamped (the way *Saber* is
-patience, *Kaya* is enough, *Amana* is a trust, *Ren* is humaneness, *Gyeom* is humility): **Clem**, from
+patience, *Kaya* is enough, *Xin* is a trust, *Ren* is humaneness, *Gyeom* is humility): **Clem**, from
 *clementia* — **mercy, clemency, the power to release a debt or a sentence.** For an enforcer who became
 the jubilee, a name that is clemency worn as a plain nickname — hard as a blade on the tongue, mercy
 underneath — is the whole of her. (It is the one companion root drawn from Latin rather than the East;
@@ -1659,7 +1660,7 @@ debt-forgiving *is* caritas made literal: release, not redistribution, the clean
 made even her own soul a deal.
 
 Her answer to Aurea is **not an immunity.** Greed is a contest over a resource, so the foil is a contest,
-not a switch — a deliberate departure from the other six companions' clean immunities (Amana's "not one
+not a switch — a deliberate departure from the other six companions' clean immunities (Xin's "not one
 of the made," Kaya's "nothing to eat," Gyeom's "shows nothing"), and worth stating outright the way the
 doc flags Ira and Livia as rule-exceptions. And the resource is **time.** Aurea **buys** it — every summon
 and every action is time she pays for out of her hoard, gold turned into presence on the board. Clem
@@ -1690,12 +1691,12 @@ stranger's debt and walks away wanting nothing for it — caritas shown, not pre
 proved optional. At the end Aurea — who holds every note in the city, and (the reveal) **Clem's own** —
 offers the one thing greed can give: her account, **closed.** *"You have never once been able to forgive
 your own debt. I hold it. Kneel, and I mark it paid."* It is a taking dressed as a gift, the exact move
-Luxuria makes offering Amana her name back: to let the monster be the one who *absolves* you is to be
+Luxuria makes offering Xin her name back: to let the monster be the one who *absolves* you is to be
 owned by the absolution, and so to owe her everything. Clem refuses — the refusal is a **choice of
 character,** not a mechanic — and does the thing she never could: she forgives **herself,** for free,
 needing no hand to clear it, and in the same motion burns the Bank's master ledger, the largest jubilee
 there is — every debt in the city cancelled at once. The one thing she keeps (the Kept-Trust beat,
-Amana's kept name) is not a possession: it is the party, `{name}` — one account she chooses to hold.
+Xin's kept name) is not a possession: it is the party, `{name}` — one account she chooses to hold.
 *"I'll owe you this one. Not because you can call it. Because I want to."* The transaction-mind holding a
 single open account on purpose, which is love and not debt.
 
@@ -1882,7 +1883,7 @@ take-a-thing (`fx.steal`) ships, but the gold *economy* around it does not. Flag
 
 A glass-cannon skirmisher — the fixer who must never be caught: high speed and damage, low health, on
 `rogue` growth (`speed +1, damage +2, stamina +3, health +3` a level). `boss = true` only at her recruit
-fight (slot 2), where she is the objective; a party member after, like Amana and Saber.
+fight (slot 2), where she is the objective; a party member after, like Xin and Saber.
 
 Her 3×3 is built for the tempo loop — soften, kill, hand the speed to the team:
 
@@ -2030,14 +2031,14 @@ on stage nor in the script, and the scene closes over the gap cleanly.
 The mechanism is already there and is documented in
 [docs/adding-content.md](adding-content.md#gating-a-scene-on-progress): a conditional `cast` entry plus
 a `when = { has = "character_<id>" }` **block** in the script. `vendor_cathedral_intro` is the shape to
-copy — the base scene is quartermaster and avatar; recruit Amana and a three-line block opens up where
+copy — the base scene is quartermaster and avatar; recruit Xin and a three-line block opens up where
 she and her old church talk past each other, and the vendor's closing line lands on either version.
 
 What a companion's interjection is *for*, in rough order of value:
 
-1. **The sin they answer.** Every companion is the other answer to one general's sin (Amana/lust,
+1. **The sin they answer.** Every companion is the other answer to one general's sin (Xin/lust,
    Saber/wrath, Kaya/gluttony, Ren/envy, Gyeom/pride, Clem/greed, Rowan/sloth — see the chapters
-   above). Put them in front of their own sin whenever a scene touches it. Amana in the Cathedral,
+   above). Put them in front of their own sin whenever a scene touches it. Xin in the Cathedral,
    Clem near money, Gyeom near anyone certain they are right. Those are the lines that cost nothing to
    write and carry the whole thesis.
 2. **The room they know.** A companion recruited out of a chapter has standing in that chapter's

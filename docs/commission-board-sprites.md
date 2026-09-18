@@ -116,7 +116,7 @@ The player's own party and the story's antagonists — the faces on screen every
 | `saber` | The gladiator |
 | `kaya` | The hunter — ranged |
 | `gyeom` | The mage |
-| `amana` | The priest/acolyte — support |
+| `xin` | The priest/acolyte — support |
 | `ren` | The alchemist |
 | `clem` | The rogue — glass-cannon skirmisher |
 | `general_wrath` | Ira, the Unappeased |

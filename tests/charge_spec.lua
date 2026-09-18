@@ -405,7 +405,7 @@ return {
         name = "the Crusader's Tabard banks Zeal from kills AND heals, with no weapon in the loop",
         fn = function()
             local map = Fixture.new(8, 8)
-            local hero = Fixture.unit("character_amana", 3, 3,
+            local hero = Fixture.unit("character_xin", 3, 3,
                 { isolate = "bare", items = { "armor_crusaders_tabard" } })
             local foe = Fixture.unit("character_bandit", 3, 5, { isolate = "bare" })
             local combat = Fixture.combat(map, hero, foe)
@@ -423,7 +423,7 @@ return {
         name = "Vow of the March widens Zeal to the whole column, and deepens the pool",
         fn = function()
             local map = Fixture.new(8, 8)
-            local hero = Fixture.unit("character_amana", 3, 3,
+            local hero = Fixture.unit("character_xin", 3, 3,
                 { isolate = "bare", items = { "armor_crusaders_tabard", "utility_vow_of_the_march" } })
             local foe = Fixture.unit("character_bandit", 3, 5, { isolate = "bare" })
             local combat = Fixture.combat(map, hero, foe)

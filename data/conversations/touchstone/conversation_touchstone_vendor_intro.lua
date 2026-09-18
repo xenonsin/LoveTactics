@@ -6,7 +6,7 @@ return {
         "touchstone", "character_avatar",
         { id = "character_rowan", when = { has = "character_rowan" } },
         { id = "character_saber", when = { has = "character_saber" } },
-        { id = "character_amana", when = { has = "character_amana" } },
+        { id = "character_xin", when = { has = "character_xin" } },
         { id = "character_clem",  when = { has = "character_clem" } },
         { id = "character_gyeom", when = { has = "character_gyeom" } },
         { id = "character_kaya",  when = { has = "character_kaya" } },
@@ -26,8 +26,8 @@ return {
             { "character_saber", "Or you could swing it once and find out.", tag = 6 },
             { "touchstone", "People have. I have named what was left of two of them.", tag = 7 },
         } },
-        { when = { has = "character_amana" }, script = {
-            { "character_amana", "You hold other people's things and you give them back whole. That is a good trade to be in.", tag = 8 },
+        { when = { has = "character_xin" }, script = {
+            { "character_xin", "You hold other people's things and you give them back whole. That is a good trade to be in.", tag = 8 },
         } },
         { when = { has = "character_clem" }, script = {
             { "character_clem", "I have seen a weigher put a thumb on a scale. Both thumbs, once.", tag = 9 },

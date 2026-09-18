@@ -15,7 +15,7 @@ return {
         name = "Lay On Hands heals, wards, and moves the ally's afflictions onto the paladin",
         fn = function()
             local map = Fixture.new(10, 10)
-            local hero = Fixture.unit("character_amana", 3, 3,
+            local hero = Fixture.unit("character_xin", 3, 3,
                 { isolate = "bare", items = { "ability_lay_on_hands" } })
             local ally = Fixture.unit("character_rowan", 3, 4, { isolate = "bare" })
             local foe = Fixture.unit("character_bandit", 9, 9, { isolate = "bare", stats = { health = 300 } })
@@ -64,7 +64,7 @@ return {
         name = "Oathkeeper's Litany braces the rank beside the paladin and not the paladin",
         fn = function()
             local map = Fixture.new(10, 10)
-            local hero = Fixture.unit("character_amana", 3, 3,
+            local hero = Fixture.unit("character_xin", 3, 3,
                 { isolate = "bare", items = { "ability_oathkeepers_litany" } })
             local ally = Fixture.unit("character_rowan", 3, 4, { isolate = "bare" })
             local foe = Fixture.unit("character_bandit", 3, 2, { isolate = "bare", stats = { health = 300 } })
@@ -168,7 +168,7 @@ return {
         name = "The Long Prayer widens with the wind-up it actually served",
         fn = function()
             local map = Fixture.new(14, 14)
-            local hero = Fixture.unit("character_amana", 4, 4,
+            local hero = Fixture.unit("character_xin", 4, 4,
                 { isolate = "bare", items = { "ability_the_long_prayer" } })
             local foe = Fixture.unit("character_bandit", 13, 13, { isolate = "bare", stats = { health = 300 } })
             local combat = Fixture.combat(map, hero, foe)
@@ -190,7 +190,7 @@ return {
         name = "Benediction reaches every ally wherever they are standing",
         fn = function()
             local map = Fixture.new(12, 12)
-            local hero = Fixture.unit("character_amana", 2, 2,
+            local hero = Fixture.unit("character_xin", 2, 2,
                 { isolate = "bare", items = { "ability_benediction" } })
             local far = Fixture.unit("character_rowan", 10, 10, { isolate = "bare" })
             local foe = Fixture.unit("character_bandit", 6, 6, { isolate = "bare", stats = { health = 300 } })

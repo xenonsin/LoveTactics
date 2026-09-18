@@ -26,7 +26,7 @@ local function company(n)
     local p = Player.new()
     p.gold = 100000
     local filler = { "character_saber", "character_kaya", "character_gyeom", "character_clem",
-                     "character_amana", "character_ren" }
+                     "character_xin", "character_ren" }
     local i = 1
     while #p.roster < n and i <= #filler do
         Player.recruit(p, filler[i])

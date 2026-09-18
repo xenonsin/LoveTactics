@@ -66,7 +66,7 @@ eight **vendors** are the shopkeepers of the town's shops; the **Demon Lord** is
 
 > **The party is the companions — there are no generic class portraits.** The mage / archer /
 > priest party roles are filled by named companions (**Gyeom** the mage, **Kaya** the hunter,
-> **Amana** the priest), so no generic `mage.png` / `archer.png` / `priest.png` is commissioned.
+> **Xin** the priest), so no generic `mage.png` / `archer.png` / `priest.png` is commissioned.
 > Retiring those generic blueprints in-game is a separate code task (see the note at the end).
 
 ### Protagonist
@@ -81,7 +81,7 @@ eight **vendors** are the shopkeepers of the town's shops; the **Demon Lord** is
 | `saber.png` | **Saber** | The gladiator — virtue *patience*; principled ("won't kill those who can't choose"). |
 | `kaya.png` | **Kaya** | The hunter — virtue *temperance* ("enough"); ranged, measured. |
 | `gyeom.png` | **Gyeom** | The mage — arcane skirmisher. |
-| `amana.png` | **Amana** | The priest/acolyte — support/healer (Cathedral line). |
+| `xin.png` | **Xin** | The priest/acolyte — support/healer (Cathedral line). |
 | `ren.png` | **Ren** | The alchemist — kindness; heals before she strikes (Crucible line). |
 | `clem.png` | **Clem** | The rogue — aggressive glass-cannon skirmisher. |
 
@@ -129,7 +129,7 @@ only.
 ## Scope & phasing (suggested)
 
 - **Phase 1 — the party**: `avatar_1` (+ gender variant) and the seven companions (Rowan, Saber,
-  Kaya, Gyeom, Amana, Ren, Clem) — the faces the player sees most.
+  Kaya, Gyeom, Xin, Ren, Clem) — the faces the player sees most.
 - **Phase 2 — the vendors (8)** — the shopkeepers the player meets every town visit.
 - **Phase 3 — the antagonists**: the seven generals + the Demon Lord — the story's payoff.
 

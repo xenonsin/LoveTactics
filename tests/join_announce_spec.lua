@@ -68,7 +68,7 @@ return {
             local p = Player.new()
             -- Both absent from the default starting roster, so neither recruit is refused as a duplicate.
             local a = Player.recruit(p, "character_saber")
-            local b = Player.recruit(p, "character_amana")
+            local b = Player.recruit(p, "character_xin")
             local resolved = { script = {} }
             Conversation.drainJoins(resolved)
             assert(#resolved.script == 2, "both joins should be announced")

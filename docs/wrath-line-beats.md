@@ -218,7 +218,7 @@ Legend: **N** narrative beat · **S** what it costs Saber · **Scenes** the scaf
 - **N (epilogue)** The venue and the stables are not the same people (*The league and the stables*),
   and the gap is what lets the story continue: the house spent a new draw for one night's crowd, and
   the stables with money on that draw did not agree. The party wakes in the **Cathedral**, raised
-  because four of them paid the church's price the same night. The acolyte who performed the rite is **Amana**, and she
+  because four of them paid the church's price the same night. The acolyte who performed the rite is **Xin**, and she
   is this slot's `rewardCharacter` — the priest's recruit moved off her own house's second slot (see
   *The other seven → Raised, then kept* and *The Cathedral* in `docs/story.md`). She leaves with them
   over the eleven refugees who came in on the same cart with nobody paying for **them**: she is the
@@ -245,7 +245,7 @@ Legend: **N** narrative beat · **S** what it costs Saber · **Scenes** the scaf
     on purpose — because the player is about to watch the rest of it happen and then fight her. The old
     version of this scene had the avatar calling the action from a window ("She is walking at the
     refugees", "I am on my back"); none of that survives contact with her being a real unit.
-  - *join (`epilogue`):* the waking, the sponsors' coin, the refugees, the register, the pit; Amana asks
+  - *join (`epilogue`):* the waking, the sponsors' coin, the refugees, the register, the pit; Xin asks
     to come. It is the quest's only post-fight scene and it plays over the black the fight faded to. The
     join banner is held across the overrule scene for it (`deferJoins`) — a recruit has no business in
     the scene before everyone dies.
@@ -382,5 +382,5 @@ Legend: **N** narrative beat · **S** what it costs Saber · **Scenes** the scaf
 ## Companion coverage
 Every scene should let recruited companions speak (companions-speak-in-every-scene standard). The
 scaffolds carry Saber's block; `colosseum_general_wrath_confront` is the density model with the full
-roster (`character_rowan`, `character_amana`, `character_gyeom`, `character_kaya`, `character_ren`,
+roster (`character_rowan`, `character_xin`, `character_gyeom`, `character_kaya`, `character_ren`,
 `character_clem`), each gated by `when = { has = "character_<id>" }`. Add blocks per slot as you write.

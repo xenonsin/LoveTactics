@@ -501,7 +501,7 @@ can afford to be a rogue precisely because his kit scales on *debuffs* rather th
 
 The sketch asked for "`boss = true` appears only on a body some quest names as an `assassinate` mark."
 It is not asserted, because the flag is already doing a second job the sketch did not account for: four
-**companions** carry it (Clem, Amana, Gyeom, Ren) since they are recruited out of boss fights, and a
+**companions** carry it (Clem, Xin, Gyeom, Ren) since they are recruited out of boss fights, and a
 dozen Elites carry it at tier 3. `boss` and `tier 4` are not the same claim and the data says so. Pinning
 the rule means first deciding what the flag means on a recruitable body — a separate call.
 

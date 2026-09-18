@@ -17,7 +17,7 @@ Building.defs = Registry.load("data/buildings", "data.buildings")
 --
 -- THE CITY IS A PLAZA WITH THE GATE IN THE MIDDLE OF IT.
 --
---     The Houses       The Ward          The Market
+--     The Houses       The Inn           The Market
 --     Armory          [  THE GATE  ]     The Forge
 --     Cafe             Touchstone        Dueling Grounds
 --
@@ -257,7 +257,7 @@ function Building.list(playerOrPrestige, opts)
                 state = def.state, -- a whole screen this door opens instead of a pop-up, or nil
                 vendor = def.vendor, -- vendor id for shop buildings; nil otherwise
                 -- A ONE-TIME SCENE THIS ROOM PLAYS THE FIRST TIME IT IS WALKED INTO, and optionally the
-                -- companion it hands over -- which is how the Ward introduces Amana. A shop does this
+                -- companion it hands over -- which is how the Ward introduces Xin. A shop does this
                 -- through models/vendor_visit.lua, keyed on its vendor id; a room with no shelf has no
                 -- vendor to key on, and inventing one so a door can say a sentence would put an empty
                 -- counter in the data to carry a scene. `Building.seenDoor` is already the ledger of

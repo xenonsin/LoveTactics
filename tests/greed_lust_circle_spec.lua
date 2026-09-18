@@ -233,7 +233,7 @@ return {
             assert(mine and hers, "both rules exist")
             assert(mine.stamina < hers.stamina and mine.mana < hers.mana,
                 "the mini sin takes less per hit than its general")
-            -- Both must honour Amana's counter, or the one answer to the sin works on only half of it.
+            -- Both must honour Xin's counter, or the one answer to the sin works on only half of it.
             for _, id in ipairs({ "trait_unasked", "trait_rapture" }) do
                 local src = love.filesystem.read("data/traits/" .. id .. ".lua")
                 assert(src and src:find("trait_devotion_unbidden", 1, true),

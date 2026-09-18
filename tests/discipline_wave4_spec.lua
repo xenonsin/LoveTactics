@@ -17,7 +17,7 @@ return {
         name = "dispelUnit strips blessings, spares afflictions, and never touches a channel",
         fn = function()
             local map = Fixture.new(10, 10)
-            local hero = Fixture.unit("character_amana", 3, 3, { isolate = "bare" })
+            local hero = Fixture.unit("character_xin", 3, 3, { isolate = "bare" })
             local foe = Fixture.unit("character_bandit", 3, 4, { isolate = "bare", stats = { health = 300 } })
             local combat = Fixture.combat(map, hero, foe)
             local f = combat.units[2]
@@ -57,7 +57,7 @@ return {
         name = "Sentence strips the accused before it burns them, and declines the unaccused",
         fn = function()
             local map = Fixture.new(10, 10)
-            local hero = Fixture.unit("character_amana", 3, 3,
+            local hero = Fixture.unit("character_xin", 3, 3,
                 { isolate = "bare", items = { "ability_sentence" } })
             local foe = Fixture.unit("character_bandit", 3, 4,
                 { isolate = "bare", stats = { defense = 0, magicDefense = 0, health = 900 } })
@@ -102,7 +102,7 @@ return {
         name = "The Pyre collects on every accusation at once and leaves the marks standing",
         fn = function()
             local map = Fixture.new(12, 12)
-            local hero = Fixture.unit("character_amana", 3, 3,
+            local hero = Fixture.unit("character_xin", 3, 3,
                 { isolate = "bare", items = { "ability_the_pyre" } })
             local a = Fixture.unit("character_bandit", 8, 3,
                 { isolate = "bare", stats = { defense = 0, magicDefense = 0, health = 300 } })

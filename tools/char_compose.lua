@@ -288,8 +288,10 @@ local CHARACTER_SILHOUETTE = {
     demon_champion = "delapouite/devil-mask",
     demon_lord = "caro-asercion/tarot-15-the-devil",
 
-    -- Off the priest's supplicant.
-    amana = "cathelineau/nun-face",
+    -- Off the priest's supplicant. NOT a nun's face: the Cathedral brands her fallen and she walks out
+    -- of it, so a habit is the one thing her token must not be. Hands, lit -- what she DOES, on the same
+    -- rule the Gluttony and Envy circles below follow.
+    xin = "lorc/glowing-hands",
 
     -- THE CAVED COMPANIONS USED TO BE ALIASED HERE -- seven of them, each pointing at its own base so a
     -- companion the player had spoiled read as herself when the Hollow Crown turned her. Both the

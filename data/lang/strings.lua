@@ -379,7 +379,7 @@ return {
     ["line.conversation_tutorial_city.2"] = { en = "{select} the Rift. The stair down is inside.", ja = "" },  -- TODO
     ["line.conversation_tutorial_city.3"] = { en = "{select} {door}", ja = "" },  -- TODO
     ["line.conversation_tutorial_city.4"] = { en = "{select} the Bounty Board. The houses post their work there.", ja = "" },  -- TODO
-    ["line.conversation_tutorial_city.5"] = { en = "{select} the Ward. They will see to that arm, and it costs nothing to wait.", ja = "" },  -- TODO
+    ["line.conversation_tutorial_city.5"] = { en = "{select} the Inn. They will see to that arm, and it costs nothing to wait.", ja = "" },  -- TODO
     ["line.conversation_tutorial_flight.1"] = { en = "Walk to the chest ahead. Use WASD, the arrow keys, or click a tile.", ja = "" },  -- TODO
     ["line.conversation_tutorial_flight.2"] = { en = "Open your loadout to see what you found.", ja = "" },  -- TODO
     ["line.conversation_tutorial_flight.3"] = { en = "{select} an item in your stash to equip it to a hero.", ja = "" },  -- TODO
@@ -443,7 +443,7 @@ return {
     ["name.bastion"] = { en = "The Bastion", ja = "" },  -- TODO
     ["name.cafe"] = { en = "The Cafe", ja = "" },  -- TODO
     ["name.cathedral"] = { en = "The Cathedral", ja = "" },  -- TODO
-    ["name.character_amana"] = { en = "Amana", ja = "" },  -- TODO
+    ["name.character_xin"] = { en = "Xin", ja = "" },  -- TODO
     ["name.character_avatar"] = { en = "Stranger", ja = "" },  -- TODO
     ["name.character_caravan_master"] = { en = "Caravan Master", ja = "" },  -- TODO
     ["name.character_clem"] = { en = "Clem", ja = "" },  -- TODO
@@ -533,5 +533,5 @@ return {
     ["title.conversation_undercroft_errand_found"] = { en = "The Vault Door", ja = "" },  -- TODO
     ["title.conversation_undercroft_slot_01_outro"] = { en = "The Third Door", ja = "" },  -- TODO
     ["title.conversation_undercroft_vendor_intro"] = { en = "The Undercroft", ja = "" },  -- TODO
-    ["title.conversation_ward_first_visit"] = { en = "The Ward", ja = "" },  -- TODO
+    ["title.conversation_ward_first_visit"] = { en = "The Inn", ja = "" },  -- TODO
 }

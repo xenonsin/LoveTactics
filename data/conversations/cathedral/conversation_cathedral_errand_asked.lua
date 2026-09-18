@@ -5,11 +5,11 @@
 -- by design, and hers does not push. She said she would not press, and this is where that is proved.
 return {
     title = "The Miller's Ghost",
-    cast  = { "character_avatar", "character_amana" },
+    cast  = { "character_avatar", "character_xin" },
 
     script = {
-        { "character_amana", "It is still in there. It has hurt nobody since you passed.", tag = 30 },
-        { "character_amana", "I will not press you. Ask, and I come.", tag = 31, choices = {
+        { "character_xin", "It is still in there. It has hurt nobody since you passed.", tag = 30 },
+        { "character_xin", "I will not press you. Ask, and I come.", tag = 31, choices = {
             { "Ask her in.", tag = 32, answer = "accept" },
             { "Leave it standing.", tag = 33, answer = "decline" },
         } },

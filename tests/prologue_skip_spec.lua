@@ -52,7 +52,7 @@ return {
     {
         -- THE SKIP HAS TO HAND OVER THE WOUND, because the city is built on it. The Demon Champion
         -- fells Rowan at its last stage, and that one mark is what grows the WARD on the plaza
-        -- (models/building.lua's `unlockWound`) -- and Amana is standing inside the Ward. A skip that
+        -- (models/building.lua's `unlockWound`) -- and Xin is standing inside the Ward. A skip that
         -- arrives whole opens a city with no ward, no healer, and a party of two against an expedition
         -- of four, which is the "broken city rather than a skipped prologue" this whole grant exists to
         -- prevent. Reported from a real play-through of the debug button, not from reading the code.
@@ -83,7 +83,7 @@ return {
         -- recorded as announced, so nothing standing is ever coached as news (Building.seedSeen). The
         -- Ward is open on that very first frame, because Rowan is hurt before the city exists. So a
         -- first-visit scene keyed on seenDoor was consumed before anyone could walk through the door,
-        -- and Amana was never met by ANY player, skipped prologue or played one.
+        -- and Xin was never met by ANY player, skipped prologue or played one.
         name = "seeding the city's doors does not spend the Ward's first-visit scene",
         fn = function()
             local Building = require("models.building")
@@ -95,7 +95,7 @@ return {
                 "but the scene is a separate ledger and is still owed")
 
             local def = Building.defs["the_ward"]
-            assert(def.intro and def.grants == "character_amana",
+            assert(def.intro and def.grants == "character_xin",
                 "...and it is the scene that hands the companion over, so spending it early loses her")
         end,
     },

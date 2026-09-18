@@ -36,7 +36,7 @@ end
 -- failure mode this helper exists to make impossible to reach by accident.
 --
 -- Named for the role rather than the body: it reads the constant, so moving the script from one house to
--- another (it was Saber's, it is Amana's) leaves every fixture below correct.
+-- another (it was Saber's, it is Xin's) leaves every fixture below correct.
 local function scriptedJoined(done)
     done = done or {}
     done[Errand.opener(Descent.SCRIPTED_COMPANION)] = true
@@ -294,7 +294,7 @@ return {
     {
         -- A COMPANION CAN NOW JOIN ABOVE GROUND, and Errand.doorOpen has to survive it.
         --
-        -- Amana joins in the prologue's Cathedral scene (states/prologue.lua), so her POSTING is never
+        -- Xin joins in the prologue's Cathedral scene (states/prologue.lua), so her POSTING is never
         -- completed. Read off the quest ledger alone -- which is all this predicate used to do -- her
         -- door stays shut forever: the descent keeps standing her on floor one to be met by a company
         -- she is already in, and the deck keeps dealing the Cathedral instead of one of the six houses
@@ -332,7 +332,7 @@ return {
         -- deals nobody at all. Pinned across a spread of seeds because "every descent" is the claim.
         --
         -- WHO is scripted is pinned by name, and the name carries an argument a seed assertion cannot.
-        -- The company walks out of Act 0 with three -- avatar, Rowan, Amana -- against PARTY_MAX of four,
+        -- The company walks out of Act 0 with three -- avatar, Rowan, Xin -- against PARTY_MAX of four,
         -- so this is the seat-filler; and what those three have no answer to is magic damage, not another
         -- sword at range. A change that quietly moved the script to the Hunter's Lodge would still pass
         -- every seed check below while handing the player a second body that answers what Rowan answers.
@@ -346,7 +346,7 @@ return {
             assert(require("models.character").instantiate("character_gyeom").class == "mage",
                 "the seat this fills is the magic one; a re-classed Gyeom means re-reading the choice")
             -- THE ARITHMETIC THE CHOICE RESTS ON, pinned so it fails here rather than in a playtest.
-            -- Act 0 hands over three (the avatar, plus Rowan and Amana, both recruited in
+            -- Act 0 hands over three (the avatar, plus Rowan and Xin, both recruited in
             -- states/prologue.lua's buildBeats) and this is the fourth. Move PARTY_MAX and the scripted
             -- body stops being a seat-filler -- it becomes either a spare or one short of a legal party,
             -- and the whole "why the mage" reasoning above has to be re-argued against a different hole.
