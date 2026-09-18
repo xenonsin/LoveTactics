@@ -36,9 +36,29 @@ end
 -- rungs below the floor is not "easily reachable", it is unreachable, and a case that rolls one and
 -- waits will simply never see it. Derived rather than typed: `Spoils.rankBand`'s centre works out to
 -- the floor number, so this is that arithmetic inverted.
+-- THE SHALLOWEST FLOOR LEVEL THAT CAN PAY RANK `r`, asked of the thing that decides it.
+--
+-- THIS USED TO RESTATE THE MAPPING -- `1 + (r - 1) * LEVEL_PER_FLOOR`, i.e. "rank r is reached on floor
+-- r" -- and it agreed with Spoils.rankBand only by the coincidence that Descent.FLOORS and
+-- Class.CLASS_LEVEL_CAP were both 8. rankBand does not step the ladder per floor; it spreads the whole
+-- ladder across the whole stack (`progress = floor / FLOORS`, `centre = ceil(progress * cap)`), which is
+-- deliberate and is what stops the back half of a run sharing one rank. The moment the stack went to
+-- fifteen against an eight-rung ladder the two readings diverged: rank 5 stopped being reachable on
+-- floor 5 and moved to floor 10, and every case using this helper started asking for a drop the floor it
+-- named could not legally pay.
+--
+-- So it asks rankBand instead of predicting it, and re-cutting either constant restretches this with it.
 local function floorLevelForRank(r)
     local Descent = require("models.descent")
-    return 1 + (math.max(1, r) - 1) * Descent.LEVEL_PER_FLOOR
+    r = math.max(1, r)
+    local deepest = 1
+    for floor = 1, Descent.FLOORS do
+        local level = 1 + (floor - 1) * Descent.LEVEL_PER_FLOOR
+        deepest = level
+        local _, hi = Spoils.rankBand({ floorLevel = level })
+        if (hi or 0) >= r then return level end
+    end
+    return deepest -- nothing reaches it; hand back the bottom so the caller fails on the claim, not here
 end
 
 -- Stamp a `drops` list onto a blueprint for the length of one case, and hand back the undo. The
@@ -674,9 +694,13 @@ return {
                 if #(s.sealed or {}) > 0 then hits = hits + 1 end
             end
             local rate = hits / 1200
-            -- SEALED_CHANCE.combat is 0.15; the pool can refuse, so this is an upper-bounded band.
-            assert(rate <= 0.15 + 0.04,
-                "an undroughted fight must not exceed its authored 15%, got " .. rate)
+            -- READ OFF THE CONSTANT rather than restated. This said 0.15 twice -- in the bound and in
+            -- the message -- and the rate is a dial that moves with the fight count and the trip length
+            -- (see Spoils.SEALED_CHANCE's own header). A spec that hardcodes the number it guards goes
+            -- red on the tuning pass instead of on the regression.
+            local authored = Spoils.SEALED_CHANCE.combat
+            assert(rate <= authored + 0.04, string.format(
+                "an undroughted fight must not exceed its authored %d%%, got %.3f", authored * 100, rate))
         end,
     },
     {
@@ -853,11 +877,18 @@ return {
             end
             assert(next(carried), "the fixture body must actually carry something priced")
 
+            -- `floor * 2` STOOD HERE and was Descent.LEVEL_PER_FLOOR spelled as a literal. It is 1 now
+            -- (the stack went to fifteen), so that expression named floor 2 when it meant floor 1 and a
+            -- level past the bottom when it meant the deep end.
+            local Descent = require("models.descent")
+            local function levelOf(floor)
+                return 1 + (math.max(1, floor) - 1) * Descent.LEVEL_PER_FLOOR
+            end
             local function share(floor)
                 local hits, n = 0, 0
                 for _ = 1, 1500 do
                     for _, got in ipairs(Spoils.roll({ enemyUnits = units, day = 20,
-                        floorLevel = floor * 2 }).loot) do
+                        floorLevel = levelOf(floor) }).loot) do
                         n = n + 1
                         if carried[got] then hits = hits + 1 end
                     end
@@ -866,7 +897,11 @@ return {
             end
 
             assert(share(1) > 0.4, "a floor at the body's own depth still loots it")
-            assert(share(8) < 0.1, "a floor eight rungs past a rusted sword should stop paying one")
+            -- The BOTTOM rather than a fixed floor eight: what this is asking is whether the deepest
+            -- ground in the game has stopped paying a bandit's rusted sword, and where that ground is
+            -- depends on how long the stack is.
+            assert(share(Descent.FLOORS) < 0.1,
+                "the bottom of the rift should stop paying a rusted sword")
         end,
     },
     {

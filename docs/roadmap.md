@@ -22,10 +22,11 @@ Regenerate with `& "E:\LOVE\lovec.exe" . test`, `. art-report` and `. audio-repo
 
 | | state |
 |---|---|
-| Test suite | 2961 passing, 0 failing |
+| Test suite | 3031 passing, 0 failing |
 | Items | 752 blueprints |
 | Characters | 154 blueprints |
-| Bounties | 7 authored openers + 14 derived rungs (`models/bounty.lua`) |
+| Bounties | 7 authored openers + 14 derived rungs (`models/bounty.lua`) — demoted to side work, card in the houses district |
+| Descent | 15 floors (7 circles x 2 + the Crown), ~53 fights end to end, walked across many trips |
 | Quests | 7 — one surviving opener per house; the other 87 went with the board (`bedc7774`, `806ee8e7`) |
 | Conversations | 67 |
 | Art | 66 of 1013 referenced assets missing (`. art-report`) |
@@ -70,7 +71,7 @@ the next move costs a data edit instead of a rewrite.
 the prologue to an ending, every companion has a join scene, and all seven generals speak.
 
 1. ~~**The finale has no dialogue and no ending.**~~ **Done.**
-2. ~~**Amana joins silently.**~~ **Done.**
+2. ~~**Xin joins silently.**~~ **Done.**
 3. ~~**Ira has no confront scene.**~~ **Done.**
 
 ## Phase 2 — audio, as a system before it is content
@@ -106,7 +107,7 @@ The bulk of the remaining authoring. 72 of 94 quests have no `intro`, `outro`, o
    their branching replies; only the ledger keys are gone.
 10. **Slot 5 unbuyables.** Each line's slot 5 owes a register-style reward item; none are written,
     which is why those quests set no `rewardItems`.
-11. **Slot 8 second relics** for Saber, Kaya, Ren, Gyeom and Clem. Rowan's and Amana's exist.
+11. **Slot 8 second relics** for Saber, Kaya, Ren, Gyeom and Clem. Rowan's and Xin's exist.
 12. **Stand-in enemy blueprints.** Where a slot wanted a body that does not exist — the Perennial's
     fighters, the anointed, the turning wardens, the Bank's chartered security — the quest stands in
     with a shipped blueprint and says so in its header. Each is a named, findable debt.
@@ -166,8 +167,8 @@ The bulk of the remaining authoring. 72 of 94 quests have no `intro`, `outro`, o
   prestige forward while clearing the completed-quest ledger, which puts all seventy line slots back on
   the board, re-locks the Gate, and (since standing is that ledger's count) drops every shelf back to
   its opening stock. Covered by `tests/ending_spec.lua`.
-- **Amana's plea (item 2).** `amana_joins` is the `outro` of her recruit quest — the scene the
-  Cathedral's ten-slot table specifies as *"bested, Amana stays your hand and her plea reveals the
+- **Xin's plea (item 2).** `xin_joins` is the `outro` of her recruit quest — the scene the
+  Cathedral's ten-slot table specifies as *"bested, Xin stays your hand and her plea reveals the
   truth; she joins."* It delivers the blooding: demon's blood in the rite, the failures hunted as
   "demons from the wild" (the work the player is being paid for), the dead written into the register
   as *ascended to the Light*. The constraint that shapes every line is what she **cannot** say — she

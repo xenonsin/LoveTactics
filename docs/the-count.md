@@ -1,5 +1,64 @@
 # The Count
 
+> ## PARKED, 2026-09-17
+>
+> **The tally does not move.** `models/descent.lua` carries `Descent.COUNT_PARKED = true`, and
+> `Descent.countBy` returns early on it — so every reader below still computes, every band and phrase
+> and ceiling is still correct, and nothing in the game changes the number. The meter is off the city's
+> plate and off the Gate; the landing's `the count goes 3 → 4` forecast is gone; the breach
+> (`Descent.isBreached`) can never fire, because nothing reaches `COUNT_MAX`.
+>
+> **Why.** This page prices exactly one event: coming back up with the floor unfinished. That was the
+> right thing to price when a descent *was* the campaign and climbing out was the one decision with an
+> alternative — the argument below is sound, and it is sound for that game.
+>
+> It is not that game. The maze is a place the company maps and re-enters (`Descent.keepFloor`,
+> `Descent.entryFloor`), a trip ends because somebody needs a bone set at the Ward, and **surfacing is
+> the rhythm rather than the retreat** — Wizardry's own loop, which `models/descent.lua` has cited by
+> name since it was written. A meter that charges a mark for the thing the design wants you doing
+> constantly teaches against itself, and it cannot be tuned out of that: at any price above zero it is
+> still a tax on the loop, and at zero it is not a meter.
+>
+> **What it is NOT.** It is not a cut. One boolean lifts it, every call site is still standing and still
+> reads as intent, and `tests/count_spec.lua` drives the whole mechanism with the flag down precisely so
+> that lifting it stays safe — plus one case that asserts the park is on. The rule this file set for the
+> piles applies to itself: a system whose callers were deleted too is one nobody can restore.
+>
+> **What outlived it.** The law in *What it is for* below, which is the durable half of this page and
+> the reason the Ward is free: **a cost on recovery is a tax on needing to recover.** That survives the
+> park and is what the pivot was checked against.
+>
+> ### What a wipe costs instead, since this page says it should cost nothing
+>
+> **The haul, and it is not gone — it is lying on the floor you died on.** `Descent.dropPack` puts this
+> expedition's finds (`Player.atRisk`'s diff against the company as it walked in) on the tile the party
+> fell on, in the kept board for that floor. Walk back down and pick it up.
+>
+> **This page's law is intact and the sentence below it is not.** The law is about *recovery* — "a cost
+> on recovery is a tax on needing to recover" — and this takes nothing that helps a company recover:
+> not gold, not gear they owned, not a wound, not a level, not their map. What it takes is the *unbanked
+> winnings of the failed trip*, which is the one thing a company can lose without ever ending up behind
+> where it started.
+>
+> **"Losing takes nothing a company can carry" is therefore withdrawn**, and it is withdrawn knowingly.
+> It was written when a wipe was the only failure state in a mode that also confiscated the haul, the
+> purse and three quarters of the forging stock — and against *that*, taking nothing was right. What it
+> could not anticipate is where the pivot left it: after `Descent.entryFloor` a routed company woke at
+> the Gate, whole, holding everything, and walked straight back in on the floor it had just died on.
+> **Dying was free, and the game's central question had one answer.**
+>
+> **The retrieval is what keeps it legal.** A confiscation is a price on failing; a pile lying on a
+> floor is a *problem*, and solving it is a trip with stakes of its own down ground whose fights have
+> re-armed (`Descent.rearmFloor`). It is also the first reason this game has ever had to re-enter a
+> floor it already cleared — which the persistent map made possible and nothing had yet used.
+>
+> **What is deliberately NOT restored** from the deleted pile system: no guard stands over the pile (the
+> walk back is the cost; a bespoke fight at the player's weakest moment is not), and nothing is stranded
+> on the player to be re-seated later — floor nine still exists, so the pile simply waits in floor
+> nine's own cell.
+>
+> **Everything below this line describes the tally as it behaves when the flag is down.**
+
 **The price on an expedition that ends with the floor unfinished.** One number on the descent run,
 `models/descent.lua`, drawn on the Rift's own plate in the city. It climbs when the company comes back
 up — by the stair or by dying — and falls when it goes deeper.
@@ -25,7 +84,7 @@ Every other event in the descent's loop is priced, and the table is now the whol
 > expensive line in the game, charged to the failure, in a document whose argument is that failures are
 > not where you put the price. All of it is deleted: `Player.loseHaul`, `Descent.dropPack` and the pile
 > system it fed, and the wound the rout inflicted (which the surface cleared for free a screen later
-> anyway). **Losing takes nothing a company can carry.**
+> anyway). ~~**Losing takes nothing a company can carry.**~~ *(Withdrawn 2026-09-17 — see the banner at the top of this page. A wipe leaves the trip's haul on the floor it happened on.)*
 
 ## Why a wipe still costs two
 

@@ -16,8 +16,25 @@
 --                 spawn through the same seam a relic's opening boon uses, so nothing in combat had to
 --                 learn what a wound is.
 --
--- IT LASTS AN EXPEDITION, AND THE TOWN IS WHERE IT ENDS (Wound.clear). That scope is the whole design
--- and it was arrived at the hard way, so it is worth writing down what it replaced.
+-- IT LASTS UNTIL SOMEBODY SETS IT, AND THE WARD IS THE ONLY ROOM THAT DOES.
+--
+-- THIS HEADER SAID THE OPPOSITE FOR A WHILE and the file argued against the system it implements, which
+-- is worth flagging rather than quietly correcting: it read "IT LASTS AN EXPEDITION, AND THE TOWN IS
+-- WHERE IT ENDS (Wound.clear)", and Wound.clear has not stood in states/hub.lua's enter or in
+-- states/gate.lua for some time -- both sites survive only as comments saying it was taken out. A
+-- wound now outlives the trip that dealt it. Everything downstream reads this file to learn what a
+-- wound is, so a stale sentence here is one that gets believed.
+--
+-- WHERE IT ACTUALLY ENDS is data/buildings/the_ward.lua, and in exactly two ways: REST, free and always
+-- open, which lays the body up for Wound.REST_DESCENTS trips and is paid in who walks down without
+-- them; or TREAT, Wound.TREAT_COST in gold, which sets the bone before you leave the room. Gold buys
+-- SPEED and never recovery -- the distinction docs/the-count.md's law turns on.
+--
+-- WHICH MAKES IT DARKEST DUNGEON'S METER rather than a within-dive one: the cost of a bad trip is a
+-- body on the bench and a company that goes down thinner, never a bill. That is the shape the game is
+-- built to now.
+--
+-- The scope below was arrived at the hard way, so it is worth writing down what it replaced.
 --
 -- A wound used to be PERMANENT until it was paid off -- first at a surgeon's counter for gold, then at
 -- an Inn, where a body took a bed for a day a wound and was out of the company while it lay in one.
@@ -67,9 +84,18 @@ local Wound = {}
 
 -- What one wound reserves, as a share of the body's health pool. Three wounds leave a body at 55% of
 -- itself and the fourth changes nothing (see FLOOR), which is deliberate: the meter is meant to make
--- the player weigh going deeper, never to make the company unplayable. A body that cannot fight is a
--- body the player benches, and a descent has no bench -- so a wound that made somebody unfieldable
--- would take a quarter of the company off the board as surely as killing them.
+-- the player weigh going deeper, never to make the company unplayable.
+--
+-- "A DESCENT HAS NO BENCH" STOOD HERE and is no longer true, which changes what this number is for. It
+-- was written when the company was the four who walked down; the roster is unbounded (models/player.lua)
+-- and fills one house companion per descent (Descent.dealCompanion), so a company several trips in is
+-- ten bodies deep against four seats -- and Descent.party already skips anybody laid up at the Ward and
+-- takes the next one instead. The bench exists and is walked onto automatically.
+--
+-- So the floor is no longer the thing standing between a wound and an unplayable company -- the bench
+-- is. It stays where it is anyway, because it governs the body you choose to field ANYWAY, which is the
+-- interesting case: a wounded veteran who still out-hits a fresh recruit is the decision this meter is
+-- for, and that only reads if the wounded body remains worth fielding.
 Wound.PER_WOUND = 0.15
 
 -- The most a body can be reduced to, however many times it has fallen. Below about half, a member is

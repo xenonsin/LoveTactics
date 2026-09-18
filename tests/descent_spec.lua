@@ -495,12 +495,16 @@ return {
             "the circles cover a stratum each")
         assert(Descent.FLOORS == Descent.CIRCLE_FLOORS + 1,
             "a descent is the seven circles' floors and the bottom under them")
-        -- EIGHT AT ONE FLOOR PER CIRCLE. The band was 10-17, which was Wizardry's, and it was the right
-        -- band for a descent you could bank progress in and walk across many sittings. A run that resets
-        -- when you leave it has to be walkable whole, so the stack is one circle per floor plus the
-        -- Crown; what the range guards now is a later retune quietly restoring the marathon at one end
-        -- or hollowing the mode into a boss rush at the other.
-        assert(Descent.FLOORS >= 6 and Descent.FLOORS <= 12,
+        -- FIFTEEN AT TWO FLOORS PER CIRCLE, AND THE BAND IS BACK WHERE IT STARTED. It read 10-17 --
+        -- Wizardry's, and "the right band for a descent you could bank progress in and walk across many
+        -- sittings" -- then narrowed to 6-12 when a run reset on leaving and had to be walkable whole.
+        -- The map book outlives the trip again (Descent.keepFloor) and the stair you opened stays open
+        -- (Descent.entryFloor), so the condition that band was written for is the condition again.
+        --
+        -- What the range guards is unchanged: a later retune quietly restoring the marathon at one end,
+        -- or hollowing the mode into a boss rush at the other. Paired with the LEVEL_PER_FLOOR bound
+        -- below, which is what actually stops a longer stack walking off the growth curves.
+        assert(Descent.FLOORS >= 10 and Descent.FLOORS <= 17,
             "a descent is " .. Descent.FLOORS .. " floors, outside the depth this mode is built for")
         for floor = 1, Descent.CIRCLE_FLOORS do
             assert(not Descent.isBottom(floor), "floor " .. floor .. " is a circle, not the bottom")

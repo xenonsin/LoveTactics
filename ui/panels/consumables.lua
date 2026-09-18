@@ -97,7 +97,15 @@ function Consumables.new(opts)
     self.smallFont = Theme.body(13)
     self.tinyFont = Theme.body(11)
 
-    self.members = (self.player and self.player.roster) or {}
+    -- WHO IS DOWN THERE. `opts.party` is the expedition (models/descent.lua's Descent.party) and it is
+    -- both the list of bodies who may drink and the set of grids that may be drunk from -- a member left
+    -- in town is not standing here and cannot hand a flask forward. Absent, it is the whole roster,
+    -- which is what the hub means.
+    self.party = opts.party
+    -- False leaves the town's shelf in town (see Player.partyRestoratives). Nil means no opinion, and
+    -- no opinion reads as the old behaviour.
+    self.stash = opts.stash
+    self.members = self.party or (self.player and self.player.roster) or {}
     self:layout()
 
     self.target = 1        -- index into self.members: the highlighted member is who drinks
@@ -152,7 +160,7 @@ end
 -- (Re)gather the party's restoratives and clamp the item cursor to the new length. Called on open and
 -- after every use, since draining a stash stack removes it from the list.
 function Consumables:refresh()
-    self.entries = Player.partyRestoratives(self.player)
+    self.entries = Player.partyRestoratives(self.player, { party = self.party, stash = self.stash })
     if self.itemCursor > #self.entries then self.itemCursor = math.max(1, #self.entries) end
     if #self.entries == 0 then self.focus = "members" end
     self:clampScroll()

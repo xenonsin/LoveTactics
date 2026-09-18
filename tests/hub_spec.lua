@@ -341,7 +341,11 @@ return {
             local Vendor = require("models.vendor")
             local houses = 0
             for id, def in pairs(Building.defs) do
-                if (def.district or "city") == "houses" then
+                -- A card on this board is a HOUSE unless it declares itself otherwise. The Bounty Board
+                -- stands here too -- it is the sheet the seven post their work to, not a shopfront --
+                -- and it carries `noticeBoard` precisely so this check keeps its teeth: a real house
+                -- that forgot its vendor still fails, because it cannot claim the exemption by omission.
+                if (def.district or "city") == "houses" and not def.noticeBoard then
                     houses = houses + 1
                     local vdef = def.vendor and Vendor.defs[def.vendor]
                     assert(vdef, id .. " is a house with no vendor blueprint")

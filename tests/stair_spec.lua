@@ -69,12 +69,16 @@ return {
     {
         name = "a company can walk back up a floor, and comes out on the stair it came down by",
         fn = function()
-            local run = Descent.new(Player.new(), 909)
+            -- THE MAP BOOK IS THE PLAYER'S, not the run's (Descent.keepFloor), so the company has to
+            -- be held here -- a run alone no longer knows which floors it has walked, which is the
+            -- whole of what makes the maze outlive the trip.
+            local p = Player.new()
+            local run = Descent.new(p, 909)
             run.floor = 3
             -- The floor above, as the company left it: a board whose end is the stair they opened.
-            Descent.keepFloor(run, 2, { objective = { x = 7, y = 5 }, cols = 10, rows = 10, cells = {} })
+            Descent.keepFloor(p, 2, { objective = { x = 7, y = 5 }, cols = 10, rows = 10, cells = {} })
 
-            local to = Descent.retreat(run)
+            local to = Descent.retreat(run, p)
             assert(to == 2, "the way up goes up ONE floor, not to the surface")
             assert(Descent.depth(run) == 2, "and the run is standing on it")
             assert(run.arriveAt and run.arriveAt.x == 7 and run.arriveAt.y == 5,
@@ -83,21 +87,28 @@ return {
         end,
     },
     {
-        name = "walking up and back down is net zero on the tally",
+        name = "walking a stair up costs nothing, because surfacing is the loop",
         fn = function()
-            -- Descending prunes the rift by one (Descent.advance). If coming back up were free, a
-            -- company could walk a stair up and down between two floors and drive the count to zero for
-            -- the price of the walking -- which would make the tally a purse rather than a statement
-            -- about the state of the rift, the exact thing Descent.countBy's own header refuses.
+            -- THIS CASE USED TO ASSERT THE OPPOSITE, and the reversal is the design rather than a
+            -- loosened test. It read "walking up and back down is net zero on the tally": going up cost
+            -- one mark and going down paid one back, so a shuttle between two floors could not farm the
+            -- number down. Sound, while the tally was live.
+            --
+            -- The tally is parked (Descent.COUNT_PARKED, docs/the-count.md). In a dungeon the company
+            -- maps and re-enters, walking back up is the ordinary thing to do -- to the Ward, to the
+            -- Touchstone, to a shelf two floors above -- and a meter that charged for it priced the loop
+            -- the design is built on. So the round trip is free in both directions, and what stops a
+            -- shuttle being worth anything is that a re-walked floor pays combat only: its caches, its
+            -- recruit and its secrets stay spent (Descent.rearmFloor).
             local p = Player.new()
             local run = Descent.new(p, 909)
             run.floor, p.count = 3, 10
-            Descent.keepFloor(run, 2, { objective = { x = 1, y = 1 } })
+            Descent.keepFloor(p, 2, { objective = { x = 1, y = 1 } })
 
             Descent.retreat(run, p)
-            assert(Descent.count(p) == 11, "going up costs one, as going down pays one")
+            assert(Descent.count(p) == 10, "going up is free")
             Descent.advance(run, p)
-            assert(Descent.count(p) == 10, "and a round trip is worth exactly nothing")
+            assert(Descent.count(p) == 10, "and so is going back down")
             assert(Descent.depth(run) == 3, "back where it started")
         end,
     },

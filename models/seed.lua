@@ -104,11 +104,22 @@ function Seed.lap(player)
     return Seed.mix(base, lap)
 end
 
--- THE NEXT DESCENT'S SEED, and the counter that keeps two runs in one lap from being one run twice.
+-- THE DESCENT'S SEED, WHICH IS THE LAP'S -- one rift per playthrough, laid out once.
 --
--- Called by Descent.new when nobody pinned a seed. It ADVANCES the count, which makes it the one
--- function here that writes: a run is a thing that happens, and "which run is this" cannot be derived
--- from anything else the player owns -- the run itself is thrown away when it ends.
+-- IT USED TO FOLD IN WHICH DESCENT THIS WAS, and that single fold was the last roguelike thing in this
+-- mode. `Seed.mix(Seed.lap(player), player.runsStarted)` gave every trip its own rift: walk out of the
+-- stair on floor three, walk back in, and floor three was a different maze. That is the correct shape
+-- for a run you are meant to start over and the wrong one for a place you are meant to learn -- and a
+-- map book that outlives the trip (Descent.keepFloor) would have been a book of floors that no longer
+-- existed.
+--
+-- So a floor's ground now reproduces from (lap seed, depth) alone, which is the rule the generator was
+-- always written to (see models/descent.lua's `hash`); what changed is that the first half stopped
+-- moving. Two saves on one seed walk the same rift, and now so do two trips on one save.
+--
+-- STILL ADVANCES `runsStarted`, because it is read elsewhere as "how many descents this company has
+-- begun" -- it simply no longer reaches the ground. Keeping the count honest costs nothing and a
+-- silently frozen counter is the kind of thing another pass trips over.
 --
 -- Safe to call exactly where it is called. `Descent.new(player)` is only reached when there is no run to
 -- resume (Lua's `or` is lazy, so `run or Descent.new(player)` does not mint one it then discards), so
@@ -116,7 +127,7 @@ end
 function Seed.run(player)
     if not player then return Seed.roll() end
     player.runsStarted = (player.runsStarted or 0) + 1
-    return Seed.mix(Seed.lap(player), player.runsStarted)
+    return Seed.lap(player)
 end
 
 -- ---------------------------------------------------------------------------

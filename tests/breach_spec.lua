@@ -51,9 +51,27 @@ return {
 
             -- THE ONE THING THAT MAKES THIS A STATE AND NOT A GAME OVER: descending pays it down, so a
             -- company that meets the breach and loses can always fight its way back under the ceiling.
+            --
+            -- DRIVEN WITH THE PARK LIFTED (Descent.COUNT_PARKED), as tests/count_spec.lua does and for
+            -- the same reason: nothing moves the tally in the live game, so nothing can reach this
+            -- ceiling -- but the machinery behind the flag has to stay correct or the park is a
+            -- deletion. The live claim is the last assertion in this case.
+            local was = Descent.COUNT_PARKED
+            Descent.COUNT_PARKED = false
             local p, r = company(Descent.COUNT_MAX), run(Descent.COUNT_MAX)
-            Descent.advance(r, p)
-            assert(not Descent.isBreached(p), "reaching a floor prunes, and the stair opens again")
+            local ok, err = pcall(function()
+                Descent.advance(r, p)
+                assert(not Descent.isBreached(p), "reaching a floor prunes, and the stair opens again")
+            end)
+            Descent.COUNT_PARKED = was
+            if not ok then error(err, 0) end
+
+            -- AND PARKED, WHICH IS THE GAME BEING PLAYED: a fresh company cannot reach the ceiling by
+            -- doing the thing the ceiling was built to punish, so the breach never fires.
+            local live = company(0)
+            for _ = 1, Descent.COUNT_MAX + 2 do Descent.climbOut(live) end
+            assert(not Descent.isBreached(live),
+                "parked, no amount of surfacing breaches -- see docs/the-count.md")
         end,
     },
     {

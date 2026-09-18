@@ -1,5 +1,30 @@
 # Bounties
 
+> ## DEMOTED, 2026-09-17 — this is side work, not the campaign
+>
+> **The board is no longer the premise and no longer stands on the plaza.** The campaign is the descent:
+> one persistent dungeon the company maps, re-enters at the stair it opened, and comes home from to the
+> Ward and the Touchstone. See [the-count.md](the-count.md) for what that pivot parked, and
+> `models/descent.lua`.
+>
+> **Where the card is now.** `data/buildings/bounty_board.lua` sits in the **houses district**, on a row
+> of its own under the seven shopfronts, gated on `unlockAnyHouse`. Two reasons, and the second is the
+> honest one:
+>
+> - It is the sheet the seven houses pin their work to, so it belongs with them. A player looking for a
+>   house's errand is already on that screen.
+> - **The city plaza is full.** Nine slots in `Building.GRID.city`, nine cards; the Ward took the last
+>   free one in `dc7be9df`. The alternative was two plates drawing over each other, which is a bug this
+>   repo has already shipped once.
+>
+> **What it went through to get here.** It was the campaign's premise, then deleted outright in
+> `002d1f38` when the descent came back — card gone, `models/bounty.lua` and the seven ladders left on
+> disk. This restores the card and nothing else; the model never moved.
+>
+> **What is still true below.** Everything about what a posting *is* — the ground, the tier, the boss,
+> the piece — and both ledgers, and the standing offer, and sustain. The only claim that has been
+> withdrawn is the one in the next line: a bounty is now **a** thing to go and get, not **the** thing.
+
 The goal, stated once: **you should always be going somewhere for something specific.**
 
 A **bounty** is a posting of work the company holds and spends. It names four things and nothing else:
@@ -155,18 +180,20 @@ posting**, never fewer than **four grounds open**. The season repeats rather tha
 
 ## Known debt
 
-- **The prologue no longer describes the game.** Act 0 ends with Rowan sending the player to "The
-  Rift" — a building that is deleted — and explaining the world as unpruned deep floors, which is the
-  count's fiction and the count is parked. The hub's bubble on the far side of that scene already says
-  "the Bounty Board". See [roadmap.md](roadmap.md)'s Phase 0; it is the first thing a new player sees
-  and the third time this seam has gone stale.
+- **The prologue half-describes the game, and the half that is wrong is new.** This used to read that
+  Act 0 points at "The Rift — a building that is deleted". The Rift is the front door again, so that
+  sentence fixed itself. What is stale now is the *fiction*: Rowan explains the world as deep floors
+  left unpruned, which is the count's premise, and the count is parked
+  ([the-count.md](the-count.md)). A rift you map and re-enter wants a different sentence from a rift
+  somebody is failing to prune. See [roadmap.md](roadmap.md)'s Phase 0.
 
-- ~~The rift still stands beside the board.~~ **Done.** The Rift card is deleted, the plaza is back to
-  two doors on a fresh save, and `states/gate.lua` is reachable from the title screen's debug column.
+- ~~The rift still stands beside the board.~~ **Reversed.** This recorded the pass that deleted the
+  Rift card; the Rift is the city's front door again and the board is two doors in, with the seven
+  houses. The mechanism that entry describes is still live and still load-bearing, so it is kept:
   `unlockDepth` became `unlockExpeditions` and reads `Player.expeditionsOut` — bounties finished or
-  floors descended, whichever is larger — so a save made while the rift was the game still opens the
-  city it had earned. `models/descent.lua` is parked rather than cut: `Descent.SINS` and
-  `Descent.DROPS` are what the seven ladders are derived from.
+  floors descended, whichever is larger — so a save made under either premise still opens the city it
+  had earned. That field is now doing its job for the third premise in a row, which is the argument for
+  having written it that way.
 - **The derived rungs carry no description.** The board draws the block only when there is one, so they
   read as complete — house, ground, level, body, piece — but fourteen postings want a line each from the
   author. They are deliberately unwritten rather than generated.

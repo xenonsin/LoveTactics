@@ -474,6 +474,16 @@ function Player.new()
         -- prologue's avatar and her sworn knight walk into the city and down the stair, so the run is
         -- something this player owns like its gold and its roster.
         descentRun = nil,
+        -- THE MAP BOOK: every floor this company has walked, keyed by depth as a string, holding the
+        -- board whole -- its fog, its spent caches, its found secret doors, its standing stair
+        -- (models/descent.lua's Descent.keepFloor, which carries the full argument).
+        --
+        -- ON THE PLAYER BECAUSE THE MAZE IS A PLACE. It hung on the run until now, which meant the map
+        -- survived every climb-out within a trip and was discarded the instant the trip ended -- so a
+        -- company that had drawn nine floors walked back down into nine floors it had never seen. That
+        -- was the last roguelike thing about this mode. Here it outlives the run exactly as `deepest`
+        -- and the tally do, and for the same reason: it is a fact about the company, not about a trip.
+        floors = {},
         -- ISELLE'S TALLY: how far the rift has gone unpruned (models/descent.lua's Descent.count). It
         -- climbs when the company comes back up early and falls when it goes deeper or seals a circle,
         -- and at Descent.COUNT_MAX the stair stops being an exit.
@@ -919,7 +929,15 @@ end
 -- flask sits in (nil for the stash) so an emptied stash stack can be dropped from the list. Order is
 -- roster order then stash, each in grid/list order: stable, so the list doesn't reshuffle under the
 -- cursor between opens. A depleted stack (quantity 0) is skipped, as combat's out-of-stock gate does.
-function Player.partyRestoratives(player)
+--
+-- `opts` NARROWS WHAT THE COMPANY CAN REACH, and is what makes an expedition a provisioned thing:
+--
+--   opts.party   the bodies whose grids count, instead of the whole roster
+--   opts.stash   false to leave the town's shelf in town
+--
+-- Both default to the old behaviour, so a caller with no opinion -- the hub, every spec -- sees exactly
+-- what it always saw. See the body for why each one is a leak underground.
+function Player.partyRestoratives(player, opts)
     local Combat = require("models.combat")
     local out = {}
     local function consider(item, where, char)
@@ -931,10 +949,22 @@ function Player.partyRestoratives(player)
             out[#out + 1] = { item = item, where = where, char = char }
         end
     end
-    for _, char in ipairs(player and player.roster or {}) do
+    -- WHO IS REACHABLE, and underground it is the four who walked down rather than the whole roster.
+    -- `opts.party` is the expedition (models/descent.lua's Descent.party); absent, it is everybody,
+    -- which is the honest answer in town where the company is standing together.
+    local bodies = (opts and opts.party) or (player and player.roster) or {}
+    for _, char in ipairs(bodies) do
         for _, item in ipairs(Character.eachItem(char)) do consider(item, "grid", char) end
     end
-    for _, item in ipairs(player and player.stash or {}) do consider(item, "stash") end
+    -- THE STASH IS IN TOWN AND STAYS THERE when `opts.stash` is false. That is the whole of what makes a
+    -- trip provisioned rather than merely survived: a company underground can reach what it chose to
+    -- carry, and the shelf it left behind is a walk up the stair away.
+    --
+    -- Default true, so the hub, the specs and every caller that has no opinion behave exactly as before
+    -- -- the restriction is something the descent asks for, not something imposed on everybody.
+    if not (opts and opts.stash == false) then
+        for _, item in ipairs(player and player.stash or {}) do consider(item, "stash") end
+    end
     return out
 end
 

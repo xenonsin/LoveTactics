@@ -19,7 +19,7 @@ local Player = require("models.player")
 local Building = require("models.building")
 local CountMeter = require("ui.count_meter") -- for rowWidth only; .new() would want love.graphics
 
-return {
+local cases = {
     { name = "a fresh company has left nothing behind it", fn = function()
         local p = Player.new()
         assert(Descent.count(p) == 0, "a company that has never turned back owes nothing")
@@ -295,3 +295,47 @@ return {
             " against a card of " .. card.w)
     end },
 }
+
+-- ---------------------------------------------------------------------------
+-- The park
+-- ---------------------------------------------------------------------------
+
+-- THE TALLY IS PARKED (models/descent.lua's Descent.COUNT_PARKED) and every case above drives the
+-- MACHINERY rather than the live game. That is deliberate: a park is only a park if the thing behind the
+-- flag still works, and a suite that deleted these cases along with the behaviour would leave nobody able
+-- to say whether lifting it was safe. So each one runs with the flag down and puts it back exactly as it
+-- found it -- including on a failure, or one bad assert would leave the tally live for every spec after
+-- it in the same process.
+--
+-- WHAT THE PARK ACTUALLY IS lives in the case below, and it is the one that describes the game being
+-- played.
+for _, case in ipairs(cases) do
+    local inner = case.fn
+    case.fn = function()
+        local was = Descent.COUNT_PARKED
+        Descent.COUNT_PARKED = false
+        local ok, err = pcall(inner)
+        Descent.COUNT_PARKED = was
+        if not ok then error(err, 0) end
+    end
+end
+
+cases[#cases + 1] = { name = "parked, the tally does not move for anything the loop does", fn = function()
+    assert(Descent.COUNT_PARKED, "the count is parked; if this is lifted, lift docs/the-count.md with it")
+
+    local p = Player.new()
+    local run = Descent.new(p, 1234)
+
+    -- The three events that priced it, in the order a bad trip meets them.
+    Descent.climbOut(p)
+    assert(Descent.count(p) == 0, "climbing out is free -- it is the loop, not the retreat")
+    Descent.countBy(p, Descent.COUNT_WIPE)
+    assert(Descent.count(p) == 0, "and a wipe is free, which is the law the Ward is built on")
+    Descent.retreat(run, p)
+    assert(Descent.count(p) == 0, "and so is walking a stair back up")
+
+    -- The breach was the tally's teeth. Nothing reaches the ceiling, so it can never close the stair.
+    assert(not Descent.isBreached(p), "a parked tally can never breach")
+end }
+
+return cases

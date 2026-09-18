@@ -101,7 +101,9 @@ function Ward:draw()
 
     love.graphics.setFont(self.titleFont)
     Theme.set(Theme.accentAmber)
-    love.graphics.printf("The Ward", self.boxX, self.boxY + 26, BOX_W, "center")
+    -- The card in the city says "The Inn" and so does this (data/buildings/the_ward.lua explains why
+    -- the FILE is still the_ward.lua). One name, two surfaces, and they have to agree.
+    love.graphics.printf("The Inn", self.boxX, self.boxY + 26, BOX_W, "center")
 
     -- The purse, on the header, because one of the two prices is in gold and the other is not -- so the
     -- number that decides which rows exist has to be readable without closing the panel.

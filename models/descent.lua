@@ -418,25 +418,35 @@ end
 --
 -- Two rather than three on purpose: a floor is a real sitting, and twenty-two of them is a mode nobody
 -- finishes. Fifteen is long enough that the way up is a decision and short enough to be walked.
--- ONE, AND THE STACK IS EIGHT FLOORS: seven circles and the Crown.
 --
--- IT WAS TWO, AND THE ARGUMENT FOR TWO IS THE ONE THIS REVERSES. Fifteen floors was written for a
--- descent you could BANK PROGRESS IN -- the run outlived every climb-out, the map book kept what you
--- had walked, and the bottom was somewhere you got to eventually across many sittings. A descent that
--- RESETS when you walk out of it cannot ask that: the run is the roguelike now, the whole stack has to
--- be walkable in one, and a hundred and thirteen fights is not a run, it is a campaign.
+-- IT WENT TO ONE AND HAS COME BACK, AND THE REVERSAL REVERSED ITSELF RATHER THAN BEING RE-ARGUED.
+-- Eight floors was written for a descent that RESETS when you walk out of it -- "the run is the
+-- roguelike now, the whole stack has to be walkable in one, and a hundred and thirteen fights is not a
+-- run, it is a campaign." Every clause of that is about a mode that no longer exists. What the argument
+-- for fifteen actually asked for, in its own words, was
 --
--- WHAT IT COSTS, stated rather than smoothed over: the lieutenant loses her stratum. `minor.lead` was
--- the body holding the stairs above a general, so that the thing which barred your way two floors ago
--- was standing at her shoulder when you reached her -- and a player read their own progress off it
--- without being told. She is a GATE on the general's own floor now (Descent.SINS' `gate`), which keeps
--- the payoff and compresses the distance: you beat her, the ward breaks, and she is in the honour guard
--- behind her mistress ten minutes later instead of two floors later.
+--     a descent you could BANK PROGRESS IN -- the run outlived every climb-out, the map book kept what
+--     you had walked, and the bottom was somewhere you got to eventually across many sittings
 --
--- AND THE FIGHT COUNT MOVED WITH IT (FLOOR_FIGHTS below). Eight floors at the old six-to-nine is sixty
--- fights, which undershoots as badly as fifteen floors overshot; the floors got bigger instead, which
--- is what keeps a run that ends on floor two from feeling like a run that ended before it started.
-Descent.FLOORS_PER_CIRCLE = 1
+-- and that is now a description of this file: Descent.keepFloor hangs the map book on the player, the
+-- stair you opened is still open when you come back (Descent.entryFloor), and a trip ends at the Ward
+-- rather than at the bottom. So the conditions came back and the number came back with them; nothing
+-- new had to be claimed.
+--
+-- AND THE LIEUTENANT GETS HER STRATUM BACK, which is what going to one cost and what this restores.
+-- `minor.lead` holds the stairs ABOVE a general again, so the thing that barred your way a floor ago is
+-- standing at her shoulder when you finally reach her, and a player reads their own progress off it
+-- without being told. All seven bands and their drop lists survived the park untouched, so this is the
+-- constant and nothing else. (`gate` stays on the general's own floor: it is an independent mechanism
+-- -- carry, worth, toll -- and it reads correctly at either depth.)
+--
+-- THE FIGHT COUNT DOES NOT MOVE WITH IT THIS TIME, and that is the arithmetic worth stating. At the
+-- shipped 3-and-4 (FLOOR_FIGHTS below), fifteen floors bill 7x3 + 8x4 = 53 fights, against 28 for
+-- eight. The old objection to a big stack was that "there is no hub anywhere in the stack, so whatever
+-- number stands here is spent fifteen times over" -- and there is a hub in the middle of it now. 53 is
+-- not one sitting and is not meant to be; it is a place walked over many, which is the premise.
+-- Reproduce it with `. board-report 60 descent` rather than trusting this paragraph.
+Descent.FLOORS_PER_CIRCLE = 2
 
 -- HOW MANY FIGHTS A FLOOR HOLDS, and it counts EVERY fight -- the stair, the errands, the openers and
 -- the rolled stops between them. That is the whole of what changed here, and it is worth saying why the
@@ -1144,12 +1154,17 @@ end
 -- point of the 13 that Quest.SLOT_FLOOR used to hand the deepest quest of a line. More floors, the same
 -- difficulty envelope, a gentler climb through it -- which is also the right shape for a mode whose
 -- company now persists between expeditions rather than being minted at level 1 each time.
--- TWO, WHICH IS A REVERT RATHER THAN A NEW FIGURE. The note above is the whole derivation and it was
--- written the other way round: at two per floor an EIGHT-floor descent topped out at level 15, which is
--- what the growth tables and the shelf were balanced against, and it went to one only because the stack
--- grew to fifteen and the same slope would have reached 29. The stack is eight again
--- (FLOORS_PER_CIRCLE), so the ceiling lands back where every curve in the game expects it.
-Descent.LEVEL_PER_FLOOR = 2
+-- BACK TO ONE, WITH THE STACK. This went to two when the descent was cut to eight floors -- "a revert
+-- rather than a new figure", and correct for eight -- and the stack is fifteen again
+-- (FLOORS_PER_CIRCLE), so the paragraph above applies word for word once more: at two per floor the
+-- bottom reads 29 and walks off the end of every growth curve and shelf tier in the game.
+--
+-- The pair of them move TOGETHER and neither is meaningful alone. If FLOORS_PER_CIRCLE ever moves
+-- again, re-derive this from the ceiling rather than from this comment: the bottom floor is
+-- 1 + (FLOORS - 1) * LEVEL_PER_FLOOR and it must land at or under 16, which is what the growth tables
+-- and the shelf were balanced against. tests/descent_spec.lua asserts exactly that bound, which is why
+-- this could not have been forgotten -- and was not.
+Descent.LEVEL_PER_FLOOR = 1
 
 -- WHAT THE WORLD FIGHTS AT ON THE FIRST STAIR, and the number that fixes a floor nobody had to play.
 --
@@ -1330,12 +1345,26 @@ end
 -- is a Save.snapshot and this module deliberately knows nothing about the save format. What matters is
 -- that it lives on the RUN rather than on the floor: the whole descent is one expedition, so the
 -- snapshot is taken once at the top and every floor after it shares the same way back.
-function Descent.new(player, seed)
+-- `startFloor` is the stair the company walks in by, and it is optional: nil means the mouth. Only ever
+-- a floor Descent.entryFloor has offered -- clamped here as well, because a caller that hands in a floor
+-- this company has never mapped would drop them onto ground with no map and no way back up through it.
+function Descent.new(player, seed, startFloor)
     -- Lifted out of the table below because two fields are dealt FROM it (see `seed` and `companion`),
     -- and a constructor cannot read its own keys while it is being built.
     local runSeed = seed or (player and require("models.seed").run(player)) or (os.time() % 1000000)
+    -- THE MAZE IS THE LAP'S AND DOES NOT MOVE; WHO YOU MEET IN IT STILL TURNS OVER PER TRIP.
+    --
+    -- Seed.run stopped folding in which descent this is, so floor three is the same floor three every
+    -- time (that is the point). Everything dealt off `runSeed` inherits that -- which is right for the
+    -- ground, the circle order and the stair guards, and WRONG for the companion: dealt off a seed that
+    -- no longer moves, the same house's body would be waiting on the same floor of every descent
+    -- forever. Wizardry's own split again -- the maze is permanent, what is standing in it is not.
+    --
+    -- Folded with `runsStarted`, which Seed.run still advances for exactly this kind of use. An explicit
+    -- `seed` still pins the whole thing, so a spec that fixes a run fixes its companion too.
+    local dealSeed = require("models.seed").mix(runSeed, (player and player.runsStarted) or 0)
     return {
-        floor = 1,
+        floor = startFloor and math.max(1, math.min(Descent.entryFloor(player), startFloor)) or 1,
         -- OFF THE SAVE'S OWN SEED, not off the clock (models/seed.lua). It was `os.time()`, which is a
         -- seed nobody can say: a bug report about a floor could not be replayed, a run could not be
         -- handed to somebody else, and the number the whole layout hangs from was different every time
@@ -1364,7 +1393,7 @@ function Descent.new(player, seed)
         -- WHO IS STANDING DOWN THERE, AND ON WHICH FLOOR, or nil for a descent that offers nobody. One
         -- per run, dealt here for the reason `shuffled` is dealt here: the seed cannot know which
         -- counters this company has walked into. See Descent.dealCompanion.
-        companion = Descent.dealCompanion(runSeed, player),
+        companion = Descent.dealCompanion(dealSeed, player),
         -- Taken at the first floor and then carried by reference for the rest of the descent. See above.
         entry = nil,
         -- Quest ids banked but not yet paid out. Nothing writes this until authored floors land; it is
@@ -1395,17 +1424,10 @@ function Descent.new(player, seed)
         -- instances -- a live one can hold loaded images and Save.encode raises on userdata, so a pack
         -- kept as instances would take the save down the first time a company wiped.
         drops = {},
-        -- THE FLOORS THIS COMPANY HAS WALKED, keyed by depth, as Overworld:snapshot data.
+        -- (THE FLOORS STOOD HERE AND HAVE MOVED TO THE PLAYER -- see `player.floors` in models/player.lua
+        -- and Descent.keepFloor below. A map that died with the run was the last roguelike thing about
+        -- this mode; the maze is a place now and a place outlives the trip that walked it.)
         --
-        -- A Wizardry floor is the SAME maze every time you go down to it -- that is the entire reason
-        -- mapping one is worth doing, and it is why a secret door found on the third trip is a thing you
-        -- found rather than a thing that was rolled. A board cannot be rebuilt from its seed here
-        -- (Overworld:snapshot says why: the stops are drawn in `pairs` order, so the same seed reshuffles
-        -- them), so keeping the floor means literally keeping it.
-        --
-        -- Costs a save file that grows by a board per floor visited. Accepted: a board is plain data and
-        -- fifteen of them is a fraction of what a company's own gear costs to store.
-        floors = {},
         -- Which circles this run has cleared, as { [vendorId] = floors cleared }. It used to be standing
         -- OWED to the houses, banked into the campaign player on the way out; there is no campaign player
         -- to bank into now, so it is simply the run's own record of what it beat and the terminal card
@@ -1631,10 +1653,30 @@ end
 -- Put this floor's board away, exactly as it stands -- fog lifted, stops cleared, secrets found. Called
 -- whenever the party leaves a floor by any route (the stair down, the way up), so the next visit gets
 -- the map they made rather than a fresh roll.
-function Descent.keepFloor(run, floor, snapshot)
-    if not (run and snapshot) then return end
-    run.floors = run.floors or {}
-    run.floors[tostring(floor or 1)] = snapshot
+-- KEEP THE BOARD THIS COMPANY JUST WALKED, keyed by depth, as Overworld:snapshot data.
+--
+-- A Wizardry floor is the SAME maze every time you go down to it -- that is the entire reason mapping
+-- one is worth doing, and it is why a secret door found on the third trip is a thing you FOUND rather
+-- than a thing that was rolled. A board cannot be rebuilt from its seed here (Overworld:snapshot says
+-- why: the stops are drawn in `pairs` order, so the same seed reshuffles them), so keeping a floor
+-- means literally keeping it.
+--
+-- IT IS THE PLAYER'S, NOT THE RUN'S, and that is the whole of what makes this dungeon a place. The
+-- store hung on the run until now, so the map book survived every climb-out WITHIN a trip and was
+-- thrown away the moment the trip ended -- `game.player.descentRun = nil`, at five sites. A company
+-- that had drawn nine floors walked back into nine strangers. Moving the store one level up is the
+-- entire edit: everything that reads it -- the kept fog, the spent caches, the found secret doors, the
+-- stair left standing open -- already worked, and simply could not reach across a trip.
+--
+-- Descent.count made exactly this run -> player move before it, for the same reason and with the same
+-- save read-forward (models/save.lua), so this is a road that has been walked.
+--
+-- Costs a save file that grows by a board per floor visited. Accepted: a board is plain data and
+-- fifteen of them is a fraction of what a company's own gear costs to store.
+function Descent.keepFloor(player, floor, snapshot)
+    if not (player and snapshot) then return end
+    player.floors = player.floors or {}
+    player.floors[tostring(floor or 1)] = snapshot
 end
 
 -- WHAT COMES BACK WHEN YOU COME BACK. Re-arm a restored floor's fights and leave everything else spent.
@@ -1686,8 +1728,179 @@ end
 -- stored under 3 and looked up under "3" would silently generate a fresh floor after every load, which
 -- is precisely the bug this feature exists to prevent and is invisible until somebody notices their map
 -- is gone.
-function Descent.floorBoard(run, floor)
-    return (run and run.floors or {})[tostring(floor or 1)]
+function Descent.floorBoard(player, floor)
+    return (player and player.floors or {})[tostring(floor or 1)]
+end
+
+-- HOW DEEP THE PLACE GOES FOR THIS COMPANY: the deepest floor it holds a map of.
+--
+-- Distinct from Descent.deepest, which is the deepest floor ever STOOD on. They agree almost always and
+-- differ in the one case that matters to Descent.entryFloor: a company wiped on arrival keeps the depth
+-- record (it stood there) and may hold no map of it (it never finished drawing one). The stair you may
+-- re-enter by is the one you MAPPED, so this is the figure the city offers.
+function Descent.mapped(player)
+    local deepest = 0
+    for key in pairs((player and player.floors) or {}) do
+        local n = tonumber(key)
+        if n and n > deepest then deepest = n end
+    end
+    return deepest
+end
+
+-- ---------------------------------------------------------------------------
+-- Camping, and what finds you while you do it
+-- ---------------------------------------------------------------------------
+
+-- THE CHANCE A CAMP IS FOUND BEFORE THE FIRE IS LIT, as a percent, by depth.
+--
+-- A rest stop was the one thing on a floor with no downside: a free choice of heal / study / set a
+-- bone, taken at zero risk, which made every camp an automatic yes and made the decision it is supposed
+-- to be -- "do I spend the stop now or carry the damage deeper?" -- not a decision at all.
+--
+-- WHAT AN AMBUSH COSTS IS THE CAMP, not the company. The stop converts to a fight and the verb is lost;
+-- nothing is taken off the player and nothing follows them home. That is the same line every other
+-- price in this game sits on (docs/the-count.md): a camp you did not get is not a confiscation.
+--
+-- QUOTED BEFORE IT IS ROLLED (ui/panels/rest_choice.lua draws this number). A coin flip the player
+-- cannot see is not a decision, it is weather -- and this game's standard is that a number names the
+-- decision it is for. Knowing it is 38% on floor twelve is what makes carrying the damage one more
+-- floor a real alternative.
+--
+-- THE RAMP IS THE FLOOR'S, so camping shallow stays close to free and camping deep is a gamble you take
+-- on purpose. 15% at the mouth, +2 a floor, capped well under half -- because above a coin flip the
+-- honest advice becomes "never camp", and a stop nobody takes is a stop that may as well not be dealt.
+Descent.AMBUSH_BASE = 15
+Descent.AMBUSH_PER_FLOOR = 2
+Descent.AMBUSH_MAX = 40
+
+function Descent.ambushChance(floor)
+    floor = math.max(1, floor or 1)
+    return math.min(Descent.AMBUSH_MAX,
+        Descent.AMBUSH_BASE + (floor - 1) * Descent.AMBUSH_PER_FLOOR)
+end
+
+-- ---------------------------------------------------------------------------
+-- What the company dropped where it fell
+-- ---------------------------------------------------------------------------
+
+-- LEAVE THIS EXPEDITION'S HAUL ON THE TILE THE COMPANY DIED ON, as a stop on the floor's kept board.
+--
+-- WHY THERE IS A COST ON DYING AGAIN, stated plainly because docs/the-count.md spent a page arguing
+-- there should not be. That page's law is about RECOVERY -- "a cost on recovery is a tax on needing to
+-- recover" -- and it is intact: this takes nothing the company owned when it walked in, nothing it can
+-- be billed for, and nothing that makes the next trip harder than the last one. What it takes is the
+-- unbanked winnings of the trip that just failed, which is the one thing a company can lose without
+-- ever going backwards.
+--
+-- It exists because after the pivot a wipe cost literally nothing: not gear, not gold, not a wound, not
+-- a mark (the tally is parked), and Descent.entryFloor put the company back on the floor they died on,
+-- whole, the same evening. "How deep do I dare go" had one answer, and it was "all the way, repeatedly".
+--
+-- AND IT IS NOT GONE, IT IS LYING THERE. Dark Souls' bloodstain, Wizardry's body on the floor: the pile
+-- waits on the tile until somebody walks back to it. That is what keeps this on the right side of the
+-- law -- the loss is a RETRIEVAL PROBLEM rather than a confiscation -- and it is the first real reason
+-- this game has ever had to re-enter a floor it already cleared. The walk back is the price, and the
+-- floor's fights have re-armed (Descent.rearmFloor) so the walk is a real one.
+--
+-- ON THE KEPT BOARD RATHER THAN ON A LEDGER, and that is the whole reason this is simple now. The
+-- deleted version had to hang piles off the player (`player.lostPacks`) and re-seat them on a later
+-- run, because "a rift closes when the company leaves it -- so a pile dropped on floor nine has no
+-- floor nine to wait on". Floor nine is still there. The pile sits in the cell, the cell rides in the
+-- board, the board is the player's (Descent.keepFloor), and Overworld:snapshot copies `encounter`
+-- whole -- so there is ONE store and nothing to disagree with anything.
+--
+-- NO GUARD STANDS OVER IT. The deleted version rolled a company onto the pile; the walk back down a
+-- re-armed floor is already the cost, and a guard would turn a retrieval into a second boss fight at
+-- exactly the moment the player is weakest. If this turns out to be too easy the dial is the floor,
+-- not a bespoke fight.
+--
+-- MERGES rather than replaces. Two deaths on one tile leave one pile: overwriting would delete the
+-- first haul, which is billing the same failure twice.
+function Descent.dropPack(player, floor, x, y, items)
+    if not (player and items and #items > 0) then return nil end
+    local board = Descent.floorBoard(player, floor)
+    -- No kept board means nothing to lie on. Cannot normally happen -- the wipe path banks the floor
+    -- before it drops -- but a caller that got the order wrong should lose the pile rather than the save.
+    if not (board and board.cells and board.cells[y] and board.cells[y][x]) then return nil end
+
+    local Save = require("models.save")
+    local cell = board.cells[y][x]
+    local pile = (cell.encounter and cell.encounter.kind == "pack") and cell.encounter or nil
+    if not pile then
+        pile = { kind = "pack", name = "The Company's Pack", items = {} }
+        cell.encounter = pile
+    end
+    for _, item in ipairs(items) do pile.items[#pile.items + 1] = Save.snapshotItem(item) end
+    pile.count = #pile.items
+    -- UNCLEARED, or the stop never answers when the company walks back onto it. rearmFloor leaves it
+    -- alone (it re-arms only what LIVES on a floor), so this is the one thing that has to say so here.
+    cell.cleared = nil
+    return pile
+end
+
+-- Pick the pile up: the items, rehydrated, and the marker gone. Nil for a cell holding no pile.
+--
+-- THROUGH Save.restoreItem AND NOT Item.instantiate. Most of what a floor pays is now a husk
+-- (Spoils.SEALED_CHANCE), and a husk rebuilds through Identify.sealed off its `unidentified` field --
+-- an id and a level cannot reconstruct one. The deleted version called `Item.instantiate(snap.id,
+-- snap.level)`, which both flattened every husk into a plain piece AND passed the level in the
+-- QUANTITY argument. Neither failure would have shown up as a crash.
+function Descent.takePack(player, floor, cell)
+    if not (cell and cell.encounter and cell.encounter.kind == "pack") then return nil end
+    local Save = require("models.save")
+    local out = {}
+    for _, snap in ipairs(cell.encounter.items or {}) do
+        local item = Save.restoreItem(snap)
+        if item then out[#out + 1] = item end
+    end
+    cell.encounter = nil
+    cell.cleared = true
+    return out
+end
+
+-- EVERY PILE THIS COMPANY HAS LYING UNDERGROUND, as { floor, x, y, count }, shallowest first.
+--
+-- DERIVED BY WALKING THE KEPT BOARDS rather than kept as an index beside them. A second store is a
+-- second thing to go stale, and this one would go stale in the worst possible way -- telling a player
+-- their gear is on floor nine after they have already fetched it. Fifteen boards of a few hundred cells
+-- is nothing; the readouts that call this (the Gate, the defeat card) draw once.
+function Descent.lostPacks(player)
+    local out = {}
+    for key, board in pairs((player and player.floors) or {}) do
+        local floor = tonumber(key)
+        for y = 1, ((board and board.rows) or 0) do
+            for x = 1, (board.cols or 0) do
+                local cell = board.cells and board.cells[y] and board.cells[y][x]
+                local e = cell and cell.encounter
+                if e and e.kind == "pack" then
+                    out[#out + 1] = { floor = floor, x = x, y = y, count = e.count or #(e.items or {}) }
+                end
+            end
+        end
+    end
+    table.sort(out, function(a, b)
+        if a.floor ~= b.floor then return (a.floor or 0) < (b.floor or 0) end
+        if a.y ~= b.y then return a.y < b.y end
+        return a.x < b.x
+    end)
+    return out
+end
+
+-- THE DEEPEST STAIR THIS COMPANY MAY WALK IN BY, which is 1 until it has mapped something below.
+--
+-- WIZARDRY'S SHAFT AND DAPHNE'S ELEVATOR, and it is the payoff for the map book existing at all. Without
+-- it a persistent dungeon means only that you re-walk ground you have already cleared to reach the part
+-- you have not -- which is the map's cost with none of its benefit, and gets worse every floor.
+--
+-- READ OFF THE MAP RATHER THAN OFF THE DEPTH RECORD, and the two differ in the case that matters: a
+-- company wiped on arrival has STOOD on that floor (Descent.reached writes `deepest`) without having
+-- drawn it. The stair you may re-enter by is one you actually mapped, so this reads Descent.mapped --
+-- and it can never hand back a floor the player has not seen the inside of.
+--
+-- CLAMPED TO THE STACK because the book can hold the bottom itself: a company that walked the Crown and
+-- came back up would otherwise be offered a re-entry below the last floor there is.
+function Descent.entryFloor(player)
+    return math.max(1, math.min(Descent.FLOORS, Descent.mapped(player)))
 end
 
 --
@@ -2000,9 +2213,10 @@ end
 --
 -- ONE PER DESCENT, ON A FLOOR THE RUN ROLLS FOR. This used to be one per FLOOR: the six recruiting
 -- houses were shuffled and dealt a body apiece onto floors one through six, so every descent met every
--- companion in order and the roster filled itself on a schedule. What replaces it is a chance: each
--- floor of the run is rolled at COMPANION_CHANCE, the first floor to hit is where somebody is standing,
--- and that is the whole of the descent's offering. A run can come up having met nobody.
+-- companion in order and the roster filled itself on a schedule. What replaces it is a chance: the run
+-- is rolled once at COMPANION_CHANCE for whether anybody is met at all, and once more for which floor
+-- of the stratum they are standing on -- and that is the whole of the descent's offering. A run can
+-- come up having met nobody.
 --
 -- WITH ONE BODY OUTSIDE THE ROLL ENTIRELY: Gyeom stands on floor one of every descent until she joins,
 -- and the roll does not run at all while she is outstanding. See Descent.SCRIPTED_COMPANION below for
@@ -2032,9 +2246,20 @@ end
 -- in -- and the seed cannot know either. Re-deriving would also break the one rule this is for: recruit
 -- the body on floor three, re-enter floor three, and a freshly-filtered deck would seat the NEXT
 -- companion on the same ground. Stamped once, a descent offers one and only one.
-Descent.COMPANION_CHANCE = 25 -- percent, rolled per floor; ~87% that a run meets somebody at all
+-- THE CHANCE THAT A DESCENT MEETS ANYBODY AT ALL, as a percent, drawn once (Descent.dealCompanion).
+--
+-- IT MEANS SOMETHING DIFFERENT FROM WHAT IT USED TO. This was 25 and was rolled PER FLOOR, with the
+-- header claiming the per-run figure came out at ~87%; the roll turned out not to be independent across
+-- floors, so the real figure was 99% at seven floors and 100% at fourteen (see dealCompanion for the
+-- measurement). The number here is now the per-run probability directly -- what the old comment was
+-- trying to describe -- so 87 is the figure that header always intended and never delivered.
+--
+-- STATED AS THE RUN'S RATE ON PURPOSE. It is the only number anybody reasons about ("can a descent meet
+-- nobody?"), it no longer moves when the stratum gets longer, and a per-floor rate that has to be
+-- re-derived every time FLOORS_PER_CIRCLE changes is exactly how this went wrong the first time.
+Descent.COMPANION_CHANCE = 87
 
--- AMANA IS THE FIRST BODY THE RIFT OFFERS, AND SHE IS NOT ROLLED FOR. Until the Cathedral's posting is
+-- XIN IS THE FIRST BODY THE RIFT OFFERS, AND SHE IS NOT ROLLED FOR. Until the Cathedral's posting is
 -- finished -- which is to say until she is walking with you -- every descent stands her at a dead end on
 -- floor one, and the roll below never runs.
 --
@@ -2052,7 +2277,7 @@ Descent.COMPANION_CHANCE = 25 -- percent, rolled per floor; ~87% that a run meet
 -- the descent this is about. So the rolled path deals nobody on the run where meeting somebody matters
 -- most, and no amount of tuning COMPANION_CHANCE changes that -- the deck is empty, not unlucky.
 --
--- WHY HER AND WHY FLOOR ONE. The company arrives at the stair with three -- the avatar, Rowan, and Amana,
+-- WHY HER AND WHY FLOOR ONE. The company arrives at the stair with three -- the avatar, Rowan, and Xin,
 -- who joins above ground in the prologue (states/prologue.lua) -- against an expedition cap of four
 -- (PARTY_MAX). So there is exactly one seat open, and this is the body that fills it. Floor one because
 -- a scripted meeting the player can walk past on the roll's terms is a scripted meeting that does not
@@ -2063,7 +2288,7 @@ Descent.COMPANION_CHANCE = 25 -- percent, rolled per floor; ~87% that a run meet
 -- (character_avatar.lua declares no class). What that party has no answer to is MAGIC DAMAGE: the hole is
 -- a second damage school, not a second range band, so the hunter would answer the question Rowan already
 -- answers from further away. Ren is the other caster and is not one -- her `defaultAction` is a heal and
--- her blueprint says outright that she does not kill -- so she doubles Amana. It is Gyeom or nobody.
+-- her blueprint says outright that she does not kill -- so she doubles Xin. It is Gyeom or nobody.
 --
 -- THE ONE THING THIS COSTS, and it is worth watching in playtest: Gyeom READS WEAK ON PURPOSE (damage 4,
 -- magicDamage 6, against the avatar's 16). Her Ledger banks four actions and only then releases what she
@@ -2072,7 +2297,7 @@ Descent.COMPANION_CHANCE = 25 -- percent, rolled per floor; ~87% that a run meet
 -- worse than the sword they already have, which is exactly the failure character_avatar.lua was
 -- rebalanced to avoid. The fight is the fix if it needs one, not her numbers.
 --
--- AMANA USED TO STAND HERE, and the reason she no longer does is that she now joins earlier and for a
+-- XIN USED TO STAND HERE, and the reason she no longer does is that she now joins earlier and for a
 -- better reason: a healer who arrives because Rowan is hurt is the same recruit with a motive
 -- (data/conversations/prologue/conversation_prologue_infirmary.lua). SABER stood here before that, and was
 -- wrong twice over -- the veteran who tests every newcomer made the first descent a duel won with two
@@ -2104,13 +2329,24 @@ function Descent.dealCompanion(seed, player)
         return { house = scripted, floor = Descent.SCRIPTED_COMPANION_FLOOR }
     end
 
-    local floor
-    for f = 1, Descent.CIRCLE_FLOORS do
-        -- 977 is a salt the sins (floor = 0) and the shuffle below (991) never pass, so the three rolls
-        -- cannot come out in step.
-        if (hash(seed, 977, f) % 100) < Descent.COMPANION_CHANCE then floor = f break end
-    end
-    if not floor then return nil end
+    -- TWO DRAWS: WHETHER, AND THEN WHERE. 977 and 978 are keys the sins (floor = 0) and the shuffle
+    -- below (991) never pass, so none of the rolls come out in step.
+    --
+    -- THIS WAS A PER-FLOOR BERNOULLI AND IT WAS NOT A ROLL. It walked f = 1..CIRCLE_FLOORS asking
+    -- `hash(seed, 977, f) % 100 < CHANCE` and took the first hit. `hash` is affine in its salt -- an LCG
+    -- step over a linear combination -- so consecutive f differ by a FIXED stride mod 100, and a fixed
+    -- stride sampled enough times cannot miss a window of any width. Measured: at seven circle floors
+    -- it came up empty for 1.05% of seeds, against the ~13% this constant's own header claimed; at
+    -- fourteen it is 0.00%, and lowering the chance to 14% leaves it at 0.00% because fourteen samples
+    -- at that stride have a maximum gap of thirteen.
+    --
+    -- So the pacing this was built for -- "a run CAN meet nobody, and that is the feature" -- had been
+    -- quietly false the whole time, and P-4's longer stratum turned quietly false into flatly broken.
+    -- One draw for whether anybody is met and one for where puts the rate back under the constant's
+    -- control and is immune to the stride: measured at 87.00% met over 20000 seeds, with the floor flat
+    -- across the stratum to within 5%.
+    if (hash(seed, 977, 0) % 100) >= Descent.COMPANION_CHANCE then return nil end
+    local floor = (hash(seed, 978, 0) % Descent.CIRCLE_FLOORS) + 1
 
     local deck = {}
     for vendorId in pairs(Errand.houses()) do
@@ -2245,18 +2481,20 @@ end
 -- rather than beeline the stair, and a reward the player steers toward rather than one that happens to
 -- them.
 local function guaranteeKinds(player, floor)
-    -- THE WEEPING STONE IS GUARANTEED FROM THE SECOND FLOOR, and the depth gate is the whole of why it
-    -- is listed conditionally rather than always. It sells a relic for a permanent cut to the company's
-    -- maximum health, and a company that has not yet been hurt has nothing to weigh that against -- on
-    -- floor one it is a number, and by floor two it is a decision.
+    -- PARKED 2026-09-17 -- `relic_cache` and `weeping_stone` are struck from both rungs. Both stops
+    -- dealt run relics and nothing else, models/relic.lua is parked (see the dated note at its head),
+    -- and their blueprints now carry `parked = true`. A kind guaranteed here but ineligible in
+    -- models/encounter.lua's pool is a floor asking for a stop that can never be placed, so the two
+    -- lists have to move together: lifting the park means restoring the entries below AND clearing the
+    -- flag on each blueprint.
     --
-    -- Guaranteed rather than left to the weights because it is the only stop that prices a relic in
-    -- something a purse cannot cover. A run that never met one would never be offered that trade at all,
-    -- and a way to spend that turns up sometimes is a way to spend nobody builds around.
-    if floor and floor >= 2 then
-        return { "relic_cache", "rest", "merchant", "weeping_stone" }
-    end
-    return { "relic_cache", "rest", "merchant" }
+    -- What the floor still guarantees is the pair whose payload survived the park: a Rest, and a
+    -- Merchant that now sells gear alone. The reasoning the Stone was guaranteed FOR is kept in its own
+    -- blueprint rather than here, since that is the file a revert starts from.
+    --
+    -- `floor` is no longer read -- the two rungs collapsed into one when the depth-gated entry went --
+    -- and the parameter stays only so a restored Weeping Stone has its gate back where it was.
+    return { "rest", "merchant" }
 end
 
 function Descent.floorQuest(run, player)
@@ -2797,6 +3035,29 @@ function Descent.countBand(player)
     return Descent.bandAt(Descent.count(player))
 end
 
+-- THE TALLY IS PARKED, AND THIS FLAG IS THE WHOLE OF THE PARK. Everything above still computes -- the
+-- bands, the ceiling, the phrases, the meter widget -- and nothing moves the number, so every reader
+-- honestly reports a company at nought. Clear this one boolean and the count is live again exactly as
+-- it was; that is what parked means here, as against the piles, which were cut.
+--
+-- WHY. The count priced ONE event: coming back up with the floor unfinished. That was the right thing
+-- to price when a descent was the campaign and climbing out was the decision with an alternative --
+-- docs/the-count.md argues it well and the argument was sound for that game.
+--
+-- It is not that game any more. The maze is a place the company maps and re-enters (Descent.keepFloor,
+-- Descent.entryFloor), a trip ends at the Ward because somebody needs a bone set, and surfacing is the
+-- rhythm rather than the retreat -- Wizardry's own loop, which this file has cited by name since it was
+-- written. A meter that charges a mark for the thing the design wants you doing constantly teaches
+-- against itself, and it cannot be tuned out of that: at any price above zero it is still a tax on the
+-- loop, and at zero it is not a meter.
+--
+-- WHAT WENT WITH IT: the breach (Descent.isBreached) never fires, because nothing reaches COUNT_MAX.
+-- The meter is off the city's plate and off the Gate (states/hub.lua, states/gate.lua), and the
+-- landing's "the count goes 3 -> 4" forecast is gone from states/game.lua. What did NOT go is the call
+-- sites: they still read as intent, and a system whose callers were also deleted is one nobody can
+-- restore from the flag alone. docs/the-count.md carries the record.
+Descent.COUNT_PARKED = true
+
 -- Move the tally by `delta`, floored at zero and capped at the maximum. Returns the new count.
 --
 -- Floored rather than allowed to go negative: a company that seals every circle on the way down would
@@ -2805,6 +3066,7 @@ end
 -- rift right now, not a purse.
 function Descent.countBy(player, delta)
     if not player then return 0 end
+    if Descent.COUNT_PARKED then return player.count or 0 end
     player.count = math.max(0, math.min(Descent.COUNT_MAX, (player.count or 0) + (delta or 0)))
     return player.count
 end
@@ -2836,10 +3098,13 @@ function Descent.retreat(run, player)
     local from = Descent.depth(run)
     if from <= 1 then return nil end -- floor one's way up is the way OUT, and that is a different card
     run.floor = from - 1
-    -- `player` because the tally is the company's rather than the run's (Descent.count). Optional, so a
-    -- spec driving a bare run still walks the floors; what it loses is only the number moving.
-    Descent.countBy(player, 1)
-    local board = Descent.floorBoard(run, run.floor)
+    -- THE MARK IS GONE, and this is where the count's argument broke (see the count section below).
+    -- `Descent.countBy(player, 1)` stood here so that up-and-down was net zero and the tally could not
+    -- be farmed into a purse -- sound reasoning about a mode where climbing was the one decision with
+    -- an alternative. In a dungeon you are meant to surface from constantly it prices the loop itself.
+    -- The tally is parked rather than re-tuned; `player` stays in the signature because the kept board
+    -- is the company's now and this function needs it.
+    local board = Descent.floorBoard(player, run.floor)
     run.arriveAt = board and board.objective and { x = board.objective.x, y = board.objective.y } or nil
     return run.floor
 end
@@ -3202,8 +3467,9 @@ function Descent.snapshot(run)
         -- roster's first four, so both degrade to the same honest default. Purely additive, so
         -- Save.VERSION does not move.
         party = (run.party and #run.party > 0) and run.party or nil,
-        -- Every board this company has walked, whole. See `floors` on the run.
-        floors = run.floors or {},
+        -- (No `floors` -- the map book is the player's now, exactly as the tally is. models/save.lua
+        -- carries an old save's forward off the raw snapshot, so a run saved while the floors still
+        -- rode here does not lose the map it had drawn.)
     }
 end
 
@@ -3253,7 +3519,7 @@ function Descent.restore(snap)
             for i, id in ipairs(snap.party) do out[i] = id end
             return out
         end)() or nil,
-        floors = snap.floors or {}, -- ...and the maps it made of the floors it walked
+        -- (No `floors` -- see snapshot. The map book is the player's.)
         entry = nil, -- re-attached by Save.restoreRun from the run-level copy; see above
     }
 end

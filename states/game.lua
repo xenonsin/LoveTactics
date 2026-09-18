@@ -53,6 +53,7 @@ local Seed = require("models.seed") -- what this playthrough is made of; the gro
 local SeedReadout = require("ui.seed_readout") -- ...and what says so on screen, in a dev build only
 local Experience = require("models.experience") -- the one ladder: what turns banked xp into levels
 local Relic = require("models.relic")
+local ItemHook = require("models.item_hook") -- the between-fight half of the parked relic shelf, as gear
 local Meal = require("models.meal") -- the Cafe's supper: one platter, worn by the company all run
 local Wound = require("models.wound") -- what a body that went down carries out of the run
 local CoachBubble = require("ui.coach_bubble")
@@ -231,8 +232,23 @@ end
 
 -- Open the consumables screen over the overworld (same modal slot as the encounter panel).
 local function openConsumables()
+    -- WHAT THE COMPANY CARRIED DOWN, AND NOTHING ELSE.
+    --
+    -- Underground this panel reached the whole roster's grids and the town's entire stash, which meant
+    -- a trip's supply was however much the player owned -- so nothing decided before the stair
+    -- constrained how long they could stay, and provisioning was not a decision anybody could make
+    -- badly. It is the pack now: the four who walked down, and what is in their grids.
+    --
+    -- The grid IS the loadout, rather than a second inventory beside it. A draught costs a cell that
+    -- could have held a blade, which is a trade the player already understands and already has a screen
+    -- for (ui/panels/party.lua), so this asks for no new UI and no new ledger in the save.
+    --
+    -- IN A DESCENT ONLY. Every other leg -- the prologue's flight, an authored quest, the tutorial --
+    -- has no expedition and no stair, and passing nil leaves all of them exactly as they were.
     game.activePanel = Consumables.new({
         player = game.player,
+        party = game.descent and Descent.party(game.descent, game.player) or nil,
+        stash = game.descent and false or nil,
         onClose = function() game.activePanel = nil end,
     })
 end
@@ -252,7 +268,7 @@ end
 -- So there is no `partyVisible` any more: a test that is always true is not a test, and the flight is
 -- the only thing it ever answered for.
 
--- A transient on-screen line an ability pushes when it fires (Amana heals X, Kaya forages, ...). Fades
+-- A transient on-screen line an ability pushes when it fires (Xin heals X, Kaya forages, ...). Fades
 -- over TOAST_LIFE; the newest sits on top. Capped so a flurry of wins can't stack off the screen.
 local TOAST_LIFE = 3.2
 function game:pushToast(text)
@@ -354,6 +370,26 @@ local function fireRelics(event, extra)
     }
     if extra then for k, v in pairs(extra) do ctx[k] = v end end
     return Relic.dispatch(event, ctx)
+end
+
+-- Fire an ITEM event (models/item_hook.lua) for every piece of gear the company is wearing that
+-- declares one. The third of the three dispatchers above, and the youngest: it exists because the
+-- between-fight half of the relic shelf became gear when the shelf was parked (2026-09-17), and a
+-- larder worn by a body has to be asked of the body rather than of the run.
+--
+-- No `state` of its own, which is the difference that matters: an ability and a relic each carry a
+-- run-scoped scratch table, and an item's effect is a property of the item, so there is nothing to
+-- keep between stops and nothing to reset at the mouth of the stair.
+local function fireItems(event, extra)
+    local ctx = {
+        player = game.player,
+        party = game.player and game.player.roster,
+        grid = game.grid,
+        day = game.day,
+        notify = function(text) game:pushToast(text) end,
+    }
+    if extra then for k, v in pairs(extra) do ctx[k] = v end end
+    return ItemHook.dispatch(event, ctx)
 end
 
 -- Open the Party screen over the overworld (same modal slot as the encounter panel).
@@ -1180,13 +1216,13 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
     -- widget below; the encounter pool / always list above is built but unused (harmless).
     if resume then
         game.grid = resume.grid
-    elseif game.descent and Descent.floorBoard(game.descent, Descent.depth(game.descent)) then
+    elseif game.descent and Descent.floorBoard(game.player, Descent.depth(game.descent)) then
         -- A FLOOR THIS COMPANY HAS ALREADY WALKED. Wizardry's levels are the same maze every time, which
         -- is the entire reason mapping one is worth doing -- a secret door found on the third trip is
         -- something you found rather than something that was rolled. So a descent keeps its boards
         -- (Descent.keepFloor) and re-enters the one it made, fog and cleared stops and all, rather than
         -- rolling a new one over the top of the player's own map.
-        game.grid = Overworld.fromSnapshot(Descent.floorBoard(game.descent, Descent.depth(game.descent)))
+        game.grid = Overworld.fromSnapshot(Descent.floorBoard(game.player, Descent.depth(game.descent)))
         -- ...and its inhabitants are back. The maze is permanent and the monsters are not
         -- (Descent.rearmFloor) -- so a floor you finished is not an empty corridor next time, and the
         -- walk back down to a dropped pack costs what walking down cost the first time.
@@ -2005,11 +2041,18 @@ function game:openEncounter(cell, opts)
             -- and a companion is met at their house's opener instead, so a fight pays its spoils and
             -- nothing else.
 
-            -- Companion abilities react to the win (Amana heals, Ren distils a dose, Rowan banks a
+            -- Companion abilities react to the win (Xin heals, Ren distils a dose, Rowan banks a
             -- vigil, Clem takes her cut, Gyeom studies), then the relics do too (Pilgrim's Coin pays,
             -- Alms Bowl heals, a Vice bites). Save so their effects persist.
             fireAbility("encounterCleared", { cell = cell, spoils = spoils })
             fireRelics("encounterCleared", { cell = cell, spoils = spoils })
+            -- ...and the company's own GEAR, which is where the three between-fight relics went when
+            -- the shelf was parked (models/item_hook.lua). Fired beside the other two rather than
+            -- folded into either: an ability is keyed to who is in the party and a relic to what the
+            -- run picked up, and this is keyed to what a body is WEARING, so it walks the roster's
+            -- grids fresh every time. Runs after them for the ordering the Tithe wants -- a rule that
+            -- gags recovery is on the unit by then.
+            fireItems("encounterCleared", { cell = cell, spoils = spoils })
 
             -- LEVEL-UPS, in every mode. This used to be gated on `game.descent`, because a campaign
             -- roster levelled off prestige and the experience combat banked was a counter nobody read.
@@ -2727,6 +2770,8 @@ function game:openEncounter(cell, opts)
                     -- would be to loot until threatened and then die on purpose. One extra mark is the
                     -- whole of the fix, and it is paid on a clock rather than out of a pack.
                     local floor = Descent.depth(game.descent)
+                    -- Inert while the tally is parked (Descent.COUNT_PARKED); left standing because it
+                    -- is the intent, and a park you cannot lift from one flag is a deletion.
                     Descent.countBy(game.player, Descent.COUNT_WIPE)
 
                     -- AND WHAT CAME OUT IS DISCOVERED, exactly as it is on the stair. Both exits
@@ -2747,9 +2792,16 @@ function game:openEncounter(cell, opts)
                     -- every find into a spare grid cell before a risky fight -- is now answered by the
                     -- mark instead. The mark is the cost that is not an item.
                     --
-                    -- AND NO WOUNDS. A wound lasts the expedition and the surface ends it for free
-                    -- (models/wound.lua), and a wipe IS a return to the surface -- so inflicting them
-                    -- here only ever wrote a state that was cleared in the same breath.
+                    -- AND NO WOUNDS, WHICH IS NOW A DECISION RATHER THAN A NO-OP. This read "a wound
+                    -- lasts the expedition and the surface ends it for free, and a wipe IS a return to
+                    -- the surface -- so inflicting them here only ever wrote a state that was cleared
+                    -- in the same breath." That stopped being true when wounds started outliving the
+                    -- trip (models/wound.lua): a wound dealt here would now follow the company into
+                    -- town and have to be rested or bought off.
+                    --
+                    -- It stays at none, and on the law rather than on the old accident: wounding a
+                    -- company for having been beaten is a price on losing, which is the one thing
+                    -- docs/the-count.md forbids. A rout already costs the floor's unfought spoils.
 
                     -- The fight is over -- lost, but over. Every other way out of a battle says this
                     -- (there are six) and this one did not, which put a wiped company back into the
@@ -2758,10 +2810,40 @@ function game:openEncounter(cell, opts)
                     -- this screen holding a dead battle is wrong even if the next entry tidies up.
                     game.endFight()
 
-                    -- THE RIFT CLOSES ON A WIPE TOO, and the symmetry is load-bearing: if dying
+                    -- THE MAP SURVIVES THE ROUT, and it has to, on this page's own law: the ground a
+                    -- company drew before it was killed is not a thing it was carrying, and taking it
+                    -- back would be a price on losing. It is also the symmetry below, kept honest --
+                    -- both exits bank the book, so neither way home is the cheaper one.
+                    if game.grid and game.descent then
+                        Descent.keepFloor(game.player, Descent.depth(game.descent), game.grid:snapshot())
+
+                        -- ...AND THE HAUL STAYS ON THE TILE THEY FELL ON (Descent.dropPack).
+                        --
+                        -- WHAT IS TAKEN is exactly what this expedition FOUND -- Player.atRisk's diff
+                        -- against the company as it walked in (`run.entry`) -- and nothing else. The kit
+                        -- they marched down with, their gold, their levels and their map are untouched,
+                        -- which is docs/the-count.md's law held: this is not a price on recovering, it
+                        -- is the trip's unbanked winnings staying where the trip ended.
+                        --
+                        -- AFTER keepFloor, and the order is load-bearing: the pile is written into the
+                        -- kept board's own cell, so the board has to be in the book before there is a
+                        -- cell to write to.
+                        --
+                        -- ON THE PARTY'S TILE, which is where the company was standing when the fight
+                        -- that killed them began -- the same square the board will put them back on when
+                        -- they come for it.
+                        local haul = Player.takeAtRisk(game.player, game.descent.entry)
+                        if haul and #haul > 0 and game.map then
+                            Descent.dropPack(game.player, Descent.depth(game.descent),
+                                game.map.px, game.map.py, haul)
+                        end
+                    end
+
+                    -- THE RUN CLOSES ON A WIPE TOO, and the symmetry is load-bearing: if dying
                     -- preserved the floor stack and leaving did not, a company standing deep would be
                     -- better off letting itself be killed, and the mode would have built an incentive
-                    -- to throw fights. Both exits reset (see the climb-out branch).
+                    -- to throw fights. Both exits reset (see the climb-out branch) -- what neither of
+                    -- them resets any more is the map book, which is the player's (Descent.keepFloor).
                     game.player.descentRun = nil
 
                     game.descent = nil
@@ -3026,6 +3108,10 @@ function game:openEncounter(cell, opts)
     -- AND THE BARE-SHELF BRANCH IS GONE WITH THEM. It paid a gold consolation when the run held
     -- everything eligible, which was reachable only because a relic could be held exactly once; a
     -- thirty-six-deep shelf that stacks has no empty state to answer.
+    -- UNREACHABLE SINCE 2026-09-17 -- kept as the revert path, not as live code. The Reliquary
+    -- blueprint carries `parked = true` (models/encounter.lua's `eligible`) and is struck from
+    -- models/descent.lua's `guaranteeKinds`, so no cell is ever dealt this kind and nothing below runs.
+    -- See models/relic.lua's park note before reading any of it as current behaviour.
     if kind == "relic_cache" then
         local enc = cell.encounter
         local def = enc.id and EncounterModel.get(enc.id)
@@ -3072,6 +3158,8 @@ function game:openEncounter(cell, opts)
     -- preview. It is cheaper than the Merchant's named stock, and that gap IS the wager.
     --
     -- Held relics stay in the pool exactly as at a Reliquary, so a gamble can deepen what you carry.
+    -- UNREACHABLE SINCE 2026-09-17 -- see the Reliquary branch above. The Sin's Altar blueprint
+    -- carries `parked = true`; both of its verbs spend and deal run relics, so neither has a payload.
     if kind == "shrine" then
         local title = cell.encounter.name or "The Altar"
         -- The unseen relic is rolled ONCE and pinned to the cell, so backing out and stepping on again
@@ -3219,6 +3307,9 @@ function game:openEncounter(cell, opts)
     -- Priced as a SHARE rather than a flat number so it costs the same fraction on floor one and floor
     -- eight, and can never scale into the absurd against a company that has grown. Floored so that it
     -- always takes something, and so that it can never reduce a body below a single point.
+    -- UNREACHABLE SINCE 2026-09-17 -- see the Reliquary branch above. The Weeping Stone blueprint
+    -- carries `parked = true` AND its guarantee is struck from models/descent.lua, so lifting it takes
+    -- an edit in both places.
     if kind == "weeping_stone" then
         local enc = cell.encounter
         enc.offer = enc.offer or Relic.slate({ day = game.day, tier = "rare",
@@ -3322,18 +3413,15 @@ function game:openEncounter(cell, opts)
                 enc.stock[#enc.stock + 1] =
                     { id = id, price = Spoils.askingPrice(Item.defs[id].price), bought = false }
             end
-            -- ...AND A RELIC SHELF BESIDE THE GEAR. The road is the shop (see the encounter blueprint's
-            -- own header), and until now the only thing a run could do with foraged gold was buy a
-            -- weapon -- so every relic in the game arrived as something that happened TO the player
-            -- rather than something they chose to spend on.
+            -- THE RELIC SHELF IS PARKED (2026-09-17, models/relic.lua). The Merchant used to stock two
+            -- relics beside its gear, priced by rung and depth off Relic.price. The stop itself stays
+            -- live and still sells the road's gear, so the cut is here rather than on the blueprint --
+            -- unlike the Reliquary, the Altar and the Stone, which wear `parked = true` instead.
             --
-            -- Two, priced by rung and by depth (Relic.price). Rolled off the same pool a Reliquary deals
-            -- from, held relics INCLUDED: buying a second copy of something you already carry is a
-            -- perfectly good use of a purse, and it is how a run commits to a build.
-            for _, id in ipairs(Relic.slate({ day = game.day, sin = game.quest and game.quest.sin }, 2)) do
-                enc.stock[#enc.stock + 1] = { id = id, relic = true,
-                    price = Spoils.askingPrice(Relic.price(id, game.day)), bought = false }
-            end
+            -- The argument the shelf was added for still holds and is worth keeping for the revert: the
+            -- road is the shop, and a relic that only ever arrived as something that happened TO the
+            -- player was never something they chose to spend on. What answers that now is that the
+            -- shelf's contents became gear, so the gold has somewhere to go on this same stop.
         end
         if #enc.stock == 0 then cell.cleared = true; saveRun(); return end
         local stock = {}
@@ -3381,6 +3469,8 @@ function game:openEncounter(cell, opts)
             onBuy = function(entry)
                 if not (game.player and Player.spendGold(game.player, entry.price)) then return false end
                 if entry.relic then
+                    -- UNREACHABLE SINCE 2026-09-17: the shelf-building loop above no longer adds a
+                    -- `relic = true` row, so no entry reaches this branch. Kept as the revert path.
                     -- Straight onto the run, not into the stash: a relic is carried for this descent and
                     -- is not a thing the hub ever holds.
                     local _, n = Relic.grant(game.relicState, entry.id)
@@ -3458,16 +3548,11 @@ function game:openEncounter(cell, opts)
                 end
                 return #mended
             end,
-            grantRelic = function(tier)
-                local id = Relic.roll(Relic.pool({ prestige = game.day, tier = tier,
-                    sin = game.quest and game.quest.sin }))
-                if not id then return nil end
-                local _, n = Relic.grant(game.relicState, id)
-                local name = Relic.info(id).name or id
-                game:pushToast("You gain: " .. name .. ((n and n > 1) and ("  x" .. n) or ""))
-                relicGained = true
-                return name
-            end,
+            -- `grantRelic` IS PARKED (2026-09-17, models/relic.lua). It rolled a relic off the same pool
+            -- a Reliquary dealt from and was the Crossroads' find-a-thing stake; its eight dilemmas now
+            -- call `grantSealed` instead, so the stop still pays out an object and no option became a
+            -- pure trap. Removed from the ctx rather than stubbed to nil, so a dilemma that reaches for
+            -- it fails loudly in a spec instead of silently paying nothing.
             -- AN UNREAD PIECE, which is the one stake that exists because you are in the rift rather
             -- than on a road. It costs no new balance surface -- what a seal hides is the forge level,
             -- and every magnitude already resolves per level off an authored curve -- and it puts a
@@ -3537,7 +3622,7 @@ function game:openEncounter(cell, opts)
 
     -- A Rest is a DECISION, not just a breather: Heal the party, Sharpen a lasting run edge, Study the
     -- ground (models/relic.lua + the fog reveal), or Bind the company's wounds. One only; leaving (X/Esc)
-    -- forgoes it and leaves the cell to reconsider. The companions plug in here later (Amana strengthens
+    -- forgoes it and leaves the cell to reconsider. The companions plug in here later (Xin strengthens
     -- Heal, Gyeom strengthens Study).
     --
     -- BIND IS OFFERED ONLY TO A COMPANY THAT HAS SOMETHING TO BIND, which is why the callback is handed
@@ -3546,40 +3631,56 @@ function game:openEncounter(cell, opts)
     -- have -- the Inn that used to do it for coin is gone (models/wound.lua) -- so it has to be spent
     -- INSTEAD of the heal, the whetstone or the map, which is the property a counter never had.
     if kind == "rest" then
+        -- ...AND SOMETHING MAY FIND THE CAMP (Descent.ambushChance).
+        --
+        -- Rolled on the VERB rather than on arrival, so backing out of the panel costs nothing and the
+        -- risk is only taken by a company that actually decided to stop. The number is quoted on the
+        -- panel before any of it is pressed, because a roll the player cannot see is weather rather than
+        -- a decision.
+        --
+        -- WHAT IT COSTS IS THE CAMP. The stop becomes a fight and the verb is lost -- nothing is taken
+        -- off the company, nothing follows them home. `openEncounter` is re-entered on the converted
+        -- cell rather than the battle being opened here, so an ambush runs down exactly the same path
+        -- as any other fight on the board: the same deployment, spoils, wounds and summary.
+        --
+        -- IN A DESCENT ONLY. An authored quest's rest stop has no floor to read a depth off and no
+        -- business being interrupted, so it keeps the guarantee it was authored with.
+        local risk = game.descent and Descent.ambushChance(Descent.depth(game.descent)) or 0
+        local function camp(verb)
+            return function()
+                if risk > 0 and math.random(100) <= risk then
+                    cell.encounter = { kind = "combat", name = "Ambushed at Camp", ambush = true }
+                    cell.cleared = nil
+                    game.activePanel = nil
+                    game:pushToast("Something finds the camp before the fire is lit")
+                    saveRun()
+                    game:openEncounter(cell)
+                    return
+                end
+                cell.cleared = true
+                verb()
+                saveRun()
+            end
+        end
         game.activePanel = RestChoice.new({
             title = cell.encounter.name or "Make Camp",
-            onBind = (#Wound.wounded(game.player) > 0) and function()
-                cell.cleared = true
+            risk = risk,
+            onBind = (#Wound.wounded(game.player) > 0) and camp(function()
                 game:restBind()
-                saveRun()
-            end or nil,
-            onHeal = function()
-                cell.cleared = true
+            end) or nil,
+            onHeal = camp(function()
                 game:restHeal()
-                saveRun()
-            end,
-            onSharpen = function()
-                cell.cleared = true
-                -- SHARPENING TWICE NOW MEANS SOMETHING. This used to answer a second camp with "your
-                -- edge is already keen" and pay nothing, because a relic could be held exactly once --
-                -- so the choice was dead from the second rest onward. It stacks, so a company that
-                -- keeps choosing the whetstone over the bandage opens harder every time.
-                local _, n = Relic.grant(game.relicState, "relic_honed_edge")
-                game:pushToast((n and n > 1)
-                    and ("You hone your edge again  (Honed Edge x" .. n .. ")")
-                    or "You hone your edge  (Honed Edge)")
-                game.activePanel = nil
-                -- A camp hands one over with nothing to read it off, so the lesson opens alone here.
-                game:teachRelics()
-                saveRun()
-            end,
-            onStudy = function()
-                cell.cleared = true
+            end),
+            -- NO `onSharpen` (2026-09-17). The verb's entire payload was a stacking grant of
+            -- `relic_honed_edge`, and models/relic.lua is parked -- so the row is not passed and
+            -- ui/panels/rest_choice.lua leaves it out rather than drawing a camp option that pays
+            -- nothing. Honed Edge itself survives the park as a piece of gear; what a camp cannot do
+            -- any more is mint one out of an hour and a whetstone.
+            onStudy = camp(function()
                 game:restStudy()
                 game:pushToast("You study the ground")
                 game.activePanel = nil
-                saveRun()
-            end,
+            end),
             onClose = function() game.activePanel = nil end,
         })
         return
@@ -3706,7 +3807,7 @@ function game:openEncounter(cell, opts)
                     -- This floor goes in the map book before the company steps off it, exactly as every
                     -- other way off a floor does -- or the walk back down rolls a new one over the map
                     -- the player made.
-                    Descent.keepFloor(run, depth, game.grid:snapshot())
+                    Descent.keepFloor(game.player, depth, game.grid:snapshot())
                     Descent.retreat(run, game.player)
                     Player.save()
                     State.switch(require("states.game"),
@@ -3760,6 +3861,14 @@ function game:openEncounter(cell, opts)
                 -- NOTHING IS LEFT LYING ON THE FLOORS to carry out. Piles are deleted along with the
                 -- wipe penalty that made them (models/descent.lua), so a closing rift has no debt to
                 -- hand the company -- what they were carrying is simply still theirs.
+                --
+                -- AND THE FLOOR THEY ARE STANDING ON GOES IN THE BOOK FIRST. Every other way off a
+                -- floor banks it; this one did not have to while the book died with the run, and now
+                -- it is the commonest exit in the game -- so without this the one floor a company
+                -- never keeps is the one it climbed out of (Descent.keepFloor).
+                if game.grid then
+                    Descent.keepFloor(game.player, Descent.depth(run), game.grid:snapshot())
+                end
                 game.player.descentRun = nil
                 game.descent = nil
                 Player.save() -- the company, banked, with no expedition open
@@ -3791,15 +3900,14 @@ function game:openEncounter(cell, opts)
             --
             -- Silent until Iselle has named the thing (Descent.everClimbedOut), because a number quoted
             -- before anybody has explained what it counts is a price on a service the player cannot read.
+            -- (THE COUNT'S FORECAST STOOD HERE -- "The count goes 3 -> 4 of 15" -- and went with the
+            -- tally itself (Descent.COUNT_PARKED). Climbing out is free now and a forecast of nothing
+            -- is worse than no forecast: it is a warning the player learns to stop reading.)
             prompt = (carried
                 and ("The company is on floor " .. depth .. " carrying " .. carried ..
                      ". Climb out and all of it comes with them.")
                 or ("The company is on floor " .. depth .. " and has found nothing yet.")) ..
-                (Descent.everClimbedOut(game.player)
-                    and ("\nThe count goes " .. Descent.count(game.player) .. " \226\134\146 " ..
-                         math.min(Descent.COUNT_MAX, Descent.count(game.player) + Descent.COUNT_STAIR) ..
-                         " of " .. Descent.COUNT_MAX .. ".")
-                    or ""),
+                "\nThe stair stays open behind them.",
             options = upOptions,
             -- Backing out is staying down, which is a real answer -- unlike the landing, this tile is
             -- one the party can simply walk off again. The cell is left uncleared to come back to.
@@ -3846,7 +3954,7 @@ function game:openEncounter(cell, opts)
                         game.activePanel = nil
                         -- Put this floor away before stepping off it, so a company that climbs out and
                         -- comes back finds the map it made rather than a fresh roll.
-                        Descent.keepFloor(run, depth, game.grid:snapshot())
+                        Descent.keepFloor(game.player, depth, game.grid:snapshot())
                         Descent.advance(run, game.player)
                         State.switch(require("states.game"), Descent.floorQuest(run, game.player),
                             game.day, game.player)
@@ -3958,13 +4066,27 @@ function game:openEncounter(cell, opts)
         return
     end
 
-    -- A PACK STOP FROM AN OLDER SAVE. Nothing drops packs any more (models/descent.lua) and nothing
-    -- seats these markers, but a run saved before the deletion can still be carrying one -- so the
-    -- marker is cleared by walking onto it rather than left on the board as a stop that opens nothing.
-    -- There is no pile to hand back: the company never lost the items in the first place.
+    -- THE COMPANY'S OWN PACK, picked back up (models/descent.lua's Descent.takePack).
+    --
+    -- This is the far end of the only thing a wipe costs: the trip's haul stays on the tile the party
+    -- fell on, and walking back to it is how you get it. Everything goes to the STASH rather than back
+    -- into the grids it came out of -- a body's loadout is an arrangement the player made and a pile
+    -- dumped back into it would rearrange their work; the stash is where found things land everywhere
+    -- else in the game.
+    --
+    -- A PILE FROM AN OLDER SAVE lands here too and is handled by the same code: one written before the
+    -- pile system was deleted carries no items list, so `taken` comes back empty, the marker clears, and
+    -- nothing is claimed to have been handed over.
     if kind == "pack" then
+        local taken = Descent.takePack(game.player, Descent.depth(game.descent), cell) or {}
+        for _, item in ipairs(taken) do Player.addToStash(game.player, item) end
+        if #taken > 0 then
+            game:pushToast(#taken == 1 and "Your pack: 1 piece recovered"
+                or ("Your pack: " .. #taken .. " pieces recovered"))
+        end
         cell.cleared = true
         cell.encounter = nil
+        Player.save()
         saveRun()
         return
     end
@@ -4508,13 +4630,11 @@ function game.drawHud()
     local mx, my
     if InputMode.isMouse() then mx, my = Scale.toGame(love.mouse.getPosition()) end
     PartyStatus.drawStrip(game.player, STRIP_X, STRIP_Y, mx, my, game.abilityState)
-    -- THE RELIC TRAY, directly under the vitals rather than in the opposite corner. Both readouts
-    -- answer the same question -- how is this expedition doing -- and a pile parked across the screen
-    -- from the company carrying it is a pile the player checks once and then forgets while routing.
-    -- Chips rather than named rows, because the shelf stacks now and a dozen named rows is half the
-    -- screen (see ui/relic_strip.lua's header for the whole argument).
-    RelicStrip.draw(game.relicState, STRIP_X,
-        STRIP_Y + PartyStatus.stripHeight(#((game.player and game.player.roster) or {})) + 6, mx, my)
+    -- THE RELIC TRAY IS PARKED (2026-09-17, models/relic.lua). It sat directly under the vitals and
+    -- read the run's pile as chips; nothing grants a relic any more, so it would draw an empty band
+    -- under the company for the whole of every run. The call is cut rather than left to render
+    -- nothing, because an empty readout still reserves its place (ui/relic_strip.lua's own argument
+    -- for sitting here, and the reason the tray is the thing to remove rather than the state).
 
     -- "CARRIED THIS RUN" STOOD HERE, and it is deleted. It named the stake in a bet -- what an
     -- expedition had accrued and would hand back by dying -- and the bet is gone: a wipe takes

@@ -75,13 +75,41 @@ The codebase is organized into layers loaded via `require()`. See
 - **`states/`** — screens as plain tables with optional LÖVE callbacks (`enter`, `update`,
   `draw`, `keypressed`, `mousepressed`, `gamepadpressed`, …). `states/init.lua` is the
   minimal manager: `State.switch(state, ...)` sets the current state and calls its `enter`.
-  Flow: `menu → hub → (Bounty Board → game)`. The **Bounty Board** posts work the company holds and
-  spends: a bounty names a ground, a tier, the body at the end and the one **piece** that body owes,
-  and taking it spends the posting whether the run is won or lost. Seven houses, each a ladder of an
-  authored opener plus two derived rungs; a stake of **augments** raises the danger and the pay before
-  you go. See [docs/bounties.md](docs/bounties.md); [docs/overworld.md](docs/overworld.md) owns the
-  ground it is walked on. **The rift (`states/gate.lua`, `models/descent.lua`) still stands beside it**
-  and is due to be parked — see bounties.md's Known debt for what that is blocked on.
+  Flow: `menu → hub → Gate → game`. **The campaign is the descent** (`states/gate.lua`,
+  `models/descent.lua`): one rift of **15 floors** — seven circles of two, plus the Crown under them —
+  fought a floor at a time, with the Gate at the edge of the city as its only door.
+
+  **It is a PLACE, not a roll, and that is the load-bearing fact.** A floor's ground is dealt from the
+  save's own seed and the depth alone, so floor three is the same floor three for the life of a
+  playthrough; the boards a company has walked are kept whole on the player (`Descent.keepFloor` →
+  `player.floors`) with their fog lifted, their caches spent and their found secret doors still found.
+  The monsters re-arm and the places do not (`Descent.rearmFloor`) — Wizardry's own split, which that
+  function's header argues in full. A stair whose guard fell stays open, so a company **re-enters at the
+  deepest floor it has mapped** (`Descent.entryFloor`) rather than re-walking cleared ground.
+
+  So a trip is not a run: you go down, attrit, and come back up to the **Ward** to rest a wound off (in
+  descents, free) or buy it off (40g), and to the **Touchstone** to have what you found named. Wounds
+  outlive the trip and the roster is unbounded, so a bad trip costs **a body on the bench**, never a
+  bill — the law in [docs/the-count.md](docs/the-count.md). What a company carries down is what the four
+  who walk down have in their grids; the stash stays in town.
+
+  **A wipe costs the HAUL, and the haul is not gone — it is lying where you fell.** `Descent.dropPack`
+  puts the trip's finds (`Player.atRisk`'s diff against the company as it walked in) on the tile the
+  party died on, in that floor's kept board; walking back to it is how you get it, down ground whose
+  fights have re-armed. Nothing the company owned when it walked in is ever taken, which is the law
+  above held — and the retrieval is the first reason the game has to re-enter a floor it already
+  cleared. `Descent.lostPacks` derives the readout by walking the boards, so there is no second ledger
+  to go stale.
+
+  See [docs/overworld.md](docs/overworld.md) for the floor it is walked on and
+  [docs/identification.md](docs/identification.md) for what a floor pays.
+
+  **Two systems are parked, and both are one flag or one file from coming back.** *Iselle's tally*
+  (`Descent.COUNT_PARKED`) charged a mark for climbing out, which prices the loop this design is built
+  on. *The Bounty Board* is demoted rather than deleted: its card lives with the seven houses
+  (`data/buildings/bounty_board.lua`, the houses district) and posts a ground, a tier, a body and the
+  **piece** it owes, as side work against a dungeon that is the real content. See
+  [docs/bounties.md](docs/bounties.md).
 - **`ui/`** — reusable widgets that support **mouse + keyboard + gamepad** (project standard;
   see `ui/menu.lua`, `ui/building_map.lua`). Pop-up panels live in `ui/panels/`.
 - **`models/`** — logic + instantiation over the data layer. `models/registry.lua` auto-loads
@@ -100,7 +128,13 @@ The codebase is organized into layers loaded via `require()`. See
   `lockReason`). See [docs/shelf.md](docs/shelf.md) (`models/grade.lua`, `. grade-report`,
   `. drop-tier recut`). *Which body* hands a found item over is [docs/drops.md](docs/drops.md) —
   `. drop-report` measures reachability by placement, and is the pass to run before authoring a
-  drop list. `data/meals/` is the one content type that is *not* an item: the Cafe's supper,
+  drop list. An item may also rewrite a **rule of the game** for its bearer (`rules`, `Item.RULE_NAMES`
+  — health pinned at 1, no walking at all, mana paid in blood), open a fight wearing a status
+  (`openingBoon`), or act *between* fights on an expedition (`encounterCleared`, `models/item_hook.lua`).
+  All three arrived when the **relic shelf was parked** and its 25 surviving effects became items — see
+  [docs/relics.md](docs/relics.md), which also records the 11 pure-stat relics that were cut and how to
+  lift the park. `models/relic.lua` is still on disk and still loads; treat nothing in it as live.
+  `data/meals/` is the one content type that is *not* an item: the Cafe's supper,
   one per day out, worn by the whole company — see [docs/meals.md](docs/meals.md).
   There is **one currency**, gold — no valuables to carry out and sell, no scrip; an end simply pays a
   richer purse (`Spoils.endPurse`) — and what keeps an underground purchase from being priced against a
@@ -127,5 +161,13 @@ overlay owned by the hub state (not a separate state), so the city stays visible
 The hub tracks `activePanel` and routes input to it while open. Each building names a panel
 module under `ui/panels/`; buildings without one fall back to `ui/panels/placeholder.lua`.
 The city grows over time via each building's `unlockPrestige` (compared against the player's
-prestige in `models/building.lua`). See [docs/adding-content.md](docs/adding-content.md) to
-add a building, quest, or panel.
+prestige in `models/building.lua`), and several doors carry a second gate on top of it —
+`unlockAnyHouse`, `unlockExpeditions`, `unlockWound`, `unlockUnidentified` — so a card arrives on the
+trip that gives the player the problem it solves.
+
+**Two districts, and the city one is FULL.** `Building.GRID.city` is three columns by three rows with
+the Gate taking the taller middle slot: nine slots, nine cards, the last one claimed by the Ward. A new
+plaza card therefore needs a slot freed or the grid re-laid — dropping one in on top of another draws
+two plates over each other, which has shipped once already. `Building.GRID.houses` is the second board,
+reached through the Houses card: the seven shopfronts, plus the Bounty Board on a row of its own beneath
+them. See [docs/adding-content.md](docs/adding-content.md) to add a building, quest, or panel.

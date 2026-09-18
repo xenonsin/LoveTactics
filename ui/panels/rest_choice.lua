@@ -1,7 +1,7 @@
 -- Rest, as a decision. Opened when the player steps onto a Rest tile (states/game.lua's openEncounter).
 -- A rest used to just refill the party; now it forces a choice between ways to spend the breather --
 -- Heal the party, Sharpen a lasting combat edge, or Study the ground -- so a safe stop is a real weigh,
--- and the companions plug in (Amana strengthens Heal, Gyeom strengthens Study). One only; the others are
+-- and the companions plug in (Xin strengthens Heal, Gyeom strengthens Study). One only; the others are
 -- forgone. Modeled on ui/panels/loot_reveal.lua: a state owns it as game.activePanel and forwards input;
 -- three-input + mouse-only.
 --
@@ -54,9 +54,21 @@ function RestChoice.new(opts)
     self.finished = false
     self.options = {
         { label = "Heal",    desc = "Restore the whole party to full health.",                 cb = opts.onHeal },
-        { label = "Sharpen", desc = "Gain Honed Edge -- the front line opens every fight emboldened.", cb = opts.onSharpen },
-        { label = "Study",   desc = "Lift the fog from the objective and every Reliquary.",     cb = opts.onStudy },
+        -- The Reliquary is parked (2026-09-17), so a Study no longer has one to lift the fog from and
+        -- the line stops promising it. What it actually opens is the same as it ever was otherwise:
+        -- every secret door on the board, and the objective (game:restStudy).
+        { label = "Study",   desc = "Lift the fog from the objective, and open every secret door.", cb = opts.onStudy },
     }
+    -- SHARPEN COMES AND GOES NOW, for the Bind row's reason rather than its own. Its whole payload was
+    -- Honed Edge, a run relic, and models/relic.lua is parked -- so the camp has nothing to hand over
+    -- and states/game.lua passes no `onSharpen`. Made conditional rather than deleted: the row is three
+    -- lines from working again the day the relic shelf comes back, and a fixed row whose callback is
+    -- nil is a control that draws and does nothing, which is the one thing a camp menu must not do.
+    if opts.onSharpen then
+        table.insert(self.options, 2, { label = "Sharpen",
+            desc = "Gain Honed Edge -- the front line opens every fight emboldened.",
+            cb = opts.onSharpen })
+    end
     -- ...and the one that comes and goes. See the header: no wound in the company, no row.
     if opts.onBind then
         self.options[#self.options + 1] = { label = "Bind",
@@ -70,15 +82,30 @@ function RestChoice.new(opts)
     self.descFont = Theme.body(14)
     self.hintFont = Theme.body(13)
 
+    -- WHAT CAMPING HERE RISKS, as a percent, or nil in a leg that cannot be ambushed at all
+    -- (models/descent.lua's Descent.ambushChance; an authored quest's rest stop passes nothing).
+    --
+    -- QUOTED BEFORE ANY ROW IS PRESSED, which is the whole reason it is on this panel rather than in a
+    -- toast afterwards. The roll decides whether the company gets the verb it chose, so a player who
+    -- only learns the odds by losing one has been told nothing they could act on -- and the alternative
+    -- the number exists to price is real: carry the damage one more floor and camp shallower next time.
+    self.risk = (opts.risk or 0) > 0 and opts.risk or nil
+
+    -- THE BAND EXISTS ONLY WHEN THE LINE DOES, and the rows and the box height both move with it. A
+    -- panel that reserves a gap for a sentence it is not going to print reads as a layout with
+    -- something missing out of it; the host owns the rect, so it grows rather than overlaps.
+    local riskBand = self.risk and 22 or 0
+
     self.boxW = BOX_W
-    self.boxH = 70 + #self.options * (OPT_H + OPT_GAP) + 24
+    self.boxH = 70 + riskBand + #self.options * (OPT_H + OPT_GAP) + 24
     self.boxX = Scale.WIDTH / 2 - BOX_W / 2
     self.boxY = Scale.HEIGHT / 2 - self.boxH / 2
+    self.riskY = self.boxY + 56
     self.closeButton = CloseButton.new(self.boxX + BOX_W, self.boxY)
 
     for i, o in ipairs(self.options) do
         o.rect = {
-            x = self.boxX + PAD, y = self.boxY + 60 + (i - 1) * (OPT_H + OPT_GAP),
+            x = self.boxX + PAD, y = self.boxY + 60 + riskBand + (i - 1) * (OPT_H + OPT_GAP),
             w = BOX_W - PAD * 2, h = OPT_H,
         }
     end
@@ -112,6 +139,16 @@ function RestChoice:draw()
     love.graphics.setFont(self.titleFont)
     Theme.set(Theme.accentAmber)
     love.graphics.printf(self.title, bx, by + 18, self.boxW, "center")
+
+    -- THE RISK, in the future tense and in the warning colour, because it describes something that has
+    -- not happened yet and may not. It names the thing at stake -- the camp, not the company -- so a
+    -- player reads it as "I might not get this" rather than as a threat to their bodies.
+    if self.risk then
+        love.graphics.setFont(self.hintFont)
+        Theme.set(Theme.accentWeapon)
+        love.graphics.printf(self.risk .. "% chance something finds the camp and the rest is lost",
+            bx, self.riskY, self.boxW, "center")
+    end
 
     for i, o in ipairs(self.options) do
         local r = o.rect

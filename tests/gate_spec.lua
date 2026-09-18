@@ -208,21 +208,35 @@ return {
             encounters = { { kind = "combat", weight = 1 } },
         })
         grid:reveal(grid.start.x, grid.start.y, 3)
-        assert(Descent.floorBoard(run, 1) == nil, "a floor never walked is not kept")
+        assert(Descent.floorBoard(p, 1) == nil, "a floor never walked is not kept")
 
-        Descent.keepFloor(run, 1, grid:snapshot())
-        assert(Descent.floorBoard(run, 1), "the floor is kept once it is left")
-        assert(Descent.floorBoard(run, 2) == nil, "and only the one that was left")
+        -- THE BOOK IS THE COMPANY'S, NOT THE EXPEDITION'S, which is what makes the maze a place rather
+        -- than a roll. It hung on the run until the pivot, so the map survived every climb-out WITHIN a
+        -- trip and was thrown away the moment the trip ended -- a company that had drawn nine floors
+        -- walked back down into nine floors it had never seen.
+        Descent.keepFloor(p, 1, grid:snapshot())
+        assert(Descent.floorBoard(p, 1), "the floor is kept once it is left")
+        assert(Descent.floorBoard(p, 2) == nil, "and only the one that was left")
+
+        -- AND IT OUTLIVES THE RUN, which is the claim the whole pivot rests on. Discarding the
+        -- expedition is what every exit does (states/game.lua, five sites); the map must not go with it.
+        p.descentRun = nil
+        assert(Descent.floorBoard(p, 1), "the map survives the expedition that drew it")
 
         -- KEYED BY STRING, deliberately: a numeric key round-trips through the encoder as a string on
         -- some paths and an integer on others, so a board stored under 3 and looked up under "3" would
         -- silently re-roll every floor after a load -- exactly the bug this feature exists to prevent,
         -- and invisible until somebody notices their map is gone.
-        local back = Descent.restore(reserialize(Descent.snapshot(run)))
+        local back = Save.restore(reserialize(Save.snapshot(p)))
         assert(Descent.floorBoard(back, 1), "and the board survives a save under the same key")
         local restored = Overworld.fromSnapshot(Descent.floorBoard(back, 1))
         assert(restored.cols == grid.cols and restored.rows == grid.rows, "as the same board")
         assert(restored:startCell().seen, "with the fog the company lifted still lifted")
+
+        -- THE DEEPEST STAIR THE CITY MAY OFFER, read off the book rather than off the depth record
+        -- (Descent.entryFloor, and the Gate's descend rows).
+        assert(Descent.mapped(back) == 1, "one floor drawn reads as one floor mapped")
+        assert(Descent.entryFloor(back) == 1, "and the stair it offers is that one")
     end },
 
     { name = "a wipe puts the floor away like every other way off it", fn = function()

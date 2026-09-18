@@ -119,8 +119,16 @@ return {
             "the lap's seed is written down somewhere -- a stored copy of a derived value can disagree")
     end },
 
-    { name = "two descents in one playthrough are two rifts, and the playthrough replays as itself",
+    { name = "every descent in one playthrough is the SAME rift, and the playthrough replays as itself",
       fn = function()
+        -- THIS CASE USED TO ASSERT THE OPPOSITE and the reversal is the pivot, not a loosened test. It
+        -- read "two descents in one playthrough are two rifts": Seed.run folded `runsStarted` into the
+        -- seed, so walking out and back in laid a different maze. That is the correct shape for a run
+        -- you start over and the wrong one for a place you learn -- and it made the map book a book of
+        -- floors that no longer existed (Descent.keepFloor).
+        --
+        -- What a shared seed promises is unchanged and is the second half below: the same number is the
+        -- same playthrough. What changed is that it is now also the same rift all the way through.
         local function threeRuns(seed)
             local p = Player.new()
             p.seed = seed
@@ -132,8 +140,8 @@ return {
         end
 
         local a = threeRuns(481920)
-        assert(a[1] ~= a[2] and a[2] ~= a[3] and a[1] ~= a[3],
-            "a second descent in one playthrough dealt the first one again")
+        assert(a[1] == a[2] and a[2] == a[3],
+            "a second descent laid a different rift -- the maze is a place and does not re-roll")
 
         -- The same save, played again from the same number, is the same three descents in the same
         -- order. This is the sentence a shared seed actually promises.

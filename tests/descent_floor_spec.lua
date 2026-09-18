@@ -449,18 +449,22 @@ return {
         --   90-140   a FIFTEEN-floor descent you could bank progress in and walk across many sittings.
         --   60-110   eight floors, ~76 fights: the stack reset on leaving, so all of it had to be
         --            walkable in one go and one go was the whole campaign.
-        --   20-40    what is cut here. The run is not the campaign any more -- it is an ATTEMPT at a
-        --            distance (models/descent.lua's FLOOR_FIGHTS header), so the unit is not what a
-        --            complete descent totals but what one sitting costs. ~28 fights is about
-        --            fifty-five minutes of combat, which is a thing a player starts again.
+        --   20-40    eight floors at 3-4 fights, ~28: the run was an ATTEMPT at a distance, it reset
+        --            when you left it, so the unit was what ONE SITTING costs.
+        --   40-70    what is cut here, and the unit has changed again rather than the tuning. The maze
+        --            is a place the company maps and re-enters (Descent.keepFloor) and a trip ends at
+        --            the Ward, so a descent is walked across many sittings once more -- but the floors
+        --            stayed thin at 3-4 (FLOOR_FIGHTS, unchanged), so fifteen of them bill ~53 rather
+        --            than the ~113 the old fifteen-floor stack did.
         --
-        -- The ceiling is what stops a later retune quietly rebuilding the marathon. The floor is what
-        -- stops one hollowing the attempt out into a corridor -- below twenty, a run ends before the
-        -- snowball it is built around has anything in it.
+        -- WHAT THE TWO ENDS GUARD, and it is not "a sitting" any more. The ceiling stops a later retune
+        -- rebuilding the marathon -- the thing that made a fifteen-floor stack unwalkable was never its
+        -- length, it was 8-11 fights a floor. The floor stops the place being hollowed into a corridor:
+        -- below forty, fifteen floors are not carrying enough fight between them to be worth mapping.
         local total = 0
         for f = 1, Descent.FLOORS do total = total + Descent.floorFights(f) end
-        assert(total >= 20 and total <= 40, string.format(
-            "a descent bills %d fights end to end, outside the 20-40 one sitting is cut to", total))
+        assert(total >= 40 and total <= 70, string.format(
+            "a descent bills %d fights end to end, outside the 40-70 a mapped place is cut to", total))
     end },
 
     { name = "the deepest floor is still one connected place", fn = function()
@@ -496,25 +500,28 @@ return {
                 "seed " .. seed .. ": the deepest floor's stair cannot be walked to from the entrance")
         end
     end },
-    -- THE THREE WAYS TO SPEND ON THE PILE all have to actually turn up on a floor, or a relic economy
-    -- exists only in the code. The Reliquary and the Merchant have been guaranteed since the descent
-    -- landed; the Weeping Stone joins them from the second floor down, because it prices a relic in a
-    -- permanent cut to the company's maximum health and a company that has not been hurt yet has nothing
-    -- to weigh that against.
-    { name = "every floor carries its ways to spend, and the blood-priced one waits for the second",
+    -- THE WAY TO SPEND ON THE PILE has to actually turn up on a floor, or the road's economy exists only
+    -- in the code. The Merchant has been guaranteed since the descent landed and still is.
+    --
+    -- THE OTHER TWO ARE PARKED (2026-09-17, models/relic.lua). The Reliquary and the Weeping Stone dealt
+    -- run relics and nothing else; both blueprints carry `parked = true` and both are struck from
+    -- models/descent.lua's `guaranteeKinds`. Their absence is asserted rather than merely unmentioned --
+    -- a guarantee that was dropped and a guarantee that quietly stopped being placed look identical from
+    -- a spec that only checks what IS there, and the park is the thing worth pinning.
+    { name = "every floor carries its way to spend, and the parked stops stand on none of them",
       fn = function()
-        for seed = 1, 12 do
-            local first = floorGrid(seed, { floor = 1 })
-            assert(countKind(first, "relic_cache") >= 1, "seed " .. seed .. ": floor 1 has no Reliquary")
-            assert(countKind(first, "merchant") >= 1, "seed " .. seed .. ": floor 1 has no Merchant")
-            assert(countKind(first, "weeping_stone") == 0,
-                "seed " .. seed .. ": the Weeping Stone must not stand on the first floor")
-
-            local deeper = floorGrid(seed, { floor = 4 })
-            assert(countKind(deeper, "relic_cache") >= 1, "seed " .. seed .. ": floor 4 has no Reliquary")
-            assert(countKind(deeper, "merchant") >= 1, "seed " .. seed .. ": floor 4 has no Merchant")
-            assert(countKind(deeper, "weeping_stone") >= 1,
-                "seed " .. seed .. ": floor 4 has no Weeping Stone")
+        for _, floor in ipairs({ 1, 2, 4 }) do
+            for seed = 1, 12 do
+                local grid = floorGrid(seed, { floor = floor })
+                assert(countKind(grid, "merchant") >= 1,
+                    string.format("seed %d: floor %d has no Merchant", seed, floor))
+                assert(countKind(grid, "rest") >= 1,
+                    string.format("seed %d: floor %d has no Rest", seed, floor))
+                for _, parked in ipairs({ "relic_cache", "weeping_stone", "shrine" }) do
+                    assert(countKind(grid, parked) == 0, string.format(
+                        "seed %d: floor %d placed %s, which is parked", seed, floor, parked))
+                end
+            end
         end
     end },
 }

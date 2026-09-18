@@ -45,7 +45,7 @@ local Scale = require("scale")
 local ScreenFx = require("ui.screen_fx")
 local Sound = require("models.sound")
 local Theme = require("ui.theme")
-local CountMeter = require("ui.count_meter") -- Iselle's tally, on the Rift's plate
+local CountMeter = require("ui.count_meter") -- Iselle's tally; parked, kept wired -- see the draw
 local Descent = require("models.descent")    -- ...and what it reads, plus the mark that reveals it
 
 -- The plaza's coaching words, as a hint bag rather than strings in this file
@@ -56,12 +56,19 @@ local hub = {}
 
 local titleFont = Theme.display(28)
 
--- ISELLE'S TALLY, drawn on the Rift's own plate rather than under the title. The day counter that used
--- to sit centred in the header did so because expeditions were chosen from a board and the clock
--- belonged to the screen; this number belongs to one hole in the ground, so it rides the card that hole
--- is drawn on -- dead centre of the plaza, already the one card drawn larger, and exactly where the eye
--- is when the player is deciding whether to press it. It is the only clock the city keeps now. Held at
--- file scope so the arrival beat fires on a real change rather than on every visit (ui/count_meter.lua).
+-- THE RIFT'S PLATE CARRIES ONE NUMBER, and which number it is has changed with the premise.
+--
+-- The slot is right for the same reason it always was: this figure belongs to one hole in the ground
+-- rather than to the screen, so it rides the card that hole is drawn on -- dead centre of the plaza,
+-- already the one card drawn larger, and exactly where the eye is when the player is deciding whether
+-- to press it.
+--
+-- WHAT STANDS THERE NOW IS THE MAP, not the tally: how deep the place goes for this company
+-- (Descent.mapped, drawn in hub.draw). The swap is the pivot in one line -- the number under the Rift
+-- stopped being how badly the company is doing and became how much of the rift it has drawn. The tally
+-- is parked (Descent.COUNT_PARKED, docs/the-count.md) and this widget is kept built and ticked so that
+-- lifting the flag brings it back with its arrival beat intact, which is what separates a park from a
+-- deletion. Held at file scope for that beat (ui/count_meter.lua).
 local countMeter = CountMeter.new()
 
 local map           -- BuildingMap widget
@@ -100,11 +107,14 @@ local BURGER_X, BURGER_Y = 18, 18
 -- player is looking at has the hole in the ground and nothing else worth pressing.
 --
 -- IT WAS THE BOUNTY BOARD FOR A PASS, and the round trip is the thing to read rather than either end of
--- it. The board took this stage when the campaign became posted work; the campaign is a DISTANCE RUN
--- now -- how far can you go, with a build you brought and a snowball you find on the way down -- and a
--- posting names a fixed errand, which is the one shape that premise has no room for. The board's card
--- is deleted; models/bounty.lua stays on disk and stays required by six models, so this is a park of
--- exactly the kind the Rift got and it costs one file to undo.
+-- it. The board took this stage when the campaign became posted work, then lost it when the campaign
+-- became a distance run and the board's card was deleted outright.
+--
+-- THE CAMPAIGN IS NEITHER OF THOSE NOW. It is one rift the company MAPS and re-enters at the stair it
+-- opened (models/descent.lua's Descent.keepFloor and Descent.entryFloor) -- so the stair keeps this
+-- stage for a third reason, and a better one than "it is the only door": it is the door you will keep
+-- coming back through. The board is back too, demoted to side work on the houses' own square
+-- (data/buildings/bounty_board.lua), where it coaches nothing and interrupts nothing.
 --
 -- AND IT PUTS A THREE-TIME-STALE SEAM BACK IN AGREEMENT. `conversation_prologue_arrival` is Rowan
 -- sending the player to the RIFT, by name, in her own words, and it is the last thing said before this
@@ -129,8 +139,8 @@ local BURGER_X, BURGER_Y = 18, 18
 -- also what lets its {select} re-read the device in the player's hands mid-visit.
 local INTRO_STAGES = {
     -- THE WARD FIRST, AND THE STAIR SECOND. The player arrives carrying Rowan's wound off the Champion
-    -- (data/status/status_champion_fixation.lua), so the first thing the city can usefully say is where
-    -- that gets dealt with -- and the room is where Amana is, so the coached door hands over a companion
+    -- (models/combat.lua's Combat.spendScriptedFell), so the first thing the city can usefully say is where
+    -- that gets dealt with -- and the room is where Xin is, so the coached door hands over a companion
     -- as well as a lesson. Sending them down the hole first would coach the stair to a company that is
     -- short a body and does not yet know there was anything to do about it.
     --
@@ -405,14 +415,14 @@ end
 local function launchVendor(building)
     -- A ROOM WITH NO SHELF CAN STILL HAVE SOMETHING TO SAY. `intro` is a one-time scene the blueprint
     -- names, played the first time this door is walked into, and `grants` is the companion it hands over
-    -- as it closes -- which is how the Ward introduces Amana (data/buildings/the_ward.lua).
+    -- as it closes -- which is how the Ward introduces Xin (data/buildings/the_ward.lua).
     --
     -- KEYED ON ITS OWN FLAG, and the first version of this was keyed on Building.seenDoor and was
     -- BROKEN BY IT. Those are two different questions: seenDoor asks "has this card been ANNOUNCED",
     -- and hub.enter seeds it wholesale on the first visit for every door the city already has open
     -- (Building.seedSeen) -- so that nothing already standing is ever coached as news. The Ward is open
     -- the moment the company walks out of Act 0, because Rowan is hurt, so it was seeded seen on the
-    -- very first frame of the city and Amana's scene never fired for anybody. A scene played once is not
+    -- very first frame of the city and Xin's scene never fired for anybody. A scene played once is not
     -- the same fact as a card announced once, and conflating them silently ate a companion.
     --
     -- The recruit fires BEFORE the scene, so the "[X has joined your Party]" banner folds onto the end
@@ -492,7 +502,7 @@ local function openPanel(building)
         -- on the board. It called launchPanel directly while the only stage here was the hall's -- a
         -- room with nothing to say on the way in -- and the Ward inheriting that path swallowed its
         -- `intro` and the companion the scene `grants`: the one coached door that hands over a body
-        -- was the one door that skipped the code which hands one over. Amana simply never appeared.
+        -- was the one door that skipped the code which hands one over. Xin simply never appeared.
         -- The Gate is unaffected: it keeps neither `intro` nor `vendor`, so launchVendor is its
         -- launchPanel.
         launchVendor(building)
@@ -751,7 +761,11 @@ function hub.draw()
     -- dimming the moment an expedition ended, on exactly the morning the player is standing in it
     -- looking at what they left behind. The tally is the company's now (models/descent.lua's
     -- Descent.count) and the mark that gates it already answers the only question worth asking here.
-    local dim = Descent.everClimbedOut(hub.player) and CountMeter.cityDim(hub.player)
+    -- (PARKED WITH THE TALLY, Descent.COUNT_PARKED. The city dimmed as the count climbed; with nothing
+    -- moving the number it would dim by exactly nothing forever, so the whole branch is skipped rather
+    -- than left to compute a no-op every frame.)
+    local dim = not Descent.COUNT_PARKED
+        and Descent.everClimbedOut(hub.player) and CountMeter.cityDim(hub.player)
     if dim then
         Theme.set(Theme.mount, dim)
         love.graphics.rectangle("fill", 0, 0, screenW, screenH)
@@ -785,9 +799,23 @@ function hub.draw()
     -- is the moment it becomes about something they did. Until then this card is exactly what it has
     -- always been (models/descent.lua's Descent.everClimbedOut, and the mark is one-way for the same
     -- reason the Inn's door is).
-    if Descent.everClimbedOut(hub.player) then
+    -- THE PLATE SAYS HOW DEEP THE PLACE GOES FOR YOU, and it is the same slot the tally used to stand in
+    -- (Descent.COUNT_PARKED took the meter off it). The swap is the premise in one line: the number
+    -- under the Rift stopped being how badly the company is doing and became how much of the rift it
+    -- has drawn -- the map book, on the door it was drawn behind (models/descent.lua's Descent.mapped).
+    --
+    -- SILENT UNTIL THERE IS A MAP. A company on its first trip has walked nothing, and "Mapped to floor
+    -- 0" is a readout of an absence -- the first descent writes floor one and the line arrives with it.
+    local mapped = Descent.mapped(hub.player)
+    if mapped > 0 then
         local gate = Building.GRID.city.gate
-        countMeter:draw(gate.x, 384, gate.w, hub.player)
+        -- The meter's own phrase font and slot, so the plate reads at the size it always did
+        -- (ui/count_meter.lua drew its band phrase at Theme.body(13) on this line).
+        love.graphics.setFont(Theme.body(13))
+        Theme.set(Theme.muted)
+        love.graphics.printf("Mapped to floor " .. mapped .. " of " .. Descent.FLOORS,
+            gate.x, 384, gate.w, "center")
+        love.graphics.setColor(1, 1, 1)
     end
 
     -- Drawn under any open panel (which dims the city), so the burger does not float over its own menu.
@@ -801,7 +829,7 @@ function hub.draw()
     -- ...AND WHILE NOTHING IS BEING SAID OVER IT EITHER. A scene draws on top of the state rather than
     -- instead of it (main.lua's love.draw), so the city keeps rendering underneath -- and the Ward hands
     -- the intro on to the stair the moment its door is pressed, which is one scene BEFORE the player is
-    -- done with the room. Without this the stair's bubble sits behind Amana's first words, pointing at
+    -- done with the room. Without this the stair's bubble sits behind Xin's first words, pointing at
     -- the door after the one being walked into.
     local stage = coachedStage()
     if stage and not activePanel and not Conversation.active then

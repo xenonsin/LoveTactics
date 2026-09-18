@@ -765,26 +765,52 @@ end
 -- option that says "take the box" has already told the player what it is paying; rolling a 35% behind
 -- that sentence would make the option a lie about a third of the time. It draws from a chest's ordinary
 -- pool, not a vault's slice -- what a dilemma hands over is a find, not a reward for searching.
-Spoils.SEALED_CHANCE = { combat = 0.15, elite = 0.35, treasure = 0.35, secret = 1.0, offer = 1.0 }
+--
+-- THE RATES WENT UP WHEN THE HUSK BECAME THE STANDARD PAY (0.15/0.35/0.35 before this). Two things
+-- moved under the old numbers and neither was noticed at the time:
+--
+--   the floor got shorter   R-1 cut FLOOR_FIGHTS from 8-11 to 3-4. At 15% a floor's fights paid 0.45
+--                           husks; the paragraph above describes "two or three across a twelve-stop
+--                           floor", and a floor is not twelve stops any more.
+--   the trip got longer     the maze is a place now and a company walks out to the Touchstone and back
+--                           (Descent.keepFloor, docs/identification.md). The satchel of unnamed blades
+--                           IS the reason to climb the stair, so it has to fill at a rate a player can
+--                           feel inside one trip.
+--
+-- A quarter of ordinary fights and half of the two stops worth going out of your way for. Across a
+-- four-floor trip at 3-4 fights a floor that is three or four husks plus the elites -- a satchel, which
+-- is what the counter is for -- where the old rates paid under two for the same walk.
+--
+-- MEASURE THIS RATHER THAN TRUST IT (`. board-report 60 descent`). It is derived from the fight counts
+-- above, and those are constants that have moved twice in a week.
+Spoils.SEALED_CHANCE = { combat = 0.25, elite = 0.50, treasure = 0.50, secret = 1.0, offer = 1.0 }
 
 -- HOW FAST A DRY FLOOR STOPS BEING DRY. Each stop that pays no husk lifts the next stop's chance by
 -- this much of the base rate, and a stop that pays one resets it (Descent.sealedDrought).
 --
--- FIVE FOURTHS, and the arithmetic is the whole argument rather than a feel. An ordinary fight is 15%,
--- so reaching certainty on the Nth dry stop wants (1/0.15 - 1)/N; at N = 5 that is 1.13 and at N = 4 it
--- is 1.42. A floor holds eight fights at the top of the stack and eleven at the bottom
--- (Descent.FLOOR_FIGHTS), so certainty by the fifth dry stop clears the shortest floor in the game with
--- three fights to spare -- and 1.25 is the round number inside that window.
+-- ONE, and the arithmetic is the whole argument rather than a feel. Reaching certainty on the Nth dry
+-- stop wants (1/base - 1)/N; an ordinary fight is 25% (SEALED_CHANCE above), so that is 3/N -- N = 3
+-- gives exactly 1.0.
 --
--- (The first cut of this was 2/3 and the header claimed certainty by the fourth dry fight. It reaches
--- 0.65 there. Nothing in the reachable range of a floor would ever have hit 1, which the spec caught
--- and the prose did not -- the number was chosen to sound moderate rather than derived from the rate it
--- was modifying.)
+-- THREE BECAUSE THAT IS THE SHORTEST FLOOR THERE IS. Descent.FLOOR_FIGHTS is 3 at the top of the stack
+-- and 4 at the bottom, so certainty by the third dry stop clears the thinnest floor in the game exactly
+-- and every deeper one with room. That is the property this dial is for: no floor can be walked end to
+-- end and pay nothing.
 --
--- Deliberately a SHARE of each kind's own rate rather than a flat addition: an elite starts at 35% and
--- reaches certainty on its second dry stop, which is right, because a player who beat one and got
+-- IT WAS 1.25 AND ITS DERIVATION HAD GONE STALE UNDERNEATH IT -- the header read "a floor holds eight
+-- fights at the top of the stack and eleven at the bottom", which R-1 cut to 3 and 4 without anything
+-- here noticing. At 15% base and 1.25, certainty arrived on the fifth dry stop: two fights past the end
+-- of a short floor, so the guarantee this constant exists to make could not be reached on one. It was
+-- silently doing nothing, which is worse than being wrong -- nothing reddened.
+--
+-- (The cut BEFORE that was 2/3, whose header claimed certainty by the fourth dry fight and reached 0.65
+-- there. Same failure twice: a number chosen to sound moderate rather than derived from the rate it
+-- modifies. Derive it, and re-derive it whenever FLOOR_FIGHTS or SEALED_CHANCE moves.)
+--
+-- Deliberately a SHARE of each kind's own rate rather than a flat addition: an elite starts at 50% and
+-- reaches certainty on its first dry stop, which is right, because a player who beat one and got
 -- nothing has a louder complaint than one who cleared a wolf pack.
-Spoils.SEALED_PITY = 1.25
+Spoils.SEALED_PITY = 1.0
 
 -- How far above the road's own band a CHEST may reach, as a multiple of it. See sealedCandidates.
 Spoils.SEALED_ABOVE = 2.5

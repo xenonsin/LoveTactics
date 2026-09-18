@@ -43,19 +43,32 @@ return {
         -- paragraph there rather than the next time somebody deletes a line. Widened from 3000 when the
         -- economy split added the scrip burn to this branch (models/scrip.lua).
         local upTail = src:sub(up, up + 5000)
-        -- What the stair costs, which is the other half of the symmetry below: one mark, against a
-        -- wipe's two. The pile assertion that stood here went with the pile.
+        -- What the stair costs, which is NOTHING -- the tally is parked (Descent.COUNT_PARKED), so
+        -- Descent.climbOut is called for its bookkeeping and charges no mark. The call still has to be
+        -- here: it is what marks the company as having ever surfaced, which several readouts gate on.
+        -- The pile assertion that stood here went with the pile.
         assert(upTail:find("Descent.climbOut(", 1, true),
             "climbing out charges nothing on the tally, so the way up is free and shuttling is untaxed")
+        -- AND THE MAP GOES IN THE BOOK ON THE WAY OUT (Descent.keepFloor). Without this the one floor a
+        -- company never keeps is the one it climbed out of, which is the commonest exit in the game.
+        assert(upTail:find("Descent.keepFloor(", 1, true),
+            "climbing out must bank the floor the company is standing on, or the map book has a hole "
+            .. "exactly where the player stopped")
         assert(upTail:find("descentRun = nil", 1, true),
             "climbing out leaves the expedition open, so the next dive resumes a rift already left")
 
         local down = src:find("wiped = floor", 1, true)
         assert(down, "nothing sends a wiped company to the Gate any more -- retarget this case")
-        local downHead = src:sub(math.max(1, down - 4000), down)
+        -- WIDENED FROM 4000 for the reason the note above gives about the other window: this branch
+        -- grew a paragraph and a Descent.keepFloor block when the map book moved onto the player, and a
+        -- heuristic window sized to yesterday's block goes red on commentary rather than on a deletion.
+        local downHead = src:sub(math.max(1, down - 6000), down)
         assert(downHead:find("Descent.COUNT_WIPE", 1, true),
-            "a wipe closes the rift and charges nothing for it -- dying would be the cheaper exit, "
-            .. "since it happens where the company stands and the stair has to be walked to")
+            "a wipe still names its mark, inert though the tally is (Descent.COUNT_PARKED) -- a park "
+            .. "whose call sites were deleted too is one nobody can lift from the flag alone")
+        assert(downHead:find("Descent.keepFloor(", 1, true),
+            "a rout must bank the floor as well: the ground a company drew before it was killed is not "
+            .. "a thing it was carrying, and taking it back is a price on losing")
         assert(downHead:find("descentRun = nil", 1, true),
             "a wipe leaves the expedition open, so the next dive resumes a dead one")
     end },

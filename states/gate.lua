@@ -48,6 +48,9 @@ local smallFont = Theme.body(13)
 -- Iselle's tally, in the right-hand column under the purse. Beside the gold rather than over the stair
 -- on purpose: this screen is a LEDGER the player reads before committing, and the tally is the other
 -- entry in it. Held at file scope so the arrival beat fires on a real change (ui/count_meter.lua).
+-- KEPT WIRED, NOT DRAWN. The tally is parked (Descent.COUNT_PARKED) so nothing draws this any more;
+-- it is still built and still ticked so that clearing that one flag brings the meter back with its
+-- arrival beat intact, which is what separates a park from a deletion.
 local countMeter = require("ui.count_meter").new()
 
 -- ---------------------------------------------------------------------------
@@ -74,7 +77,9 @@ local countMeter = require("ui.count_meter").new()
 --
 -- Floor to floor is untouched: that is a fresh enter with no Gate in between, `run.entry` is still set,
 -- and re-snapshotting there would bank a run's finds just for walking downstairs.
-local function descend()
+-- `startFloor` is the stair to walk in by, and it only means anything on a FRESH expedition: a company
+-- resuming one is standing where it stopped, and re-seating it would teleport a party mid-descent.
+local function descend(startFloor)
     gate.panel = nil
     -- The first visit's coach bubble is spent HERE, by the deed, not by the screen having been looked
     -- at -- the same rule the city's door coaching keeps (states/hub.lua). Saved with the descent so a
@@ -84,6 +89,12 @@ local function descend()
         Player.save()
     end
     local run = gate.run or Descent.new(gate.player)
+    -- THE STAIR THEY PICKED. Seated onto the run rather than passed to Descent.new, because enter has
+    -- already built it -- the picker above needs a run to read the company off. Guarded on `gate.fresh`
+    -- so the row can never move a company that is already down there (see the header).
+    if startFloor and gate.fresh then
+        run.floor = math.max(1, math.min(Descent.entryFloor(gate.player), startFloor))
+    end
     run.entry = nil
     Player.active = gate.player
     State.switch(require("states.game"), Descent.floorQuest(run, gate.player), nil, gate.player)
@@ -120,13 +131,33 @@ function gate:build()
 
     local items = {}
     if Gate.canDescend(gate.player, gate.run) then
+        -- THE STAIRS YOU HAVE OPENED, and on a fresh expedition there may be two of them.
+        --
+        -- A company that has mapped its way down to floor five walks back in AT floor five -- Wizardry's
+        -- shaft, Daphne's elevator (Descent.entryFloor). Re-walking four cleared floors to reach the one
+        -- you stopped on is the map book's cost with none of its benefit, and it gets worse every trip.
+        --
+        -- BOTH ROWS ARE NAMED AND BOTH ARE ALWAYS LEGAL when a deeper stair exists -- no fold, no
+        -- default that hides the other (ui/menu.lua's own standard). Going in at the top is a real
+        -- choice rather than a worse one: the floors above re-arm (Descent.rearmFloor), so the shallow
+        -- end is where a thin company goes to come back up heavier.
+        --
+        -- ONE ROW WHEN THERE IS ONE STAIR, which is every company's first trip and every resumed
+        -- expedition -- a control appears only where it can be used.
+        local deep = gate.fresh and Descent.entryFloor(gate.player) or Descent.depth(gate.run)
         items[#items + 1] = {
-            label = "Down to floor " .. Descent.depth(gate.run),
-            action = descend,
+            label = "Down to floor " .. deep,
+            action = function() descend(deep) end,
             -- THE ONE ROW THE FIRST VISIT COACHES. Marked here rather than found by index, because the
             -- row above it is conditional and an index would silently move (see gate.draw).
             coach = true,
         }
+        if gate.fresh and deep > 1 then
+            items[#items + 1] = {
+                label = "Down to floor 1",
+                action = function() descend(1) end,
+            }
+        end
     end
     -- THERE IS NO "WAIT A DAY" ROW, and its deletion is the design rather than a tidy-up.
     --
@@ -162,7 +193,10 @@ function gate:build()
         State.switch(require("states.hub"))
     end }
     gate.menu = Menu.new(items, {
-        startY = gate.picker.y + gate.picker:height() + 28,
+        -- 28 BECAME 48 to reserve the band the pack line draws in (see gate.draw). Both numbers are
+        -- measured off the picker's own height, so the caption and the menu move together and neither
+        -- can land on the other when the roster row grows.
+        startY = gate.picker.y + gate.picker:height() + 48,
         buttonHeight = 44, spacing = 12,
     })
     gate.focus = gate.focus or "picker"
@@ -186,6 +220,9 @@ function gate.enter(self, opts)
     -- sworn beside her walk into this city and down this stair, so there is ONE company, ONE save, and
     -- the floor stack rides on the player like everything else it owns.
     local fresh = not (opts.run or gate.player.descentRun)
+    -- Kept on the state because gate:build reads it: which stairs the menu may offer depends on whether
+    -- this is a new expedition or one already standing on a floor (see the descend rows).
+    gate.fresh = fresh
     gate.run = opts.run or gate.player.descentRun or Descent.new(gate.player)
     gate.player.descentRun = gate.run
     -- A FRESH EXPEDITION OPENS A FRESH PURSE (models/scrip.lua). Scrip is the run's own coin: it is
@@ -199,10 +236,32 @@ function gate.enter(self, opts)
     if fresh then gate.player.gold = math.max(gate.player.gold or 0, Descent.OPENING_GOLD) end
     gate.panel = nil
     gate.wiped = opts.wiped
-    gate.notice = opts.wiped
-        and ("The company went down on floor " .. opts.wiped ..
-             ". They are still there, and so is everything they were carrying.")
-        or nil
+    -- WHAT A ROUT ACTUALLY COST, said on the screen the company wakes up on.
+    --
+    -- This read "The company went down on floor N. They are still there, and so is everything they were
+    -- carrying." Both halves were false: the bodies wake HERE (that is what this screen is), and for a
+    -- stretch after the pile system was deleted nothing at all stayed behind. The haul stays behind
+    -- again (models/descent.lua's Descent.dropPack), and nothing else does -- so the line names the
+    -- floor, the number of pieces and where they are, because those three are the whole of what the
+    -- player has to decide about.
+    --
+    -- SILENT ON THE PACK WHEN THERE IS NONE. A company that wiped carrying nothing it had found lost
+    -- nothing, and telling them their pack is waiting would send them down for an empty tile.
+    --
+    -- AND IT QUOTES NO COUNT, because the readout beside the purse already does (see gate.draw) and it
+    -- keeps doing so on every visit after this one. What this line is FOR is the half the readout
+    -- cannot say: that the rout took nothing they owned. That is the sentence a player needs in the
+    -- five seconds after losing a company, and it is worth the whole width of the screen on its own.
+    gate.notice = nil
+    if opts.wiped then
+        local pack
+        for _, p in ipairs(Descent.lostPacks(gate.player)) do
+            if p.floor == opts.wiped then pack = p break end
+        end
+        gate.notice = "The company was routed on floor " .. opts.wiped .. ". They walked out with "
+            .. "everything they walked in with"
+            .. (pack and "; what they found down there stayed where they fell." or ".")
+    end
     require("models.sound").music("music.menu")
     require("ui.screen_fx").reset()
     gate:build()
@@ -219,7 +278,14 @@ function gate.enter(self, opts)
     -- It replaces a ten-line scene in which Iselle stood at the stair and said the same thing in
     -- character. The mark is spent when the window is CLOSED (a modal has certainly been read), and it
     -- is saved there rather than passed through the switch, which would not survive a quit.
-    if Descent.everClimbedOut(gate.player) and not Descent.tallyTaught(gate.player) then
+    --
+    -- PARKED WITH THE THING IT TEACHES (Descent.COUNT_PARKED). The window opened on the first climb-out
+    -- and explained a meter that no longer moves and is no longer drawn -- a tutorial for a feature the
+    -- player will never see, and the most confusing possible kind, since it describes a breach that
+    -- cannot happen. The mark is deliberately NOT spent on the way past: a company that never saw the
+    -- window is still owed it if the tally is ever un-parked.
+    if not Descent.COUNT_PARKED
+        and Descent.everClimbedOut(gate.player) and not Descent.tallyTaught(gate.player) then
         -- The words live in data/conversations/tutorial/conversation_tutorial_notes.lua, like every
         -- other line the tutorial speaks, so they are stamped and translated with no wiring here. The
         -- window quotes no figure and so takes no tokens: the count's constants belong on the meter
@@ -287,9 +353,62 @@ function gate.draw()
     Theme.set(Theme.accentAmber)
     love.graphics.printf((p.gold or 0) .. " gold", Scale.WIDTH / 2 + 40, 178, 300, "right")
 
-    -- ...and the other half of the ledger, once the company has ever turned back (Descent.everClimbedOut).
-    if Descent.everClimbedOut(p) and gate.run then
-        countMeter:draw(Scale.WIDTH / 2 + 40, 250, 300, gate.player)
+    -- ...and the other half of the ledger, which is the map rather than the tally.
+    --
+    -- The count meter stood here and is parked with it (Descent.COUNT_PARKED). What belongs at the mouth
+    -- of the stair now is how much of it this company has drawn -- the same figure the city's plate
+    -- carries, said where the decision it informs is actually taken (see the descend rows in build).
+    local mapped = Descent.mapped(p)
+    if mapped > 0 then
+        love.graphics.setFont(Theme.body(13))
+        Theme.set(Theme.muted)
+        love.graphics.printf("Mapped to floor " .. mapped .. " of " .. Descent.FLOORS,
+            Scale.WIDTH / 2 + 40, 250, 300, "right")
+        love.graphics.setColor(1, 1, 1)
+    end
+
+    -- WHAT IS STILL LYING DOWN THERE, and it stands on this screen rather than only in the rout's
+    -- notice, because the notice is shown once and a pack outlives the session that dropped it. A
+    -- player who quits after a bad night and comes back tomorrow has to be able to find out where their
+    -- gear is without dying again to be told.
+    --
+    -- IN THE WARNING COLOUR, not the muted one: this is the only thing on the screen that is costing
+    -- the player something right now (ui/theme.lua's accentWeapon, the hostile/attention family).
+    local packs = Descent.lostPacks(p)
+    if #packs > 0 then
+        local line
+        if #packs == 1 then
+            line = "Your pack lies on floor " .. packs[1].floor ..
+                   " -- " .. packs[1].count .. (packs[1].count == 1 and " piece" or " pieces")
+        else
+            local n, floors = 0, {}
+            for i, pk in ipairs(packs) do n = n + pk.count; floors[i] = pk.floor end
+            line = n .. " pieces lie on floors " .. table.concat(floors, ", ")
+        end
+        love.graphics.setFont(Theme.body(13))
+        Theme.set(Theme.accentWeapon)
+        love.graphics.printf(line, Scale.WIDTH / 2 + 40, 274, 300, "right")
+        love.graphics.setColor(1, 1, 1)
+    end
+
+    -- WHAT THEY CAN REACH DOWN THERE, said before the stair rather than discovered at the bottom of it.
+    --
+    -- The stash does not come down (states/game.lua's Use panel, Player.partyRestoratives) -- a trip is
+    -- supplied by what the four who walk down are carrying in their grids. A player who learns that rule
+    -- by opening an empty Use panel on floor four has been taught it by being punished, which is the one
+    -- way this game does not teach. One line, on the screen where the pack is still changeable.
+    --
+    -- MEASURED OFF THE PICKER RATHER THAN PLACED. It was authored at a fixed y = 250 and drew straight
+    -- through the four expedition plates, which start at 206 and are as tall as the roster under them.
+    -- The picker owns that rect and is the only thing that knows how tall it is, so this sits under
+    -- whatever it turns out to be -- and the menu below is measured off the same number, so the two
+    -- cannot drift apart.
+    if gate.picker then
+        love.graphics.setFont(Theme.body(13))
+        Theme.set(Theme.muted)
+        love.graphics.printf("They carry what is in their grids. The stash stays here.",
+            gate.picker.x, gate.picker.y + gate.picker:height() + 6, 520, "left")
+        love.graphics.setColor(1, 1, 1)
     end
 
     if gate.menu then gate.menu:draw() end
