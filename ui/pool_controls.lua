@@ -64,10 +64,11 @@ local function byType(a, b)
     return byName(a, b)
 end
 
--- A SHELF, where the default is the ladder the house stocks in and the question the player is actually
--- asking is "what can I afford" -- so Price leads the orders that rearrange it.
+-- A SHELF, where the default is the order the house deals in -- buyable first, then the ladder
+-- (models/vendor.lua's Vendor.shelfOrder) -- and the question the player is actually asking is "what
+-- can I afford", so Price leads the orders that rearrange it.
 PoolControls.SHELF_SORTS = {
-    { id = "shelf", label = "Shelf", hint = "As the shop stocks it" },
+    { id = "shelf", label = "Shelf", hint = "What you can buy, first" },
     -- WHAT IS ON THE TICKET, not what the blueprint is worth. An entry carries the row it came from, so
     -- this reads the price the host computed and printed on the tile -- a shelf price scaled to the
     -- item's recipe tier (Vendor.priceFor) -- and falls back to the item's own worth for a rack whose

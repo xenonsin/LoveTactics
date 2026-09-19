@@ -374,6 +374,15 @@ is rolled as you walk it, and a level is never *cleared*. It replaced the wander
 (`Descent.wakeOne`), which woke one already-beaten fight every twelve steps and was a weaker answer to
 the same question.
 
+**And it comes off the tile when it ends.** The cell is a seam, not a seat: fought, walked off or fled,
+the fight is *deleted* from it (`states/game.lua`'s `retireRolledFight`) rather than left cleared the way
+a seated stop is. A cleared plate out there would draw crossed swords over an empty stretch of corridor —
+and the next trip down would **wake** it, since `Descent.rearmFloor` re-arms cleared combat. The meter's
+own history would come back as permanent *seated* combat on a floor that seats none, one more plate per
+wanderer per visit, compounding for the life of the save. `rearmFloor` sweeps any it finds, so a board
+kept before this was fixed repairs itself on re-entry. A **rout** is the one exception and leaves the
+fight standing, uncleared: losing does not clear a stop, and walking back onto the tile asks again.
+
 **What stays on the board is what you are meant to see coming** — the stair's general, the errands a
 house posted, the doors a circle holds shut, and the **elites**. That last is the deliberate half: a
 standing threat you can read, price against the company and route around is the job Etrian Odyssey gives

@@ -122,7 +122,17 @@ local function rewardOf(effect)
     return reward
 end
 
-function Dialogue.new(def, onComplete, convId)
+-- `startAt` is the id of the node to OPEN ON, rather than the top of the script. It exists for the
+-- counters (models/counter.lua): a shopkeeper's scene ends at a desk of choices, each one naming a room,
+-- and closing that room comes back HERE -- to the desk, not to the greeting. Without it every trip back
+-- from a shelf replays the shopkeeper's flavour, which is the fastest way to make a player stop reading
+-- a character.
+--
+-- An unresolvable label falls back to the top, which is the safe failure: a scene played from the start
+-- is merely repetitive, where a scene that refused to start at all would be a door that does nothing.
+-- That fallback also catches a node dropped by its own `when` -- so a desk node must never carry one,
+-- since the desk is the one node in a counter scene that always exists.
+function Dialogue.new(def, onComplete, convId, startAt)
     local self = setmetatable({}, Dialogue)
     self.convId = convId
     self.onComplete = onComplete
@@ -236,7 +246,10 @@ function Dialogue.new(def, onComplete, convId)
     -- scene played without an id -- there is nothing to open.
     self.sourcePath = Debug.enabled and convId and Conversation.source(convId) or nil
 
-    self.index = 1
+    -- Conversation.nextIndex from node 0 IS the "index of this label" lookup -- the one graph-walk rule,
+    -- asked here rather than re-implemented, so a desk label and a `goto` label can never resolve
+    -- differently.
+    self.index = (startAt and Conversation.nextIndex(self.script, 0, startAt)) or 1
     self:startNode()
     return self
 end

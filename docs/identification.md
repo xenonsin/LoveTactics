@@ -154,10 +154,15 @@ reading hands you a thing you did not have.
 
 ## The counter
 
-`data/buildings/the_touchstone.lua`, on the plaza at `490, 480` — directly under The Rift, so what comes
-up the stair walks straight into it. It arrives on the first thing nobody can name
-(`unlockUnidentified`), the most literal of the six gates the city grows on: the player finds the thing,
-cannot use it, and *then* the door is there.
+A **room behind The Crucible's desk** (`data/buildings/alchemist.lua`'s `read` offer), which is the
+alchemists' house — a crucible and a touchstone are the two instruments of one assay office, and envy
+wants the thing's *property*, which is what a reading hands over. It stood on the plaza as a card of its
+own until the city folded to nine cards (`models/counter.lua`).
+
+It keeps its own keeper (`data/vendors/touchstone.lua`), so `Identify.VENDOR` still reads `touchstone`
+and no save needed migrating. It arrives on the first thing nobody can name (`models/offer.lua`'s
+`unidentified` gate), the most literal gate the city grows on: the player finds the thing, cannot use
+it, and *then* the line is on the desk.
 
 It is a **bench, not a shelf** — it takes something you already own and changes it, the way the Forge
 does — so `ui/panels/touchstone.lua` lists what you brought in, one row selected, and the one thing that
@@ -213,5 +218,5 @@ light.
 | `models/player.lua` | `takeFromStash` refuses a husk — the single funnel every equip path goes through |
 | `ui/panels/touchstone.lua` | the counter: two tabs, three verbs |
 | `ui/panels/identify_reveal.lua` | the four beats |
-| `data/buildings/the_touchstone.lua`, `data/vendors/touchstone.lua` | the door and its keeper |
+| `data/buildings/alchemist.lua` (the `read` offer), `data/vendors/touchstone.lua` | the room and its keeper |
 | `tests/identify_spec.lua` | including the leak test: a husk's name never contains the true one |

@@ -309,6 +309,187 @@ return {
         end,
     },
     {
+        -- A COUNTER'S DESK is one node whose options come and go with the save (models/counter.lua):
+        -- a wound to set, a find nobody can read. Gating is per BLOCK everywhere else in the resolver
+        -- and an option has no partner to leave with, so this is the one place it is per line.
+        name = "a choice carrying a `when` is dropped when it does not hold",
+        fn = function()
+            local def = {
+                cast = { "character_rowan" },
+                script = {
+                    { "character_rowan", "what do you need?", id = "desk", choices = {
+                        { "Show me the shelf.", answer = "shelf" },
+                        { "Set a bone.", answer = "mend", when = { has = "character_xin" } },
+                        { "Nothing.", answer = "leave" },
+                    } },
+                },
+            }
+
+            local without = Conversation.resolve(def, { roster = {}, quests = {}, flags = {}, prestige = 1 })
+            local opts = without.script[1].choices
+            assert(#opts == 2, "the gated option should be gone, got " .. #opts)
+            assert(opts[1].answer == "shelf" and opts[2].answer == "leave",
+                "and the survivors should keep their order and their answers")
+            assert(opts[1].when == nil, "a surviving option's condition is spent, like a node's")
+
+            local with = Conversation.resolve(def,
+                { roster = { character_xin = true }, quests = {}, flags = {}, prestige = 1 })
+            assert(#with.script[1].choices == 3, "with the healer on the roster all three should stand")
+        end,
+    },
+    {
+        -- A question with no answers is a scene the player cannot leave.
+        name = "a node whose options all drop becomes a plain line",
+        fn = function()
+            local def = {
+                cast = { "character_rowan" },
+                script = {
+                    { "character_rowan", "anything for me?", choices = {
+                        { "The bone.", when = { has = "character_xin" } },
+                        { "The reading.", when = { flag = "found_unread" } },
+                    } },
+                    { "character_rowan", "then go." },
+                },
+            }
+            local r = Conversation.resolve(def, { roster = {}, quests = {}, flags = {}, prestige = 1 })
+            assert(r.script[1].choices == nil, "no option holds, so the node stops being a question")
+            assert(Conversation.nextIndex(r.script, 1, nil) == 2, "and it advances like any other line")
+        end,
+    },
+    {
+        -- THE TOOL REGENERATES WHAT IT STAMPS, so a field it cannot serialize is a field that vanishes
+        -- the next time anybody adds a line to the scene -- silently, with the file still parsing.
+        --
+        -- This is the spec that was missing when per-choice `when` arrived: `. extract-strings` erased
+        -- the condition off all seventeen desk options in one pass, nothing errored, and the suite
+        -- stayed green while seven counters offered every room in the city on the first morning.
+        --
+        -- It reads the tool's OWN key lists rather than a second copy, so teaching the serializer a
+        -- field is what makes this pass -- there is no way to satisfy it that leaves the round trip
+        -- lossy.
+        name = "no authored conversation uses a field extract-strings would erase",
+        fn = function()
+            local Extract = require("tools.extract_strings")
+            local function setOf(list)
+                local set = {}
+                for _, k in ipairs(list) do set[k] = true end
+                return set
+            end
+            local nodeKeys, choiceKeys = setOf(Extract.NODE_KEYS), setOf(Extract.CHOICE_KEYS)
+            local whenKeys, effectKeys = setOf(Extract.WHEN_KEYS), setOf(Extract.EFFECT_KEYS)
+
+            local function checkWhen(when, where)
+                for key in pairs(when or {}) do
+                    assert(whenKeys[key], where .. ": `when` condition '" .. tostring(key)
+                        .. "' is not serialized -- add it to WHEN_KEYS in tools/extract_strings.lua")
+                    if key == "all" or key == "any" then
+                        for _, sub in ipairs(when[key]) do checkWhen(sub, where) end
+                    end
+                end
+            end
+
+            local function checkNode(node, where)
+                for key in pairs(node) do
+                    assert(nodeKeys[key], where .. ": node field '" .. tostring(key)
+                        .. "' is not serialized -- add it to serializeNode in tools/extract_strings.lua")
+                end
+                checkWhen(node.when, where)
+                for i, choice in ipairs(node.choices or {}) do
+                    local cwhere = where .. " choice " .. i
+                    for key in pairs(choice) do
+                        assert(choiceKeys[key], cwhere .. ": choice field '" .. tostring(key)
+                            .. "' is not serialized -- add it to serializeChoice in "
+                            .. "tools/extract_strings.lua")
+                    end
+                    checkWhen(choice.when, cwhere)
+                    for key in pairs(choice.effect or {}) do
+                        assert(effectKeys[key], cwhere .. ": `effect` key '" .. tostring(key)
+                            .. "' is not serialized")
+                    end
+                end
+            end
+
+            local function walk(entries, where)
+                for _, entry in ipairs(entries or {}) do
+                    if entry.script then
+                        checkWhen(entry.when, where .. " block")
+                        walk(entry.script, where)
+                    else
+                        checkNode(entry, where)
+                    end
+                end
+            end
+
+            local seen = 0
+            for id, def in pairs(Conversation.defs) do
+                walk(def.script, id)
+                seen = seen + 1
+            end
+            assert(seen > 0, "no conversations walked -- the registry did not load")
+        end,
+    },
+    {
+        -- EVERY COUNTER SCENE MUST BE ENTERABLE AT ITS DESK, or closing a room drops the player back at
+        -- the shopkeeper's greeting on every single trip (models/counter.lua's Counter.DESK).
+        name = "every house's counter scene carries an ungated desk node and an exit",
+        fn = function()
+            local Counter = require("models.counter")
+            local Building = require("models.building")
+            local counters = 0
+            for id, def in pairs(Building.defs) do
+                if def.counter then
+                    counters = counters + 1
+                    local scene = Conversation.defs[def.counter]
+                    assert(scene, id .. ": names counter scene '" .. def.counter .. "' which does not exist")
+
+                    -- The desk must be a TOP-LEVEL node: one inside a `when` block could resolve away,
+                    -- and startAt would silently fall back to the top of the scene.
+                    local desk
+                    for _, entry in ipairs(scene.script or {}) do
+                        if entry.id == Counter.DESK and not entry.script then desk = entry end
+                    end
+                    assert(desk, id .. ": counter scene has no top-level node id = '" .. Counter.DESK .. "'")
+                    assert(desk.when == nil, id .. ": the desk node must never be gated -- it is the one "
+                        .. "line in the scene that always exists")
+                    assert(desk.choices and #desk.choices > 0, id .. ": the desk offers nothing")
+
+                    -- An ungated way out, so a desk whose every room is shut is still leavable.
+                    local exit
+                    for _, c in ipairs(desk.choices) do
+                        if c.answer == Counter.LEAVE and c.when == nil then exit = c end
+                    end
+                    assert(exit, id .. ": the desk has no ungated '" .. Counter.LEAVE .. "' option")
+
+                    -- Every other option must name a room this building actually declares, or it is a
+                    -- line that opens nothing.
+                    local rooms = {}
+                    for _, offer in ipairs(def.offers or {}) do rooms[offer.answer] = true end
+                    for _, c in ipairs(desk.choices) do
+                        if c.answer ~= Counter.LEAVE then
+                            assert(rooms[c.answer], id .. ": desk option answers '" .. tostring(c.answer)
+                                .. "' but the building declares no such offer")
+                        end
+                    end
+                end
+            end
+            assert(counters == 7, "the seven houses each keep a counter, got " .. counters)
+        end,
+    },
+    {
+        -- ui/dialogue.lua's `startAt` resolves its opening node through this same call, from node 0 --
+        -- which is what lets a counter come back to its desk instead of to the shopkeeper's greeting.
+        name = "nextIndex from node 0 is the 'index of this label' lookup startAt needs",
+        fn = function()
+            local script = {
+                { "character_rowan", "greeting" },
+                { "character_rowan", "desk", id = "desk" },
+            }
+            assert(Conversation.nextIndex(script, 0, "desk") == 2, "should land on the desk node")
+            assert(Conversation.nextIndex(script, 0, "gone") == nil,
+                "an unresolvable label reports nothing, so the widget can fall back to the top")
+        end,
+    },
+    {
         name = "context reads roster, completed quests and standing off a player",
         fn = function()
             local ctx = Conversation.context({

@@ -408,7 +408,7 @@ local function buildBeats()
         -- wedged in before the city existed -- and the scene had to do the whole job in four lines
         -- because there was no room that could.
         --
-        -- There is a room now. The WARD (data/buildings/the_ward.lua) arrives on the plaza the first
+        -- There is a room now. The Cathedral's mending (data/buildings/cathedral.lua) arrives the first
         -- time anybody is carried up broken -- which is Rowan, off this fight -- and Xin is met inside
         -- it, standing where healing actually happens. The player walks in holding the problem, meets
         -- the person whose whole kit is that problem, and takes her. That is the same recruit with a
@@ -743,12 +743,12 @@ function prologue.skip(player)
     -- ...AND THE FIRST TRIP THROUGH THE INN'S DOOR IS TAKEN TOO, which is the one beat this function
     -- hands over that Act 0 does not contain. The button exists to put a company at the Gate ready to
     -- walk down, and a played prologue's very next two clicks are the Inn -- Xin joins out of it
-    -- (data/buildings/the_ward.lua's `grants`, played by states/hub.lua's launchVendor) and the bone
+    -- (data/buildings/cathedral.lua's `grants`, played by models/counter.lua) and the bone
     -- Rowan came up with gets set. A skip that stops one door short lands a party of two, one of them
     -- hurt, against an expedition of four, so the skip takes those two clicks.
     --
     -- THE WOUND IS STILL INFLICTED ABOVE AND THEN MENDED HERE, in that order, rather than never dealt:
-    -- `Wound.everWounded` is the one-way mark the Inn's own card is hung on (`unlockWound`), and it
+    -- `Wound.everWounded` is the one-way mark the mending is hung on (models/offer.lua's `wound` gate), and it
     -- survives the mending. Skipping the inflict would shut the door on the room the company has just
     -- been through.
     --
@@ -756,10 +756,10 @@ function prologue.skip(player)
     -- companion read off the blueprint rather than named again here, and her join banner dropped on the
     -- floor -- the scene it would have folded onto is one of the ones not being played, and left queued
     -- it prints over whatever the city opens first.
-    local ward = Building.defs["the_ward"]
+    local ward = Building.defs["cathedral"]
     if ward then
-        player.flags["intro_the_ward"] = true
-        Building.markSeen(player, "the_ward")
+        player.flags["intro_cathedral"] = true
+        Building.markSeen(player, "cathedral")
         if ward.grants then Player.recruit(player, ward.grants) end
         local wardJoins = Conversation.pendingJoins
         for i = #wardJoins, 1, -1 do wardJoins[i] = nil end

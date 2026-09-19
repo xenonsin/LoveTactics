@@ -386,14 +386,52 @@ return {
     description = "...", -- what the room is FOR, in one short sentence -- see below
     panel = nil,           -- module name under ui/panels/, or nil for the placeholder
     state = nil,           -- module name under states/, for a door that opens a whole screen
-    vendor = nil,          -- vendor id, for shop buildings (panel = "party", store mode)
-    district = nil,        -- "houses" puts the card on the shelves' board instead of the city plaza
-    unlockClassLevel = nil,-- opens at level N of the vendor's own class, in any body on the roster
-    unlockAnyHouse = nil,  -- ...or with whichever of the seven houses opens first (the Houses card)
-    unlockDepth = nil,     -- ...or once the company has stood on floor N
+    vendor = nil,          -- vendor id, for a door that keeps a shopkeeper
+    counter = nil,         -- a desk scene: this door is a COUNTER, with rooms behind it (see below)
+    offers = nil,          -- those rooms, each with its own gate
+    unlockDepth = nil,     -- opens once the company has stood on floor N
     unlockPrestige = 1,    -- the campaign's own ladder, parked at 1 -- see below
 }
 ```
+
+**Most new content is a ROOM, not a card.** The plaza is full at nine -- the Rift in the middle, the
+Armory, and the seven houses -- and the lattice has no tenth slot (`Building.GRID.city`; dropping one in
+on top of another draws two plates over each other, which has shipped). So the normal way to add
+something the player walks into is to hang it off a house's desk:
+
+```lua
+-- in data/buildings/<house>.lua
+counter = "conversation_<vendor>_counter",
+offers = {
+    { answer = "shelf", panel = "shop", gate = { classLevel = 1 } },
+    { answer = "mend",  panel = "ward", gate = { wound = true } },
+    -- a room may keep its OWN vendor, so a folded counter is not merged into the house's shelf:
+    { answer = "supper", panel = "cafe", vendor = "cafe", gate = { expeditions = 2 } },
+},
+```
+
+...and author the matching option on that house's counter scene, gated on the room:
+
+```lua
+{ "<vendor>", "State your business.", id = "desk", choices = {
+    { "Somebody needs mending.", answer = "mend", when = { offer = "mend" } },
+    { "Nothing today.", answer = "leave" },
+} },
+```
+
+The desk node's id must be `desk` and it must never carry a `when` of its own -- closing a room returns
+to it (`Conversation.play`'s `opts.startAt`), and a desk resolved out of its own scene opens onto the
+greeting forever. Every desk needs an ungated `leave` option. `tests/conversation_spec.lua` pins both.
+
+A room's `gate` uses the same vocabulary as a door's unlocks, minus the `unlock` prefix:
+`classLevel`, `expeditions`, `wound`, `unidentified`, `quest`. Every key in a gate must hold.
+**A door is drawn when ANY room behind it is open** (`models/offer.lua`), so the city grows one room at
+a time and a house's plate arrives on the morning its first room does.
+
+> **Teach `tools/extract_strings.lua` any new conversation field in the same change.** It regenerates
+> every scene it stamps, so a field it cannot serialize disappears the next time anyone adds a line --
+> silently, with the file still parsing. Per-choice `when` was erased off all seventeen desk options
+> exactly this way.
 
 Almost every building opens a **pop-up panel** over the city. A `state` instead of a `panel` is
 for the rare door that is a whole mode rather than an overlay — the Draft Yard
@@ -412,15 +450,45 @@ The gates the play actually feeds are the other four, ANDed, and each names a di
 
 | field | opens when | who uses it |
 | --- | --- | --- |
-| `unlockClassLevel = N` | any body on the roster reaches level N of the vendor's class (`Class.rosterLevel`) | the seven houses, all at 1 |
-| `unlockAnyHouse` | whichever of those seven opens first | the Houses card in the city |
-| `unlockDepth = N` | the company has stood on floor N (`Descent.deepest`) | the Cafe at 2, the Forge at 4 |
-| `unlockUnidentified` | the company is carrying something it cannot read | the Touchstone |
+| `trips = N` | the company has begun N descents (`Player.tripsHome`) | **the city's clock** -- the counter at 1, the supper at 2, the forge at 3, the book at 4 |
+| `classLevel = N` | any body on the roster reaches level N of the house's class (`Class.rosterLevel`) | every house's shelf, all at 1 -- and all `quiet` |
+| `wound` | somebody has been carried up broken, ever (one-way) | the Cathedral's mending |
+| `unidentified` | the company is carrying something it cannot read | the Crucible's reading |
+| `quest = "<id>"` | that quest is finished | the Colosseum's duel, on its own first posting |
+| `expeditions = N` | the company has reached floor N (`Player.expeditionsOut`) | nothing ships on it -- see the warning below |
+| `any = { g1, g2 }` | **any** sub-gate holds (every other key ANDs) | the event-plus-backstop pattern |
 
-> **`unlockWound` is gone**, and it is worth knowing why before you reach for a gate of that shape. It
-> opened the Inn on the first body carried up broken, and the Inn's only job was setting a bone for
-> coin. A wound is a condition of the expedition now and reaching the surface ends it for free
-> (`models/wound.lua`), so the building had nothing to sell and went with the toll it charged.
+These are **room** gates (`offers[].gate`), not card gates. They were fields on the blueprint when each
+room was a card of its own -- `unlockClassLevel`, `unlockExpeditions`, `unlockWound` -- and moved inward
+with the rooms. A card's own `unlockPrestige`/`unlockQuest` still apply on top, for the two doors that
+are not counters.
+
+> **Pace the city on `trips`, never on `expeditions`.** `expeditionsOut` is `max(bounties, deepest)` --
+> how *deep* you have been -- and depth is the one axis a player can jump four notches of in a single
+> trip, or never advance at all. Measured on the old gates: a company that pushed to floor four on its
+> first descent came home to **four new doors at once** and then three empty homecomings, while a
+> company that farmed floor one had its city **frozen after the first**. `trips` climbs by one and only
+> by coming home, so *one room per homecoming* falls out of the unit rather than out of a queue or a cap.
+> **Trips pace the city; depth paces the shelves** (rungs, stock tiers, drop tiers) -- neither does the
+> other's job.
+
+**`quiet = true`** on an offer means the room can be open without putting its card on the plaza -- a
+room you find behind a door something else opened. Every shelf is quiet, and that is the rule the field
+exists for: a class rung is a reward the player cannot *see*, so hanging a door on it put shopfronts in
+the city that nobody chose to earn. What the plaza reacts to is a deed the player can feel.
+
+**The event-plus-backstop pattern.** The best gates are events -- the card arrives holding exactly the
+problem it solves -- but an event that may never fire can strand a player outside a room for a whole
+playthrough. So pair them:
+
+```lua
+gate = { any = { { unidentified = true }, { trips = 5 } } }   -- when you need it, or by trip 5
+```
+
+**One new room per homecoming is the budget**, and it counts more than doors: the Tactics tab
+(`Descent.tacticsUnlocked`, first trip) and the Auto button both spend from it too. Check the schedule
+end to end before adding a room on a count that is already taken; `tests/hub_spec.lua` fails a
+collision.
 
 Pick the one that names the deed the door is *for*. A bench that spends salvaged materials opens once
 there is salvage to spend; a counter that reads what you cannot opens once you are carrying something

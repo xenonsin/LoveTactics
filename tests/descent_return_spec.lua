@@ -486,4 +486,46 @@ return {
                 .. " is not a window, it is a coin flip")
         end,
     },
+    {
+        name = "a wanderer is swept off a kept board rather than woken on it",
+        fn = function()
+            -- THE MAP DRAWS THE FLOOR, NOT THE METER'S HISTORY. A rolled fight is written onto whatever
+            -- tile the company happened to be standing on when the meter topped out (states/game.lua's
+            -- onArrive), so it is not a place and must not outlive itself as one.
+            --
+            -- AND A LEFTOVER ONE DOES NOT MERELY LINGER -- the rule this pins would WAKE it, because it
+            -- is an uncleared combat as far as the re-arm is concerned. That is permanent SEATED combat
+            -- appearing on a floor whose whole design seats none (Descent.wander's header), one more
+            -- plate per wanderer per trip, compounding for the life of the save.
+            local grid = {
+                cols = 4, rows = 1,
+                cells = { {
+                    { x = 1, y = 1, cleared = true,
+                      encounter = { kind = "combat", id = "wolves", wandering = true } },
+                    -- Not cleared: a wanderer the company quit on, or went down the stair to get away
+                    -- from. Swept too -- coming back is answered by the meter dealing a fresh one where
+                    -- they are standing, not by the old one waiting on the tile they left it on.
+                    { x = 2, y = 1,
+                      encounter = { kind = "combat", id = "rats", wandering = true } },
+                    -- The seated half, untouched: this split is what the whole re-entry rests on.
+                    { x = 3, y = 1, cleared = true, encounter = { kind = "combat", id = "seated" } },
+                    { x = 4, y = 1, cleared = true, encounter = { kind = "treasure", id = "chest" } },
+                } },
+            }
+
+            local woken = Descent.rearmFloor(grid)
+            local cells = grid.cells[1]
+
+            assert(cells[1].encounter == nil and cells[1].cleared == nil,
+                "a beaten wanderer is still drawn on the tile it found you on")
+            assert(cells[2].encounter == nil,
+                "a wanderer the company walked away from is still sitting where it was dealt")
+            assert(cells[3].encounter and not cells[3].cleared,
+                "the floor's own seated fight did not come back on its feet")
+            assert(cells[4].encounter and cells[4].cleared,
+                "a place woke up -- the maze is permanent and only its monsters are not")
+            assert(woken == 1, "rearmFloor reported " .. woken .. " monsters standing; only the seated "
+                .. "fight is one, and counting swept residue would report a floor full of nothing")
+        end,
+    },
 }

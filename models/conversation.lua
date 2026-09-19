@@ -169,6 +169,17 @@ PREDICATES.notDone = function(ctx, id) return ctx.quests[id] ~= true end
 PREDICATES.prestige = function(ctx, n) return (ctx.standing or 1) >= n end
 PREDICATES.flag = function(ctx, id) return ctx.flags[id] == true end
 PREDICATES.notFlag = function(ctx, id) return ctx.flags[id] ~= true end
+-- IS THIS ROOM OPEN YET? The predicate a counter's desk is written in (models/counter.lua): a line
+-- offering to set a bone shows once somebody has been carried up broken, and a line offering the bench
+-- waits for the fourth floor, exactly as the CARDS those rooms used to be did.
+--
+-- It reads a set the caller puts on the context rather than asking a model, and that is deliberate: the
+-- answer comes from models/offer.lua, which is also what decides whether the DOOR in front of this scene
+-- is drawn at all. One call, two readers -- a desk line that could disagree with its own door would
+-- offer a room the player cannot get to, or hide one they can.
+--
+-- Empty for every scene played outside a counter, so an ordinary conversation is unaffected.
+PREDICATES.offer = function(ctx, id) return (ctx.offers or {})[id] == true end
 PREDICATES.all = function(ctx, list)
     for _, sub in ipairs(list) do
         if not Conversation.test(sub, ctx) then return false end
@@ -219,6 +230,10 @@ function Conversation.context(player)
         quests = quests,
         flags = flags,
         standing = require("models.player").standing(player),
+        -- Which rooms behind this door are open (models/offer.lua). Empty here and filled in by
+        -- models/counter.lua for the one kind of scene that has a door in front of it: a context built
+        -- for anything else has no offers, and the `offer` predicate simply never holds.
+        offers = {},
     }
 end
 
@@ -325,16 +340,31 @@ function Conversation.resolve(def, ctx)
         end
     end
 
+    -- A CHOICE MAY CARRY ITS OWN `when`, and is dropped from the option list when it does not hold.
+    --
+    -- Gating was per BLOCK everywhere else in this file, and deliberately so: a banter between two
+    -- companions has to leave together or one of them is answering nobody. An OPTION has no such
+    -- partner. It is a door on a menu, and the reason a counter can exist at all is that the desk is
+    -- one node whose lines come and go with the save -- a wound to set, a find nobody can read, a
+    -- posting going spare (models/counter.lua). Without this, a desk with four conditional offers has
+    -- to be authored as sixteen nodes, one per combination, and every new offer doubles the file.
+    --
+    -- A NODE WHOSE OPTIONS ALL DROP BECOMES A PLAIN LINE rather than an unanswerable question: its
+    -- `choices` go entirely, so it speaks and advances (or follows its own `goto`) like any other. The
+    -- alternative -- a question with no answers -- is a scene the player cannot leave.
     for _, node in ipairs(script) do
         if node.goto and redirect[node.goto] then node.goto = redirect[node.goto] end
         if node.choices then
             local choices = {}
-            for i, choice in ipairs(node.choices) do
-                local copy = shallowCopy(choice)
-                if copy.goto and redirect[copy.goto] then copy.goto = redirect[copy.goto] end
-                choices[i] = copy
+            for _, choice in ipairs(node.choices) do
+                if Conversation.test(choice.when, ctx) then
+                    local copy = shallowCopy(choice)
+                    copy.when = nil -- spent here, exactly as a node's is
+                    if copy.goto and redirect[copy.goto] then copy.goto = redirect[copy.goto] end
+                    choices[#choices + 1] = copy
+                end
             end
-            node.choices = choices
+            node.choices = (#choices > 0) and choices or nil
         end
     end
 
@@ -418,10 +448,14 @@ function Conversation.play(id, onDone, ctx, opts)
     -- `onDone` is handed the ANSWER the player gave -- the `answer` field of the last choice they
     -- committed, or nil if the scene asked nothing or was escaped out of before they said. A scene
     -- that only speaks calls back with nil, which is what every existing caller already ignores.
+    -- `opts.startAt` opens the scene ON a named node instead of at the top -- what lets a counter come
+    -- back to its desk after the room it opened is closed (models/counter.lua, ui/dialogue.lua). It is
+    -- an option rather than a second entry point because everything else about the play is identical:
+    -- the same resolve, the same joins, the same effects handler.
     Conversation.active = Dialogue.new(resolved, function(answer)
         Conversation.active = nil
         if onDone then onDone(answer) end
-    end, id) -- the id scopes keyed line lookups: "conversation.<id>.<key>"
+    end, id, opts and opts.startAt) -- the id scopes keyed line lookups: "conversation.<id>.<key>"
     return Conversation.active
 end
 

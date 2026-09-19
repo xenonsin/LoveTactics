@@ -99,7 +99,7 @@ function ForgePanel.new(opts)
     local self = setmetatable({}, ForgePanel)
     self.onClose = opts.onClose
     self.player = opts.player
-    self.title = opts.title or "The Forge"
+    self.title = opts.title or "Forge"
     self.mode = "gear"
 
     self.titleFont = Theme.display(28)

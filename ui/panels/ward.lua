@@ -1,6 +1,6 @@
 -- THE WARD'S COUNTER: the two ways out of a wound, one row each, per hurt body.
 --
--- See data/buildings/the_ward.lua for what this room is and models/wound.lua's ward block for why it is
+-- See data/buildings/cathedral.lua for what this room is and models/wound.lua's ward block for why it is
 -- allowed to charge for anything at all. In one line: REST is free forever and TREAT buys only speed,
 -- so the gold is priced against impatience rather than against injury.
 --
@@ -101,9 +101,9 @@ function Ward:draw()
 
     love.graphics.setFont(self.titleFont)
     Theme.set(Theme.accentAmber)
-    -- The card in the city says "The Inn" and so does this (data/buildings/the_ward.lua explains why
-    -- the FILE is still the_ward.lua). One name, two surfaces, and they have to agree.
-    love.graphics.printf("The Inn", self.boxX, self.boxY + 26, BOX_W, "center")
+    -- The house's desk calls this room the Inn and so does this panel (data/buildings/cathedral.lua
+    -- explains why the FILE is still ward.lua). One name, two surfaces, and they have to agree.
+    love.graphics.printf("Inn", self.boxX, self.boxY + 26, BOX_W, "center")
 
     -- The purse, on the header, because one of the two prices is in gold and the other is not -- so the
     -- number that decides which rows exist has to be readable without closing the panel.

@@ -1,21 +1,36 @@
--- HUNTER'S LODGE: the hunters' shelf, and one of the seven doors on the Houses board.
+-- HUNTER'S LODGE: the hunters' house, and where the company eats.
 --
--- IT OPENS AT HUNTER 1 -- that level in any body on the roster (`unlockClassLevel`, and
--- models/building.lua for the three gates this one replaced). The deed that opens a shelf is the deed
--- that will shop at it: play the class, and the class's counter is in the city.
+-- ITS SHELF is bows, traps and field kit from people who work outdoors, deepening as the roster's hunter
+-- level climbs (Quest.shelfRung) rather than opening whole.
 --
--- WHAT IS ON IT past the door is the same ladder again -- Quest.shelfRung reads the roster's hunter
--- level, so the shop deepens rung by rung as the class does rather than opening whole.
+-- AND ITS SECOND ROOM IS THE CAFE -- one supper before the road, worn by the whole company for the whole
+-- expedition (models/meal.lua, docs/meals.md). Gluttony's house, and the one door in the city with a
+-- reason to have meat in it: they ask what you killed before they ask your name, and then they cook it.
+-- The kitchen keeps its own keeper and its own greeting; only its card went (models/offer.lua).
+--
+-- THE SUPPER ARRIVES ON THE SECOND TRIP HOME. A meal is a decision made against a road you already
+-- know the shape of -- which floor, how deep, how long the company will be down there before it eats
+-- again -- and on the morning of the first descent the player knows none of that. Two trips is the whole
+-- of the teaching: the company has been under, come up hungry, and the supper is now an answer to a
+-- question they have.
 return {
     name = "Hunter's Lodge",
-    order = 4,
-    x = 970,
-    y = 265,
+    order = 6,
+    x = 835,
+    y = 300,
     w = 270,
     h = 130,
-    panel = "shop",
-    district = "houses",
-    vendor = "hunters_lodge", -- hunter class
-    description = "Bows, traps and field kit, from people who work outdoors.",
-    unlockClassLevel = 1,
+    vendor = "hunters_lodge",
+    -- The desk: what this house says on the way in, and the rooms it offers (models/counter.lua).
+    counter = "conversation_hunters_lodge_counter",
+    offers = {
+        -- QUIET: a class rung stocks this shelf but never puts the card on the plaza. A class level is
+        -- a reward the player cannot see, and hanging a door on it put shopfronts in the city that
+        -- nobody chose to earn (models/offer.lua's Offer.any).
+        { answer = "shelf", panel = "shop", gate = { classLevel = 1 }, quiet = true },
+        -- The kitchen keeps its own vendor: its portrait, its name and its one-time greeting all hang
+        -- off `cafe`, and it sells no items at all (data/vendors/cafe.lua).
+        { answer = "supper", panel = "cafe", vendor = "cafe", gate = { trips = 2 } },
+    },
+    description = "Bows, traps, and one hot supper before the road.",
 }

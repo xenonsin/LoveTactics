@@ -25,7 +25,7 @@ Regenerate with `& "E:\LOVE\lovec.exe" . test`, `. art-report` and `. audio-repo
 | Test suite | 3076 passing, 0 failing |
 | Items | 752 blueprints |
 | Characters | 154 blueprints |
-| Bounties | 7 authored openers + 14 derived rungs (`models/bounty.lua`) — demoted to side work, card in the houses district |
+| Bounties | 7 authored openers + 14 derived rungs (`models/bounty.lua`) — parked; its card is deleted with the houses' square, `models/bounty.lua` stays on disk |
 | Descent | 15 floors (7 circles x 2 + the Crown), ~53 fights end to end, walked across many trips |
 | A floor | 85 places, 19.4 things on it, a 24-step crossing, 1 vault, 3-5 traps, ~0.8 side locks (`. board-report`) |
 | Quests | 7 — one surviving opener per house; the other 87 went with the board (`bedc7774`, `806ee8e7`) |

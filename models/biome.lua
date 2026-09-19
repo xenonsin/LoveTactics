@@ -12,8 +12,14 @@ local Registry = require("models.registry")
 --
 -- WHERE IT IS DRAWN IS CURRENTLY NOWHERE, and that is worth stating plainly rather than leaving the
 -- reference to rot. These names were authored for the Bounty Board's Location row
--- (ui/panels/bounty_board.lua), and the board's card is parked -- the campaign is a distance run down
--- one stair now (data/buildings/the_gate.lua). So the field is authored and unread.
+-- (ui/panels/bounty_board.lua), and the board's card is parked -- for the second time, and this time
+-- because the rift already posts the work it posted (docs/bounties.md). So the field is authored and
+-- unread.
+--
+-- THE PREMISE THIS PARAGRAPH USED TO CITE IS ITSELF SUPERSEDED, which is the thing to notice: it said
+-- the campaign was "a distance run down one stair", and that stopped being true when the rift became a
+-- PLACE the company maps and re-enters at its own stair (models/descent.lua). A note about a parked
+-- system decays twice -- once when the system moves and once when its reason does.
 --
 -- WHERE IT BELONGS is the floor's own heading: Descent.biomeAt already gives every floor a biome, and
 -- under a run measured in DEPTH the thing the player needs on screen is which place they are in and how

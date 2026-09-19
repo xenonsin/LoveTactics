@@ -59,6 +59,33 @@ local function bands(panel)
     return out
 end
 
+-- A shipped band holding BOTH kinds of row -- something the company can buy and something it cannot --
+-- which is the only band an order can be read off. Named by search so the case cannot rot when a
+-- house's stock is re-cut.
+local function mixedBand()
+    for _, def in ipairs(Vendor.list()) do
+        local panel = shelf(def.id)
+        for _, band in ipairs(bands(panel)) do
+            local open, shut = 0, 0
+            for _, sub in ipairs(band.rows) do
+                if sub.locked then shut = shut + 1 else open = open + 1 end
+            end
+            if open > 0 and shut > 0 then return def.id, band end
+        end
+    end
+end
+
+-- A shelf, an open ware standing on it, and the band that holds it: the fixture the unseen dot needs.
+local function markableWare()
+    for _, def in ipairs(Vendor.list()) do
+        for _, band in ipairs(bands(shelf(def.id))) do
+            for _, sub in ipairs(band.rows) do
+                if not sub.locked and sub.entry then return def.id, sub.entry.id, band.key end
+            end
+        end
+    end
+end
+
 -- A font stand-in with the three metrics the shop asks for while laying out (tests/shop_buy_spec.lua
 -- uses the same one).
 local function stubFonts(fn)
@@ -227,6 +254,83 @@ return {
                     assert(rack.pool:itemAt(i) == band.rows[i].item,
                         "and shows the copy the shelf instantiated, at the level it sells at")
                 end
+            end)
+        end,
+    },
+    {
+        name = "a band deals what can be bought before what cannot",
+        fn = function()
+            -- THE ONE QUESTION A COUNTER IS OPENED WITH. A band runs to dozens of tiles and a handful
+            -- of them are open, and dealing strictly by rank scattered those few through the greyed
+            -- ones -- so "what can I buy" was answered by reading the whole rack rather than by
+            -- looking at the top of it (models/vendor.lua's Vendor.shelfOrder).
+            local vendorId, band = mixedBand()
+            assert(vendorId, "no shipped band mixes open and shut stock -- the fixture has rotted")
+
+            local shut = false
+            for _, sub in ipairs(band.rows) do
+                if sub.locked then
+                    shut = true
+                elseif shut then
+                    error(vendorId .. ": " .. tostring(sub.label) .. " is buyable and stands under a "
+                        .. "row that is not")
+                end
+            end
+        end,
+    },
+    {
+        name = "and inside each half it is still the ladder: rank, then price, then name",
+        fn = function()
+            -- The split is the only thing that changed. A rack whose open half was also unsorted would
+            -- be a shelf with no ladder on it at all, which is the reading the bands exist to give.
+            local vendorId, band = mixedBand()
+            local function climbs(a, b)
+                if a.entry.unlockQuests ~= b.entry.unlockQuests then
+                    return a.entry.unlockQuests <= b.entry.unlockQuests
+                end
+                if a.entry.price ~= b.entry.price then return a.entry.price <= b.entry.price end
+                return a.item.name <= b.item.name
+            end
+            for i = 2, #band.rows do
+                local prev, row = band.rows[i - 1], band.rows[i]
+                if (prev.locked or false) == (row.locked or false) then
+                    assert(climbs(prev, row), vendorId .. ": " .. tostring(prev.label) .. " sorts above "
+                        .. tostring(row.label))
+                end
+            end
+        end,
+    },
+    {
+        name = "a band's dot goes out with the last unseen tile under it",
+        fn = function()
+            -- THE MARK ANSWERS "WHAT OPENED WHILE I WAS DOWN THERE", and it used to outlive what it was
+            -- about: the rail is built once, a tile clears its own dot the moment it is looked at, and
+            -- the band went on wearing one over a rack with nothing new left in it. One stale dot is
+            -- enough to teach a player to stop reading them.
+            stubFonts(function()
+                local vendorId, itemId, bandKey = markableWare()
+                assert(vendorId, "no shipped shelf stands an open ware -- the fixture has rotted")
+                local panel = Shop.new({
+                    vendor = vendorId,
+                    player = { completedQuests = {}, recipes = {}, gold = 0, stash = {},
+                        newStock = { [itemId] = true } },
+                })
+                local index
+                for i, row in ipairs(panel.rows) do
+                    if row.key == bandKey then index = i end
+                end
+                assert(index, "the marked ware kept its band")
+                assert(panel.rows[index].isNew, "the band wears the dot for the stock under it")
+                assert(panel.menu.items[index].isNew, "and the rail draws it")
+
+                panel.menu.selected = index
+                panel:syncBand()
+                local rack = panel.sections[1]
+                assert(rack and rack.pool:count() > 0, "the band brings its rack")
+                for i = 1, rack.pool:count() do rack.pool:see(i) end
+
+                assert(not panel.rows[index].isNew, "read to the last tile, the band's dot goes out")
+                assert(not panel.menu.items[index].isNew, "and the rail stops drawing it")
             end)
         end,
     },

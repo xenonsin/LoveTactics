@@ -165,7 +165,7 @@ end
 --
 -- Nothing is lost by removing it. The stair is always reachable, the board autosaves on every step
 -- (saveRun), so quitting the APP mid-floor resumes where it stood, and a company that cannot win still
--- has the wipe -- which now ends at the Gate with the levels, the mapped floors and the bound relics
+-- has the wipe -- which now ends in the city with the levels, the mapped floors and the bound relics
 -- intact. There is no way to strand a run in here, only ways to pay for one.
 local function backVisible()
     return not game.tutorial and not game.scripted and not game.descent
@@ -485,7 +485,8 @@ end
 -- `outcome` is how it ended -- passed rather than inferred, because only the caller knows whether the
 -- stair was taken as a victory or a defeat. It was "won", "wiped" or "left"; "left" is gone with the
 -- Back button that produced it (see backVisible), and a wipe does not come through here at all any
--- more -- it wakes the company at the Gate with the run intact (onLoss). So the one caller left is the
+-- more -- it wakes the company in the city with the run closed and the map book kept (onLoss). So the
+-- one caller left is the
 -- Hollow Crown, and this is the function that closes a FINISHED descent.
 --
 -- `keep` no longer means anything about a file, because there is no separate file. It survives as the
@@ -1408,7 +1409,7 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
     -- mid-fight without clearing it comes back INTO that fight, on whatever floor is entered next.
     --
     -- There were seven ways out of a fight and six of them cleared it. The seventh was the WIPE: the
-    -- party is routed, the haul drops, the floor goes in the map book and the state switches to the Gate
+    -- party is routed, the haul drops, the floor goes in the map book and the state switches to the town
     -- -- with `game.battle` still pointing at the battle just lost. Walking back down the stair then put
     -- the company straight back into the arena they had just been beaten in. That is the shape a
     -- failure route always fails in: the losing path is the one nobody walks while building the winning
@@ -2246,6 +2247,29 @@ function game:openEncounter(cell, opts)
         local function takeGuardedPack()
         end
 
+        -- A ROLLED FIGHT IS NOT A PLACE, so once it is over the tile goes back to being bare ground.
+        --
+        -- Every SEATED stop resolves by staying put and going dim (`cell.cleared`), because its marker is
+        -- a record of somewhere the company has been: a spent cache, a beaten elite, a stair standing
+        -- open. A wandering fight was never on the board at all -- Descent.wander deals it onto whatever
+        -- tile the company happened to be standing on (onArrive, above) -- so a cleared plate left behind
+        -- is crossed swords drawn over an empty stretch of corridor. Walk a floor and the map fills up
+        -- with the history of the METER instead of with the floor.
+        --
+        -- AND THE RESIDUE DOES NOT STAY SPENT, which is the half that makes this a bug rather than a
+        -- blemish. Descent.rearmFloor wakes every cleared combat on a kept board, so each of those plates
+        -- comes back LIVE on the next trip down: ordinary seated fights, breeding one per wanderer per
+        -- visit, on a floor whose whole design seats none. models/descent.lua holds the other end of the
+        -- repair, for the boards already written this way.
+        --
+        -- The flee path has always done exactly this, for exactly this reason (see onFlee below). The two
+        -- winning paths -- fought and walked off -- simply never learned it.
+        local function retireRolledFight()
+            if cell.encounter and cell.encounter.wandering then
+                cell.encounter, cell.cleared = nil, nil
+            end
+        end
+
         -- The battle launch itself, deferred behind the walk-off offer for a fight the company has
         -- outgrown (below).
         local function startBattle()
@@ -2340,11 +2364,16 @@ function game:openEncounter(cell, opts)
             generalsStanding = Calendar.generalsStanding(game.player),
             -- What the defeat panel's button is called, and it has to name what the button DOES. It said
             -- "End the Run", which was accurate when a wipe ended everything and is now the one thing a
-            -- wipe does not do: onLoss below drops the pack, wounds the company and wakes them at the
-            -- Gate with their levels, their mapped floors and the stair to floor N still standing. A
-            -- player reads this line at the worst moment of a run, and it was telling them they had lost
-            -- fifteen floors they had not lost.
-            lossLabel = game.descent and "Wake at the Gate" or nil,
+            -- wipe does not do: onLoss below drops the pack and wakes the company in the CITY with their
+            -- levels, their mapped floors and the stair to floor N still standing. A player reads this
+            -- line at the worst moment of a run, and it was telling them they had lost fifteen floors
+            -- they had not lost.
+            --
+            -- ...AND IT NAMES THE CITY BECAUSE THAT IS WHERE THEY WAKE. It read "Wake at the Gate" for
+            -- as long as a rout put the company at the mouth of the stair; both exits come home to the
+            -- town now (onLoss), and a button that named the wrong room would be the same mistake one
+            -- paragraph up, made about a place instead of about a price.
+            lossLabel = game.descent and "Wake in the City" or nil,
             -- ...and what that same exit is called when the company is still standing. A rout is not a
             -- wipe -- it falls back onto the floor it came from with every find it made -- so a button
             -- reading "Wake at the Gate" would be naming a price this exit does not charge. Which of the
@@ -2381,9 +2410,7 @@ function game:openEncounter(cell, opts)
                 -- standing on and it was never part of the floor -- so getting out takes it off the
                 -- board entirely. A seated elite IS a place: it stays exactly where it is, uncleared,
                 -- still standing in the corridor to be walked around or come back for.
-                if cell.encounter and cell.encounter.wandering then
-                    cell.encounter, cell.cleared = nil, nil
-                end
+                retireRolledFight()
                 -- The meter back to nothing, so a company that just broke away is not found again four
                 -- tiles later. A fight fled is a fight met.
                 Descent.calmProwl(run)
@@ -2812,6 +2839,10 @@ function game:openEncounter(cell, opts)
                     -- resume THIS overworld. See grantSideSpoils -- the walk-off path pays through the
                     -- very same call, so a fight is worth the same whether it was played or skipped.
                     grantSideSpoils(spoils)
+                    -- ...and if it was the meter that dealt this one, the tile is ground again. BELOW the
+                    -- grant, which hands the cell to every encounterCleared hook there is: taking the
+                    -- fight off it first would hand them a bare tile to reason about.
+                    retireRolledFight()
                     -- The fight cost the company health, mana and potions, so what it is worth against
                     -- the NEXT marker has moved. Re-rate before the map comes back.
                     game:refreshMuster()
@@ -2870,7 +2901,7 @@ function game:openEncounter(cell, opts)
                 -- FOUR THINGS END A FIGHT THE PARTY IS STILL ON ITS FEET FOR -- an escort whose charge was
                 -- killed, a defend whose charge was, a control run out on the clock, and Fall Back -- and
                 -- every one of them used to be answered with the WIPE below: pack dropped on the floor,
-                -- the run's coin and ore gone, the company woken at the Gate. That is charging a rout what
+                -- the run's coin and ore gone, the company woken in town. That is charging a rout what
                 -- a destruction costs, and Descent.climbOut's note says exactly why it must not happen --
                 -- a wipe already takes the haul, the purse and a wound on every head, and charging the
                 -- failure twice is the thing this design is built not to do.
@@ -3040,11 +3071,40 @@ function game:openEncounter(cell, opts)
                     game.player.descentRun = nil
 
                     game.descent = nil
+
+                    -- WHERE A ROUTED COMPANY WAKES: THE CITY, the same place the stair puts them.
+                    --
+                    -- They woke at the Gate for as long as the Gate was the screen that had something
+                    -- to say to them -- it drew the rout's notice, and the stair was the only thing a
+                    -- beaten company could do next. Both halves stopped being true. What a beaten
+                    -- company actually needs is the town: the Ward that sets the bones, the Touchstone,
+                    -- the shelves. Waking at the mouth of the hole put the one control on the screen
+                    -- pointing straight back down it, which is the last thing to offer somebody who has
+                    -- just lost a company.
+                    --
+                    -- BOTH EXITS NOW LAND IN THE SAME PLACE, which is the symmetry this branch already
+                    -- keeps everywhere else: the run closes the same way, the map is banked the same
+                    -- way, and neither way home is the cheaper one (see the climb-out branch).
+                    --
+                    -- THE ROUT STILL SPEAKS, on the city's own screen and once (`pendingRout`, drawn by
+                    -- states/hub.lua). The sentence is the half a readout cannot say -- that losing
+                    -- took nothing the company owned -- and it is the sentence a player needs in the
+                    -- five seconds after being wiped. The other half, WHERE THE PACK IS, was never this
+                    -- notice's job for long: the Gate carries it standing (Descent.lostPacks, drawn on
+                    -- every visit), because a pack outlives the session that dropped it and the player
+                    -- has to be able to find it tomorrow without dying again to be told.
+                    --
+                    -- ON THE PLAYER rather than in a switch payload, because the city takes none: it is
+                    -- the one screen every route into free play goes through and it reads the company
+                    -- off Player.active (states/hub.lua's enter). Same seam the post-quest report uses
+                    -- (`pendingSummary`), and in-memory for the same reason -- it is written and read in
+                    -- the same breath, with nothing but a state switch in between, so it wants no place
+                    -- in the save file (models/save.lua snapshots a named list of fields).
+                    game.player.pendingRout = floor
+
                     Player.save()
-                    State.switch(require("states.gate"), {
-                        player = game.player,
-                        wiped = floor,
-                    })
+                    Player.active = game.player
+                    State.switch(require("states.hub"))
                     return
                 end
                 -- NO WOUNDS ON A WIPE. A wound lasts the expedition and the surface ends it for free
@@ -3184,6 +3244,8 @@ function game:openEncounter(cell, opts)
                     -- path takes, so a pack recovered either way is recovered identically.
                     takeGuardedPack()
                     grantSideSpoils(spoils)
+                    -- ...and a wanderer walked off leaves no more of a mark than one fought does.
+                    retireRolledFight()
                     -- A walked-off fight wounds exactly as a played one does, and is TOLD exactly as
                     -- one is -- the toast naming who, and the coach bubble the first time it happens
                     -- at all. Through the same seam with the fallen handed in, rather than a bare
@@ -3942,7 +4004,7 @@ function game:openEncounter(cell, opts)
     --   this tile     ...or up ONE floor, to the stair you came down by (Descent.retreat). The
     --                 expedition continues; the tally pays for the ground given back.
     --   the stair     go deeper, having beaten the circle's general.
-    --   losing        wake at the Gate, keep the floor and the levels, leave the packs on the tile.
+    --   losing        wake in the city, keep the floor and the levels, leave the packs on the tile.
     --
     -- There was a fourth -- Esc, which gave up where you stood and discarded the floor stack -- and it
     -- is gone (see backVisible). This tile is what it should always have been: the way out is a PLACE
@@ -3967,8 +4029,8 @@ function game:openEncounter(cell, opts)
         -- `enc.composition` beats a blueprint's, models/encounter_battle.lua) and re-dispatched through
         -- the ordinary fight path, so the deployment, the spoils, the wounds and -- the one that
         -- matters -- the WIPE all behave exactly as they do everywhere else. Losing the breach is a
-        -- wipe: the company wakes at the Gate with the run intact and the tally still full, which is
-        -- what makes this a state to fight out of rather than a game over.
+        -- wipe: the company wakes in the city with its levels and its map book intact, which is what
+        -- makes this a state to fight out of rather than a game over.
         --
         -- THE ONLY THING SPECIAL-CASED IS THE WIN, and it is handled where every other win is
         -- (`cell.encounter.breach` in the battle's onWin). Beating what came up the stair is beating
@@ -4053,8 +4115,15 @@ function game:openEncounter(cell, opts)
 
         upOptions[#upOptions + 1] = {
             label = "Climb out",
-            desc = "The expedition ends here. The company keeps everything it is carrying -- and the " ..
-                "rift closes behind them. The next way down is a new one, from the top.",
+            -- NAMES WHERE THE COMPANY COMES OUT, because that is the whole of what this option is
+            -- for and the player is choosing it to go somewhere. It said "the rift closes behind
+            -- them -- the next way down is a new one, from the top", which was the extraction rule
+            -- of an older mode and is now false twice over: the floor goes in the book on the way
+            -- out (Descent.keepFloor) and the stair the company mapped is the one it walks back in
+            -- by (Descent.entryFloor). The prompt under the two cards has said "the stair stays
+            -- open behind them" the whole time, so the card and the prompt were arguing.
+            desc = "The expedition ends here. The company walks up into the city, keeping everything " ..
+                "it is carrying -- and the stair stays open behind them.",
             accent = { 0.72, 0.78, 0.86 },
             cb = function()
                 game.activePanel = nil
@@ -4074,17 +4143,17 @@ function game:openEncounter(cell, opts)
                 -- whole of the bank: the floors below can no longer reach anything the company
                 -- climbed out with.
                 --
-                -- ...AND THE RIFT CLOSES BEHIND THEM. This is the extraction rule and it is the
-                -- whole shape of the mode: leaving banks everything and throws the DUNGEON away.
-                -- Next descent is a fresh stack from floor one, a fresh shuffle of the circles, a
-                -- fresh set of boards.
+                -- ...AND THE RIFT DOES NOT CLOSE BEHIND THEM. This paragraph read the other way for
+                -- a long time -- "leaving banks everything and throws the DUNGEON away, next
+                -- descent is a fresh stack from floor one" -- and that extraction rule is gone. The
+                -- rift is a PLACE: the floor goes in the book on the way out (Descent.keepFloor
+                -- below), the boards the company walked are kept with their fog lifted and their
+                -- caches spent, only the monsters re-arm (Descent.rearmFloor), and the company
+                -- walks back in at the deepest stair it has mapped (Descent.entryFloor). Wizardry's
+                -- own answer, and docs/the-count.md holds the argument for it.
                 --
-                -- THE BOARD USED TO BE KEPT, and the argument for keeping it was Wizardry's: the
-                -- maze is permanent, so the fog you lifted and the map you made are still there
-                -- next time. That is the right answer for a descent you can bank progress in, and
-                -- it is exactly what made walking out free -- the stair stayed open, the city
-                -- healed for nothing, and the company came back down onto ground it had already
-                -- cleared. The price on leaving is now the ground itself.
+                -- So what is thrown away here is the EXPEDITION and nothing else: the open run, and
+                -- the rollback point that made this trip's finds provisional.
                 --
                 -- WHAT SURVIVES is everything the company IS: gold, gear, the stash, levels,
                 -- completed errands and the shelf rungs they opened, the circles it has sealed,
@@ -4107,11 +4176,29 @@ function game:openEncounter(cell, opts)
                 game.player.descentRun = nil
                 game.descent = nil
                 Player.save() -- the company, banked, with no expedition open
-                -- UP TO THE GATE, not to a terminal card. Climbing out is not the end of
-                -- anything -- it is the other half of the loop, and there is a town at the top
-                -- of the stair now (states/gate.lua). The card that reports how a run ENDED is
-                -- still there for the three endings that are endings.
-                State.switch(require("states.gate"), { player = game.player })
+                -- ALL THE WAY UP -- INTO THE CITY, not to a terminal card and not to the mouth of
+                -- the stair. Climbing out is not the end of anything, it is the other half of the
+                -- loop, and the half the player is climbing out FOR is the town: the Ward that sets
+                -- a bone, the Touchstone that names what came up, the shelves the haul just opened.
+                -- The Gate is a hole in the ground and a look at the company before they go back in
+                -- (states/gate.lua) -- it is what you walk THROUGH on the way down, and landing on
+                -- it after a trip put the company one screen short of everything they surfaced to
+                -- do, with the only lit control on the screen pointing straight back down.
+                --
+                -- The card that reports how a run ENDED is still there for the three endings that
+                -- are endings. The wipe comes home through this same door (onLoss above) -- both ways
+                -- out of a floor land in the town, which is the symmetry that stops either of them
+                -- being the cheaper way home.
+                --
+                -- Coming home through the front door is also what pays the homecoming's bookkeeping
+                -- (states/hub.lua's enter): the pools refill, a returning company is stamped, and
+                -- the doors the city grew while they were below get coached.
+                --
+                -- The town takes no player argument -- it reads Player.active -- so the company is
+                -- seated the same way the stair seats it on the way down (states/gate.lua's
+                -- descend). The two are the same table today; saying so is what keeps them so.
+                Player.active = game.player
+                State.switch(require("states.hub"))
             end,
         }
         upOptions[#upOptions + 1] = {
@@ -4530,7 +4617,7 @@ end
 -- act is to throw away fifteen floors is a trap for whoever wires the next exit into here.
 --
 -- The two endings a descent still has are the Hollow Crown (endDescent "won", which does close the run)
--- and a wipe (onLoss, which keeps it and sends the company to the Gate).
+-- and a wipe (onLoss, which keeps it and wakes the company in the city).
 local function toHub()
     -- WALKING OUT IS FREE, and this is the line that says so. It used to void the run exactly as a
     -- wipe does -- the two differed only in how the player got there -- which made the objective the

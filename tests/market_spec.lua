@@ -314,6 +314,57 @@ return {
         end,
     },
     {
+        -- THE DOT ON THE DOOR, and the bug it carried: `sellsAll` makes Vendor.sells answer yes for
+        -- every ware in the game, so the shelf question every other shop's plate asks lit this one for
+        -- every id in the unread ledger -- and that ledger is fed by every discovery the company
+        -- carries out of the rift (Player.markFound). The market came home dotted from every trip,
+        -- naming wares its counter is not showing, which is a dot nothing behind the door can clear.
+        name = "the market's door dots for its own counter, and goes out when that counter is read",
+        fn = function()
+            local p = Player.new()
+            Market.markOpened(p) -- the opening morning, absorbed
+            p.newStock = {}
+            assert(not Market.hasUnread(p), "an unmarked counter does not dot")
+
+            -- A DISCOVERY THAT IS NOT ON THE COUNTER. The old route would have lit the plate for it;
+            -- both halves are asserted, so this case fails if the door goes back to asking the shelf.
+            local offCounter
+            for id, def in pairs(Item.defs) do
+                if (def.price or def.dropTier) and not Market.isStaple(def) then
+                    offCounter = offCounter and (id < offCounter and id or offCounter) or id
+                end
+            end
+            assert(offCounter, "the catalogue has a ware the counter does not stand")
+            Player.markNew(p, Player.NEW_STOCK, offCounter)
+            assert(Vendor.hasMarkedStock(Market.ID, p.newStock),
+                "the shelf question answers yes for it -- which is exactly why the door cannot ask it")
+            assert(not Market.hasUnread(p),
+                offCounter .. " is not on the counter and must not dot the market's door")
+
+            -- A RACK OPENING, which is the one thing this door has ever needed to say.
+            p.newStock = {}
+            recruit(p, "bastion")
+            local opened = assert(Market.markOpened(p), "joining a companion opens a rack")
+            assert(Market.hasUnread(p), "a rack that opened while the player was away dots the door")
+
+            -- ...AND IT GOES OUT ON BEING READ, which is what the shop's tiles do (Player.seeNew, in
+            -- ui/panels/shop.lua). Every id it marked is on the counter, so every one of them is a
+            -- tile the player can land on -- the dot has somewhere to be cleared from.
+            for _, id in ipairs(opened.items) do Player.seeNew(p, Player.NEW_STOCK, id) end
+            assert(not Market.hasUnread(p), "reading the counter puts the door's dot out")
+        end,
+    },
+    {
+        -- THE CALLER. Market.hasUnread with no caller is the same failure this file already pins for
+        -- Market.stock: a model that is correct and unasked. The city's plate is the only reader.
+        name = "the city asks the market's own counter for its dot",
+        fn = function()
+            local src = assert(love.filesystem.read("states/hub.lua"), "states/hub.lua is readable")
+            assert(src:find("Market.hasUnread", 1, true),
+                "the hub's badge must ask the counter, not the shelf, for the market's dot")
+        end,
+    },
+    {
         -- WHAT THE COUNTER IS BANDED AGAINST, and it is one thing: the deepest floor this company has
         -- ever stood on. Two halves, and the first is a deletion -- the tier used to be the highest of
         -- depth, the roster's best class level and its spread, so a company that had never gone down

@@ -9,12 +9,12 @@
 -- (3. was "the ask" -- the next errand this house wanted run, taken on over the counter. No house asks
 -- for anything any more; the only asks in the game are the ones a companion makes on a floor.)
 --
--- IT LIVED IN states/hub.lua UNTIL THE SHOPS MOVED. Every shelf was a pop-up over the city, so the city
--- was the only screen that had to know any of this. The seven houses and the General Store are on a
--- board of their own now (states/houses.lua, `district = "houses"`), and a second copy of ninety lines
--- of conversation sequencing is the kind of duplicate that stays right for about a week -- an errand
--- accepted on one screen and not the other is a shelf that disagrees with itself about what it asked
--- for. One copy, two callers.
+-- IT LIVED IN states/hub.lua UNTIL THE SHOPS MOVED, and it stays out here now that they have moved back.
+-- Every shelf was a pop-up over the city, so the city was the only screen that had to know any of this;
+-- then the seven houses took a board of their own and there were two screens opening shop doors, which
+-- is what pulled ninety lines of conversation sequencing out into a model. There is one board again --
+-- the houses are counters on the plaza (models/counter.lua) -- but this stays where it is, because the
+-- caller is no longer a screen at all. A COUNTER plays the greeting now, and a counter is a model.
 --
 -- Pure model: no love.graphics and no state switching. It plays conversations (a global overlay) and
 -- hands control back through `onDone`, which is where the caller opens its own panel.

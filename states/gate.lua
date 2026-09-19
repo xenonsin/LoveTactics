@@ -12,12 +12,20 @@
 -- and the split is the reference's own: Wizardry's castle holds the tavern, the inn, Boltac's and the
 -- temple, and the dungeon entrance sits at the edge of town where there is nothing to do but enter.
 --
--- AFTER A WIPE this is where the game lands -- at the temple, with the whole company alive, whole, and
--- carrying nothing. Whole because being above ground is what sets a bone now (models/wound.lua), so
--- what a wipe takes is the haul and the run and not the bodies' next expedition as well.
--- Everything they had is in a heap on the floor they fell on (models/descent.lua's
--- `drops`), so the next expedition has somewhere it very much wants to go. Dark Souls' bloodstain, and
--- the only thing that stops "climb out" and "die" being the same move.
+-- A WIPE NO LONGER LANDS HERE. It did, and the screen carried the rout's notice to prove it; a beaten
+-- company wakes in the CITY now, like a company that walked out on its own two feet (states/game.lua's
+-- onLoss). Waking at the mouth of the hole put the only lit control on the screen pointing straight
+-- back down it, and the things a beaten company actually needs -- the Ward, the Touchstone, the shelves
+-- -- were all one screen further on.
+--
+-- WHAT A WIPE LEAVES BEHIND IS STILL THIS SCREEN'S BUSINESS, and that is the durable half: everything
+-- the company FOUND is in a heap on the floor they fell on (models/descent.lua's Descent.dropPack) and
+-- the pack line below names it on every visit, because a notice is shown once and a pack keeps costing
+-- the player until they go and get it. This is the screen they go and get it from. Dark Souls'
+-- bloodstain, and the only thing that stops "climb out" and "die" being the same move.
+--
+-- Nothing they OWNED is ever taken -- the bodies come back whole, because being above ground is what
+-- sets a bone now (models/wound.lua).
 
 local State = require("states")
 local Choice = require("ui.panels.choice")
@@ -176,19 +184,17 @@ function gate:build()
     -- reason the inn and the store are: this screen is a hole in the ground and a look at the company,
     -- not a counter. The mule's ladder (models/mule.lua) still exists -- it just does not get bought at
     -- the mouth of the stair.
-    -- THE BOOK, and it opens HERE rather than from a door in the city, because the question it answers
-    -- is asked at the mouth of the stair: what am I going down for (models/bestiary.lua,
-    -- docs/drops.md). It is a record the company keeps, not a counter somebody stands behind, so it
-    -- wants no building, no keeper and no unlock.
+    -- (THE BOOK STOOD HERE AND IS A ROOM IN THE CITY NOW -- the Arcanum's, behind its desk
+    -- (data/buildings/arcanum.lua). This screen is a hole in the ground and a look at the company, and
+    -- the fold gave the seven houses room to hold what the plaza and this menu were carrying.
     --
-    -- Drawn unconditionally. An empty book is not a missing control -- it says what fills it in, which
-    -- is exactly what a player who has never opened it needs to read.
-    items[#items + 1] = { label = "The Book", action = function()
-        gate.panel = require("ui.panels.bestiary").new({
-            player = gate.player,
-            onClose = function() gate.panel = nil end,
-        })
-    end }
+    -- THE ARGUMENT FOR KEEPING IT HERE IS LEFT STANDING, because it is a good one and this is a one-line
+    -- reversal: the question the book answers is asked AT THE MOUTH OF THE STAIR -- what am I going down
+    -- for (models/bestiary.lua, docs/drops.md) -- and it is a record the company keeps rather than a
+    -- counter somebody stands behind, so it wanted no building, no keeper and no unlock. It has all
+    -- three now, and it waits for the first descent. If reading it turns out to belong to the moment
+    -- before going down rather than to an afternoon in town, put this row back and take the Arcanum's
+    -- `bestiary` offer out -- but do not do BOTH: two doors onto one record is one door.)
 
     items[#items + 1] = { label = "Back to the City", action = function()
         State.switch(require("states.hub"))
@@ -211,7 +217,7 @@ function gate.enter(self, opts)
     --
     -- THE BONES ARE NOT SET HERE ANY MORE. Wound.clear stood beside this line and an expedition's
     -- injuries ended the moment anybody stood on either town screen. They end at the Ward now
-    -- (data/buildings/the_ward.lua) -- free if you rest them off, paid if you want them gone today --
+    -- (data/buildings/cathedral.lua) -- free if you rest them off, paid if you want them gone today --
     -- and the stair is emphatically not the Ward: a company that walks down to look at the hole and
     -- climbs back out has not been treated by doing so.
     -- THE RUN LIVES ON THE PLAYER, and that is the whole of the descent joining the campaign save.
@@ -254,39 +260,21 @@ function gate.enter(self, opts)
     -- refill by climbing the stair and turning round.
     if fresh then gate.player.gold = math.max(gate.player.gold or 0, Descent.OPENING_GOLD) end
     gate.panel = nil
-    gate.wiped = opts.wiped
-    -- WHAT A ROUT ACTUALLY COST, said on the screen the company wakes up on.
+    -- THE ROUT'S NOTICE IS NOT THIS SCREEN'S ANY MORE, because a routed company does not wake here.
     --
-    -- This read "The company went down on floor N. They are still there, and so is everything they were
-    -- carrying." Both halves were false: the bodies wake HERE (that is what this screen is), and for a
-    -- stretch after the pile system was deleted nothing at all stayed behind. The haul stays behind
-    -- again (models/descent.lua's Descent.dropPack), and nothing else does -- so the line names the
-    -- floor, the number of pieces and where they are, because those three are the whole of what the
-    -- player has to decide about.
+    -- It woke here for as long as the Gate was the answer to "where does a beaten company come to" --
+    -- and this band carried the one sentence a player needs in the five seconds after losing a company:
+    -- that the rout took nothing they owned. Both exits come home to the CITY now (states/game.lua's
+    -- onLoss and its climb-out neighbour), so the sentence is said there, in the same shape, under that
+    -- screen's own title (states/hub.lua's `notice`).
     --
-    -- SILENT ON THE PACK WHEN THERE IS NONE. A company that wiped carrying nothing it had found lost
-    -- nothing, and telling them their pack is waiting would send them down for an empty tile.
+    -- WHAT STAYS HERE IS THE HALF THAT OUTLIVES THE MOMENT: the pack, drawn standing in gate.draw off
+    -- Descent.lostPacks. A notice is shown once and a pack keeps costing the player until they go and
+    -- get it, and this is the screen they go and get it FROM.
     --
-    -- AND IT QUOTES NO COUNT, because the readout beside the purse already does (see gate.draw) and it
-    -- keeps doing so on every visit after this one. What this line is FOR is the half the readout
-    -- cannot say: that the rout took nothing they owned. That is the sentence a player needs in the
-    -- five seconds after losing a company, and it is worth the whole width of the screen on its own.
-    gate.notice = nil
-    if opts.wiped then
-        local pack
-        for _, p in ipairs(Descent.lostPacks(gate.player)) do
-            if p.floor == opts.wiped then pack = p break end
-        end
-        gate.notice = "The company was routed on floor " .. opts.wiped .. ". They walked out with "
-            .. "everything they walked in with"
-            .. (pack and "; what they found down there stayed where they fell." or ".")
-    end
-    -- THE TWO NOTICES COEXIST. A company can wake here routed AND find the rift re-laid, and the
-    -- block above owns this band by clearing it -- so the stale-floor line is appended rather than
-    -- assigned, or a rout would silently swallow the one message that explains a map going missing.
-    if staleNotice then
-        gate.notice = gate.notice and (gate.notice .. "  " .. staleNotice) or staleNotice
-    end
+    -- So the band is the stale-floor line's alone now -- which it always shared rather than owned, and
+    -- which is still this screen's business: a rift that re-laid itself is a fact about the stair.
+    gate.notice = staleNotice
     require("models.sound").music("music.menu")
     require("ui.screen_fx").reset()
     gate:build()

@@ -25,7 +25,7 @@
 -- wound now outlives the trip that dealt it. Everything downstream reads this file to learn what a
 -- wound is, so a stale sentence here is one that gets believed.
 --
--- WHERE IT ACTUALLY ENDS is data/buildings/the_ward.lua, and in exactly two ways: REST, free and always
+-- WHERE IT ACTUALLY ENDS is the Cathedral's mending (data/buildings/cathedral.lua), and in exactly two ways: REST, free and always
 -- open, which lays the body up for Wound.REST_DESCENTS trips and is paid in who walks down without
 -- them; or TREAT, Wound.TREAT_COST in gold, which sets the bone before you leave the room. Gold buys
 -- SPEED and never recovery -- the distinction docs/the-count.md's law turns on.

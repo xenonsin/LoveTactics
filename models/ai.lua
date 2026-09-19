@@ -107,6 +107,33 @@ AI.WEIGHTS = {
     SPEND        = 0.15,  -- per point of a resource cost, so a mage doesn't nuke a woodlouse
     STEPS        = 0.25,  -- mild: keeps motion sensible without making the AI lazy
     TARGET_PREF  = 6,     -- bonus when a candidate matches the rule's stated targeting preference
+    -- WHAT A CAST DOES THAT NOBODY CAN BE SCORED FOR. Every term above is read off the dry run's
+    -- per-unit entries -- damage, heal, statuses, a kill -- and a whole class of ability produces
+    -- none of them: a summon, a trap, a wall, a patch of ground. Those casts scored a flat 0, and
+    -- `outcome` is the gate that decides whether an action is worth taking AT ALL, so the honest
+    -- description of the old behavior is that THE ENEMY AI COULD NOT PLAN A SUMMON. Not "planned it
+    -- badly" -- never once, in any fight, however the rule was written. Nothing had said so because
+    -- no enemy blueprint carried one: the Hollow Crown calls its bodies from a phase script, which
+    -- never passes through here.
+    --
+    -- previewAbility already computes the fact (`mutates`, set by every board-touching helper) and
+    -- Combat.castDoesSomething already trusts it for the player's own click resolution. This is the
+    -- planner reading the same flag the click does.
+    --
+    -- Worth about a status, deliberately: enough to clear the gate and to lose to a real blow with a
+    -- body under it, which is the ordering a summoner should have -- call when there is nothing
+    -- better to do, swing when there is. A cast that BOTH mutates and scores entries (a Fireball that
+    -- leaves embers) takes no bonus at all; it is already being paid for what it did.
+    --
+    -- SUPPORT CASTS ONLY, and the narrowing is the whole of what keeps this honest. `mutates` is set
+    -- by every board-touching helper, which includes moving the CASTER -- so credited to hostile casts
+    -- it pays out for a blow that connected with nobody. It did: ability_gore marks the preview through
+    -- fx.chargeInto, and its entire mechanic is that a charge down an empty lane scores zero and is
+    -- refused, so the boar only commits when somebody is actually standing on the line. The broad
+    -- version bought that whiff for 3 points and the ordinary boar fight went from 19 unit-turns to 44,
+    -- with the animals charging at nothing. A friendly cast that produces no entries is doing something
+    -- for its own side the entries cannot show; a hostile one that produces no entries missed.
+    MUTATION     = 3,
 }
 
 -- ---------------------------------------------------------------------------
@@ -195,6 +222,12 @@ AI.TESTS = {
         return anyOf(list, function(u) return Combat.unitGap(ctx.unit, u) <= (v or 1) end)
     end,
     ["count_at_least"] = function(_, list, v) return #list >= (v or 1) end,
+    -- ...and its mirror, which is what a rule that STOPS needs. "Keep calling until there are enough
+    -- of them" cannot be said with count_at_least and nothing else in this table negates, so the one
+    -- shape of rule that has a ceiling rather than a floor -- a summoner with a clan size, a caster
+    -- husbanding a resource -- had no way to express it and would run forever. Counted INCLUSIVE, like
+    -- its sibling: `count_at_most 4` holds while there are four or fewer.
+    ["count_at_most"] = function(_, list, v) return #list <= (v or 1) end,
     -- "Can I hit it from where I stand right now, with anything I'm carrying?" -- the difference
     -- between a rule that fires when a foe is merely near and one that fires when it is actually
     -- reachable this instant.
@@ -246,7 +279,7 @@ AI.SUBJECT_ORDER = {
 }
 AI.TEST_ORDER = {
     "exists", "in_reach", "within", "hp_pct_below", "hp_pct_above",
-    "count_at_least", "has_status", "lacks_status", "always",
+    "count_at_least", "count_at_most", "has_status", "lacks_status", "always",
 }
 AI.ACTION_ORDER = { "attack", "support", "cast", "retreat", "wait" }
 AI.TARGET_PREF_ORDER = { "nearest", "lowest_hp", "most_wounded", "lethal", "self", "objective" }
@@ -258,6 +291,7 @@ AI.TEST_VALUE = {
     hp_pct_below   = { kind = "percent", min = 0.05, max = 1,  step = 0.05, default = 0.5 },
     hp_pct_above   = { kind = "percent", min = 0.05, max = 1,  step = 0.05, default = 0.5 },
     count_at_least = { kind = "count",   min = 1,   max = 8,   step = 1,    default = 2 },
+    count_at_most  = { kind = "count",   min = 1,   max = 8,   step = 1,    default = 2 },
     has_status     = { kind = "status",  default = "status_burn" },
     lacks_status   = { kind = "status",  default = "status_burn" },
 }
@@ -1011,14 +1045,17 @@ function AI.candidates(combat, unit, items, tiles, wantSupport)
                         and t.side == unit.side
                         or (not wantSupport and t.side ~= unit.side and not Status.untargetable(t)))
                     if legal then
-                        -- Aim at the target's cell nearest this stand tile, not its anchor, so a wide
-                        -- mark is struck from beside its closest edge -- and so Combat.useItem's range
-                        -- re-check (measured to this same cell) agrees the shot is legal.
-                        local tcx, tcy = Combat.nearestCell(tile.x, tile.y, t)
-                        local d = manhattan(tile.x, tile.y, tcx, tcy)
+                        -- Measured BODY to body, not corner to corner: the mark's cell nearest this
+                        -- stand tile, from the whole block this unit would occupy standing on it
+                        -- (Combat.reachFrom). Either end may be wide, and both ends were being read
+                        -- off one anchor -- so now a wide mark is struck from beside its closest
+                        -- edge, a wide striker swings from whichever of its own cells is closest, and
+                        -- Combat.useItem's range re-check (measured to this same cell, from the body
+                        -- once it has arrived) agrees the shot is legal.
+                        local d, tcx, tcy = Combat.reachFrom(unit, tile.x, tile.y, t)
                         if d <= range and d >= minRange
                             and (not ab.requiresSight
-                                 or Combat.hasLineOfSight(combat, tile.x, tile.y, tcx, tcy)) then
+                                 or Combat.sightFrom(combat, unit, tile.x, tile.y, tcx, tcy)) then
                             out[#out + 1] = {
                                 x = tile.x, y = tile.y, steps = tile.steps or 0,
                                 item = item, target = t, tx = tcx, ty = tcy,
@@ -1102,6 +1139,13 @@ local function outcomeScore(combat, unit, cand, w, previews)
             -- killing blow because it might miss would decline to swing at a body on one health.
             lethal = lethal or not friendly
         end
+    end
+    -- ...and the half no entry can carry. Credited ONLY when the entries came up empty (so it is the
+    -- floor under a cast whose whole payload is a board mutation, never a bonus on top of one that
+    -- already scored) and ONLY for a friendly cast. See AI.WEIGHTS.MUTATION for both halves.
+    if score == 0 and preview.mutates == true
+        and Combat.isSupportAbility(cand.item.activeAbility) then
+        score = score + w.MUTATION
     end
     return score, lethal
 end
@@ -1256,10 +1300,10 @@ function AI.clearing(ctx, goal, here)
                 if ab and not Combat.isSupportAbility(ab) then
                     local range = Combat.abilityRange(combat, unit, ab, tile.x, tile.y)
                         + Combat.adjacencyRangeBonus(unit.char, item)
-                    local d = manhattan(tile.x, tile.y, obj.x, obj.y)
+                    local d = Combat.pointReachFrom(unit, tile.x, tile.y, obj.x, obj.y)
                     if d <= range and d >= Combat.abilityMinRange(ab)
                         and (not ab.requiresSight
-                             or Combat.hasLineOfSight(combat, tile.x, tile.y, obj.x, obj.y)) then
+                             or Combat.sightFrom(combat, unit, tile.x, tile.y, obj.x, obj.y)) then
                         local dmg = Combat.computeTrapDamage(unit, item)
                         local steps = tile.steps or 0
                         if not best or dmg > best.dmg or (dmg == best.dmg and steps < best.steps) then
@@ -1443,10 +1487,9 @@ function AI.preempt(combat, unit)
         for _, node in ipairs(Combat.reachableList(combat, unit)) do
             local range = Combat.abilityRange(combat, unit, ab, node.x, node.y)
                 + Combat.adjacencyRangeBonus(unit.char, weapon)
-            local cx, cy = Combat.nearestCell(node.x, node.y, tt)
-            local d = manhattan(node.x, node.y, cx, cy)
+            local d, cx, cy = Combat.reachFrom(unit, node.x, node.y, tt)
             if d <= range and d >= minRange
-                and (not (ab and ab.requiresSight) or Combat.hasLineOfSight(combat, node.x, node.y, cx, cy))
+                and (not (ab and ab.requiresSight) or Combat.sightFrom(combat, unit, node.x, node.y, cx, cy))
                 and (not best or node.steps < best.steps) then
                 best = { x = node.x, y = node.y, tx = cx, ty = cy, steps = node.steps }
             end

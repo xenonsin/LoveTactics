@@ -186,8 +186,26 @@ end
 -- payout seam (models/errand.lua), and it has to take the same BEFORE picture through the same gates.
 function Quest.shelf(player, vendorId)
     if not vendorId then return nil end
-    return Vendor.stock(vendorId, Quest.shelfRung(player, vendorId), player.recipes,
-        Class.unlockedSet(player), Class.levelSet(player), player.found)
+    local g = Quest.shelfGates(player, vendorId)
+    return Vendor.stock(vendorId, g.rung, player.recipes, g.unlocked, g.levels, g.found)
+end
+
+-- THE FOUR FIGURES A SHELF IS GATED BY, in one table: the house's rung, the unlocked disciplines, how
+-- far each has grown, and what the company has carried out of the rift. Named here because two very
+-- different readers need the same four and must not assemble them apart -- the shop, which builds the
+-- rack (Vendor.stock, through Quest.shelf above), and the city's red dot on the door, which asks only
+-- whether a marked ware is OUT (Vendor.hasMarkedStock). While the dot asked a looser question than the
+-- rack answered, it lit for rows the shop draws no mark on and could not be cleared by reading them.
+--
+-- Assembled per call rather than cached: the sets are cheap (a roster walk apiece) and a cached gate is
+-- a gate that goes stale the first time a class levels, which is the one moment the dot exists for.
+function Quest.shelfGates(player, vendorId)
+    return {
+        rung = Quest.shelfRung(player, vendorId),
+        unlocked = Class.unlockedSet(player),
+        levels = Class.levelSet(player),
+        found = player and player.found,
+    }
 end
 local shelfOf = Quest.shelf
 

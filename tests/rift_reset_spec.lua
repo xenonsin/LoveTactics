@@ -57,12 +57,28 @@ return {
         assert(upTail:find("descentRun = nil", 1, true),
             "climbing out leaves the expedition open, so the next dive resumes a rift already left")
 
-        local down = src:find("wiped = floor", 1, true)
-        assert(down, "nothing sends a wiped company to the Gate any more -- retarget this case")
-        -- WIDENED FROM 4000 for the reason the note above gives about the other window: this branch
-        -- grew a paragraph and a Descent.keepFloor block when the map book moved onto the player, and a
-        -- heuristic window sized to yesterday's block goes red on commentary rather than on a deletion.
-        local downHead = src:sub(math.max(1, down - 6000), down)
+        -- The rout, anchored on the last thing it does: stamp the notice the city says on arrival.
+        -- It was `wiped = floor`, the payload the Gate was handed -- a wiped company wakes in the CITY
+        -- now, like a company that walked out, so the payload went with the destination.
+        local down = src:find("pendingRout = floor", 1, true)
+        assert(down, "nothing wakes a wiped company any more -- retarget this case")
+        -- BRACKETED ON THE BRANCH ITSELF, NOT ON A BYTE COUNT. This was `down - 4000`, then 6000, and
+        -- was on its way to 8000: the branch is mostly commentary -- the whole argument for what a rout
+        -- does and does not cost lives in it -- so a window sized to yesterday's block goes red the next
+        -- time somebody writes a paragraph rather than the next time somebody deletes a line. The rout
+        -- opens on `if game.descent then` and closes on the notice anchored above, so take exactly that.
+        local opens
+        local from = 1
+        while true do
+            local i = src:find("if game.descent then", from, true)
+            if not i or i > down then break end
+            opens, from = i, i + 1
+        end
+        -- ...and it must actually be found. Falling back to the whole file would leave three assertions
+        -- passing on code from anywhere in it, which is the worst outcome available here: a case that
+        -- reads green while guarding nothing.
+        assert(opens, "the rout branch no longer opens on `if game.descent then` -- re-bracket this case")
+        local downHead = src:sub(opens, down)
         assert(downHead:find("Descent.COUNT_WIPE", 1, true),
             "a wipe still names its mark, inert though the tally is (Descent.COUNT_PARKED) -- a park "
             .. "whose call sites were deleted too is one nobody can lift from the flag alone")

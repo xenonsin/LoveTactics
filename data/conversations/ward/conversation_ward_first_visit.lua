@@ -6,7 +6,7 @@
 -- them is to be replaced before this ships -- see the brief underneath.
 -- ============================================================================
 --
--- WHERE THIS SITS. The first time the player walks into the WARD (data/buildings/the_ward.lua), which
+-- WHERE THIS SITS. The first time the player walks into the CATHEDRAL (data/buildings/cathedral.lua), which
 -- is a card that arrives on the plaza the first time anybody is carried up broken -- Rowan, off the
 -- Demon Champion at the end of Act 0. So the player opens this door holding exactly one wound, on the
 -- body they have fought beside since the first street, and Xin is who is standing inside.
@@ -49,7 +49,7 @@
 -- image and she is characterized by minding that more than the injury. The avatar is silent for the
 -- prologue and there is no reason to change that on the first morning after it.
 return {
-    title = "The Inn",
+    title = "Inn",
     cast  = { "character_xin", "character_rowan", "character_avatar" },
 
     script = {

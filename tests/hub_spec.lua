@@ -31,10 +31,16 @@ return {
     {
         name = "building registry discovers def files by filename",
         fn = function()
+            -- The two doors that are not counters...
             assert(Building.defs.the_gate, "the_gate missing")
             assert(Building.defs.armory, "armory missing")
-            assert(Building.defs.market, "market missing")
-            assert(Building.defs.cafe, "cafe missing")
+            -- ...and two of the seven houses. The rooms the city used to spend cards on -- the Market,
+            -- the Cafe, the Inn, the Forge, the Touchstone, the Dueling Grounds -- are lines on those
+            -- desks now (models/counter.lua), so their blueprints are gone and this list names houses.
+            assert(Building.defs.cathedral, "cathedral missing")
+            assert(Building.defs.undercroft, "undercroft missing")
+            assert(not Building.defs.market, "the Market is a room behind the Undercroft, not a card")
+            assert(not Building.defs.houses, "the Houses card went with the second board")
         end,
     },
     {
@@ -70,6 +76,10 @@ return {
                 for _, field in ipairs(deeds) do
                     if def[field] then onDeed = true end
                 end
+                -- ...and a house, whose door is the OR of the rooms behind it (models/offer.lua). Every
+                -- one of those rooms is on a deed of its own -- a class level, a wound, a floor count --
+                -- so a bare prestige number cannot answer for it either.
+                if def.offers then onDeed = true end
                 if not onDeed then
                     assert(b.locked == (1 < b.unlockPrestige),
                         b.id .. " locked flag wrong at prestige 1")
@@ -124,24 +134,37 @@ return {
         -- the card shut forever while advertising a prestige number that was not even the gate being
         -- asked. The sand is the Colosseum's own first job now, which is the same sentence with a deed
         -- behind it that the player can actually reach.
-        name = "the Dueling Grounds open on the sand, and the sand is the Colosseum's first job",
+        name = "the duel opens on the sand, and the sand is the Colosseum's first job",
         fn = function()
             local Errand = require("models.errand")
-            local function findIn(list)
-                for _, b in ipairs(list) do if b.id == "dueling_grounds" then return b end end
+            local Offer = require("models.offer")
+            -- IT IS A ROOM NOW, NOT A CARD. The Dueling Grounds stood on the plaza and were the only
+            -- door that named somebody ELSE'S errand -- this house's opener -- which is a card that
+            -- exists to point at another card. It is a line on the Colosseum's own desk
+            -- (data/buildings/colosseum.lua), and the gate behind it did not change.
+            assert(not Building.defs.dueling_grounds, "the Dueling Grounds are a room, not a card")
+            local colosseum = Building.defs.colosseum
+
+            local function duelOpen(player)
+                return Offer.openSet(player, colosseum).duel == true
             end
 
-            local cold = findIn(Building.list({ completedQuests = standingOf(20) }))
-            assert(cold and cold.locked, "no amount of standing should open the Dueling Grounds")
-
-            local warm = findIn(Building.list({
-                completedQuests = { [Errand.opener("colosseum")] = true } }))
-            assert(warm and not warm.locked, "running the Colosseum's opener should open the Dueling Grounds")
-
+            assert(not duelOpen({ completedQuests = standingOf(20) }),
+                "no amount of standing should open the duel")
+            assert(duelOpen({ completedQuests = { [Errand.opener("colosseum")] = true } }),
+                "running the Colosseum's opener should open the duel")
             -- ...and it is the Colosseum's job specifically, not any house's.
-            local other = findIn(Building.list({
-                completedQuests = { [Errand.opener("arcanum")] = true } }))
-            assert(other and other.locked, "another house's opener should not open the Dueling Grounds")
+            assert(not duelOpen({ completedQuests = { [Errand.opener("arcanum")] = true } }),
+                "another house's opener should not open the duel")
+
+            -- The HOUSE, meanwhile, is open either way -- its shelf answers to a fighter level, and a
+            -- door opens on any room behind it. What the opener buys is the line, not the plate.
+            local sandy = { completedQuests = { [Errand.opener("colosseum")] = true } }
+            for _, b in ipairs(Building.list(sandy)) do
+                if b.id == "colosseum" then
+                    assert(not b.locked, "the sand should stand the Colosseum's door open")
+                end
+            end
         end,
     },
     {
@@ -156,11 +179,9 @@ return {
         -- simply never be drawn, and would rot.
         name = "a shut door carries no sentence to draw",
         fn = function()
-            for _, district in ipairs({ "city", "market" }) do
-                for _, b in ipairs(Building.list(Player.new(), { district = district })) do
-                    assert(b.requirement == nil,
-                        b.id .. " carries a requirement string that nothing draws")
-                end
+            for _, b in ipairs(Building.list(Player.new())) do
+                assert(b.requirement == nil,
+                    b.id .. " carries a requirement string that nothing draws")
             end
             assert(Building.requirement == nil,
                 "Building.requirement has no reader; it should not have survived the card that read it")
@@ -242,7 +263,7 @@ return {
             local Wound = require("models.wound")
 
             local function shut(who, id)
-                for _, b in ipairs(Building.list(who, { district = "city" })) do
+                for _, b in ipairs(Building.list(who)) do
                     if b.id == id then return b.locked end
                 end
                 error(id .. " is not a card in the city at all")
@@ -251,7 +272,7 @@ return {
             -- A FRESH SAVE OPENS ON TWO: look at what the company carries, and go down.
             local fresh = Player.new()
             local open = {}
-            for _, b in ipairs(Building.list(fresh, { district = "city" })) do
+            for _, b in ipairs(Building.list(fresh)) do
                 if not b.locked then open[#open + 1] = b.id end
             end
             table.sort(open)
@@ -261,61 +282,101 @@ return {
             -- onto was mostly locked rows anyway (data/buildings/market.lua). It arrives on the first
             -- descent with the rest of them.
             --
-            -- ...AND THE BOUNTY BOARD IS THE ONE THAT ARRIVED, which is the only card here that is
-            -- open on a fresh save WITHOUT being something you look at. It is a way OUT: posted work, a
-            -- day's walk, a body at the end of it and the piece that body owes (models/bounty.lua).
-            -- It passes this case's own rule -- a door open on the first morning must have something
-            -- behind it -- because the Bastion's opener is posted from the start.
+            -- THE STAIR IS THE ONLY WAY OUT ON THE FIRST MORNING, and the armory is the only thing to
+            -- do before taking it. That is the whole of what this line pins.
             --
-            -- AND THE RIFT IS BACK, so there are two ways out again and this case says so out loud
-            -- rather than letting a third card creep in unremarked. The premise moved: the campaign is
-            -- a DISTANCE RUN -- how far can you go -- which is a question the stair asks and a board of
-            -- postings cannot (data/buildings/the_gate.lua).
+            -- THE BOUNTY BOARD IS PARKED (2026-09-18) and its card is deleted, so there is no second
+            -- door -- but note that this assertion would have stayed green either way, because while
+            -- the board was live it stood in the HOUSES district and this walk only lists `city`. The
+            -- three paragraphs that used to stand here narrated the board arriving, leaving, and
+            -- leaving again, in a case that could not see it. A comment that tracks a system the
+            -- assertion beneath it never touches is prose with nothing holding it honest, and it drifted
+            -- twice before anybody noticed.
             --
-            -- AND THE BOARD WENT WITH THE SAME PASS, so the count never actually reached three. It held
-            -- this slot while the campaign was posted work; the campaign is a DISTANCE RUN now -- how
-            -- far can you go -- and a posting names a fixed errand, which is the one shape that premise
-            -- has no room for. Parked exactly as the Rift was: the card is deleted, models/bounty.lua
-            -- stays on disk and stays required by six models, and one file undoes it.
+            -- Why it went is in docs/bounties.md: its seven postings are the seven quests
+            -- models/errand.lua already seats on floors of the rift. models/bounty.lua stays on disk,
+            -- and one file undoes it.
             assert(table.concat(open, ",") == "armory,the_gate",
                 "a fresh city opens on the armory and the stair; got " ..
                 table.concat(open, ", "))
 
-            -- THE INN IS NOT A CARD ANY MORE, and its absence is asserted rather than assumed: it was
-            -- gated on the first wound, and setting a bone was the only thing it did. A wound is a
-            -- condition of the expedition now and the surface ends it for free (models/wound.lua), so
-            -- the building had nothing left to sell and went with the toll. Checked here because
-            -- `shut` raises on a card the city does not have, which is exactly the answer wanted.
-            local hurt = Player.new()
-            Wound.inflict(hurt, { { id = "character_rowan" } })
-            assert(not pcall(shut, hurt, "the_inn"),
-                "the Inn is still a card in the city -- the wound toll is supposed to be gone with it")
+            -- NONE OF THESE IS A CARD ANY MORE, and their absence is asserted rather than assumed --
+            -- `shut` raises on a card the city does not have, which is exactly the answer wanted. Each
+            -- is a room on a house's desk now (models/counter.lua), and the gate each carried came with
+            -- it: what follows pins the gates where they actually live.
+            for _, id in ipairs({ "the_inn", "the_ward", "market", "cafe", "forge",
+                                  "the_touchstone", "dueling_grounds", "houses" }) do
+                assert(not pcall(shut, Player.new(), id), id .. " is still a card in the city")
+            end
 
-            -- THE MARKET on the first floor, THE CAFE at floor two and THE FORGE at floor four, off the
-            -- company's own depth record.
-            for id, need in pairs({ market = 1, cafe = 2, forge = 4 }) do
-                for floor = 0, need do
+            -- ONE ROOM PER TRIP HOME, and the clock is trips rather than depth (models/offer.lua's
+            -- `trips` gate). Depth is bursty: a company that pushed to floor four on its first
+            -- descent used to come home to four doors at once, and one that farmed floor one froze
+            -- its city forever. Asked of the ROOM rather than of the door it is behind, because a
+            -- house's door is the OR of everything it holds.
+            local Offer = require("models.offer")
+            local rooms = {
+                { house = "undercroft",    room = "counter",  need = 1 },
+                { house = "hunters_lodge", room = "supper",   need = 2 },
+                { house = "bastion",       room = "forge",    need = 3 },
+                { house = "arcanum",       room = "bestiary", need = 4 },
+            }
+            for _, r in ipairs(rooms) do
+                for trip = 0, r.need do
                     local p2 = Player.new()
-                    Descent.reached(p2, floor)
-                    assert(shut(p2, id) == (floor < need),
-                        id .. " reads the wrong way with the company at floor " .. floor)
+                    p2.runsStarted = trip
+                    local open = Offer.openSet(p2, Building.defs[r.house])[r.room] == true
+                    assert(open == (trip >= r.need),
+                        r.room .. " reads the wrong way with the company at trip " .. trip)
                 end
             end
 
+            -- NO TWO OF THEM LAND TOGETHER, which is the whole point of the unit. Walked rather than
+            -- asserted per pair, so a room added on a colliding count fails here rather than in a
+            -- playtest.
+            local seenAt = {}
+            for _, r in ipairs(rooms) do
+                assert(not seenAt[r.need],
+                    r.room .. " arrives on the same trip as " .. tostring(seenAt[r.need]))
+                seenAt[r.need] = r.room
+            end
+
             -- The record is the COMPANY's rather than the run's (models/descent.lua's Descent.reached),
-            -- so climbing out and going back down shallow cannot take a building away again.
+            -- so climbing out and going back down shallow cannot take a room away again.
             local deep = Player.new()
-            Descent.reached(deep, 6)
-            Descent.reached(deep, 1)
-            assert(not shut(deep, "forge"), "a shallow trip must not shut a door six floors opened")
+            deep.runsStarted = 6
+            assert(Offer.openSet(deep, Building.defs.bastion).forge,
+                "the trip count only ever climbs, so a room it opened stays open")
 
             -- NONE OF THEM IS ON A PRESTIGE GATE any more, which is the half that would rot silently:
             -- standing 20 is past every threshold this city has ever had.
             local decorated = Player.new()
             decorated.completedQuests = standingOf(20)
-            for _, id in ipairs({ "market", "cafe", "forge" }) do
-                assert(shut(decorated, id), id .. " opened on standing rather than on its deed")
+            for _, r in ipairs(rooms) do
+                assert(not Offer.openSet(decorated, Building.defs[r.house])[r.room],
+                    r.room .. " opened on standing rather than on its deed")
             end
+
+            -- ...NOR ON DEPTH, which is the axis this schedule was moved OFF. A company that dived to
+            -- floor nine on one trip has seen ONE homecoming and must have exactly one new room.
+            local diver = Player.new()
+            Descent.reached(diver, 9)
+            diver.runsStarted = 1
+            local got = {}
+            for _, r in ipairs(rooms) do
+                if Offer.openSet(diver, Building.defs[r.house])[r.room] then got[#got + 1] = r.room end
+            end
+            assert(#got == 1 and got[1] == "counter",
+                "one trip home is one room, however deep it went; got " .. table.concat(got, ", "))
+
+            -- THE MENDING ON THE FIRST BODY CARRIED UP BROKEN, which is the one gate that is not a floor
+            -- count -- and the one the city's opening coach points at (states/hub.lua's INTRO_STAGES).
+            local hurt = Player.new()
+            assert(not Offer.openSet(hurt, Building.defs.cathedral).mend,
+                "nobody is hurt, so there is nothing to mend")
+            Wound.inflict(hurt, { { id = "character_rowan" } })
+            assert(Offer.openSet(hurt, Building.defs.cathedral).mend,
+                "a wound did not put the mending on the Cathedral's desk")
         end,
     },
     {
@@ -323,83 +384,92 @@ return {
         -- any body on the roster (models/building.lua). Pinned in both directions, because the failure
         -- this replaces was silent -- three gates in a row that nobody could ever satisfy, so seven
         -- doors sat shut for good and the only tell was a shop nobody could name.
-        name = "a house opens at level 1 of its class, and the square opens with the first of them",
+        name = "a house's SHELF opens at level 1 of its class, and its DOOR on any room behind it",
         fn = function()
             local Character = require("models.character")
             local Class = require("models.class")
+            local Offer = require("models.offer")
+            local Wound = require("models.wound")
 
-            local function shut(who, id, district)
-                for _, b in ipairs(Building.list(who, { district = district })) do
+            local function shut(who, id)
+                for _, b in ipairs(Building.list(who)) do
                     if b.id == id then return b.locked end
                 end
-                error(id .. " is not a card on the " .. district .. " board")
+                error(id .. " is not a card in the city")
+            end
+            local function shelfOpen(who, id)
+                return Offer.openSet(who, Building.defs[id]).shelf == true
             end
 
-            -- Every house names a vendor, and every one of those vendors names a class. Without both
-            -- the gate has nothing to read and the door is shut for good -- which is the exact shape of
-            -- the three failures before it, so it is asserted rather than assumed.
+            -- Every house names a vendor, that vendor names a class, and the house carries a desk with
+            -- rooms behind it. Without any one of those the door has nothing to read and is shut for
+            -- good -- which is the exact shape of the three failures the class gate replaced, so it is
+            -- asserted rather than assumed.
             local Vendor = require("models.vendor")
             local houses = 0
             for id, def in pairs(Building.defs) do
-                -- A card on this board is a HOUSE unless it declares itself otherwise. The Bounty Board
-                -- stands here too -- it is the sheet the seven post their work to, not a shopfront --
-                -- and it carries `noticeBoard` precisely so this check keeps its teeth: a real house
-                -- that forgot its vendor still fails, because it cannot claim the exemption by omission.
-                if (def.district or "city") == "houses" and not def.noticeBoard then
+                if def.counter then
                     houses = houses + 1
                     local vdef = def.vendor and Vendor.defs[def.vendor]
                     assert(vdef, id .. " is a house with no vendor blueprint")
-                    assert(vdef.class, id .. "'s vendor names no class, so its door can never open")
-                    assert(def.unlockClassLevel, id .. " is a house with no class gate")
+                    assert(vdef.class, id .. "'s vendor names no class, so its shelf can never open")
+                    assert(def.offers and #def.offers > 0, id .. " is a house with no rooms behind it")
+                    -- Every house keeps its own shelf, and that shelf is what the class level buys.
+                    local shelf
+                    for _, offer in ipairs(def.offers) do
+                        if offer.answer == "shelf" then shelf = offer end
+                    end
+                    assert(shelf, id .. " keeps no shelf")
+                    assert(shelf.gate and shelf.gate.classLevel == 1,
+                        id .. "'s shelf is not gated on level 1 of its class")
                 end
             end
-            assert(houses == 7, "the square is supposed to hold seven houses; it holds " .. houses)
+            assert(houses == 7, "the city is supposed to hold seven houses; it holds " .. houses)
 
-            -- SHUT ON A FRESH SAVE, all seven, and the card in the city with them.
+            -- SHUT ON A FRESH SAVE, all seven. Nothing has been climbed, nobody is hurt, nothing has
+            -- been carried up unread and the stair has not been walked -- so not one room is open, and
+            -- therefore not one door is.
             local fresh = Player.new()
-            for _, b in ipairs(Building.list(fresh, { district = "houses" })) do
-                assert(b.locked, b.id .. " is open on a fresh save")
+            for _, b in ipairs(Building.list(fresh)) do
+                if Building.defs[b.id].counter then
+                    assert(b.locked, b.id .. " is open on a fresh save")
+                end
             end
-            assert(shut(fresh, "houses", "city"),
-                "the Houses card opens onto a square of seven locked plates")
 
-            -- One body, one class, one level: the Bastion opens and nothing else does.
+            -- One body, one class, one level: the Bastion's shelf opens and nothing else does -- and
+            -- the CARD stays off the board, because a shelf is quiet (models/offer.lua). A class rung is
+            -- a reward the player cannot see, and it used to put two shopfronts on the plaza the moment
+            -- Act 0 ended.
             local knight = Player.new()
             knight.roster = { Character.instantiate("character_rowan") }
             Character.recordTechnique(knight.roster[1], "knight", Class.classLevelCost(1))
-            assert(not shut(knight, "bastion", "houses"), "knight 1 did not open the Bastion")
-            assert(shut(knight, "arcanum", "houses"), "knight 1 opened the mages' shelf as well")
+            assert(shelfOpen(knight, "bastion"), "knight 1 did not open the Bastion's shelf")
+            assert(shut(knight, "bastion"), "...and must not have opened its door")
+            assert(not shelfOpen(knight, "arcanum"), "knight 1 opened the mages' shelf as well")
+            assert(shut(knight, "arcanum"), "and its door with it")
 
-            -- THE CARD IN THE CITY WANTS BOTH: a tenant, and the stair walked. The tenant gate alone
-            -- could stand it open on the first morning -- a played prologue banks class technique on its
-            -- way into the capital -- and the first morning is the one screen where the Rift has to be
-            -- the only thing worth pressing (data/buildings/houses.lua). Pinned in both directions,
-            -- because either gate silently going missing leaves the other looking like the whole rule.
-            assert(shut(knight, "houses", "city"),
-                "a tenant put the square in the city before the company had been down at all")
-            require("models.descent").reached(knight, 1)
-            assert(not shut(knight, "houses", "city"),
-                "a tenant and a floor walked did not put the square in the city")
-
-            local walked = Player.new()
-            require("models.descent").reached(walked, 6)
-            assert(shut(walked, "houses", "city"),
-                "the square opened onto seven locked plates for a company that has climbed nothing")
+            -- THE DOOR AND THE SHELF ARE TWO QUESTIONS, and the Cathedral is the case that forced them
+            -- apart. A company walks out of Act 0 with Rowan hurt and no priest in the world: the shelf
+            -- stays shut, the mending is open, and the DOOR has to be open or the only bone-setting in
+            -- the game is behind a class nobody has.
+            local hurt = Player.new()
+            Wound.inflict(hurt, { { id = "character_rowan" } })
+            assert(not shelfOpen(hurt, "cathedral"), "a wound is not a priest level")
+            assert(not shut(hurt, "cathedral"), "a wound must stand the Cathedral's door open")
 
             -- ANY body on the roster, not the one standing in front of you: a shelf is bought from with
-            -- one purse into one stash, so the company's deepest holder is what the door asks about.
+            -- one purse into one stash, so the company's deepest holder is what the gate asks about.
             local pair = Player.new()
             pair.roster = { Character.instantiate("character_kaya"), Character.instantiate("character_rowan") }
             Character.recordTechnique(pair.roster[2], "priest", Class.classLevelCost(1))
-            assert(not shut(pair, "cathedral", "houses"),
-                "a second body's class level did not open its house")
+            assert(shelfOpen(pair, "cathedral"), "a second body's class level did not open its shelf")
 
             -- A hair under the rung is still shut: the gate is the LEVEL, not the technique banked
             -- toward it.
             local nearly = Player.new()
             nearly.roster = { Character.instantiate("character_rowan") }
             Character.recordTechnique(nearly.roster[1], "rogue", Class.classLevelCost(1) - 1)
-            assert(shut(nearly, "undercroft", "houses"), "a rung short of knight 1 opened the door anyway")
+            assert(not shelfOpen(nearly, "undercroft"), "a rung short of rogue 1 opened the shelf anyway")
         end,
     },
     {
@@ -415,24 +485,27 @@ return {
         -- same bug and this catches it without being taught the layout. Overlap rather than equality
         -- for the same reason -- the middle column is wider than the ring, so a card can collide with
         -- a neighbour without matching it.
-        name = "no two cards share a slot on either board",
+        name = "no two cards share a slot, and the nine fill the ring exactly",
         fn = function()
             local function overlaps(a, b)
                 return a.x < b.x + b.w and b.x < a.x + a.w
                    and a.y < b.y + b.h and b.y < a.y + a.h
             end
-            for _, district in ipairs({ "city", "houses" }) do
-                -- Every card on the board, open or shut: Building.list flags a locked plate rather
-                -- than dropping it, and a locked plate is drawn, so it collides like any other.
-                local cards = Building.list(Player.new(), { district = district })
-                for i = 1, #cards do
-                    for j = i + 1, #cards do
-                        assert(not overlaps(cards[i], cards[j]),
-                            district .. ": " .. cards[i].id .. " and " .. cards[j].id ..
-                            " sit on the same slot; the shut one's \"???\" draws over the other's name")
-                    end
+            -- Every card on the board, open or shut: Building.list flags a locked plate rather
+            -- than dropping it, and a locked plate is drawn, so it collides like any other.
+            local cards = Building.list(Player.new())
+            for i = 1, #cards do
+                for j = i + 1, #cards do
+                    assert(not overlaps(cards[i], cards[j]),
+                        cards[i].id .. " and " .. cards[j].id ..
+                        " sit on the same slot; the shut one's \"???\" draws over the other's name")
                 end
             end
+            -- NINE CARDS, NINE SLOTS. The lattice is three by three with the Rift in the taller middle
+            -- one, which leaves eight in the ring -- the Armory and one per house. Pinned because the
+            -- fit being exact is what the fold bought, and a tenth card would have nowhere to go but on
+            -- top of a neighbour (the failure above, which has shipped once).
+            assert(#cards == 9, "the plaza holds nine cards; it holds " .. #cards)
         end,
     },
     {

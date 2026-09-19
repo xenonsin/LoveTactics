@@ -81,7 +81,7 @@ function Touchstone.new(opts)
     self.player = opts.player or Player.active
     self.vendorId = opts.vendor or Identify.VENDOR
     self.def = Vendor.get(self.vendorId) or {}
-    self.title = opts.title or self.def.name or "The Touchstone"
+    self.title = opts.title or self.def.name or "Touchstone"
     self.finished = false
     self.tab = "satchel"     -- "satchel" (what you carry) | "shelf" (what she is holding)
     self.focus = 1

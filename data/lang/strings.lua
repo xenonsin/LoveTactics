@@ -49,6 +49,11 @@ return {
     ["desc.warbrewer"] = { en = "Drinks in the middle of the swing. A self-buff draught costs no action, so you keep attacking while it takes hold.", ja = "" },  -- TODO
     ["desc.warden"] = { en = "Marks a zone and holds it. Crossing the line inflicts Root or Halt on whoever walked in.", ja = "" },  -- TODO
     ["desc.warlord"] = { en = "Commands from inside the formation. Planted banners project auras that stack, and the party fights inside the field they make.", ja = "" },  -- TODO
+    ["line.conversation_alchemist_counter.1"] = { en = "Mind the jars. Half of them are labelled with something else's name, and the labels are not the mistake.", ja = "" },  -- TODO
+    ["line.conversation_alchemist_counter.2"] = { en = "What do you want of us?", ja = "" },  -- TODO
+    ["line.conversation_alchemist_counter.3"] = { en = "Draughts and coatings.", ja = "" },  -- TODO
+    ["line.conversation_alchemist_counter.4"] = { en = "I am carrying something nobody can name.", ja = "" },  -- TODO
+    ["line.conversation_alchemist_counter.5"] = { en = "Nothing.", ja = "" },  -- TODO
     ["line.conversation_alchemist_discipline_unlocked.1"] = { en = "The {discipline}'s Work is unlocked to you, {name}. The Crucible releases its guarded cut for that method. The shelf has more to offer you.", ja = "" },  -- TODO
     ["line.conversation_alchemist_discipline_unlocked.2"] = { en = "Then it's earned. Show me.", ja = "" },  -- TODO
     ["line.conversation_alchemist_discipline_unlocked.3"] = { en = "You made this yours honestly. That is rarer here than the gear is. Take it.", ja = "" },  -- TODO
@@ -72,6 +77,11 @@ return {
     ["line.conversation_alchemist_vendor_intro.4"] = { en = "From a source. Does a formula have feelings? Buy, friend, and be improved.", ja = "" },  -- TODO
     ["line.conversation_alchemist_vendor_intro.5"] = { en = "Buy the tinctures and leave the philosophy on the shelf, {name}.", ja = "" },  -- TODO
     ["line.conversation_alchemist_vendor_intro.6"] = { en = "As you wish. The shelf is open, and improvement is only ever a purchase away.", ja = "" },  -- TODO
+    ["line.conversation_arcanum_counter.1"] = { en = "This library has outlived every scholar who swore he could read it safely. Do not touch the shelves you were not sent to.", ja = "" },  -- TODO
+    ["line.conversation_arcanum_counter.2"] = { en = "Name what you came for.", ja = "" },  -- TODO
+    ["line.conversation_arcanum_counter.3"] = { en = "Staves and foci.", ja = "" },  -- TODO
+    ["line.conversation_arcanum_counter.4"] = { en = "What is down there.", ja = "" },  -- TODO
+    ["line.conversation_arcanum_counter.5"] = { en = "Nothing.", ja = "" },  -- TODO
     ["line.conversation_arcanum_discipline_unlocked.1"] = { en = "You have opened the {discipline}'s discipline, {name}. The Arcanum unseals what it holds for that study. The shelf is longer for you now.", ja = "" },  -- TODO
     ["line.conversation_arcanum_discipline_unlocked.2"] = { en = "Then it's earned. Show me.", ja = "" },  -- TODO
     ["line.conversation_arcanum_discipline_unlocked.3"] = { en = "There is always more to learn on that road. Good. Take only what you will practise.", ja = "" },  -- TODO
@@ -93,6 +103,11 @@ return {
     ["line.conversation_arcanum_vendor_intro.4"] = { en = "By somebody, yes. Does it matter who, so long as it works? No one else can do what we do.", ja = "" },  -- TODO
     ["line.conversation_arcanum_vendor_intro.5"] = { en = "Buy the long spells, {name}. A wind-up costs a turn you were going to spend anyway.", ja = "" },  -- TODO
     ["line.conversation_arcanum_vendor_intro.6"] = { en = "The shelf is open. We ask only that what we sell be used as we intended, and we always know when it is not.", ja = "" },  -- TODO
+    ["line.conversation_bastion_counter.1"] = { en = "We measure a knight by what they refused to abandon. Plate, oath, or the both of them -- say which you came for.", ja = "" },  -- TODO
+    ["line.conversation_bastion_counter.2"] = { en = "Speak, then.", ja = "" },  -- TODO
+    ["line.conversation_bastion_counter.3"] = { en = "The armoury.", ja = "" },  -- TODO
+    ["line.conversation_bastion_counter.4"] = { en = "I have work for the forge.", ja = "" },  -- TODO
+    ["line.conversation_bastion_counter.5"] = { en = "Neither.", ja = "" },  -- TODO
     ["line.conversation_bastion_discipline_unlocked.1"] = { en = "You have earned the {discipline} road, {name}. The quartermaster has moved its gear onto your rack. The Watch keeps that kit for the ones who prove they can carry it.", ja = "" },  -- TODO
     ["line.conversation_bastion_discipline_unlocked.2"] = { en = "Then it's earned. Show me.", ja = "" },  -- TODO
     ["line.conversation_bastion_discipline_unlocked.3"] = { en = "I trained beside a few who took that road. It is a good one. Do not let the rack outgrow the arm.", ja = "" },  -- TODO
@@ -173,6 +188,11 @@ return {
     ["line.conversation_cafe_vendor_intro.1"] = { en = "You'll want feeding before you go. One order, {name}, and one is the whole of it. I'll not send a company up the hill on two breakfasts and a stomachache.", ja = "" },  -- TODO
     ["line.conversation_cafe_vendor_intro.2"] = { en = "One meal does that much?", ja = "" },  -- TODO
     ["line.conversation_cafe_vendor_intro.3"] = { en = "Mine does. Every one of yours eats it and every one of them carries it until the work is done. Read the board before you order. What's good for a long walk isn't what's good for a bad afternoon.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_counter.1"] = { en = "Cold in here. It is always cold in here. The faithful arm those who purge, and we keep beds for the ones who come back needing them.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_counter.2"] = { en = "State your business.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_counter.3"] = { en = "Show me what the church will part with.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_counter.4"] = { en = "Somebody needs mending.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_counter.5"] = { en = "Nothing today.", ja = "" },  -- TODO
     ["line.conversation_cathedral_discipline_unlocked.1"] = { en = "The {discipline}'s calling is open to you, {name}. What the Cathedral kept back for that path is on the shelf. Take what serves.", ja = "" },  -- TODO
     ["line.conversation_cathedral_discipline_unlocked.2"] = { en = "Then it's earned. Show me.", ja = "" },  -- TODO
     ["line.conversation_cathedral_discipline_unlocked.3"] = { en = "The Light gives what is earned, and you earned this. Carry it gently.", ja = "" },  -- TODO
@@ -230,6 +250,11 @@ return {
     ["line.conversation_cathedral_vendor_intro.4"] = { en = "Kneel and the taking is made holy. Stand and it is only a purchase. Both are permitted.", ja = "" },  -- TODO
     ["line.conversation_cathedral_vendor_intro.5"] = { en = "Take a ward, {name}. Ground you have closed is ground nothing crosses, and that is worth more than the sermon attached to it.", ja = "" },  -- TODO
     ["line.conversation_cathedral_vendor_intro.6"] = { en = "The shelf is open. The faith asks only that its gifts be used as it intended them.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_counter.1"] = { en = "Sand, blood, and a crowd that does not care which of you it came from. What do you want off us.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_counter.2"] = { en = "Well?", ja = "" },  -- TODO
+    ["line.conversation_colosseum_counter.3"] = { en = "What wins fights.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_counter.4"] = { en = "Put me against somebody.", ja = "" },  -- TODO
+    ["line.conversation_colosseum_counter.5"] = { en = "Nothing.", ja = "" },  -- TODO
     ["line.conversation_colosseum_discipline_unlocked.1"] = { en = "The {discipline}'s work is on your card now, {name}. The stable stocks for the fighters who reach it, and you reached it. Spend, and spend well.", ja = "" },  -- TODO
     ["line.conversation_colosseum_discipline_unlocked.2"] = { en = "Then it's earned. Show me.", ja = "" },  -- TODO
     ["line.conversation_colosseum_discipline_unlocked.3"] = { en = "Knew you had it in you. That gear's sharper than the house lets most touch. Go on, kit up.", ja = "" },  -- TODO
@@ -326,6 +351,11 @@ return {
     ["line.conversation_flight_event_survivor.7"] = { en = "An apothecary, before all this. She can make the square on her own now. Let's keep clearing, {name}.", ja = "" },  -- TODO
     ["line.conversation_flight_event_survivor.8"] = { en = "Mark one before you strike and you'll see where its guard runs thin. Keep that beside the bow and it'll work.", ja = "" },  -- TODO
     ["line.conversation_flight_event_survivor.9"] = { en = "She's an apothecary. She's got a purse she can't spend down here, and she's got the trick of these things in her head. She'll give us the one or the other. Choose...", ja = "" },  -- TODO
+    ["line.conversation_hunters_lodge_counter.1"] = { en = "Antlers on every beam and a pot on every fire. We ask what you killed before we ask your name.", ja = "" },  -- TODO
+    ["line.conversation_hunters_lodge_counter.2"] = { en = "So. What is it.", ja = "" },  -- TODO
+    ["line.conversation_hunters_lodge_counter.3"] = { en = "Field kit.", ja = "" },  -- TODO
+    ["line.conversation_hunters_lodge_counter.4"] = { en = "Feed my company before the road.", ja = "" },  -- TODO
+    ["line.conversation_hunters_lodge_counter.5"] = { en = "Neither, thank you.", ja = "" },  -- TODO
     ["line.conversation_hunters_lodge_discipline_unlocked.1"] = { en = "You walk the {discipline}'s trail now, {name}. The Lodge sets out gear for the ones who get this far. It is yours to draw.", ja = "" },  -- TODO
     ["line.conversation_hunters_lodge_discipline_unlocked.2"] = { en = "Then it's earned. Show me.", ja = "" },  -- TODO
     ["line.conversation_hunters_lodge_discipline_unlocked.3"] = { en = "That path knows when to stop. Take the kit. Remember the lesson with it.", ja = "" },  -- TODO
@@ -411,6 +441,11 @@ return {
     ["line.conversation_tutorial_village.8"] = { en = "Not that, {name}. Do as I showed you.", ja = "" },  -- TODO
     ["line.conversation_tutorial_village.9"] = { en = "{select} on the imp to move in range and attack with your weapon.", ja = "" },  -- TODO
     ["line.conversation_tutorial_wound.1"] = { en = "They were carried out of that fight. The dark band on their bar stays held back until we are above ground again - or until we spend a camp binding it instead of resting.", ja = "" },  -- TODO
+    ["line.conversation_undercroft_counter.1"] = { en = "Everything on this floor belonged to somebody else once. Some of it twice.", ja = "" },  -- TODO
+    ["line.conversation_undercroft_counter.2"] = { en = "Which pile?", ja = "" },  -- TODO
+    ["line.conversation_undercroft_counter.3"] = { en = "Whatever came up the stair today.", ja = "" },  -- TODO
+    ["line.conversation_undercroft_counter.4"] = { en = "Your own shelf.", ja = "" },  -- TODO
+    ["line.conversation_undercroft_counter.5"] = { en = "I am only passing.", ja = "" },  -- TODO
     ["line.conversation_undercroft_discipline_unlocked.1"] = { en = "The {discipline}'s trade is yours now, {name}. The firm keeps stock off the open book for a hand that reaches it, and you reached it. Quietly, mind.", ja = "" },  -- TODO
     ["line.conversation_undercroft_discipline_unlocked.2"] = { en = "Then it's earned. Show me.", ja = "" },  -- TODO
     ["line.conversation_undercroft_discipline_unlocked.3"] = { en = "Took me years to get shown that rack. You did it faster. Don't get sloppy with it.", ja = "" },  -- TODO
@@ -443,7 +478,6 @@ return {
     ["name.bastion"] = { en = "The Bastion", ja = "" },  -- TODO
     ["name.cafe"] = { en = "The Cafe", ja = "" },  -- TODO
     ["name.cathedral"] = { en = "The Cathedral", ja = "" },  -- TODO
-    ["name.character_xin"] = { en = "Xin", ja = "" },  -- TODO
     ["name.character_avatar"] = { en = "Stranger", ja = "" },  -- TODO
     ["name.character_caravan_master"] = { en = "Caravan Master", ja = "" },  -- TODO
     ["name.character_clem"] = { en = "Clem", ja = "" },  -- TODO
@@ -460,20 +494,24 @@ return {
     ["name.character_ren"] = { en = "Ren", ja = "" },  -- TODO
     ["name.character_rowan"] = { en = "Rowan", ja = "" },  -- TODO
     ["name.character_saber"] = { en = "Saber", ja = "" },  -- TODO
+    ["name.character_xin"] = { en = "Xin", ja = "" },  -- TODO
     ["name.colosseum"] = { en = "The Colosseum", ja = "闘技場" },
     ["name.hunters_lodge"] = { en = "Hunter's Lodge", ja = "" },  -- TODO
-    ["name.touchstone"] = { en = "The Touchstone", ja = "" },  -- TODO
+    ["name.touchstone"] = { en = "Touchstone", ja = "" },  -- TODO
     ["name.undercroft"] = { en = "The Undercroft", ja = "" },  -- TODO
+    ["title.conversation_alchemist_counter"] = { en = "The Crucible", ja = "" },  -- TODO
     ["title.conversation_alchemist_discipline_unlocked"] = { en = "A New Formula", ja = "" },  -- TODO
     ["title.conversation_alchemist_errand_asked"] = { en = "The Consignment", ja = "" },  -- TODO
     ["title.conversation_alchemist_errand_found"] = { en = "The Consignment", ja = "" },  -- TODO
     ["title.conversation_alchemist_slot_01_outro"] = { en = "Intact", ja = "" },  -- TODO
     ["title.conversation_alchemist_vendor_intro"] = { en = "The Crucible", ja = "" },  -- TODO
+    ["title.conversation_arcanum_counter"] = { en = "The Arcanum", ja = "" },  -- TODO
     ["title.conversation_arcanum_discipline_unlocked"] = { en = "A Further Working", ja = "" },  -- TODO
     ["title.conversation_arcanum_errand_asked"] = { en = "The Thing on the Book", ja = "" },  -- TODO
     ["title.conversation_arcanum_errand_found"] = { en = "The Thing on the Book", ja = "" },  -- TODO
     ["title.conversation_arcanum_slot_01_outro"] = { en = "What It Took", ja = "" },  -- TODO
     ["title.conversation_arcanum_vendor_intro"] = { en = "The Arcanum", ja = "" },  -- TODO
+    ["title.conversation_bastion_counter"] = { en = "The Bastion", ja = "" },  -- TODO
     ["title.conversation_bastion_discipline_unlocked"] = { en = "The Shelf Is Yours", ja = "" },  -- TODO
     ["title.conversation_bastion_slot_01_intro"] = { en = "Twelve Days Without Supply", ja = "" },  -- TODO
     ["title.conversation_bastion_slot_01_outro"] = { en = "The Gate at Highwatch", ja = "" },  -- TODO
@@ -483,12 +521,14 @@ return {
     ["title.conversation_bastion_slot_05_outro"] = { en = "The Bar", ja = "" },  -- TODO
     ["title.conversation_bastion_vendor_intro"] = { en = "Those Who Hold", ja = "" },  -- TODO
     ["title.conversation_cafe_vendor_intro"] = { en = "One Before the Road", ja = "" },  -- TODO
+    ["title.conversation_cathedral_counter"] = { en = "The Cathedral", ja = "" },  -- TODO
     ["title.conversation_cathedral_discipline_unlocked"] = { en = "What the Faith Keeps", ja = "" },  -- TODO
     ["title.conversation_cathedral_errand_asked"] = { en = "The Miller's Ghost", ja = "" },  -- TODO
     ["title.conversation_cathedral_errand_found"] = { en = "The Miller's Ghost", ja = "" },  -- TODO
     ["title.conversation_cathedral_slot_01_outro"] = { en = "The Mill Is Quiet", ja = "" },  -- TODO
     ["title.conversation_cathedral_slot_04_outro"] = { en = "The Purge in the Fold", ja = "" },  -- TODO
     ["title.conversation_cathedral_vendor_intro"] = { en = "The Cathedral", ja = "" },  -- TODO
+    ["title.conversation_colosseum_counter"] = { en = "The Colosseum", ja = "" },  -- TODO
     ["title.conversation_colosseum_discipline_unlocked"] = { en = "A New Card", ja = "" },  -- TODO
     ["title.conversation_colosseum_errand_asked"] = { en = "Somebody Worth Swinging At", ja = "" },  -- TODO
     ["title.conversation_colosseum_errand_found"] = { en = "Somebody Worth Swinging At", ja = "" },  -- TODO
@@ -514,6 +554,7 @@ return {
     ["title.conversation_flight_champion_turn"] = { en = "It Has Stopped Fighting", ja = "" },  -- TODO
     ["title.conversation_flight_event_shrine"] = { en = "The Street Shrine", ja = "" },  -- TODO
     ["title.conversation_flight_event_survivor"] = { en = "A Voice in the Rubble", ja = "" },  -- TODO
+    ["title.conversation_hunters_lodge_counter"] = { en = "Hunter's Lodge", ja = "" },  -- TODO
     ["title.conversation_hunters_lodge_discipline_unlocked"] = { en = "The Deeper Wood", ja = "" },  -- TODO
     ["title.conversation_hunters_lodge_errand_asked"] = { en = "The White Stag", ja = "" },  -- TODO
     ["title.conversation_hunters_lodge_errand_found"] = { en = "The White Stag", ja = "" },  -- TODO
@@ -522,16 +563,17 @@ return {
     ["title.conversation_prologue_arrival"] = { en = "After the Breach", ja = "" },  -- TODO
     ["title.conversation_prologue_ruins"] = { en = "First Job", ja = "" },  -- TODO
     ["title.conversation_prologue_village"] = { en = "The Breach", ja = "" },  -- TODO
-    ["title.conversation_touchstone_vendor_intro"] = { en = "The Touchstone", ja = "" },  -- TODO
+    ["title.conversation_touchstone_vendor_intro"] = { en = "Touchstone", ja = "" },  -- TODO
     ["title.conversation_tutorial_city"] = { en = "The City's Instructions", ja = "" },  -- TODO
     ["title.conversation_tutorial_flight"] = { en = "The Open Road", ja = "" },  -- TODO
     ["title.conversation_tutorial_notes"] = { en = "What the Screen Owes You", ja = "" },  -- TODO
     ["title.conversation_tutorial_village"] = { en = "Rowan's Lesson", ja = "" },  -- TODO
     ["title.conversation_tutorial_wound"] = { en = "Carried Out", ja = "" },  -- TODO
+    ["title.conversation_undercroft_counter"] = { en = "The Undercroft", ja = "" },  -- TODO
     ["title.conversation_undercroft_discipline_unlocked"] = { en = "Off the Book", ja = "" },  -- TODO
     ["title.conversation_undercroft_errand_asked"] = { en = "The Vault Door", ja = "" },  -- TODO
     ["title.conversation_undercroft_errand_found"] = { en = "The Vault Door", ja = "" },  -- TODO
     ["title.conversation_undercroft_slot_01_outro"] = { en = "The Third Door", ja = "" },  -- TODO
     ["title.conversation_undercroft_vendor_intro"] = { en = "The Undercroft", ja = "" },  -- TODO
-    ["title.conversation_ward_first_visit"] = { en = "The Inn", ja = "" },  -- TODO
+    ["title.conversation_ward_first_visit"] = { en = "Inn", ja = "" },  -- TODO
 }

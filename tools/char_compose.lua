@@ -371,6 +371,13 @@ local CHARACTER_SILHOUETTE = {
     the_beloved = "lorc/heart-inside",
     the_suppliant = "lorc/fluffy-flame",         -- a bowl held out for a very long time
     wolfsong_spirit = "lorc/direwolf",
+
+    -- THE ROAD'S OWN APEX. A boar lord and the thing wearing him, neither of which any rule above
+    -- reaches: "the_unseeing" holds no creature word, so both fell through to the `beast` KIND
+    -- fallback and came out pixel-identical to a wolf grunt (the same trap the wyrm hit, two
+    -- paragraphs up in CREATURE_MATCH).
+    the_unseeing = "lorc/boar-tusks",      -- the lord, not the animal: the ordinary boar keeps `boar`
+    the_turning = "lorc/infested-mass",    -- what is wearing him by the end, and it is not a boar
 }
 
 -- Reverse index: the character key a discipline names as its `exemplar` -> the discipline id. Built from

@@ -265,6 +265,19 @@ that one slot and starves the rungs beneath it — which
 > buy. `Vendor.stock` sorts by slot then price, so a cheap one there becomes the first thing the shop
 > shows and the first thing they cannot have.
 
+**And the order answers the same thing from the other side now.** `Vendor.shelfOrder` — the one order
+every counter in the city deals in, the house shelves through `Vendor.stock`, the town counter through
+`Market.stock`, and the bands the shop cuts out of either — leads with **what is buyable** and only then
+runs the ladder: rank, then price, then name, once through the open stock and once through the shut. A
+band on a house shelf runs to sixty-odd rows with a handful of them open (the rail prints it: `4 / 64`),
+and dealing those few strictly by rank scattered them through the greyed tiles, so the one question a
+counter is opened with — *what can I buy* — was answered by reading the whole rack. Where the slot
+placement above keeps a locked row off the bottom rung, this keeps it off the top of the rack. Nothing
+is hidden: what the rift holds is the other half of what a shelf is for, and it gathers under the stock
+rather than through it. The purse is deliberately not a key — a rack that re-dealt itself every time the
+company's gold crossed a price would rearrange under the hand mid-purchase, and a tile already prices
+itself against the purse in its own colour.
+
 **One counter, seven ladders.** The seven house shelves are gone with the houses; there is one market
 (`models/market.lua`), and it gates each ware on the level of ITS OWN class — `Vendor.stock` takes a
 per-item rung function for exactly that. What the market puts out on a given morning is a fixed core

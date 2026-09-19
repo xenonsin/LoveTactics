@@ -9,7 +9,8 @@
 -- FIVE LINES, ALL ROWAN'S. It is the scene that hands the game over: the fight is finished, the reason
 -- it happened is said in one sentence, and the last line names where the work and the coin are -- which
 -- is the Rift, the one door the hub's coaching stage will let the player open (states/hub.lua). She
--- says "The Rift", and data/buildings/the_gate.lua's `name` must keep agreeing with what she calls it.
+-- says "The Rift", and data/buildings/the_gate.lua's `name` must keep agreeing with what she calls it
+-- (the card reads "Rift" -- plaza cards drop the article, her line keeps it).
 --
 -- THE CAUSE IS THE WHOLE PAYLOAD: the guild does not clear the Rift deep enough, so the deep floors
 -- get left, and what gathers down there comes up into the streets. The breach the player just fought

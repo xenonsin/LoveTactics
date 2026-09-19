@@ -22,7 +22,7 @@
 -- a rotation dealt fresh each day against how far the company has got. The blueprint holds the
 -- shopkeeper (the name, the description, the greeting) because that is what a vendor def is for.
 return {
-    name = "The Market",
+    name = "Market",
     sellsAll = true, -- every class's wares on one counter; models/market.lua decides which are out today
     description = "Everything anyone came back up with, and a few things nobody did.",
 }

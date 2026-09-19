@@ -7,6 +7,7 @@
 local Character = require("models.character")
 local Item = require("models.item")
 local Combat = require("models.combat")
+local AI = require("models.ai")
 
 -- A flat, all-walkable arena (no terrain), with an optional list of impassable cells.
 local function arena(cols, rows, blocked)
@@ -169,6 +170,68 @@ return {
             openTurn(c, knight)
             local ok = Combat.useItem(c, knight, knight.char.inventory[1], 4, 3)
             assert(ok, "the melee strike on the ogre's near cell is legal")
+        end,
+    },
+    {
+        name = "a wide body STRIKES from its nearest cell: the ogre punches a foe under its far corner",
+        fn = function()
+            -- The mirror of the case above, and the half that was missing. The ogre stands on
+            -- (3,3)-(4,4); the knight is on (4,5), directly under its bottom-right cell -- a gap of
+            -- one, the reach of Stone Fists. Measured from the ANCHOR alone (3,3) that same knight
+            -- reads as three tiles off, which is how a 2x2 brute came to stand beside somebody and
+            -- decline to hit them.
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 4, 5) },
+                { unit("character_ogre", 3, 3) })
+            local knight, ogre = c.units[1], named(c, "Ogre")
+            local fists = Combat.defaultWeapon(ogre.char)
+            assert(fists and fists.name == "Stone Fists", "the ogre fights with its fists")
+
+            -- The planning-time reach, asked of the tile the body is already on.
+            local d, tx, ty = Combat.reachFrom(ogre, ogre.x, ogre.y, knight)
+            assert(d == 1, "the knight is one tile off the ogre's bottom-right cell, not three")
+            assert(tx == 4 and ty == 5, "and the blow is aimed at the knight's own cell")
+            assert(d == Combat.unitGap(ogre, knight), "reachFrom from the current anchor is unitGap")
+
+            -- Which is what the planner has to see: a candidate that stands still and punches.
+            local hit
+            for _, cand in ipairs(AI.candidates(c, ogre, { fists },
+                    { { x = ogre.x, y = ogre.y, steps = 0 } }, false)) do
+                if cand.target == knight then hit = cand end
+            end
+            assert(hit, "the ogre finds a strike on the knight without moving a tile")
+            assert(hit.tx == 4 and hit.ty == 5, "aimed at the knight")
+
+            -- And the cast itself agrees, so the plan is executable rather than merely enumerated.
+            openTurn(c, ogre)
+            assert(Combat.useItem(c, ogre, fists, hit.tx, hit.ty), "the punch lands")
+        end,
+    },
+    {
+        name = "a wide body's reach is measured from every cell, not just its anchor",
+        fn = function()
+            -- Every tile touching the 2x2 block at (3,3)-(4,4) is reach 1; the diagonals off its
+            -- corners are 2. Before the fix only (2,3) and (3,2) -- the two neighbours of the anchor
+            -- cell -- came back as 1, and the other six read 2 or 3.
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 7, 7) },
+                { unit("character_ogre", 3, 3) })
+            local ogre = named(c, "Ogre")
+            local mark = c.units[1]
+            for _, t in ipairs({ { 2, 3 }, { 3, 2 }, { 4, 2 }, { 5, 3 }, { 5, 4 }, { 4, 5 }, { 3, 5 }, { 2, 4 } }) do
+                mark.x, mark.y = t[1], t[2]
+                assert(Combat.reachFrom(ogre, 3, 3, mark) == 1,
+                    string.format("(%d,%d) is adjacent to the ogre's body", t[1], t[2]))
+            end
+            for _, t in ipairs({ { 2, 2 }, { 5, 2 }, { 2, 5 }, { 5, 5 } }) do
+                mark.x, mark.y = t[1], t[2]
+                assert(Combat.reachFrom(ogre, 3, 3, mark) == 2,
+                    string.format("(%d,%d) is off a corner, out of fist range", t[1], t[2]))
+            end
+            -- A 1x1 body collapses to the plain point math this replaces.
+            mark.x, mark.y = 7, 7
+            assert(Combat.reachFrom(mark, 7, 7, ogre) == Combat.unitGap(mark, ogre),
+                "for a 1x1 striker reachFrom is exactly unitGap")
+            assert(Combat.pointReachFrom(ogre, 3, 3, 4, 5) == 1, "a point under the far cell is adjacent too")
+            assert(Combat.pointReachFrom(mark, 7, 7, 7, 4) == 3, "and for a 1x1 it is plain manhattan")
         end,
     },
     {

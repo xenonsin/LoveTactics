@@ -1,29 +1,46 @@
 # Bounties
 
-> ## DEMOTED, 2026-09-17 — this is side work, not the campaign
+> ## PARKED, 2026-09-18 — the card is off the board, and nothing below is live
 >
-> **The board is no longer the premise and no longer stands on the plaza.** The campaign is the descent:
-> one persistent dungeon the company maps, re-enters at the stair it opened, and comes home from to the
-> Ward and the Touchstone. See [the-count.md](the-count.md) for what that pivot parked, and
-> `models/descent.lua`.
+> **Read every sentence after this banner as a design note, not as a description of the game.** The
+> blueprint is deleted, so nothing in the city opens the board. `models/bounty.lua`,
+> `ui/panels/bounty_board.lua`, `models/augment.lua`, `data/bounties/` and `data/augments/` all stay on
+> disk and still load. One file undoes it: `data/buildings/bounty_board.lua`.
 >
-> **Where the card is now.** `data/buildings/bounty_board.lua` sits in the **houses district**, on a row
-> of its own under the seven shopfronts, gated on `unlockAnyHouse`. Two reasons, and the second is the
-> honest one:
+> **WHAT PARKED IT IS THAT THE RIFT ALREADY POSTS THIS WORK.** All seven shipped postings name
+> `quest_<vendor>_slot_01` — which is exactly what `Errand.opener` returns. The board and
+> `models/errand.lua` post the *same seven quest blueprints* by two routes: one seated at a dead end on
+> a floor by `Descent.floorObjectives`, met by the companion who asks for it; the other launched from
+> town onto a private map rolled off `def.ground`.
 >
-> - It is the sheet the seven houses pin their work to, so it belongs with them. A player looking for a
->   house's errand is already on that screen.
-> - **The city plaza is full.** Nine slots in `Building.GRID.city`, nine cards; the Inn took the last
->   free one in `dc7be9df`. The alternative was two plates drawing over each other, which is a bug this
->   repo has already shipped once.
+> **And the second route was a bypass.** `Bounty.questFor` carries the blueprint's `rewardCharacter`
+> through, so taking a posting in the city handed over that house's companion without a floor being
+> walked — after which `Errand.doorOpen` reads the roster and stops seating her below. The recruit loop
+> the descent is built around could be skipped at a plate in the houses district.
 >
-> **What it went through to get here.** It was the campaign's premise, then deleted outright in
-> `002d1f38` when the descent came back — card gone, `models/bounty.lua` and the seven ladders left on
-> disk. This restores the card and nothing else; the model never moved.
+> **What it went through.** Added `3abdc941` when postings were the campaign; deleted `002d1f38` when
+> the descent came back; restored `3d155af9` into the houses district as side work; parked here. Three
+> state changes, and the card has now spent more commits out of the city than in it.
 >
-> **What is still true below.** Everything about what a posting *is* — the ground, the tier, the boss,
-> the piece — and both ledgers, and the standing offer, and sustain. The only claim that has been
-> withdrawn is the one in the next line: a bounty is now **a** thing to go and get, not **the** thing.
+> **What went with it, because it has no other surface.** *Augments* — `models/augment.lua` and the five
+> `data/augments/*.lua` — were staked only on the board's set-out panel, so they are unreachable now and
+> come back with it. *The season rotation* in `data/biome_windows.lua` decided which houses were posting
+> and now decides nothing; `tests/biome_window_spec.lua` still pins its own invariant, which is fine —
+> it is a fact about the table, not about the board.
+>
+> **What did NOT move, deliberately.** `Player.expeditionsOut` still takes
+> `math.max(Bounty.finished, Descent.deepest)`, so a save made while the board was live keeps the city
+> it had already earned. `models/quest.lua`'s `dealDrops`/`trophyFor` branches and `models/save.lua`'s
+> `bounty:` run restore stay too — nothing reaches them without a posting in flight, and an old save
+> carrying one must still load.
+>
+> **If it comes back, it should not come back as this.** The costed version is that a posting seats in
+> the rift as one more end on a mapped floor — the rail `models/errand.lua` already runs on, where
+> `objectiveAt` matches a cell by `questId` against a spec list rebuilt on every entry, so seating on a
+> kept board is a stamp on a free dead end and not a re-carve. That deletes `synthesizeMap`, the
+> sitting-length design and the tier-as-difficulty override, and it leaves the board needing content of
+> its own — which is the real reason it is parked rather than rebuilt: **its only content is the
+> rift's.**
 
 The goal, stated once: **you should always be going somewhere for something specific.**
 

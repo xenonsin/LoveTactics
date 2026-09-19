@@ -106,9 +106,10 @@ The codebase is organized into layers loaded via `require()`. See
 
   **Two systems are parked, and both are one flag or one file from coming back.** *Iselle's tally*
   (`Descent.COUNT_PARKED`) charged a mark for climbing out, which prices the loop this design is built
-  on. *The Bounty Board* is demoted rather than deleted: its card lives with the seven houses
-  (`data/buildings/bounty_board.lua`, the houses district) and posts a ground, a tier, a body and the
-  **piece** it owes, as side work against a dungeon that is the real content. See
+  on. *The Bounty Board* is parked: its blueprint is deleted (it stood on the houses' square, and that
+  square is gone with the fold) while `models/bounty.lua` stays on disk and stays required by six
+  models. It posted a ground, a tier, a body and the **piece** it owes, as side work against a dungeon
+  that is the real content; if it comes back it comes back as a ROOM on a desk. See
   [docs/bounties.md](docs/bounties.md).
 - **`ui/`** — reusable widgets that support **mouse + keyboard + gamepad** (project standard;
   see `ui/menu.lua`, `ui/building_map.lua`). Pop-up panels live in `ui/panels/`.
@@ -158,16 +159,39 @@ The codebase is organized into layers loaded via `require()`. See
 (`data/buildings/*.lua`, positioned in the 1280×720 logical space) rendered by the
 `ui/building_map.lua` widget. Clicking a building opens a **modal pop-up panel** — an
 overlay owned by the hub state (not a separate state), so the city stays visible behind it.
-The hub tracks `activePanel` and routes input to it while open. Each building names a panel
-module under `ui/panels/`; buildings without one fall back to `ui/panels/placeholder.lua`.
-The city grows over time via each building's `unlockPrestige` (compared against the player's
-prestige in `models/building.lua`), and several doors carry a second gate on top of it —
-`unlockAnyHouse`, `unlockExpeditions`, `unlockWound`, `unlockUnidentified` — so a card arrives on the
-trip that gives the player the problem it solves.
+The hub tracks `activePanel` and routes input to it while open.
 
-**Two districts, and the city one is FULL.** `Building.GRID.city` is three columns by three rows with
-the Gate taking the taller middle slot: nine slots, nine cards, the last one claimed by the Inn. A new
-plaza card therefore needs a slot freed or the grid re-laid — dropping one in on top of another draws
-two plates over each other, which has shipped once already. `Building.GRID.houses` is the second board,
-reached through the Houses card: the seven shopfronts, plus the Bounty Board on a row of its own beneath
-them. See [docs/adding-content.md](docs/adding-content.md) to add a building, quest, or panel.
+**SEVEN OF THE NINE CARDS ARE COUNTERS, and a counter is a shopkeeper with a DESK**
+(`models/counter.lua`). Pressing a house plays what it owes you (`models/vendor_visit.lua` — the
+greeting, any new discipline), then its **counter scene**, which ends on one node carrying `choices`:
+the rooms behind that door. The `answer` on the committed choice names a room, the host opens that
+panel, and **closing it returns to the desk** rather than to the plaza (`Conversation.play`'s
+`opts.startAt`), so a player can set a bone, read a find and browse without the door shutting between
+them. Only the Rift (a whole screen) and the Armory (one panel) are plain doors.
+
+**A ROOM IS AN `offers` ENTRY** (`models/offer.lua`): `{ answer, panel, vendor?, gate?, quiet? }`. A desk
+line shows when its room is open (`when = { offer = "mend" }`), and **a door is drawn when ANY non-quiet
+room behind it is** — so the city grows *inside* doors as new lines rather than as new plates. A folded
+room keeps its own `vendor`, which is why the Undercroft's desk can open the town counter beside the
+fence's own shelf without the two shops merging.
+
+**THE CITY IS PACED ON `trips` — descents begun (`Player.tripsHome`), never on depth.** `expeditionsOut`
+is `max(bounties, deepest)`, and depth is bursty: measured, a company that dived to floor four on its
+first trip came home to four doors at once and then three empty homecomings, while a floor-one farmer's
+city froze forever. Trips climb one at a time, so **one room per homecoming** falls out of the unit.
+Trips pace the city; depth paces the shelves. The schedule: counter 1, supper 2, forge 3, book 4,
+reading (first unread find, or 5), duel (Saber's posting, or 6) — plus the mending, which is Act 0's.
+`quiet = true` lets a room open without announcing its house (every shelf is quiet — a class rung is a
+reward the player cannot see). `gate = { any = {...} }` is the event-plus-backstop pattern.
+
+**ONE BOARD, AND IT IS FULL AT NINE.** `Building.GRID.city` is three columns by three rows with the Rift
+taking the taller middle slot: eight ring slots, filled by the Armory and the seven houses. Dropping a
+tenth card in on top of another draws two plates over each other, which has shipped once already — so a
+new room belongs on a desk, not on the board. (`GRID.houses` and the `district` field are gone with the
+second board; `states/houses.lua` is deleted.) See
+[docs/adding-content.md](docs/adding-content.md) to add a building, quest, or panel.
+
+**`tools/extract_strings.lua` REGENERATES every conversation it stamps**, so a field it cannot serialize
+is a field that silently vanishes the next time anyone adds a line — this ate per-choice `when` on all
+seventeen desk options once. Teach `serializeChoice`/`WHEN_KEYS` in the same change that teaches the
+resolver a new field; `tests/conversation_spec.lua` holds authored scenes to the tool's own key lists.

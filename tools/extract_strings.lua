@@ -55,7 +55,10 @@ end
 -- Serialize a `when` condition table. These are pure data (that is WHY conditions are data and not
 -- predicate functions -- a closure could not survive this round trip and would be erased here).
 -- Keys are emitted in a stable order so re-stamping a file produces no spurious diff.
-local WHEN_KEYS = { "has", "notHas", "done", "notDone", "prestige", "flag", "notFlag", "all", "any" }
+-- `offer` is the counters' predicate -- is this room behind this door open yet (models/offer.lua) --
+-- and it is the one a desk's option lines are written in.
+local WHEN_KEYS = { "has", "notHas", "done", "notDone", "prestige", "flag", "notFlag", "offer",
+                    "all", "any" }
 local function serializeWhen(when)
     local parts = {}
     for _, key in ipairs(WHEN_KEYS) do
@@ -109,17 +112,24 @@ local function serializeEffect(effect)
     return "{ " .. table.concat(parts, ", ") .. " }"
 end
 
--- Serialize one choice: { "<text>", tag = N, goto = "..", answer = "..", effect = { .. } }
+-- Serialize one choice: { "<text>", tag = N, goto = "..", answer = "..", when = { .. }, effect = { .. } }
 --
 -- `answer` is what the option means to the caller that opened the scene (ui/dialogue.lua) rather than
 -- something it does to the player. It is emitted here for the same reason `effect` is: this tool
 -- regenerates the whole file, so a field it does not know about is a field that disappears the next
 -- time anybody adds a line to the scene.
+--
+-- `when` IS THE PROOF OF THAT WARNING. It arrived on choices with the counters -- a desk's option lines
+-- come and go with the save (models/counter.lua) -- and the first `. extract-strings` after they were
+-- authored erased the condition off all seventeen of them, silently, leaving seven desks offering every
+-- room in the city on the first morning. Nothing errored; the files still parsed and the suite was
+-- green. Add the field HERE in the same commit that teaches the resolver a new one.
 local function serializeChoice(c)
     local parts = { q(choiceText(c) or "") }
     if c.tag ~= nil then parts[#parts + 1] = "tag = " .. c.tag end
     if c.goto then parts[#parts + 1] = "goto = " .. q(c.goto) end
     if c.answer then parts[#parts + 1] = "answer = " .. q(c.answer) end
+    if c.when then parts[#parts + 1] = "when = " .. serializeWhen(c.when) end
     if c.effect then parts[#parts + 1] = "effect = " .. serializeEffect(c.effect) end
     return "{ " .. table.concat(parts, ", ") .. " }"
 end
@@ -426,6 +436,20 @@ local function serializeGrid(records, cells, otherLangs)
     out[#out + 1] = ""
     return table.concat(out, "\n")
 end
+
+-- WHAT THIS TOOL CAN CARRY THROUGH A ROUND TRIP, published so a spec can hold authored scenes to it.
+--
+-- This file REGENERATES every conversation it stamps, so a field it does not emit is a field that
+-- disappears the next time anybody adds a line -- silently, with the file still parsing and the suite
+-- still green. That is not hypothetical: per-choice `when` arrived with the counters and the first
+-- extraction erased all seventeen of them, leaving seven desks offering every room in the city.
+--
+-- tests/conversation_spec.lua walks every authored scene and fails a key that is not in these lists, so
+-- the next field to arrive is caught by the author who adds it rather than by a player.
+M.NODE_KEYS = { "by", "text", "tag", "id", "name", "portrait", "goto", "when", "choices", 1, 2 }
+M.CHOICE_KEYS = { "text", "tag", "goto", "answer", "when", "effect", 1 }
+M.WHEN_KEYS = WHEN_KEYS
+M.EFFECT_KEYS = EFFECT_KEYS
 
 function M.run()
     print("extract-strings: source = " .. tostring(love.filesystem.getSource()))

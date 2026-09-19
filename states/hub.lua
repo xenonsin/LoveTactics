@@ -36,10 +36,13 @@ local CoachBubble = require("ui.coach_bubble")
 local Conversation = require("models.conversation")
 local Class = require("models.class")
 local Vendor = require("models.vendor")  -- hasMarkedStock: the unread half of a shop's dot
+local Market = require("models.market")  -- hasUnread: the one shop whose dot is not a shelf question
 local Item = require("models.item")
 local Identify = require("models.identify")
 local Wound = require("models.wound")     -- what a dive broke, and this door-step is where it stops being true
 local VendorVisit = require("models.vendor_visit") -- what a shop says before it shows you the shelf
+local Counter = require("models.counter")    -- a house: the greeting, the desk, and the rooms behind it
+local Offer = require("models.offer")        -- ...and which of those rooms are open yet
 local Locale = require("models.locale")
 local Scale = require("scale")
 local ScreenFx = require("ui.screen_fx")
@@ -77,6 +80,24 @@ local background    -- love Image, or a path string if the asset is missing
 local activePanel   -- the open pop-up panel, or nil
 local burger        -- BurgerButton widget: the mouse's way into the system menu
 
+-- WHAT HAPPENED ON THE WAY HOME, said once, in the band under the title. Nil on an ordinary visit.
+--
+-- Today there is one sender: a rout (states/game.lua's onLoss stamps `player.pendingRout` and this
+-- consumes it on the way in). It rides the PLAYER rather than a switch payload because this state takes
+-- none -- every route into free play reaches it the same way, off Player.active -- which is the same
+-- seam the post-quest report uses (`pendingSummary`).
+--
+-- A LINE, NOT A MODAL, and that is the register the message already had: it was drawn exactly this way
+-- under the Gate's own title for as long as a beaten company woke there (states/gate.lua). A card that
+-- has to be dismissed before the city can be touched would be charging a press for news that changes
+-- nothing the player has to decide -- and the city already spends its arrival modal on the one report
+-- that does (pendingSummary, below).
+--
+-- IT MUST FIT THE BAND, which is roughly 52px between the title and the plaza's top row
+-- (Building.GRID.city.rows starts at 120): two lines of Theme.body(14) and no more. The senders keep
+-- to that by writing short -- there is no growth here to cap, because nothing appends to this.
+local notice
+
 -- Close the open modal, ringing the "cancel" cue -- the shared way out of a building panel or the
 -- system menu, so backing out sounds the same on mouse, keyboard and pad. Silent until the file
 -- exists (models/sound.lua). The post-quest Advancement overlay does NOT use this: its dismissal is a
@@ -113,8 +134,13 @@ local BURGER_X, BURGER_Y = 18, 18
 -- THE CAMPAIGN IS NEITHER OF THOSE NOW. It is one rift the company MAPS and re-enters at the stair it
 -- opened (models/descent.lua's Descent.keepFloor and Descent.entryFloor) -- so the stair keeps this
 -- stage for a third reason, and a better one than "it is the only door": it is the door you will keep
--- coming back through. The board is back too, demoted to side work on the houses' own square
--- (data/buildings/bounty_board.lua), where it coaches nothing and interrupts nothing.
+-- coming back through.
+--
+-- AND THE BOARD IS PARKED AGAIN (2026-09-18), so the stair is the only door in fact and not just in
+-- emphasis. It came back for a pass as side work on the houses' square and went for a reason the round
+-- trip above never reached: its seven postings are the seven quests models/errand.lua already seats on
+-- floors of the rift, and taking one up here handed over that house's companion without a floor being
+-- walked. See docs/bounties.md.
 --
 -- AND IT PUTS A THREE-TIME-STALE SEAM BACK IN AGREEMENT. `conversation_prologue_arrival` is Rowan
 -- sending the player to the RIFT, by name, in her own words, and it is the last thing said before this
@@ -138,17 +164,23 @@ local BURGER_X, BURGER_Y = 18, 18
 -- other line the tutorial speaks. A stage names the LINE; hub.draw resolves it at draw time, which is
 -- also what lets its {select} re-read the device in the player's hands mid-visit.
 local INTRO_STAGES = {
-    -- THE WARD FIRST, AND THE STAIR SECOND. The player arrives carrying Rowan's wound off the Champion
+    -- THE MENDING FIRST, AND THE STAIR SECOND. The player arrives carrying Rowan's wound off the Champion
     -- (models/combat.lua's Combat.spendScriptedFell), so the first thing the city can usefully say is where
     -- that gets dealt with -- and the room is where Xin is, so the coached door hands over a companion
     -- as well as a lesson. Sending them down the hole first would coach the stair to a company that is
     -- short a body and does not yet know there was anything to do about it.
     --
-    -- It is also the only order the wound ITSELF allows. The Ward card exists because somebody is hurt
-    -- (`unlockWound`), and the wound now survives the walk into town -- so on this one morning the city
-    -- has a door that is both new and urgent, which is exactly what the coach grammar is for.
+    -- IT IS THE CATHEDRAL'S CARD NOW, and that is the fold rather than a change of mind: the Inn stood on
+    -- the plaza as a door of its own, and it is a line on that house's desk (data/buildings/cathedral.lua).
+    -- The house is standing open on this one morning for exactly that room and nothing else -- its shelf
+    -- waits on a priest level nobody has -- so the card the coach points at still opens onto the mending
+    -- and only the mending, which is what the bubble promises.
+    --
+    -- It is also the only order the wound ITSELF allows. That room exists because somebody is hurt
+    -- (`wound`), and the wound now survives the walk into town -- so on this one morning the city has a
+    -- door that is both new and urgent, which is exactly what the coach grammar is for.
     ward = {
-        building = "the_ward",
+        building = "cathedral",
         line = "ward_card",
     },
     coach = {
@@ -319,39 +351,29 @@ local function armoryFilters(player)
     return (#groups > 0) and groups or nil
 end
 
--- Open the pop-up panel for a building. Buildings name a module under
+-- BUILD A PANEL OVER THE CITY, whoever asked for it. Buildings and rooms name a module under
 -- ui/panels/; anything without one falls back to the generic placeholder.
 --
--- Every door in the city is a pop-up over the town, and there is no longer a seam for one that opens a
--- whole SCREEN instead. The Draft Yard was the only building that used it (`state = "draft"`), and Draft
--- is chosen at the title screen now (states/menu.lua) rather than from the city -- so the branch went
--- with the card. A future mode belongs on the title screen beside it, not on this map.
-local function launchPanel(building)
-    -- A DOOR ONTO A WHOLE SCREEN rather than a pop-up over the city. The Gate is one
-    -- (data/buildings/the_gate.lua): the inn, the store, the hiring hall and the stair are a place you
-    -- go to, not a modal the city sits behind.
-    --
-    -- `state` has been on the building blueprint and in Building.list for a while with nothing reading
-    -- it; this is the reader. Player.active is set first because every screen the gate leads to takes
-    -- the company off it.
-    if building.state then
-        local ok, StateModule = pcall(require, "states." .. building.state)
-        if ok and StateModule then
-            Player.active = hub.player
-            return State.switch(StateModule, { player = hub.player, run = hub.player.descentRun })
-        end
-    end
-    local moduleName = building.panel or "placeholder"
+-- Two things open panels here and they used to be one: a plain door (the Armory), and a ROOM behind a
+-- house's desk (models/counter.lua). A room is `{ panel, vendor }` -- and its vendor is not always its
+-- house's, because a folded room kept its own counter (models/offer.lua): the Undercroft's desk opens
+-- the town's shelf, the Lodge's opens the kitchen. So the vendor is a parameter rather than a field read
+-- off the building, and everything else a panel might need is the same either way.
+--
+-- `onClose` is handed in for the same reason: a plain door's panel closes back to the city, and a room's
+-- closes back to the desk it was chosen from.
+local function newPanel(moduleName, vendorId, title, onClose)
+    moduleName = moduleName or "placeholder"
     local ok, PanelModule = pcall(require, "ui.panels." .. moduleName)
     if not ok then
         PanelModule = require("ui.panels.placeholder")
     end
     local opened
     opened = PanelModule.new({
-        title = building.name,
+        title = title,
         prestige = hub.player and hub.player.prestige or 1,
         player = hub.player, -- forwarded so a launched quest knows the active party
-        vendor = building.vendor, -- vendor id, for buildings that are shops
+        vendor = vendorId, -- the counter behind this room; nil for a panel that keeps none
         -- The Armory (Loadout) shelf gets a weapon-type / discipline filter over the stash; other
         -- buildings' panels ignore the field.
         filters = (moduleName == "party") and armoryFilters(hub.player) or nil,
@@ -386,17 +408,24 @@ local function launchPanel(building)
         -- The tutorial's staked pull plays its beats in full. It is the only pull in the game that
         -- cannot be skipped, and it is the one teaching what a pull looks like (INTRO_STAGES.hire).
         hold = hub.player and hub.player.hubIntro == "hire",
-        -- THE ARMORY'S ROLL SENDS A BODY TO ITS TRAINER (ui/class_editor.lua). The Loadout panel is
-        -- opened from three places and only this one stands in the city, so only this one hands over a
-        -- way to walk out of it -- the square where the seven shelves are, with the class's own house
-        -- already open on the counter. The panel shuts behind the walk rather than waiting under it:
-        -- what is being left is a screen, not a modal that should still be there on the way back.
+        -- THE ROLL SENDS A BODY TO ITS TRAINER (ui/class_editor.lua): the house that teaches the class
+        -- being read, with its desk already open.
+        --
+        -- IT USED TO SWITCH STATES, because the seven shelves stood on a board of their own and walking
+        -- to one meant leaving the city. They are cards on this plaza now, so the walk is a door on the
+        -- screen the player is already looking at -- the panel shuts, and the house's counter opens over
+        -- the same city. Nothing is switched and nothing has to come back.
         onVisitTrainer = function(houseId)
             activePanel = nil
-            Player.active = hub.player
-            State.switch(require("states.houses"), { player = hub.player, open = houseId })
+            local target
+            for _, b in ipairs(Building.list(hub.player)) do
+                if b.id == houseId and not b.locked then target = b end
+            end
+            -- A shut house is not walked to. The button is drawn refused in that case
+            -- (Building.houseForClass reports `open`), so this is a backstop rather than a path.
+            if target then hub.openCounter(target) end
         end,
-        onClose = dismissPanel,
+        onClose = onClose or dismissPanel,
     })
 
     -- A TAB'S WINDOW IS BEHIND THE TAB IT EXPLAINS, not in front of this door: the Loadout panel pips
@@ -405,41 +434,58 @@ local function launchPanel(building)
     -- player pressed it for and the explanation arrives at the control being explained. Reading the
     -- Tactics one there is what puts the Armory's red dot below out, on the same ledger
     -- (Descent.tacticsTaught); the Roll's window lights no door, since nothing about the city grew.
-    activePanel = opened
+    return opened
 end
 
--- Play a shop's pre-shelf scenes -- the greeting, any discipline announcement, the house's next ask --
--- and then open its panel. All of it lives in models/vendor_visit.lua now: the shelves moved onto their
--- own board (states/houses.lua) and two screens open shop doors, so the sequencing is one copy with two
--- callers rather than ninety duplicated lines that can disagree about what a house asked for.
---
--- A building with no vendor has nothing to say and opens straight away.
-local function launchVendor(building)
-    -- A ROOM WITH NO SHELF CAN STILL HAVE SOMETHING TO SAY. `intro` is a one-time scene the blueprint
-    -- names, played the first time this door is walked into, and `grants` is the companion it hands over
-    -- as it closes -- which is how the Ward introduces Xin (data/buildings/the_ward.lua).
+-- Open a plain door: one that is a whole screen, or one panel and nothing else. The Rift and the Armory
+-- are the only two left -- every other room in the city is behind a desk (hub.openCounter).
+local function launchPanel(building)
+    -- A DOOR ONTO A WHOLE SCREEN rather than a pop-up over the city. The Rift is one
+    -- (data/buildings/the_gate.lua): a stair and a look at the company is a place you go to, not a modal
+    -- the city sits behind.
     --
-    -- KEYED ON ITS OWN FLAG, and the first version of this was keyed on Building.seenDoor and was
-    -- BROKEN BY IT. Those are two different questions: seenDoor asks "has this card been ANNOUNCED",
-    -- and hub.enter seeds it wholesale on the first visit for every door the city already has open
-    -- (Building.seedSeen) -- so that nothing already standing is ever coached as news. The Ward is open
-    -- the moment the company walks out of Act 0, because Rowan is hurt, so it was seeded seen on the
-    -- very first frame of the city and Xin's scene never fired for anybody. A scene played once is not
-    -- the same fact as a card announced once, and conflating them silently ate a companion.
-    --
-    -- The recruit fires BEFORE the scene, so the "[X has joined your Party]" banner folds onto the end
-    -- of it, which is the route every other companion's takes (models/conversation.lua).
-    local introFlag = "intro_" .. tostring(building.id)
-    hub.player.flags = hub.player.flags or {}
-    if building.intro and not hub.player.flags[introFlag]
-        and Conversation.defs[building.intro] then
-        hub.player.flags[introFlag] = true
-        Building.markSeen(hub.player, building.id)
-        if building.grants then Player.recruit(hub.player, building.grants) end
-        Player.save()
-        Conversation.play(building.intro, function() launchPanel(building) end)
-        return
+    -- Player.active is set first because every screen the Rift leads to takes the company off it.
+    if building.state then
+        local ok, StateModule = pcall(require, "states." .. building.state)
+        if ok and StateModule then
+            Player.active = hub.player
+            return State.switch(StateModule, { player = hub.player, run = hub.player.descentRun })
+        end
     end
+    activePanel = newPanel(building.panel, building.vendor, building.name, dismissPanel)
+end
+
+-- THE SEVEN COUNTERS. The house speaks, ends on a desk of rooms, and a room the player picks opens over
+-- the city -- closing it comes back to the desk rather than to the plaza, so a player can set a bone,
+-- read a find and browse the shelf without the door shutting between them (models/counter.lua).
+--
+-- A field on `hub` rather than a local, because onVisitTrainer above needs it and is written first.
+function hub.openCounter(building)
+    Counter.open(hub.player, building, function(room, onClosed)
+        -- Closing a room rings the same cancel cue every panel in the city does (dismissPanel), but it
+        -- does NOT go through dismissPanel: that is the way out to the plaza, and this is the way back
+        -- to the desk. Same sound, different destination.
+        activePanel = newPanel(room.panel, room.vendor, nil, function()
+            Sound.play("ui.cancel")
+            activePanel = nil
+            onClosed()
+        end)
+    end, function()
+        -- Walked out. The city is already underneath; nothing to switch back to.
+        activePanel = nil
+    end)
+end
+
+-- WALK THROUGH A DOOR, whichever kind it is.
+--
+-- A house is a COUNTER: the greeting, the desk, and a loop through the rooms behind it
+-- (models/counter.lua, which also owns the one-time `intro` scene and the companion it grants -- that
+-- block used to live here and moved with the rooms).
+--
+-- Everything else is a plain door. Two are left: the Rift, which is a whole screen, and the Armory,
+-- which is one panel and keeps no shopkeeper.
+local function launchVendor(building)
+    if Counter.has(building) then return hub.openCounter(building) end
     if not building.vendor then launchPanel(building); return end
     VendorVisit.play(hub.player, building.vendor, function() launchPanel(building) end)
 end
@@ -477,9 +523,9 @@ local function openPanel(building)
             Building.markSeen(hub.player, building.id)
             Player.save()
             coachedDoor = nil
-            -- ...and through launchVendor, not launchPanel: three of the grown doors keep a shopkeeper
-            -- (the Inn, the Cafe, the Touchstone) whose one-time greeting is the first thing that
-            -- should happen inside the room the player was just sent to.
+            -- ...and through launchVendor, not launchPanel: every grown door but the Armory is a house
+            -- with a shopkeeper behind it, and their greeting and desk are the first thing that should
+            -- happen inside the room the player was just sent to (models/counter.lua).
             launchVendor(building)
             return
         end
@@ -487,10 +533,10 @@ local function openPanel(building)
         -- because opening the Gate IS leaving the city. The hall's stage is spent by the hire joining
         -- the company (see introAdvance), so a player who walks in, reads her card and walks out is
         -- coached back to the room rather than left in a city that thinks the lesson landed.
-        -- THE WARD HANDS ON TO THE STAIR rather than ending the intro: two doors are coached on the
+        -- THE CATHEDRAL HANDS ON TO THE STAIR rather than ending the intro: two doors are coached on the
         -- first morning now (see INTRO_STAGES), and a stage that cleared here would leave the Rift --
         -- the door the whole mode is behind -- uncoached on the one visit that teaches the city.
-        if stage.building == "the_ward" then
+        if stage.building == "cathedral" then
             hub.player.hubIntro = "coach"
         elseif not stage.hire then
             hub.player.hubIntro = nil
@@ -533,6 +579,25 @@ local function introAdvance()
     end
 end
 
+-- IS THERE SOMETHING ON THIS HOUSE'S SHELF NOBODY HAS READ -- the dot half of a shop's plate.
+--
+-- Asked THROUGH THE SHELF'S OWN GATES (Quest.shelfGates) and not of the catalogue. The mark is laid on
+-- every ware the company carries out of the rift (Player.markFound), most of which sit rungs above
+-- where that company is standing -- and the shop draws no unseen dot on a row it cannot sell, on
+-- purpose. So a plate asking only "does this house SELL a marked ware" lit for stock the shop will not
+-- mark, the player read the whole rack, and the dot was still burning when they walked out. The gate
+-- makes the door ask exactly what the rack answers, and the mark keeps: it lights this plate on the day
+-- the ladder reaches the row, which is the only announcement a shelf opened by a class level gets.
+--
+-- `models.quest` inline rather than at the top of the file, the way models/vendor.lua's grade lookup is:
+-- a new top-level require reorders `pairs` over the registry, which is enough on its own to redden a
+-- spec that has nothing to do with this screen.
+local function unreadShelf(player, vendorId)
+    if not (player and vendorId and player.newStock) then return false end
+    local gates = require("models.quest").shelfGates(player, vendorId)
+    return Vendor.hasMarkedStock(vendorId, player.newStock, gates)
+end
+
 function hub.enter()
     require("models.sound").music("music.hub")
     -- The session's one player, carried across every hub visit. Rebuilding it here (as this
@@ -567,15 +632,42 @@ function hub.enter()
     -- Health and mana refill (Player.restore) as they always have: attrition lasts a quest, not forever.
     -- THE TOWN NO LONGER SETS BONES ON THE DOORSTEP. It used to: Wound.clear stood here and an
     -- expedition's damage ended the moment the player was standing in the city, free and unasked. What
-    -- replaced it is a door -- the Ward (data/buildings/the_ward.lua) -- where mending is still free
-    -- (rest it off) and paying buys only speed. A wound that evaporates on arrival cannot be taught,
-    -- cannot be decided about, and gave the building the tutorial now points at nothing to do.
+    -- replaced it is a room -- the Cathedral's mending (data/buildings/cathedral.lua) -- where it is
+    -- still free (rest it off) and paying buys only speed. A wound that evaporates on arrival cannot be
+    -- taught, cannot be decided about, and gave the door the tutorial now points at nothing to do.
     --
     -- The POOLS still refill here, and that half was never the wound's business: health and mana come
     -- back because attrition lasts a quest, and Player.restore fills against the wounded ceiling rather
     -- than through it (models/wound.lua's healShare), so a body that is still hurt still reads as hurt.
     Player.restore(hub.player)
     activePanel = nil
+
+    -- WHAT A ROUT ACTUALLY COST, said on the screen the company wakes up on -- which is this one now
+    -- (states/game.lua's onLoss). One visit's worth: consumed here so it cannot greet the player a
+    -- second time on the way back from the shops.
+    --
+    -- WHAT IT SAYS IS THAT LOSING TOOK NOTHING THEY OWNED, because that is the half no readout on any
+    -- screen can say and the half a player most needs to hear straight after a wipe. The kit, the gold,
+    -- the levels and the map are all still theirs (docs/the-count.md's law -- losing is never billed).
+    --
+    -- AND IT DOES NOT SAY WHERE THE PACK IS, on purpose. The trip's finds are lying on the floor they
+    -- fell on (Descent.dropPack) and the Gate names them on EVERY visit, standing, in the warning
+    -- colour (Descent.lostPacks, states/gate.lua's draw). A pack outlives the session that dropped it,
+    -- so the one screen it is actionable from is the one that carries it permanently -- and repeating it
+    -- here would put the load-bearing half of the sentence on the surface that forgets it.
+    --
+    -- SHORT ENOUGH FOR THE BAND, which is the constraint the declaration up top states. Sixty-seven
+    -- characters at the widest floor number, drawn across 900px: one line, with the band's second one
+    -- spare. Keeping the pack out of it is what buys that.
+    --
+    -- NO SAVE ON THE WAY PAST. The rout branch already wrote one (states/game.lua) and this field is
+    -- not in the file at all, so persisting the clear would be rewriting the save to record nothing.
+    notice = nil
+    if hub.player.pendingRout then
+        notice = "Routed on floor " .. hub.player.pendingRout ..
+            ". The company came home with everything it owned."
+        hub.player.pendingRout = nil
+    end
     -- The town is the safe home a battle hands back to, so clear any screen effect the last fight left
     -- standing -- the defeat grey most of all -- rather than let it bleed into the city (ui/screen_fx).
     ScreenFx.reset()
@@ -629,26 +721,39 @@ function hub.enter()
             -- house is asking for work, or it is holding wares you have not seen -- and the asking half
             -- is gone with the errands. What is left is the shelf, which clears on being read
             -- (Player.seeNew) rather than on being acted on.
-            if b.vendor then
-                return Vendor.hasMarkedStock(b.vendor, hub.player.newStock)
-            end
-            -- The Houses card carries the OR of the seven behind it (states/houses.lua draws the same
-            -- dot per shelf in there): a mark behind a door behind a door is a mark nobody sees.
+            -- THE MARKET IS ASKED OF ITS COUNTER, not of its shelf, and it is the one door that has
+            -- to be. `sellsAll` makes the shelf question below answer yes for every ware in the game
+            -- (models/vendor.lua's Vendor.sells), so this plate lit for every discovery the company
+            -- carried home -- two dozen wares the counter is not showing, and therefore a dot with
+            -- nothing behind the door that could clear it. Market.hasUnread asks the standing rack.
+            -- A HOUSE'S DOT IS THE OR OVER THE ROOMS BEHIND IT, because a mark behind a door is a mark
+            -- nobody sees. A card carries its own shelf AND whatever it took in from the plaza, and
+            -- those can have different counters -- the Undercroft's desk opens the town's shelf beside
+            -- the fence's own (models/offer.lua) -- so this walks the offers rather than asking the
+            -- building's single `vendor`.
             --
-            -- Both halves of that dot, and the first is why this branch matters more than the shelves
-            -- do. A house opens on a class level, which is banked underground -- so the square grows a
-            -- counter while the player is somewhere else entirely, and the only card that can say so is
-            -- this one. The plaza's own grown doors get a coach bubble instead (Building.unannounced);
-            -- the ledger under both is the same one.
-            if b.state == "houses" then
-                for _, house in ipairs(Building.list(hub.player, { district = "houses" })) do
-                    if not house.locked
-                        and (not Building.seenDoor(hub.player, house.id)
-                            or Vendor.hasMarkedStock(house.vendor, hub.player.newStock)) then
+            -- Only OPEN rooms count. A dot for a room the desk will not offer yet is a dot with nothing
+            -- behind the door that could clear it, which is the exact failure the Market's branch below
+            -- was written for.
+            for _, offer in ipairs(Offer.list(hub.player, b)) do
+                if offer.open and offer.vendor then
+                    -- THE MARKET IS ASKED OF ITS COUNTER, not of its shelf, and it is the one room that
+                    -- has to be. `sellsAll` makes the shelf question answer yes for every ware in the
+                    -- game (models/vendor.lua's Vendor.sells), so this plate lit for every discovery the
+                    -- company carried home -- two dozen wares the counter is not showing. Market.hasUnread
+                    -- asks the standing rack.
+                    if offer.vendor == Market.ID then
+                        if Market.hasUnread(hub.player) then return true end
+                    elseif unreadShelf(hub.player, offer.vendor) then
                         return true
                     end
                 end
-                return false
+            end
+            -- A door that keeps a shelf but declares no rooms (nothing does today, but the Armory's
+            -- shape is one blueprint away from it).
+            if b.vendor and not b.offers then
+                if b.vendor == Market.ID then return Market.hasUnread(hub.player) end
+                return unreadShelf(hub.player, b.vendor)
             end
             -- THE ARMORY carries two things: stash nobody has read, and a TAB nobody has met. The
             -- second is why this branch is an `or` -- Tactics unlocks on a trip ending, which may well
@@ -801,6 +906,23 @@ function hub.draw()
     -- is the better readout for the same reason it is the harder one to earn: the tally is a thing the
     -- company did rather than a thing the world is doing to them. Two countdowns on one screen, both
     -- claiming to be the end of the world, was the collision this deletion resolves.
+    --
+    -- ...WHICH IS WHY THE BAND IS FREE FOR THIS. A homecoming that had something happen on it says so
+    -- here, for that visit only (see `notice`). It is a transient line where the clock was a permanent
+    -- readout, so it is not the deleted thing coming back: nothing is counting down, and on the
+    -- ordinary morning the band is as empty as the paragraph above leaves it.
+    --
+    -- IN THE AMBER, which is the accent the same sentence wore under the Gate's title when a beaten
+    -- company still woke there -- the news family, not the warning one. What is actually costing the
+    -- player something is the pack, and that is drawn at the Gate in accentWeapon where it can be
+    -- acted on (states/gate.lua).
+    if notice then
+        love.graphics.setFont(Theme.body(14))
+        Theme.set(Theme.accentAmber)
+        love.graphics.printf(notice, screenW / 2 - 450, 72, 900, "center")
+        love.graphics.setColor(1, 1, 1)
+    end
+
     map:draw()
 
     -- ISELLE'S TALLY, over the Rift's plate. Drawn HERE rather than inside ui/building_map.lua so the

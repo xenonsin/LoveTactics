@@ -664,6 +664,19 @@ end
 -- called "depth" that a company could satisfy without ever going down is a gate whose name is a lie,
 -- and the numbers on it (the Cafe at two, the Forge at four) were never about floors -- they were about
 -- how many times the company had been out.
+-- HOW MANY DESCENTS THIS COMPANY HAS BEGUN, which is the clock the city grows on (models/offer.lua).
+--
+-- Read off `runsStarted`, which models/seed.lua has been advancing per descent all along -- one call,
+-- inside Descent.new, and only on a descent that is actually begun rather than resumed. In the CITY
+-- that number is exactly "trips taken": you are only ever standing here between runs.
+--
+-- IT IS NOT `expeditionsOut`, and the two must not be confused. That one is `max(bounties, deepest)` --
+-- how far DOWN this company has got -- which jumps several notches in one deep trip and never moves at
+-- all for a company that farms floor one. This one only ever climbs by one, and only by coming home.
+function Player.tripsHome(player)
+    return (player and player.runsStarted) or 0
+end
+
 function Player.expeditionsOut(player)
     local bounties = require("models.bounty").finished(player)
     local depth = require("models.descent").deepest(player)

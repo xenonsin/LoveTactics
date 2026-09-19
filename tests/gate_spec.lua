@@ -243,8 +243,8 @@ return {
         -- WHY THIS IS WRITTEN AGAINST THE SOURCE. There are three routes off a floor -- the stair down,
         -- the way up, and a wipe -- and all three are branches inside states/game.lua, the last of them
         -- a closure hanging off a battle panel's `onLoss`. None can be reached from a headless spec, so
-        -- the invariant is stated where it CAN be checked: the branch that sends a wiped company up to
-        -- the Gate keeps its board on the way.
+        -- the invariant is stated where it CAN be checked: the branch that wakes a wiped company in the
+        -- city keeps its board on the way.
         --
         -- It shipped without one, and the shape of the miss is the reason for the tripwire: the other
         -- routes all kept their board, so the feature worked everywhere anybody looked. What a
@@ -254,7 +254,7 @@ return {
         -- the thing the company came back for could be standing inside a wall.
         local src = assert(love.filesystem.read("states/game.lua"), "should be able to read the state")
 
-        -- The nearest `onLoss` above the switch that carries `wiped`, which brackets the branch without
+        -- The nearest `onLoss` above the rout's own notice stamp, which brackets the branch without
         -- pinning a line number that every edit to the file would move.
         local function lastBefore(needle, pos)
             local at, from = nil, 1
@@ -266,8 +266,12 @@ return {
             return at
         end
 
-        local switch = src:find("wiped = floor", 1, true)
-        assert(switch, "nothing sends a wiped company to the Gate any more -- retarget this case")
+        -- THE TAIL ANCHOR IS THE ROUT'S NOTICE, and it moved here with the destination. It was
+        -- `wiped = floor`, the payload handed to the Gate; a beaten company wakes in the CITY now, and
+        -- the town takes no payload at all (states/hub.lua reads Player.active), so the last thing this
+        -- branch does is stamp the line the town says on arrival. Written once, in this branch.
+        local switch = src:find("pendingRout = floor", 1, true)
+        assert(switch, "nothing wakes a wiped company any more -- retarget this case")
         local branch = src:sub(lastBefore("onLoss = ", switch) or 1, switch)
 
         -- THE RIFT CLOSES ON A WIPE, so there is no board to keep and this looked for `keepFloor`

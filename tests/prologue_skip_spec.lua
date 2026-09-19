@@ -81,14 +81,14 @@ return {
             -- The PLAYER, not a prestige number: every deed gate reads the player, and a bare figure
             -- answers none of them (models/building.lua's Building.list).
             for _, b in ipairs(Building.list(p)) do
-                if b.id == "the_ward" then open = not b.locked end
+                if b.id == "cathedral" then open = not b.locked end
             end
             assert(open, "so the Inn stands on the plaza the skip lands in")
 
             -- The visit is recorded on both of the room's ledgers, so walking in does not replay a
             -- scene the button already spent -- and cannot hand Xin over twice.
-            assert(p.flags["intro_the_ward"], "the first-visit scene is marked played")
-            assert(Building.seenDoor(p, "the_ward"), "and the card is marked walked into")
+            assert(p.flags["intro_cathedral"], "the first-visit scene is marked played")
+            assert(Building.seenDoor(p, "cathedral"), "and the card is marked walked into")
         end,
     },
     {
@@ -103,18 +103,18 @@ return {
         -- debug button walks the Inn's door itself and spends the scene deliberately (states/prologue.lua),
         -- so it can no longer stand in for a company that has one still owed. The mark is all the
         -- precondition needs -- it is what opens the card that gets seeded.
-        name = "seeding the city's doors does not spend the Ward's first-visit scene",
+        name = "seeding the city's doors does not spend the Cathedral's first-visit scene",
         fn = function()
             local Building = require("models.building")
             local p = Player.new()
             p.wounded = true
             Building.seedSeen(p)
-            assert(Building.seenDoor(p, "the_ward"),
+            assert(Building.seenDoor(p, "cathedral"),
                 "precondition: the seed does mark it announced, which is what broke this")
-            assert(not (p.flags or {})["intro_the_ward"],
+            assert(not (p.flags or {})["intro_cathedral"],
                 "but the scene is a separate ledger and is still owed")
 
-            local def = Building.defs["the_ward"]
+            local def = Building.defs["cathedral"]
             assert(def.intro and def.grants == "character_xin",
                 "...and it is the scene that hands the companion over, so spending it early loses her")
         end,
@@ -231,18 +231,18 @@ return {
             end
 
             -- The road hands over an opener for all seven classes, which is not the same as having cast
-            -- them: the other five houses are still shut, exactly as a PLAYED Act 0 leaves them.
+            -- them: the other five SHELVES are still shut, exactly as a PLAYED Act 0 leaves them.
+            --
+            -- Asked of the shelf rather than of the door, because those are two questions since the fold
+            -- (models/offer.lua): a house's door opens on ANY room behind it, so the Cathedral is
+            -- standing open on this same morning for Rowan's wound while its shelf waits on a priest
+            -- level nobody has. What Act 0 buys is the shelf.
+            local Offer = require("models.offer")
             local open = 0
             for _, def in pairs(Building.defs) do
-                if def.unlockClassLevel then
-                    local vendor = require("models.vendor").defs[def.vendor]
-                    local class = vendor and vendor.class
-                    if class and Class.rosterLevel(player, class) >= def.unlockClassLevel then
-                        open = open + 1
-                    end
-                end
+                if def.counter and Offer.openSet(player, def).shelf then open = open + 1 end
             end
-            assert(open == 2, "two of the seven houses open on a skipped Act 0, got " .. open)
+            assert(open == 2, "two of the seven shelves open on a skipped Act 0, got " .. open)
 
             -- Nothing is banked above what the fights could physically have paid: the per-fight ceiling
             -- a real fight enforces, over the four fights the road holds.

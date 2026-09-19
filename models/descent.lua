@@ -2048,6 +2048,19 @@ function Descent.wander(run, pool)
     return { kind = "combat", id = pick.id, name = pick.name, wandering = true }
 end
 
+-- A WANDERER IS SWEPT OFF THE BOARD RATHER THAN WOKEN, and that clause is the far end of a repair
+-- whose near end is in states/game.lua (retireRolledFight). A rolled fight is written onto whatever tile
+-- the company was standing on when the meter topped out, so it is not a place and has no business being
+-- on a kept map at all -- and the rule above would do the worst possible thing with one left behind:
+-- wake it. That turns the meter's history into permanent SEATED combat on a floor whose whole design
+-- seats none, one more plate per wanderer per trip, compounding for the life of the save.
+--
+-- Swept whether or not it was cleared. An uncleared one is a fight the company walked away from by
+-- quitting or by going down instead, and the honest answer to coming back is the meter dealing a fresh
+-- one where they are standing, not the old one waiting on the tile they left it on.
+--
+-- It is NOT counted as re-armed: a board that is all residue would otherwise report a floor full of
+-- woken monsters and there would be nothing standing on it.
 function Descent.rearmFloor(grid)
     if not grid then return 0 end
     local n = 0
@@ -2055,7 +2068,9 @@ function Descent.rearmFloor(grid)
         for x = 1, grid.cols do
             local c = grid.cells[y][x]
             local e = c.encounter
-            if e and c.cleared and (e.kind == "combat" or e.kind == "elite") then
+            if e and e.wandering then
+                c.encounter, c.cleared = nil, nil
+            elseif e and c.cleared and (e.kind == "combat" or e.kind == "elite") then
                 c.cleared = nil
                 n = n + 1
             end

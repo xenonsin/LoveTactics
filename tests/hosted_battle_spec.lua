@@ -61,11 +61,17 @@ return {
         name = "the wipe clears the fight it lost, like every other way out of one",
         fn = function()
             local src = source()
-            -- The rout: the branch that charges the count and hands the company to the Gate. It used to
-            -- be anchored on the pack drop, which was the first thing it did; nothing is dropped any
-            -- more, so the anchor moved to the thing a wipe now DOES -- put two marks on the tally.
+            -- The rout: the branch that charges the count and sends the company home. It used to be
+            -- anchored on the pack drop, which was the first thing it did; nothing is dropped any more,
+            -- so the anchor moved to the thing a wipe now DOES -- put two marks on the tally.
+            --
+            -- THE CLOSING ANCHOR IS THE ROUT'S OWN NOTICE, not the state switch that follows it. It was
+            -- the switch to the Gate, which was unique in this file; a wiped company wakes in the CITY
+            -- now and `State.switch(require("states.hub"))` is one of half a dozen, so anchoring on it
+            -- would close this window at whichever one came first. `pendingRout` is written once, in
+            -- this branch, and is the last thing it does before leaving.
             local wipe = between(src, "Descent.countBy(game.player, Descent.COUNT_WIPE)",
-                "State.switch(require(\"states.gate\")")
+                "game.player.pendingRout = floor")
             assert(wipe:find("Player.recordFound", 1, true),
                 "the wipe branch was not found where it was -- re-anchor this case rather than deleting it")
             assert(wipe:find("game.endFight()", 1, true),
@@ -93,6 +99,34 @@ return {
             assert(opens == 1, "a hosted battle should be opened in exactly one place, found " .. opens)
             assert(closes >= 8, "only " .. closes .. " routes call game.endFight -- there were eight "
                 .. "(six outcomes, the wipe, and the door). A new way out of a fight needs one too")
+        end,
+    },
+    {
+        name = "a fight the meter dealt comes off the board however it ends",
+        fn = function()
+            -- THREE WAYS A ROLLED FIGHT ENDS WELL -- fought, walked off, broken away from -- and all
+            -- three have to take it off the tile, because it was never a place: Descent.wander writes it
+            -- onto whatever square the company was standing on when the meter topped out. A cleared
+            -- marker left behind draws crossed swords over empty corridor, and the next trip down WAKES
+            -- it (Descent.rearmFloor) as seated combat on a floor that seats none.
+            --
+            -- Only the flee path did it for a while, which is the ordinary shape of this bug: the route
+            -- somebody drove while building the feature is the one that learned the rule.
+            --
+            -- A ROUT IS NOT ON THE LIST, deliberately. Losing leaves the fight standing and uncleared,
+            -- the same as a seated one, so walking back onto the tile asks the same question again.
+            local src = source()
+            local defs, calls = 0, 0
+            for line in (src .. "\n"):gmatch("([^\n]*)\n") do
+                if not line:match("^%s*%-%-") and line:find("retireRolledFight", 1, true) then
+                    if line:find("local function", 1, true) then defs = defs + 1 else calls = calls + 1 end
+                end
+            end
+            assert(defs == 1, "the rolled fight should be retired through exactly one seam, found "
+                .. defs .. " -- two copies is how one of them forgets")
+            assert(calls >= 3, "only " .. calls .. " of the three good ends to a rolled fight take it "
+                .. "off the board (fought, walked off, fled); the rest leave a marker standing on a "
+                .. "tile nothing happened on, and rearmFloor will wake it")
         end,
     },
 }

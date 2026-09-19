@@ -275,27 +275,31 @@ function Market.stock(player, day)
     for i = 1, math.min(Market.ROTATION, #pool) do
         local row = pool[i]
         row.rack = Market.TODAY
-        if sold and sold[row.id] then
-            row.sold, row.locked, row.lockReason = true, true, "sold"
-        end
         today[#today + 1] = row
     end
 
-    -- Cheapest first WITHIN a rack, and the racks stay in their order. Sorting the whole list would
-    -- interleave the three rolled rows through the twenty-two standing ones, which is exactly the
-    -- reading the split exists to prevent.
+    -- Buyable first and cheapest first WITHIN a rack (Vendor.shelfOrder, the one order every counter in
+    -- the city deals in), and the racks stay in their order. Sorting the whole list would interleave the
+    -- three rolled rows through the twenty-two standing ones, which is exactly the reading the split
+    -- exists to prevent.
     --
     -- TODAY LEADS. The standing rack is standing -- it will be there tomorrow and the day after, and a
     -- player who wants a bandage already knows where it lives. The three rolled rows are the only thing
     -- on this counter that is gone by morning, so they take the top of the list, where the eye lands
     -- and where nothing has to be scrolled past to reach them.
-    local function shelfOrder(a, b)
-        if a.unlockQuests ~= b.unlockQuests then return a.unlockQuests < b.unlockQuests end
-        if a.price ~= b.price then return a.price < b.price end
-        return a.name < b.name
+    table.sort(counter, Vendor.shelfOrder)
+    table.sort(today, Vendor.shelfOrder)
+
+    -- AND THE STAMP LANDS AFTER THE SORT, which is the whole of why it is down here rather than up in
+    -- the loop that dealt the rack. `sold` sets `locked`, and a buyable-first order would answer that
+    -- by sliding the ware to the foot of the rack the moment it was bought -- a three-tile rack
+    -- rearranging itself under the hand that just pressed it. The day's news keeps the shape the player
+    -- read it in; only its colour changes.
+    for _, row in ipairs(today) do
+        if sold and sold[row.id] then
+            row.sold, row.locked, row.lockReason = true, true, "sold"
+        end
     end
-    table.sort(counter, shelfOrder)
-    table.sort(today, shelfOrder)
 
     local out = {}
     for _, row in ipairs(today) do out[#out + 1] = row end
@@ -354,6 +358,40 @@ function Market.markOpened(player)
     if #opened == 0 then return nil end
     table.sort(opened)
     return { items = opened, classes = risen }
+end
+
+-- Is anything ON THE COUNTER unread -- the dot the city draws on the market's door (states/hub.lua)?
+--
+-- ASKED OF THE STANDING RACK, never of the catalogue, and that is the whole of this function. Every
+-- other shop answers this through Vendor.hasMarkedStock, which asks whether the vendor SELLS a marked
+-- ware -- and the market's answer to that question is yes, always, for everything: `sellsAll` is a flag
+-- rather than a taxonomy (models/vendor.lua's Vendor.sells), so every id in the ledger lit this door.
+-- The ledger is fed by every discovery the company carries out of the rift (Player.markFound), so the
+-- market came home dotted from every trip, naming two dozen wares it is not showing -- and a dot whose
+-- marks live on rows that are not out is a dot with nothing behind the door to clear it. The player
+-- opens the shop, reads the whole of it, and it is still burning.
+--
+-- A MARK IS ONLY EVER PUT ON SOMETHING THE PLAYER CAN WALK IN AND SEE. That is the rule Market.markOpened
+-- argues at length from the writing end; this is the same rule asked from the reading end, and the two
+-- sets are deliberately the same set -- what markOpened marks is exactly what this will answer for.
+--
+-- NOT THE ROTATION, and not because it is expensive to roll (it is, per frame, on a card the city draws
+-- every tick). Today's three are WEATHER rather than news: they turn over at the night seam whatever the
+-- player does, so a dot that answered for them would come and go by the day, on nothing the player did,
+-- and say "something opened here" about a row that closes again tomorrow. The standing rack is the half
+-- of this counter that can genuinely grow -- a companion joins underground and their class's blades are
+-- out when the company gets home -- which is the only thing a door has ever needed to say.
+--
+-- Takes the bare marked set the way Vendor.hasMarkedStock does, but needs the player anyway: whether a
+-- blade is out at all is a question about who has joined (Market.stocksStaple).
+function Market.hasUnread(player)
+    local marked = player and player.newStock
+    if not marked then return false end
+    for id in pairs(marked) do
+        local def = Item.defs[id]
+        if def and Market.isStaple(def) and Market.stocksStaple(player, def) then return true end
+    end
+    return false
 end
 
 return Market

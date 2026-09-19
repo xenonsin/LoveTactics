@@ -1,21 +1,41 @@
--- THE BASTION: the knights' shelf, and one of the seven doors on the Houses board.
+-- THE BASTION: the knights' house, and the city's one FORGE.
 --
--- IT OPENS AT KNIGHT 1 -- that level in any body on the roster (`unlockClassLevel`, and
--- models/building.lua for the three gates this one replaced). The deed that opens a shelf is the deed
--- that will shop at it: play the class, and the class's counter is in the city.
+-- ITS SHELF is an order's armoury -- the plate, and the oath that goes with it -- deepening as the
+-- roster's knight level climbs (Quest.shelfRung) rather than opening whole.
 --
--- WHAT IS ON IT past the door is the same ladder again -- Quest.shelfRung reads the roster's knight
--- level, so the shop deepens rung by rung as the class does rather than opening whole.
+-- AND ITS SECOND ROOM IS THE FORGE. Vendors sell; this is where every ladder is climbed, and it is the
+-- only room in the game that spends MATERIALS (models/forge.lua). An order's armoury is where plate is
+-- kept, and keeping plate is maintenance -- so the forge belongs behind the door the player has been
+-- walking into since Rowan swore, rather than on a plate of its own.
+--
+-- THE ROOM IS CALLED THE FORGE, not the bench. `forge` is the word on the panel, in the docs and in
+-- every conversation about it, and the player met it as a building before it was a room -- so the desk
+-- says the name they already have. "Bench" survives in this file only as the common noun.
+--
+-- THE FORGE WAITS FOR THE THIRD TRIP HOME, and the argument is the old floor-four one on the right
+-- clock: what it spends is salvaged a handful at a time out of the fighting (models/spoils.lua), so a
+-- company one trip in is reading a ladder for gear it has not found yet. Three trips is roughly where
+-- the stock is deep enough that a rung is a real purchase, and by then the player has a weapon they
+-- have decided they like, which is the only thing an upgrade bench is any use for.
+--
+-- IT IS THE HEAVIEST LESSON IN THE CITY -- two currencies, a ladder, ceilings, materials -- which is the
+-- other reason it is third rather than first. Selling and a supper are one verb each; this is a system.
 return {
     name = "The Bastion",
-    order = 2,
-    x = 350,
-    y = 265,
+    order = 4,
+    x = 835,
+    y = 120,
     w = 270,
     h = 130,
-    panel = "shop",
-    district = "houses",
-    vendor = "bastion", -- knight class
-    description = "An order's armoury: the plate, and the oath that goes with it.",
-    unlockClassLevel = 1,
+    vendor = "bastion",
+    -- The desk: what this house says on the way in, and the rooms it offers (models/counter.lua).
+    counter = "conversation_bastion_counter",
+    offers = {
+        -- QUIET: a class rung stocks this shelf but never puts the card on the plaza. A class level is
+        -- a reward the player cannot see, and hanging a door on it put shopfronts in the city that
+        -- nobody chose to earn (models/offer.lua's Offer.any).
+        { answer = "shelf", panel = "shop", gate = { classLevel = 1 }, quiet = true },
+        { answer = "forge", panel = "forge", gate = { trips = 3 } }, -- see the header
+    },
+    description = "The plate, the oath that goes with it, and the forge that keeps both.",
 }

@@ -1,7 +1,7 @@
 -- Conversation authored inline (English); localization ids (`tag`) are stamped by
 -- tools/extract_strings.lua and must not be hand-edited. See models/conversation.lua.
 return {
-    title = "The Touchstone",
+    title = "Touchstone",
     cast  = {
         "touchstone", "character_avatar",
         { id = "character_rowan", when = { has = "character_rowan" } },

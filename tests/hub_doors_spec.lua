@@ -87,17 +87,17 @@ return {
         -- added without one would have failed silently, which is the one failure mode a dead field
         -- reliably produces when it stops being dead.
         --
-        -- Every CITY card, not every building: the seven shops are on their own board (states/houses.lua)
-        -- and each already introduces itself in its keeper's own voice the first time it is opened
-        -- (models/vendor_visit.lua). This board has no such scene, which is the whole reason it needs one.
+        -- EVERY CARD, and there is one board now. The seven houses stood on a square of their own and
+        -- each introduced itself in its keeper's voice the first time it was opened
+        -- (models/vendor_visit.lua) -- they are on the plaza with the rest, so they are coached the way
+        -- the rest are, and they need the sentence too.
         name = "every city card says what its room is for, in a line that fits the bubble",
         fn = function()
-            local city = Building.list(Player.new(), { district = "city" })
-            -- Seven, and it was eight until the Inn was deleted along with the wound toll it charged
-            -- for (models/wound.lua). A floor rather than an exact count, so adding a card does not
-            -- fail here -- what this guards is the layout coming back with a couple of doors because
-            -- something upstream filtered wrongly, not the size of the ring.
-            assert(#city >= 7, "the plaza should be laying out its whole ring, not a couple of cards")
+            local city = Building.list(Player.new())
+            -- Nine: the Rift, the Armory and the seven houses. A floor rather than an exact count, so
+            -- adding a card does not fail here -- what this guards is the layout coming back with a
+            -- couple of doors because something upstream filtered wrongly, not the size of the ring.
+            assert(#city >= 9, "the plaza should be laying out its whole ring, not a couple of cards")
             for _, b in ipairs(city) do
                 local d = b.description
                 assert(type(d) == "string" and d ~= "",
@@ -156,78 +156,73 @@ return {
         name = "a door still behind its gate is never announced",
         fn = function()
             local p = seededPlayer()
-            for _, b in ipairs(Building.list(p, { district = "city" })) do
+            for _, b in ipairs(Building.list(p)) do
                 if b.locked then
                     assert(not contains(Building.unannounced(p), b.id),
                         b.id .. " is shut and must not be announced")
                 end
             end
-            assert(not Building.seenDoor(p, "forge"), "the Forge is shut on a fresh save, so unseeded")
+            assert(not Building.seenDoor(p, "bastion"),
+                "the Bastion is shut on a fresh save -- no trips home -- so unseeded")
         end,
     },
     {
         -- THE WHOLE LOOP, on a door whose gate is a single number: the company gets two floors down, it
-        -- comes up, the Cafe is on the plaza and is owed its announcement -- once.
+        -- comes up, the Lodge is on the plaza and is owed its announcement -- once.
         --
-        -- IT WAS THE INN, gated on the first wound, and both are deleted (models/wound.lua): a wound is
-        -- a condition of the expedition now and the surface ends it, so there was no bone left for that
-        -- building to set. The Cafe is the same shape -- shut on a fresh save, opened by a deed done
-        -- underground -- which is all this case was ever about.
+        -- IT IS A DOOR OPENED BY A ROOM. The Cafe stood here as a card of its own; the supper is a line
+        -- on Hunter's Lodge's desk now (models/offer.lua) and carried its floor-two gate with it, so the
+        -- house's plate arrives on the morning the supper does. The shape this case is about -- shut on
+        -- a fresh save, opened by a deed done underground, announced once -- is unchanged.
         name = "a door earned below is announced exactly once",
         fn = function()
             local p = seededPlayer()
-            assert(not contains(Building.unannounced(p), "cafe"),
+            assert(not contains(Building.unannounced(p), "hunters_lodge"),
                 "nobody has been down two floors yet")
 
-            p.deepest = 2 -- the Cafe's gate (models/building.lua's unlockDepth)
+            p.runsStarted = 2 -- the supper's gate (data/buildings/hunters_lodge.lua)
             local owed = Building.unannounced(p)
-            assert(contains(owed, "cafe"),
-                "the second floor opens the Cafe, so the city owes an announcement for it: got "
+            assert(contains(owed, "hunters_lodge"),
+                "the second floor opens the Lodge, so the city owes an announcement for it: got "
                     .. table.concat(idsOf(owed), ", "))
 
             -- Spent by being WALKED INTO (states/hub.lua's openPanel), not by the bubble being read.
-            Building.markSeen(p, "cafe")
-            assert(not contains(Building.unannounced(p), "cafe"),
+            Building.markSeen(p, "hunters_lodge")
+            assert(not contains(Building.unannounced(p), "hunters_lodge"),
                 "a door walked through is never announced again")
         end,
     },
     {
-        -- THE SECOND BOARD, whose doors are announced by a DOT rather than by a bubble. The square is
-        -- behind a card (states/houses.lua), so there is no plate on the plaza to pin a bubble to and
-        -- nothing else on the screen that can say a shelf opened -- and a house opens on a class level,
-        -- which is banked underground, so it opens with nobody standing there.
+        -- A HOUSE OPENS WHILE THE COMPANY IS UNDERGROUND -- the trip that opens it is one it spends in
+        -- the rift -- so its plate arrives with nobody standing in the city, and the ledger is the only
+        -- thing that can say so on the way home.
         --
-        -- Read off the same ledger, which is the whole of why this case is here: the seeding walks both
-        -- boards, or a company that has been shopping at the Colosseum for hours comes back to a dot on
-        -- it. What the two boards do NOT share is how the mark is spent -- the plaza's on the coached
-        -- card being walked into, the square's on the house being walked into (openHouse) -- and both
-        -- are Building.markSeen.
-        name = "a house that opens is unseen until it is walked into, and seeding covers the square",
+        -- The seeding has to cover it, which is the whole of why this case is here: a company that has
+        -- been shopping at the Undercroft for hours must not come back to a dot on it.
+        name = "a house that opens is unseen until it is walked into, and seeding covers it",
         fn = function()
             local p = Player.new()
-            -- One body a single class level into the fighter, which is the Colosseum's gate
-            -- (data/buildings/colosseum.lua's unlockClassLevel, read through data/vendors/colosseum).
-            p.roster = { { technique = { fighter = Class.classLevelCost(1) } } }
+            -- One trip home, which is the Undercroft's gate (data/buildings/undercroft.lua).
+            p.runsStarted = 1
             Building.seedSeen(p)
-            assert(Building.seenDoor(p, "colosseum"),
+            assert(Building.seenDoor(p, "undercroft"),
                 "a house already open when the ledger was created was never news")
 
-            -- ...and the one next door is still shut, so it is not seeded and cannot be a dot either:
+            -- ...and the one after it is still shut, so it is not seeded and cannot be a dot either:
             -- a locked plate never carries one (ui/building_map.lua).
-            assert(not Building.seenDoor(p, "bastion"), "a shut house is not seeded")
+            assert(not Building.seenDoor(p, "hunters_lodge"), "a shut house is not seeded")
 
-            -- The knight climbs a rung while the company is below. Its shelf is open on the way home,
-            -- and nothing has been shown to anybody.
-            p.roster[1].technique.knight = Class.classLevelCost(1)
-            local houses = Building.list(p, { district = "houses" })
-            local bastion
-            for _, h in ipairs(houses) do if h.id == "bastion" then bastion = h end end
-            assert(bastion and not bastion.locked, "a class level opens that class's house")
-            assert(not Building.seenDoor(p, "bastion"), "...and it is owed a dot")
+            -- The company goes down again. The Lodge is open on the way home, and nothing has been
+            -- shown to anybody.
+            p.runsStarted = 2
+            local lodge
+            for _, h in ipairs(Building.list(p)) do if h.id == "hunters_lodge" then lodge = h end end
+            assert(lodge and not lodge.locked, "a second trip opens the Lodge")
+            assert(not Building.seenDoor(p, "hunters_lodge"), "...and it is owed a dot")
 
-            assert(Building.markSeen(p, "bastion"), "walking in spends the dot, and reports the flip")
-            assert(Building.seenDoor(p, "bastion"), "a house walked into is never news again")
-            assert(not Building.markSeen(p, "bastion"),
+            assert(Building.markSeen(p, "hunters_lodge"), "walking in spends the dot, and reports the flip")
+            assert(Building.seenDoor(p, "hunters_lodge"), "a house walked into is never news again")
+            assert(not Building.markSeen(p, "hunters_lodge"),
                 "...so the second walk saves nothing, which is what the return value is for")
         end,
     },
@@ -238,20 +233,25 @@ return {
         name = "several doors opening at once are announced in board order",
         fn = function()
             local p = seededPlayer()
-            -- Three at once: the Market (order 4, floor one), the Forge (order 6, floor four) and the
-            -- Cafe (order 7, floor two). A company that went straight to four on its first trip comes
-            -- back up owed all of them.
-            p.deepest = 4
+            -- Four at once: the Bastion (order 4, the forge on trip three), Hunter's Lodge (order 6,
+            -- the supper on two), the Undercroft (order 7, the town counter on one) and the Arcanum
+            -- (order 9, the book on four).
+            --
+            -- A COMPANY CANNOT ACTUALLY REACH THIS STATE ANY MORE, and that is the point of the clock:
+            -- trips climb one at a time, so the city hands over one door per homecoming and this queue
+            -- never holds four. It is forced here anyway, because what this case pins is the ORDER the
+            -- queue reports in, and that has to keep working for whatever does stack up.
+            p.runsStarted = 4
 
             local owed = Building.unannounced(p)
-            assert(#owed >= 3, "three doors opened; got " .. table.concat(idsOf(owed), ", "))
+            assert(#owed >= 4, "four doors opened; got " .. table.concat(idsOf(owed), ", "))
             for i = 2, #owed do
                 assert(owed[i - 1].order < owed[i].order,
                     "announcements are out of board order: " .. table.concat(idsOf(owed), ", "))
             end
-            assert(owed[1].id == "market",
-                "the Market sorts ahead of the Forge and the Cafe, which is board order; got "
-                    .. table.concat(idsOf(owed), ", "))
+            assert(owed[1].id == "bastion",
+                "the Bastion sorts ahead of the Lodge, the Undercroft and the Arcanum, which is board "
+                    .. "order; got " .. table.concat(idsOf(owed), ", "))
         end,
     },
     {
@@ -262,17 +262,17 @@ return {
         name = "the shown-door ledger survives a save, and an older save stays unseeded",
         fn = function()
             local p = seededPlayer()
-            p.deepest = 2
-            -- Both the doors two floors opened, walked into: the Market on floor one and the Cafe on
-            -- floor two. The claim below is that a LOADED save owes nothing, so everything the trip grew
-            -- has to have been spent before the round-trip -- one door left unwalked would make this
-            -- case pass or fail on the leftover rather than on the ledger.
-            Building.markSeen(p, "market")
-            Building.markSeen(p, "cafe")
+            p.runsStarted = 2
+            -- EVERY door two trips opened, walked into. The claim below is that a LOADED save owes
+            -- nothing, so everything the trips grew has to have been spent before the round-trip --
+            -- one door left unwalked would make this case pass or fail on the leftover rather than
+            -- on the ledger.
+            for _, b in ipairs(Building.unannounced(p)) do Building.markSeen(p, b.id) end
 
             local restored = Save.restore(Save.snapshot(p))
             assert(Building.seeded(restored), "a seeded ledger must come back seeded")
-            assert(Building.seenDoor(restored, "cafe"), "...and remember the Cafe was walked into")
+            assert(Building.seenDoor(restored, "hunters_lodge"),
+                "...and remember the Lodge was walked into")
             assert(Building.seenDoor(restored, "the_gate"), "...and everything it was seeded with")
             assert(#Building.unannounced(restored) == 0,
                 "a loaded save owes no announcement for a door it has already shown")

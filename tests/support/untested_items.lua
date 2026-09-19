@@ -144,7 +144,6 @@ return {
     "utility_distant_sigil",
     "utility_duelists_poise",
     "utility_falconers_glove",
-    "utility_feral_instinct",
     "utility_focus_stone",
     "utility_forty_one_marks",
     "utility_greyveil_cloak",

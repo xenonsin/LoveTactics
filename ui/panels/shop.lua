@@ -464,11 +464,11 @@ function Shop:buildBuyRows()
     local ruled = false
     for _, key in ipairs(order) do
         local g = groups[key]
-        table.sort(g.rows, function(r1, r2)
-            if r1.entry.unlockQuests ~= r2.entry.unlockQuests then return r1.entry.unlockQuests < r2.entry.unlockQuests end
-            if r1.entry.price ~= r2.entry.price then return r1.entry.price < r2.entry.price end
-            return r1.item.name < r2.item.name
-        end)
+        -- Buyable first, then the ladder -- the shelf's one order, asked of the entries the rack was
+        -- dealt from (models/vendor.lua's Vendor.shelfOrder). A band is where that matters most: the
+        -- open stock is a handful of tiles and the path behind it is dozens, so dealing them strictly
+        -- by rank put what the player came in to buy somewhere in the middle of the grey.
+        table.sort(g.rows, function(r1, r2) return Vendor.shelfOrder(r1.entry, r2.entry) end)
         -- A path this company has not opened yet gets its row, its count AND its rack. `stock` and
         -- `rows` are the same list now and the second is kept only because every reader downstream
         -- spells one or the other; nothing empties a band any more. `shut` survives as what the band
@@ -692,6 +692,9 @@ function Shop:newPool(y, h, x, w)
             local row = cell and cell.entry and cell.entry.row
             if not (row and row.isNew and row.entry) then return end
             row.isNew = false
+            -- The band above the rack wears the mark for what is under it, so looking at the last
+            -- unseen tile puts the band's dot out too (Shop:refreshBandDots).
+            self:refreshBandDots()
             if Player.seeNew(self.player, Player.NEW_STOCK, row.entry.id) then Player.save() end
         end,
         -- Sell only: what the counter will give for a piece already in the stash. A piece nothing
@@ -1493,6 +1496,34 @@ function Shop:seeSelectedRow()
     local menuItem = self.menu.items[self.menu.selected]
     if menuItem then menuItem.isNew = nil end
     if Player.seeNew(self.player, Player.NEW_STOCK, row.entry.id) then Player.save() end
+end
+
+-- A BAND'S DOT IS ITS STOCK'S DOT, so it goes out with the last tile that wore one.
+--
+-- The rail is built once (Shop:buildBuyRows) and a tile clears its own mark the moment it is looked at,
+-- which left the band carrying a red dot over a rack with nothing new in it -- a mark that outlives what
+-- it is about, on the row whose whole job is to say which band to walk into. A player who finds one
+-- stale dot stops believing the rest of them, and the dot is the only thing on this screen that
+-- answers "what opened while I was down there".
+--
+-- RE-DERIVED FROM THE ROWS rather than counted down, because a count is a second ledger and the rows
+-- are the first one; the marks clear from a tile, a rebuild and a purchase, and only one of those three
+-- would have remembered to decrement.
+function Shop:refreshBandDots()
+    for i, row in ipairs(self.rows or {}) do
+        if row.header and row.rows then
+            local any = false
+            for _, sub in ipairs(row.rows) do
+                if sub.isNew then
+                    any = true
+                    break
+                end
+            end
+            row.isNew = any or nil
+            local item = self.menu and self.menu.items and self.menu.items[i]
+            if item then item.isNew = row.isNew end
+        end
+    end
 end
 
 function Shop:draw()

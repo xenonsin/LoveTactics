@@ -11,15 +11,18 @@ local Building = {}
 
 Building.defs = Registry.load("data/buildings", "data.buildings")
 
--- THE TWO BOARDS, and the authoritative copy of both. A building says which one it is on with
--- `district`; absent means the city. The second board is THE HOUSES -- the seven class shelves, back
--- from the dead and gated on the ladder rather than on a story (see the district's own note below).
+-- THE ONE BOARD, and the authoritative copy of it. There were two -- the plaza, and a square of seven
+-- shopfronts behind one of its cards -- and the fold put them back together (models/counter.lua).
 --
--- THE CITY IS A PLAZA WITH THE GATE IN THE MIDDLE OF IT.
+-- THE CITY IS A PLAZA WITH THE RIFT IN THE MIDDLE OF IT.
 --
---     The Houses       The Inn           The Market
---     Armory          [  THE GATE  ]     The Forge
---     Cafe             Touchstone        Dueling Grounds
+--     The Colosseum    The Cathedral     The Bastion
+--     Armory          [   THE RIFT   ]   Hunter's Lodge
+--     The Undercroft   The Crucible      The Arcanum
+--
+-- NINE CARDS, NINE SLOTS, and the fit is exact rather than lucky: the lattice has always been three by
+-- three with the stair taking the taller middle slot, which leaves eight in the ring -- the Armory, and
+-- one per house. Every other room the city had is a LINE on one of those seven desks.
 --
 -- The Gate is the only reason the city exists -- everything else on this screen is something you do
 -- BEFORE going down or BECAUSE you came back up -- and a grid says the opposite: eight equal plates in
@@ -27,38 +30,23 @@ Building.defs = Registry.load("data/buildings", "data.buildings")
 -- states the loop instead of listing it, and the ring reads as what it is: the town that grew up around
 -- a hole in the ground.
 --
--- The slot over the Gate was deliberately EMPTY -- the approach, the avenue the plaza opens onto, and
--- the next card's home, so the city could grow once more without the layout moving. THE WARD IS THAT
--- CARD (data/buildings/the_ward.lua), and it arrives on the first wound rather than on day one, which
--- is the growth that slot was held for. The ring is full now: a tenth card needs a new slot, not a
--- spare one, and it must not simply borrow a neighbour's -- see the last line of this block.
+-- SEVEN MORE CARDS ON THIS BOARD WOULD ONCE HAVE BEEN A WALL OF PLATES, and that reading is what put
+-- the class shelves on a square of their own twice. It stopped being true when the rooms folded into
+-- them: a house is no longer "a shelf you browse" but a shopkeeper with a desk, and what is behind each
+-- desk is different at every door -- a bone set, a supper, a bench, a reading, a match, the town's own
+-- counter. Seven of the same thing is a wall; seven of seven things is a city.
 --
--- THE HOUSES: the second board, and the seven class shelves standing round it. Four over a centred
--- three. Different question from the plaza, different shape.
+-- SO THE SECOND BOARD IS GONE, and with it the card that opened it and the state that drew it. The
+-- growth the city had -- a plate arriving on the morning it has a job -- did not go anywhere: it moved
+-- inside the doors, where a ROOM arrives on the trip that gives it a job (models/offer.lua). A house's
+-- plate appears when the first of its rooms does.
 --
---     The Colosseum  The Bastion  The Cathedral  Hunter's Lodge
---        The Undercroft  The Arcanum  The Crucible
---
--- EACH ONE OPENS ON ITS CLASS, at level 1 in any body on the roster (`unlockClassLevel`). That is the
--- gate the seven were always missing. They were shut behind quest counts that never moved, then behind
--- a circle of the descent, then deleted outright when the houses became classes -- and deleting them
--- left the ladder paying out in nothing but a wider pool for the Market's daily roll. A class level is
--- what a body EARNS by playing that class, so the door opens for the work that will shop through it,
--- and the seven arrive one at a time in whatever order this company actually plays.
---
--- WHY A BOARD OF ITS OWN AND NOT SEVEN MORE CARDS ON THE PLAZA. The plaza is nine slots and holds
--- seven; seven more would be a wall of plates where over half were the same kind of thing -- a shelf
--- you browse -- which is the reading that moved them off it the first time. One card, and behind it
--- the square.
---
--- THE SQUARE IS NEVER AN EMPTY ROOM: its card in the city waits for its first tenant
--- (`unlockAnyHouse`), so a company that has climbed nothing is not pressing a door onto seven locked
--- plates. The six still shut then read as what is LEFT rather than as the whole of what the city sells.
---
--- THE MARKET STAYS ON THE PLAZA, and the two are not the same shop. The Market is the town's own
--- counter -- plain kit and three rolled rows a day, open on the first morning, any class
--- (models/market.lua). A house is one class's whole ladder, never rolled, and it grows as that class
--- does. Day-one shopping and earned shopping, one card each.
+-- Keep new buildings on these coordinates, and keep one card to a slot. Two plates on one rect is
+-- invisible in the data and obvious only on the screen -- and worse than obvious when one of the two
+-- is SHUT, because the locked plate draws last and its "???" prints over the open card's name
+-- (ui/building_map.lua). The Ward shipped on the Houses' slot and read exactly that way.
+-- tests/hub_spec.lua pins it. The ring is FULL at nine: a tenth card needs a room on a desk, not a
+-- slot, and that is now the cheap move rather than the expensive one.
 --
 -- Keep new buildings on these coordinates, and keep one card to a slot. Two plates on one rect is
 -- invisible in the data and obvious only on the screen -- and worse than obvious when one of the two
@@ -75,40 +63,31 @@ Building.GRID = {
         midW = 300,                -- ...and the middle column, which the Gate sets the width of
         gate = { x = 490, y = 280, w = 300, h = 170 }, -- centred on the middle row, and taller than it
     },
-    -- The houses' shopfronts: four across, then three centred under them.
-    houses = {
-        cols = { 40, 350, 660, 970 },
-        colsShort = { 195, 505, 815 }, -- the second row, three wide and centred
-        rows = { 265, 413 },           -- centred in the screen: seven cards is half a board, not a top edge
-        w = 270, h = 130,
-    },
+    -- (GRID.houses held the second board -- four shopfronts over a centred three -- and is gone with it.
+    -- The seven stand in the ring above, one per slot.)
 }
 
--- The boards a card can belong to. `district` on a blueprint names one; absent means "city", so a
--- building that predates the split needs no field.
-Building.DISTRICTS = { city = true, houses = true }
+-- (BUILDING.DISTRICTS IS GONE, AND SO IS THE SECOND BOARD.) A card used to name the board it stood on
+-- with `district`, because the seven class shelves lived behind one plaza card and on a square of their
+-- own. They are back on the plaza -- the rooms folded into them, so the seven are no longer seven of the
+-- same thing -- and nine cards fit the lattice exactly: the Rift in the middle, the Armory, and the
+-- seven houses around them. One board, so nothing has to say which.
 
--- Is this house's class climbed far enough to open its door? The class is read off the VENDOR the card
--- names (data/vendors/<id>.lua's `class`) rather than repeated on the building, because a shelf already
--- belongs to exactly one class and two copies of that fact is one of them going stale.
+-- THE CLASS LEVEL A HOUSE'S SHELF WAITS FOR, or nil for a card that keeps no shelf.
 --
--- A bare prestige number instead of a player answers "shut", as every player-needing gate here does:
--- the callers that pass a number are asking about a door that has nothing to ask a player.
-local function houseOpen(def, player)
-    local need = def.unlockClassLevel
-    if not need then return true end
-    local vdef = def.vendor and require("models.vendor").defs[def.vendor]
-    local class = vdef and vdef.class
-    if not (class and player) then return false end
-    return require("models.class").rosterLevel(player, class) >= need
-end
-
--- Has any of the seven opened? What the card out in the city waits for.
-function Building.anyHouseOpen(player)
-    for _, def in pairs(Building.defs) do
-        if def.unlockClassLevel and houseOpen(def, player) then return true end
+-- It used to be `unlockClassLevel` on the blueprint and it used to gate the DOOR. It gates the shelf
+-- alone now: a house is a shopkeeper with a desk, and the shelf is one line on it (models/offer.lua).
+-- The Cathedral is the case that forced the move -- Rowan is carried up broken at the end of Act 0, so a
+-- player needs that door on the first morning, and there is no priest in the world yet. A door gated on
+-- its shelf would have put the only bone-setting in the game behind a class nobody has.
+--
+-- Read off the shelf offer's own gate rather than a second field, so the number the card quotes and the
+-- number the desk enforces cannot drift apart.
+local function shelfNeed(def)
+    for _, offer in ipairs(def.offers or {}) do
+        if offer.gate and offer.gate.classLevel then return offer.gate.classLevel end
     end
-    return false
+    return nil
 end
 
 -- THE HOUSE THAT TEACHES A CLASS -- its card in the square, whether its door is open for this player,
@@ -116,22 +95,30 @@ end
 -- reading (ui/class_editor.lua), and that button needs all three: where to go, whether it may, and what
 -- to say when it may not.
 --
--- Asked of the CLASS and answered through the vendor, the same hop houseOpen takes: a shelf belongs to
--- exactly one class (data/vendors/<id>.lua) and the card names the shelf, so the class is never written
--- on the building. Nil when the class has no house, which is every subclass and crossing -- ask this
--- about the ROOT the class hangs off, not about the class itself.
+-- Asked of the CLASS and answered through the vendor: a shelf belongs to exactly one class
+-- (data/vendors/<id>.lua) and the card names the shelf, so the class is never written on the building.
+-- Nil when the class has no house, which is every subclass and crossing -- ask this about the ROOT the
+-- class hangs off, not about the class itself.
+--
+-- `open` IS ABOUT THE SHELF, NOT THE DOOR, and since the fold those are two questions. The door is open
+-- as soon as ANY room behind it is (models/offer.lua's Offer.any) -- the Cathedral stands open on the
+-- first morning for its mending -- while the shelf waits for the class. What the trainer button needs is
+-- the shelf's answer: it is offering to walk a body to the counter that teaches its class, and that
+-- counter is the line the class level buys.
 function Building.houseForClass(class, player)
     if not class then return nil end
     local vendorId = require("models.vendor").forClass(class)
     if not vendorId then return nil end
     for id, def in pairs(Building.defs) do
         if def.vendor == vendorId then
+            local need = shelfNeed(def)
             return {
                 id = id,
                 name = def.name,
                 class = class,
-                need = def.unlockClassLevel,
-                open = houseOpen(def, player),
+                need = need,
+                open = require("models.offer").open(player, need and { classLevel = need } or nil,
+                                                   def.vendor),
             }
         end
     end
@@ -183,8 +170,9 @@ end
 -- the rest arrives on the expedition that gives it a job. The player learns a building at a time, and
 -- learns each one at the moment it is useful.
 --
--- `opts.district` picks which board is being laid out -- "city" (the default) or "houses". The class
--- shelves stand behind one card and on a board of their own; see Building.DISTRICTS.
+-- (`opts.district` picked which of two boards was being laid out. There is one board -- see the header
+-- -- so it has nothing left to choose between and is gone with the square it named. `opts` survives for
+-- the next option that needs it.)
 -- (`opts.includeRetired` listed the parked doors too, for specs pinning the unlock rules of buildings
 -- the city no longer showed. Nothing is parked any more -- the one retired door was the Quest Board and
 -- it is deleted -- so the option has no doors to reveal and no caller. It is gone with the table.)
@@ -199,30 +187,27 @@ function Building.list(playerOrPrestige, opts)
         local locked = prestige < (def.unlockPrestige or 1)
         -- The Quest Board was the campaign's front door -- seven houses' work over forty days -- and the
         -- city has one door now, and it goes down (data/buildings/the_gate.lua). It was hidden by a
-        -- RETIRED table for a while and is deleted outright now, so this filter is districts alone.
-        local district = def.district or "city"
-        if district == ((opts and opts.district) or "city") then
-            -- THE HOUSES' GATE, and the fourth thing tried in that slot. It was the campaign's
-            -- completed-quest count (which sat at zero forever, so the seven shops read "? (prestige 2)"
-            -- and could never open), then the descent's own circles (which put a class's whole shelf
-            -- behind fourteen floors in a different order every run, so the only way to equip a class
-            -- was to go deeper than its gear would have carried you), then nothing at all -- the doors
-            -- were deleted when the houses became classes.
+        -- RETIRED table for a while and is deleted outright now, and the district filter that stood here
+        -- after it went with the second board. Nothing filters; every card in the registry is on the one
+        -- plaza.
+        do
+            -- A DOOR IS OPEN WHEN ANY ROOM BEHIND IT IS (models/offer.lua).
             --
-            -- It is the CLASS LEVEL now, and that is the shape the first three were reaching for: a
-            -- class is something a body climbs (Class.classLevel), so the deed that opens a shelf is the
-            -- deed that will shop at it. Level 1 in any body on the roster -- the company reading, as
-            -- every company-facing question about the ladder takes (Class.rosterLevel) -- because one
-            -- body committing is what a house is for and four bodies dabbling is not.
-            if def.unlockClassLevel then
-                locked = locked or not houseOpen(def, player)
-            end
-            -- ...and the card in the city that all seven stand behind, which arrives with whichever of
-            -- them opens first: a door onto a square of locked plates teaches one sentence ("come back
-            -- when you have climbed something") that the card says better by not being there.
-            if def.unlockAnyHouse then
-                locked = locked or not Building.anyHouseOpen(player)
-            end
+            -- This is the gate the fold turned every house's `unlockClassLevel` into, and the reason it
+            -- had to change is the Cathedral: Rowan is carried up broken at the end of Act 0, the only
+            -- bone-setting in the game is a line on that desk, and on the first morning there is no
+            -- priest in the world. A door gated on its shelf would have hidden the room the player was
+            -- holding the problem for.
+            --
+            -- SO THE CITY STILL GROWS ON EXACTLY THE SAME SCHEDULE, it just grows INSIDE doors. Each
+            -- room kept the gate its card had -- the mending on the first body carried up broken, the
+            -- supper on the second floor, the bench on the fourth, the reading on the first thing
+            -- nobody can read -- and a house's plate appears the morning the first of its rooms does.
+            -- What arrives is a line on a desk rather than a plate on the board.
+            --
+            -- A building with no offers answers open, so the Armory and the Rift are unaffected: they
+            -- are doors onto one thing each and keep their own gates below.
+            locked = locked or not require("models.offer").any(player, def)
             if def.unlockQuest then
                 locked = locked or not (player and Player.hasCompleted(player, def.unlockQuest))
             end
@@ -267,10 +252,16 @@ function Building.list(playerOrPrestige, opts)
                 unlockPrestige = def.unlockPrestige or 1,
                 unlockQuest = def.unlockQuest, -- quest id that opens this door, or nil
                 unlockDepth = def.unlockDepth, -- floor this company must have stood on, or nil
-                district = district, -- "city" or "houses"; which board this card belongs to
-                -- The class level this shelf waits for, or nil. Carried onto the entry so a board can
-                -- say what a shut plate is waiting for without re-reading the blueprint.
-                unlockClassLevel = def.unlockClassLevel,
+                -- THE DESK AND THE ROOMS BEHIND IT (models/counter.lua, models/offer.lua). `counter` is
+                -- the scene this house plays on the way in, ending on the desk that names its rooms;
+                -- `offers` is what those rooms are and what each one waits for. Carried onto the entry
+                -- so the city can ask a card what it holds without re-reading the blueprint.
+                counter = def.counter,
+                offers = def.offers,
+                -- The class level this house's SHELF waits for, or nil -- so a board can say what a card
+                -- is still holding back without re-reading the offer list. Not a door gate any more:
+                -- see the gate block above and shelfNeed.
+                unlockClassLevel = shelfNeed(def),
                 -- WHAT THIS DOOR IS FOR, in ONE short sentence. It is the second half of the coach
                 -- bubble the city puts on a card it has just grown (states/hub.lua's doorText) -- so it
                 -- is not flavour, it is the whole of what the player is told about a building before
@@ -378,10 +369,8 @@ end
 function Building.seedSeen(player)
     if not player then return end
     player.seenDoors = player.seenDoors or {}
-    for district in pairs(Building.DISTRICTS) do
-        for _, b in ipairs(Building.list(player, { district = district })) do
-            if not b.locked then player.seenDoors[b.id] = true end
-        end
+    for _, b in ipairs(Building.list(player)) do
+        if not b.locked then player.seenDoors[b.id] = true end
     end
 end
 
@@ -394,7 +383,7 @@ end
 function Building.unannounced(player)
     if not Building.seeded(player) then return {} end
     local new = {}
-    for _, b in ipairs(Building.list(player, { district = "city" })) do
+    for _, b in ipairs(Building.list(player)) do
         if not b.locked and not Building.seenDoor(player, b.id) then new[#new + 1] = b end
     end
     return new

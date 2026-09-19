@@ -739,6 +739,58 @@ return {
         end,
     },
     {
+        -- A MARK IS ONLY EVER PUT ON SOMETHING THE PLAYER CAN WALK IN AND SEE, which is the rule
+        -- models/market.lua's Market.hasUnread was cut for and which the seven houses were still
+        -- breaking. Every ware the company carries out of the rift is marked (Player.markFound) and
+        -- most of them sit rungs above where that company is standing; the shop draws no unseen dot on
+        -- a row it cannot sell, on purpose (ui/panels/shop.lua). So a door that asked only "does this
+        -- house SELL a marked ware" lit for rows the rack will not mark -- the player read the whole
+        -- shelf and walked out with the plate still burning, which is what a real save looked like.
+        --
+        -- The gates are the fix and the second half is why they are a gate on the READ and not on the
+        -- write: the mark keeps, and lights the door on the day the ladder reaches the row.
+        name = "a marked ware the shelf will not sell does not dot its house's door, until the rung opens",
+        fn = function()
+            local p = playerAt(1)
+            p.newStock = {}
+
+            -- Measured off the shelf rather than authored: which ids are shut at the opening rung is a
+            -- fact about the catalogue's grades, and a hand-named one goes stale on the next re-tier.
+            local vendorId, shut, open
+            for _, id in ipairs({ "colosseum", "bastion", "cathedral", "arcanum", "undercroft",
+                                  "hunters_lodge", "alchemist" }) do
+                local gates = Quest.shelfGates(p, id)
+                local s, o
+                for _, row in ipairs(Vendor.stock(id, gates.rung, p.recipes, gates.unlocked,
+                        gates.levels, gates.found)) do
+                    if row.lockReason == "rung" then s = s or row.id
+                    elseif not row.locked then o = o or row.id end
+                end
+                if s and o then vendorId, shut, open = id, s, o; break end
+            end
+            assert(vendorId, "some house deals one ware at the opening rung and holds another back")
+
+            Player.markNew(p, Player.NEW_STOCK, shut)
+            assert(not Vendor.hasMarkedStock(vendorId, p.newStock, Quest.shelfGates(p, vendorId)),
+                shut .. " is shut on " .. vendorId .. "'s rack, so its door must not claim news the "
+                .. "shelf will not show a mark on")
+
+            Player.markNew(p, Player.NEW_STOCK, open)
+            assert(Vendor.hasMarkedStock(vendorId, p.newStock, Quest.shelfGates(p, vendorId)),
+                "a marked ware that IS out dots the door")
+            Player.seeNew(p, Player.NEW_STOCK, open)
+            assert(not Vendor.hasMarkedStock(vendorId, p.newStock, Quest.shelfGates(p, vendorId)),
+                "and reading that row puts it out, with the shut one still marked behind it")
+
+            -- THE MARK KEPT. Same ledger, same ware, a shelf whose rung has climbed past it: the dot
+            -- comes back on -- which is the only announcement a band opened by a class level gets.
+            local gates = Quest.shelfGates(p, vendorId)
+            gates.rung = Class.CLASS_LEVEL_CAP
+            assert(Vendor.hasMarkedStock(vendorId, p.newStock, gates),
+                shut .. " was never forgotten -- the rung opening is what lights the door")
+        end,
+    },
+    {
         name = "a stash mark dots the Armory's door, and only while the item is still in the stash",
         fn = function()
             local p = Player.new()

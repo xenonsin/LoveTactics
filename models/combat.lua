@@ -271,6 +271,49 @@ function Combat.unitGap(a, b)
     return best or 0
 end
 
+-- ---------------------------------------------------------------------------
+-- Reach from a stand tile the body has not walked to yet. A PLAN measures from a candidate anchor,
+-- and an anchor is only the top-left corner of the body that would be standing there -- so the pair
+-- below are the planning-time forms of unitGap/nearestCell and unitHasSight, and every legality gate
+-- the enemy planner runs over a candidate stand tile has to use them. Measuring a wide body from its
+-- bare anchor reads a foe under its far corner as several tiles away: a 2×2 ogre offered every stand
+-- tile on the board found reach from exactly two of them (left of and above its top-left cell, both
+-- of which its own bulk does not cover), declined to punch anything standing anywhere else along its
+-- flank, and shambled. For a 1×1 unit both collapse to the plain point math they replace.
+-- ---------------------------------------------------------------------------
+
+-- The gap between the body `unit` would occupy at anchor (ax, ay) and `target`'s nearest cell, plus
+-- that cell -- what to aim at, so Combat.useItem's range re-check (Combat.cellGap from the aim cell
+-- to the arrived body) agrees with whatever planned the shot. Ties break in cell order, as
+-- Combat.nearestCell does, so two machines planning one fight aim at the same tile.
+function Combat.reachFrom(unit, ax, ay, target)
+    local body = { x = ax, y = ay, w = unit.w or 1, h = unit.h or 1 }
+    local best, bx, by
+    for _, c in ipairs(Combat.unitCells(target)) do
+        local d = Combat.cellGap(c.x, c.y, body)
+        if not best or d < best then best, bx, by = d, c.x, c.y end
+    end
+    return best or 0, bx, by
+end
+
+-- The same borrowing spent on a POINT rather than a body: the gap from the body `unit` would occupy
+-- at (ax, ay) to the single cell (tx, ty) -- a wall, a prop, a trap, anything with one tile and no
+-- footprint of its own.
+function Combat.pointReachFrom(unit, ax, ay, tx, ty)
+    return Combat.cellGap(tx, ty, { x = ax, y = ay, w = unit.w or 1, h = unit.h or 1 })
+end
+
+-- Would the body `unit` occupies at anchor (ax, ay) have a clear line to (tx, ty)? Combat.unitHasSight
+-- asked of a position not yet taken: the union over the footprint, because a wide body shoots from
+-- whichever part of it can see -- and because useItem's own sight gate is that union, so a planner
+-- testing the anchor alone refuses shots the cast would have allowed.
+function Combat.sightFrom(combat, unit, ax, ay, tx, ty)
+    for _, c in ipairs(Combat.cellsAt(unit.w or 1, unit.h or 1, ax, ay)) do
+        if Combat.hasLineOfSight(combat, c.x, c.y, tx, ty) then return true end
+    end
+    return false
+end
+
 -- Can a w×h body come to REST at anchor (ax, ay)? Every covered cell must be on the board, walkable,
 -- clear of blocking objects, and clear of any OTHER unit (`ignoreUnit`'s own cells don't count, so a
 -- unit tests tiles it already stands on as free for itself). This is the "footing" predicate shared
@@ -8476,6 +8519,11 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
             if x and y then userRestsX, userRestsY = Combat.chargeTile(combat, unit, x, y, distance) end
             return 0
         end,
+        -- The same walk, ASKED rather than performed (see the live table's note). It touches nothing,
+        -- so it does not count as touching the board and it does not move the recorded landing.
+        chargeTile = function(x, y, distance)
+            return Combat.chargeTile(combat, unit, x, y, distance)
+        end,
         steal = function() touchesBoard() return nil end,
         -- Knowledge only, so there is nothing to preview on the timeline -- but pulling a hidden trap
         -- into the light IS something the cast does, so it counts as touching the board.
@@ -8499,6 +8547,14 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
         end,
         reanimate = function() touchesBoard() return false end,
         raise = function() touchesBoard() return previewStandIn() end,
+        -- Putting an item into somebody's grid is a board mutation like any other, and inert here. It
+        -- was MISSING from this table while living on the other two, which is the exact shape of bug
+        -- the note at the tail of this function exists to prevent: an effect that called it faulted
+        -- inside this dry run's pcall, previewAbility returned nil, and the ability's tooltip went
+        -- blank while the planner read it as accomplishing nothing. Nothing had called it from an
+        -- effect yet (fx.grantItem was built for field crafting, which has no preview), so nothing
+        -- had said so.
+        grantItem = function() touchesBoard() return nil end,
         -- Dual Wield's preview: a sub-strike shows the weapon's post-mitigation damage on the target,
         -- so the tooltip totals the swings. setSpeed is inert here (the timeline isn't previewed).
         strikeWith = function(weapon)
@@ -8875,6 +8931,11 @@ function Combat.abilityOutput(unit, item)
         -- Tile-aimed, but the same tiles closed: the grade weighs a charge per tile of lane it takes
         -- (models/grade.lua), and what it was pointed at does not change how far it runs.
         chargeInto = function(_, _, distance) out.charge = distance or 1; return 0 end,
+        -- No board, so no lane to walk and nothing to be stopped by: the stand-in rests where it
+        -- stands. An effect asking this in order to branch on a collision reads "went nowhere" -- which
+        -- is why the one that does (ability_gore.lua) gates that branch on having a direction at all,
+        -- and the grader's stand-in aims its own origin.
+        chargeTile = function() return userProxy.x or 0, userProxy.y or 0 end,
         steal = function() out.steal = true; return nil end,
         -- Record that the ability lays a foe's kit open, so the tooltip can name it (like `steal`).
         reveal = function() out.reveal = true end,
@@ -11216,6 +11277,16 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
         -- move -- fx.charge above needs a body, and open ground is exactly what it cannot be pointed at.
         chargeInto = function(x, y, distance)
             return Combat.chargeInto(combat, unit, x, y, distance)
+        end,
+        -- WHERE A RUSH WOULD COME TO REST, moving nobody (Combat.chargeTile, chargeInto's pure twin).
+        -- Read-only, so all three fx tables can answer it truthfully and an effect that asks "will this
+        -- run be stopped short?" gets the SAME answer under the damage preview as it does live. That
+        -- matters because a charge's return value cannot be trusted for the question: every dry-run
+        -- context returns 0 tiles advanced, so an effect branching on it would forecast a collision on
+        -- every cast and telegraph a stumble that is not coming (ability_gore.lua branches on exactly
+        -- this to decide whether the charger hits stone).
+        chargeTile = function(x, y, distance)
+            return Combat.chargeTile(combat, unit, x, y, distance)
         end,
         -- FIELD CRAFTING (S4): put a freshly-made item into a unit's grid. Marked `ephemeral`, so it is
         -- real for this fight -- it stacks, casts, previews and can be stolen exactly like bought stock

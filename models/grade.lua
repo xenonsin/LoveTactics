@@ -410,6 +410,7 @@ Grade.TRAIT_GRADE = {
     -- dies in a doorway and nothing at all to one that dies in the open -- and the bearer is never
     -- around to use it.
     trait_cinderfall =                  0.5,  -- Cinderfall
+    trait_curse_bearer =                0.5,  -- Curse-Bearer: Cinderfall's twin, and weighed as it
     -- Heals as it acts, but only while standing in fire. Enormous on the one board that fills itself
     -- with fire and worth exactly zero anywhere else, so it grades near the conditional heals rather
     -- than near the unconditional ones.

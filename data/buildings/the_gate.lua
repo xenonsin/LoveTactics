@@ -10,7 +10,8 @@
 --
 -- THE PLAYER IS TOLD THE NAME ONCE, by Rowan, in the lines that send them here ("what work The Rift is
 -- offering" -- conversation_prologue_arrival). A place the fiction never names is a place the
--- player calls by whatever the card says, so those lines and this field must always agree. It used to be
+-- player calls by whatever the card says, so those lines and this field must always agree -- the card
+-- drops the article, as every plaza card does, and her line keeps it. It used to be
 -- the sponsor's line, back when she intercepted the party in the street, and then the city guard's; the
 -- sponsor meets them AT the stair now, so somebody who already knows the way has to name it first.
 --
@@ -33,6 +34,13 @@
 -- alongside floors descended, deliberately -- that is what lets a save made while the board was the game
 -- keep the city it had already earned.
 --
+-- THAT PARK WAS LIFTED AND RE-APPLIED, and the paragraph above survived both without changing a word,
+-- which is exactly how a stale note reads live. The board came back in 3d155af9 as side work on the
+-- houses' square, and was parked again on 2026-09-18 for a reason the distance-run argument above never
+-- made: all seven of its postings are `quest_<vendor>_slot_01`, the same blueprints models/errand.lua
+-- seats on a floor of the rift -- and taking one in the city handed over that house's companion without
+-- a floor being walked. See docs/bounties.md.
+--
 -- `state` rather than `panel`: the rift is a whole screen (states/gate.lua -- the inn, the store, the
 -- stair down), not a pop-up over the city. The Dueling Grounds already opens a state this
 -- way, so the hub needed nothing new.
@@ -46,7 +54,7 @@
 -- with the stair first among them says the wrong thing. Around it, they read as what they are: a town
 -- that grew up against a hole in the ground.
 return {
-    name = "The Rift",
+    name = "Rift",
     order = 1,
     x = 490,
     y = 280,
