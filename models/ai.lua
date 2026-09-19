@@ -1180,6 +1180,7 @@ end
 -- Second pass, over the shortlist only: what standing there gets me hit by. Both terms need the
 -- stand tile, which is exactly why they can't ride along in the cheap pass.
 function AI.riskScore(combat, unit, cand, w, threat)
+    local Combat = require("models.combat") -- lazily, as everywhere else here
     local risk = 0
 
     -- What this specific blow, thrown from this specific tile, would earn me in return. A killing
@@ -1201,7 +1202,36 @@ function AI.riskScore(combat, unit, cand, w, threat)
     -- the very zone the game teaches the player to respect.
     local src = threat[cand.x .. "," .. cand.y]
     if src then
-        risk = risk + #src * w.EXPOSURE
+        -- ...DISCOUNTED BY THE COVER UNDERFOOT, which is the term that finally lets the enemy take
+        -- ground. Everything above counts WHO can reach this tile; nothing counted how likely any of
+        -- them is to connect once they do -- so terrain avoid moved the AI's choice of TARGET (the
+        -- cheap pass already weighs Combat.landChance) and never its choice of where to stand. The
+        -- forest was a tile only the player ever used, which makes a positional system a UI feature
+        -- rather than a mechanic: in the game this one takes its accuracy model from, the AI camps the
+        -- fort.
+        --
+        -- Expressed as a fraction of the exposure rather than a bonus of its own, because that is what
+        -- cover IS -- it does not make a tile safe, it makes every threat already counted there land
+        -- less often. A forest (+20) is worth a fifth off the whole exposure term; a hill (+30) very
+        -- nearly a third. And it cuts both ways honestly: the mire's -10 makes a threatened tile read
+        -- WORSE than open ground, so the same line that walks a body into the trees walks it around
+        -- the bog.
+        --
+        -- Asked of the candidate tile with the unit in hand, so a flier is correctly told it gets
+        -- nothing for hovering over a wood (Combat.fieldBonus).
+        --
+        -- AND ONLY ON A BOARD THAT ROLLS. Cover is worth precisely nothing where nothing can miss, so
+        -- walking into a wood on such a board is not caution, it is turns spent for no return -- which
+        -- is a real error on real content (the prologue's village lesson sets `alwaysHits` so a
+        -- scripted click cannot whiff) and not merely a courtesy to the suite. It happens to be the
+        -- suite's world too, since tests/runner.lua pins Combat.FORCE_HIT for every case, and that is
+        -- worth saying out loud: it means NO ORDINARY SPEC EXERCISES THIS TERM. tests/ai_spec.lua
+        -- clears the flag for one case that does, the same way tests/accuracy_spec.lua has to for the
+        -- dice themselves -- without it the whole branch would sit outside the suite's reachable
+        -- domain and be green for the wrong reason.
+        local cover = Combat.boardRolls(combat)
+            and Combat.terrainAvoid(combat, cand.x, cand.y, unit) or 0
+        risk = risk + #src * w.EXPOSURE * math.max(0, 1 - cover / 100)
 
         -- STANDOFF: how close the nearest threat actually is, and the term that keeps a kiter kiting
         -- when there is nowhere safe left to stand.
@@ -1416,10 +1446,22 @@ local function fallbackMove(ctx, mode)
             local d = gapTo(node.x, node.y)
             local bias = Hazard.tileBias(combat, node.x, node.y, unit.side)
                 + Prop.tileBias(combat, node.x, node.y)
+            -- COVER BREAKS THE TIE, one rung above "fewer steps". This walk has no blow attached to
+            -- it -- it is what a body does when no rule produced an action -- and it was choosing
+            -- between equally-close tiles on hazard bias and then on tidiness, which is how an archer
+            -- with nothing in range ends its turn on open dirt beside a wood. A posture that holds
+            -- ground should hold the BEST ground it can reach; the rung is below distance and hazard
+            -- on purpose, since cover is worth nothing on a tile that gave up the approach or stands
+            -- in fire -- and worth nothing at all on a board that never rolls (Combat.boardRolls).
+            local cover = Combat.boardRolls(combat)
+                and Combat.terrainAvoid(combat, node.x, node.y, unit) or 0
             if not best or d < best.d
                 or (d == best.d and bias > best.bias)
-                or (d == best.d and bias == best.bias and node.steps < best.steps) then
-                best = { x = node.x, y = node.y, d = d, bias = bias, steps = node.steps }
+                or (d == best.d and bias == best.bias and cover > best.cover)
+                or (d == best.d and bias == best.bias and cover == best.cover
+                    and node.steps < best.steps) then
+                best = { x = node.x, y = node.y, d = d, bias = bias, cover = cover,
+                         steps = node.steps }
             end
         end
     end

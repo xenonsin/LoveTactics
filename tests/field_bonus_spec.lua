@@ -5,6 +5,8 @@
 
 local Character = require("models.character")
 local Combat = require("models.combat")
+local Terrain = require("models.terrain")
+local TileTooltip = require("ui.tile_tooltip")
 
 -- Flat all-ground arena; `tweaks` is a list of { x, y, bonus, moveCost } per-tile overrides so a
 -- test can drop a range-granting (high-ground) tile onto a specific cell.
@@ -174,6 +176,131 @@ return {
             local plan = Combat.planEnemyAction(c, c.units[2])
             assert(plan.item and not plan.move, "high ground lets it fire without repositioning")
             assert(plan.tx == 5 and plan.ty == 1, "it targets the 4-tile-away knight")
+        end,
+    },
+
+    -- -----------------------------------------------------------------------
+    -- WHAT A TILE IS ALLOWED TO PROMISE
+    -- -----------------------------------------------------------------------
+    --
+    -- The bag takes any key and, for most of this file's life, exactly TWO of them were ever read --
+    -- while ui/tile_tooltip.lua carried its own list of SEVEN and printed whatever was non-zero. A tile
+    -- authored `bonus = { defense = 2 }` therefore displayed "+2 Defense bonus" to the player and moved
+    -- no number in the fight. Nothing had gone wrong only because nothing authored those keys, which is
+    -- the definition of a fault waiting for its first author. These three close it from every side.
+    {
+        name = "every bonus a terrain tile authors is a key something actually reads",
+        fn = function()
+            local bad = {}
+            for name, def in pairs(Terrain.TYPES) do
+                for key in pairs(def.bonus or {}) do
+                    if not Terrain.readsBonus(key) then
+                        bad[#bad + 1] = name .. "." .. key
+                    end
+                end
+            end
+            table.sort(bad)
+            assert(#bad == 0, "tiles promise bonuses no read site honours: " .. table.concat(bad, ", "))
+        end,
+    },
+    {
+        name = "every declared bonus key has a word for the player and a named read site",
+        fn = function()
+            assert(#Terrain.BONUS_KEYS > 0, "the declaration cannot be empty")
+            for _, entry in ipairs(Terrain.BONUS_KEYS) do
+                assert(entry.read and entry.read ~= "",
+                    entry.key .. " is declared legal without naming what reads it")
+                -- ...and the other direction. A key with no label falls through to titleCase and the
+                -- player is shown a FIELD NAME -- "Avoid bonus" where the row should read "Cover
+                -- (harder to hit)". The tooltip owns the words; this is what stops it losing one.
+                assert(TileTooltip.BONUS_LABEL[entry.key],
+                    entry.key .. " has no label in ui/tile_tooltip.lua, so the tile would name the "
+                    .. "field rather than describe it")
+            end
+        end,
+    },
+    {
+        name = "the tooltip prints a declared bonus, and prints it in the terrain table's order",
+        fn = function()
+            -- The redoubt is the one tile carrying two of them at once, which makes it the only case
+            -- that can see an ordering bug at all.
+            local cell = { type = "redoubt", walkable = true, moveCost = 2, sightCost = 0 }
+            local blocks = TileTooltip.blocks({ cell = cell, bonus = { avoid = 10, defense = 1 } })
+            local seen = {}
+            for _, b in ipairs(blocks) do
+                if b.kind == "stat" and b.label == TileTooltip.BONUS_LABEL.avoid then
+                    seen[#seen + 1] = "avoid"
+                    assert(b.value == "+10%", "cover is quoted as a percentage, saw " .. tostring(b.value))
+                elseif b.kind == "stat" and b.label == TileTooltip.BONUS_LABEL.defense then
+                    seen[#seen + 1] = "defense"
+                    assert(b.value == "+1", "armour is a plain point, saw " .. tostring(b.value))
+                end
+            end
+            assert(#seen == 2, "the box should show both of the redoubt's bonuses, saw " .. #seen)
+            assert(seen[1] == "avoid" and seen[2] == "defense",
+                "cover leads, as Terrain.BONUS_KEYS orders it")
+        end,
+    },
+
+    -- -----------------------------------------------------------------------
+    -- THE GROUND REACHING A STAT, AND THE BODY THAT IS NOT ON IT
+    -- -----------------------------------------------------------------------
+    {
+        name = "a tile's defence bonus reaches flatStat through the arrival stamp",
+        fn = function()
+            local c = Combat.new(arena(4, 1, { { x = 3, y = 1, bonus = { defense = 1 } } }),
+                { unit("character_rowan", 1, 1) }, {})
+            local u = c.units[1]
+            local open = Combat.flatStat(u, "defense")
+
+            -- Walking onto the tile re-banks the ground (Combat.enterTile -> stampField), so the very
+            -- next read of the stat carries it. Moved by hand rather than by a route so the case is
+            -- about the stamp and not about the walk.
+            u.x, u.y = 3, 1
+            Combat.enterTile(c, u, 3, 1, "walk", 1, 1)
+            assert(Combat.flatStat(u, "defense") == open + 1,
+                "standing on the work should thicken the armour by its one point")
+
+            -- ...and stepping off gives it back. A stamp that only ever added would be worse than no
+            -- stamp at all: the number would be right once and wrong forever after.
+            u.x, u.y = 1, 1
+            Combat.enterTile(c, u, 1, 1, "walk", 3, 1)
+            assert(Combat.flatStat(u, "defense") == open,
+                "open ground gives nothing back, and takes the parapet with it")
+        end,
+    },
+    {
+        name = "a flier takes nothing from the ground, and everything from a placed object",
+        fn = function()
+            local c = Combat.new(arena(4, 1, {
+                { x = 2, y = 1, bonus = { avoid = 20, range = 1, defense = 1 } },
+            }), { unit("character_rowan", 2, 1) }, {})
+            local u = c.units[1]
+
+            -- On foot: the tile answers for all three.
+            assert(Combat.fieldBonus(c, 2, 1, u).avoid == 20, "a walking body is IN the wood")
+            assert(Combat.terrainAvoid(c, 2, 1, u) == 20, "...and its avoid reads the same")
+
+            -- Airborne. Nothing here fakes the tag: Combat.isFlying scans the grid, so the case puts a
+            -- real flying item in it, which is the same thing the Zephyr Striders do.
+            u.char.inventory[#u.char.inventory + 1] = { id = "__spec_wings", name = "Spec Wings",
+                                                        tags = { "flying" } }
+            assert(Combat.isFlying(u), "the fixture has to actually fly for this case to mean anything")
+            assert((Combat.fieldBonus(c, 2, 1, u).avoid or 0) == 0,
+                "a body over the wood is not in it")
+            assert((Combat.fieldBonus(c, 2, 1, u).range or 0) == 0,
+                "...and gets no vantage from a rise it never climbed")
+            assert(Combat.terrainAvoid(c, 2, 1, u) == 0, "the avoid read agrees with the bag")
+
+            -- The tile still answers for anybody ELSE, and for a caller describing bare ground.
+            assert(Combat.fieldBonus(c, 2, 1).avoid == 20,
+                "asked about the ground rather than a body, the tile is still a wood")
+
+            -- A placed object is at the body's own altitude, so it survives the rule. Without this the
+            -- flier clause would quietly gut every future zone that grants a positional buff.
+            c.fieldObjects = { { x = 2, y = 1, bonus = { range = 2 } } }
+            assert(Combat.fieldBonus(c, 2, 1, u).range == 2,
+                "a vantage object reaches a flier; the undergrowth does not")
         end,
     },
 }

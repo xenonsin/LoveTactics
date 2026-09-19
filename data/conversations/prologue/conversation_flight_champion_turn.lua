@@ -5,10 +5,15 @@
 -- THE SPOKEN LINES BELOW ARE PLACEHOLDERS. Structure settled, words are the author's.
 -- ============================================================================
 --
--- THE WARNING, PLAYED OVER THE BOARD, ONE TURN BEFORE IT HAPPENS. The Demon Champion crosses 33% health,
--- the stage turns, and it marks Rowan (models/combat.lua's Combat.spendScriptedFell). This plays at the next
--- turn boundary (states/battle.lua's beginTurn reads combat.pendingScene), and on the turn after it the
--- Champion shakes, crosses the ground and puts her down.
+-- THE WARNING, PLAYED OVER THE BOARD AS IT HAPPENS. The Demon Champion crosses 33% health, the stage
+-- turns, and it marks Rowan (models/combat.lua's Combat.spendScriptedFell). This is the first thing the
+-- beat plays (states/battle.lua's playScripted claims combat.pendingScene), and the moment it is
+-- dismissed the Champion shakes, crosses the ground and puts her down.
+--
+-- IT USED TO BUY HER A TURN, and the turn was a hole rather than a mercy: the beat was spent at the
+-- Champion's own next turn, and a Stun shoves that turn down the order -- so a party that stunned it and
+-- spent the bought turn killing it won the fight with none of this ever said. The warning is a warning
+-- now, not a window.
 --
 -- SO THE PLAYER IS TOLD TWICE AND STILL CANNOT STOP IT, which is the trade this beat makes and the
 -- reason it is allowed to be unanswerable at all. Everything else unavoidable in this game is

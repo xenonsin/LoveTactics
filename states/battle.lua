@@ -1711,12 +1711,15 @@ end
 -- only the UI overlays are recomputed for the continued turn.
 local function beginTurn(resume)
     -- A LINE THE FIGHT OWES THE PLAYER, PAID AT THE TURN BOUNDARY. `combat.pendingScene` is set by
-    -- whatever happened during the last action -- today only the Demon Champion's last stage
-    -- (models/combat.lua's Combat.spendScriptedFell), which marks Rowan and wants her warned before the
-    -- Champion spends the mark. Played HERE and not where it was raised, for two reasons: a model may
-    -- not reach into the UI, and the blow that raised it is still resolving at that point, so a scene
-    -- opened from there would land on top of its own cause -- the same defect that moved the felling
-    -- out of the phase table in the first place.
+    -- whatever happened during the last action. Played HERE and not where it was raised, because a
+    -- model may not reach into the UI and the blow that raised it is still resolving at that point, so
+    -- a scene opened from there would land on top of its own cause.
+    --
+    -- THE ONE LINE RAISED TODAY NEVER GETS THIS FAR, and that is the shape rather than an accident: the
+    -- Demon Champion's last stage warns Rowan and then fells her in the same beat now, so battle.play-
+    -- Scripted claims the line as that beat's opening and this reader finds nothing owing. It stays
+    -- because the seam is general -- any future line owed by something that is NOT a script waiting to
+    -- play is paid here, at the next boundary, exactly as this one used to be.
     --
     -- Cleared BEFORE the scene opens, and beginTurn re-entered from the callback, so a scene can never
     -- replay itself into a loop. `resume` skips it: a free action is the same turn carrying on, and a
@@ -1730,14 +1733,12 @@ local function beginTurn(resume)
     local current = resume and battle.combat.turn and battle.combat.turn.unit
         or Combat.startTurn(battle.combat)
     battle.current = current
-    -- A SCRIPTED BEAT THE TURN JUST OPENED WITH. Combat.startTurn fires the statuses a unit wears
-    -- before it may act, and one of them resolves a whole story beat on the spot (the Demon Champion's
-    -- last stage, models/combat.lua's Combat.spendScriptedFell) -- the crossing and the felling both, in a
-    -- single call, as the model resolves everything. What it leaves behind is the staging, and this is
-    -- where it is picked up: battle.playScripted holds the cues and plays the beat out in moments the
-    -- player can actually follow. Claimed off the combat so it can never play twice, and read here
-    -- rather than in the AI branch because the body has to be seen crossing BEFORE it takes its
-    -- ordinary turn.
+    -- A SCRIPTED BEAT THE TURN OPENED WITH, which is the backstop half of the pair. Combat.startTurn
+    -- will still spend a mark nothing else reached (models/combat.lua says when and why), and what it
+    -- leaves behind is the same staging resolveAdvance plays after a blow -- so it is picked up here
+    -- too: battle.playScripted holds the cues and plays the beat out in moments the player can follow.
+    -- Claimed off the combat so it can never play twice, and read here rather than in the AI branch
+    -- because the body has to be seen crossing BEFORE it takes its ordinary turn.
     if current and battle.combat.scriptedStrike then
         local staged = battle.combat.scriptedStrike
         battle.combat.scriptedStrike = nil
@@ -2137,6 +2138,22 @@ end
 -- the next unit's turn.
 local function resolveAdvance()
     battle.pendingAdvance = nil
+    -- A SCRIPTED BEAT THE ACTION JUST ARMED AND SPENT. A boss phase crossed inside the blow that has
+    -- just finished playing, and the model resolved the whole of what it triggered there and then
+    -- (models/combat.lua's Combat.spendScriptedFell -- on the threshold, because a beat that waited for
+    -- the marker's own turn was a beat a Stun could take away). What it left behind is the staging, and
+    -- this is the first settled moment the view can play it: the blow that caused it has been read, the
+    -- turn has not been handed on, and nothing else has begun.
+    --
+    -- AHEAD OF THE OBJECTIVE CHECK BELOW, on purpose -- the body the script just put down is part of
+    -- the board the win is judged on -- and it RETURNS: battle.script owns the clock until the last
+    -- beat, which re-enters here to carry the hand-off on from where it left off.
+    if battle.combat and battle.combat.scriptedStrike then
+        local staged = battle.combat.scriptedStrike
+        battle.combat.scriptedStrike = nil
+        battle.playScripted(staged, resolveAdvance)
+        return
+    end
     -- A lesson may owe this fight a body, and it is owed BEFORE the objective is judged. The village
     -- Clear Out kills the last two imps, and an empty enemy side is a victory (Combat.evaluate) -- so
     -- without this the battle would be won a beat before the reinforcement that the remaining three
@@ -2537,38 +2554,68 @@ battle.SCRIPT_BEATS = {
 
 -- Take the staging the model left behind and begin playing it. Everything already raised is drained
 -- and held here, before a frame is drawn, so no part of the beat is seen out of order.
-function battle.playScripted(s)
-    if not (s and s.unit and s.victim) then return end
+--
+-- `onDone` is called once the last beat has played -- how the caller that interrupted a hand-off to
+-- make room for the beat picks it back up (resolveAdvance). Called on the refusal path too, so a
+-- staging that names nobody can never strand the turn it stepped in front of.
+function battle.playScripted(s, onDone)
+    if not (s and s.unit and s.victim) then
+        if onDone then onDone() end
+        return
+    end
+    -- THE BEAT'S OWN CUES CAME WITH IT (`s.fx`), lifted off the queue by the model so the blow that
+    -- armed the beat could not drain them out ahead of it -- see Combat.spendScriptedFell. Anything ELSE
+    -- still sitting in the queue is held alongside them: it was raised in the same instant and belongs
+    -- behind the same curtain, which is what a drain here has always meant.
+    --
+    -- `s.staged` says stageScripted already claimed the beat's own list, frames ago, so that the board
+    -- never drew what was behind it -- claiming it again would leave a hold nothing releases and strand
+    -- her bar full for the rest of the fight. Only what has arrived SINCE is claimed here.
     local held = Combat.drainFx(battle.combat)
     if held then battle.fx:hold(held, 1) end
+    if s.fx and #s.fx > 0 then
+        if not s.staged then battle.fx:hold(s.fx, 1) end
+        if held then
+            for _, e in ipairs(held) do s.fx[#s.fx + 1] = e end
+        end
+        held = s.fx
+    end
     battle.script = {
         unit = s.unit, victim = s.victim, route = s.route,
         fromX = s.fromX or s.unit.x, fromY = s.fromY or s.unit.y,
         windup = s.windup or 0.9, scene = s.scene,
-        held = held, i = 0, t = 0,
+        held = held, i = 0, t = 0, onDone = onDone,
     }
-    -- THE LOG IS A READOUT TOO, and the only one the fx holds cannot reach. The model wrote the whole
-    -- beat into it a moment ago, so without this the panel reads "It is across the ground before she
-    -- can set her feet." and "Rowan is defeated!" while the demon is still standing at the far end of
-    -- the board winding up -- the answer, a full two seconds before the board gets to it. So the tail
-    -- the beat wrote is lifted straight back off (`logAdded`, counted by the status from the end for
-    -- the trim reason it gives) and re-filed under the beats that earn each line: what it did when it
-    -- does it, and what became of her when she drops.
-    local n = s.logAdded or 0
-    if n > 0 and battle.combat.log then
+    -- THE LOG IS A READOUT TOO, and the only one the fx holds cannot reach. The panel would otherwise
+    -- read "It is across the ground before she can set her feet." and "Rowan is defeated!" while the
+    -- demon is still standing at the far end of the board winding up -- the answer, a full two seconds
+    -- before the board gets to it. So the model hands the lines over instead of leaving them in the log
+    -- (`s.log`, lifted in Combat.spendScriptedFell) and they are re-filed here under the beats that earn
+    -- each one: what it did when it does it, and what became of her when she drops.
+    if s.log and #s.log > 0 then
         local cross, fell = {}, {}
-        local lifted = {}
-        for _ = 1, n do
-            local entry = table.remove(battle.combat.log)
-            if not entry then break end
-            table.insert(lifted, 1, entry)
-        end
-        for _, entry in ipairs(lifted) do
+        for _, entry in ipairs(s.log) do
             -- The felling's own lines wait for the body to go down; everything else is the crossing.
             local list = (entry.kind == "death") and fell or cross
             list[#list + 1] = entry
         end
         battle.script.logCross, battle.script.logFell = cross, fell
+    end
+    -- THE WARNING OPENS THE BEAT. `combat.pendingScene` is the line the phase queued as it crossed --
+    -- Rowan saying the thing is wrong (data/traits/trait_boss_phases.lua's `mark`). It used to be paid
+    -- at the next turn boundary, which bought the player a whole turn before the beat; the beat is spent
+    -- on the threshold now, so the line is claimed here instead and spoken at the head of it.
+    --
+    -- Claimed only once the fx are drained and held above, never before: the model has ALREADY put her
+    -- at zero, and a scene opened ahead of the hold would freeze the board on a body that is dead in the
+    -- readouts a whole crossing before the blow lands. beginTurn keeps its own reader for the seam's
+    -- general case -- a line owed by anything that is not a script we are about to play.
+    local warn = battle.combat.pendingScene
+    if warn and Conversation.defs[warn] then
+        battle.combat.pendingScene = nil
+        battle.script.t = nil -- the beat clock holds while a scene owns the screen (as beat 5 does)
+        Conversation.play(warn, battle.nextScriptBeat, nil, { deferJoins = true })
+        return
     end
     battle.nextScriptBeat()
 end
@@ -2596,6 +2643,10 @@ function battle.nextScriptBeat()
         battle.replayScriptLog(sc.logCross)
         battle.replayScriptLog(sc.logFell)
         battle.script = nil
+        -- Hand back to whoever stepped aside for the beat (resolveAdvance's hand-off). Read off the
+        -- script BEFORE it is cleared and called AFTER, so the callback finds no script running and
+        -- cannot be handed the one it is the end of.
+        if sc.onDone then sc.onDone() end
         return
     end
     sc.t = beat(sc)
@@ -4171,8 +4222,40 @@ local function moveGhostInitiative(unit)
     return Combat.waitInitiative(battle.combat, unit, Combat.moveInitiative(unit, cost))
 end
 
+-- DRAW THE CURTAIN OVER A SCRIPTED BEAT THE MODEL HAS ALREADY RESOLVED, the frame it resolves it.
+--
+-- The beat is spent on the threshold now (models/combat.lua's Combat.spendScriptedFell), which means it
+-- resolves inside the player's own blow and then WAITS -- for the impact pause, the bars, the floaters --
+-- before resolveAdvance gets to play it. That wait is frames, and for every one of them the board would
+-- read the ending off the model: the demon standing beside her, her card gone from the strip, her bar
+-- empty. It gave the whole beat away before the wind-up started.
+--
+-- So the two things that hide it are done HERE, the moment the staging appears, rather than at the first
+-- beat that needs them:
+--   * the beat's cues are CLAIMED (fx:hold), which is what keeps her drawn, carded and standing;
+--   * the crosser is PINNED where the player last saw it, unbounded, exactly as beat 1 pins it -- and
+--     beat 1 re-arms the same pin from the same tile, so the hand-over is seamless (see pinSlides).
+--
+-- Called from refreshView because refreshView runs at the end of every update, before anything is drawn:
+-- whatever path armed the beat -- a click, an AI turn, a trap sprung mid-walk -- the curtain is down
+-- before the first frame that could show what is behind it. Latched on the staging itself, so it is the
+-- once-only it needs to be no matter how many times it is asked.
+--
+-- On `battle` rather than in a file-scope local for the ceiling reason given at win(): this file is at
+-- Lua's 200-local limit, and one more upvalue here is a syntax error, not a style note.
+function battle.stageScripted()
+    local sc = battle.combat and battle.combat.scriptedStrike
+    if not (sc and battle.fx) or sc.staged then return end
+    sc.staged = true
+    if sc.fx then battle.fx:hold(sc.fx, 1) end
+    if sc.unit and sc.fromX then
+        battle.fx:setSlide(sc.unit, sc.fromX, sc.fromY, battle.SCRIPT_RUN, false, nil, nil, math.huge)
+    end
+end
+
 -- Compute the turn-order preview + battlefield overlays and hand them to the widgets.
 refreshView = function()
+    battle.stageScripted()
     local current = battle.current
     if not current then return end
     local isParty = Combat.isPlayerControlled(current) and not battle.over
@@ -4880,6 +4963,11 @@ refreshView = function()
     end
 
 
+    -- WHETHER THE COVER PIPS MEAN ANYTHING TO THIS BODY. The board marks the ground worth standing on
+    -- inside the move band (BattleMap:drawCoverMarks), and for a flier that ground is worth nothing --
+    -- it takes no bonus from the tile it hovers over (Combat.fieldBonus). Decided once, here, where the
+    -- actor is known, rather than in the two places the move band itself is built.
+    overlays.coverBlind = current and Combat.isFlying(current) or nil
     battle.map:setOverlays(overlays)
 end
 
@@ -6433,10 +6521,24 @@ function battle.draw()
             battle.drawUnitTooltip(i.unit, i.x, i.y, Scale.WIDTH)
         end
     elseif InputMode.touch then
-        -- ...and with nothing pinned, a finger gets NO tooltip at all. The docked column was drawn
-        -- from the last tap and simply stayed there, over the turn order, describing a tile nobody
-        -- had asked about -- "Open Ground. Flat, open field." is the answer for most of the board.
-        -- Optional detail is now asked for or absent, which is the whole point of the hold.
+        -- A FINGER'S AIM IS ITS HOVER. The first press on the board aims and the second commits
+        -- (battle.mousepressed), so between them there IS a tile the player has asked about -- and
+        -- the column is where that question is answered for every other device.
+        --
+        -- It is read off battle.aim, the commit latch itself, and not off battle.mouseX. That was the
+        -- old version of this and the reason it was cut: the raw last-touched POSITION outlives the
+        -- intent that made it, so the column stayed filled from whatever the finger last brushed on
+        -- its way to a button, describing a tile nobody had asked about -- "Open Ground. Flat, open
+        -- field." is the answer for most of the board, and it sat there all fight. An aim is set only
+        -- by a tap that landed on the board and carries the actor it was formed under, so the boxes
+        -- now stand exactly as long as the intent they describe and empty with it: on the commit, on
+        -- the drag that replaces it, and at the turn's end.
+        --
+        -- The armed item is deliberately NOT part of the staleness test it is in mousepressed and in
+        -- pendingTapCell. Those two gate an ACT; this gates a reading, and re-arming does not
+        -- un-ask the question of what is standing on that tile.
+        local a = battle.aim
+        if a and a.unit == battle.current then battle.drawTileTooltipAt(a.x, a.y) end
     elseif battle.windupChooser or battle.spendChooser or battle.bagPanel then
         -- The wind-up / spend / bag modal owns the frame: no board / panel tooltip bleeds behind it.
         -- Suppressing the tooltip is ALL this does -- an early return here would leave draw before the
@@ -6450,11 +6552,22 @@ function battle.draw()
         local b = battle.panel:bottomBarRects()
         local title, lines = CombatPanel.waitNote(battle.current)
         NoteTooltip.draw(title, lines, b.x + b.w / 2, b.y + b.h / 2, Scale.WIDTH - PANEL_W)
-    elseif not InputMode.isMouse() and battle.keySlot then
-        -- Keyboard / pad play: the mouse isn't driving, so nothing is hovered -- float the selected slot's
-        -- tooltip anchored to the slot itself, so a numpad/pad press reads the item the way a hover would.
+    elseif not InputMode.isMouse() then
+        -- KEYBOARD / PAD: THE BOARD CURSOR IS THE HOVER. Without this the entire docked column --
+        -- the ground, the body standing on it, and the forecast for the blow being lined up at it --
+        -- was mouse-only, and a pad player steered an aim onto a tile the game would not describe.
+        -- The deployment phase before the bell already reads its cursor this way
+        -- (ui/deploy_phase.lua's hoverCell); this is the same rule after it.
+        local c = battle.map.cursor
+        battle.drawTileTooltipAt(c.x, c.y)
+        -- ...and the SELECTED SLOT's item tooltip over it, anchored to the slot itself, so a numpad /
+        -- pad press reads the item the way a hover would. Both at once, where a mouse gets one or the
+        -- other: a pointer has a single position and must choose, but a keyboard holds two selections
+        -- side by side -- the tile it is aiming at and the ability it has picked -- and they are
+        -- answered in opposite columns, so neither is in the other's way.
         local cur = battle.current
-        local item = cur and Combat.isPlayerControlled(cur) and cur.char.inventory[battle.keySlot]
+        local item = battle.keySlot and cur and Combat.isPlayerControlled(cur)
+            and cur.char.inventory[battle.keySlot]
         if item then
             local sx, sy, sw, sh = battle.panel:slotRect(battle.keySlot)
             ItemTooltip.draw(item, sx + sw / 2, sy + sh / 2, Scale.WIDTH, cur)
@@ -6670,8 +6783,23 @@ end
 function battle.drawTileTooltip(mx, my)
     local cx, cy = battle.map:cellAt(mx, my)
     if not cx then return end
+    return battle.drawTileTooltipAt(cx, cy)
+end
+
+-- The same readout addressed by CELL instead of by pointer, for the two devices that have no pointer:
+-- the board cursor a keyboard or a pad steers, and the tile a finger's tap is standing on.
+--
+-- Every box below is DOCKED into the left column, so the pointer was never an anchor here -- only a
+-- way of naming a tile. The cell's own centre stands in for it exactly, which is why this is a
+-- forward rather than a second copy of the body.
+function battle.drawTileTooltipAt(cx, cy)
+    if not (battle.map and cx and cy) then return end
     local cell = battle.arena.tiles[cy] and battle.arena.tiles[cy][cx]
     if not cell then return end
+    -- Carried only so an UNDOCKED box would still land somewhere sane (TileTooltip.draw falls back to
+    -- following these when opts.dock is off). Nothing drawn below reads them while the column owns
+    -- the stack, which is every path that reaches here today.
+    local mx, my = battle.map:cellCenter(cx, cy)
     local unit = Combat.unitAt(battle.combat, cx, cy)
     -- Combat.unitAt reports only the LIVING; a fallen body still lies on its tile and has no less to
     -- say. When no living unit stands here, read the two fallen layers directly so a hover over a
@@ -6717,7 +6845,12 @@ function battle.drawTileTooltip(mx, my)
     -- name (ui/terrain_art.lua is learned here, not on the ground). Nil while a tileset sheet is
     -- loaded, and the heading simply goes without.
     local tr, tg, tb = battle.map:tileTone(cx, cy)
-    local terrainInfo = { cell = cell, bonus = Combat.fieldBonus(battle.combat, cx, cy),
+    -- The bag is asked ON BEHALF OF whoever is standing here, because since the flier rule the
+    -- answer depends on the body as well as the ground (Combat.fieldBonus): a Strider hovering over
+    -- a wood is in no cover, and a box that told it otherwise would be promising an evasion the very
+    -- next blow declines to honour. Nil occupant asks about the bare ground, which is the honest
+    -- reading of an empty tile -- what a walking body would get for standing there.
+    local terrainInfo = { cell = cell, bonus = Combat.fieldBonus(battle.combat, cx, cy, unit),
                           tone = tr and { tr, tg, tb } or nil,
                           -- ...and what this ground CALLS that type, when the biome has lent it a
                           -- mark and a word of its own (BattleMap:tileSkin -- a castle's rampart in
@@ -6766,6 +6899,25 @@ function battle.drawTileTooltip(mx, my)
         if action.actor and action.target and action.item then
             action.hit = Combat.hitChance(battle.combat, action.actor, action.target, action.item)
             action.crit = Combat.critChance(battle.combat, action.actor, action.target, action.item)
+            -- ...AND WHAT THE GROUND IS DOING TO IT. The Hit row said 61% and never said that twenty of
+            -- the missing points were the wood the target is standing in, which reads to anyone who has
+            -- not gone looking for docs/accuracy.md as the weapon being bad. A number that does not
+            -- name its decision is a number nobody can act on.
+            --
+            -- Stamped as { amount, terrain } -- the figure and the tile's own name -- so the panel can
+            -- write "-20 - Forest" without reaching for the arena. Nil on open ground, which is most
+            -- tiles and most blows; the row's absence is the statement that the ground is not involved.
+            -- Signed from the ATTACKER's side, which is the side reading it: cover is a minus on your
+            -- hit chance, and the mire's -10 is a plus.
+            local ground = Combat.terrainAvoid(battle.combat, action.target.x, action.target.y,
+                action.target)
+            if ground ~= 0 then
+                local cell = battle.combat.arena.tiles[action.target.y]
+                cell = cell and cell[action.target.x]
+                action.hitGround = { amount = -ground,
+                                     terrain = TileTooltip.terrainName(cell and cell.type,
+                                         battle.map:tileSkin(cell and cell.type)) }
+            end
         end
         local before, after = {}, {}
         for _, c in ipairs(action.counters or {}) do
@@ -7555,10 +7707,13 @@ end
 
 function battle.mousepressed(x, y, button)
     if battle.fadeOut then return end -- see keypressed: the ending takes no input
-    -- A FINGER HAS NO HOVER, so the docked inspector -- terrain, occupant, the exchange -- has nothing
-    -- to follow and stays blank for the whole fight (it reads battle.mouseX). The press IS the hover
-    -- on a touchscreen: pin it here, and the same column that serves a mouse serves a finger, showing
-    -- what was last touched rather than nothing at all.
+    -- A FINGER HAS NO HOVER, so anything that follows the pointer has nothing to follow: pin the
+    -- press as one. This is what lets a finger raise an assayed foe's kit card (battle.peekTarget)
+    -- from the tile or the turn strip it last touched.
+    --
+    -- The docked inspector -- terrain, occupant, the exchange -- does NOT read this any more. A
+    -- position outlives the intent that set it, and the column kept describing whatever the finger
+    -- last brushed; it reads the live aim instead (see the touch branch in battle.draw).
     if InputMode.touch then battle.mouseX, battle.mouseY = x, y end
 
     -- A pinned reading is dismissed by pressing anywhere off it, and that press does NOTHING else --

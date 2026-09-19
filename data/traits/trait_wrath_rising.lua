@@ -46,6 +46,10 @@ return {
     description = "Sharpens with every blow it takes, and worse the nearer it is to death.",
     magnitude = 20, -- the damage the health curve is worth at death's door
     perBlow = 1,    -- and what mere contact is worth, mitigated to nothing or not
+    -- HER RESTRAINT BREAKING IS NOT A REACTION (models/trait.lua's Trait.onDamaged). The curve is a
+    -- function of how much of her is left, and a stun does not put the leash back on -- if anything it
+    -- is the moment she is least in charge of it.
+    notAReaction = true,
     onDamaged = function(ctx)
         local hp = ctx.unit.char.stats.health
         local max = hp.max or 0

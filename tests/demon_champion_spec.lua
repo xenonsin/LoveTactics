@@ -387,15 +387,16 @@ return {
                 "still won by cutting the Champion down")
         end,
     },
-    -- ----- the scripted beat: the Champion marks Rowan, then spends it on its own turn -----
+    -- ----- the scripted beat: the Champion marks Rowan and spends it on the threshold -----
     {
-        -- THE CROSSING MARKS HER AND DOES NOT TOUCH HER, which is the bug this case exists for.
-        -- The felling used to be a response on the phase itself, and a phase crosses inside
-        -- Trait.onDamaged -- inside the resolution of the PLAYER's blow. So the Champion teleported and
-        -- killed somebody while the sword that wounded it was still mid-swing: two animations stacked,
-        -- no turn boundary, and a beat nobody could read. An act may not be dispatched from a hook that
-        -- fires inside somebody else's action.
-        name = "the last stage marks Rowan rather than felling her where the blow landed",
+        -- A TRIGGER FIRES ON ITS THRESHOLD. The blow that crosses the last stage is the blow that pays
+        -- for it: the mark goes on and is spent in the same dispatch, before anything else on the board
+        -- may act. It waited for the Champion's own turn once, and the wait was the bug -- see the stun
+        -- case below, which is the fight that shipped and could be skipped.
+        --
+        -- The two halves are still separate (the response ARMS, the engine ACTS -- data may not act),
+        -- which is why the mark is gone rather than never set: it was armed, and then it was spent.
+        name = "the last stage fells Rowan on the blow that crosses it, not a turn later",
         fn = function()
             local c = Combat.new(arena(8, 8),
                 { unit("character_rowan", 1, 1) },
@@ -403,18 +404,48 @@ return {
             local rowan, boss = c.units[1], c.units[2]
             crossLastStage(c, boss)
 
-            assert(rowan.alive, "the blow that crossed the phase does not also kill somebody")
-            assert(boss.scriptedFell and boss.scriptedFell.victim == "character_rowan",
-                "it has picked her instead")
-            assert(math.max(math.abs(boss.x - rowan.x), math.abs(boss.y - rowan.y)) > 1,
-                "and it has not moved yet -- the crossing is a decision, not a turn")
+            assert(not rowan.alive, "she is down on the crossing itself, with no turn in between")
+            assert(not boss.scriptedFell, "the mark was armed and spent inside the one dispatch")
+            assert(math.max(math.abs(boss.x - rowan.x), math.abs(boss.y - rowan.y)) <= 1,
+                "and it crossed the ground to her rather than striking from where it stood")
         end,
     },
     {
-        -- ...AND SPENDS IT AT THE TOP OF ITS OWN TURN, through every answer she could be wearing.
-        -- Combat.spendScriptedFell is called from Combat.startTurn before the unit may act, so the
-        -- board is settled and nothing else is mid-resolution.
-        name = "it spends the mark on its own turn, through a ward and an interpose alike",
+        -- THE FIGHT THIS EXISTS FOR, AND IT SHIPPED BROKEN TWICE OVER -- a stun took the stage away by
+        -- two separate routes, and both had to go:
+        --
+        --   * THE HOOK. Stun suppresses reactions, and suppression skipped the whole onDamaged dispatch
+        --     -- so a stunned boss did not cross its threshold AT ALL. No turn, no haste, no enrage, no
+        --     mark. A stage is not a reflex (models/trait.lua's Trait.onDamaged, `notAReaction`).
+        --   * THE TURN. The mark was then spent at the Champion's own next turn, and a stun SHOVES that
+        --     turn down the order rather than skipping it -- so even once the stage crossed, the party
+        --     could spend the bought turn killing the boss and end the fight with the beat never played.
+        --
+        -- Either one alone wins the fight through the hole, so the case asserts the whole chain: the
+        -- stage turns, and she is down, on a body that has not been allowed to act since.
+        name = "stunning the Champion as it turns does not buy Rowan out of the beat",
+        fn = function()
+            local c = Combat.new(arena(8, 8),
+                { unit("character_rowan", 1, 1) },
+                { unit("character_demon_champion", 8, 8) })
+            local rowan, boss = c.units[1], c.units[2]
+            Status.apply(c, boss, "status_stun", { magnitude = 40 })
+            local shoved = boss.initiative
+            assert(shoved > rowan.initiative, "the shove lands: its turn is a long way off")
+
+            crossLastStage(c, boss)
+            local phase = traitOn(boss, "trait_boss_phases")
+            assert(phase.stacks == 2, "the stage turns through the stun: a bar is read, not answered")
+            assert(Status.get(boss, "status_hasted"), "and everything the stage does lands with it")
+            assert(not rowan.alive, "and she goes down -- the beat is paid by the wound, not by a turn")
+            assert(boss.initiative == shoved, "on a body that has not acted: the shove is untouched")
+        end,
+    },
+    {
+        -- ...AND IT GOES THROUGH EVERY ANSWER SHE COULD BE WEARING. Nothing about moving the beat onto
+        -- the threshold changes what it passes through: a barrier and an interpose are both things that
+        -- answer a BLOW, and this is not one (Combat.fell).
+        name = "it spends the mark through a ward and an interpose alike",
         fn = function()
             local c = Combat.new(arena(8, 8),
                 { unit("character_rowan", 1, 1), unit("character_knight", 2, 1) },
@@ -425,10 +456,7 @@ return {
                 if u.side == "party" then u.guard = { kind = "oathward", cooldown = 0 } end
             end
             crossLastStage(c, boss)
-            assert(rowan.alive, "arming it changes nothing on its own")
-
-            Combat.spendScriptedFell(c, boss)
-            assert(not rowan.alive, "her turn opens and she is down, ward and interpose notwithstanding")
+            assert(not rowan.alive, "she is down, ward and interpose notwithstanding")
             assert(rowan.noRevive, "sealed, so nothing puts her back up this battle")
             -- DOWN, NOT DEAD. She is lying on the tile for the rest of the fight -- the state the party
             -- carries off a won board -- and not a body on the necromancer's shelf.
@@ -439,7 +467,7 @@ return {
             assert(math.max(math.abs(boss.x - rowan.x), math.abs(boss.y - rowan.y)) <= 1,
                 "it crossed the ground to reach her rather than killing from where it stood")
 
-            -- ONCE. A Champion that lives to a second turn does not keep teleporting onto a corpse.
+            -- ONCE. A Champion that lives on does not keep teleporting onto a body already down.
             -- Spending CLEARS the field, which is the whole of the latch.
             assert(not boss.scriptedFell, "the mark is gone the moment it is spent")
             local x, y = boss.x, boss.y
@@ -448,18 +476,17 @@ return {
         end,
     },
     {
-        -- ...AND IT IS THE TURN BOUNDARY THAT SPENDS IT, which a direct call cannot pin. The mark is
-        -- armed inside the resolution of the player's own blow, so a turn opening is the ONLY thing
-        -- allowed to cash it -- and if a later pass stops calling it from there, the Champion marks
-        -- Rowan and then simply never comes for her, in silence.
-        name = "the Champion's own turn opening is what spends the mark",
+        -- THE BACKSTOP IS STILL WIRED. The mark is spent on the threshold now (the cases above), so
+        -- nothing in the fight reaches a turn still holding one -- but Combat.startTurn keeps its call
+        -- for a mark armed where no damage was dealt at all, and a wire nothing exercises is a wire that
+        -- quietly comes loose. Poked directly on purpose: there is no live path that leaves one armed.
+        name = "a mark still standing at a turn boundary is spent by the opening",
         fn = function()
             local c = Combat.new(arena(8, 8),
                 { unit("character_rowan", 1, 1) },
                 { unit("character_demon_champion", 8, 8) })
             local rowan, boss = c.units[1], c.units[2]
-            crossLastStage(c, boss)
-            assert(boss.scriptedFell and rowan.alive, "marked, and she is still on her feet")
+            boss.scriptedFell = { victim = "character_rowan", seconds = 0.9 }
 
             rowan.initiative, boss.initiative = 99, 0 -- the Champion is up next
             assert(Combat.startTurn(c) == boss, "its turn opens")
@@ -484,10 +511,9 @@ return {
                 { unit("character_rowan", 1, 1) },
                 { unit("character_demon_champion", 8, 8) })
             local rowan, boss = c.units[1], c.units[2]
-            crossLastStage(c, boss)
-            assert(not c.scriptedStrike, "nothing is staged before the mark is spent")
+            assert(not c.scriptedStrike, "nothing is staged before the stage turns")
 
-            Combat.spendScriptedFell(c, boss)
+            crossLastStage(c, boss)
             local staged = c.scriptedStrike
             assert(staged, "the spent mark leaves the view a beat to play")
             assert(staged.unit == boss and staged.victim == rowan, "who crossed, and who it reached")
@@ -513,6 +539,24 @@ return {
             local Conversation = require("models.conversation")
             assert(staged.scene and Conversation.defs[staged.scene],
                 "she speaks after she is hit, and the scene she speaks is one that exists")
+
+            -- AND THE TWO READOUTS THE BEAT WROTE, TAKEN OFF THEM AND CARRIED, which is the half that
+            -- only matters now the beat resolves inside the blow that armed it. Left in place, the
+            -- crossing's cues ride out in that blow's own drain and its lines print under that blow's
+            -- own entry -- the demon beside her and "Rowan is defeated!" in the panel, a wind-up and a
+            -- whole run before the board gets there.
+            assert(staged.fx and #staged.fx > 0, "the beat's cues travel with the staging")
+            local sawDeath = false
+            for _, e in ipairs(staged.fx) do sawDeath = sawDeath or e.type == "death" end
+            assert(sawDeath, "her death among them -- the one cue that gives the ending away")
+            for _, e in ipairs(c.fx or {}) do
+                assert(e.type ~= "death", "and it is GONE from the queue, not merely copied out of it")
+            end
+
+            assert(staged.log and #staged.log > 0, "and so do the lines it wrote")
+            local tail = c.log[#c.log]
+            assert(not (tail and tail.kind == "death"),
+                "the log ends on the blow, not on a felling nobody has watched yet")
         end,
     },
     {
@@ -555,10 +599,11 @@ return {
     },
     {
         -- THE WARNING IS QUEUED, NOT PLAYED. Data is pure logic and may not reach the UI, so the
-        -- response leaves the scene id on the combat and states/battle.lua's beginTurn plays it at the
-        -- next turn boundary -- which is also the only moment it COULD play, since the blow that armed
-        -- it is still resolving when the mark lands.
-        name = "marking her queues Rowan's warning for the turn boundary",
+        -- response leaves the scene id on the combat and the view plays it -- as the OPENING of the beat
+        -- now (states/battle.lua's playScripted claims it), rather than as a turn of grace ahead of one.
+        -- The queueing is what a headless run can see; that it is still owed AFTER the beat has resolved
+        -- in the model is the half that matters, since the line and the felling now share one moment.
+        name = "marking her queues Rowan's warning for the beat it opens",
         fn = function()
             local c = Combat.new(arena(8, 8),
                 { unit("character_rowan", 1, 1) },
@@ -566,7 +611,7 @@ return {
             local boss = c.units[2]
             assert(not c.pendingScene, "nothing is owed before the stage turns")
             crossLastStage(c, boss)
-            assert(c.pendingScene, "the mark owes the player a line before it is spent")
+            assert(c.pendingScene, "the stage owes the player a line, and still owes it after it resolves")
             local Conversation = require("models.conversation")
             assert(Conversation.defs[c.pendingScene], "and the scene it names is a scene that exists")
         end,
@@ -624,12 +669,12 @@ return {
             local mark = found[1].r
             assert(mark.victim == "character_rowan",
                 "the mark is aimed at the body the Cathedral scene is written about")
-            -- IT ONLY ARMS. The felling belongs to Combat.spendScriptedFell, a turn later -- if a later
-            -- pass moves it back into a response that ACTS, the beat lands inside the player's own blow
-            -- again, and this is the assertion that says so.
-            assert(Combat.spendScriptedFell, "the act is the engine's, at the turn boundary")
+            -- IT ONLY ARMS. The felling belongs to Combat.spendScriptedFell, in the same beat -- if a later
+            -- pass moves the crossing and the felling into the response itself, authored data has begun
+            -- acting, and this is the assertion that says so.
+            assert(Combat.spendScriptedFell, "the act is the engine's, on the threshold the response arms")
             local Conversation = require("models.conversation")
-            -- The warning line, owed a full turn before anything is spent...
+            -- The warning line, which opens the beat...
             assert(mark.scene and Conversation.defs[mark.scene],
                 "it owes a warning first, and the scene it names is one that exists")
             -- ...and the second line, spoken with the blow on her, between the strike and the body going

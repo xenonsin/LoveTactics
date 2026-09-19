@@ -1029,7 +1029,10 @@ function DeployPhase:drawHover(bounds)
     local tr, tg, tb
     if self.map and self.map.tileTone then tr, tg, tb = self.map:tileTone(cx, cy) end
     local terrainInfo = { cell = cell,
-                          bonus = Combat.fieldBonus(self.combat, cx, cy),
+                          -- ...for the body standing here, not for the square in the abstract: a
+                          -- flier takes nothing from the ground (Combat.fieldBonus). An empty tile
+                          -- passes nil and reads as what a walking body would get.
+                          bonus = Combat.fieldBonus(self.combat, cx, cy, unit),
                           tone = tr and { tr, tg, tb } or nil,
                           -- What this ground calls the type, when the biome has lent it one (see
                           -- BattleMap:tileSkin). The line is chosen against the ground here, so the

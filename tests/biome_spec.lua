@@ -106,7 +106,7 @@ return {
     {
         name = "a generated board scatters its own biome's terrain",
         fn = function()
-            -- The desert lays sand where the default lays forest. Same seed, so any difference is the
+            -- The desert lays dunes where the default lays forest. Same seed, so any difference is the
             -- palette rather than the draws.
             local plain = Arena.generateLayout({ seed = 99, party = 2, enemies = 2 })
             local desert = Arena.generateLayout({ seed = 99, party = 2, enemies = 2, biome = "desert" })
@@ -121,8 +121,65 @@ return {
             end
 
             assert(has(plain, "forest"), "the default palette should still scatter forest")
-            assert(has(desert, "sand"), "a desert board should scatter sand")
+            assert(has(desert, "dune"), "a desert board should scatter dunes")
             assert(not has(desert, "forest"), "a desert board should scatter no forest at all")
+        end,
+    },
+    {
+        -- THE PARITY THE FILL EXISTS FOR. Only the fill is ever cover on a rolled board -- the rise is
+        -- 1-3 tiles and the blocker is a wall -- so a biome whose fill is worth nothing is a biome with
+        -- no positional decision on it, which is the hole `. terrain-report` was written to measure.
+        -- The desert filled with sand and the tundra with ice for a long time, both worth zero, and
+        -- nothing could see it because every spec here asked whether the palette named a REAL tile
+        -- rather than whether it named a USEFUL one.
+        name = "every biome's fill is cover, or it is deliberately bare",
+        fn = function()
+            -- The bowl, and only the bowl. An arena floor is swept between cards and the crowd paid to
+            -- watch an exchange, not two men hiding from each other -- so it is allowed to grow
+            -- nothing, and it is named here so that allowance can never spread by accident.
+            local BARE = { colosseum = true }
+            for biome, palette in pairs(Arena.BIOME_TERRAIN) do
+                local fill = Arena.TILE_PROPS[palette.fill]
+                local avoid = (fill.bonus and fill.bonus.avoid) or 0
+                if BARE[biome] then
+                    assert(avoid <= 0, biome .. " is listed as bare but its fill grants cover")
+                elseif biome == "swamp" then
+                    -- The one hostile floor, and the deliberate exception: a mire that stopped
+                    -- punishing the body standing in it would stop being a swamp. Its cover is the
+                    -- RISE instead, which is thinner on purpose.
+                    assert(avoid < 0, "the swamp's fill is supposed to be worse than open ground")
+                    local rise = Arena.TILE_PROPS[palette.rise]
+                    assert(((rise.bonus and rise.bonus.avoid) or 0) > 0,
+                        "the swamp's rise has to be the cover its fill refuses to be")
+                else
+                    assert(avoid > 0, biome .. "'s fill (" .. palette.fill .. ") is worth no cover at "
+                        .. "all -- a board of it has no positional decision on it")
+                end
+            end
+        end,
+    },
+    {
+        -- EVERY SIN'S CIRCLE IS IN THE PALETTE TABLE. Pride maps to `castle` and Greed to `underworld`
+        -- (Descent.SINS), and neither id was ever written into Arena.BIOME_TERRAIN -- so a fortress
+        -- circle and a cavern circle both fell through to the default and rolled WOODLAND boards. A
+        -- fall-through that produces a playable board is the worst kind: nothing crashes, nothing is
+        -- empty, and the place is simply the wrong place for as long as nobody looks.
+        name = "every biome a descent circle names has a terrain palette of its own",
+        fn = function()
+            local Descent = require("models.descent")
+            for _, sin in ipairs(Descent.SINS) do
+                assert(Arena.BIOME_TERRAIN[sin.biome], sin.id .. " sits in the '" .. tostring(sin.biome)
+                    .. "' biome, which names no terrain palette -- its boards roll as the default")
+            end
+            -- ...and every biome that exists at all, circle or not. `default` is the answer for an id
+            -- nothing declares, and it must never be the answer for an id somebody DID declare: those
+            -- two cases are indistinguishable from the board, which is how a fortress and a cavern
+            -- both rolled woodland for as long as they did.
+            for id in pairs(Biome.defs) do
+                if not id:find("__spec", 1, true) then
+                    assert(Arena.BIOME_TERRAIN[id], "the '" .. id .. "' biome names no terrain palette")
+                end
+            end
         end,
     },
     {

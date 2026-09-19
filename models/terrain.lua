@@ -34,7 +34,8 @@
 --   * sightCost  how much this tile obstructs a line of sight passing THROUGH it. Combat sums it
 --     between shooter and target and blocks the line at Combat.SIGHT_BLOCK. 0 = transparent.
 --   * bonus      positional modifiers granted to whoever STANDS here, e.g. { range = 1 } for high
---     ground. Aggregated with placed field objects by Combat.fieldBonus.
+--     ground. Aggregated with placed field objects by Combat.fieldBonus. The legal keys are DECLARED
+--     (Terrain.BONUS_KEYS, below) and that declaration is the whole of what stops this field lying.
 --   * tags       what the ground is MADE of, for effects that ask a tile a question rather than name a
 --     type: "burnable" (fire creeps in), "conductable" (lightning arcs in). A hazard on the tile or a
 --     status on whoever stands there can carry the same tags and Combat.tileHasTag answers across all
@@ -47,6 +48,47 @@
 local Terrain = {}
 
 local SOLID = math.huge
+
+-- ---------------------------------------------------------------------------
+-- WHAT A TILE IS ALLOWED TO PROMISE
+-- ---------------------------------------------------------------------------
+--
+-- The `bonus` bag is generic by design -- Combat.fieldBonus sums whatever keys it finds -- and for a
+-- long time that genericity was one-directional in the worst way: the bag accepted every key and
+-- exactly TWO of them were ever read. ui/tile_tooltip.lua meanwhile carried its own hard-coded list of
+-- seven and printed any that were non-zero, so a tile authored `bonus = { defense = 2 }` displayed
+-- "+2 Defense bonus" to the player and moved no number in the fight. Nothing had gone wrong yet only
+-- because nothing authored those keys.
+--
+-- So the set is DECLARED here, and it names its own read site. A key in this table is a promise some
+-- function keeps; a key absent from it is a typo. The tooltip iterates THIS rather than a copy, and
+-- tests/field_bonus_spec.lua fails the build in both directions -- a bonus key no read site honours,
+-- and a declared key no tile could ever get a number out of.
+--
+-- ORDERED, and one list rather than a set plus a display order. Two ledgers of the same set drift the
+-- moment somebody adds to one of them, and the drift is silent: the readout would simply stop
+-- mentioning the newest key while every spec about the SET stayed green.
+Terrain.BONUS_KEYS = {
+    { key = "avoid",        read = "Combat.terrainAvoid -- comes straight off an attacker's hit chance" },
+    { key = "range",        read = "Combat.fieldRangeBonus -- SIGHTED abilities only, never a swing" },
+    { key = "defense",      read = "Combat.flatStat, via the stamp Combat.stampField lays on arrival" },
+    { key = "magicDefense", read = "Combat.flatStat, via the stamp Combat.stampField lays on arrival" },
+}
+
+-- Is `key` something a tile may promise? The lookup over the list above, built once.
+local BONUS_SET = {}
+for _, entry in ipairs(Terrain.BONUS_KEYS) do BONUS_SET[entry.key] = entry.read end
+function Terrain.readsBonus(key)
+    return BONUS_SET[key]
+end
+
+-- THE CEILING ON TERRAIN ARMOUR, and the reason it is not Fire Emblem's number. A fort there gives +2
+-- against a Defence stat that runs 0-20; ours runs 3-6 across the whole roster (docs/balance.md), so
+-- the same +2 is a third to two thirds of a body's entire mitigation -- far heavier than the forest's
+-- +20 avoid, which comes off a hit chance already sitting at 61-91%. Terrain armour is therefore
+-- capped at ONE point and belongs to exactly one tile in the table; a second tile wanting it is a
+-- re-tier, and a re-tier obliges a rebalance. Pinned by tests/terrain_spec.lua.
+Terrain.DEFENSE_CEILING = 1
 
 Terrain.TYPES = {
     -- ---- open ground -------------------------------------------------------
@@ -81,6 +123,26 @@ Terrain.TYPES = {
     -- willing to pick their way across it.
     rough   = { moveCost = 2, walkable = true, sightCost = 0, bonus = { avoid = 10 },
                 index = 3, color = { 0.34, 0.32, 0.30 } },
+    -- A redoubt: a low work of piled stone, the one tile on the board built by hands rather than laid
+    -- down by weather. THE TILE THIS WHOLE TABLE WAS MISSING. Fire Emblem's terrain design has an
+    -- anchor and it is not the forest -- it is the fort: the square a defender takes and an attacker
+    -- has to dig them out of. Every cover tile we had paid in EVASION, which is an answer for a body
+    -- that would rather not be hit at all; nothing on the board rewarded a body whose entire plan is to
+    -- be hit and stand there, which is a strange hole in a game with a knight house.
+    --
+    -- So it is priced against the hill and deliberately opposite to it. Cheaper to reach (two, not
+    -- three), worth far less to a shooter (no reach at all, and sightCost 0 -- you can see out of a
+    -- thing you stand BEHIND, which is the whole point of a parapet), and the only ground in the game
+    -- that thickens a body's armour. The hill is the archer's tile; this is the wall's.
+    --
+    -- It also RENEWS, and that half is not written here: models/arena.lua seeds an unowned renewal zone
+    -- onto every redoubt it lays (Arena.FORT_HAZARD). Healing ground is a hazard in this codebase and
+    -- has been since long before this tile existed -- one word per mechanic -- and an unowned zone
+    -- reads as allied to BOTH sides (Hazard.allied), which is the correct reading of a fort: it belongs
+    -- to whoever got there first.
+    redoubt = { moveCost = 2, walkable = true, sightCost = 0,
+                bonus = { avoid = 10, defense = 1 },
+                index = 3, color = { 0.46, 0.42, 0.36 } },
 
     -- ---- solid -------------------------------------------------------------
     -- Dense wood: the map's fill, the thing a trail is cut THROUGH. Blocks the tile and the view.
@@ -118,6 +180,33 @@ Terrain.TYPES = {
     -- Loose sand: forest's cost without forest's cover, so a desert board is a long ranged exchange
     -- nobody can cross quickly or safely.
     sand    = { moveCost = 2, walkable = true, sightCost = 0, index = 2, color = { 0.78, 0.68, 0.44 } },
+
+    -- ---- the cover each country grows -------------------------------------
+    -- THE PARITY PAIR, and the one place in this table where sameness is the point rather than a
+    -- failure of imagination. Every floor above is the deliberate inverse of another so a board plays
+    -- differently for being made of it; these two are deliberate COPIES of the forest, because the
+    -- thing they are fixing is that half the biomes had no cover at all.
+    --
+    -- Measured before they were written: a rolled board scatters a fill (2-5 tiles), a rise (1-3) and a
+    -- blocker (1-3), and only the fill is ever cover. The default biome fills with forest and gets 3-8
+    -- cover tiles; the desert filled with sand and the tundra with ice, both worth nothing, leaving
+    -- 1-3 hills on 64 squares. Terrain is the positional decision this game took INSTEAD of facing
+    -- (docs/accuracy.md), so a tundra board was a board with no positional decision on it.
+    --
+    -- Same numbers as the forest, then -- two to enter, +20 avoid, and enough bulk to break a sightline
+    -- -- and the difference is the TAG, which is what a floor is made of rather than what it is worth.
+    -- A dune neither burns nor conducts: it is the one piece of cover in the game that is inert, which
+    -- is its whole character on a board where fire spreads through wood.
+    dune    = { moveCost = 2, walkable = true, sightCost = 1,
+                bonus = { avoid = 20 },
+                index = 2, color = { 0.86, 0.74, 0.48 } },
+    -- A snow drift: the tundra's cover, and wet through, so a lightning line that would clip one body
+    -- on grass sweeps a whole front of men sheltering behind drifts. The tundra's floor already
+    -- conducts; this makes the tundra's COVER conduct too, which is the reason to take a drift rather
+    -- than simply the best tile going.
+    drift   = { moveCost = 2, walkable = true, sightCost = 1, tags = { "conductable" },
+                bonus = { avoid = 20 },
+                index = 2, color = { 0.88, 0.92, 0.96 } },
     -- Frozen ground: the ONLY terrain that does not tax a step. What it charges instead is conduction --
     -- a lightning line that would clip one body on grass sweeps a whole frozen front.
     ice     = { moveCost = 1, walkable = true, sightCost = 0, tags = { "conductable" },

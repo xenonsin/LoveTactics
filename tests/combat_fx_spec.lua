@@ -40,6 +40,33 @@ local function originOffset(fromX, unit) return fromX - unit.x end
 
 return {
     {
+        -- THE HAND-OFF MUST NOT WAIT ON A BAR THIS CONTROLLER IS HOLDING SHUT, because the hand-off is
+        -- what opens it. A held unit's drawn health is SUPPOSED to sit at its old value until the beat
+        -- that spends it plays; counting that as "still draining" is a deadlock with three legs --
+        -- resolveAdvance waits for hpSettled, hpSettled waits for the beat, the beat waits for
+        -- resolveAdvance -- and the symptom is the board simply stopping, mid-fight, with no error.
+        --
+        -- It is a live shape, not a hypothetical: a scripted beat resolved inside the blow that armed it
+        -- is held from the frame the model raises it (states/battle.lua's stageScripted) precisely so the
+        -- board cannot read the ending early, and it is released a beat later by the very hand-off this
+        -- guard unblocks. Asserted in both directions, since a hpSettled that always says yes would pass
+        -- the half that matters here and quietly delete the wait it exists for.
+        name = "a bar being held is settled; an unheld one still draining is not",
+        fn = function()
+            local fx = newFx()
+            local u = { x = 1, y = 1, alive = true, char = { name = "mark",
+                stats = { health = { current = 10, max = 30 } } } }
+            fx.hp[u] = 30 -- drawn at its old value; the model has already taken it to 10
+
+            assert(not fx:hpSettled(), "a bar still catching up to the model must hold the hand-off")
+            fx:hold({ { type = "damage", unit = u } }, 1)
+            assert(fx:awaiting(u), "the unit is held")
+            assert(fx:hpSettled(), "and a held bar is not a draining one -- it is a bar told to wait")
+            fx:hold({ { type = "damage", unit = u } }, -1)
+            assert(not fx:hpSettled(), "released, it is behind again and the wait comes back")
+        end,
+    },
+    {
         name = "a shove on a deferred beat holds its origin through the gap, then travels once",
         fn = function()
             local fx = newFx()

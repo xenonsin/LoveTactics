@@ -859,10 +859,20 @@ end
 -- reaction to settle. The turn hand-off waits on this (on top of busy()) so a bar isn't still draining
 -- while the turn-order cards restage. Kept out of busy() so it never stalls player INPUT, only the
 -- automatic hand-off.
+-- A BAR THIS CONTROLLER IS DELIBERATELY HOLDING IS NOT A BAR STILL DRAINING, and the difference is the
+-- whole of the guard below. `self.held` is the set of units a beat has yet to touch (see :hold): their
+-- displayed health is MEANT to sit at its old value until that beat plays, so asking "has it reached the
+-- model's number yet" of one of them is asking a question whose answer is no by construction.
+--
+-- Without the skip, a hold that outlives the hand-off deadlocks the fight: the hand-off waits on the bar,
+-- the bar waits on the beat, and the beat is played by the hand-off. That is exactly the shape of a
+-- scripted beat resolved inside the blow that armed it (states/battle.lua's stageScripted holds the
+-- felling's cues the frame the model raises them, and resolveAdvance is what lets them go) -- the board
+-- simply stopped, with the demon standing there and the turn never passing.
 function CombatFx:hpSettled()
     for unit, val in pairs(self.hp) do
         local hp = unit.char and unit.char.stats and unit.char.stats.health
-        if hp and math.abs(val - hp.current) >= 0.5 then return false end
+        if hp and not self.held[unit] and math.abs(val - hp.current) >= 0.5 then return false end
     end
     return true
 end

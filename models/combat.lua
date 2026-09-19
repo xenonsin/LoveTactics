@@ -703,6 +703,12 @@ local function flatStat(unit, name)
     local base = unit.char.stats[name] or 0
     local v = base + ((unit.bonus and unit.bonus[name]) or 0) + Status.statBonus(unit, name)
         + Trait.liveBonus(unit, name)
+        -- THE GROUND UNDERFOOT, banked by Combat.stampField whenever this body came to rest (see that
+        -- function for why it is a stamp and not a live read). A redoubt's +1 defence arrives here and
+        -- is therefore quoted identically by mitigation, by the character sheet and by the breakdown
+        -- tooltip -- one number, one explanation. Empty for every body standing on open field, and for
+        -- every flier anywhere.
+        + ((unit.field and unit.field[name]) or 0)
     -- THE HELD BREATH (a rare relic): health is pinned at 1 and both armours climb by a rate per point
     -- of the ceiling the body is now missing. A fifth term rather than a bonus banked at setup, for the
     -- same reason Trait.liveBonus is one -- it is a claim about the body AS IT STANDS, and the pinned
@@ -850,19 +856,66 @@ end
 -- carried onto the runtime cell) and any placed field objects on that tile (combat.fieldObjects,
 -- each { x, y, bonus = {...} } -- e.g. a future vantage totem). Unlike item bonuses (unit.bonus,
 -- fixed for the battle) these move with the unit, so they're computed on demand. Deliberately
--- generic: a new buff source only has to contribute here.
-function Combat.fieldBonus(combat, x, y)
+-- generic: a new buff source only has to contribute here -- but only for the keys the table DECLARES
+-- (Terrain.BONUS_KEYS), because a bonus nothing reads is a lie the tooltip tells for free.
+--
+-- `unit` is optional and answers one question: IS THE BODY ACTUALLY ON THIS GROUND?
+--
+-- A FLIER FORFEITS THE TILE. This is Fire Emblem's own rule and it is the trade the flying tag was
+-- always missing here. A Zephyr Strider already pays NOTHING for the ground -- every tile costs 1
+-- whatever it is made of, and terrain that is merely unwalkable opens up (Combat.isFlying) -- and it
+-- was also collecting the forest's +20 avoid and the hill's +1 reach on top of that. A tag sold as a
+-- trade was pure upside. A body in the air is OVER the wood, not in it: no cover, no vantage, no
+-- parapet, and no bog either -- the mire's -10 lifts with the rest, because the rule is "the ground
+-- stops mattering" in both directions and a flier that dodged a penalty it was never standing in
+-- would be the same bug pointed the other way.
+--
+-- PLACED FIELD OBJECTS STILL APPLY. A vantage totem, a smoke cloud, a banner's square -- those are
+-- objects at the body's own altitude rather than dirt under its feet, and nothing about being airborne
+-- puts you outside one. Which is also what keeps this from quietly gutting a future zone system.
+--
+-- Called with no `unit` by the READOUTS that describe a tile rather than a body on it; they pass the
+-- body when they have one, so the panel and the blow can never quote different numbers.
+function Combat.fieldBonus(combat, x, y, unit)
     local out = {}
     local function add(mods)
         for k, v in pairs(mods or {}) do out[k] = (out[k] or 0) + v end
     end
-    local tiles = combat.arena and combat.arena.tiles
-    local cell = tiles and tiles[y] and tiles[y][x]
-    if cell then add(cell.bonus) end
+    if not (unit and Combat.isFlying(unit)) then
+        local tiles = combat.arena and combat.arena.tiles
+        local cell = tiles and tiles[y] and tiles[y][x]
+        if cell then add(cell.bonus) end
+    end
     for _, obj in ipairs(combat.fieldObjects or {}) do
         if obj.alive ~= false and obj.x == x and obj.y == y then add(obj.bonus) end
     end
     return out
+end
+
+-- The field bag, banked onto the unit so Combat.flatStat can reach it.
+--
+-- WHY A STAMP AND NOT A LIVE READ. flatStat(unit, name) is the single fold every effective stat in the
+-- game is read through -- mitigation, the character sheet, the damage-breakdown tooltip, models/status
+-- .lua's resist rating -- and it takes no `combat`, by a long-standing and correct design: a unit is
+-- allowed to be asked what its defence is without anybody producing the battle it is standing in. So
+-- the ground's contribution is banked at the one moment it can change, exactly as unit.bonus banks the
+-- grid's contribution at setup. The alternative -- reading the tile only at the mitigation site, the
+-- way terrainAvoid is read only at the accuracy site -- would have left the sheet quoting a defence
+-- the blow does not use, which is a worse failure than the one it avoids.
+--
+-- Stamped at the three moments the answer can move: arrival (Combat.enterTile, which is already the
+-- one chokepoint for a walk, a shove, a blink, a swap and a summon appearing), first placement
+-- (Combat.addUnit), and the top of the unit's turn (Combat.startTurn) as a backstop for anything that
+-- could change the GROUND under a body that never moved -- today only a field object appearing, which
+-- nothing in the shipped game does yet.
+-- `x`/`y` default to where the unit currently stands, and every caller that HAS the destination in
+-- hand passes it rather than trusting that. Combat.stepMove happens to set unit.x before calling
+-- enterTile and Combat.knockback happens to as well -- but "happens to" is the whole problem: a future
+-- arrival path that stamps first and moves second would bank the tile the body just left, and the
+-- symptom would be a defence number one step behind the body for the rest of the fight.
+function Combat.stampField(combat, unit, x, y)
+    if not (combat and unit) then return end
+    unit.field = Combat.fieldBonus(combat, x or unit.x, y or unit.y, unit)
 end
 
 -- The share of a tile's `range` field bonus an ability is actually entitled to. High ground is a
@@ -879,9 +932,13 @@ end
 -- One helper for all three readers of the bonus (Combat.abilityRange, Combat.attackReach, and the
 -- battle state's per-stand-tile standCanHit), because a highlight that disagreed with the gate would
 -- read as exactly the bug this fixes.
-function Combat.fieldRangeBonus(combat, requiresSight, x, y)
+--
+-- `unit` is the body taking the shot, and it is what denies a flier the vantage: standing on a hill
+-- buys you a sightline, hovering over one buys you nothing you did not already have. See
+-- Combat.fieldBonus. Optional, for the callers that are drawing a tile rather than aiming from it.
+function Combat.fieldRangeBonus(combat, requiresSight, x, y, unit)
     if not requiresSight then return 0 end
-    return Combat.fieldBonus(combat, x, y).range or 0
+    return Combat.fieldBonus(combat, x, y, unit).range or 0
 end
 
 -- Effective range of ability `ab` for `unit` acting from tile (x, y) -- the ability's base range
@@ -898,7 +955,7 @@ function Combat.abilityRange(combat, unit, ab, x, y)
         base = base + unit.unarmedBonus.range
     end
     local range = base + Combat.fieldRangeBonus(combat, ab and ab.requiresSight,
-        x or unit.x, y or unit.y)
+        x or unit.x, y or unit.y, unit)
     -- A relic that lengthens every reach the company has: The Far Mark buys a tile and charges for
     -- contact, the Rooted Oath buys three and charges the whole movement system. Both land here, on the
     -- one reader every ability's reach resolves through, so a bow, a spell and a bare fist all grow
@@ -1365,6 +1422,10 @@ function Combat.addUnit(combat, char, side, x, y, opts)
     -- not as somebody who held. Combat.new's opening bodies are cleared in buildOpeningUnit below.
     char.spentThisTurn = nil
     applyUnitPassives(unit)
+    -- The ground it was set down on. AFTER applyUnitPassives, because the flier check reads the grid
+    -- that pass has just finished folding -- a body put down on a redoubt has to know whether it is
+    -- standing on the parapet or hovering over it before its first stat is ever read.
+    Combat.stampField(combat, unit)
     -- Traits are attached but their opener is NOT fired: a summon arriving mid-battle did not start
     -- the battle. Its reactive hooks (onDamaged / onCast / onDeath) are live from this moment.
     Trait.attach(unit, combat)
@@ -3027,6 +3088,12 @@ function Combat.startTurn(combat)
     -- Cleared at turn START rather than in endTurn because a free cast never REACHES endTurn -- that is
     -- the whole point of it -- and a turn can also close through wait, death or a rout.
     if unit then
+        -- THE BACKSTOP ON THE FIELD STAMP. Arrival re-banks the ground (Combat.enterTile), which covers
+        -- every way a body can change tiles; this covers the other direction -- the ground changing
+        -- under a body that never moved. Nothing shipped does that yet (combat.fieldObjects is a hook
+        -- with no live writer), and that is exactly why it is cheap to close now rather than to
+        -- discover later as a defence number that went stale three turns ago.
+        Combat.stampField(combat, unit)
         unit.overwatch = nil
         unit.freeActionsUsed = nil
         -- ...and the `soleAction` latch beside it (Harrier's Bow): a free action that still SPENDS the
@@ -3108,9 +3175,12 @@ function Combat.startTurn(combat)
     -- drew no blood last turn opens this one out of sight. After onTurnStart, or the sweep that ends
     -- LAST turn's invisibility would end this turn's in the same breath.
     if veil then Status.apply(combat, unit, "status_invisible") end
-    -- A SCRIPTED FELLING, armed by a boss phase and spent here (Combat.spendScriptedFell). Past the
-    -- status sweep above, because the beat wants the board settled under it: nothing mid-resolution,
-    -- no expiry still to run, and a full turn gone by since the phase that armed it.
+    -- A SCRIPTED FELLING, AS A BACKSTOP AND NOTHING MORE. A mark is spent the instant the threshold
+    -- that armed it is crossed, at the close of that blow's own dispatch (dispatchAnswer), so in the
+    -- ordinary course nothing is ever still holding one by the time its bearer stands up. This catches
+    -- a mark armed where no damage was dealt at all -- there is no such caller today, and the day there
+    -- is, the beat plays a turn late rather than silently never playing. Past the status sweep above,
+    -- because the beat wants the board settled under it: nothing mid-resolution, no expiry still to run.
     if unit and unit.scriptedFell then Combat.spendScriptedFell(combat, unit) end
     -- CONTAGION (the Plague Knight's): at the top of the bearer's turn, every poisoned body on the
     -- field infects the bearer's enemies standing next to it. A passive rather than a cast (rule R4) --
@@ -4151,7 +4221,7 @@ function Combat.attackReach(combat, unit, range, reachable, requiresSight, minRa
         -- floored at 1. The malus has to bite HERE too or the band -- and every preview, cursor and
         -- click plan keyed off it -- lights tiles useItem then refuses, and the click dies saying
         -- nothing.
-        local r = math.max(1, range + Combat.fieldRangeBonus(combat, requiresSight, s.x, s.y)
+        local r = math.max(1, range + Combat.fieldRangeBonus(combat, requiresSight, s.x, s.y, unit)
             - Status.rangeMalus(unit))
         -- A wide body threatens from EVERY cell it would cover when standing at this anchor: the reach
         -- is the union of the Manhattan diamonds cast from each cell (one cell, the anchor, for a 1×1
@@ -4239,6 +4309,12 @@ end
 -- The unit must already stand on (x, y) when this is called: a trap may kill it, and the death path
 -- reads its position. Callers move it first, then announce the arrival.
 function Combat.enterTile(combat, unit, x, y, reason, fromX, fromY)
+    -- WHAT THE NEW GROUND IS WORTH, re-banked first thing. This is the chokepoint every arrival passes
+    -- through -- a walk, a shove, a blink, a swap, a summon appearing -- so it is the one place the
+    -- field stamp can be kept honest without chasing each of those separately. Before the trap and the
+    -- hazard passes below, because both can deal damage, and a blow mitigated against the defence of
+    -- the tile a body has just LEFT is exactly the class of bug a stamp invites.
+    Combat.stampField(combat, unit, x, y)
     local trap = Trap.at(combat, x, y)
     -- Feather Boots walk over any trap unharmed. The guard sits at this one chokepoint, so the wearer
     -- is spared whether it strode onto the trap, was shoved onto it, or was conjured on top of one --
@@ -6170,8 +6246,12 @@ end
 
 -- How much the GROUND under (x, y) is worth to whoever stands on it. Reads the same aggregated bag
 -- the range bonus does, so a tile and a field object are one question.
-function Combat.terrainAvoid(combat, x, y)
-    return Combat.fieldBonus(combat, x, y).avoid or 0
+--
+-- `unit` is the body being shot at, and passing it is what makes a flier catchable over a wood: cover
+-- is something you are IN (Combat.fieldBonus). Every caller in combat has the body in hand and passes
+-- it; the readouts pass whoever they are describing.
+function Combat.terrainAvoid(combat, x, y, unit)
+    return Combat.fieldBonus(combat, x, y, unit).avoid or 0
 end
 
 -- What `unit` is worth to hit, before the attacker's side of the exchange. Gear and statuses reach
@@ -6181,7 +6261,7 @@ function Combat.avoid(combat, unit)
     if not unit then return 0 end
     return flatStat(unit, "speed") * 2
         + flatStat(unit, "luck")
-        + Combat.terrainAvoid(combat, unit.x, unit.y)
+        + Combat.terrainAvoid(combat, unit.x, unit.y, unit)
 end
 
 -- THE DETERMINISTIC MODE, KEPT AS A SWITCH. With this set, nothing rolls: every aimed blow connects
@@ -6210,9 +6290,22 @@ Combat.FORCE_HIT = false
 -- SAME word: a player who reads "always hits" on an ability has already been taught what this means.
 -- It is set by whoever fields the battle (states/battle.lua, off the lesson) and never by a
 -- difficulty option -- see the note above Combat.FORCE_HIT for why that distinction is load-bearing.
-function Combat.rollsToHit(combat, user, target, item)
+-- DOES THIS BOARD ASK THE DICE ANYTHING, at all, of anybody? The two board-level clauses of
+-- Combat.rollsToHit on their own, asked without a blow in hand.
+--
+-- It exists for the PLANNER. Evasion is worth exactly nothing on a board where nothing can miss, so an
+-- AI that pays real turns to reach cover on one is not being cautious, it is making an error -- and
+-- there are two such boards: the prologue's village lesson (`alwaysHits`, authored so a scripted click
+-- cannot whiff) and every board in the test suite (Combat.FORCE_HIT, set per case by tests/runner.lua).
+-- The first is live content; the second is why this is not merely a test convenience.
+function Combat.boardRolls(combat)
     if Combat.FORCE_HIT then return false end
     if combat and combat.alwaysHits then return false end
+    return true
+end
+
+function Combat.rollsToHit(combat, user, target, item)
+    if not Combat.boardRolls(combat) then return false end
     if not (user and target) then return false end
     if user == target then return false end
     -- YOU DO NOT MISS YOUR OWN SIDE. Fire Emblem's staves never miss the ally they mend, and the
@@ -6797,21 +6890,25 @@ end
 --
 -- The mark is armed by a boss phase (the `mark` response in data/traits/trait_boss_phases.lua, authored
 -- on the relic that grants the phases -- data/items/utility/utility_demon_sigil.lua is the one that
--- ships it) and spent HERE, at the top of the marker's own turn, from Combat.startTurn.
+-- ships it) and spent HERE, at the close of the same damage dispatch that armed it (dispatchAnswer).
 --
--- WHY IT IS DEFERRED AT ALL -- the bug this shape fixes. The felling used to be a response ON THE
--- PHASE, and a phase crosses inside Trait.onDamaged, which runs inside the resolution of the PLAYER's
--- blow. So the Champion teleported and killed somebody in the same instant the sword that wounded it
--- was still mid-swing: two animations on top of each other, no turn boundary between them, and a beat
--- the player could not read because nothing had finished happening. A scripted moment has to OWN a
--- turn. It cannot be a side effect of the hit that triggered it. Combat.startTurn is the seam -- it
--- runs before the unit may act, with the board settled and nothing else moving.
+-- WHY IT IS A SEPARATE FUNCTION AND NOT A PHASE RESPONSE. A response is authored data and may only
+-- write state; this is an ACT, and it belongs to the engine. The split is also what keeps the beat off
+-- the top of its own cause: the dispatch that calls this runs AFTER the action that provoked it has
+-- finished resolving (Combat.beginAnswers holds every reaction until then), so the Champion crosses a
+-- board that is standing still rather than one the player's sword is still mid-swing through.
+--
+-- WHAT IT IS NOT ANY MORE: the marker's own turn. It waited there once, at Combat.startTurn, for a
+-- turn boundary's worth of settling -- and the wait was a hole, because a turn is a thing the party can
+-- take away. Stun shoves the marker down the order, the party spends the bought turn killing it, and
+-- the last stage of the fight never happens. See dispatchAnswer for the full argument. Combat.startTurn
+-- still calls this, now only as a backstop for a mark armed somewhere no damage was dealt.
 --
 -- THE SHAPE OF THE BEAT, and it is six separate moments on purpose:
 --   1. THE PHASE CROSSES (the player's blow). The mark goes on and Rowan says the thing is wrong --
---      `scene`, queued onto combat.pendingScene by the response and played by states/battle.lua before
---      the next turn opens. A full turn of warning.
---   2. THE MARKER'S TURN OPENS. It SHAKES -- a long wind-up shake, not the 0.26s flinch a hit draws
+--      `scene`, queued onto combat.pendingScene by the response and claimed by states/battle.lua as the
+--      beat's opening line. It is a warning she gets to speak, not a turn the player gets to use.
+--   2. THE BODY SHAKES -- a long wind-up shake, not the 0.26s flinch a hit draws
 --      (ui/combat_fx.lua's shake cue takes a duration) -- so the tell is on the body itself.
 --   3. IT COMES ACROSS THE GROUND, tile by tile, at a run.
 --   4. IT SWINGS, and she takes it: a lunge, an impact and a recoil, with no number on it because
@@ -6865,6 +6962,13 @@ function Combat.spendScriptedFell(combat, unit)
     --    is still standing on the far end of it. That route is the whole of what the view needs to
     --    walk the thing across instead of snapping it there.
     local logMark = #(combat.log or {})
+    -- ...and the same bookmark for the CUES, for a reason the log's own note below spells out at length
+    -- and this one shares: the beat is resolved inside the blow that armed it now, so its cues land in
+    -- the very fx batch the view is about to play for that blow. Left there, the death fade and the
+    -- emptying bar arrive WITH the sword -- the answer, several seconds before the board gets to it, and
+    -- the exact defect the six beats exist to prevent. So what this writes is lifted back off the queue
+    -- below and travels with the staging instead, for the view to release at the beat that earns it.
+    local fxMark = #(combat.fx or {})
     local x, y = Combat.openTileNear(combat, victim.x, victim.y)
     local fromX, fromY = unit.x, unit.y
     local route = x and Combat.scriptedRoute(combat, unit, x, y)
@@ -6898,13 +7002,32 @@ function Combat.spendScriptedFell(combat, unit)
     --    approach walk holds a blow that was struck at the end of it.
     Combat.fell(combat, victim)
 
-    -- 4. HOW MUCH OF THE LOG THIS BEAT JUST WROTE. The combat log is the one readout the fx holds
-    --    cannot reach, and it gives the whole thing away: left alone it prints the crossing and
-    --    "Rowan is defeated!" while the demon is still standing at the top of the board winding up.
-    --    So the view lifts these lines back off the tail and re-files them under the beats they belong
-    --    to (states/battle.lua's SCRIPT_BEATS). Counted from the END rather than held as an index, so
-    --    the log's own cap (Combat.LOG_CAP trims from the front) cannot shift it.
-    combat.scriptedStrike.logAdded = math.max(0, #(combat.log or {}) - logMark)
+    -- 4. WHAT THIS BEAT JUST WROTE INTO THE TWO READOUTS, LIFTED BACK OFF AND CARRIED WITH THE STAGING.
+    --
+    --    Both for the same reason. The combat log gives the whole thing away -- left alone it prints the
+    --    crossing and "Rowan is defeated!" while the demon is still standing at the far end of the board
+    --    winding up -- and the cues give away more: the beat resolves inside the blow that armed it, so
+    --    its death fade and emptying bar would be drained and played with that blow's own cues, seconds
+    --    ahead of the board. The view re-files each list under the beat that earns it (states/battle.lua
+    --    's SCRIPT_BEATS holds the cues from the first beat to the last and lets them go as she drops).
+    --
+    --    TAKEN, NOT COUNTED. This used to hand the view a COUNT and let it pop that many off the tail,
+    --    which was true while the beat was spent at a turn boundary with nothing else moving. It is
+    --    spent inside a resolving action now: the answers still queued behind this one, the follow-ups
+    --    they provoke, the rest of the cast all write their own lines after it, and a count would lift
+    --    THEIR tail instead. Reading from the bookmark and removing is the same work with no window.
+    local function lift(list, mark)
+        local added = math.max(0, #(list or {}) - mark)
+        if added == 0 then return nil end
+        local out = {}
+        for i = #list - added + 1, #list do out[#out + 1] = list[i] end
+        for i = #list, #list - added + 1, -1 do list[i] = nil end
+        return out
+    end
+    -- Counted from the END rather than held as an index, so a readout's own cap trimming the front
+    -- (Combat.LOG_CAP, applied by both logEvent and pushFx) cannot shift what is lifted.
+    combat.scriptedStrike.log = lift(combat.log, logMark)
+    combat.scriptedStrike.fx = lift(combat.fx, fxMark)
     return true
 end
 
@@ -6985,6 +7108,27 @@ local function dispatchAnswer(combat, held)
     if held.attacker and not (held.at and held.at.answering) then
         Trait.onAllyStrike(combat, held.attacker, held.unit)
     end
+    -- AND A SCRIPT THE BLOW JUST ARMED IS SPENT HERE, ON THE THRESHOLD THAT ARMED IT. A phase response
+    -- ARMS (data/traits/trait_boss_phases.lua's `mark`); the act is the engine's, and this is where it
+    -- becomes one -- the end of the dispatch for the very blow that crossed the stage, with the action
+    -- already finished resolving (that is the whole of what the hold above waits for) and every hook
+    -- ahead of it read off the board that blow left.
+    --
+    -- IT USED TO WAIT FOR THE MARKER'S OWN TURN, AND THAT WAIT WAS A HOLE. A beat spent at
+    -- Combat.startTurn is a beat any delay can take away: Stun does not skip a turn, it SHOVES one down
+    -- the order (data/status/status_stun.lua), and the Champion's mark is its LAST stage -- so a party
+    -- that stunned it and spent the bought turn finishing it won the fight with the beat never played
+    -- and Rowan never wounded, which is the state the whole Cathedral act after it is written from.
+    -- A trigger that fires on a threshold has to fire ON the threshold: what crosses it is what pays
+    -- for it, and nothing may act in between. Every other phase response already worked that way --
+    -- a transformation, a summon, an enrage all run inline in the dispatch this line closes -- so this
+    -- is the one deferred response coming into line with the rest, not a new rule.
+    --
+    -- The player is still owed the beat; what moved is only WHEN it is cashed, not what it is made of.
+    -- The model resolves the crossing and the felling in one pass, as ever, and leaves the staging on
+    -- the combat for the view to play out in moments (Combat.spendScriptedFell, states/battle.lua's
+    -- resolveAdvance) -- the warning line now opening that beat instead of buying a turn ahead of it.
+    if held.unit.scriptedFell then Combat.spendScriptedFell(combat, held.unit) end
 end
 
 -- Open a hold: every answer provoked from here until the matching endAnswers waits for the action to

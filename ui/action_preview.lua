@@ -268,6 +268,25 @@ local function buildRawBlocks(action)
             elseif action.hit < 80 then tint = WARN end
             blocks[#blocks + 1] = { kind = "stat", label = "Hit",
                 value = tostring(action.hit) .. "%", valueColor = tint }
+            -- WHY IT IS THAT NUMBER, when the ground is the reason. Terrain is the positional decision
+            -- this game took instead of facing (docs/terrain.md), and the Hit row was quoting its
+            -- result without ever mentioning its cause -- a player who had not gone reading concluded
+            -- the weapon was bad, not that the target was in a wood. This is the one line that teaches
+            -- the whole mechanic, and it teaches it at the moment the player is deciding whether to
+            -- swing.
+            --
+            -- Drawn only when the ground is actually involved (states/battle.lua leaves `hitGround`
+            -- nil on open field, and on a flier, who takes nothing from the tile it hovers over), and
+            -- it reads in the attacker's own terms: a minus is cover working against you, a plus is
+            -- the mire working for you. Kept to the muted register of a note rather than given a stat
+            -- row of its own -- it is an explanation of the figure above it, not a second figure.
+            local ground = action.hitGround
+            if ground and ground.amount ~= 0 then
+                blocks[#blocks + 1] = { kind = "note",
+                    text = ((ground.amount > 0 and "+" or "") .. tostring(ground.amount)
+                        .. "  " .. (ground.terrain or "Terrain")),
+                    color = ground.amount < 0 and WARN or HEAL }
+            end
         end
         -- Crit is the upside and reads as one, so it only appears when there is something to say. At
         -- 0 it would be a row on every panel in the game carrying no information at all.

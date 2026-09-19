@@ -1302,4 +1302,73 @@ return {
             assert(skipped, "skipping a unit never ADDS threatened tiles")
         end,
     },
+
+    -- -----------------------------------------------------------------------
+    -- COVER, AND THE ONE CASE IN THE SUITE THAT CAN SEE IT
+    -- -----------------------------------------------------------------------
+    --
+    -- tests/runner.lua pins Combat.FORCE_HIT before EVERY case, and the planner's cover term is gated
+    -- on Combat.boardRolls -- correctly, since evasion is worth nothing where nothing can miss. Put
+    -- together, that means the entire term sits outside the suite's reachable domain and every other
+    -- spec in this file is green about it for the wrong reason. These two clear the flag, which is the
+    -- same answer tests/accuracy_spec.lua gives to the same problem for the dice themselves.
+    {
+        name = "a threatened body prefers the tile with cover on it",
+        fn = function()
+            local was = Combat.FORCE_HIT
+            Combat.FORCE_HIT = false
+            local ok, err = pcall(function()
+                -- Two tiles, equally far from the party, equally clear -- and one of them is a wood.
+                -- The enemy is a `defensive` body with nothing to do but stand somewhere.
+                local ar = arena(7, 3)
+                ar.tiles[1][4].type = "forest"
+                ar.tiles[1][4].bonus = { avoid = 30 }
+                local c = Combat.new(ar,
+                    { unit(swordsman("aggressor"), 1, 2) },
+                    { unit(swordsman("defensive"), 7, 2) })
+                local foe = c.units[2]
+                local threat = select(2, Combat.threatMap(c, foe.side, foe))
+
+                local w = AI.WEIGHTS
+                local covered = AI.riskScore(c, foe, { x = 4, y = 1 }, w, threat)
+                local open = AI.riskScore(c, foe, { x = 4, y = 3 }, w, threat)
+                -- riskScore answers NEGATIVE risk, so the better tile is the greater number. Asserted
+                -- as an ordering rather than as a figure: the exchange rate is a tuning knob and the
+                -- claim here is only that cover is on the right side of it.
+                assert(covered > open,
+                    "a wood should read as safer ground than the open tile beside it ("
+                    .. covered .. " vs " .. open .. ")")
+            end)
+            Combat.FORCE_HIT = was
+            assert(ok, err)
+        end,
+    },
+    {
+        -- ...and the gate itself, which is the half that would rot silently. If boardRolls ever stops
+        -- being consulted the case above keeps passing -- it clears the flag -- and the planner quietly
+        -- starts spending turns on cover during the prologue's scripted lesson, where no blow can miss.
+        name = "cover is worth nothing to the planner on a board that never rolls",
+        fn = function()
+            local was = Combat.FORCE_HIT
+            Combat.FORCE_HIT = false
+            local ok, err = pcall(function()
+                local ar = arena(7, 3)
+                ar.tiles[1][4].type = "forest"
+                ar.tiles[1][4].bonus = { avoid = 30 }
+                local c = Combat.new(ar,
+                    { unit(swordsman("aggressor"), 1, 2) },
+                    { unit(swordsman("defensive"), 7, 2) })
+                c.alwaysHits = true -- the prologue's village lesson, in one field
+                local foe = c.units[2]
+                local threat = select(2, Combat.threatMap(c, foe.side, foe))
+                local w = AI.WEIGHTS
+                assert(not Combat.boardRolls(c), "the fixture has to be a board that cannot miss")
+                assert(AI.riskScore(c, foe, { x = 4, y = 1 }, w, threat)
+                    == AI.riskScore(c, foe, { x = 4, y = 3 }, w, threat),
+                    "with nothing able to miss, a wood and open ground are the same tile")
+            end)
+            Combat.FORCE_HIT = was
+            assert(ok, err)
+        end,
+    },
 }

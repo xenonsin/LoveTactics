@@ -28,6 +28,7 @@ local Trap = require("models.trap")
 local Prop = require("models.prop")
 local Colors = require("ui.colors")
 local Glyphs = require("ui.glyphs")
+local Terrain = require("models.terrain")
 local TerrainArt = require("ui.terrain_art")
 local Theme = require("ui.theme")
 local PoolCallout = require("ui.pool_callout")
@@ -72,6 +73,9 @@ local TILE_INFO = {
     mire     = { name = "Mire",        desc = "Sucking bog. The heaviest ground to cross, and it leaves a body easier to hit. It conducts." },
     sand     = { name = "Loose Sand",  desc = "Heavy going, with nothing to hide behind." },
     ice      = { name = "Ice",         desc = "The one floor that costs nothing to cross. It conducts: a bolt sweeps the whole sheet." },
+    redoubt  = { name = "Redoubt",     desc = "A low work of piled stone. Hard to hit behind, and it turns a blow that lands. It mends whoever holds it." },
+    dune     = { name = "Dune",        desc = "Sand heaped high enough to crouch behind. Slow to cross, and it breaks a sightline." },
+    drift    = { name = "Snow Drift",  desc = "Deep snow piled by the wind. Slow to cross and good cover -- but wet through, so a bolt runs along it." },
 }
 
 -- Accent per terrain type (title + border tint). Cool and grey for what stops you, green or warm for
@@ -96,8 +100,40 @@ local TILE_COLOR = {
     mire     = { 0.62, 0.72, 0.44 },
     sand     = { 0.90, 0.80, 0.54 },
     ice      = { 0.72, 0.88, 0.95 },
+    -- The built work reads WARM, against the cool greys reserved for what stops you: a redoubt is the
+    -- one solid-LOOKING tile on the board you are meant to walk onto, and it must not be filed with
+    -- the mountain by its heading colour alone.
+    redoubt  = { 0.88, 0.76, 0.56 },
+    -- Each cover heap in its own country's key, matching the wash the board paints it in
+    -- (BattleMap.TERRAIN_TINT), so the heading and the ground agree about what this is made of.
+    dune     = { 0.92, 0.82, 0.58 },
+    drift    = { 0.84, 0.92, 0.98 },
 }
 local DEFAULT_COLOR = { 0.86, 0.87, 0.92 }
+
+-- WHAT EACH POSITIONAL BONUS IS CALLED, one label per key Terrain.BONUS_KEYS declares. The terrain
+-- table owns the SET and the order; this owns the words, because a player is owed a phrase and not a
+-- field name -- "Cover (harder to hit)" is what `avoid` means to somebody who has never read
+-- docs/accuracy.md, and a row reading "Avoid bonus" would be a name rather than a description.
+--
+-- Two of these carry their whole argument in a parenthesis and both are earning it:
+--   * reach from a vantage is a SIGHTLINE (Combat.fieldRangeBonus gates it on `requiresSight`), so a
+--     melee player reading a bare "+1 Range" would be promised something the swing does not keep;
+--   * armour from the ground is the one bonus the board has that is not about being MISSED, and the
+--     redoubt exists to be the tile a body stands on expecting to be hit.
+-- Avoid leads because it leads the terrain table: cover is the positional decision this game has
+-- instead of facing, and it is the figure a tile most needs to say out loud.
+local BONUS_LABEL = {
+    avoid        = "Cover (harder to hit)",
+    range        = "Range bonus (ranged)",
+    defense      = "Armour (less damage taken)",
+    magicDefense = "Ward (less magic taken)",
+}
+
+-- Exported for tests/field_bonus_spec.lua, which asks the real question -- "does every key the terrain
+-- table lets a tile promise have a word for the player here" -- rather than a proxy for it. Read off
+-- the built blocks it could not tell an authored label from titleCase's fallback.
+TileTooltip.BONUS_LABEL = BONUS_LABEL
 
 -- The terrain vocabulary, exported so tests/terrain_art_spec.lua can ask the real question -- "is this
 -- type AUTHORED here" -- rather than a proxy for it. Reading it back off the built blocks cannot tell
@@ -302,6 +338,18 @@ local function accentFor(info)
     return TILE_COLOR[(info.cell or {}).type] or DEFAULT_COLOR
 end
 
+-- WHAT THIS GROUND IS CALLED, as one word the whole game can use. `skin` is the biome's override when
+-- it has lent this type its own (BattleMap:tileSkin -- the castle calls a mountain a Rampart).
+--
+-- Lifted out of appendTerrain the day a SECOND surface needed it: the action preview names the cover
+-- under its Hit row ("-20 - Forest"), and a panel that said "Mountain" over ground the tooltip beside
+-- it called a Rampart would be two names for one square. One gloss, both surfaces.
+function TileTooltip.terrainName(kind, skin)
+    if skin and skin.name then return skin.name end
+    local meta = TILE_INFO[kind]
+    return (meta and meta.name) or titleCase(kind or "Tile")
+end
+
 -- Append the terrain section (type name, flavour, movement / line-of-sight / positional
 -- modifiers). `asHead` demotes the name from a top-level title to a section heading, used when a
 -- unit/trap owns the title above it.
@@ -319,7 +367,7 @@ local function appendTerrain(blocks, info, asHead)
     -- Each field falls back on its own, so a tileset that renames a tile without redrawing it (or the
     -- reverse) gets what it asked for and keeps the terrain's answer for the rest.
     local skin = info.skin
-    local name = (skin and skin.name) or meta.name
+    local name = TileTooltip.terrainName(cell.type, skin)
     local desc = (skin and skin.desc) or meta.desc
 
     -- The heading carries the board's own swatch when the caller handed one over (`info.tone`, from
@@ -360,22 +408,19 @@ local function appendTerrain(blocks, info, asHead)
 
     -- Positional bonuses granted for standing here (terrain + any field object), aggregated by
     -- combat into a flat bag, e.g. { range = 1 }.
-    for _, stat in ipairs({ "avoid", "range", "damage", "magicDamage", "defense", "magicDefense", "movement" }) do
-        local amount = info.bonus and info.bonus[stat]
+    --
+    -- WALKED IN Terrain.BONUS_KEYS' OWN ORDER rather than in a list kept here. This loop used to carry
+    -- its own seven names, four of which no function in the game read -- so a tile authored
+    -- `bonus = { defense = 2 }` printed "+2 Defense bonus" on this very box and changed no number in
+    -- the fight. The set of things a tile may promise is the terrain table's to declare, and this box's
+    -- only remaining job is to find the words for each one. tests/field_bonus_spec.lua fails on a
+    -- declared key with no label here, so the two can never come apart in the other direction either.
+    for _, entry in ipairs(Terrain.BONUS_KEYS) do
+        local amount = info.bonus and info.bonus[entry.key]
         if amount and amount ~= 0 then
-            -- Reach from a vantage is a SIGHTLINE, so it lengthens shots and nothing else (see
-            -- Combat.fieldRangeBonus). Say so on the tile, or a melee player reads "+1 Range" as a
-            -- promise the swing won't keep.
-            --
-            -- Avoid leads the list, and is the one bonus written as a percentage because that is the
-            -- unit it is spent in -- it comes straight off an attacker's hit chance (docs/accuracy.md).
-            -- It is also the most important thing a tile can say since accuracy landed: cover is the
-            -- positional decision this game has instead of facing, and a forest that did not mention
-            -- being worth 20 points of somebody's aim would be asking the player to know that already.
-            local label = stat == "range" and "Range bonus (ranged)"
-                or stat == "avoid" and "Cover (harder to hit)"
-                or (titleCase(stat) .. " bonus")
-            local shown = (amount > 0 and "+" or "") .. tostring(amount) .. (stat == "avoid" and "%" or "")
+            local label = BONUS_LABEL[entry.key] or (titleCase(entry.key) .. " bonus")
+            local shown = (amount > 0 and "+" or "") .. tostring(amount)
+                .. (entry.key == "avoid" and "%" or "")
             blocks[#blocks + 1] = { kind = "stat", label = label,
                 value = shown,
                 valueColor = amount > 0 and { 0.55, 0.85, 0.55 } or ENEMY_COLOR }

@@ -519,6 +519,123 @@ function Marks.ice(x, y, w, h, r, g, b, col, row)
     love.graphics.setLineWidth(1)
 end
 
+-- A REDOUBT -- a low breastwork of piled stone with a firing step behind it, seen edge-on. The one
+-- mark on the board that is BUILT, and everything about the shape is spent saying so: a straight
+-- coping line across the tile, blocks below it with staggered joints, and a flat platform behind.
+-- Squared off, like the masonry skin and for the same reason -- at 64 logical pixels the corner is all
+-- anyone reads, and a rounded version of this is a boulder field.
+--
+-- It stops well short of the tile's top edge, which is the whole of what tells it from a wall. The
+-- solids (thicket, mountain, rock, masonry) run edge to edge and near-opaque because you cannot enter
+-- them; this is a floor, so there is open ground above the parapet and a body stands on it. Waist
+-- height, drawn at waist height.
+function Marks.redoubt(x, y, w, h, r, g, b)
+    local left, wide = x + w * 0.06, w * 0.88
+    local top = y + h * 0.40                       -- the coping, a little below the middle of the cell
+    local deep = h * 0.40
+    dark(r, g, b, 0.36, 0.95)                      -- the mortar, which is simply what shows between blocks
+    love.graphics.rectangle("fill", left, top, wide, deep, 2, 2)
+    -- Two courses, the joints staggered, exactly as the masonry skin builds a wall -- this is the same
+    -- construction at knee height, and it should read as the same hands.
+    for i = 0, 1 do
+        local by = top + h * 0.035 + i * deep * 0.46
+        local edges = (i % 2 == 0) and { 0.00, 0.34, 0.68 } or { -0.17, 0.17, 0.51, 0.85 }
+        for _, f in ipairs(edges) do
+            local bx = math.max(left, left + wide * f)
+            local bw = math.min(left + wide, left + wide * (f + 0.34)) - bx
+            if bw > w * 0.02 then
+                pale(r, g, b, 0.16, 0.95)
+                love.graphics.rectangle("fill", bx + w * 0.012, by, bw - w * 0.024, deep * 0.40)
+            end
+        end
+    end
+    -- The coping: one bright line along the top of the work. It is the thing you crouch behind, so it
+    -- is the thing the light finds first, and a single lit edge is what makes the rest read as mass.
+    pale(r, g, b, 0.46, 0.95)
+    love.graphics.rectangle("fill", left - w * 0.02, top - h * 0.055, wide + w * 0.04, h * 0.065, 1, 1)
+    -- The firing step behind it, a shade lighter than the wall and darker than open ground: the
+    -- platform is what says a body STANDS here rather than merely sheltering against the outside.
+    pale(r, g, b, 0.10, 0.55)
+    love.graphics.rectangle("fill", left + w * 0.10, top - h * 0.155, wide - w * 0.20, h * 0.105)
+end
+
+-- A DUNE -- sand piled high enough to crouch behind. Deliberately the same FAMILY of mark as `sand`
+-- (ripples, crests, the desert's own geometry) and deliberately a different SHAPE: flat sand is four
+-- shallow lines ruled across the tile, and this is one heaped mass with a wind-carved lip. The pair
+-- has to be told apart at a glance on a board that has both, and the difference the player needs is
+-- exactly the one the silhouette carries -- a thing lying down against a thing standing up.
+function Marks.dune(x, y, w, h, r, g, b, col, row)
+    local base = y + h * 0.86
+    -- The heap: a long asymmetric back rising to a lip off-centre, which is what wind does to sand and
+    -- what keeps this from reading as the hill's symmetrical mound.
+    local peak = x + w * (0.60 + rnd(col, row, 1) * 0.10)
+    dark(r, g, b, 0.74, 0.96)
+    love.graphics.polygon("fill",
+        x, base,
+        x + w * 0.16, y + h * 0.60,
+        peak - w * 0.14, y + h * 0.34,
+        peak, y + h * 0.28,
+        peak + w * 0.12, y + h * 0.46,
+        x + w, y + h * 0.66,
+        x + w, base)
+    love.graphics.rectangle("fill", x, base, w, h * 0.14)
+    -- The slip face: the steep side past the lip, in shadow. One polygon, sharing the lip's own points
+    -- so the two halves can never come apart.
+    dark(r, g, b, 0.52, 0.95)
+    love.graphics.polygon("fill", peak, y + h * 0.28, peak + w * 0.12, y + h * 0.46,
+        x + w, y + h * 0.66, x + w, base, peak + w * 0.04, base)
+    -- The lit crest along the windward back, and two ripples on the flat in front of it, so the mark
+    -- still says "sand" and not "a pale hill".
+    pale(r, g, b, 0.42, 0.92)
+    love.graphics.setLineWidth(math.max(1.5, w * 0.045))
+    love.graphics.line(x + w * 0.02, base - h * 0.04, x + w * 0.18, y + h * 0.58,
+        peak - w * 0.14, y + h * 0.32, peak, y + h * 0.27)
+    pale(r, g, b, 0.20, 0.7)
+    for i = 0, 1 do
+        local wy = base + h * (0.02 + i * 0.05)
+        love.graphics.line(x + w * 0.06, wy, x + w * 0.40, wy - h * 0.018, x + w * 0.74, wy)
+    end
+    love.graphics.setLineWidth(1)
+end
+
+-- A DRIFT -- snow heaped against something, with a wind-cut overhang at the top. Built from the dune's
+-- silhouette on purpose: these two are the same tile in two countries (both are the biome's cover,
+-- both cost two, both are worth twenty), and a player who has learned one has learned the other.
+-- What separates them is the LIP -- a drift is undercut and a dune is not -- and the flecks of blown
+-- snow above it, which no dune has and which say the same thing `ice` says: this ground is wet, and a
+-- bolt will find everyone sheltering along it.
+function Marks.drift(x, y, w, h, r, g, b, col, row)
+    local base = y + h * 0.86
+    local peak = x + w * (0.38 + rnd(col, row, 1) * 0.10)
+    dark(r, g, b, 0.86, 0.95) -- barely under the ground tone: snow is the brightest floor there is
+    love.graphics.polygon("fill",
+        x, base,
+        x + w * 0.10, y + h * 0.56,
+        peak - w * 0.10, y + h * 0.32,
+        peak + w * 0.06, y + h * 0.26,
+        x + w * 0.78, y + h * 0.52,
+        x + w, y + h * 0.70,
+        x + w, base)
+    love.graphics.rectangle("fill", x, base, w, h * 0.14)
+    -- The undercut: a wedge of shadow beneath the overhanging lip. The one line that makes this a
+    -- drift rather than a pale dune, so it is drawn darkest and last of the masses.
+    dark(r, g, b, 0.58, 0.9)
+    love.graphics.polygon("fill", peak + w * 0.06, y + h * 0.26, x + w * 0.78, y + h * 0.52,
+        x + w * 0.70, y + h * 0.56, peak + w * 0.02, y + h * 0.36)
+    pale(r, g, b, 0.50, 0.95) -- the lit crown along the windward back
+    love.graphics.setLineWidth(math.max(1.5, w * 0.05))
+    love.graphics.line(x + w * 0.02, base - h * 0.04, x + w * 0.12, y + h * 0.54,
+        peak - w * 0.10, y + h * 0.30, peak + w * 0.06, y + h * 0.25)
+    love.graphics.setLineWidth(1)
+    for i = 1, 4 do -- blown snow above the crest: scattered, deterministic, and the only loose grit here
+        pale(r, g, b, 0.40, 0.55)
+        love.graphics.circle("fill",
+            x + w * (0.20 + rnd(col, row, i + 12) * 0.66),
+            y + h * (0.08 + rnd(col, row, i + 40) * 0.16),
+            math.max(1, w * 0.022))
+    end
+end
+
 -- ---------------------------------------------------------------------------
 -- The table, and the draw
 -- ---------------------------------------------------------------------------
@@ -532,6 +649,9 @@ TerrainArt.MARKS = {
     rock = Marks.rock, grass = Marks.grass,
     river = Marks.river, water = Marks.water, lava = Marks.lava, mire = Marks.mire,
     sand = Marks.sand, ice = Marks.ice,
+    -- The built work, and the cover each country grows. `dune` and `drift` share a silhouette on
+    -- purpose (see their marks): they are one tile in two biomes, and the tag is what differs.
+    redoubt = Marks.redoubt, dune = Marks.dune, drift = Marks.drift,
 }
 
 -- Skin id -> mark, for the pictures a biome may lend a type in place of its own (see "The skins"

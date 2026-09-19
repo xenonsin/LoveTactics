@@ -62,6 +62,47 @@ end
 
 return {
     {
+        -- HARD CONTROL SHUTS A REFLEX AND NOT A SCRIPT, and both halves are asserted here because only
+        -- the pair is the rule. One fixture answers the blow (a reflex: a counter, thorns, a parry); the
+        -- other reads the bearer's own bar and sheds a stage off it (`notAReaction` -- what every boss
+        -- phase trait carries). A stun closes the first and must not touch the second.
+        --
+        -- IT USED TO CLOSE BOTH, by skipping the dispatch outright. A stunned boss did not transform,
+        -- summon or turn -- keep it stunned and its whole second half never happened, which is a fight
+        -- you can win by deleting the fight. It shipped on the Demon Champion (tests/demon_champion_spec
+        -- .lua plays out the one that mattered); this is the same rule, pinned at the mechanism.
+        name = "a stun closes a reflex and leaves a threshold script alone",
+        fn = function()
+            withTraits({
+                test_reflex = {
+                    name = "Reflex",
+                    onDamaged = function(ctx) ctx.trait.fired = (ctx.trait.fired or 0) + 1 end,
+                },
+                test_script = {
+                    name = "Script",
+                    notAReaction = true,
+                    onDamaged = function(ctx) ctx.trait.fired = (ctx.trait.fired or 0) + 1 end,
+                },
+            }, function()
+                local body = charWithTraits("character_rowan", { "test_reflex", "test_script" })
+                local c = Combat.new(arena(6, 6),
+                    { unit(body, 1, 1) }, { unit(plainChar("character_bandit"), 4, 4) })
+                local u = c.units[1]
+                local reflex, script = u.traits[1], u.traits[2]
+                assert(reflex.def.name == "Reflex" and script.def.name == "Script", "fixtures in order")
+
+                -- Unstunned, both answer the same wound.
+                Combat.dealFlatDamage(c, u, 1, nil, "test")
+                assert(reflex.fired == 1 and script.fired == 1, "with nothing on her, a blow raises both")
+
+                Status.apply(c, u, "status_stun", { magnitude = 5 })
+                Combat.dealFlatDamage(c, u, 1, nil, "test")
+                assert(reflex.fired == 1, "too rattled to answer: the reflex stays shut")
+                assert(script.fired == 2, "but the bar is still read, and the stage still turns")
+            end)
+        end,
+    },
+    {
         name = "onCombatStart fires once the field is built, for every unit that carries a trait",
         fn = function()
             withTraits({

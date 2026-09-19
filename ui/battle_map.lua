@@ -129,6 +129,15 @@ BattleMap.ART = {
     sand = "thicket", ice = "thicket", mire = "river", lava = "river",
     path = "path", bridge = "bridge", thicket = "thicket",
     grass = "grass", rock = "rock", river = "river",
+    -- The built work takes `grass`, the role every WALKABLE rise already uses (hill, rough) -- and
+    -- explicitly NOT `rock`, however much piled stone wants it. Grey is reserved for ground you cannot
+    -- enter (tests/biome_spec.lua pins the reservation), and the hill is the standing lesson: it wore
+    -- the rock role for its whole life because it was called `mountain`, so the best tile on the board
+    -- was painted the same grey as the wall beside it. A fort you are meant to walk INTO is the one
+    -- tile that can least afford that confusion. The two cover heaps take `thicket`, the role every
+    -- piece of walkable cover already uses (forest, sand, ice). The mark carries the identity; the role
+    -- only picks a plausible photograph once a real tileset sheet is loaded.
+    redoubt = "grass", dune = "thicket", drift = "thicket",
 }
 
 -- Translucent wash over costly terrain (drawn on walkable tiles) so a tile's move penalty
@@ -149,6 +158,19 @@ BattleMap.TERRAIN_TINT = {
     water    = { 0.12, 0.34, 0.58, 0.34 },
     sand     = { 0.52, 0.40, 0.14, 0.26 }, -- dry ochre: heavy going, no cover
     mire     = { 0.14, 0.20, 0.10, 0.38 }, -- the heaviest wash, for the heaviest walkable floor
+    -- WARM, and deliberately in the rough's earthen key rather than in stone grey. The redoubt is the
+    -- one floor here that was built rather than weathered and the temptation is to paint it the colour
+    -- of the material -- but grey on this board means YOU CANNOT GO THERE, and a fort is a tile you are
+    -- meant to walk into. So it reads as worked earth and cut turf, which is what a low field work
+    -- mostly is anyway. Kept light (0.24) because it costs only two: the wash tracks COST, and a heavy
+    -- one here would promise the hill's price.
+    redoubt  = { 0.34, 0.26, 0.16, 0.24 },
+    -- The cover each country grows, each washed in its own biome's key rather than in one shared tone:
+    -- a dune has to read as sand piled up and a drift as snow piled up, or the parity between them
+    -- becomes a sameness the eye has to work through. Both at the forest's own alpha, since all three
+    -- charge two and are worth twenty -- the wash is the promise that they are one price.
+    dune     = { 0.58, 0.44, 0.16, 0.28 },
+    drift    = { 0.62, 0.72, 0.82, 0.28 },
 }
 
 -- What a tile you CANNOT ENTER keeps of its colour. It was 0.55 (a flat 45% black over the top) back
@@ -1091,6 +1113,64 @@ function BattleMap:drawTiles()
     end
 end
 
+-- WHICH REACHABLE TILE IS WORTH STANDING ON -- a pip on every square in the move band whose ground
+-- changes what a blow aimed at you is worth.
+--
+-- The move overlay was one flat blue wash, so finding the forest inside it meant hovering squares one
+-- at a time: the information the player most needs while choosing where to end a turn was the one
+-- thing the board would not show them without being asked twenty times.
+--
+-- WHY THIS IS NOT A TERRAIN MARK, which matters because ui/terrain_art.lua argues at length that it
+-- must not be. A terrain mark is TEXTURE -- it says what the ground is made of, it shades itself off
+-- the tile's own tone, and it is there whether or not anybody is deciding anything. This is a VERDICT,
+-- and it obeys the rules verdicts obey here: it is drawn in the overlay's own colour family, it exists
+-- only while a move is being chosen, and it sits inside the band rather than on the bare board. The
+-- ground keeps its texture; the overlay gains a mark. That is the same division the threat wash, the
+-- lethal skull and the cursor rim already keep.
+--
+-- TWO MARKS, SEPARATED BY GEOMETRY RATHER THAN HUE, because they share a cell with a wash that is
+-- already carrying a colour: cover points UP (a shield's shoulders, over ground that answers for you)
+-- and exposure points DOWN (the same shape inverted, over the mire -- the one floor that leaves a body
+-- easier to hit than open field). A player who never works out which is which still reads "these two
+-- tiles are not the same", which is most of the value.
+function BattleMap:drawCoverMarks()
+    -- A flier takes nothing from the ground it hovers over (Combat.fieldBonus), so it is shown nothing:
+    -- a pip promising cover this body will not get is worse than no pip at all. states/battle.lua
+    -- decides it, where the actor is known.
+    if self.overlays.coverBlind then return end
+    local tiles = self.arena and self.arena.tiles
+    if not tiles then return end
+    local s = self.size
+    local function mark(cells)
+        for _, c in ipairs(cells or {}) do
+            local cell = tiles[c.y] and tiles[c.y][c.x]
+            local avoid = cell and cell.bonus and cell.bonus.avoid
+            if avoid and avoid ~= 0 then
+                local wx, wy = self:cellToPixel(c.x, c.y)
+                -- Top-right corner, inset: the bottom of a cell belongs to the unit token standing on
+                -- it and the top-left is where the terrain's own mark tends to carry its lit edge.
+                local cx = wx + s * 0.80
+                local cy = wy + s * 0.20
+                local r = s * 0.115
+                local up = avoid > 0
+                local tip = up and (cy - r) or (cy + r)
+                local base = up and (cy + r * 0.55) or (cy - r * 0.55)
+                -- A dark backing first, exactly as the boundary strokes above do it, so the pip stays
+                -- legible over a purple danger wash as well as a blue one.
+                love.graphics.setColor(0, 0, 0, 0.55)
+                love.graphics.polygon("fill", cx, tip - (up and 1.5 or -1.5),
+                    cx - r - 1, base, cx + r + 1, base)
+                local col = up and Colors.SUPPORT or Colors.DANGER
+                love.graphics.setColor(col[1], col[2], col[3], 0.95)
+                love.graphics.polygon("fill", cx, tip, cx - r, base, cx + r, base)
+            end
+        end
+    end
+    mark(self.overlays.move)
+    mark(self.overlays.moveDanger)
+    love.graphics.setColor(1, 1, 1)
+end
+
 -- Highlight sets for reachable move tiles (blue) and armed ability range (red/green), drawn under
 -- the units so tokens stay legible on top. Each set is painted as a soft low-alpha wash with a
 -- single outline traced around the region's OUTER boundary only -- so a large set reads as one
@@ -1148,6 +1228,9 @@ function BattleMap:drawOverlays()
     -- intersection of your movement and an enemy's attack range), so a step into danger reads.
     paint(self.overlays.move, Colors.MOVE)
     paint(self.overlays.moveDanger, Colors.DANGER)
+    -- ...and which of those tiles is worth standing on. Drawn immediately after the band it belongs to,
+    -- so it can never appear over ground the actor cannot reach.
+    self:drawCoverMarks()
     -- Hovered unit's reach (Fire Emblem / Triangle Strategy preview): its movement in blue -- the
     -- same as yours -- and its attack range in red. The state suppresses the actor's own overlays
     -- while a unit is hovered, so the two never paint together.

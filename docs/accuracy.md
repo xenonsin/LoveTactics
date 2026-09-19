@@ -113,9 +113,9 @@ would have done.
 
 | Tile | Avoid | |
 |---|---:|---|
-| `forest` | +20 | Already soft cover for line of sight — the two readings finally agree |
-| `hill` | +30 | Already grants `range = 1`; costs 3 to enter and now pays twice |
-| `rough` | +10 | Broken ground, a modest edge |
+| `hill` | +30 | Also grants `range = 1`; costs 3 to enter and pays twice |
+| `forest` / `dune` / `drift` | +20 | Soft cover, one per country — the wood, the heaped sand, the snow |
+| `rough` / `redoubt` | +10 | Broken ground; and the built work, which also armours you |
 | `mire` | −10 | The one negative: slow **and** exposed, the hill's exact inverse |
 
 Authored in `Terrain.TYPES` ([models/terrain.lua](../models/terrain.lua)) and read through
@@ -124,6 +124,13 @@ hill's range. So a placed field or a smoke cloud can grant cover later with no n
 
 A forest tile is worth about as much as the gap between a good weapon and a bad one. That is the
 calibration that makes ground a thing you spend a turn to reach.
+
+**The rest of the ground's law lives in [terrain.md](terrain.md)** and is not restated here — what
+else a tile may promise and who reads it, the ceiling on terrain armour, why a flier forfeits the
+tile it hovers over, which cover each biome grows, and how to measure whether a company can reach any
+of it. Two things from that file bear directly on the numbers above: **a flier takes no terrain avoid
+at all**, and **the enemy now discounts its own exposure by the cover underfoot**, so the forest is no
+longer a tile only the player stands in.
 
 ## What moves them
 

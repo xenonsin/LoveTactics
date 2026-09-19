@@ -293,4 +293,110 @@ return {
             assert(not aloft["3,1"], "nor pass through one to the far side")
         end,
     },
+
+    -- -----------------------------------------------------------------------
+    -- THE CEILING ON TERRAIN ARMOUR
+    -- -----------------------------------------------------------------------
+    {
+        -- Fire Emblem's fort gives +2 against a Defence that runs 0-20. Ours runs 3-6 across the whole
+        -- roster, so the same +2 is a third to two thirds of a body's entire mitigation -- heavier by
+        -- far than the forest's +20 avoid, which comes off a hit chance already sitting at 61-91%.
+        -- A model game sets the magnitude only while the stat it was set against is the same width.
+        --
+        -- ONE TILE, which is the other half of the rule and the half a spec is actually needed for: a
+        -- ceiling on the value is easy to keep by eye, and the number of tiles carrying it is exactly
+        -- the thing that creeps. Armour on a second floor is a re-tier, and a re-tier obliges a
+        -- rebalance rather than a line in a table.
+        name = "terrain armour is capped, and exactly one tile carries any",
+        fn = function()
+            local armoured = {}
+            for name, def in pairs(Terrain.TYPES) do
+                for _, key in ipairs({ "defense", "magicDefense" }) do
+                    local v = def.bonus and def.bonus[key]
+                    if v and v ~= 0 then
+                        armoured[#armoured + 1] = name .. "." .. key .. "=" .. v
+                        assert(v <= Terrain.DEFENSE_CEILING,
+                            name .. " grants " .. key .. " " .. v .. ", over the ceiling of "
+                            .. Terrain.DEFENSE_CEILING)
+                    end
+                end
+            end
+            table.sort(armoured)
+            assert(#armoured == 1, "exactly one tile may armour the body standing on it, saw: "
+                .. table.concat(armoured, ", "))
+        end,
+    },
+    {
+        -- The tile the whole positional package is built around, pinned as a SHAPE rather than as four
+        -- numbers: it has to be cheaper to reach than the hill, worth less to a shooter, and the only
+        -- ground that thickens armour. Any one of those drifting turns it back into a second forest.
+        name = "the redoubt is the hill's opposite, not its cheaper copy",
+        fn = function()
+            local fort, hill = Terrain.get("redoubt"), Terrain.get("hill")
+            assert(fort.walkable, "a fort you cannot stand in is a wall")
+            assert(fort.moveCost < hill.moveCost, "the redoubt has to be the cheaper ground to take")
+            assert((fort.bonus.range or 0) == 0, "it is the wall's tile, not the archer's")
+            assert(fort.sightCost == 0, "you can see out of a thing you stand behind")
+            assert(fort.bonus.avoid < hill.bonus.avoid,
+                "the hill is still the better place to not be hit at all")
+            assert((fort.bonus.defense or 0) > 0, "...and the redoubt is the only place that armours you")
+        end,
+    },
+    {
+        -- Ground that renews and ground that bogs are both HAZARDS here, which is what keeps the
+        -- terrain table a table of footing, sight and a bonus bag. The risk in that decision is the
+        -- wiring: a tile whose whole second half lives in another model is a tile that can ship with
+        -- the half missing and look completely fine on the board.
+        name = "a board's redoubts and mires stand their own zones, on both build paths",
+        fn = function()
+            local function zonesOn(tiles)
+                local rows, cols = #tiles, #tiles[1]
+                local out = {}
+                for _, h in ipairs(Arena.terrainZones(tiles, rows, cols)) do
+                    out[h.x .. "," .. h.y] = h.id
+                end
+                return out
+            end
+
+            local z = zonesOn({
+                { "ground", "redoubt", "ground" },
+                { "mire", "ground", "hill" },
+            })
+            assert(z["2,1"] == "hazard_renewal", "a redoubt mends whoever holds it")
+            assert(z["1,2"] == "hazard_quicksand", "and the bog finally bites")
+            assert(z["3,2"] == nil, "a hill stands nothing: it pays in reach, as it always did")
+            assert(z["1,1"] == nil, "open ground stands nothing")
+
+            -- The rolled path, end to end: a castle board fills with redoubts, so its arena must come
+            -- out of Arena.build with a zone on each of them. This is the case that would have caught
+            -- the feature shipping wired to nothing.
+            -- Every curated castle arena is `fixed` (the two galleries and the tutorial village), so
+            -- a castle fight always rolls procedural and this reaches the palette rather than a
+            -- hand-authored board. Asserted below rather than assumed: `forts > 0` is what would fail
+            -- if that ever stopped being true.
+            local a = Arena.build({ prestige = 1 }, {
+                biome = "castle", seed = 7,
+                party = { "character_rowan" },
+                composition = function() return { "character_bandit" } end,
+            })
+            local forts = 0
+            for y = 1, a.rows do
+                for x = 1, a.cols do
+                    if a.tiles[y][x].type == "redoubt" then forts = forts + 1 end
+                end
+            end
+            assert(forts > 0, "a castle board is supposed to scatter redoubts")
+            local renewals = 0
+            for _, h in ipairs(a.hazards or {}) do
+                if h.id == "hazard_renewal" then
+                    renewals = renewals + 1
+                    assert(a.tiles[h.y][h.x].type == "redoubt",
+                        "a renewal zone landed on ground that is not a fort")
+                    assert(h.side == nil, "the fort belongs to whoever gets there first, not to a side")
+                end
+            end
+            assert(renewals == forts,
+                "every fort on the board should renew (" .. forts .. " forts, " .. renewals .. " zones)")
+        end,
+    },
 }

@@ -14,8 +14,9 @@
 --   66%  the guard's spell is spoken and the Champion starts winding up the Roar (status_roaring, which
 --        its AI cast-rule reads) -- it calls Bomblets and quickens itself unless you break the channel.
 --   33%  it stops roaring, turns FAST (status_hasted), ENRAGES (the wrath curve), and MARKS ROWAN
---        (the `mark` phase response). On its next turn it crosses the board and puts her down. It now
---        hunts your softest body, and it has just removed the one body that stood in front of them.
+--        (the `mark` phase response) -- then crosses the board and puts her down, on the blow that
+--        crossed the stage. It now hunts your softest body, and it has just removed the one body that
+--        stood in front of them.
 --
 -- WHY THE STAGE ANNOUNCES ITSELF BY KILLING THE KNIGHT. Stage 3's authored answers were all Rowan --
 -- taunt it onto her, let Oathward intercept, sustain behind her -- so felling her is the stage stating
@@ -64,13 +65,15 @@ return {
             { kind = "status", id = "status_hasted" },
             { kind = "enrage", magnitude = 20 },
             { kind = "log", text = "The Champion's wounds catch fire -- it fixes on the weakest of you." },
-            -- ...AND IT MARKS HER, rather than killing her here. A phase crosses inside Trait.onDamaged,
-            -- which runs inside the resolution of the PLAYER's blow -- so felling on the crossing put the
-            -- teleport and the kill on top of the sword that caused them, with no turn boundary between.
-            -- The mark is spent on the CHAMPION'S OWN TURN instead (Combat.spendScriptedFell, called from
-            -- Combat.startTurn), which is where a scripted moment belongs: shake, run, fell, with the
-            -- board settled around it. It also buys the player a full turn of warning, because `scene`
-            -- is Rowan speaking the moment this lands.
+            -- ...AND IT MARKS HER, because authored data may only write state. The ACT is the engine's
+            -- (Combat.spendScriptedFell), spent at the close of the same dispatch this response runs in:
+            -- her line, then the shake, the run and the felling, over a board that has finished settling.
+            --
+            -- IT WAITED FOR THE CHAMPION'S OWN TURN ONCE, and that is the bug this entry is now the fix
+            -- for. A turn is a thing the party can take away -- Stun shoves one down the order rather
+            -- than skipping it -- so stunning the stage as it turned and killing the Champion with the
+            -- turn that bought ended the fight with Rowan untouched, and the Cathedral act after it is
+            -- written about a wound she never took. A stage fires on its threshold.
             --
             -- WHO, and both lines she speaks, are authored HERE rather than in the engine: the beat
             -- belongs to one scene, and the ids should be readable from the phase script that fires it.

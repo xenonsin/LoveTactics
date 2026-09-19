@@ -1298,7 +1298,13 @@ end
 
 -- Run `hook` for every trait on `unit`. Iterates a snapshot, so a hook that mutates the trait list
 -- cannot corrupt the walk (the same guard runTurnHook applies in models/status.lua).
-local function dispatch(combat, unit, hook, event)
+--
+-- `only` (optional) is a predicate over the trait instance: the walk runs the traits it says yes to and
+-- passes over the rest. One caller today -- Trait.onDamaged, narrowing a hard-controlled body down to
+-- the traits that are not reflexes at all (see `notAReaction`). Everything else outside the filter is
+-- unchanged, so a filtered dispatch is still one dispatch: one re-entry latch, one depth charge, one
+-- beat around the whole of it.
+local function dispatch(combat, unit, hook, event, only)
     if not unit or not unit.traits or #unit.traits == 0 then return end
 
     -- SUNDERED: every trait the bearer owns is silent while it holds (Status.traitsDisabled). Gated at
@@ -1332,7 +1338,7 @@ local function dispatch(combat, unit, hook, event)
     local snapshot = {}
     for _, t in ipairs(unit.traits) do snapshot[#snapshot + 1] = t end
     for _, t in ipairs(snapshot) do
-        if t.def[hook] then t.def[hook](ctxFor(combat, unit, t, event)) end
+        if t.def[hook] and (not only or only(t)) then t.def[hook](ctxFor(combat, unit, t, event)) end
     end
     Combat.endBeat(combat)
     unit._reacting[hook] = false
@@ -1353,8 +1359,30 @@ end
 -- A hard-controlled bearer (Stun, Frozen) is too rattled to answer: its counters, thorns and other
 -- on-hit reactions are suppressed, so the blow lands unanswered. (onStatusApplied is deliberately NOT
 -- gated -- a cleansing ward must still be able to shrug off the very stun/freeze that just landed.)
+-- A WOUND LANDED AND THE BEARER LIVED. Two different kinds of rule hang off this one hook, and hard
+-- control tells them apart:
+--
+--   * A REFLEX -- a counter, thorns, a dodge, a parry, a smoke-blink. Something the body DOES about
+--     the blow, and a body too rattled to act cannot do it. Suppressed, as it always has been.
+--   * A SCRIPT -- a boss's own health-threshold stages (`notAReaction`): the shape it sheds into at
+--     half blood, the bodies each stage calls, the curve that opens as it dies. Nothing about that is
+--     answering the blow. It is what the thing IS, read off its own bar, and the fight is built on it.
+--
+-- THEY USED TO BE ONE SET, AND THAT WAS A HOLE YOU COULD WIN A FIGHT THROUGH. Stun suppressed reactions,
+-- suppression skipped the whole hook, and so a stunned boss did not transform, did not call anything and
+-- did not turn -- keep it stunned and its entire second half never happens. It shipped on the Demon
+-- Champion, whose last stage is the scripted beat the prologue's next act is written from: stun it as it
+-- crossed 33%, kill it with the turn that bought, and Rowan walked out of the fight unwounded.
+--
+-- The narrowing is deliberately per-TRAIT and not per-status: a stage is a stage whatever put the body
+-- down, so there is no list of hard controls to keep in step with -- a Sleep added tomorrow gets this
+-- for free. Sundering still silences everything (see dispatch): that status is the RELIC going quiet,
+-- and a script that rides on a relic goes quiet with it.
 function Trait.onDamaged(combat, unit, info)
-    if reactionsSuppressed(unit) then return end
+    if reactionsSuppressed(unit) then
+        dispatch(combat, unit, "onDamaged", info, function(t) return t.def.notAReaction end)
+        return
+    end
     dispatch(combat, unit, "onDamaged", info)
 end
 

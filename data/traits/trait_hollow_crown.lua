@@ -53,6 +53,10 @@ end
 return {
     name = "The Hollow Crown",
     description = "As it fails, it wears the dead.",
+    -- A STAGE, NOT A REFLEX -- so a stun cannot hold the names down (models/trait.lua's Trait.onDamaged,
+    -- which argues the split in full). The Crown reaches for the next dead general because its own bar
+    -- says to, not because somebody hit it.
+    notAReaction = true,
     -- Fractions of max health. Each one crossed calls up the next name.
     thresholds = { 0.75, 0.50, 0.25 },
     shades = GENERALS,

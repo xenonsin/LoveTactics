@@ -33,21 +33,27 @@
 --                               do, never how much killing it takes.
 --   enrage    { magnitude }     switch on the continuous Rising-Wrath curve for the rest of the fight
 --   log       { text }          a line in the combat log
---   mark      { victim, scene,  the bearer picks a body and puts it down ON ITS OWN NEXT TURN, by
---               hitScene,       script rather than by damage. See the paragraph below for why this
+--   mark      { victim, scene,  the bearer picks a body and puts it down BY SCRIPT rather than by
+--               hitScene,       damage, on the threshold itself. See the paragraph below for why this
 --               seconds }       one is armed here and spent elsewhere, and Combat.spendScriptedFell
 --                               for the beat it becomes. `victim` is a character id; `scene` is the
---                               line the board owes the player NOW (a full turn of warning),
---                               `hitScene` the one spoken with the blow already landed, and
---                               `seconds` how long the wind-up shake runs.
+--                               line the board owes the player as the beat opens, `hitScene` the one
+--                               spoken with the blow already landed, and `seconds` how long the
+--                               wind-up shake runs.
 --
--- THERE IS NO `fell` RESPONSE, AND THERE MUST NOT BE ONE. It existed here briefly and the reason it went
--- is worth keeping: a phase crosses inside onDamaged, which runs inside the resolution of the blow that
--- crossed it, so ANYTHING a phase does lands on top of the player's own attack with no turn boundary
--- between them. That is fine for a status or a stat bump, which are state; it is wrong for an ACT. A
--- boss that is meant to do something dramatic arms a marker here and spends it on its own turn -- which
--- is exactly what `mark` is, and the whole of what it does here. The ACT it becomes is
--- Combat.spendScriptedFell, called from Combat.startTurn once a turn boundary has actually passed.
+-- A TRIGGER FIRES ON ITS THRESHOLD, AND EVERY RESPONSE HERE OBEYS THAT. The blow that crosses a stage
+-- is the blow that pays for it: the shape sheds, the bodies land, the curve opens -- now, in this
+-- dispatch, with nothing allowed to act in between. Nothing here may be deferred to the bearer's next
+-- turn, because a turn is a thing the party can take away: Stun does not skip one, it shoves it down
+-- the order, so a stage that waited for a turn was a stage a party could stun the boss out of and then
+-- kill it before the stage ever happened. That shipped once, on the one response that did wait --
+-- see models/combat.lua's dispatchAnswer for the whole argument.
+--
+-- THERE IS NO `fell` RESPONSE, AND THERE MUST NOT BE ONE -- but the reason is the LAYER, not the timing.
+-- A response is authored data and may only write state: a status, a stat bump, a shape, a table naming
+-- who has been picked. An ACT belongs to the engine, which is why `mark` arms a field and
+-- Combat.spendScriptedFell -- called at the close of this same dispatch -- is what crosses the ground
+-- and puts the body down. Same instant, correct side of the line.
 local RESPONSES = {
     status = function(ctx, r) ctx.applyStatus(ctx.unit, r.id, r.opts) end,
     clear  = function(ctx, r) ctx.clearStatus(ctx.unit, r.id) end,
@@ -64,8 +70,9 @@ local RESPONSES = {
     enrage = function(ctx, r) ctx.trait.enrageMagnitude = r.magnitude end,
     log    = function(ctx, r) if r.text then ctx.log("system", r.text) end end,
     -- ARM, NEVER ACT (see the paragraph above). Everything this writes is state: a table on the bearer
-    -- naming who it has picked, and the line the board owes the player before anything is spent. The
-    -- crossing and the felling happen a turn later, in Combat.spendScriptedFell.
+    -- naming who it has picked, and the line the board owes the player as the beat opens. The crossing
+    -- and the felling are the engine's, in Combat.spendScriptedFell -- which runs at the close of this
+    -- same dispatch, so the act lands on the threshold and not a turn after it.
     --
     -- A plain field rather than a status, because a status is a thing the fight can read, refresh,
     -- cleanse and count -- and this is none of those. It is a page of the script the boss is holding.
@@ -73,8 +80,8 @@ local RESPONSES = {
         ctx.unit.scriptedFell = { victim = r.victim, hitScene = r.hitScene, seconds = r.seconds }
         -- Queued on the COMBAT rather than played from here: data is pure logic and must not reach into
         -- the UI, and the scene has to wait for the blow that armed it to finish resolving anyway.
-        -- states/battle.lua plays it at the next turn boundary and clears it. Nil-safe on purpose: no
-        -- scene, no beat, the felling still lands.
+        -- states/battle.lua claims it as the opening line of the beat it is a warning for. Nil-safe on
+        -- purpose: no scene, no line, the felling still lands.
         if r.scene and ctx.combat then ctx.combat.pendingScene = r.scene end
     end,
 }
@@ -82,6 +89,10 @@ local RESPONSES = {
 return {
     name = "Demon Ascendant",
     description = "Answers each wound with the next stage of the fight.",
+    -- NOT A REFLEX, SO HARD CONTROL DOES NOT CLOSE IT (models/trait.lua's Trait.onDamaged). A stage is
+    -- read off the bearer's own bar; being stunned does not keep a body from coming apart at half blood,
+    -- and a boss you could stun out of its whole second half is a boss with no second half.
+    notAReaction = true,
     onDamaged = function(ctx)
         -- The script rides on the granting relic, so one trait id serves every boss.
         local phases = (ctx.item and ctx.item.phases) or ctx.def.phases or {}

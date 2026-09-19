@@ -62,17 +62,107 @@ Arena.TILE_PROPS = Terrain.TYPES
 -- scatter calls (a fill, a rise, a blocker) and this only chooses WHICH tile each one lays down -- the
 -- counts still come from the same rng draws in the same order, so every previously generated board
 -- reproduces from its seed unchanged. A biome absent here falls back to the original three.
+-- EVERY COUNTRY GROWS COVER, and until this pass half of them grew none. The fill is the only one of
+-- the three scatters that is ever cover, and it was cover in exactly two biomes: the default's forest
+-- and (perversely, at -10 avoid) the swamp's mire. A desert filled with sand and a tundra with ice,
+-- both worth nothing, which left 1-3 hills on 64 squares as the whole of the positional decision on
+-- those boards -- in a game that took terrain INSTEAD of facing precisely so that where you stand
+-- would be the decision (docs/accuracy.md, docs/terrain.md).
+--
+-- So the desert fills with dunes and the tundra with drifts: the forest's own numbers wearing each
+-- country's material, which is the parity the fill was always supposed to carry.
+--
+-- NO FOURTH SCATTER, and that is the constraint that shaped this. Arena.generateLayout still makes
+-- exactly three draws in exactly the order it always did, so every stored seed still produces the board
+-- it always produced -- the same shape, the same walls, the same walkable print. What changed is what
+-- the tiles are MADE of, which is the one thing this table has ever decided.
 Arena.BIOME_TERRAIN = {
     default  = { fill = "forest", rise = "hill", block = "mountain" },
-    desert   = { fill = "sand",   rise = "hill", block = "mountain" },
-    tundra   = { fill = "ice",    rise = "hill", block = "mountain" },
+    -- Lust's circle, and the one entry that is a copy of the default rather than a departure from it.
+    -- It is written out anyway: `forest` fell through to the fallback for its whole life, which was
+    -- the right BOARD by luck and an unanswerable table by design -- there was no way to tell a biome
+    -- that meant to take the default from one nobody had got round to (which is exactly what castle
+    -- and underworld turned out to be). A fall-through that produces a playable board is the worst
+    -- kind of hole, so the table now answers for every biome that exists and `default` is left as what
+    -- its name says: the answer for an id nothing declares.
+    forest   = { fill = "forest", rise = "hill", block = "mountain" },
+    desert   = { fill = "dune",   rise = "hill", block = "mountain" },
+    tundra   = { fill = "drift",  rise = "hill", block = "mountain" },
     volcanic = { fill = "rough",  rise = "hill", block = "lava" },
     swamp    = { fill = "mire",   rise = "forest", block = "mountain" },
+    -- THE SWAMP KEEPS ITS HOSTILE FLOOR, and it is the deliberate exception to the paragraph above. A
+    -- mire that stopped punishing the body standing in it would stop being a swamp; the cover here is
+    -- the `rise` instead (a stand of trees out of the water), which is thinner than elsewhere on
+    -- purpose -- a bog is supposed to be a bad place to be caught.
+    --
+    -- PRIDE'S CIRCLE AND GREED'S, both of which fell through to `default` and rolled FOREST boards --
+    -- a fortress and a cavern made of woodland, because neither id was ever written down here
+    -- (Descent.SINS maps pride -> castle and greed -> underworld). The castle's cover is the redoubt,
+    -- which is the one biome a built work belongs to and the reason the tile has somewhere to live;
+    -- its rampart is already set masonry in that tileset, so the two agree about who built the place.
+    castle   = { fill = "redoubt", rise = "hill", block = "mountain" },
+    -- Under the city: a broken stone floor with scree across it. `rough` is thin cover (+10) and is
+    -- meant to be -- there is nothing growing down here to hide behind, only the floor's own wreckage.
+    underworld = { fill = "rough", rise = "hill", block = "mountain" },
     -- The bowl. Sand underfoot like the desert, but the rise is a blocker rather than a hill, and so
     -- is the blocker: there is no high ground in an arena and no landform anyone climbs -- everything
     -- standing on this floor was carried in and set down for the card.
+    --
+    -- AND IT KEEPS ITS BARE FLOOR while every other biome gains cover. An arena is swept between cards
+    -- and the crowd paid to see the exchange, not to watch two men hide from each other. It is the one
+    -- board in the game where there is nowhere to stand but in the open, and that is the fight it is.
     colosseum = { fill = "sand",  rise = "mountain", block = "mountain" },
 }
+
+-- THE TILES THAT STAND A ZONE ON THEMSELVES, and the zone each stands. Ground that HEALS and ground
+-- that BOGS are both hazards in this codebase --
+-- has been since long before the redoubt existed (data/hazards/hazard_heal.lua, hazard_renewal.lua),
+-- it is already drawn by the field shader, already sought by the enemy planner through
+-- Hazard.tileBias, and already grants Regeneration on the zone-bound terms models/hazard.lua sets out.
+-- So the fort does not grow a `regen` key on Terrain.TYPES that the turn loop, the tooltip and the AI
+-- would each have to be taught separately; it stands a zone on itself, and every one of those reads it
+-- for free. One word per mechanic.
+--
+-- UNOWNED, WHICH IS THE WHOLE OF WHAT MAKES THE FORT A FORT. Hazard.allied answers true for a zone
+-- with no `side`, so the redoubt's zone is allied to BOTH companies -- it belongs to whoever got there
+-- first, and taking it off somebody is the same act as holding it. An owned zone would have made the
+-- redoubt a piece of the defender's kit rather than a piece of the board.
+--
+-- AND THE MIRE FINALLY BITES. It was the one floor in the table defined entirely by subtraction --
+-- three to enter, -10 avoid, and nothing else -- which made it ground nobody ever decided about, only
+-- routed around. Fire Emblem's poison swamp takes something off you for standing in it; ours mires
+-- you, which is the same sentence in this game's vocabulary (Mired doubles what a step and a cast
+-- cost, and being zone-bound it lifts the instant you wade clear). Quicksand is a hazard that already
+-- existed, already reads as hostile to the planner, and already has a tested path for a body that
+-- started its turn standing in it -- so this is the mire admitting what it always was rather than a
+-- new rule.
+Arena.TERRAIN_ZONES = {
+    redoubt = { id = "hazard_renewal", duration = 9999 },
+    mire    = { id = "hazard_quicksand", duration = 9999 },
+}
+
+-- Every tile on `tiles` that stands a zone on itself, as hazard specs to be appended to a layout's own
+-- list. NO RNG AT ALL -- it walks the finished ground and answers -- which is what lets it be called
+-- from the procedural path without moving a single draw, and from the curated path so a redoubt or a
+-- bog laid by hand behaves exactly as a rolled one does. A board holding neither answers with an empty
+-- list, which is most boards.
+--
+-- `duration` is quoted huge rather than left to the def: these zones answer to the GROUND, which does
+-- not expire, where an ability's patch of quicksand answers to the twenty ticks it was cast for. Same
+-- id, two lifespans, and the difference is exactly the difference between a spell and a place.
+function Arena.terrainZones(tiles, rows, cols)
+    local out = {}
+    for y = 1, rows or 0 do
+        local line = tiles[y]
+        for x = 1, cols or 0 do
+            local spec = line and Arena.TERRAIN_ZONES[line[x]]
+            if spec then
+                out[#out + 1] = { id = spec.id, x = x, y = y, duration = spec.duration }
+            end
+        end
+    end
+    return out
+end
 
 -- The terrain palette for `biome`, always a complete table (see Arena.BIOME_TERRAIN).
 function Arena.terrainFor(biome)
@@ -1022,6 +1112,21 @@ end
 -- ---------------------------------------------------------------------------
 
 -- Expand a layout's type-string tiles into { type, moveCost, walkable } cells.
+-- A layout's authored hazard list with its ground's own zones appended (Arena.terrainZones). Returns
+-- the authored list untouched when the board holds no such tile, which is most boards -- and never
+-- mutates the layout's own table, since a curated def is a SHARED blueprint and appending to it would
+-- stack a second zone on every fort each time that arena was picked.
+local function withTerrainZones(layout)
+    local authored = layout.hazards or {}
+    if not layout.tiles then return authored end
+    local ground = Arena.terrainZones(layout.tiles, layout.rows, layout.cols)
+    if #ground == 0 then return authored end
+    local out = {}
+    for _, h in ipairs(authored) do out[#out + 1] = h end
+    for _, h in ipairs(ground) do out[#out + 1] = h end
+    return out
+end
+
 local function hydrateTiles(layout)
     local tiles = {}
     for y = 1, layout.rows do
@@ -1277,7 +1382,13 @@ function Arena.build(ctx, spec)
         -- U4 and C5) -- so it has to survive Arena.build rather than stopping at the layout.
         box = layout.box,
         traps = layout.traps or {}, -- authored traps carried into combat (side defaults to enemy)
-        hazards = layout.hazards or {}, -- authored hazards (fire/rain/sanctuary) carried into combat (Combat.new places them)
+        -- Authored hazards (fire/rain/sanctuary) carried into combat, Combat.new places them -- PLUS a
+        -- zone on every tile that stands one (Arena.terrainZones: a redoubt renews, a mire bogs).
+        -- Folded in HERE rather than in the generator because this is where the procedural and the
+        -- curated paths meet -- a fort someone laid by hand in data/arenas/ must mend the body holding
+        -- it exactly as a rolled one does, and doing it twice in two places is how the two would come
+        -- to disagree.
+        hazards = withTerrainZones(layout),
         props = layout.props or {}, -- scattered/authored props (barrels, crates) carried into combat (Combat.new places them)
         objective = normalizeObjective(spec.objective, layout, enemyIds),
         -- The seed the caller chose, not whatever the layout happened to record: it is what the
