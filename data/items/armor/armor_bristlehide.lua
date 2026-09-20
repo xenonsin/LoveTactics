@@ -31,6 +31,9 @@ return {
     -- ranks it reaches (Spoils.rankBand). A deep tier on the commonest animal in the game is an item
     -- nobody meets until the animal has stopped being interesting.
     dropTier = 3,
+    -- RIFT-ONLY. It comes off the body and nowhere else: no counter deals one however many
+    -- the company carries out, and none will buy one back (docs/drops.md, Vendor.foundPrice).
+    unstocked = true,
     -- Every armour costs a square of pace (docs/classes.md, pinned by tests/armor_spec.lua) -- the
     -- defense and the resist are what buy it back.
     bonus = { defense = Curve.ramp(2, 12), movement = -1 },

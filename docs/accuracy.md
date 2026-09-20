@@ -115,7 +115,7 @@ would have done.
 |---|---:|---|
 | `hill` | +30 | Also grants `range = 1`; costs 3 to enter and pays twice |
 | `forest` / `dune` / `drift` | +20 | Soft cover, one per country — the wood, the heaped sand, the snow |
-| `rough` / `redoubt` | +10 | Broken ground; and the built work, which also armours you |
+| `rough` / `fort` | +10 | Broken ground; and the built work, which also armours you |
 | `mire` | −10 | The one negative: slow **and** exposed, the hill's exact inverse |
 
 Authored in `Terrain.TYPES` ([models/terrain.lua](../models/terrain.lua)) and read through

@@ -3,10 +3,21 @@
 --     & "E:\LOVE\lovec.exe" . drop-tier [apply]          -- spread the unpriced set over the tiers
 --     & "E:\LOVE\lovec.exe" . drop-tier recut [apply]    -- decide WHICH items are unpriced first
 --
--- TWO PASSES, RUN IN THAT ORDER. `recut` takes price off everything a house no longer sells; the bare
+-- TWO PASSES, RUN IN THAT ORDER. `recut` takes price off everything a house no longer prices; the bare
 -- pass then spreads the enlarged unpriced set along depth. They are separate commands because the
 -- first is a one-time re-premise of the shelf and the second is a thing that gets re-run every time
 -- the grades move (see M.runRecut for the rule, and docs/shelf.md for the axis).
+--
+-- HALF THE RECUT WAS REVERSED, AND IT IS NOT THE HALF THIS FILE WRITES. The pricing decision stands:
+-- above a house's opener nothing carries an authored `price`, and everything below writes a `dropTier`
+-- instead. What went with it at the time was a DISCOVERY GATE -- no counter would deal a found ware
+-- until the company had carried one out -- and that is gone (docs/shelf.md). A found ware is dealt at
+-- its class rung now, and the rung is read off the very number this pass writes: `dropTier - 1`, the
+-- same figure Vendor.foundPrice already quoted it at.
+--
+-- WHICH RAISES THE STAKES ON `apply` and is the one thing to know before re-running it. A tier used to
+-- decide only how deep a thing fell. It now also decides WHAT A COUNTER CHARGES and WHEN IT WILL DEAL
+-- ONE, so a re-spread moves three things at once. The report is not decoration here.
 --
 -- WHY THIS EXISTS. An item with a `class` and no `price` used to be quest-only by construction: no
 -- vendor stocks it (Vendor.stock reads price) and the drop pool filters on price too

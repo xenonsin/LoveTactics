@@ -41,6 +41,9 @@ return {
     -- authored the other way round on purpose: the horn is the piece you meet, the Sounder is the one
     -- you are still after.
     dropTier = 6,
+    -- RIFT-ONLY. It comes off the body and nowhere else: no counter deals one however many
+    -- the company carries out, and none will buy one back (docs/drops.md, Vendor.foundPrice).
+    unstocked = true,
     activeAbility = {
         target = "tile",
         range = 2, -- placed at arm's length: WHERE the lane starts is most of what you are buying

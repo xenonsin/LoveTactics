@@ -257,7 +257,12 @@ function Market.stock(player, day)
                 row.rack = Market.COUNTER
                 counter[#counter + 1] = row
             end
-        elseif not row.locked and (row.unlockQuests or 0) <= tier then
+        -- BANDED ON THE GATE, not on the authored rank. `rung` is the rung Vendor.stock actually
+        -- measured the row against -- `unlockQuests` on a priced ware, the depth less one on a found
+        -- one -- and the two part on most of the catalogue now that a found ware has a rung at all.
+        -- Reading the authored field banded every rungless ware at 0, which is two fifths of the
+        -- catalogue crowding the shallow end of a rack three tiles wide.
+        elseif not row.locked and (row.rung or row.unlockQuests or 0) <= tier then
             pool[#pool + 1] = row
         end
     end

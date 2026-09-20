@@ -40,6 +40,9 @@ return {
     -- ground laid on every step is worth, and it still sits under the horn, which is where the list
     -- wants it.
     dropTier = 4,
+    -- RIFT-ONLY. It comes off the body and nowhere else: no counter deals one however many
+    -- the company carries out, and none will buy one back (docs/drops.md, Vendor.foundPrice).
+    unstocked = true,
     trail = { hazard = "hazard_curse", duration = 10 },
     bonus = { movement = 1 }, -- footwear; the curse is what it leaves
 }

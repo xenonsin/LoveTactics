@@ -399,12 +399,31 @@ end
 -- Extra pre-mitigation damage `unit` takes from a hit carrying `tags`, summed from every active
 -- status's `vulnerable = { tag = N }` bag (0 if none). Folded into Combat.mitigatedDamage so a
 -- vulnerability lands on both real hits and the damage preview alike (e.g. Wet -> +lightning damage).
+--
+-- A STACKING WOUND MULTIPLIES ITS OWN BAG (`vulnerableScales`), and this is the whole of what that
+-- costs. A def's `vulnerable` bag is a blueprint constant, so before this a status could not carry a
+-- number that GREW -- Vulnerable: Slash is worth 8 the moment it lands and 8 when it lapses, which is
+-- right for a thing a spell inflicts once and wrong for a thing an animal deepens every time it swings
+-- (data/status/status_fury_swipes.lua). Opt-in, so every status shipping today reads exactly as it did:
+-- absent the flag the scale is 1 and this is the same loop.
+--
+-- WHY IT IS WORTH DOING HERE RATHER THAN ON THE ATTACKER. The alternative -- a bonus the striker
+-- carries against one victim -- has no seam in this engine at all, and would have needed a second
+-- implementation inside the damage path that the FORECAST could not see. This function is already
+-- folded into Combat.mitigatedDamage, so a stack that climbs is quoted by the preview the moment it
+-- climbs: the player reads the fourth blow's real number before committing to it, and the fight and the
+-- forecast cannot drift because there is only one of them. The cost is that the wound is on the BODY
+-- rather than on the pair -- anything swinging the same tag benefits, which is a design choice
+-- (docs/bestiary.md) and not an accident of this loop.
 function Status.vulnerability(unit, tags)
     local total = 0
     for _, s in ipairs(unit.statuses or {}) do
         local vuln = s.def.vulnerable
         if vuln then
-            for _, t in ipairs(tags or {}) do total = total + (vuln[t] or 0) end
+            -- The instance's magnitude is the stack count; a scaling def's bag is what ONE stack is
+            -- worth. Floored at 0 so a malformed instance subtracts nothing rather than healing.
+            local scale = s.def.vulnerableScales and math.max(0, s.magnitude or 0) or 1
+            for _, t in ipairs(tags or {}) do total = total + (vuln[t] or 0) * scale end
         end
     end
     return total

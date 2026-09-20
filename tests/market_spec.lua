@@ -196,8 +196,8 @@ return {
         name = "no ladder is greyed on the counter, and the whole of it fits in a player's head",
         fn = function()
             -- A company that has bought nothing today. The one lock this counter deals is `sold`, and
-            -- it is the case below; what is pinned here is that NO GATE reaches this shelf -- no rung,
-            -- no discipline, no undiscovered ware -- because there is no ladder on it to show.
+            -- it is the case below; what is pinned here is that NO GATE reaches this shelf -- neither
+            -- rung nor discipline -- because there is no ladder on it to show.
             local p = Player.new()
             recruitAll(p)
             local stock = Market.stock(p, 3)

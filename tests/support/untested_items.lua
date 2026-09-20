@@ -95,7 +95,6 @@ return {
     "armor_opportunists_harness",
     "armor_quarryhide",
     "armor_rally_coat",
-    "armor_raveners_hide",
     "armor_reagent_vest",
     "armor_reflecting_shield",
     "armor_reliquary_mantle",

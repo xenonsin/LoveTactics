@@ -284,10 +284,13 @@ return {
             -- The split is the only thing that changed. A rack whose open half was also unsorted would
             -- be a shelf with no ladder on it at all, which is the reading the bands exist to give.
             local vendorId, band = mixedBand()
+            -- THE RANK IS `rung`, the gate the row was actually measured against, and not the authored
+            -- `unlockQuests`. The two agree on a priced ware and part on a found one, whose rung is its
+            -- depth less one (models/vendor.lua's lockReason) -- so a rack dealt by the authored field
+            -- would put two fifths of the catalogue, which carries no rank at all, at the top.
+            local function rankOf(row) return row.entry.rung or row.entry.unlockQuests or 0 end
             local function climbs(a, b)
-                if a.entry.unlockQuests ~= b.entry.unlockQuests then
-                    return a.entry.unlockQuests <= b.entry.unlockQuests
-                end
+                if rankOf(a) ~= rankOf(b) then return rankOf(a) <= rankOf(b) end
                 if a.entry.price ~= b.entry.price then return a.entry.price <= b.entry.price end
                 return a.item.name <= b.item.name
             end

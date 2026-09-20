@@ -1239,10 +1239,15 @@ end
 -- The discovery ledger: what this company has seen come out of the rift
 -- ---------------------------------------------------------------------------
 
--- WHAT IT IS FOR. Above the opener rung a house sells nothing (tools/drop_tier.lua's recut): weapons,
--- utilities and armor are found in the rift or not at all. This is the mark that says a thing HAS been
--- found -- and a marked item is what a shelf will deal a second copy of (models/vendor.lua). So the
--- first of anything is earned and every one after it is bought, which is the whole of the change.
+-- WHAT IT IS FOR. This is the ledger of what the company has carried out of the rift, and it has ONE
+-- reader now: models/bestiary.lua, which redacts a body's drop list down to the rows the player has
+-- actually seen paid. A struck bar with a depth on it is how the book says there is more here.
+--
+-- IT USED TO BE A SHELF GATE, and that is what it was written for -- a counter would deal a weapon, a
+-- utility or a piece of armor only once one had been hauled out, so the first of anything was earned
+-- and every one after it was bought. That gate came off (docs/shelf.md): a found ware is dealt on its
+-- class rung like everything else. The ledger outlived it because the book's question was never the
+-- shelf's question -- "have I seen this paid" rather than "may I buy one".
 --
 -- ONE FLAT SET, `{ [itemId] = true }`, never a count and never a level. What is being remembered is
 -- "this exists and I have held one", which is a fact about the CAMPAIGN and not about the stack in the
@@ -1262,11 +1267,16 @@ function Player.markFound(player, itemId)
     player.found = player.found or {}
     if player.found[itemId] then return false end
     player.found[itemId] = true
-    -- ...AND THE HOUSE IT BELONGS TO WEARS A DOT. A discovery is new stock in the exact sense the mark
-    -- was built for -- a line that was not for sale before and is now -- so it uses the same channel a
-    -- quest-opened shelf does (Vendor.hasMarkedStock, states/hub.lua) rather than a second
-    -- notification the city would have to learn.
-    Player.markNew(player, Player.NEW_STOCK, itemId)
+    -- (THE HOUSE IT BELONGS TO USED TO WEAR A DOT, on the argument that a discovery was new stock in
+    -- the exact sense the mark was built for: a line that was not for sale before and is now. That
+    -- stopped being true when the discovery gate came off (models/vendor.lua's lockReason) -- a found
+    -- ware is dealt on its class rung whether or not one has ever been hauled up, so finding one opens
+    -- no line and changes nothing about any counter. The dot would have said "something new here"
+    -- about a row that was either buyable all along or still shut on a rung the find does not move,
+    -- which is the failure states/hub.lua and models/market.lua were each cut for: A MARK IS ONLY EVER
+    -- PUT ON SOMETHING THE PLAYER CAN WALK IN AND SEE, and it must be something they have not seen.
+    -- What still marks NEW_STOCK is a rack that genuinely opened -- a companion joining
+    -- (Market.markOpened) and a shelf diff (models/quest.lua).)
     return true
 end
 
@@ -1350,8 +1360,15 @@ end
 function Player.hasFinishedCampaign(player)
     player = player or Player.active
     if player then return (player.campaignsFinished or 0) > 0 end
-    local snap = Save.peek()
-    return ((snap and snap.campaignsFinished) or 0) > 0
+    -- No live player: ask the DISK, and with slots that means asking every save rather than the one
+    -- there used to be. "Has this install ever finished" is the honest reading of the question -- the
+    -- post-game is a thing the person at the keyboard has done, not a property of whichever campaign
+    -- happens to be loaded, which is the same argument Player.finishCampaign makes for the flag
+    -- surviving New Game+.
+    for _, entry in ipairs(Save.slots()) do
+        if ((entry.snap and entry.snap.campaignsFinished) or 0) > 0 then return true end
+    end
+    return false
 end
 
 function Player.newGamePlus(player)
@@ -1400,13 +1417,30 @@ function Player.newGamePlus(player)
     return player
 end
 
-function Player.start(fresh)
+-- Begin a session on one SLOT. `file` is that slot's path (Save.slotFile), and stamping it onto the
+-- player is the whole of how every later write finds its way home -- see Player.save below, and the
+-- argument at the foot of models/save.lua for why the slot rides on the player rather than sitting in
+-- a module.
+--
+-- `fresh` still means "discard and start over", but it now discards THAT SLOT rather than the one save
+-- there used to be: a New Game in a free slot leaves every other campaign untouched, which is the
+-- entire point of having slots.
+--
+-- EVERY LIVE CALLER PASSES A FILE -- the load list (states/saves.lua) and Player.newSlot below are
+-- the only two. A missing `file` still falls back to the legacy single save rather than erroring,
+-- because the fallback's job is to keep a caller that forgot readable rather than crashed; a player
+-- started that way is invisible to the slot list, so nothing in the game may rely on it.
+function Player.start(fresh, file)
     if fresh then
-        Save.clear()
+        Save.clear(file)
         Player.active = Player.new()
     else
-        Player.active = Save.read() or Player.new()
+        Player.active = Save.read(file) or Player.new()
     end
+    -- The slot this session writes to, re-stamped on both routes: a loaded player gets it because
+    -- Save.snapshot does not store the path (a save that remembered its own filename would be wrong
+    -- the moment it was copied), and a fresh one gets it because nothing else will.
+    Player.active.saveFile = file
     -- Catch every roster member's level up to what it has banked. A no-op for a fresh game and for any
     -- save written since experience became the ladder, but a save whose stored levels lag its
     -- experience -- a schema migration, or a body carried across the change from prestige-levelling --
@@ -1417,6 +1451,17 @@ function Player.start(fresh)
     -- avatar in the roster yet (the prologue builds it and applies the body itself), so this no-ops there.
     Player.applyAvatarBody(Player.active)
     return Player.active
+end
+
+-- Start a NEW campaign in the first free slot. What the menu's New Game does, and the one place that
+-- decides where a new game goes -- so no caller has to pair Save.freeSlot with Save.slotFile itself and
+-- get the pairing subtly wrong.
+--
+-- Nothing is written here. The slot's file does not exist until the first Player.save, exactly as the
+-- single save behaved before: a player who opens character creation and backs out leaves no save and
+-- no held-open slot number, and the next new game takes the same one.
+function Player.newSlot()
+    return Player.start(true, Save.slotFile(Save.freeSlot()))
 end
 
 -- Persist the active player. Called at the points progress is earned or spent -- quest
@@ -1436,8 +1481,9 @@ function Player.save()
     if player then Save.write(player, player.saveFile) end
 end
 
-function Player.hasSave()
-    return Save.exists()
-end
+-- (`Player.hasSave` STOOD HERE and is gone with the single save. It answered "does save.lua exist",
+-- which was the gate on the menu's Continue row; with slots the menu needs the newest save itself
+-- rather than a yes, so it reads Save.slots()[1] and the boolean had no caller left. Save.anySlot is
+-- the cheap existence question if one is ever wanted again.)
 
 return Player

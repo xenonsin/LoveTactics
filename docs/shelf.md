@@ -3,16 +3,19 @@
 Where an item sits, whether it is for sale at all, and why none of it is authored by hand any more.
 
 Every item names a **slot** (`unlockQuests`, its rank on its class's ladder). Most items name **no
-price**, because most of the catalogue is not for sale:
+price**, because most of the catalogue is priced from the other axis:
 
 ```
 grade  ->  slot  ->  price        (abilities, consumables, a house's opening weapon)
 grade  ->  slot  ->  dropTier     (everything else: weapons, utilities, armor)
+                      |
+                      +-- the depth the rift gives it up at
+                      +-- the rung a counter deals it at, and what it charges
 ```
 
 An item's **grade** is what it is worth. Its rank within its class sets its **slot**. For the small
-priced half, the slot sets its **price**; for the rest, the grade sets the **depth** the rift gives it
-up at. Nothing flows the other way, and two specs enforce that.
+priced half, the slot sets its **price**; for the rest, the grade sets the **depth**, and the depth
+then answers both the shelf questions too. Nothing flows the other way, and two specs enforce that.
 
 - The grader: `models/grade.lua`
 - The instruments: `. grade-report [full | diff | explain ID | traits | apply]` and
@@ -27,22 +30,29 @@ up at. Nothing flows the other way, and two specs enforce that.
 > **It stays on an unpriced ware, and that was learned the hard way.** It looks like shelf furniture
 > once a thing is not for sale — but the rung IS the grade rank, and `models/balance.lua` reads it as
 > the item's power level. Stripping it in the recut made two hundred blueprints answer slot 0, every
-> one of them measured against the opening rung's budget. The gate moved instead of the field:
-> `Vendor.stock` simply does not apply a rung gate to an unpriced ware, because its gate is having
-> found one.
+> one of them measured against the opening rung's budget. So the field stayed.
+>
+> **And it is still not the gate on an unpriced ware** — but for the opposite reason it was not before.
+> It used to be no gate at all, because finding one was the whole gate. A found ware is gated on its
+> rung now like everything else; that rung is just derived from `dropTier` rather than read off
+> `unlockQuests`, because **145 of the 362 carry no `unlockQuests` at all** and of those that do, nine
+> agree with their tier. The row reports what it was actually measured against as `rung`
+> (`Vendor.lockReason`), and every reader that asks *how far must the class grow* reads that one.
 
 ---
-## The recut: a house is a record, not a catalogue
+## The recut, and the discovery gate that came off it
 
-Above a house's **opening weapon**, nothing is for sale. Weapons, utilities and armor are found in the
-rift or not at all — and a counter deals one only once the company has **carried one out**.
+The recut took `price` off everything a house sold above its **opening weapon** — 362 blueprints — and
+that half stands. Above the opener nothing carries an authored price; a weapon, a utility or a piece of
+armor carries a `dropTier` instead, and what a counter charges is derived from it.
 
 | Kind | Reaches the player by | Carries |
 |---|---|---|
 | Ability | bought, on the class ladder | `price`, `unlockQuests` |
 | Consumable | bought — the stock decision before a descent has to be makeable | `price`, `unlockQuests` |
 | Opening weapon (rung 0) | bought — the floor that re-arms a company holding nothing | `price`, `unlockQuests` |
-| Weapon, utility, armor above that | **found**, then stocked forever | `unlockQuests`, `dropTier` |
+| Weapon, utility, armor above that | bought at its rung, or **found early** | `dropTier` (the rung *and* the price) |
+| A body's own trophy | **found, and only ever found** | `dropTier`, `unstocked` |
 
 **The floor is the rung, not the word "iron".** Nine of the ten iron weapons sit at `unlockQuests = 0`,
 but two houses have no iron anything — the Cathedral's rung 0 is a censer and the Alchemist's is a
@@ -50,31 +60,63 @@ lancet. Cutting on the name would leave two of seven classes with no purchasable
 on the rung covers all seven exactly once and is derived, so a later re-cut of the ladder moves it.
 `. drop-tier recut` reports what each house still sells and warns if a **root** class loses its floor.
 
-**A shelf shows what it cannot yet deal.** A found ware stands on the rack named, silhouetted, with the
-depth it falls at where its price would go — the same rule a shut discipline path follows. That is the
-point of the change: a house is a **want list** that sends the player down a stair, where a catalogue
-was a checklist that sent them shopping.
+### What came off: a found ware is no longer gated on having found one
 
-Three refusals, three words, one field (`Vendor.stock`'s `lockReason`):
+The recut's second half was a **discovery gate**: a found ware stood on the rack named, silhouetted,
+with the depth it falls at where its price would go, and no counter would deal one until the company
+had *carried one out*. The argument was that a house should be a **want list** that sends the player
+down a stair, where a catalogue was a checklist that sent them shopping.
+
+**It was reversed, and by the obligation stated two paragraphs below it.** A shelf *guarantees* an item
+is reachable and a drop table does not — and measured, **157 wares reached the player through the price
+band's long tail alone**, 21 sat past the end of a boss queue, and 145 of the 362 carried no authored
+rung to be placed by. A player who wanted the Lodge's kit had nowhere to go and get it. Meanwhile gold
+bought abilities and draughts and nothing else.
+
+So the two roads part by *when* rather than by *whether*:
+
+> **The rift is the head start. The class ladder is the backstop.**
+
+Grow a class and its shelf deals deeper, at a price. Go down and the same gear falls out for nothing,
+at depths that reach well below the rung you have climbed to. A find is worth what it always was — it
+is simply no longer the only door.
+
+Two refusals now, two words, one field (`Vendor.stock`'s `lockReason`):
 
 | `lockReason` | What the player does about it |
 |---|---|
 | `"rung"` | grow the class |
 | `"class"` | unlock the discipline |
-| `"undiscovered"` | go down and carry one out |
 
-**A found ware has no rung gate.** Two gates on one tile would mean finding a thing and still being
-refused it, for a rung it never sat on — so `Vendor.stock` reads the authored rung only when there is a
-price beside it.
+**A found ware's rung is its depth, less one** — the same conversion `Vendor.foundPrice` already made to
+quote it. One number answers *what does it cost* and *what rung does it sit on*, so the two can never
+drift. It is read off `dropTier` and not off the authored `unlockQuests` because the authored field is
+per-class and two fifths of the catalogue does not carry it; the row reports the rung it was actually
+measured against as `rung`, and the shelf order, the shop's refusal sentence and the market's rotation
+band all read that rather than the rank.
 
-**What a found ware costs, once stocked**, is derived the same way everything else is:
-`Vendor.foundPrice` reads its `dropTier` as the slot it would have had, off by one so the shallowest
-find prices level with a house's opener. `Vendor.sellValue` uses the same figure, or a duplicate hauled
-out would be a thing the player could neither use twice nor sell.
+Tiers run `1..CLASS_LEVEL_CAP` and class levels run `0..CLASS_LEVEL_CAP`, so the deepest ware in the
+game opens one level short of the cap. **Nothing is gated past the top of the ladder that opens it.**
 
-**The new obligation.** A shelf *guarantees* an item is reachable; a drop table does not. Reachability
-stopped being structural and became statistical the day this landed, and any item whose honest answer
-is "not at the depths people play" is content that does not exist.
+**What a found ware costs** is `Vendor.foundPrice`: its `dropTier` read as the slot it would have had,
+off by one so the shallowest find prices level with a house's opener. `Vendor.sellValue` uses the same
+figure, or a duplicate hauled out would be a thing the player could neither use twice nor sell.
+
+### What stays rift-only: `unstocked`
+
+The exception is small and authored one piece at a time: **what a body is known for**. The boar's hide,
+the sow's pelt, the white wolf's teeth, the relic a general is put down for. `unstocked = true` makes
+`Vendor.foundPrice` refuse to quote one, which takes the row off every counter entirely — not greyed,
+gone — and refuses a sale in the same stroke. A piece that exists only where it fell has no market price
+in either direction. See [drops.md](drops.md#rift-only-pieces); `tests/discovery_spec.lua` holds it.
+
+Fourteen blueprints carry the flag. The seven generals' relics need none: they are `class = "creature"`
+with no `dropTier`, so no counter could quote one to begin with.
+
+**The obligation, which survives and is now met structurally.** A shelf *guarantees* an item is
+reachable; a drop table does not. That sentence is why the gate came off: reachability was statistical
+for a year and is structural again. Any item whose honest answer is "not at the depths people play" is
+content that does not exist — and outside the fourteen, no item's answer is that any more.
 
 **A floor hands over nothing ranked or gated deeper than it reaches** (`Spoils.depthOf`). Two numbers,
 and the answer is the deeper of them:

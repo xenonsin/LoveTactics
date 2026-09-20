@@ -25,6 +25,9 @@ return {
     tags = { "hide" },
     class = "hunter",
     dropTier = 3,
+    -- RIFT-ONLY. It comes off the body and nowhere else: no counter deals one however many
+    -- the company carries out, and none will buy one back (docs/drops.md, Vendor.foundPrice).
+    unstocked = true,
     traits = { "trait_ravenous" },
     bonus = { defense = Curve.ramp(2, 12), movement = -1 },
 }

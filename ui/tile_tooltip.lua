@@ -73,7 +73,7 @@ local TILE_INFO = {
     mire     = { name = "Mire",        desc = "Sucking bog. The heaviest ground to cross, and it leaves a body easier to hit. It conducts." },
     sand     = { name = "Loose Sand",  desc = "Heavy going, with nothing to hide behind." },
     ice      = { name = "Ice",         desc = "The one floor that costs nothing to cross. It conducts: a bolt sweeps the whole sheet." },
-    redoubt  = { name = "Redoubt",     desc = "A low work of piled stone. Hard to hit behind, and it turns a blow that lands. It mends whoever holds it." },
+    fort     = { name = "Fort",        desc = "A low work of piled stone. Hard to hit behind, and it turns a blow that lands. It mends whoever holds it." },
     dune     = { name = "Dune",        desc = "Sand heaped high enough to crouch behind. Slow to cross, and it breaks a sightline." },
     drift    = { name = "Snow Drift",  desc = "Deep snow piled by the wind. Slow to cross and good cover -- but wet through, so a bolt runs along it." },
 }
@@ -100,10 +100,10 @@ local TILE_COLOR = {
     mire     = { 0.62, 0.72, 0.44 },
     sand     = { 0.90, 0.80, 0.54 },
     ice      = { 0.72, 0.88, 0.95 },
-    -- The built work reads WARM, against the cool greys reserved for what stops you: a redoubt is the
+    -- The built work reads WARM, against the cool greys reserved for what stops you: a fort is the
     -- one solid-LOOKING tile on the board you are meant to walk onto, and it must not be filed with
     -- the mountain by its heading colour alone.
-    redoubt  = { 0.88, 0.76, 0.56 },
+    fort     = { 0.88, 0.76, 0.56 },
     -- Each cover heap in its own country's key, matching the wash the board paints it in
     -- (BattleMap.TERRAIN_TINT), so the heading and the ground agree about what this is made of.
     dune     = { 0.92, 0.82, 0.58 },
@@ -120,7 +120,7 @@ local DEFAULT_COLOR = { 0.86, 0.87, 0.92 }
 --   * reach from a vantage is a SIGHTLINE (Combat.fieldRangeBonus gates it on `requiresSight`), so a
 --     melee player reading a bare "+1 Range" would be promised something the swing does not keep;
 --   * armour from the ground is the one bonus the board has that is not about being MISSED, and the
---     redoubt exists to be the tile a body stands on expecting to be hit.
+--     fort exists to be the tile a body stands on expecting to be hit.
 -- Avoid leads because it leads the terrain table: cover is the positional decision this game has
 -- instead of facing, and it is the figure a tile most needs to say out loud.
 local BONUS_LABEL = {

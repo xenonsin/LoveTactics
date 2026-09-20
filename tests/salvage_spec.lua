@@ -245,9 +245,12 @@ return {
         name = "an unstocked piece has no price in either direction, and can still be broken",
         fn = function()
             local Vendor = require("models.vendor")
+            -- ...and one that is not ALREADY flagged, which fourteen now are (docs/drops.md's
+            -- trophies). The case flags its stand-in itself and restores it after, so picking a real
+            -- trophy would assert the before-picture against a ware that has no before-picture.
             local id = findItem(function(_, def)
                 return def.dropTier and not def.bound and not def.price and def.class
-                    and Class.defs[def.class]
+                    and Class.defs[def.class] and not def.unstocked
             end)
             assert(id, "need an unpriced found ware to stand in for one")
             local def = Item.defs[id]

@@ -409,20 +409,25 @@ function Shop:buildBuyRows()
 
     local groups, order = {}, {}
     local stock = Vendor.stock(self.vendorId, self.shelfRung, self.player.recipes,
-        Class.unlockedSet(self.player), Class.levelSet(self.player), self.player.found)
+        Class.unlockedSet(self.player), Class.levelSet(self.player))
     for _, entry in ipairs(stock) do
         -- Instantiate at the item's recipe tier, so its name (+n) and stats reflect what's bought.
         local item = Item.instantiate(entry.id, nil, entry.level)
         local key = entry.discipline or false -- false == the base shelf, not a discipline
+        -- THE BAND ORDERS ON THE GATE, like the rack inside it (Vendor.shelfOrder). `rung` is what the
+        -- row was measured against and `unlockQuests` is the authored rank; they agree on a priced
+        -- ware and part on a found one, and two fifths of the catalogue carries no rank at all -- so
+        -- the authored field would pull every discipline holding one rungless ware to the top.
+        local rung = entry.rung or entry.unlockQuests or 0
         local g = groups[key]
         if not g then
-            g = { rows = {}, minUnlock = entry.unlockQuests,
+            g = { rows = {}, minUnlock = rung,
                 shut = entry.discipline ~= nil and not Class.isUnlocked(self.player, entry.discipline),
                 name = entry.discipline and (Class.displayName(entry.discipline) or entry.discipline)
                     or (Item.classDisplayName(self.def.class) or "General") }
             groups[key], order[#order + 1] = g, key
         end
-        g.minUnlock = math.min(g.minUnlock, entry.unlockQuests)
+        g.minUnlock = math.min(g.minUnlock, rung)
         g.discipline = entry.discipline
         g.arity = entry.discipline and Class.arity(entry.discipline) or 0
         g.open = (g.open or 0) + (entry.locked and 0 or 1)
@@ -433,11 +438,12 @@ function Shop:buildBuyRows()
         if isNew then g.isNew = true end -- so a shut section still shows there is something under it
         g.rows[#g.rows + 1] = {
             item = item, entry = entry,
-            -- Three refusals, three words. "locked" on all of them said no three times without ever
-            -- saying which of three different things to go and do about it (models/vendor.lua's
-            -- lockReason); "not found" is the one that sends the player down a stair.
-            label = item.name .. "  -  " .. (entry.lockReason == "undiscovered" and "not found"
-                or entry.locked and "locked" or (entry.price .. "g")),
+            -- "not found" stood here as a third word, for a ware the company had never hauled out of
+            -- the rift. That refusal is gone -- a found ware opens on its class rung like everything
+            -- else, and the handful that never reach a counter at all are off the rack entirely
+            -- (models/vendor.lua's lockReason) -- so the two that are left share one word, and the
+            -- tooltip is where they part.
+            label = item.name .. "  -  " .. (entry.locked and "locked" or (entry.price .. "g")),
             locked = entry.locked,
             isNew = isNew,
         }
@@ -732,16 +738,14 @@ function Shop:fillPool(g)
                 id = row.entry and row.entry.id,
                 price = row.entry and row.entry.price or 0,
                 locked = row.locked,
-                -- A SHUT TILE AND AN UNFOUND ONE ARE NOT THE SAME REFUSAL and must not draw the same.
-                -- One is a gate the player climbs to; the other is a thing that is not in the world yet
-                -- as far as this company is concerned. The tile carries the distinction and the depth
-                -- it is answered at (ui/pool_grid.lua).
-                undiscovered = row.entry and row.entry.lockReason == "undiscovered" or nil,
-                -- AND A THIRD REFUSAL, for the same reason there is a second: a rolled row bought today
-                -- is neither a gate to climb nor a thing never held, and a padlock over it would say
-                -- "come back when you are stronger" about something the player owns already.
+                -- A SECOND REFUSAL, and a real one: a rolled row bought today is not a gate to climb,
+                -- and a padlock over it would say "come back when you are stronger" about something
+                -- the player owns already.
                 sold = row.entry and row.entry.lockReason == "sold" or nil,
-                depth = row.entry and row.entry.dropTier or nil,
+                -- `depth` came off with the unfound state it belonged to. A shut tile draws its price
+                -- and a padlock now, like every other shut tile; where the rift also gives the piece up
+                -- is a SENTENCE rather than a badge, and it is on the dwell with the rest of the
+                -- reading (Shop:lockReason). Two roads to one piece do not fit in a corner.
                 item = row.item, -- already instantiated at the level it sells at
                 row = row,
             }
@@ -1212,22 +1216,10 @@ function Shop:lockReason(entry)
     if entry.lockReason == "sold" then
         return "Bought today. The counter deals three fresh wares in the morning."
     end
-    -- NOT FOUND YET, and this is the only refusal on the shelf the player answers by going DOWN rather
-    -- than by growing a class. It is checked first because it outranks the others: a company that has
-    -- never held one of these cannot buy it at any rung, in any discipline, at any level.
-    --
-    -- IT NAMES A DEPTH AND ONLY THAT, which is the whole reason the row is shown at all. "You have not
-    -- found one" is true and useless in the same way "unlock the Ninja path first" was -- it restates
-    -- the lock. The floor turns it into somewhere to go, and a shelf full of these is the want list the
-    -- houses became when they stopped selling this half of the catalogue (tools/drop_tier.lua). It wears
-    -- the same "Floor N" wording the stash and the Touchstone use (Identify.floorOf), so a depth read on
-    -- a shelf and a depth read on a piece of loot are plainly the same number.
-    if entry.lockReason == "undiscovered" then
-        if entry.dropTier then
-            return "Found in Floor " .. entry.dropTier
-        end
-        return "Not found: carry one out of the rift and this counter will stock it."
-    end
+    -- (A THIRD REFUSAL STOOD HERE, "Found in Floor 6", for a ware no counter would deal until one had
+    -- been hauled out of the rift. It is gone with the gate: a found ware opens on its class rung like
+    -- everything else. The depth it falls at is not gone -- it is the OTHER road to the same piece, and
+    -- it rides on the rung sentence at the foot of this function.)
     if entry.discipline and not Class.isUnlocked(self.player, entry.discipline) then
         -- A CROSSING names the parent path still missing, and the house that teaches it. "Unlock the
         -- Ninja path first" is true and useless -- it restates the lock. Naming the Arcanum turns it
@@ -1267,12 +1259,27 @@ function Shop:lockReason(entry)
     -- Said in the class's own words, and the class is the entry's rather than the house's: the Market
     -- sells all seven and gates each ware on its own class (models/market.lua's per-item rung), so a
     -- shelf-wide name would be wrong on the one counter that has no class of its own.
-    local need = entry.unlockQuests or 0
+    --
+    -- IT READS `rung`, NOT `unlockQuests`, and the two only agree on a priced ware. A found one's rung
+    -- is its depth less one (models/vendor.lua's lockReason); its authored rank is whatever the last
+    -- grade pass left on it, which for two fifths of the catalogue is nothing at all. Reading the rank
+    -- here would promise a gate at level 0 over a tile that refuses the press until level 5.
+    local need = entry.rung or entry.unlockQuests or 0
     if need > (self.shelfRung or 0) then
         local class = entry.class or self.def.class
         local name = class and (Item.classDisplayName(class) or class)
-        if name then return "Locked: grow " .. name .. " to level " .. need .. "." end
-        return "Locked: grow this house's class to level " .. need .. "."
+        local said = name and ("Locked: grow " .. name .. " to level " .. need .. ".")
+            or ("Locked: grow this house's class to level " .. need .. ".")
+        -- AND THE OTHER ROAD, on anything the rift gives up. A found ware is reached two ways -- climb
+        -- the class and buy one, or go down to the floor that drops it and take one -- and naming only
+        -- the gate the tile is standing on would leave a player waiting on a ladder for a thing that is
+        -- three floors down. This is what is left of the old "not found" refusal, and it is the half
+        -- worth keeping: a depth was never a lock, it was somewhere to go.
+        --
+        -- Same "Floor N" wording the stash and the Touchstone use (Identify.floorOf), so a depth read
+        -- on a shelf and a depth read on a piece of loot are plainly the same number.
+        if entry.dropTier then return said .. " Found in Floor " .. entry.dropTier .. "." end
+        return said
     end
     return "Locked."
 end

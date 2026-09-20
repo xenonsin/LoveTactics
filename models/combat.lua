@@ -609,7 +609,12 @@ end
 function Combat.answerStrike(combat, unit, target, weapon)
     if not (unit and target and weapon) then return 0 end
     local dealt = Combat.dealDamage(combat, unit, target, weapon)
+    -- The weapon's own declared step, else the one a charm grants the body swinging it (In and Out --
+    -- Combat.charmGivesGround, which answers 0 for a weapon that already declares one). Both paths
+    -- read the same pair, so a charm-bearer that counters disengages exactly as a wolf does, and for
+    -- the same reason: any answer to THIS answer re-checks reach and finds nobody there.
     local back = weapon.hitAndRun
+    if not (back and back > 0) then back = Combat.charmGivesGround(unit, weapon) end
     -- Nothing to disengage from once the foe is down, and a bearer felled by its own exchange (a
     -- counter to the counter) stays where it fell.
     if back and back > 0 and unit.alive and target.alive then
@@ -704,7 +709,7 @@ local function flatStat(unit, name)
     local v = base + ((unit.bonus and unit.bonus[name]) or 0) + Status.statBonus(unit, name)
         + Trait.liveBonus(unit, name)
         -- THE GROUND UNDERFOOT, banked by Combat.stampField whenever this body came to rest (see that
-        -- function for why it is a stamp and not a live read). A redoubt's +1 defence arrives here and
+        -- function for why it is a stamp and not a live read). A fort's +1 defence arrives here and
         -- is therefore quoted identically by mitigation, by the character sheet and by the breakdown
         -- tooltip -- one number, one explanation. Empty for every body standing on open field, and for
         -- every flier anywhere.
@@ -1423,7 +1428,7 @@ function Combat.addUnit(combat, char, side, x, y, opts)
     char.spentThisTurn = nil
     applyUnitPassives(unit)
     -- The ground it was set down on. AFTER applyUnitPassives, because the flier check reads the grid
-    -- that pass has just finished folding -- a body put down on a redoubt has to know whether it is
+    -- that pass has just finished folding -- a body put down on a fort has to know whether it is
     -- standing on the parapet or hovering over it before its first stat is ever read.
     Combat.stampField(combat, unit)
     -- Traits are attached but their opener is NOT fired: a summon arriving mid-battle did not start
@@ -5015,6 +5020,34 @@ function Combat.giveGround(combat, unit, from, distance)
         if not unit.alive then break end
     end
     return shoveDone(combat, unit, oX, oY, moved)
+end
+
+-- THE STEP A CHARM GRANTS, where a wolf's teeth declare their own: In and Out
+-- (data/items/utility/utility_in_and_out.lua) gives its bearer the pack's disengage with whatever
+-- melee weapon they happen to be holding. Returns tiles, 0 when it does not apply.
+--
+-- IT IS A SEPARATE QUESTION FROM `weapon.hitAndRun`, and the split is not tidiness -- the two are
+-- honoured in different places and must not both fire. A hit-and-run WEAPON takes its own step inside
+-- its ability effect (weapon_wolf_fangs and weapon_bloom_reach both call fx.retreat), so on the
+-- bearer's turn the engine has nothing left to do for it; this one has no effect to live in, so the
+-- engine has to take the step on its behalf. Ask for the charm's step and you get 0 for a weapon that
+-- already backed its wielder out, which is what stops a wolf wearing this from stepping twice.
+--
+-- MELEE ONLY, by reach rather than by tag. The charm is about disengaging from something you are
+-- standing next to; a bow that backed its archer away from a body five tiles off would be moving them
+-- for no reason, and a `melee` tag is not carried reliably enough across the catalogue to gate on.
+--
+-- Read through Trait.flag, which means Sundered gags it exactly as it gags every other standing charm
+-- rule. A bearer whose relics have gone quiet does not keep the quiet ones working.
+function Combat.charmGivesGround(unit, weapon)
+    if not (unit and weapon) then return 0 end
+    local declared = weapon.hitAndRun
+    if declared and declared > 0 then return 0 end -- the weapon already steps; see above
+    local ab = weapon.activeAbility
+    if not (ab and (ab.range or 0) <= 1) then return 0 end
+    local trait = Trait.flag(unit, "givesGround")
+    if not trait then return 0 end
+    return Trait.param(trait, "givesGround", 1) or 0
 end
 
 -- ---------------------------------------------------------------------------
@@ -11561,6 +11594,26 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
     -- a blow that shoves its target away answers from where the shove left it, not from where it landed.
     Combat.beginAnswers(combat)
     if ab.effect then ab.effect(fx) end
+
+    -- IN AND OUT: the charm's step, taken here because it has no ability effect of its own to take it
+    -- in. A hit-and-run WEAPON steps inside its own effect, one line above this -- so
+    -- Combat.charmGivesGround answers 0 for one, and a wolf wearing the charm still steps exactly once.
+    --
+    -- THE POSITION IN THIS FUNCTION IS THE WHOLE MECHANIC. It is after the effect, so the blow has
+    -- landed and the board has settled; and it is INSIDE the answer window opened just above, before
+    -- Combat.endAnswers throws what the blow provoked. A melee counter re-checks reach at the moment it
+    -- is thrown, so a bearer that has already stepped out of adjacency is answered by nothing. Moved
+    -- one line later, past endAnswers, and the charm would still move the body and buy it precisely
+    -- nothing -- it would eat the counter first and then walk away from the corpse of the argument.
+    --
+    -- Gated on damage actually dealt: a whiff, a warded cast or a heal aimed at an ally is not a blow
+    -- to disengage from, and a charm that repositioned its bearer every time they touched anything
+    -- would be a movement item wearing a skirmisher's name.
+    if target and target.alive and unit.alive and result.damageDealt > 0
+        and target.side ~= unit.side then
+        local back = Combat.charmGivesGround(unit, item)
+        if back > 0 then Combat.giveGround(combat, unit, target, back) end
+    end
 
     -- Water quenches fire: a cast carrying the "water" tag douses any dousable hazard across its
     -- footprint (the AoE cells, or just the aimed cell). Runs after the effect so a water AoE that

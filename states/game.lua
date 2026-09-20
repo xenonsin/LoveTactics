@@ -88,6 +88,22 @@ end
 -- This file fields one of them -- the relic lesson, see game:teachRelics.
 local NOTES_CONV = "conversation_tutorial_notes"
 
+-- THE FIRST THING THE GAME EVER ASKS FOR IS A CONTROL, so it has to be asked of the right device.
+-- The move lesson named WASD, the arrow keys and a click in one breath -- three of which a handset
+-- does not have and two of which a pad does not -- which made the prologue's opening bubble the one
+-- place in the game still pointing at hardware nobody was holding.
+--
+-- Three authored lines, one per answer InputMode.pick gives (data/conversations/tutorial/
+-- conversation_tutorial_flight.lua), rather than a {select}-style token: a movement instruction is a
+-- whole sentence per device, not a verb swap, and the pointer branch genuinely wants BOTH of its
+-- routes named where the finger's wants its own two (tap to walk, swipe to step -- ui/overworld_map).
+--
+-- Resolved per draw, like every other device-sensitive string here, so a player who puts the pad down
+-- mid-lesson is not left reading about a stick.
+local function moveHintId()
+    return InputMode.pick("move_hint_pad", "move_hint_touch", "move_hint")
+end
+
 -- The Loadout button is opened by I (keyboard) / Y (gamepad) / a click (mouse) -- NOT the confirm key
 -- {select} names -- so the loadout hint's key cap is chosen per device here rather than in the line.
 local function loadoutKey()
@@ -4812,7 +4828,7 @@ function game.drawCoach()
         return
     end
     if step == "move" and not game.activePanel then
-        local node = hintNode("conversation_tutorial_flight", "move_hint")
+        local node = hintNode("conversation_tutorial_flight", moveHintId())
         CoachBubble.draw(Locale.text("conversation_tutorial_flight", node), game.map:tokenRect(),
             { prefer = "above", bounds = coachBounds() })
     elseif step == "loadout" and not game.activePanel and game.itemsVisible then
@@ -5149,7 +5165,10 @@ function game.drawHud()
     -- left is the one thing the overworld does NOT put a button on: how the company moves.
     local hint = InputMode.pick(
         "Move: D-pad / Stick      " .. items .. use .. back,
-        "Tap an adjacent tile to move",
+        -- ...and it names BOTH of the finger's routes, because the coach bubble two beats earlier
+        -- does (moveHintId). "An adjacent tile" was also short of what a tap does: it paths to any
+        -- revealed tile, exactly as a click does, and the one-step gesture is the swipe.
+        "Tap a tile to walk there, or swipe to step",
         "Move: WASD / Arrows / click adjacent tile      " .. items .. use .. back)
     love.graphics.printf(hint, 0, Scale.HEIGHT - 30, Scale.WIDTH, "center")
     love.graphics.setColor(1, 1, 1)

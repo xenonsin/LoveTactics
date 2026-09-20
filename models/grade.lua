@@ -341,6 +341,36 @@ Grade.TRAIT_GRADE = {
     trait_anvil_face =                  4.5,  -- Anvil's Face -- capped armour alone, uncapped beside the Mail
     trait_assayers_tally =              4.5,  -- The Tally -- a live purse read plus a per-theft notch
 
+    -- THE TWO BEAR TRAITS. Both judged here rather than adopted, because the shape estimate reads both
+    -- of them wrong in the same direction: it sees `onCast` and `onAnyDeath` hooks and prices how OFTEN
+    -- they fire, and for these two the whole question is what they are worth WHEN they do.
+    --
+    -- Fury Swipes is Kindling's shape almost exactly -- one term, capped, and fed by a choice the bearer
+    -- keeps making -- so it is anchored there. The ceiling is four stacks at 2 apiece, which comes to
+    -- what status_vulnerable_slash grants in a single cast, and it costs four CONSECUTIVE landed blows
+    -- on one body to reach. Two things pull against each other and cancel: the wound is on the body
+    -- rather than the pair, so the whole party spends it (up), and it decays the moment the bearer stops
+    -- working it, and a miss breaks the chain outright (down). The party share is the reason it is not
+    -- graded below Kindling; the decay is the reason it is not graded above.
+    trait_fury_swipes =                 3.0,  -- Fury Swipes -- capped, compounding, and the party's to spend
+    -- Bereaved is the one trait in this table its bearer cannot cause. Demon Ascendant sits at 0.5 as
+    -- the closest structural sibling -- a reactive boss rule off a threshold -- and this is graded a
+    -- little above it for one reason and one only: when it does fire it is a flat permanent damage bump
+    -- for the rest of the fight, where Ascendant is a script that may spend its stage on a log line. It
+    -- is not graded higher than that, because a competent party may simply decline to trigger it and
+    -- then the trait is worth exactly nothing all fight -- which is the whole design (trait_bereaved).
+    trait_bereaved =                    1.0,  -- Bereaved -- one shot, permanent, and the player's to refuse
+    -- The other half of that bond, and the cheapest thing in this table: it fires on the bearer's own
+    -- DEATH, and what it does is take a body off the board on the side that just lost the fight's
+    -- centrepiece. It cannot win anything -- by the time it fires she is already down -- so it is graded
+    -- at the floor beside the other reactive boss rules. It is here for the beat, not for the bench.
+    trait_orphaned =                    0.5,  -- Orphaned -- her cub leaves when she does
+    -- The player's half of that bond (utility_the_yearling_pelt). Graded at Bereaved's weight and not
+    -- above it: it is one shot, it is permanent for the battle, and it cannot be farmed -- the trigger
+    -- is losing one of your own, which no company plays toward. Blood Fever sits higher for the mirror
+    -- reason, being fed by the bodies you are making anyway.
+    trait_bereft =                      1.0,  -- Bereft -- one ally, once, and you cannot want it
+
     -- ADOPTED FROM THE SEED, not individually weighed. These are the classifier's own numbers, taken
     -- as authored on the designer's instruction rather than argued one by one. They are real weights
     -- and the grader treats them as such -- but Grade.TRAIT_ADOPTED below keeps the provenance, because
@@ -425,6 +455,16 @@ Grade.TRAIT_GRADE = {
     -- defense, measured live off the same board reading, so it is worth about the same -- a shade more,
     -- since offence compounds with the rest of a rank's output and armour does not.
     trait_close_ranks =                 1.5,  -- Close Ranks
+    -- THE PACK AURA, WEIGHED AS THE PAIR IT IS. trait_pack_lead executes nothing at all -- it is a
+    -- marker other bodies look for -- so the shape estimator has no hook to read and would file it at
+    -- zero, which is wrong in the other direction: what it is worth is every wolf in reach hitting
+    -- harder for as long as its carrier stands. Priced a shade over Close Ranks, which pays ONE body
+    -- for its neighbours; this pays the neighbours, and an alpha is rarely standing alone.
+    trait_pack_lead =                   1.8,  -- Pack Lead (the marker: utility_pack_presence, the Wood)
+    -- ...and the reading half, which is worth nothing on a wolf standing by itself and exactly the
+    -- lead's figure when one is in reach. Weighed low deliberately: it is carried by every wolf's
+    -- teeth, so pricing it as though a lead were always present would inflate the whole pack.
+    trait_runs_with_the_pack =          0.6,  -- Runs With The Pack (the reader, on the teeth)
     -- Pride's rule one rank down: Counter Magic on a cooldown longer than any fight, so it answers one
     -- spell and is then spent. A fraction of the parent, which answers every ten ticks for as long as its
     -- mana holds.
@@ -453,6 +493,18 @@ Grade.TRAIT_GRADE = {
     trait_binding_parry =               3.0,  -- Binding Parry
     trait_counter_magic =               3.0,  -- Counter Magic
     trait_dodge =                       3.0,  -- Dodge
+    -- IN AND OUT, weighed against the family it exists to cancel. Every reflex in this game -- Parry,
+    -- Riposte, Dodge, Thorns, Melee Counter, Slipstep -- is priced at 3.0, and all of them are gated on
+    -- reach at the moment they are thrown. This steps its bearer out of that reach after every melee
+    -- blow, on their own turn and on their answer alike, so what it is worth is the reflex the foe does
+    -- not get to use. Pitched just under the family rather than level with it: it only ever cancels the
+    -- answer to a blow the bearer actually landed, where a Parry answers everything that comes near.
+    --
+    -- AUTHORED HERE RATHER THAN ON THE ITEM, deliberately. The dry run reads net stat swing and replayed
+    -- damage and this charm moves neither -- filed underived it came out at 3.3, which put it shallower
+    -- than the hide on the same body. The claim being corrected is about the MECHANIC, so it belongs on
+    -- the trait, where anything else that ever grants it inherits the correction for free.
+    trait_in_and_out =                  2.5,  -- In and Out
     trait_follow_up =                   3.0,  -- Follow-Up
     trait_hollow_crown =                3.0,  -- The Hollow Crown
     trait_keen_senses =                 3.0,  -- Keen Senses

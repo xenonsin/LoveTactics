@@ -581,13 +581,17 @@ end
 
 -- IS THERE SOMETHING ON THIS HOUSE'S SHELF NOBODY HAS READ -- the dot half of a shop's plate.
 --
--- Asked THROUGH THE SHELF'S OWN GATES (Quest.shelfGates) and not of the catalogue. The mark is laid on
--- every ware the company carries out of the rift (Player.markFound), most of which sit rungs above
--- where that company is standing -- and the shop draws no unseen dot on a row it cannot sell, on
--- purpose. So a plate asking only "does this house SELL a marked ware" lit for stock the shop will not
--- mark, the player read the whole rack, and the dot was still burning when they walked out. The gate
--- makes the door ask exactly what the rack answers, and the mark keeps: it lights this plate on the day
--- the ladder reaches the row, which is the only announcement a shelf opened by a class level gets.
+-- Asked THROUGH THE SHELF'S OWN GATES (Quest.shelfGates) and not of the catalogue. A mark can be laid
+-- on a ware sitting rungs above where the company is standing -- and the shop draws no unseen dot on a
+-- row it cannot sell, on purpose. So a plate asking only "does this house SELL a marked ware" lit for
+-- stock the shop will not mark, the player read the whole rack, and the dot was still burning when they
+-- walked out. The gate makes the door ask exactly what the rack answers, and the mark keeps: it lights
+-- this plate on the day the ladder reaches the row, which is the only announcement a shelf opened by a
+-- class level gets.
+--
+-- The worst offender was DISCOVERY -- every ware carried out of the rift was marked, which was most of
+-- a trip's haul. That is gone at the source rather than gated here: finding a thing opens no counter
+-- line any more, so Player.markFound stamps the ledger and marks nothing.
 --
 -- `models.quest` inline rather than at the top of the file, the way models/vendor.lua's grade lookup is:
 -- a new top-level require reorders `pairs` over the registry, which is enough on its own to redden a
@@ -602,7 +606,12 @@ function hub.enter()
     require("models.sound").music("music.hub")
     -- The session's one player, carried across every hub visit. Rebuilding it here (as this
     -- once did, via Player.new) would discard gold, quest progress, and everything bought.
-    hub.player = Player.active or Player.start()
+    -- The fallback takes a FREE SLOT rather than no slot at all. It should be unreachable -- every
+    -- route into the city comes through the menu or the prologue, both of which start a player -- but
+    -- an unstamped player writes to the legacy save.lua, which no slot list shows, so the failure mode
+    -- of getting here without one used to be a campaign that saved into a file the player could never
+    -- load again. A visible slot is the cheapest honest answer.
+    hub.player = Player.active or Player.newSlot()
     -- REACHING THE CITY IS ITSELF A PIECE OF PROGRESS, and this is the only place it can be recorded:
     -- the town is the one screen every route into free play goes through -- the played prologue, the
     -- skip, and a save loaded from anywhere else. What it opens is the Armory's Roll tab, which is held

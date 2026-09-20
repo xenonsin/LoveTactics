@@ -7,6 +7,18 @@ rare one.
 **who drops it.** The two meet at one field — `dropTier` says how deep, a body's `drops` list says
 whose.
 
+> **A DROP IS A HEAD START, NOT A SOURCE OF RECORD.** This file was written while the rift was the only
+> road to a weapon, a utility or a piece of armor: a counter would not deal one until the company had
+> carried one out, so a hole in a drop table was content nobody could reach, and most of what follows
+> is an audit of exactly that. That gate is gone ([shelf.md](shelf.md)) — a found ware is dealt at its
+> class rung whether or not one has ever been hauled up — so **reachability is no longer what a drop
+> list is for.** What it is for now is *early* and *free*: the rift pays gear at depths well below the
+> rung the company has climbed to, and it pays it for nothing.
+>
+> Read the census below as a **legibility** measure rather than a coverage one. The question is still
+> whether a body is known for something; it is no longer whether the item exists at all. The one place
+> the old stakes survive is the [rift-only pieces](#rift-only-pieces) — those are still the only road.
+
 The instrument is `. drop-report` ([tools/drop_report.lua](../tools/drop_report.lua)). Run it before
 authoring anything here; it is the only pass in the tree that asks whether an item is reachable at all.
 
@@ -187,14 +199,20 @@ There is no separate collection screen and no found-count on the rack. **A body'
 list, redacted until you have carried the piece out** — obtaining a drop reveals an entry, and the
 redacted rows are what tell the player there is more to be found.
 
-That is the same grammar `Vendor.stock` already uses for a ware you have not found: a named, silhouetted
-row with the depth where its price would go (`lockReason = "undiscovered"`). One notation, two surfaces.
+The grammar was borrowed from the shelf, which used to stand an unfound ware on the rack named and
+silhouetted with the depth where its price would go — and **this is the only surface that speaks it
+now.** The shelf's version came off with the discovery gate ([shelf.md](shelf.md)); nothing on a rack is
+redacted any more. So the book is where the question survives, which suits it: *what has this company
+seen* was always a bestiary question wearing a counter's clothes.
 
 **Two ledgers, two questions.** `player.met` ([models/bestiary.lua](../models/bestiary.lua)) is which
-bodies have been *fought*; `player.found` is which items have been *carried out*, and it already existed
-because the counter reads it. The redaction is the join: a met body lists every row on its `drops`, and a
-row not in `found` is drawn as a struck bar showing only its depth. Nothing new is remembered about
-items.
+bodies have been *fought*; `player.found` is which items have been *carried out*. The redaction is the
+join: a met body lists every row on its `drops`, and a row not in `found` is drawn as a struck bar
+showing only its depth. Nothing new is remembered about items.
+
+`player.found` outlived the gate that created it — it was the counter's, and the counter stopped asking.
+**It has one reader now**, which is worth knowing before anyone deletes it as dead: it looks vestigial
+from `models/vendor.lua` and is load-bearing from here.
 
 **Met is stamped at the fight, not at the surface** — in `EncounterBattle.spoils`, so the fought path and
 the walk-off path fill the book identically. `found` stays at the surface, and the split is deliberate:
@@ -220,6 +238,10 @@ silently drops its oldest is a shelf that steals.*
 
 ## Rift-only pieces
 
+**This is the whole of what the rift alone still pays**, now that the shelf deals the rest of the
+catalogue on the class rung. Everything else on a `drops` list is a head start; these are the only
+pieces where the body is the sole road, for good, at any level and any purse.
+
 The top of the found ladder is meant to be a handful of **authored rule-breakers** — pieces that sit on
 no counter ever, drop only deep, and change what a body is allowed to do. That is what a Diablo unique
 actually is, and the parked relic shelf already argued the principle for the within-run layer: its
@@ -228,12 +250,42 @@ different size. The argument stands and the shelf does not — `models/relic.lua
 ([relics.md](relics.md)), and its inversions are now the eight `rules` items, which are exactly the
 authored rule-breakers this section is asking for.
 
-**One flag was missing and now exists.** `unstocked = true` on a blueprint keeps a piece out of the
-money economy in both directions: `Vendor.foundPrice` refuses to quote one, so no counter deals it
-however many you have carried out, and `Vendor.sellValue` reads the same figure, so none will buy one
-either. It is **not** `bound` — an unstocked piece is yours to carry, move, forge and break
+**The flag is `unstocked = true`**, and it keeps a piece out of the money economy in both directions:
+`Vendor.foundPrice` refuses to quote one, so no counter deals it however many you have carried out, and
+`Vendor.sellValue` reads the same figure, so none will buy one either. It is **not** `bound` — an
+unstocked piece is yours to carry, move, forge and break
 ([models/salvage.lua](../models/salvage.lua)); it simply is not merchandise. A piece that exists only
-where it fell has no market price in either direction.
+where it fell has no market price in either direction, and a duplicate is not a dead end because it
+breaks down at the bench.
+
+**It was written for a hypothetical and is now load-bearing.** The flag shipped with no user at all,
+against the day somebody authored a unique. What made it live is the other direction entirely: once
+every found ware reached a counter at its rung, a piece that should never reach one needed to say so,
+and this was already the sentence for it.
+
+### What carries it
+
+**Fourteen blueprints**, and the rule is *what a body is known for* — a hand-written list on a hand-
+written animal, not a list `. drop-assign` spread for coverage:
+
+| Body | Pieces |
+|---|---|
+| `character_boar` | Bristlehide, the Unclosing Spear |
+| `character_sow` | Winterhide, the Knapped Claw, the Yearling Pelt |
+| `character_the_unseeing` | the Wake, the Treeline Horn, the Last Sounder |
+| `character_white_wolf` | Mother's Howl, the Wood Remembers, the Second Bite |
+| `character_wolf_alpha` | Ravener's Hide, In and Out |
+| `character_wolf_grunt` | Runner's Hide |
+
+**The seven generals' relics need no flag**, and that is worth knowing before anyone adds one: they are
+`class = "creature"` with no `dropTier`, so no counter could quote one to begin with and `unstocked`
+would be inert. The flag is for a piece that carries a real class and a real depth — one the shelf
+*would* otherwise deal.
+
+**One piece was deliberately left off.** `utility_endurance` is on the wolf grunt's list but reads as
+plain hunter shelf stock at `dropTier 2`; it stays buyable, and the grunt dropping it early is exactly
+what a head start is. A trophy is a thing named for the body. If it could sit on a rack without anyone
+noticing, it is not one.
 
 **Everything else about these is authoring, not engineering**, and that is worth stating because it was
 not obvious until the flag was written. A rift-only piece needs no new item type, no new gate and no new

@@ -1450,28 +1450,24 @@ local function windupFloor(item)
     return lo
 end
 
--- Could `unit` land `item`'s SIGHT-GATED enemy strike on an actual foe this turn -- from where it
--- stands, or from any tile it could walk to and shoot from (the walk-and-strike band)? True unless
--- there is no such foe. Only meaningful for a `requiresSight` enemy ability: a weapon that must SEE
--- its mark (The Held Breath, whose draw grants Unseen the instant it commits) must not be armable
--- when nothing is in its line, or it degrades into a free reposition/stealth crutch aimed at open
--- ground. Reads the live `battle.reachable`, so once the unit has moved it only asks what it can hit
--- from where it now stands. Uses Combat.attackReach -- the same LOS-gated, stand-tile-aware reach the
--- range band and Combat.useItem agree on -- and checks whether any target cell holds a living enemy.
-local function canSightAFoe(unit, item)
-    local ab = item and item.activeAbility
-    if not (ab and ab.requiresSight and ab.target == "enemy") then return true end
-    local range = (ab.range or 1) + Combat.adjacencyRangeBonus(unit.char, item)
-    local reachForRange = battle.blinking and {} or battle.reachable
-    local reach = Combat.attackReach(battle.combat, unit, range, reachForRange,
-        true, Combat.abilityMinRange(ab))
-    for _, cell in pairs(reach) do
-        local occ = Combat.unitAt(battle.combat, cell.x, cell.y)
-        if occ and occ.alive and occ.side ~= unit.side then return true end
-    end
-    return false
-end
-
+-- (`canSightAFoe` STOOD HERE AND IS GONE. It asked whether a `requiresSight` enemy strike could land
+-- on an actual foe this turn, and both of its callers used the answer to withhold the weapon: armItem
+-- refused the arm outright, armDefaultAction quietly opened the turn in move mode instead. A RANGED
+-- WEAPON IS NOW ARMED ON EXACTLY THE TERMS A MELEE ONE IS -- selected by hand, and auto-armed at the
+-- top of the turn -- because selecting a weapon is how a player asks what it reaches, and the turn a
+-- bow has no shot is the turn that question most needs answering: the red band is the picture of the
+-- minRange hole, and of the hill eating the lane.
+--
+-- It was also answering wrong. The test was "is the walk-and-strike band empty of foes", and
+-- Combat.attackReach empties a band for three different reasons -- out of range, inside the minRange
+-- dead zone (every bow has one: docs/weapons.md), or genuinely blocked -- so all three came out of
+-- armItem as "no line of sight", and an archer with a foe standing ON it was told to go find a window.
+--
+-- Nothing is lost by dropping it, because the arm was never the gate. Committing the shot is checked
+-- in the MODEL, where the three reasons are still told apart by name (Combat.useItem: "out of range" /
+-- "too close" / "no line of sight"), and a sight-gated single-target strike is separately refused at
+-- bare ground -- which is the check that actually stops The Held Breath banking its Unseen on empty
+-- air, and always was. Arming commits nothing; only the aim does.)
 local function armDefaultAction(current)
     -- A tutorial step whose whole lesson is "ready your weapon" has to start with it sheathed --
     -- otherwise the step is satisfied before the player touches anything, and the click it is asking
@@ -1480,10 +1476,6 @@ local function armDefaultAction(current)
     local action = battle.defaultAction
     if not (action and action.activeAbility) then return end
     if Combat.itemBlockReason(current, action) then return end
-    -- A sight-gated bow with nothing in its line doesn't auto-arm: the turn opens in move mode
-    -- instead, exactly as it should be "not activatable with no line of sight". The player can walk
-    -- into a shot and arm it then (canSightAFoe accounts for walk-and-strike stand tiles).
-    if not canSightAFoe(current, action) then return end
     battle.armedItem = action
     battle.windup = windupFloor(action) -- a chargeable signature (First Motion) opens at its floor, not +0
     battle.mode = "armed"
@@ -2918,14 +2910,9 @@ local function armItem(item)
     -- The grayed slot and its tooltip carry the same reason, but only for a player who goes looking:
     -- an outright click on the slot has to answer for itself.
     if refuseIfBlocked(current, item) then return end
-    -- A sight-gated strike (a bow, The Held Breath) can't be armed with nothing in its line -- there
-    -- is no shot to take, and arming it anyway would just be a way to walk around under its banner.
-    -- Accounts for tiles the unit could move to and fire from, so a foe you can reach-and-shoot still
-    -- arms; only a truly line-less turn is refused. Said out loud, like the block refusal above.
-    if not canSightAFoe(current, item) then
-        notify(string.format("%s: no line of sight", item.name or "That item"))
-        return
-    end
+    -- A SIGHT-GATED STRIKE ARMS WITH NOTHING IN ITS LINE, exactly like a sword does -- there is no
+    -- second gate here for a bow. The refusal that stood in this spot ("no line of sight") is gone
+    -- with canSightAFoe; see the note where that function used to live, above armDefaultAction.
     battle.armedItem = item
     battle.windup = windupFloor(item) -- a chargeable signature opens at its floor, not +0
     battle.mode = "armed"

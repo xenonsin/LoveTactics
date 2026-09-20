@@ -882,6 +882,14 @@ function Item.instantiate(id, quantity, level)
         -- handed a live sword works out what it is worth from this (Vendor.foundPrice) -- and a counter
         -- that could not see it paid nothing for every weapon, utility and piece of armor in the game.
         dropTier = def.dropTier,
+        -- ...AND THE ONE THING THAT CANCELS IT. `unstocked` is what makes a piece rift-only -- no
+        -- counter deals one, nobody buys one back (docs/drops.md) -- and Vendor.foundPrice is where it
+        -- is answered, one line under the depth above. So it has to ride the instance for the same
+        -- reason the depth does: sellValue is handed a live item off a grid, and a flag left off this
+        -- list is a flag that parses, ships and silently does nothing. Left off, it did exactly that:
+        -- the shelf refused a trophy correctly, off the blueprint, while the SELL tab beside it bought
+        -- one at half price.
+        unstocked = def.unstocked,
         unlockQuests = def.unlockQuests,       -- its grade rank; also the shelf gate, on anything priced
         level = math.max(0, level or 0),       -- upgrade level; 0 = a base, un-forged item
     }

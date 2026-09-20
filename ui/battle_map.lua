@@ -137,7 +137,7 @@ BattleMap.ART = {
     -- tile that can least afford that confusion. The two cover heaps take `thicket`, the role every
     -- piece of walkable cover already uses (forest, sand, ice). The mark carries the identity; the role
     -- only picks a plausible photograph once a real tileset sheet is loaded.
-    redoubt = "grass", dune = "thicket", drift = "thicket",
+    fort = "grass", dune = "thicket", drift = "thicket",
 }
 
 -- Translucent wash over costly terrain (drawn on walkable tiles) so a tile's move penalty
@@ -158,13 +158,13 @@ BattleMap.TERRAIN_TINT = {
     water    = { 0.12, 0.34, 0.58, 0.34 },
     sand     = { 0.52, 0.40, 0.14, 0.26 }, -- dry ochre: heavy going, no cover
     mire     = { 0.14, 0.20, 0.10, 0.38 }, -- the heaviest wash, for the heaviest walkable floor
-    -- WARM, and deliberately in the rough's earthen key rather than in stone grey. The redoubt is the
+    -- WARM, and deliberately in the rough's earthen key rather than in stone grey. The fort is the
     -- one floor here that was built rather than weathered and the temptation is to paint it the colour
     -- of the material -- but grey on this board means YOU CANNOT GO THERE, and a fort is a tile you are
     -- meant to walk into. So it reads as worked earth and cut turf, which is what a low field work
     -- mostly is anyway. Kept light (0.24) because it costs only two: the wash tracks COST, and a heavy
     -- one here would promise the hill's price.
-    redoubt  = { 0.34, 0.26, 0.16, 0.24 },
+    fort     = { 0.34, 0.26, 0.16, 0.24 },
     -- The cover each country grows, each washed in its own biome's key rather than in one shared tone:
     -- a dune has to read as sand piled up and a drift as snow piled up, or the parity between them
     -- becomes a sameness the eye has to work through. Both at the forest's own alpha, since all three

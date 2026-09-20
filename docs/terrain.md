@@ -104,7 +104,7 @@ which is also what keeps the rule from quietly gutting a future zone system.
 | `forest` | 2 | 1 | +20 | burns | soft cover |
 | `dune` | 2 | 1 | +20 | | the desert's cover — inert, the one piece that neither burns nor conducts |
 | `drift` | 2 | 1 | +20 | conducts | the tundra's cover |
-| `redoubt` | 2 | 0 | +10 | **defense +1**, renews | the built work |
+| `fort` | 2 | 0 | +10 | **defense +1**, renews | the built work |
 | `rough` | 2 | 0 | +10 | | broken ground, a modest edge |
 | `sand` | 2 | 0 | — | | forest's cost without forest's cover |
 | `water` | 2 | 0 | — | conducts | a ford |
@@ -113,7 +113,7 @@ which is also what keeps the rule from quietly gutting a future zone system.
 
 Solid: `thicket`, `grass`, `rock`, `mountain` (a flier crosses it), `river`, `lava`.
 
-### The redoubt
+### The fort
 
 Fire Emblem's terrain design has an anchor and it is not the forest — it is the **fort**: the square a
 defender takes and an attacker has to dig them out of. Every cover tile here paid in *evasion*, which
@@ -122,7 +122,7 @@ is to be hit and stand there, which is a strange hole in a game with a knight ho
 
 So it is priced against the hill and deliberately opposite to it. Cheaper to reach, worth nothing to a
 shooter, `sightCost 0` (you can see out of a thing you stand *behind*), and the only ground in the game
-that thickens armour. **The hill is the archer's tile; the redoubt is the wall's.**
+that thickens armour. **The hill is the archer's tile; the fort is the wall's.**
 
 ### Ground that heals, and ground that bogs
 
@@ -130,7 +130,7 @@ Neither is a terrain key. Both are **hazards**, because a zone-granted status is
 something to you" already means in this codebase — one word per mechanic. `models/arena.lua` walks the
 finished board and stands a zone on each such tile (`Arena.TERRAIN_ZONES`, `Arena.terrainZones`):
 
-- a **redoubt** stands `hazard_renewal`, granting Regeneration while you hold it;
+- a **fort** stands `hazard_renewal`, granting Regeneration while you hold it;
 - a **mire** stands `hazard_quicksand`, inflicting Mired — the mire was the one floor in the table
   defined entirely by subtraction, which made it ground nobody ever decided about, only routed around.
 
@@ -156,7 +156,7 @@ biomes out of eight.
 | `tundra` | `drift` | `hill` | `mountain` | |
 | `volcanic` | `rough` | `hill` | `lava` | thin cover, but real |
 | `swamp` | `mire` | `forest` | `mountain` | the hostile floor — see below |
-| `castle` | `redoubt` | `hill` | `mountain` | Pride's circle |
+| `castle` | `fort` | `hill` | `mountain` | Pride's circle |
 | `underworld` | `rough` | `hill` | `mountain` | Greed's circle |
 | `colosseum` | `sand` | `mountain` | `mountain` | bare on purpose |
 

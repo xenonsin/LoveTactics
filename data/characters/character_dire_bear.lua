@@ -28,7 +28,14 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 3, luck = 5,
     },
-    startingItems = { "weapon_great_claws", "utility_feral_instinct" },
+    -- OVERPOWER IS WHAT MAKES THE RAMP REACHABLE. Great Claws is 12 stamina against a regen of 3, so a
+    -- bear lands about one blow a turn and Fury Swipes' four-stack ceiling is most of a fight away.
+    -- The button buys one turn of two swings, at a price out of the same bar. See
+    -- data/items/ability/ability_overpower.lua, and character_bear.lua for the cub that carries the
+    -- wound but NOT the button -- the cut-down rule is the ramp without the way to cash it, which is
+    -- what makes the road bear a lesson rather than a smaller copy of this.
+    startingItems = { "weapon_great_claws", "ability_overpower", "utility_the_same_wound",
+                      "utility_feral_instinct" },
     -- Basic tactics (models/ai.lua): under auto-battle the anchor shape still knows a kill -- press the
     -- foe closest to falling. The hunter driving the shape overrides this.
     ai = {

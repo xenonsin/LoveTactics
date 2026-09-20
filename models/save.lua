@@ -22,7 +22,21 @@ local Material = require("models.material")
 
 local Save = {}
 
+-- THE LEGACY PATH, and nothing writes here any more. A campaign lives in a numbered SLOT
+-- (Save.slotFile below); this is the single file the game kept before there were slots, and it
+-- survives for exactly two jobs: `fileOf`'s default, so a caller that passes nothing still reads
+-- something rather than indexing nil, and Save.migrateLegacy, which moves it into slot 1 once and
+-- then deletes it. tests/descent_spec.lua also reads it as the contrast a run's company must never
+-- write to.
 Save.FILE = "save.lua"
+
+-- A SLOT IS A FILE, and this is its name: save_1.lua, save_2.lua, and so on without a ceiling.
+--
+-- Held as a variable rather than inlined so a spec can point the whole slot layer at a scratch
+-- prefix -- the test suite writes into the same save directory as the real game, so a spec that
+-- allocated real slot numbers would leave junk in the player's own load list. Same reason and same
+-- shape as Save.FILE being swappable, which tests/progression_spec.lua already relies on.
+Save.SLOT_PREFIX = "save_"
 
 -- Bump when the *schema* changes shape (not when game content changes). A save whose
 -- version doesn't match is discarded rather than half-read into a broken player.
@@ -618,6 +632,17 @@ function Save.snapshot(player)
 
     return {
         version = Save.VERSION,
+        -- WHEN THIS WAS WRITTEN, and the only field here that is about the save rather than about the
+        -- company inside it. The slot list sorts on it and Continue picks the largest, so with an
+        -- unbounded number of saves it is what tells two companies of the same name apart.
+        --
+        -- Additive, so Save.VERSION does NOT move -- the same argument `found`, `met` and
+        -- `visitedVendors` make above. A save written before this has none, and Save.slots falls back
+        -- to the file's own modtime and then to its slot number, so it still sorts somewhere sane.
+        --
+        -- `os.time` rather than a love call because there isn't one, and it is a plain integer of
+        -- seconds, which the encoder already writes and which needs no locale to compare.
+        savedAt = os.time(),
         gold = player.gold,
         -- THE RUN'S OWN COIN (models/scrip.lua). Persisted for one reason: a descent is resumable, and a
         -- company that quit on floor six and came back would otherwise find its purse emptied by the
@@ -951,10 +976,19 @@ function Save.encodeFile(data)
     return encode(data, 0, not Debug.enabled)
 end
 
+-- WILL THIS SNAPSHOT LOAD? One predicate, shared by the loader below and by the slot list that
+-- offers a save to be loaded (Save.slots), because the two disagreeing is the worst failure this
+-- system has: a save the list shows and the loader refuses gets clicked, comes back nil, and the
+-- caller starts a FRESH player stamped with that slot -- which then overwrites the save on its first
+-- write. A row that cannot be loaded must not be a row.
+function Save.loadable(snap)
+    return type(snap) == "table" and snap.version == Save.VERSION
+end
+
 -- Rebuild mutable player state from a snapshot. Returns nil if the snapshot is unusable
 -- (wrong version, malformed), letting the caller fall back to a fresh game.
 function Save.restore(snap)
-    if type(snap) ~= "table" or snap.version ~= Save.VERSION then return nil end
+    if not Save.loadable(snap) then return nil end
 
     local roster = {}
     for _, charSnap in ipairs(snap.roster or {}) do
@@ -1312,6 +1346,206 @@ end
 
 function Save.clear(file)
     if Save.exists(file) then love.filesystem.remove(fileOf(file)) end
+end
+
+-- ---------------------------------------------------------------------------
+-- Slots
+-- ---------------------------------------------------------------------------
+--
+-- A SLOT IS A FILE PATH AND NOTHING ELSE. There is no "current slot" here and there must not be --
+-- see the argument above fileOf, which this layer is built to honour rather than to work around: the
+-- path a player writes to rides on that player (`player.saveFile`, exactly as a descent's throwaway
+-- company already carries one), so Player.save routes two dozen call sites correctly without any of
+-- them knowing a slot exists, and a crash can never leave a module-level pointer aimed at the wrong
+-- campaign.
+--
+-- So everything below is about the FOLDER -- what is in it, what is free, and what one file says about
+-- itself without being loaded. Nothing below remembers anything between calls.
+
+function Save.slotFile(n)
+    return Save.SLOT_PREFIX .. tostring(n) .. ".lua"
+end
+
+-- The slot number in a filename, or nil if it is not one of ours. The anchored pattern is what keeps
+-- `settings.lua`, `descent_run.lua` and a spec's `save_spec_scratch.lua` out of the load list: a slot
+-- is the prefix, digits, and nothing else.
+function Save.slotOf(file)
+    if type(file) ~= "string" then return nil end
+    local n = file:match("^" .. Save.SLOT_PREFIX:gsub("[%-%.%+%[%]%(%)%$%^%%%?%*]", "%%%1") .. "(%d+)%.lua$")
+    return n and tonumber(n) or nil
+end
+
+-- Every save on disk, newest first, each as a SUMMARY rather than a loaded player:
+--
+--   { slot = 3, file = "save_3.lua", at = 1758240000, snap = <the peeked snapshot> }
+--
+-- `snap` is Save.peek's raw decoded table, so every field on it is optional (an older save simply
+-- has not got the newer ones) -- the caller drawing a card must treat it that way.
+--
+-- SORTED ON THREE FALLBACKS, in order: the save's own `savedAt`, the file's modtime, and the slot
+-- number. The first is what a save written by this build carries; the second covers one written
+-- before the field existed; the third covers a filesystem that reports no modtime at all, which is
+-- the web build's plausible failure and the one case where "sane order" is all that is owed.
+--
+-- A file this build cannot LOAD is DROPPED rather than listed as a broken row -- one that will not
+-- decode, and one that decodes to a version this build rejects, which Save.loadable is the single
+-- answer to. The reason it must be dropped rather than dimmed is in that function's header: a row the
+-- loader would refuse gets clicked, and the fresh player that comes back overwrites the save.
+--
+-- The file stays on disk, so nothing is destroyed by being un-listed, and Save.freeSlot still counts
+-- its number as taken so nothing is written over it either.
+function Save.slots()
+    local out = {}
+    for _, file in ipairs(love.filesystem.getDirectoryItems("")) do
+        local slot = Save.slotOf(file)
+        if slot then
+            local snap = Save.peek(file)
+            if Save.loadable(snap) then
+                local info = love.filesystem.getInfo(file)
+                out[#out + 1] = {
+                    slot = slot,
+                    file = file,
+                    at = tonumber(snap.savedAt) or (info and info.modtime) or slot,
+                    snap = snap,
+                }
+            end
+        end
+    end
+    table.sort(out, function(a, b)
+        if a.at ~= b.at then return a.at > b.at end
+        return a.slot < b.slot -- a stable tie-break, so the list never reshuffles between frames
+    end)
+    return out
+end
+
+-- The lowest unused slot number. FILLS HOLES on purpose: delete the middle of three and the next new
+-- game takes the gap rather than climbing forever. The number is a filename and is never shown to the
+-- player -- a card is titled by the company inside it -- so reuse costs nothing and keeps the folder
+-- from growing a save_47.lua beside two files.
+--
+-- Counts what is ON DISK rather than what Save.slots lists, so a file that will not decode still holds
+-- its number instead of being handed out and overwritten.
+function Save.freeSlot()
+    local taken = {}
+    for _, file in ipairs(love.filesystem.getDirectoryItems("")) do
+        local slot = Save.slotOf(file)
+        if slot then taken[slot] = true end
+    end
+    local n = 1
+    while taken[n] do n = n + 1 end
+    return n
+end
+
+-- Has this install got any save at all? The gate on Continue and Load Game. Cheaper than Save.slots
+-- because it stops at the first hit and decodes nothing -- and deliberately asks about FILES, so a
+-- save that will not decode still counts as "you have a game here" rather than silently offering a
+-- player the new-game menu of someone who has never played.
+function Save.anySlot()
+    for _, file in ipairs(love.filesystem.getDirectoryItems("")) do
+        if Save.slotOf(file) then return true end
+    end
+    return false
+end
+
+-- HOW LONG AGO, in words. "just now", "6 minutes ago", "3 hours ago", "2 days ago", and a plain date
+-- past a week, which is the point at which "eleven days ago" stops being something anyone counts.
+--
+-- Rounds DOWN throughout: a save made 119 minutes back reads "1 hour ago" rather than "2 hours ago",
+-- because the number is there to tell two saves apart and the one that overstates is the one that can
+-- put them in the wrong order in the player's head.
+--
+-- os.date is wrapped because the web build's Lua is a stripped 5.1 and formatting is the part of the
+-- os library most likely not to be there. Losing the absolute date costs a week-old save its second
+-- line; losing the whole readout to an error would cost the screen.
+local function ago(at, now)
+    at, now = tonumber(at), tonumber(now) or os.time()
+    if not at or not now or now < at then return nil end
+    local secs = now - at
+    if secs < 60 then return "just now" end
+    local function plural(n, unit)
+        return string.format("%d %s%s ago", n, unit, n == 1 and "" or "s")
+    end
+    if secs < 3600 then return plural(math.floor(secs / 60), "minute") end
+    if secs < 86400 then return plural(math.floor(secs / 3600), "hour") end
+    if secs < 7 * 86400 then return plural(math.floor(secs / 86400), "day") end
+    local ok, stamp = pcall(os.date, "%d %b %Y", at)
+    return (ok and stamp) or plural(math.floor(secs / 86400), "day")
+end
+
+Save.ago = ago
+
+-- What one slot says about itself on a load list: a TITLE and a SUB-LINE, returned as two strings.
+--
+-- Lives here rather than in the screen that draws it for two reasons: every field it reads is a save
+-- field, and states/ cannot be required under the headless suite, so a formatter parked in the screen
+-- is a formatter with no spec. The strings themselves carry no colour and no layout -- the caller owns
+-- the rect.
+--
+-- THE TITLE IS THE COMPANY, because that is what the player named and what they will look for. The
+-- sub-line is what tells two of them apart, in the order those questions get asked: how deep, how
+-- long, how rich, how recently. The time stays on every row even when the rest is identical -- with an
+-- unbounded number of saves two companies can honestly share a name, a floor and a day, and then the
+-- clock is the only thing left that distinguishes them.
+--
+-- Every field is optional (Save.peek returns raw saved data), so each one is defaulted rather than
+-- assumed: an older save simply has not got the newer ones.
+function Save.describe(entry, now)
+    local snap = (entry and entry.snap) or {}
+    local title = snap.name
+    if not title or title == "" then title = "Unnamed company" end
+
+    local parts = {}
+    parts[#parts + 1] = "Floor " .. tostring(snap.deepest or 0)
+    parts[#parts + 1] = "Day " .. tostring(snap.day or 1)
+    parts[#parts + 1] = tostring(snap.gold or 0) .. " gold"
+    local when = ago(entry and entry.at, now)
+    if when then parts[#parts + 1] = when end
+
+    -- A lap count rides on the TITLE, not in the list of numbers below it. It is not a measurement of
+    -- this campaign's progress the way the other three are -- it says which campaign this is, which is
+    -- the job the name is doing.
+    if (snap.ngPlus or 0) > 0 then title = title .. "  NG+" .. tostring(snap.ngPlus) end
+
+    -- A MIDDOT rather than the " - " two-part joins elsewhere use (ui/panels/forge.lua): this is a
+    -- list of four peer figures, and a hyphen between four of them reads as a range. Escaped as bytes
+    -- so the source stays ASCII; both Alegreya Sans and LOVE's own fallback face carry the glyph.
+    return title, table.concat(parts, " \194\183 ")
+end
+
+-- ONE LINE naming a save: "Kell \194\183 Floor 7". What the main menu's Continue row wears under its
+-- label, so a press whose target the player cannot otherwise predict says which campaign it opens.
+--
+-- Separate from Save.describe rather than a flag on it because the two answer different questions and
+-- are sized for different rooms. describe fills a 640px card on a screen whose whole job is telling
+-- saves apart, and spends four figures doing it; this fits a 260px menu button, so it carries only
+-- the two that identify a campaign -- who, and how far. A name is capped at 14 characters at creation
+-- (ui/name_entry.lua), which is what makes that fit rather than wrap.
+function Save.brief(entry)
+    local snap = (entry and entry.snap) or {}
+    local name = snap.name
+    if not name or name == "" then name = "Unnamed company" end
+    return name .. " \194\183 Floor " .. tostring(snap.deepest or 0)
+end
+
+-- Move a pre-slot save.lua into slot 1, once. Called from love.load before anything asks for the list.
+--
+-- A BYTE COPY, not a decode and re-encode. A save this build cannot parse -- a future version, a
+-- half-written file, one from a branch -- must still arrive in the slot the player can see, because
+-- the alternative is that upgrading the game silently eats the campaign of anyone whose save happens
+-- not to load today. Moving bytes cannot fail on content.
+--
+-- No-ops when there is nothing to move, and no-ops when ANY slot already exists: that second guard is
+-- what makes it idempotent, and it also means a player who has started using slots can keep a stray
+-- save.lua around without it being dragged back in.
+function Save.migrateLegacy()
+    if not love.filesystem.getInfo(Save.FILE) then return false end
+    if Save.anySlot() then return false end
+    local source = love.filesystem.read(Save.FILE)
+    if not source then return false end
+    local ok = love.filesystem.write(Save.slotFile(1), source)
+    if not ok then return false end
+    love.filesystem.remove(Save.FILE)
+    return true
 end
 
 return Save

@@ -187,15 +187,22 @@ end
 function Quest.shelf(player, vendorId)
     if not vendorId then return nil end
     local g = Quest.shelfGates(player, vendorId)
-    return Vendor.stock(vendorId, g.rung, player.recipes, g.unlocked, g.levels, g.found)
+    return Vendor.stock(vendorId, g.rung, player.recipes, g.unlocked, g.levels)
 end
 
--- THE FOUR FIGURES A SHELF IS GATED BY, in one table: the house's rung, the unlocked disciplines, how
--- far each has grown, and what the company has carried out of the rift. Named here because two very
--- different readers need the same four and must not assemble them apart -- the shop, which builds the
--- rack (Vendor.stock, through Quest.shelf above), and the city's red dot on the door, which asks only
--- whether a marked ware is OUT (Vendor.hasMarkedStock). While the dot asked a looser question than the
--- rack answered, it lit for rows the shop draws no mark on and could not be cleared by reading them.
+-- THE THREE FIGURES A SHELF IS GATED BY, in one table: the class's rung, the unlocked disciplines, and
+-- how far each has grown. Named here because two very different readers need the same three and must
+-- not assemble them apart -- the shop, which builds the rack (Vendor.stock, through Quest.shelf above),
+-- and the city's red dot on the door, which asks only whether a marked ware is OUT
+-- (Vendor.hasMarkedStock). While the dot asked a looser question than the rack answered, it lit for
+-- rows the shop draws no mark on and could not be cleared by reading them.
+--
+-- IT WAS FOUR. `found` -- what the company had carried out of the rift -- was the fourth, and it was a
+-- gate: a weapon, a utility or a piece of armor stood on the rack named and unbuyable until one had
+-- been hauled up. That gate is gone (models/vendor.lua's lockReason): the rift is the head start and
+-- the class ladder is the backstop, so what opens a row is the rung and nothing else. `player.found`
+-- still exists and is still written -- models/bestiary.lua redacts a body's drop list with it -- it
+-- simply is not a question a shelf asks any more.
 --
 -- Assembled per call rather than cached: the sets are cheap (a roster walk apiece) and a cached gate is
 -- a gate that goes stale the first time a class levels, which is the one moment the dot exists for.
@@ -204,7 +211,6 @@ function Quest.shelfGates(player, vendorId)
         rung = Quest.shelfRung(player, vendorId),
         unlocked = Class.unlockedSet(player),
         levels = Class.levelSet(player),
-        found = player and player.found,
     }
 end
 local shelfOf = Quest.shelf

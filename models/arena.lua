@@ -97,10 +97,10 @@ Arena.BIOME_TERRAIN = {
     --
     -- PRIDE'S CIRCLE AND GREED'S, both of which fell through to `default` and rolled FOREST boards --
     -- a fortress and a cavern made of woodland, because neither id was ever written down here
-    -- (Descent.SINS maps pride -> castle and greed -> underworld). The castle's cover is the redoubt,
+    -- (Descent.SINS maps pride -> castle and greed -> underworld). The castle's cover is the fort,
     -- which is the one biome a built work belongs to and the reason the tile has somewhere to live;
     -- its rampart is already set masonry in that tileset, so the two agree about who built the place.
-    castle   = { fill = "redoubt", rise = "hill", block = "mountain" },
+    castle   = { fill = "fort", rise = "hill", block = "mountain" },
     -- Under the city: a broken stone floor with scree across it. `rough` is thin cover (+10) and is
     -- meant to be -- there is nothing growing down here to hide behind, only the floor's own wreckage.
     underworld = { fill = "rough", rise = "hill", block = "mountain" },
@@ -116,7 +116,7 @@ Arena.BIOME_TERRAIN = {
 
 -- THE TILES THAT STAND A ZONE ON THEMSELVES, and the zone each stands. Ground that HEALS and ground
 -- that BOGS are both hazards in this codebase --
--- has been since long before the redoubt existed (data/hazards/hazard_heal.lua, hazard_renewal.lua),
+-- has been since long before the fort existed (data/hazards/hazard_heal.lua, hazard_renewal.lua),
 -- it is already drawn by the field shader, already sought by the enemy planner through
 -- Hazard.tileBias, and already grants Regeneration on the zone-bound terms models/hazard.lua sets out.
 -- So the fort does not grow a `regen` key on Terrain.TYPES that the turn loop, the tooltip and the AI
@@ -124,9 +124,9 @@ Arena.BIOME_TERRAIN = {
 -- for free. One word per mechanic.
 --
 -- UNOWNED, WHICH IS THE WHOLE OF WHAT MAKES THE FORT A FORT. Hazard.allied answers true for a zone
--- with no `side`, so the redoubt's zone is allied to BOTH companies -- it belongs to whoever got there
+-- with no `side`, so the fort's zone is allied to BOTH companies -- it belongs to whoever got there
 -- first, and taking it off somebody is the same act as holding it. An owned zone would have made the
--- redoubt a piece of the defender's kit rather than a piece of the board.
+-- fort a piece of the defender's kit rather than a piece of the board.
 --
 -- AND THE MIRE FINALLY BITES. It was the one floor in the table defined entirely by subtraction --
 -- three to enter, -10 avoid, and nothing else -- which made it ground nobody ever decided about, only
@@ -137,13 +137,13 @@ Arena.BIOME_TERRAIN = {
 -- started its turn standing in it -- so this is the mire admitting what it always was rather than a
 -- new rule.
 Arena.TERRAIN_ZONES = {
-    redoubt = { id = "hazard_renewal", duration = 9999 },
+    fort    = { id = "hazard_renewal", duration = 9999 },
     mire    = { id = "hazard_quicksand", duration = 9999 },
 }
 
 -- Every tile on `tiles` that stands a zone on itself, as hazard specs to be appended to a layout's own
 -- list. NO RNG AT ALL -- it walks the finished ground and answers -- which is what lets it be called
--- from the procedural path without moving a single draw, and from the curated path so a redoubt or a
+-- from the procedural path without moving a single draw, and from the curated path so a fort or a
 -- bog laid by hand behaves exactly as a rolled one does. A board holding neither answers with an empty
 -- list, which is most boards.
 --
@@ -1383,7 +1383,7 @@ function Arena.build(ctx, spec)
         box = layout.box,
         traps = layout.traps or {}, -- authored traps carried into combat (side defaults to enemy)
         -- Authored hazards (fire/rain/sanctuary) carried into combat, Combat.new places them -- PLUS a
-        -- zone on every tile that stands one (Arena.terrainZones: a redoubt renews, a mire bogs).
+        -- zone on every tile that stands one (Arena.terrainZones: a fort renews, a mire bogs).
         -- Folded in HERE rather than in the generator because this is where the procedural and the
         -- curated paths meet -- a fort someone laid by hand in data/arenas/ must mend the body holding
         -- it exactly as a rolled one does, and doing it twice in two places is how the two would come

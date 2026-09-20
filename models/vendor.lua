@@ -12,14 +12,20 @@
 -- counts that itself (Forge.ceilingFor, off Quest.sponsorProgress) rather than borrowing a ladder
 -- from here.
 --
--- A shelf opens as you run the vendor's OWN quest line: each priced item names how many of
--- that sponsor's quests you must have finished before it is on sale (`unlockQuests`, default
--- 0 -- open from the start). There is no reputation score and no rank titles; the only number
--- the player ever sees is "quests completed with this house", counted from the sponsor of
--- each quest in player.completedQuests (models/quest.lua's Quest.sponsorProgress).
+-- A SHELF OPENS AS THE CLASS IT SELLS IS CLIMBED. Every ware names a rung and a rung is a class level
+-- -- how far the roster's best holder of that class has got (Quest.shelfRung -> Class.rosterLevel).
+-- There is no reputation score, no rank titles and no errand line; the houses stopped posting work at
+-- the fold and the shelf has read the ladder ever since.
 --
--- Stock is *derived, not authored*: a vendor sells every priced item whose `class` matches its
--- own. Adding data/items/<slot>/<id>.lua with the right class puts it on that vendor's shelf.
+-- WHERE THAT RUNG COMES FROM DEPENDS ON WHETHER THE WARE IS FOR SALE OR FOUND. A priced one -- an
+-- ability, a consumable, a house's opening weapon -- names it directly as `unlockQuests`, the slot its
+-- grade put it in. Everything else carries a `dropTier` instead, and its rung is that depth less one:
+-- the same conversion Vendor.foundPrice makes to quote it a price, so a found ware's cost and its gate
+-- are one number (Vendor.lockReason).
+--
+-- Stock is *derived, not authored*: a vendor sells every item whose `class` matches its own and which
+-- can be quoted a price at all. Adding data/items/<slot>/<id>.lua with the right class puts it on that
+-- vendor's shelf.
 --
 -- One vendor is different: the Cafe declares `sells = false` and stocks NOTHING. It used to be the
 -- general store -- the shelf for classless priced goods, plus a resale rack for every `potion`. Both
@@ -118,14 +124,14 @@ function Vendor.sells(def, item)
     return false
 end
 
--- WHY A WARE ON A SHELF IS SHUT -- "undiscovered", "class" or "rung" -- or nil when it is out. Also
--- hands back the two facts the gate is derived from that a row wants anyway: whether the item's class
--- is an EARNED one (its `discipline`) and the class level it names, if any.
+-- WHY A WARE ON A SHELF IS SHUT -- "class" or "rung" -- or nil when it is out. Also hands back the
+-- three facts the gate is derived from that a row wants anyway: whether the item's class is an EARNED
+-- one (its `discipline`), the class level it names if any, and THE RUNG THE GATE ACTUALLY APPLIED.
 --
--- `rung` is how far up this house's ladder the company has climbed (Quest.shelfRung); `unlocked`,
--- `levels` and `found` are the bare sets Vendor.stock documents. All of them optional, and a caller
--- that knows none of them gets the most generous answer -- an ungated shelf -- which is the same thing
--- Vendor.stock has always done with a nil gate.
+-- `rung` is how far up this class's ladder the company has climbed (Quest.shelfRung); `unlocked` and
+-- `levels` are the bare sets Vendor.stock documents. All of them optional, and a caller that knows none
+-- of them gets the most generous answer -- an ungated shelf -- which is the same thing Vendor.stock has
+-- always done with a nil gate.
 --
 -- CUT OUT OF Vendor.stock BECAUSE TWO READERS ASK IT NOW. The shelf asks it to grey a tile; the city's
 -- red dot asks it to find out whether a marked ware is actually OUT (Vendor.hasMarkedStock). While they
@@ -134,20 +140,35 @@ end
 -- over a house the player had just finished reading. That is the same failure Market.hasUnread was cut
 -- for (models/market.lua), and the rule it states is the rule here: A MARK IS ONLY EVER PUT ON
 -- SOMETHING THE PLAYER CAN WALK IN AND SEE.
-function Vendor.lockReason(id, item, rung, unlocked, levels, found)
+-- (IT TOOK AN `id` FIRST, and does not now. The id was only ever there to look the item up in the
+-- `found` set; with that gate gone the parameter read nothing, and a parameter nothing reads is how a
+-- caller comes to pass the wrong thing in it and never find out.)
+function Vendor.lockReason(item, rung, unlocked, levels)
     if not item then return nil end
-    -- TWO NUMBERS THAT USED TO BE ONE, and they have to part now that half the catalogue has no rung at
-    -- all.
+    -- TWO NUMBERS THAT USED TO BE ONE, and they still have to part -- but they part the other way round
+    -- now that a found ware has a rung of its own.
     --
-    --   unlockQuests  THE RANK, and every blueprint still carries it -- it is the item's grade position
-    --                 and models/balance.lua reads it as the power level. Reported to everyone
-    --                 downstream: which band a row files under, how the shelf sorts, whether the Market
-    --                 counts it a staple (models/market.lua).
-    --   authoredRung  THE GATE, which is the rank ONLY on a ware that is for sale. A found one asks
-    --                 nothing of your standing -- carrying one out is its whole gate -- so it reads 0
-    --                 and can never be rung-locked on top of being undiscovered. Two gates on one tile
-    --                 would mean finding a thing and still being refused it, for a rung it never sat on.
-    local authoredRung = item.price and (item.unlockQuests or 0) or 0
+    --   unlockQuests  THE RANK, and it is a per-CLASS position: the grader spreads one house's stock
+    --                 over the ladder, and models/balance.lua reads the result as the item's power
+    --                 level. Reported to everyone downstream -- which band a row files under, how the
+    --                 shelf sorts -- and it is the gate only on a ware that carries a price.
+    --   gateRung      THE GATE. On a priced ware it is the rank above. On a FOUND one it is the depth,
+    --                 off by one, which is the same conversion Vendor.foundPrice makes to quote it:
+    --                 one number answers what a thing costs and what rung it sits on, so the two can
+    --                 never disagree.
+    --
+    -- WHY THE DEPTH AND NOT THE AUTHORED RANK, since a found ware carries both. 145 of the 362 carry no
+    -- `unlockQuests` at all -- the recut left the field where it was authored and the tier pass has been
+    -- minting depths ever since -- and of those that do carry one, nine agree with their tier. Reading
+    -- the rank would hand two fifths of the catalogue rung 0 and put the deep end of every class on the
+    -- opening rack. `dropTier` is the field the whole unpriced set is actually spread along
+    -- (tools/drop_tier.lua), so it is the field the gate reads.
+    --
+    -- Tiers run 1..CLASS_LEVEL_CAP and class levels run 0..CLASS_LEVEL_CAP, so the deepest ware in the
+    -- game opens one level short of the cap. Nothing is gated past the top of the ladder that opens it.
+    local gateRung = item.price and (item.unlockQuests or 0)
+        or (item.dropTier and math.max(0, item.dropTier - 1))
+        or 0
     -- AN EARNED CLASS'S STOCK is locked until that class is unlocked, on top of any quest gate -- and,
     -- if it names an unlockLevel, until the class has grown that far.
     --
@@ -163,33 +184,39 @@ function Vendor.lockReason(id, item, rung, unlocked, levels, found)
     if unlockLevel and ((levels and levels[class] or 0) < unlockLevel) then
         classLocked = true
     end
-    -- A FOUND WARE IS SHUT UNTIL IT HAS BEEN CARRIED OUT, on top of every other gate. Listed regardless
-    -- by the shelf: a rack that hid what it could not yet deal would be a record of what you have, and
-    -- the reason this shelf exists is to be a record of what there IS.
-    local undiscovered = (not item.price) and Vendor.foundPrice(item) ~= nil
-        and not (found and found[id])
-
-    -- WHY THE LOCK NEEDS A REASON AND NOT JUST A FLAG. There are three ways a tile can be shut now --
-    -- the house's rung, the discipline, and never having found one -- and a rack that greys all three
-    -- identically tells the player "no" three times without ever saying which of three completely
-    -- different things to go and do about it. Decided here, once, for the same reason `discipline` is:
-    -- the readers all want the same answer and none of them should be re-deriving it.
+    -- THE THIRD REFUSAL IS GONE, and it is worth saying what it was. A found ware used to be shut until
+    -- the company had CARRIED ONE OUT -- `lockReason = "undiscovered"`, a named silhouette with the
+    -- depth it falls at where its price would go -- on the argument that a house should be a record of
+    -- what you have brought it rather than a catalogue. What that cost is the thing the same doc names
+    -- as the shelf's standing obligation: a shelf GUARANTEES an item is reachable and a drop table does
+    -- not. 157 wares reached the player through the price band's long tail alone and 21 sat past the end
+    -- of a boss queue, so a player who wanted the Lodge's kit had nowhere to go and get it.
+    --
+    -- So the rift is the HEAD START rather than the only door: it pays the same gear at the same depths,
+    -- free and long before the rung, and the class ladder is the backstop that guarantees it. What stays
+    -- rift-only is a small authored set -- what a body is KNOWN for -- and that is `unstocked`, answered
+    -- at Vendor.foundPrice, which takes those off every counter entirely rather than greying them
+    -- (docs/drops.md). A permanent silhouette is a want list; this shelf's want list is the bestiary.
+    --
+    -- WHY THE LOCK STILL NEEDS A REASON AND NOT JUST A FLAG. Two ways a tile can be shut -- the rung and
+    -- the discipline -- and a rack that greys both identically tells the player "no" twice without ever
+    -- saying which of two different things to go and do about it. Decided here, once, for the same
+    -- reason `discipline` is: the readers all want the same answer and none should be re-deriving it.
     local lockReason = nil
-    if undiscovered then lockReason = "undiscovered"
-    elseif classLocked then lockReason = "class"
-    elseif (rung or 0) < authoredRung then lockReason = "rung" end
-    return lockReason, earned, unlockLevel
+    if classLocked then lockReason = "class"
+    elseif (rung or 0) < gateRung then lockReason = "rung" end
+    return lockReason, earned, unlockLevel, gateRung
 end
 
 -- Every item this vendor could ever sell, in shelf order (cheapest first). Quest-gated items are
 -- included; `locked` marks the ones the player has not earned yet, so the shop can show them greyed
 -- out -- seeing what the rest of the line unlocks is the point of the ladder.
 --
--- `questsDone` is the RUNG of this shelf the player has reached (Quest.shelfRung), and an item is
--- locked until that rung reaches its `unlockQuests`. It is one below the house's standing, because the
--- first errand a house is run for is its opener and that one buys the DOOR rather than a band of stock
--- -- see Quest.shelfRung for why. Passed as a bare number (not a player) so this module stays
--- player-free, which is also why the offset is the caller's to apply and not this function's.
+-- `questsDone` is the RUNG of this shelf the player has reached (Quest.shelfRung), which is a CLASS
+-- LEVEL -- how far the roster's best holder has got in the class this counter sells. An item is locked
+-- until that rung reaches its own, and a row reports the rung it was measured against as `rung`: a
+-- priced ware's is its `unlockQuests`, a found one's is its depth less one (Vendor.lockReason). Passed
+-- as a bare number (not a player) so this module stays player-free.
 --
 -- `recipes` is an optional plain { itemId = tier } map (the player's consumable recipe levels):
 -- a listed item is stocked at its tier, with `price` scaled to match, so buying it yields the
@@ -211,10 +238,14 @@ end
 -- sells all seven (models/market.lua), and there each ware is gated on the level of ITS OWN class. A
 -- bare number still works and means what it always meant, so every existing caller is untouched.
 -- WHAT A FOUND WARE COSTS. Above the opener rung nothing is authored with a price any more
--- (tools/drop_tier.lua's recut): a weapon, a utility or a piece of armor carries a `dropTier` instead,
--- and a shelf only deals it once the company has carried one out. So the price has to be DERIVED, and
--- the material is already there -- a dropTier is the item's grade rank, the same rank a slot is, spread
--- along depth rather than along a shelf (docs/shelf.md). Read it as the slot it would have had.
+-- (tools/drop_tier.lua's recut): a weapon, a utility or a piece of armor carries a `dropTier` instead.
+-- So the price has to be DERIVED, and the material is already there -- a dropTier is the item's grade
+-- rank, the same rank a slot is, spread along depth rather than along a shelf (docs/shelf.md). Read it
+-- as the slot it would have had.
+--
+-- AND THE GATE READS THE SAME FIELD, which is the half that arrived later: Vendor.lockReason takes
+-- `dropTier - 1` as the rung a found ware sits on, exactly as this takes it as the slot it prices at.
+-- One number, two questions, no way for the price and the gate to drift apart.
 --
 -- OFF BY ONE ON PURPOSE: tiers run 1..cap and slots run 0..cap-1, so tier 1 prices at Grade.PRICE_BASE,
 -- level with a house's opener. A found thing from the top of the rift and a bought thing from the
@@ -223,13 +254,14 @@ end
 -- game to hang off a table every quest and shop already loads -- and a new top-level require reorders
 -- `pairs` over the registry, which is enough on its own to redden a spec that has nothing to do with
 -- this change.
--- `unstocked` IS THE ONE THING A FOUND WARE CAN SAY THAT KEEPS IT OFF A COUNTER FOREVER.
+-- `unstocked` IS THE ONE THING A FOUND WARE CAN SAY THAT KEEPS IT OFF A COUNTER FOREVER, and it is the
+-- whole of the exception now that the shelf deals the rest of the catalogue on the rung.
 --
--- The recut's rule is that a found ware reaches a shelf once the company has carried one out, and that
--- rule is right for the catalogue: a house is a record of what you have brought it. But it leaves no
--- way to author a piece that is *only* ever taken off a body -- and that is exactly what a rift-only
--- rule-breaker is (docs/drops.md). Without this flag the second copy of the rarest thing in the game is
--- something you buy, which is the whole of what makes it rare undone by a counter.
+-- A found ware reaches a counter when the class it belongs to has grown that far, which is right for
+-- the catalogue: a shelf has to guarantee its stock is reachable. But it leaves no way to author a piece
+-- that is *only* ever taken off a body -- the boar's hide, the sow's pelt, the relic a general is put
+-- down for (docs/drops.md). Without this flag the rarest thing in the game is something you eventually
+-- shop for, which is the whole of what makes it rare undone by a counter.
 --
 -- IT IS NOT `bound`. Bound means nailed to one grid -- never earned, moved or carried, which is what
 -- keeps a boss's phase machinery out of the player's hands. An unstocked piece is yours: take it, keep
@@ -268,20 +300,22 @@ end
 -- and the purse is never one: a rack that re-dealt itself every time the company's gold crossed a price
 -- would rearrange under the hand mid-purchase, and a tile already prices itself against the purse in
 -- its own colour (ui/pool_grid.lua).
+--
+-- THE RANK IT DEALS BY IS `rung`, NOT `unlockQuests`, and the two are only the same on a priced ware.
+-- A found one's rung is its depth less one (Vendor.lockReason) and its authored `unlockQuests` is
+-- whatever the last grade pass left on it -- which for two fifths of the catalogue is nothing at all.
+-- Ordering on the authored field would pile every rungless ware at the top of the rack and deal the
+-- ladder in an order no gate agrees with.
 function Vendor.shelfOrder(a, b)
     local la, lb = a.locked or false, b.locked or false
     if la ~= lb then return lb end
-    if a.unlockQuests ~= b.unlockQuests then return (a.unlockQuests or 0) < (b.unlockQuests or 0) end
+    local ra, rb = a.rung or a.unlockQuests or 0, b.rung or b.unlockQuests or 0
+    if ra ~= rb then return ra < rb end
     if a.price ~= b.price then return (a.price or 0) < (b.price or 0) end
     return (a.name or "") < (b.name or "")
 end
 
--- `found` is an optional bare set { itemId = true } of what this company has carried out of the rift
--- (models/player.lua's Player.recordFound). An unpriced, dropTier-carrying ware is listed EITHER WAY --
--- seeing what the rift holds is the whole point of the shelf now -- but stays `locked` until it is in
--- that set. Bare set rather than a player, for the reason every other gate here takes one: this module
--- does not know what a player is.
-function Vendor.stock(vendorId, questsDone, recipes, unlocked, levels, found)
+function Vendor.stock(vendorId, questsDone, recipes, unlocked, levels)
     local def = Vendor.defs[vendorId]
     if not def then return {} end
     local rungOf = questsDone
@@ -301,8 +335,8 @@ function Vendor.stock(vendorId, questsDone, recipes, unlocked, levels, found)
             local unlockQuests = item.unlockQuests or 0
             local level = (recipes and recipes[id]) or 0
             local class = item.class
-            local lockReason, earned, unlockLevel =
-                Vendor.lockReason(id, item, rungOf(item), unlocked, levels, found)
+            local lockReason, earned, unlockLevel, rung =
+                Vendor.lockReason(item, rungOf(item), unlocked, levels)
 
             stock[#stock + 1] = {
                 id = id,
@@ -312,10 +346,17 @@ function Vendor.stock(vendorId, questsDone, recipes, unlocked, levels, found)
                 type = item.type,
                 level = level,
                 price = Vendor.priceFor(item.price or foundPrice, level),
-                -- Where the rift gives it up, on a shelf that cannot sell it yet: the one thing a
-                -- player can act on when the answer is "you have not found one".
+                -- WHERE THE RIFT GIVES IT UP, which is the OTHER road to the same piece and is worth
+                -- printing beside the gate rather than instead of it: grow the class and buy one, or go
+                -- down to this floor and take one. A shut tile that names both names somewhere to go
+                -- either way (ui/panels/shop.lua's lockReason).
                 dropTier = item.dropTier,
                 unlockQuests = unlockQuests,
+                -- THE RUNG THE GATE WAS ACTUALLY MEASURED AGAINST, as distinct from the authored rank
+                -- above. Every reader that asks "how far must the class grow for this" wants this one:
+                -- the shelf's order, the rung sentence in the shop, the market's rotation band. Reading
+                -- `unlockQuests` there answers for a priced ware and lies about a found one.
+                rung = rung,
                 class = class,
                 -- The row's own name for "this is a deeper cut, not the open rack": the class when it
                 -- is an earned one, nil when it is a root. Downstream this is what bands a shelf into
@@ -350,9 +391,12 @@ end
 -- the rule here: A MARK IS ONLY EVER PUT ON SOMETHING THE PLAYER CAN WALK IN AND SEE.
 --
 -- The mark is not thrown away by being refused, and that is the point of gating the READ rather than
--- the write: a discovery two rungs above the company's standing is laid down at the moment it is made
--- (Player.markFound) and lights this door on the day the ladder reaches it -- which is the only
--- announcement a shelf opened by a class level ever gets.
+-- the write: a ware marked two rungs above the company's standing is laid down at the moment the mark
+-- is made and lights this door on the day the ladder reaches it -- which is the only announcement a
+-- shelf opened by a class level ever gets. What does the marking is a rack that genuinely opened: a
+-- companion joining (Market.markOpened) or a shelf diff (models/quest.lua). A DISCOVERY IS NOT ONE OF
+-- THEM any more -- carrying a thing out of the rift opens no line now that the rung is the whole gate
+-- (Vendor.lockReason), so Player.markFound stamps the ledger and lights nothing.
 --
 -- A nil `gates` keeps the old ungated answer, for a caller that has no player to ask.
 function Vendor.hasMarkedStock(vendorId, marked, gates)
@@ -369,8 +413,8 @@ function Vendor.hasMarkedStock(vendorId, marked, gates)
         -- to the price and nothing else ever sees it.
         local stocked = item and (item.price or Vendor.foundPrice(item))
         if stocked and Vendor.sells(def, item)
-            and not (gates and Vendor.lockReason(id, item, gates.rung, gates.unlocked,
-                gates.levels, gates.found)) then
+            and not (gates and Vendor.lockReason(item, gates.rung, gates.unlocked,
+                gates.levels)) then
             return true
         end
     end

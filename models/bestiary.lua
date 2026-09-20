@@ -6,20 +6,22 @@
 --
 -- WHY A REDACTED ROW BEATS A COUNT. A tally -- `41 of 216 carried out` -- is a number you read once and
 -- forget, and it cannot tell you where to go. A redacted row is a specific hole with a specific body
--- standing behind it, so the readout and the destination are the same object. That is the same move
--- Vendor.stock already makes with `lockReason = "undiscovered"`: a ware you have not found stands on
--- the rack named, silhouetted, with the depth it falls at where its price would go. One notation, and
--- this is its second surface.
+-- standing behind it, so the readout and the destination are the same object. It was borrowed from the
+-- shelf, which used to stand an unfound ware on the rack named, silhouetted, with the depth it falls at
+-- where its price would go -- and THIS IS NOW THE ONLY SURFACE THAT SPEAKS IT. The shelf's version came
+-- off with the discovery gate (models/vendor.lua's lockReason): a found ware is dealt on its class rung
+-- there, so nothing on a rack is redacted any more. Which makes the notation this book's own, and makes
+-- the book the one place the game still asks "what has this company actually seen".
 --
 -- TWO LEDGERS, AND THEY ARE DIFFERENT QUESTIONS:
 --
 --   MET     `player.met` -- have I fought this body. Stamped at the end of a won fight, per blueprint
 --           id. A body never met has no entry at all: the bestiary lists what you have seen, not the
 --           contents of data/characters.
---   FOUND   `player.found` -- have I carried this ITEM out (Player.recordFound). Already exists, and
---           is what the counter reads to deal a second copy. The bestiary reads it too, which is the
---           whole of the redaction: a listed body shows every entry on its `drops` list, each either
---           named or struck out.
+--   FOUND   `player.found` -- have I carried this ITEM out (Player.recordFound). It was the counter's
+--           gate first and this book inherited it; the counter stopped reading it and this is the only
+--           reader left. That is the whole of the redaction: a listed body shows every entry on its
+--           `drops` list, each either named or struck out.
 --
 -- So nothing new is remembered about items. A body's list is public once you have met the body; which
 -- rows are legible is the ledger the shelf was already keeping.

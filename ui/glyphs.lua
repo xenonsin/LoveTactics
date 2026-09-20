@@ -321,4 +321,38 @@ function Glyphs.rank(x, y, h, stars, outOf, r, g, b, a, gap)
     return outOf * h + (outOf - 1) * gap
 end
 
+-- THE BIN: "this row can be destroyed". Worn by the delete control on each save in the load list
+-- (states/saves.lua), which is the only place in the game that throws something away permanently.
+--
+-- Deliberately NOT an X. The X in this game means CLOSE -- ui/close_button.lua puts one in the corner
+-- of every modal -- and a mark that means "put this away" sitting on a row that means "erase this
+-- forever" is the one confusion a destructive control cannot afford.
+--
+-- Same coarse geometry as the padlock above: a lid, a handle nub over it, and a tapered body with two
+-- slots cut down it. At the 18px this is drawn at the slots are most of what says "bin" rather than
+-- "box", so they are cut in the plate colour (br, bg, bb) rather than shaded, on the skull's lesson.
+function Glyphs.bin(x, y, w, h, r, g, b, a, br, bg, bb)
+    a = a or 1
+    love.graphics.setColor(r, g, b, a)
+    -- Handle: a small bar above the lid, inset well in so the silhouette reads as a nub and not a stalk.
+    love.graphics.rectangle("fill", x + w * 0.36, y, w * 0.28, h * 0.1)
+    -- Lid: the full width, and the widest part of the mark.
+    love.graphics.rectangle("fill", x, y + h * 0.12, w, h * 0.12)
+    -- Body: tapered in toward the base, drawn as a polygon so the taper is real at this size.
+    local top, bot = y + h * 0.28, y + h
+    love.graphics.polygon("fill",
+        x + w * 0.09, top,
+        x + w * 0.91, top,
+        x + w * 0.80, bot,
+        x + w * 0.20, bot)
+    -- Two slots down the body, punched in the plate colour. Skipped when the caller passes no plate:
+    -- a hole in an unknown colour is worse than no hole.
+    if br then
+        love.graphics.setColor(br, bg, bb, a)
+        local slotW, slotTop, slotH = w * 0.09, top + h * 0.1, (bot - top) * 0.6
+        love.graphics.rectangle("fill", x + w * 0.35, slotTop, slotW, slotH)
+        love.graphics.rectangle("fill", x + w * 0.56, slotTop, slotW, slotH)
+    end
+end
+
 return Glyphs

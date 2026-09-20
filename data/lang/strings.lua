@@ -413,6 +413,8 @@ return {
     ["line.conversation_tutorial_flight.1"] = { en = "Walk to the chest ahead. Use WASD, the arrow keys, or click a tile.", ja = "" },  -- TODO
     ["line.conversation_tutorial_flight.2"] = { en = "Open your loadout to see what you found.", ja = "" },  -- TODO
     ["line.conversation_tutorial_flight.3"] = { en = "{select} an item in your stash to equip it to a hero.", ja = "" },  -- TODO
+    ["line.conversation_tutorial_flight.4"] = { en = "Walk to the chest ahead. Use the d-pad or the left stick.", ja = "" },  -- TODO
+    ["line.conversation_tutorial_flight.5"] = { en = "Walk to the chest ahead. Tap it, or swipe to take one step.", ja = "" },  -- TODO
     ["line.conversation_tutorial_notes.1"] = { en = "The Tally", ja = "" },  -- TODO
     ["line.conversation_tutorial_notes.10"] = { en = "Relics", ja = "" },  -- TODO
     ["line.conversation_tutorial_notes.11"] = { en = "Relics are bonuses that affect the whole party that only last until you leave the rift.", ja = "" },  -- TODO

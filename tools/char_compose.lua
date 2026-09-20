@@ -48,8 +48,12 @@ local RENDER_SIZE = 256
 -- that loses the head). First match in this list wins, so keep the specific ones up top.
 local CREATURE_MATCH = {
     { "boar", "caro-asercion/boar" },
-    { "dire_bear", "delapouite/bear-head" },
-    { "bear", "delapouite/bear-head" },
+    -- THE TWO BEARS ARE NOT ONE BEAR, and the ordering note this pair used to carry ("dire_bear before
+    -- bear is moot -- both land on the bear") stopped being true the day a bear anybody fights existed.
+    -- The Dire Bear is CARGO, a shape a hunter wears; character_bear is a body on the road. They are
+    -- separate blueprints for the reason character_the_gralloch exists, so they may not be one picture.
+    { "dire_bear", "delapouite/bear-head" }, -- the shape keeps the head it has always shipped
+    { "bear", "sparker/bear-face" },         -- ...and the animal gets its own face
     -- Before "wolf" only because it must be before the `beast` KIND fallback, which is the wolf's head:
     -- a wyrm matching nothing here fell through to it and came out pixel-identical to a wolf grunt.
     { "wyrm", "delapouite/spiked-dragon-head" },
@@ -303,6 +307,12 @@ local CHARACTER_SILHOUETTE = {
 
     -- Off the wolf head, which the rank Wolf keeps.
     wolf_alpha = "lorc/wolf-howl",
+    -- ...and off BOTH of those, which is the whole reason this row exists: "white_wolf" matches the
+    -- "wolf" row in CREATURE_MATCH and would come out pixel-identical to a grunt, while the two icons
+    -- that actually read as a great wolf are already spoken for (wolf-howl by the alpha, direwolf by
+    -- the Wolfsong Spirit). The teeth are the honest mark anyway -- her blow lands once per wolf
+    -- standing with her (weapon_white_wolf_fangs.lua), so what she IS on a board is a count of bites.
+    white_wolf = "lorc/bestial-fangs",
     -- The wild fauna added with the warband pass. Both would otherwise fall into a bucket already
     -- occupied: a carrion crawler matches nothing in CREATURE_MATCH and lands on the `beast` fallback,
     -- which is the wolf grunt's own head; a wyrmling matches "wyrm" and comes out pixel-identical to the
@@ -310,6 +320,11 @@ local CHARACTER_SILHOUETTE = {
     -- rather than a family and a substring row would sweep in whatever is written next.
     carrion_crawler = "delapouite/grasping-slug", -- low, many-legged, and interested in the floor
     wyrmling = "lorc/dragon-breath",              -- read as the cone, which is the only thing it does
+    -- "sow" shares no substring with "bear", so she matches nothing in CREATURE_MATCH and lands on the
+    -- `beast` KIND fallback -- the wolf grunt's own head. Named here rather than given a row, because she
+    -- is ONE body and a "sow" substring row would sweep in whatever is written next. The full animal
+    -- rather than a head: she is the only 2x2 bear, and the fight is her bulk arriving.
+    sow = "cathelineau/polar-bear",
 
     -- THE GLUTTONY CIRCLE. Five creatures and a mini sin, every one of them `beast` -- so without a name
     -- here all six would land on the `beast` KIND fallback together, which is the wolf grunt's head. Each

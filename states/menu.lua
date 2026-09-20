@@ -1,6 +1,7 @@
 local State = require("states")
 local Menu = require("ui.menu")
 local Player = require("models.player")
+local Save = require("models.save") -- what is on disk: Continue reads the newest slot off it
 local Scale = require("scale")
 local Theme = require("ui.theme")
 local ScreenFx = require("ui.screen_fx")
@@ -282,7 +283,7 @@ end
 -- two character-creation steps go with it, so the avatar wears body 1 and the blueprint's own name:
 -- what this button is for is reaching the city, not being somebody in particular.
 local function skipPrologue()
-    Player.start(true) -- discards any save, exactly as New Game does
+    Player.newSlot() -- a free slot, exactly as New Game does; nothing existing is touched
     require("states.prologue").skip(Player.active)
     Player.save()
     State.switch(require("states.hub"))
@@ -294,29 +295,36 @@ end
 local function buildMenu()
     local items = {}
 
-    if Player.hasSave() then
+    -- CONTINUE IS THE MOST RECENT SAVE, not "the" save: there are as many campaigns on this install as
+    -- the player has started (models/save.lua's Slots). It stays on the menu above the list because the
+    -- common case by a wide margin is one campaign and a player who wants to get back into it, and
+    -- making that a two-screen trip to spend a keypress choosing between one option is not a choice.
+    --
+    -- Save.slots sorts newest first, so the head of the list IS the answer.
+    local recent = Save.slots()[1]
+    if recent then
         items[#items + 1] = {
             label = "Continue",
-            action = function()
-                Player.start()
-                -- A save made mid-quest carries a resumable overworld run (models/save.lua): drop the
-                -- player straight back onto that map where they quit, rather than home to the hub. Consumed
-                -- once here (cleared so a bounce back to the menu doesn't re-resume a stale descriptor).
-                local run = Player.active and Player.active.resumeRun
-                if run then
-                    Player.active.resumeRun = nil
-                    State.switch(require("states.game"), run.quest, nil, Player.active, nil, run)
-                else
-                    State.switch(require("states.hub"))
-                end
-            end,
+            -- Which campaign this is about to resume, said on the row. With several saves "Continue"
+            -- alone is a button whose effect the player cannot predict, and the fix is a line rather
+            -- than a second screen (ui/menu.lua's card row).
+            sub = Save.brief(recent),
+            action = function() require("states.saves").load(recent.file) end,
+        }
+
+        -- ...and the other campaigns, which is also where a save is deleted.
+        items[#items + 1] = {
+            label = "Load Game",
+            action = function() State.switch(require("states.saves"), menu) end,
         }
     end
 
     items[#items + 1] = {
         label = "New Game",
         action = function()
-            Player.start(true) -- discards any save
+            -- INTO THE FIRST FREE SLOT, erasing nothing. Slots are unbounded, so a new campaign never
+            -- has to displace an old one and this row lost the warning it used to carry.
+            Player.newSlot()
             -- Character creation (pick the avatar's body, then name it) opens a New Game; it hands off to the
             -- prologue -- for now, straight to the hub. See states/character_creation.lua.
             State.switch(require("states.character_creation"))
@@ -362,7 +370,9 @@ local function buildMenu()
         }
     end
 
-    return Menu.new(items, { startY = 280 })
+    -- `subFont` is for Continue's one card row (the company it reopens); every other row here is a
+    -- plain label and ignores it.
+    return Menu.new(items, { startY = 280, subFont = hintFont })
 end
 
 -- The dev-build corner column. Small buttons in their own left-hand gutter, clear of the title and
@@ -480,11 +490,10 @@ function menu.draw()
         debugWidget:draw()
     end
 
-    if Player.hasSave() then
-        love.graphics.setFont(hintFont)
-        Theme.set(Theme.muted)
-        love.graphics.printf("New Game erases your save.", 0, Scale.HEIGHT - 48, screenW, "center")
-    end
+    -- ("New Game erases your save." stood here and is GONE WITH THE SINGLE SAVE. It was true and it
+    -- was load-bearing -- one file, and New Game overwrote it. Slots are unbounded now, so a new
+    -- campaign takes the first free one and destroys nothing; the only place a save is ever erased is
+    -- the bin on its own row in the load list, which asks first.)
 
     -- Transient debug status (e.g. the result of Extract Strings).
     if menu.status and menu.statusTimer and menu.statusTimer > 0 then

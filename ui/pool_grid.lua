@@ -145,9 +145,7 @@ function PoolGrid:setStore(entries)
             entry = entry,
             price = entry.price,
             locked = entry.locked,
-            undiscovered = entry.undiscovered,
             sold = entry.sold,
-            depth = entry.depth,
         }
     end
     self:clampView()
@@ -335,17 +333,17 @@ function PoolGrid:drawCell(i, sx, sy)
     local unseen = self.isNew and self.isNew(item, cell) or false
     local badgeInset = unseen and 16 or 4
     love.graphics.setFont(self.smallFont)
-    -- AN UNFOUND CELL QUOTES A DEPTH WHERE A PRICE WOULD GO, because a price it cannot be bought at is
-    -- a number no decision reads, and the depth is the one figure that answers "what do I do about
-    -- this". Same corner, same terse shape as "80g" -- a figure with its unit letter -- and the sentence
-    -- that spells it out is on the dwell (ui/panels/shop.lua's lockReason).
+    -- AN UNFOUND CELL USED TO QUOTE A DEPTH WHERE A PRICE WOULD GO -- "d6" in the same terse shape as
+    -- "80g" -- because a ware the counter would not deal until one had been hauled out had no price to
+    -- print. That state is gone (models/vendor.lua's lockReason): a found ware opens on its class rung
+    -- and carries a real price the whole time it is shut, which is a number the decision to climb
+    -- actually reads. Where the rift also gives it up is on the dwell now, in the sentence rather than
+    -- in the corner (ui/panels/shop.lua's lockReason).
     -- A SOLD CELL QUOTES NOTHING HERE. Its word goes on OVER the grey wash further down rather than
-    -- under it, which is the only way a five-point figure survives the wash at all -- and there is no
-    -- price to print anyway, for the same reason an unfound cell has none.
+    -- under it, which is the only way a five-point figure survives the wash at all.
     local price
     if self.mode == "store" then
         if cell.sold then price = nil
-        elseif cell.undiscovered and cell.depth then price = "d" .. cell.depth
         else price = tostring(cell.price) .. "g" end
     else
         price = self.priceOf and self.priceOf(item, cell) or nil
@@ -357,11 +355,8 @@ function PoolGrid:drawCell(i, sx, sy)
         -- answered by scanning the rack instead of by pressing each tile and being told no. Gold is read
         -- through a getter because it changes under a shelf that is not rebuilt (`purse`, optional: a
         -- pool given none prices everything in amber, which is every rack outside a shop).
-        -- A depth is not priced against anything, so it wears neither the gold nor the refusal red: it
-        -- is a fact about where the thing lives, and reddening it would read as "too expensive".
         local afford = not (self.purse and cell.price and cell.price > (self.purse() or 0))
-        Theme.set(cell.undiscovered and Theme.muted
-            or afford and Theme.accentAmber or Theme.accentWeapon, dim)
+        Theme.set(afford and Theme.accentAmber or Theme.accentWeapon, dim)
         love.graphics.printf(price, sx, sy + 3, CELL - badgeInset, "right")
         -- A priced stack sends its count to the OPPOSITE corner: two numbers stacked in one corner
         -- read as one number, and the count is the smaller question of the two.
@@ -406,9 +401,6 @@ function PoolGrid:drawCell(i, sx, sy)
         love.graphics.setFont(self.smallFont)
         Theme.set(Theme.accentWeapon)
         love.graphics.printf("sold", sx, sy + 3, CELL - badgeInset, "right")
-    elseif cell.undiscovered then
-        Theme.set(Theme.mount, 0.88)
-        love.graphics.rectangle("fill", sx, sy, CELL, CELL, 6, 6)
     elseif cell.locked then
         Theme.set(Theme.mount, 0.6)
         love.graphics.rectangle("fill", sx, sy, CELL, CELL, 6, 6)

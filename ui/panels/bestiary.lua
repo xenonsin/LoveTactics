@@ -16,6 +16,12 @@
 -- material -- the striking IS the information.
 --
 -- Two columns, the Forge's shape: the bodies down the left, the selected one's list on the right.
+--
+-- EVERY ROW WEARS THE BODY'S OWN BOARD TOKEN, because a name in a list is not what the player met --
+-- the thing they met was a figure standing on a tile, and that figure is what they will recognise a
+-- page of them by. `sprite` is the piece off the board, never the VN portrait: only companions carry
+-- one of those and no companion is ever an entry here.
+--
 -- Three-input + mouse-only, per project standard.
 
 local Bestiary = require("models.bestiary")
@@ -34,6 +40,8 @@ local PAD = 24
 local LIST_W = 320
 local ROW_H = 42
 local ROW_GAP = 4
+local TOKEN = 32       -- the body's figure on a list row
+local PORTRAIT = 72    -- the same figure, at reading size, on the open entry
 local MAX_ROWS = 9
 local CONTENT_TOP = 104
 
@@ -111,6 +119,28 @@ end
 -- Draw
 -- ---------------------------------------------------------------------------
 
+-- The body's figure, on a raised plate so a token with a transparent ground still reads as framed
+-- against whatever row it sits on. Art that has not landed resolves to its path string
+-- (models/sprite.lua) and falls back to the initial on the same plate -- the party rail's convention
+-- (ui/panels/party.lua), so a body looks like a body everywhere the game draws one.
+function Book:drawToken(entry, x, y, size)
+    Theme.plate(x, y, size, size, 4, Theme.panel)
+    local sprite = Sprite.load(entry.sprite)
+    if type(sprite) == "userdata" then
+        love.graphics.setColor(1, 1, 1)
+        local sw, sh = sprite:getDimensions()
+        local inner = size - 6
+        local scale = math.min(inner / sw, inner / sh)
+        love.graphics.draw(sprite, x + size / 2, y + size / 2, 0, scale, scale, sw / 2, sh / 2)
+    else
+        local font = size >= PORTRAIT and self.nameFont or self.rowFont
+        love.graphics.setFont(font)
+        Theme.set(Theme.muted, 0.8)
+        love.graphics.printf((entry.name or "?"):sub(1, 1):upper(),
+            x, y + size / 2 - font:getHeight() / 2, size, "center")
+    end
+end
+
 function Book:draw()
     local bx, by = self.boxX, self.boxY
     -- The same scrim every pop-up in the game lays down (ui/panels/bag.lua and its neighbours): a flat
@@ -169,14 +199,17 @@ function Book:drawList()
                 love.graphics.setLineWidth(1)
             end
 
+            self:drawToken(entry, r.x + 6, r.y + (ROW_H - TOKEN) / 2, TOKEN)
+            local textX = r.x + 6 + TOKEN + 10
+
             love.graphics.setFont(self.rowFont)
             Theme.set(Theme.ink)
-            local name = Theme.ellipsize(entry.name, self.rowFont, r.w - 84)
-            love.graphics.print(name, r.x + 10, r.y + 6)
+            local name = Theme.ellipsize(entry.name, self.rowFont, r.x + r.w - 74 - textX)
+            love.graphics.print(name, textX, r.y + 6)
 
             love.graphics.setFont(self.smallFont)
             Theme.set(Theme.muted, 0.85)
-            love.graphics.print(TIER_LABEL[entry.tier] or "", r.x + 10, r.y + 25)
+            love.graphics.print(TIER_LABEL[entry.tier] or "", textX, r.y + 25)
 
             -- THE BADGE IS THE HOOK. A body with everything carried out is done with; one showing 1/4
             -- is a reason to go back, and that is the only number on this row worth reading at a
@@ -206,17 +239,25 @@ function Book:drawEntry()
     local x, w = self.detailX, self.detailW
     local y = self.boxY + CONTENT_TOP
 
+    -- Figure left, name and band right, the two centred on each other: the picture is the entry's
+    -- heading as much as the name is, so neither sits under the other.
+    self:drawToken(entry, x, y, PORTRAIT)
+    local headX = x + PORTRAIT + 16
+    local headW = w - PORTRAIT - 16
+    local sub = TIER_LABEL[entry.tier] or ""
+    if entry.kind then sub = sub .. "  ·  " .. entry.kind end
+    local blockH = self.nameFont:getHeight() + 4 + self.bodyFont:getHeight()
+    local headY = y + (PORTRAIT - blockH) / 2
+
     love.graphics.setFont(self.nameFont)
     Theme.set(Theme.ink)
-    love.graphics.print(entry.name, x, y)
-    y = y + self.nameFont:getHeight() + 4
+    love.graphics.print(Theme.ellipsize(entry.name, self.nameFont, headW), headX, headY)
+    headY = headY + self.nameFont:getHeight() + 4
 
     love.graphics.setFont(self.bodyFont)
     Theme.set(Theme.muted)
-    local sub = TIER_LABEL[entry.tier] or ""
-    if entry.kind then sub = sub .. "  ·  " .. entry.kind end
-    love.graphics.print(sub, x, y)
-    y = y + self.bodyFont:getHeight() + 22
+    love.graphics.print(Theme.ellipsize(sub, self.bodyFont, headW), headX, headY)
+    y = y + PORTRAIT + 22
 
     love.graphics.setFont(self.capFont)
     Theme.set(Theme.muted)

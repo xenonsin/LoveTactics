@@ -222,9 +222,9 @@ return {
     {
         name = "the tooltip prints a declared bonus, and prints it in the terrain table's order",
         fn = function()
-            -- The redoubt is the one tile carrying two of them at once, which makes it the only case
+            -- The fort is the one tile carrying two of them at once, which makes it the only case
             -- that can see an ordering bug at all.
-            local cell = { type = "redoubt", walkable = true, moveCost = 2, sightCost = 0 }
+            local cell = { type = "fort", walkable = true, moveCost = 2, sightCost = 0 }
             local blocks = TileTooltip.blocks({ cell = cell, bonus = { avoid = 10, defense = 1 } })
             local seen = {}
             for _, b in ipairs(blocks) do
@@ -236,7 +236,7 @@ return {
                     assert(b.value == "+1", "armour is a plain point, saw " .. tostring(b.value))
                 end
             end
-            assert(#seen == 2, "the box should show both of the redoubt's bonuses, saw " .. #seen)
+            assert(#seen == 2, "the box should show both of the fort's bonuses, saw " .. #seen)
             assert(seen[1] == "avoid" and seen[2] == "defense",
                 "cover leads, as Terrain.BONUS_KEYS orders it")
         end,

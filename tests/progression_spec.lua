@@ -364,17 +364,29 @@ return {
                 for vid, vdef in pairs(Vendor.defs) do
                     if vdef.class == class then vendorId = vid end
                 end
+                -- Asked at the TOP of the ladder, which is where the promise now lives. These five
+                -- were the general store and the promise was "buyable on the first visit"; the recut
+                -- moved four of them onto a depth and the discovery gate that once shut them has come
+                -- off (docs/shelf.md), so what survives is the weaker and still meaningful claim: the
+                -- goods have a home, on the class shelf they were redistributed to, and a company that
+                -- has grown that class can walk in and buy one.
                 local found
-                for _, entry in ipairs(Vendor.stock(vendorId, 0)) do
+                for _, entry in ipairs(Vendor.stock(vendorId, Class.CLASS_LEVEL_CAP)) do
                     if entry.id == id then found = entry end
                 end
-                -- On the shelf either way. A priced one is buyable outright; a found one stands there
-                -- named and unbuyable until it has been carried out, which is the whole point of
-                -- showing it (models/vendor.lua's lockReason).
                 assert(found, id .. " is not on " .. tostring(vendorId) .. "'s shelf at all")
-                assert(def.price and not found.locked or found.lockReason == "undiscovered",
-                    id .. " is shut at " .. tostring(vendorId) .. " for the wrong reason: " ..
+                assert(not found.locked,
+                    id .. " is shut at " .. tostring(vendorId) .. " at the top of the ladder: " ..
                     tostring(found.lockReason))
+                -- The consumable keeps its first-visit promise outright, since it kept its price.
+                if def.price then
+                    local opening
+                    for _, entry in ipairs(Vendor.stock(vendorId, 0)) do
+                        if entry.id == id then opening = entry end
+                    end
+                    assert(opening and not opening.locked,
+                        id .. " is priced and must be buyable on the first visit")
+                end
             end
         end,
     },
@@ -762,7 +774,7 @@ return {
                 local gates = Quest.shelfGates(p, id)
                 local s, o
                 for _, row in ipairs(Vendor.stock(id, gates.rung, p.recipes, gates.unlocked,
-                        gates.levels, gates.found)) do
+                        gates.levels)) do
                     if row.lockReason == "rung" then s = s or row.id
                     elseif not row.locked then o = o or row.id end
                 end

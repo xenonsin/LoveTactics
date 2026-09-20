@@ -14,8 +14,9 @@
 -- off screen; that scene is cut (data/conversations/prologue/conversation_prologue_village.lua). So
 -- the picture is not decoration on the step, it is the whole of what makes the step a decision.
 --
--- Reached from states/menu.lua's New Game after Player.start(true) has built the fresh player, so
--- both choices write straight onto Player.active; states/prologue.lua reads them in `begin`.
+-- Reached from states/menu.lua's New Game after Player.newSlot has built the fresh player in the
+-- first free save slot (models/save.lua), so both choices write straight onto Player.active;
+-- states/prologue.lua reads them in `begin`.
 --
 -- Reuses ui/portrait_choice.lua and ui/name_entry.lua, which each carry mouse + keyboard + gamepad
 -- (the project's three-input standard). Both draw on Theme.drawMount, so the two steps of one flow

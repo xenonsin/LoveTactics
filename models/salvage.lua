@@ -152,7 +152,11 @@ function Salvage.breakDown(player, item)
 
     local yield = Salvage.yield(item)
     for id, count in pairs(yield) do Player.addMaterial(player, id, count) end
-    -- Before the item goes anywhere, so the line it opens survives the decision to break it.
+    -- Before the item goes anywhere, so BREAKING a piece still counts as having found one. The ledger
+    -- fills the bestiary now rather than opening a shelf line (Player.markFound), and a book that
+    -- forgot a body's drop the moment the player broke it down would be a record that punishes using
+    -- the bench -- the surface sweep runs over the stash and the grids, and a piece salvaged
+    -- underground is in neither by then.
     Player.markFound(player, item.id)
     return yield
 end

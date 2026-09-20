@@ -496,7 +496,11 @@ return {
                 "the mechanic-bubble table is gone; a route that wants one again needs its channel back")
 
             local CONV = "conversation_tutorial_flight"
-            local WANT = { "move_hint", "loadout_hint", "equip_hint" }
+            -- The chain is three STEPS; the first of them is three LINES, one per device (the only
+            -- step that names hardware -- see the file's header and states/game.lua's moveHintId).
+            -- Every one of them is checked here, because a variant nobody fields is exactly the
+            -- dead line this case exists to catch.
+            local WANT = { "move_hint", "move_hint_pad", "move_hint_touch", "loadout_hint", "equip_hint" }
             local script = require("data.conversations.tutorial." .. CONV).script
             assert(#script == #WANT, "the flight bag holds " .. #WANT .. " lines, got " .. #script)
             for i, id in ipairs(WANT) do
@@ -506,6 +510,57 @@ return {
                     id .. " carries no stamped tag (run extract-strings)")
                 local text = Locale.line(CONV, id)
                 assert(type(text) == "string" and #text > 0, id .. " resolves to nothing")
+            end
+        end,
+    },
+
+    {
+        -- THE PROLOGUE'S FIRST INSTRUCTION IS ABOUT HARDWARE, so it has to be asked which hardware.
+        -- It told every player to use WASD, the arrow keys or a click: two of those do not exist on
+        -- a handset and none of the three is what a pad offers. The lesson is the first thing the
+        -- game ever says, and a first instruction naming controls the player cannot find is not a
+        -- wording problem -- it is a player stuck on the opening tile.
+        name = "the move lesson names the device in the player's hands, and only that device",
+        fn = function()
+            local Locale = require("models.locale")
+            local InputMode = require("input_mode")
+            local CONV = "conversation_tutorial_flight"
+
+            -- The picker is in states/game.lua's draw path, which cannot run headlessly; read it off
+            -- the source, then exercise the answers it chooses between through InputMode.pick itself.
+            local src = assert(love.filesystem.read("states/game.lua"), "states/game.lua is readable")
+            assert(src:find("InputMode%.pick%(\"move_hint_pad\", \"move_hint_touch\", \"move_hint\"%)"),
+                "the move hint is not picked per device -- a finger is being told to press WASD")
+            assert(src:find('hintNode%("conversation_tutorial_flight", moveHintId%(%)%)'),
+                "the coach bubble still asks for the one fixed line, so the picker is dead code")
+
+            local function lineFor(mode, touch)
+                local m, t = InputMode.current, InputMode.touch
+                InputMode.current, InputMode.touch = mode, touch
+                local id = InputMode.pick("move_hint_pad", "move_hint_touch", "move_hint")
+                InputMode.current, InputMode.touch = m, t
+                return assert(Locale.line(CONV, id), id .. " resolves to nothing")
+            end
+
+            local touch = lineFor("mouse", true)
+            assert(not touch:find("WASD") and not touch:find("arrow") and not touch:find("lick"),
+                "a handset is told to press a key or click: " .. touch)
+            assert(touch:find("Tap") and touch:find("swipe"),
+                "the finger's two routes are tap-to-walk and swipe-to-step (ui/overworld_map.lua); "
+                .. "the line names neither: " .. touch)
+
+            local pad = lineFor("gamepad", false)
+            assert(not pad:find("WASD") and not pad:find("lick"), "a pad is told to click: " .. pad)
+            assert(pad:find("d%-pad") or pad:find("stick"), "the pad line names no pad control: " .. pad)
+
+            -- The pointer/keyboard branch keeps BOTH its routes: a desktop player really does have
+            -- a keyboard and a mouse, which is why this one line names two devices and the other
+            -- two name one each.
+            for _, mode in ipairs({ "mouse", "keyboard" }) do
+                local key = lineFor(mode, false)
+                assert(key:find("WASD") and key:find("click"),
+                    "the desktop line dropped one of its two routes: " .. key)
+                assert(not key:find("swipe"), "a desktop player is told to swipe: " .. key)
             end
         end,
     },

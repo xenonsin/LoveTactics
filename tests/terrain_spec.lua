@@ -330,16 +330,16 @@ return {
         -- The tile the whole positional package is built around, pinned as a SHAPE rather than as four
         -- numbers: it has to be cheaper to reach than the hill, worth less to a shooter, and the only
         -- ground that thickens armour. Any one of those drifting turns it back into a second forest.
-        name = "the redoubt is the hill's opposite, not its cheaper copy",
+        name = "the fort is the hill's opposite, not its cheaper copy",
         fn = function()
-            local fort, hill = Terrain.get("redoubt"), Terrain.get("hill")
+            local fort, hill = Terrain.get("fort"), Terrain.get("hill")
             assert(fort.walkable, "a fort you cannot stand in is a wall")
-            assert(fort.moveCost < hill.moveCost, "the redoubt has to be the cheaper ground to take")
+            assert(fort.moveCost < hill.moveCost, "the fort has to be the cheaper ground to take")
             assert((fort.bonus.range or 0) == 0, "it is the wall's tile, not the archer's")
             assert(fort.sightCost == 0, "you can see out of a thing you stand behind")
             assert(fort.bonus.avoid < hill.bonus.avoid,
                 "the hill is still the better place to not be hit at all")
-            assert((fort.bonus.defense or 0) > 0, "...and the redoubt is the only place that armours you")
+            assert((fort.bonus.defense or 0) > 0, "...and the fort is the only place that armours you")
         end,
     },
     {
@@ -347,7 +347,7 @@ return {
         -- terrain table a table of footing, sight and a bonus bag. The risk in that decision is the
         -- wiring: a tile whose whole second half lives in another model is a tile that can ship with
         -- the half missing and look completely fine on the board.
-        name = "a board's redoubts and mires stand their own zones, on both build paths",
+        name = "a board's forts and mires stand their own zones, on both build paths",
         fn = function()
             local function zonesOn(tiles)
                 local rows, cols = #tiles, #tiles[1]
@@ -359,15 +359,15 @@ return {
             end
 
             local z = zonesOn({
-                { "ground", "redoubt", "ground" },
+                { "ground", "fort", "ground" },
                 { "mire", "ground", "hill" },
             })
-            assert(z["2,1"] == "hazard_renewal", "a redoubt mends whoever holds it")
+            assert(z["2,1"] == "hazard_renewal", "a fort mends whoever holds it")
             assert(z["1,2"] == "hazard_quicksand", "and the bog finally bites")
             assert(z["3,2"] == nil, "a hill stands nothing: it pays in reach, as it always did")
             assert(z["1,1"] == nil, "open ground stands nothing")
 
-            -- The rolled path, end to end: a castle board fills with redoubts, so its arena must come
+            -- The rolled path, end to end: a castle board fills with forts, so its arena must come
             -- out of Arena.build with a zone on each of them. This is the case that would have caught
             -- the feature shipping wired to nothing.
             -- Every curated castle arena is `fixed` (the two galleries and the tutorial village), so
@@ -382,15 +382,15 @@ return {
             local forts = 0
             for y = 1, a.rows do
                 for x = 1, a.cols do
-                    if a.tiles[y][x].type == "redoubt" then forts = forts + 1 end
+                    if a.tiles[y][x].type == "fort" then forts = forts + 1 end
                 end
             end
-            assert(forts > 0, "a castle board is supposed to scatter redoubts")
+            assert(forts > 0, "a castle board is supposed to scatter forts")
             local renewals = 0
             for _, h in ipairs(a.hazards or {}) do
                 if h.id == "hazard_renewal" then
                     renewals = renewals + 1
-                    assert(a.tiles[h.y][h.x].type == "redoubt",
+                    assert(a.tiles[h.y][h.x].type == "fort",
                         "a renewal zone landed on ground that is not a fort")
                     assert(h.side == nil, "the fort belongs to whoever gets there first, not to a side")
                 end

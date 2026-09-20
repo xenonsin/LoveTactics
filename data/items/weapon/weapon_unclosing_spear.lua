@@ -43,6 +43,9 @@ return {
     -- one they are still hoping for in their fifth. Reachable because a boar is ungated and keeps
     -- turning up at depth -- the Unseeing's whole clan is boars (data/items/ability/ability_the_call.lua).
     dropTier = 8,
+    -- RIFT-ONLY. It comes off the body and nowhere else: no counter deals one however many
+    -- the company carries out, and none will buy one back (docs/drops.md, Vendor.foundPrice).
+    unstocked = true,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

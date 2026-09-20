@@ -28,11 +28,18 @@ argument was good enough to be worth keeping on the record:
 > progression they came back up to spend on. Both of those are correct play, which is the tell: **a
 > decision whose sensible answer is "never engage with this system" is not a decision.**
 
-**What ended it was the shelf recut**, not a change of mind. Above a house's opening weapon, gear is no
-longer sold at all — it is found in the rift and a counter stocks it only once one has been carried out
-([docs/shelf.md](shelf.md), `tools/drop_tier.lua`). That took the gear off the road's Merchant, which
-was scrip's largest sink. What remained was the Crossroads wagers and one ability kit: a currency with
-one and a half sinks is a scoreboard, not a money, and `models/scrip.lua` is deleted.
+**What ended it was the shelf recut**, not a change of mind. Above a house's opening weapon, gear
+stopped being sold at all — it was found in the rift and a counter stocked it only once one had been
+carried out ([docs/shelf.md](shelf.md), `tools/drop_tier.lua`). That took the gear off the road's
+Merchant, which was scrip's largest sink. What remained was the Crossroads wagers and one ability kit:
+a currency with one and a half sinks is a scoreboard, not a money, and `models/scrip.lua` is deleted.
+
+> **The half of that recut which justified this has since been reversed, and scrip is not coming back.**
+> A found ware is dealt at its class rung now, so the gear IS on a counter again ([shelf.md](shelf.md)).
+> The argument above still holds and is why: scrip died because it had one and a half sinks, and
+> restoring a sink to the currency that replaced it does not resurrect the one that was deleted. What it
+> does do is make the *magnitude* fence below load-bearing rather than precautionary — see the sink
+> problem in **What this obliges**.
 
 **Three fences were available and only one survived the rest of the change.** *Evaporation* went with
 scrip itself. *Weight* — gold riding in the pack, so a purchase is priced against the slot it occupies —
@@ -75,9 +82,19 @@ bet"*, in its own header. A wipe collects nothing now, so the ceiling was guardi
 longer exists. A company carries out whatever it can pick up.
 
 What went with it: `Mule.RUNGS`, the gold ladder bought at the Gate. That was a **gold sink**, and its
-loss compounds with the shelf recut thinning the houses — worth watching in the first ten floors of a
-campaign. If gold piles up with nothing to buy, the answer is more on the ability ladder, not gear back
-on the shelf.
+loss compounded with the shelf recut thinning the houses — worth watching in the first ten floors of a
+campaign.
+
+> **That watch is over, and it resolved the way this paragraph said it should not.** The line here read
+> *"if gold piles up with nothing to buy, the answer is more on the ability ladder, not gear back on the
+> shelf"* — and gear went back on the shelf. It was not a sink decision: the gate came off because a
+> drop table cannot guarantee reachability and a shelf can ([shelf.md](shelf.md)), and the sink is a
+> side effect of the fix rather than its purpose. Recorded rather than quietly edited, because the
+> prediction was a real one and it was overruled on other grounds.
+>
+> **Which inverts the risk.** The question is no longer whether gold piles up with nothing to buy; it is
+> whether a trip pays enough that a rung of a class's stock is a decision rather than a formality. That
+> is a measurement, not a guess — see below.
 
 ## The money kit
 
@@ -100,6 +117,24 @@ burning coin the Forge is waiting for is a real decision taken at the moment of 
   `. board-report N descent` is the instrument.
 - **The ceiling is a magnitude and magnitudes drift.** It is anchored to `Grade.PRICE_BASE` so a shelf
   re-cut carries it, but if the Merchant ever stops being worth stopping at, that number is the dial.
+- **Gold became a gear currency the day the discovery gate came off** — **347 wares** now reach a
+  counter that did not, each priced at `Grade.priceFor(dropTier - 1)`. Measured rather than feared,
+  and the two ladders turn out to be roughly parallel, because both are keyed to depth:
+
+  | depth it drops at | 1 | 3 | 6 | 8 |
+  |---|---|---|---|---|
+  | its rung | 0 | 2 | 5 | 7 |
+  | what the counter charges | 80g | 245g | 495g | 660g |
+  | what an objective on that floor pays | 130g | 273g | 487g | 631g |
+
+  So **an end pays about one piece at its own depth**, and a general pays two. That is a defensible
+  resting point and not a designed one — nobody chose it, it falls out of both numbers reading the
+  same axis. What it means practically is that the risk is *scarcity*, not a pile: a full class shelf
+  runs 6,700g (alchemist) to 23,300g (knight), so a campaign buys a handful of pieces and finds the
+  rest. Re-measure after any re-tier, since a tier now moves the price as well as the depth.
+
+  **The dial is `Spoils.endPurse`, never the derived price** — a price is the grade speaking, and
+  moving one by hand re-opens the tautology [shelf.md](shelf.md) exists to close.
 
 ## The invariant
 

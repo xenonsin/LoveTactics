@@ -519,7 +519,7 @@ function Marks.ice(x, y, w, h, r, g, b, col, row)
     love.graphics.setLineWidth(1)
 end
 
--- A REDOUBT -- a low breastwork of piled stone with a firing step behind it, seen edge-on. The one
+-- A FORT -- a low breastwork of piled stone with a firing step behind it, seen edge-on. The one
 -- mark on the board that is BUILT, and everything about the shape is spent saying so: a straight
 -- coping line across the tile, blocks below it with staggered joints, and a flat platform behind.
 -- Squared off, like the masonry skin and for the same reason -- at 64 logical pixels the corner is all
@@ -529,7 +529,7 @@ end
 -- solids (thicket, mountain, rock, masonry) run edge to edge and near-opaque because you cannot enter
 -- them; this is a floor, so there is open ground above the parapet and a body stands on it. Waist
 -- height, drawn at waist height.
-function Marks.redoubt(x, y, w, h, r, g, b)
+function Marks.fort(x, y, w, h, r, g, b)
     local left, wide = x + w * 0.06, w * 0.88
     local top = y + h * 0.40                       -- the coping, a little below the middle of the cell
     local deep = h * 0.40
@@ -651,7 +651,7 @@ TerrainArt.MARKS = {
     sand = Marks.sand, ice = Marks.ice,
     -- The built work, and the cover each country grows. `dune` and `drift` share a silhouette on
     -- purpose (see their marks): they are one tile in two biomes, and the tag is what differs.
-    redoubt = Marks.redoubt, dune = Marks.dune, drift = Marks.drift,
+    fort = Marks.fort, dune = Marks.dune, drift = Marks.drift,
 }
 
 -- Skin id -> mark, for the pictures a biome may lend a type in place of its own (see "The skins"

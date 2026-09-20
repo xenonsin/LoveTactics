@@ -123,7 +123,7 @@ Terrain.TYPES = {
     -- willing to pick their way across it.
     rough   = { moveCost = 2, walkable = true, sightCost = 0, bonus = { avoid = 10 },
                 index = 3, color = { 0.34, 0.32, 0.30 } },
-    -- A redoubt: a low work of piled stone, the one tile on the board built by hands rather than laid
+    -- A fort: a low work of piled stone, the one tile on the board built by hands rather than laid
     -- down by weather. THE TILE THIS WHOLE TABLE WAS MISSING. Fire Emblem's terrain design has an
     -- anchor and it is not the forest -- it is the fort: the square a defender takes and an attacker
     -- has to dig them out of. Every cover tile we had paid in EVASION, which is an answer for a body
@@ -136,11 +136,11 @@ Terrain.TYPES = {
     -- that thickens a body's armour. The hill is the archer's tile; this is the wall's.
     --
     -- It also RENEWS, and that half is not written here: models/arena.lua seeds an unowned renewal zone
-    -- onto every redoubt it lays (Arena.FORT_HAZARD). Healing ground is a hazard in this codebase and
+    -- onto every fort it lays (Arena.FORT_HAZARD). Healing ground is a hazard in this codebase and
     -- has been since long before this tile existed -- one word per mechanic -- and an unowned zone
     -- reads as allied to BOTH sides (Hazard.allied), which is the correct reading of a fort: it belongs
     -- to whoever got there first.
-    redoubt = { moveCost = 2, walkable = true, sightCost = 0,
+    fort    = { moveCost = 2, walkable = true, sightCost = 0,
                 bonus = { avoid = 10, defense = 1 },
                 index = 3, color = { 0.46, 0.42, 0.36 } },
 

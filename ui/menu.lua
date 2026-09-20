@@ -14,6 +14,11 @@
 -- -- the shop's Buy list wears it on stock a quest has just opened. The flag is read at draw time, so
 -- the host clears it the moment the row is looked at without rebuilding the menu.
 --
+-- A row may carry a `sub` -- a muted second line printed under its name, the pair left-inset and
+-- centred in the row as one block. It turns a button into a CARD: the save list's rows are a
+-- company's name over how deep, how long, how rich and how recently (states/saves.lua). Headers have
+-- always taken the field; a plain row takes it on the same terms, and `subFont` sets its face.
+--
 -- A row may also carry a `value` -- a string, or a function returning one -- which turns it from a
 -- button into a SETTING: the label sits left, the value right, and left/right (or the d-pad's
 -- horizontal axis) work it as well as Enter does. `adjust(dir)` handles a row with more than two
@@ -390,8 +395,21 @@ function Menu:draw()
 
             Theme.set(active and Theme.accentAmber or Theme.ink)
             local th = self.font:getHeight()
-            local ty = item.y + item.h / 2 - th / 2
+            local subFont = self.subFont or self.font
             local value = Menu.valueOf(item)
+            -- A CARD ROW: a name with a muted second line under it (`sub`), the pair centred in the
+            -- row as one block. The same field and the same metrics a header has carried all along
+            -- (Menu:drawHeader) -- a plain row simply ignored it, so a host wanting two lines had to
+            -- draw them itself over the top of the widget's own plate.
+            --
+            -- Left-inset rather than centred, on the setting row's precedent below: a row carrying
+            -- two different KINDS of fact is read by scanning down a column, and a centred name over
+            -- a centred figure line puts both in a different place on every row. The save list is
+            -- what wants this -- a company's name over how deep, how long, how rich, how recently.
+            local card = item.sub and not value
+            local ty = item.y + item.h / 2 - th / 2
+            if card then ty = item.y + item.h / 2 - (th + subFont:getHeight() - 3) / 2 end
+            item.labelY = ty
             if value then
                 -- A setting row: label left, value right, both inset from the border. Centering the
                 -- label would put every row's text in a different place relative to its value, and a
@@ -399,6 +417,13 @@ function Menu:draw()
                 love.graphics.printf(item.label, item.x + VALUE_PAD, ty, item.w - VALUE_PAD * 2, "left")
                 Theme.set(Theme.accentAmber)
                 love.graphics.printf(value, item.x + VALUE_PAD, ty, item.w - VALUE_PAD * 2, "right")
+            elseif card then
+                local tw = item.w - VALUE_PAD * 2
+                love.graphics.printf(item.label, item.x + VALUE_PAD, ty, tw, "left")
+                love.graphics.setFont(subFont)
+                Theme.set(Theme.muted, 0.9)
+                love.graphics.printf(item.sub, item.x + VALUE_PAD, ty + th - 3, tw, "left")
+                love.graphics.setFont(self.font)
             else
                 love.graphics.printf(item.label, item.x, ty, item.w, "center")
             end

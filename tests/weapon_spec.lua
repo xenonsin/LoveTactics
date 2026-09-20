@@ -249,8 +249,17 @@ return {
                 -- (tools/drop_tier.lua). The COUNT is what this case was always defending: ten weapons
                 -- in a family is what makes it a family rather than a gimmick, and the axis a
                 -- particular one is reached along is the shelf's business, not the family's.
+                -- A FLOOR, NOT A QUOTA, and the paragraph above is why: the argument this case has
+                -- always made is that "ten weapons in a family is what makes it a family rather than a
+                -- gimmick" -- which is a claim about having ENOUGH, not about having exactly that many.
+                -- Pinned at equality the rule did something it never set out to do: it made the
+                -- catalogue closed, so every new weapon had to displace an authored one. The White
+                -- Wolf's drop (weapon_the_second_bite) is what surfaced it -- an eleventh dagger whose
+                -- only alternative was overwriting the Slipknife, a deliberate design that is merely
+                -- unplaced. Growing a family is allowed; starving one is not.
                 local total = #halves.shop + #halves.quest
-                assert(total == 10, family .. " has " .. total .. " weapons, not 10: "
+                assert(total >= 10, family .. " has only " .. total .. " weapons, fewer than the ten"
+                    .. " that make a family rather than a gimmick: "
                     .. table.concat(halves.shop, ", ") .. " / " .. table.concat(halves.quest, ", "))
                 -- A FAMILY IS NOT OWED AN OPENER, and the shield family is why the rule has to be said
                 -- that way round. Shields live in data/items/armor and armor is found, all of it -- so

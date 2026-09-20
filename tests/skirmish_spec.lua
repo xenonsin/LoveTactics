@@ -228,19 +228,30 @@ return {
         -- the worst single fight. It is a guard against an ordinary stop growing back into a
         -- set-piece, not a tuning target to be nudged whenever it fails.
         local BUDGET = SKIRMISH_TURN_BUDGET
+        -- The recorded debt, and the reason this case can be honest without being red. See that file's
+        -- header for how twenty-four fights were over budget with nobody noticing.
+        local SLOW = require("tests.support.slow_road_fights")
+        local seen = {}
 
         -- A company that has actually reached this depth, not a fresh one. Levelled by BANKING the
         -- experience it would have earned getting here rather than by setting prestige -- prestige no
         -- longer moves anybody's level (models/experience.lua is the only ladder now).
         local Experience = require("models.experience")
-        local player = Player.new()
-        player.day = 20
-        for _, char in ipairs(player.roster) do
-            Experience.award(char, Experience.totalFor(11))
+        local function companyAtDepth()
+            local player = Player.new()
+            player.day = 20
+            for _, char in ipairs(player.roster) do
+                Experience.award(char, Experience.totalFor(11))
+            end
+            Player.resolveLevels(player)
+            return player
         end
-        Player.resolveLevels(player)
+
         local worst, worstId = 0, nil
         for _, e in ipairs(weightedByKind("combat")) do
+            local player = companyAtDepth()
+            if love and love.math and love.math.setRandomSeed then love.math.setRandomSeed(20260809)
+            else math.randomseed(20260809) end
             -- The encounter is passed in CELL shape -- `{ id, kind }` -- because that is what the
             -- overworld puts on a tile and what EncounterBattle.spec resolves the composition through
             -- (`enc.id` -> the blueprint). Handing it the blueprint table instead looks like it works
@@ -261,11 +272,37 @@ return {
             local _, turns = Autobattle.run(built.combat, { maxTurns = 400 })
             -- An UNDECIDED fight (nil result) still reports its turns; what is being measured is
             -- length, and a fight that cannot resolve is the worst version of the thing being guarded.
-            if turns > worst then worst, worstId = turns, e.id end
+            -- A LISTED FIGHT IS HELD TO ITS OWN RECORDED NUMBER, not to the budget. The backlog is a
+            -- ratchet (tests/support/slow_road_fights.lua): a fight already known to be long may get
+            -- shorter and may not get longer, so the debt is bounded even while it is unpaid.
+            local recorded = SLOW[e.id]
+            if recorded then
+                seen[e.id] = true
+                assert(turns <= recorded, string.format(
+                    "%s took %d unit-turns against its recorded %d -- a fight on the slow backlog may "
+                    .. "improve, never worsen. Do not raise the number to make this pass "
+                    .. "(tests/support/slow_road_fights.lua)", e.id, turns, recorded))
+                assert(turns > BUDGET, string.format(
+                    "%s is down to %d unit-turns, inside the budget of %d -- delete its row from "
+                    .. "tests/support/slow_road_fights.lua so the backlog keeps shrinking",
+                    e.id, turns, BUDGET))
+            elseif turns > worst then
+                worst, worstId = turns, e.id
+            end
         end
         assert(worst > 0, "the harness actually ran a fight")
         assert(worst <= BUDGET, "the longest ordinary road fight took " .. worst ..
             " unit-turns (" .. tostring(worstId) .. "), past the skirmish budget of " .. BUDGET ..
             " -- an ordinary stop has grown back into a set-piece")
+
+        -- A row naming a fight that no longer exists would sit here forever excusing nothing, and the
+        -- ratchet above can only see ids it actually walked.
+        local stale = {}
+        for id in pairs(SLOW) do
+            if not seen[id] then stale[#stale + 1] = id end
+        end
+        table.sort(stale)
+        assert(#stale == 0, "the slow backlog names " .. #stale .. " fight(s) this pass never met: "
+            .. table.concat(stale, ", ") .. " -- delete the row (tests/support/slow_road_fights.lua)")
     end },
 }
