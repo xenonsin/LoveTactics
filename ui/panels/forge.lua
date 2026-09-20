@@ -33,6 +33,7 @@ local FootprintDiagram = require("ui.footprint_diagram")
 local Forge = require("models.forge")
 local ForgeTrack = require("ui.forge_track")
 local InputMode = require("input_mode")
+local Keeper = require("ui.keeper") -- the city's keeper pane: face or mark, name, line
 local Item = require("models.item")
 local Material = require("models.material")
 local MaterialTooltip = require("ui.material_tooltip")
@@ -48,7 +49,12 @@ local ForgePanel = {}
 ForgePanel.__index = ForgePanel
 
 local BOX_W, BOX_H = 1120, 620
-local LIST_W = 340
+-- 340 until the keeper's column arrived. The three columns and their gutters are solved against ONE
+-- number and it is not this one: ForgeTrack's floor. Eleven rungs at 40px with the 4px gap the track
+-- refuses to go under is 480, so the detail column is pinned there and the other two live in what is
+-- left (see the constructor). A list narrower than this ellipsizes "Abilities" on the category strip.
+local LIST_W = 320
+local COL_GAP = 18 -- between columns; the box's own margin is still 24
 local CARD_H, CARD_GAP, MAX_VISIBLE = 54, 6, 7
 local CONTENT_TOP = 112 -- below the title and the category strip
 
@@ -99,6 +105,9 @@ function ForgePanel.new(opts)
     local self = setmetatable({}, ForgePanel)
     self.onClose = opts.onClose
     self.player = opts.player
+    -- The house whose room this is (models/offer.lua hands it down). The bench is the Bastion's, and
+    -- nil only if something opens this panel outside the city.
+    self.vendorId = opts.vendor
     self.title = opts.title or "Forge"
     self.mode = "gear"
 
@@ -113,9 +122,24 @@ function ForgePanel.new(opts)
     self.boxX = Scale.WIDTH / 2 - BOX_W / 2
     self.boxY = Scale.HEIGHT / 2 - BOX_H / 2
 
-    self.listLeft = self.boxX + 24
-    self.detailX = self.listLeft + LIST_W + 24
+    -- THE KEEPER'S COLUMN, then the list, then the bench. The bench is the Bastion's room and the
+    -- smith is the Bastion's keeper, so the door that opened this panel introduced somebody the panel
+    -- itself then dropped -- see ui/keeper.lua, which every counter in the city draws now.
+    --
+    -- IT IS THE TRACK AND THE LIST THAT PAID FOR IT. The box cannot widen -- 1120 of a 1280 stage --
+    -- so the pane's 236 came out of the two columns that were here, down to the floor the track sets:
+    -- eleven rungs at 40px with the 4px gap ui/forge_track.lua refuses to shrink past is 480, and the
+    -- track tightens the AIR between rungs rather than the rungs, so 480 is a real wall and not a
+    -- preference. The detail column is pinned to it and the list takes the rest.
+    self.keeperX = self.boxX + 24
+    self.keeperY = self.boxY + CONTENT_TOP
+    self.keeperH = Keeper.H -- the room is tall enough to take the pane whole, so it does
+    self.listLeft = self.keeperX + Keeper.W + COL_GAP
+    self.detailX = self.listLeft + LIST_W + COL_GAP
     self.detailW = self.boxX + BOX_W - 24 - self.detailX
+    assert(self.detailW >= ForgeTrack.minWidth(Item.MAX_LEVEL),
+        "the forge's detail column is under the track's floor: " .. self.detailW
+        .. " < " .. ForgeTrack.minWidth(Item.MAX_LEVEL))
 
     self.modeY = self.boxY + 66
     self.modeH = 30
@@ -607,6 +631,11 @@ function ForgePanel:draw()
     love.graphics.printf(self.player.gold .. " gold", self.boxX, self.modeY + 8, BOX_W - 24, "right")
 
     self:drawModeSelector()
+    Keeper.draw(self.vendorId, self.keeperX, self.keeperY, Keeper.W, self.keeperH, {
+        nameFont = self.cardFont,
+        lineFont = self.smallFont,
+        title = self.title,
+    })
 
     if self:hasRows() then
         self:drawList()

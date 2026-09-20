@@ -4,6 +4,10 @@
 local Registry = require("models.registry")
 local Sprite = require("models.sprite")
 local Curve = require("models.curve")
+-- The hex an instance may be carrying (models/curse.lua). Required at the top rather than lazily
+-- because that module reaches only for the registry at load time, so there is no ring to close --
+-- Character and Player are the ones it takes at call time, for exactly that reason.
+local Curse = require("models.curse")
 
 local Item = {}
 
@@ -329,8 +333,20 @@ end
 -- within the grid, stowed, given away, sold, or stolen -- only upgraded in place. It's a reusable
 -- flag: any item can set `bound = true` and every mutation path (the grid editor, the party panel,
 -- the vendor, combat theft) refuses to move it. The one thing that reads it, so they all agree.
+--
+-- ...AND THE SECOND WAY TO BE NAILED DOWN, which is why this predicate earned a second line
+-- (models/curse.lua, 2026-09-20). A binding hex says exactly the thing this flag already says, so it
+-- says it THROUGH this flag rather than beside it: every refusal in the game is already written against
+-- Item.isBound, and teaching each of them what a curse is would have been eleven call sites agreeing by
+-- coincidence. One reader, two reasons.
+--
+-- THE TWO ARE NOT THE SAME FACT, though, and the difference matters exactly once: `Item.durabilityMax`
+-- tests the raw `bound` FIELD rather than calling this, so a signature relic still never wears while a
+-- hexed sword still does. That is the right reading of both -- a relic is not a thing that breaks, and a
+-- curse is not a warranty.
 function Item.isBound(item)
-    return item ~= nil and item.bound == true
+    if item == nil then return false end
+    return item.bound == true or Curse.binds(item)
 end
 
 -- ---------------------------------------------------------------------------
@@ -833,6 +849,11 @@ function Item.instantiate(id, quantity, level)
         aura = deepCopy(def.aura),             -- adjacency: grants tags/statuses to neighboring casts
         bonus = deepCopy(def.bonus),           -- armor: flat stat bonuses folded in at setup
         resist = deepCopy(def.resist),         -- armor: tag -> flat damage reduction
+        -- ...and the categorical version of it: tag -> true, a blow carrying that tag does not land at
+        -- all (Combat.applyUnitPassives folds it, Status.immuneToDamage reads it). A body's own
+        -- immunity rides a bound piece rather than its blueprint, so the thing has a name for the log
+        -- to say -- the Demon Lord's crown argument, one field along.
+        immune = deepCopy(def.immune),
         unarmedBonus = deepCopy(def.unarmedBonus), -- "fist" charms: buff the bare-handed strike
         maxBonus = deepCopy(def.maxBonus),     -- resource passives: raise a max health/stamina/mana ceiling
         healthReserve = deepCopy(def.healthReserve), -- guard charm: { percent } of max health locked away at setup for the armor its `bonus` buys (Combat.applyReservations)
@@ -872,6 +893,11 @@ function Item.instantiate(id, quantity, level)
         traitParams = deepCopy(def.traitParams),
         manaShield = deepCopy(def.manaShield), -- { ratio }: wounds paid out of mana (Combat.soakIntoMana)
         statusImmunity = deepCopy(def.statusImmunity), -- status ids this carrier simply cannot be given
+        -- HOW THE BEARER IS DRAWN, as a word rather than a path: "bone" makes a body draw from its own
+        -- token's `_bone` variant (Character.spriteOf). On this whitelist for the reason `unstocked` was
+        -- added to it -- a field left off here parses, ships and silently does nothing, since the readers
+        -- are handed a LIVE item off a grid and never the blueprint.
+        wearerSkin = def.wearerSkin,
         phases = deepCopy(def.phases),         -- a boss relic's health-threshold script, read by trait_boss_phases
         class = def.class,                     -- which class vendor sells it; nil = sold by none
         discipline = def.discipline,           -- shop taxonomy: the locked discipline this item belongs to (docs/classes.md)
@@ -891,6 +917,18 @@ function Item.instantiate(id, quantity, level)
         -- one at half price.
         unstocked = def.unstocked,
         unlockQuests = def.unlockQuests,       -- its grade rank; also the shelf gate, on anything priced
+        -- BORN HEXED (models/curse.lua). Almost every curse in the game is stamped onto a live instance
+        -- long after it was made -- by a trap, by a caster, by the Touchstone naming a bad find -- and
+        -- rides `item.curse` there. This line is the one case where the BLUEPRINT declares it: a piece
+        -- that was cursed before anybody found it, which is how a strong weapon gets to be strong. Only
+        -- the id is copied, never the effects: Curse.of looks those up on every read, so a rebalanced
+        -- hex flows into old saves and lifting one is a single assignment rather than an unwind.
+        curse = def.curse,
+        -- ...AND THE PIECE THAT REFUSES ONE (Consecration, docs/curses.md). A ward is read off the
+        -- BEARER's whole grid rather than off the piece being hexed (Curse.warded), so like every other
+        -- field here it has to ride the instance: the reader is handed live items off a body, never
+        -- blueprints, and a flag left off this list is a flag that parses, ships and does nothing.
+        curseWard = def.curseWard,
         level = math.max(0, level or 0),       -- upgrade level; 0 = a base, un-forged item
     }
 
@@ -964,6 +1002,13 @@ end
 -- SPEND `n` fights of wear. Returns true when this is the blow that broke it, so a caller can say so
 -- once rather than testing before and after.
 --
+-- TWO CALLERS NOW, AND THEY SPEND THE SAME UNIT. Player.afterBattle bills one point per fight, which
+-- is what the numbers above are tuned against; data/status/status_corroding.lua bills several per
+-- TURN, in the middle of a battle, because the slimes' whole threat is a body that cannot be cut and
+-- does not need to kill you to cost you something. The second is deliberately measured in the first's
+-- unit -- four points is four fights of wear -- so a player who knows what a durability bar is worth
+-- can read the price of standing next to a slime without learning a second scale.
+--
 -- IT STOPS AT NOUGHT AND STAYS THERE. A broken piece is not destroyed by this function -- it is left
 -- in the grid, at zero, useless until the forge mends it or the player scraps it. Deleting gear out
 -- from under a player at the end of a fight, with no screen and no line, is the one thing this system
@@ -1022,7 +1067,13 @@ end
 -- Runtime state an instance owns rather than inherits -- what a re-stamp must carry across, because
 -- no blueprint can say it. `level` is not here: it is fed back INTO the rebuild so the new magnitudes
 -- come out at the level the item is actually forged to.
-local INSTANCE_OWNED = { quantity = true, contents = true, activeSummon = true, unidentified = true }
+-- `curse` IS LISTED EVEN THOUGH INSTANTIATE SETS IT, and the tie is deliberately broken toward the
+-- instance. A blueprint may be born hexed, so the field is blueprint-derived in that one case -- but in
+-- every other case it is runtime state a trap or a caster wrote, and a hot reload that quietly lifted
+-- the player's curse would be worse than a hot reload that does not notice a newly authored one. The
+-- dev affordance loses; the player's gear wins.
+local INSTANCE_OWNED = { quantity = true, contents = true, activeSummon = true, unidentified = true,
+    curse = true }
 
 -- Bring a live item up to date with its (just reloaded) blueprint, IN PLACE. The instance keeps its
 -- identity -- whatever grid cell, stash slot or combat unit is holding this exact table goes on

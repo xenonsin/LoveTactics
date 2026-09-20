@@ -106,6 +106,24 @@ function Forge.canWork(item)
         or item.type == "utility" or item.type == "ability"
 end
 
+-- COLD IRON: a hexed piece the bench cannot touch (models/curse.lua, docs/curses.md). One curse in the
+-- rift costs no stat at all and costs the FORGE instead -- the piece fights exactly as well as it did
+-- yesterday and always will, until somebody lifts the hex.
+--
+-- ITS OWN REASON RATHER THAN "not forgeable", because the two are different facts and the panel says
+-- different things about them. "Not forgeable" is a property of the KIND of thing -- a potion was never
+-- going on the bench -- and is permanent and uninteresting. This is a property of THIS COPY, it is
+-- temporary, and there is somewhere to go about it. A row greyed with the wrong word sends the player
+-- to the wrong building.
+--
+-- Asked by all three commit paths AND by Forge.upgradeCost, so the row the panel greys and the call it
+-- refuses are decided by one clause -- the rule this file states at Forge.grantRefusal and has already
+-- been burned by once.
+function Forge.hexRefusal(item)
+    if require("models.curse").blocksForge(item) then return "cursed" end
+    return nil
+end
+
 -- ---------------------------------------------------------------------------
 -- The ceiling
 -- ---------------------------------------------------------------------------
@@ -269,7 +287,7 @@ end
 
 -- The cost to take `item` one level, for `player`. Returns nil once the item is at Item.MAX_LEVEL.
 --   { level, gold, technique, techniqueId, techniqueHolder, techniqueHeld,
---     materials = { [id] = count }, locked, ceiling }
+--     materials = { [id] = count }, locked, ceiling, cursed }
 -- `locked` means the target is past the ceiling this player has earned -- the bill is still shown, so
 -- the panel can say what it would cost and why it cannot be paid yet. A discipline item is never
 -- `locked` (it has no ceiling); what stops it is simply not holding the technique, which is an
@@ -290,6 +308,12 @@ function Forge.upgradeCost(player, item)
         materials = materialsFor(target, item.price, Item.classOf(item)),
         locked = target > ceiling,
         ceiling = ceiling,
+        -- ...AND WHETHER A HEX IS SITTING ON IT (Forge.hexRefusal). Carried on the bill rather than
+        -- only refused at the commit, because the panel draws its rows off THIS table -- a piece that
+        -- priced normally and then refused at the press is the exact "greyed for one reason, refused
+        -- for another" failure Forge.grantRefusal is written against. The bill is still quoted, like
+        -- `locked`, so the row can say what it would cost once the hex is lifted.
+        cursed = Forge.hexRefusal(item) ~= nil,
     }
 end
 
@@ -297,9 +321,11 @@ end
 -- materials, spend them, and return a FRESH instance at the new level (the caller swaps it into the
 -- grid or stash it came from -- baking a clean instance from the blueprint is why the level math never
 -- double-applies). Returns the new item, or nil + a reason:
---   "not forgeable" | "max level" | "locked" | "gold" | "technique" | "materials"
+--   "not forgeable" | "cursed" | "max level" | "locked" | "gold" | "technique" | "materials"
 function Forge.upgrade(player, item)
     if not Forge.canWork(item) then return nil, "not forgeable" end
+    local hexed = Forge.hexRefusal(item)
+    if hexed then return nil, hexed end
     local cost = Forge.upgradeCost(player, item)
     if not cost then return nil, "max level" end
     if cost.locked then return nil, "locked" end
@@ -382,6 +408,8 @@ end
 -- "this is not what you asked for", not "nothing happened".
 function Forge.upgradeTo(player, item, target)
     if not Forge.canWork(item) then return nil, "not forgeable" end
+    local hexed = Forge.hexRefusal(item)
+    if hexed then return nil, hexed end
     local from = item.level or 0
     target = math.min(target or (from + 1), Item.MAX_LEVEL)
     if target <= from then return nil, "max level" end
@@ -446,21 +474,50 @@ end
 -- gear is, which is exactly the shape a sink wants: the richer the company, the more it costs to keep
 -- what makes it rich.
 --
--- PRICED OFF THE PIECE'S OWN VALUE AND WHAT IS MISSING. A full bar on a 740g blade is
--- Forge.MEND_SHARE of its price; half a bar is half that. So the bill is legible without a table --
--- "mending costs about a tenth of what the thing is worth" -- and a rusted knife is never a decision.
+-- A FIXED RATE PER POINT OF WEAR, AND NOT A SHARE OF WHAT THE PIECE IS WORTH. The smith charges for
+-- the hour, not for the blade: a full bar costs the same to fill whether it is a starter axe or a
+-- relic off a general. One number the player learns once -- so many gold a point -- and no table.
+--
+-- IT USED TO BE A SHARE OF `item.price` AND THAT QUIETLY STOPPED WORKING. The argument was good: a
+-- tenth of what the thing is worth, so the richer the company the more it costs to keep what makes it
+-- rich, which is the shape a sink wants. Then the shelf recut took `price` off everything above a
+-- house's opener (docs/shelf.md) and this read `(item.price or 0)`, so for most of the catalogue the
+-- bill collapsed onto the `math.max(1, ...)` floor. MEASURED: a fully destroyed Frostfall Hammer
+-- mended for ONE GOLD, and so did a broken Leather Armor, while a priced iron sword cost 8. The sink
+-- had not been tuned down, it had evaporated -- and nothing said so, because a formula that reads a
+-- field almost nobody carries still returns a number.
+--
+-- SCALED BY WHAT IS MISSING, which the share version also did and which is worth keeping: half a bar
+-- is half the bill. A flat fee per visit would make topping up a scratch as dear as a full mend, and
+-- the only sane play would be to run every piece to nought before walking to the bench -- a rule that
+-- rewards neglect and sends companies underground in gear about to die.
 --
 -- A BROKEN PIECE COSTS NO MORE THAN A NEARLY-BROKEN ONE, deliberately. There is no penalty rung for
 -- letting it go to zero: the piece is already unusable, which is the cost, and a surcharge on top
 -- would be a price on having been caught out.
-Forge.MEND_SHARE = 0.10
+--
+-- TWO IS MEASURED, NOT PICKED. It puts a full weapon bar (30) at 60 gold and a full armour bar (40) at
+-- 80, either side of the Ward's 40g wound -- the one other recurring between-trips bill, so the two
+-- sit in a neighbourhood a player already knows. Against measured descent income (an ordinary fight
+-- pays 54g on floor one and 208g on floor fifteen), a fielded four keeping a dozen pieces whole runs
+-- roughly a fifth to a third of a trip's take.
+--
+-- WHAT A FIXED RATE GIVES UP, stated because the share version's own argument is the thing being
+-- overruled: it does not climb with the campaign. Income roughly quadruples across a descent and this
+-- does not, so the sink is heaviest in the first floors and thinnest at the bottom -- the opposite of
+-- "the richer the company, the more it costs to keep what makes it rich". If that is the wrong trade,
+-- the fix is one line rather than a redesign: price it off `Vendor.foundPrice(item)`, which is the
+-- function that already answers "what is this unpriced found ware worth" and is what the share
+-- version should have been reading all along.
+Forge.MEND_PER_POINT = 2
 
 function Forge.mendCost(item)
     local Item = require("models.item")
     local max = Item.durabilityMax(item)
     if not (max and item.durability and item.durability < max) then return nil end
-    local missing = (max - item.durability) / max
-    return math.max(1, math.floor((item.price or 0) * Forge.MEND_SHARE * missing + 0.5))
+    -- POINTS, not a fraction: the bill is the work, and the work is how much bar there is to fill.
+    local missing = max - item.durability
+    return math.max(1, math.floor(missing * Forge.MEND_PER_POINT + 0.5))
 end
 
 -- Mend it. Returns true, or false + "whole" | "cannot" | "poor".
@@ -517,6 +574,8 @@ end
 -- decides; Forge.grant is that decision plus the instance.
 function Forge.grantRefusal(player, item)
     if not Forge.canWork(item) then return "not forgeable" end
+    local hexed = Forge.hexRefusal(item)
+    if hexed then return hexed end
     local target = (item.level or 0) + 1
     if target > Item.MAX_LEVEL then return "max level" end
     if target > Forge.ceilingFor(player, item) then return "locked" end

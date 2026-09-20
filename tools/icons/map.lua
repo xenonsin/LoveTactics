@@ -261,6 +261,10 @@ return {
     ["items/armor_quarryhide.png"] = { icon = "lorc/leather-vest", by = "hand" },
     ["items/armor_rally_coat.png"] = { icon = "delapouite/pirate-coat", by = "auto" },
     ["items/armor_raveners_hide.png"] = { icon = "delapouite/animal-hide", by = "auto" },
+    -- The King Slime's mantle. Unmapped it fell to TYPE_BASE.armor -- the mail cuirass, which is most
+    -- of the armour shelf and the one thing this piece is not. `lucasms/cloak` is already in the
+    -- vocabulary as "a mantle, worn over", so the map is the whole fix.
+    ["items/armor_quicksilver_mantle.png"] = { icon = "lucasms/cloak", by = "hand" },
     ["items/armor_reagent_vest.png"] = { icon = "lorc/armor-vest", by = "auto" },
     ["items/armor_reckless_cuirass.png"] = { icon = "delapouite/abdominal-armor", by = "auto" },
     ["items/armor_reliquary_mantle.png"] = { icon = "lucasms/cloak", by = "auto" },
@@ -471,6 +475,7 @@ return {
     ["items/marginal_gloss.png"] = { icon = false, by = "auto" },
     ["items/marginal_note.png"] = { icon = "delapouite/stabbed-note", by = "auto" },
     ["items/marksmans_lens.png"] = { icon = "lorc/spyglass", by = "hand" },
+    ["items/marrowlight.png"] = { icon = "lorc/skeleton-inside", by = "hand" },
     ["items/martyrs_icon.png"] = { icon = "lorc/prayer", by = "auto" },
     ["items/martyrs_shield.png"] = { icon = "sbed/shield", by = "auto" },
     ["items/maw_of_the_unfed.png"] = { icon = "lorc/bull-horns", by = "hand" },
@@ -713,6 +718,11 @@ return {
     ["items/utility_vow_of_the_march.png"] = { icon = "delapouite/knight-banner", by = "hand" },
     ["items/utility_wardens_writ.png"] = { icon = "lorc/scroll-unfurled", by = "hand" },
     ["items/utility_wellspring_sandals.png"] = { icon = "delapouite/sandal", by = "auto" },
+    -- The King Slime's other piece. It carries no activeAbility, so the verb channel never fires and
+    -- it fell to TYPE_BASE.utility -- the alchemist's flask, which reads as a potion for a thing that
+    -- is a ward. `sbed/shield` is VERB_BASE.ward ("grants a buff and nothing else"), which is exactly
+    -- what an opening boon is.
+    ["items/utility_unbroken_surface.png"] = { icon = "sbed/shield", by = "hand" },
     ["items/vampiric_strike.png"] = { icon = "lorc/deadly-strike", by = "auto" },
     ["items/vanishing_act.png"] = { icon = "delapouite/invisible", by = "hand" },
     ["items/veterans_resolve.png"] = { icon = "delapouite/ribbon-medal", by = "hand" },

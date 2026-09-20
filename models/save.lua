@@ -136,6 +136,17 @@ local function snapshotItem(item)
     if item.durability ~= nil and item.durability < (Item.durabilityMax(item) or 0) then
         snap.durability = item.durability
     end
+    -- THE HEX ON IT (models/curse.lua), as an id and nothing else. The effects are never written: they
+    -- are looked up through Curse.of on every read, so a rebalanced curse flows into old saves exactly
+    -- the way a rebalanced item does, and a curse blueprint deleted from data/ reads as "not cursed"
+    -- rather than as a save that will not load.
+    --
+    -- IT IS WRITTEN ON A HUSK TOO, which is the case that makes this a schema entry rather than a line.
+    -- A find may be sealed already hexed (models/identify.lua rolls it at seal time so the answer cannot
+    -- change under a save), and until somebody pays to read it the player is not told. So the file
+    -- stores the truth and the game withholds it -- the same arrangement `level` has had since the seal
+    -- was built, one line above.
+    if type(item.curse) == "string" then snap.curse = item.curse end
     return snap
 end
 
@@ -477,6 +488,23 @@ function Save.snapshot(player)
     local touchstoneShelf = {}
     for i, item in ipairs(player.touchstoneShelf or {}) do touchstoneShelf[i] = snapshotItem(item) end
 
+    -- WHAT THE CATHEDRAL IS HOLDING (models/curse.lua's Curse.commit). A piece left to the free rite is
+    -- out of the company for Curse.RITE_DESCENTS trips, which means it is in no grid and in no stash --
+    -- so unlike every other list here this one is not a convenience, it is the only record that the item
+    -- exists at all. Each entry carries the item and the trips still to serve; `left` is clamped on the
+    -- way out so a corrupted or hand-edited zero cannot park a piece on the altar forever.
+    --
+    -- Written only when something is on it, so a game that has never seen a curse diffs clean. Purely
+    -- additive, so Save.VERSION does NOT move: an older save restores with nothing in the rite, which is
+    -- what it had.
+    local rites
+    for _, entry in ipairs(player.rites or {}) do
+        if entry and entry.item then
+            rites = rites or {}
+            rites[#rites + 1] = { item = snapshotItem(entry.item), left = math.max(1, entry.left or 1) }
+        end
+    end
+
     local standing = {}
     for vendorId, n in pairs(player.standing or {}) do
         if (tonumber(n) or 0) > 0 then standing[vendorId] = n end
@@ -731,6 +759,18 @@ function Save.snapshot(player)
         -- the one-time coach that teaches the mark. Purely additive, so Save.VERSION does not move: an
         -- older save restores unmarked, and the first wound taken after loading writes it.
         wounded = player.wounded or nil,
+        -- ...and the same one-way mark for the OTHER thing the Cathedral fixes: whether anything this
+        -- company owns has ever been hexed (models/curse.lua's Curse.everCursed). It gates the rite's
+        -- line on the desk, and it has to be sticky for the reason Wound.everWounded is -- a door that
+        -- vanished the moment the last curse was lifted would take the room away at exactly the instant
+        -- the player finished learning what it was for. Additive: Save.VERSION does not move, and an
+        -- older save restores having never been cursed, which is true of it.
+        cursed = player.cursed or nil,
+        -- WHAT THE PRIESTS ARE HOLDING (Curse.rites): pieces committed to the free rite, each with the
+        -- trips it still has to serve. Persisted rather than derived, and it has to be -- these items
+        -- are in NO grid and in NO stash while the rite runs, so this list is the only place they exist.
+        -- Losing it would delete the player's gear, which is the one thing a curse system must never do.
+        rites = rites,
         -- ...and whether this company has ever come back up the stair early. The same shape and the
         -- same reason as `wounded` above: a one-way mark rather than a ledger reading, because
         -- Iselle's tally falls back to nought the moment they descend again and the readout it gates
@@ -874,7 +914,10 @@ end
 local function restoreItem(itemSnap)
     if (itemSnap.unidentified or 0) > 0 then
         local Identify = require("models.identify")
-        local husk = Identify.sealed(itemSnap.id, itemSnap.unidentified, itemSnap.level)
+        -- The hex rides in as a fourth argument rather than being re-rolled, for the same reason the
+        -- LEVEL does: a husk's contents are decided when it is sealed, and a seal whose answer changed
+        -- every time the game was loaded would be a save the player could re-roll by quitting.
+        local husk = Identify.sealed(itemSnap.id, itemSnap.unidentified, itemSnap.level, itemSnap.curse)
         if husk then return husk end
     end
     local item = Item.instantiate(itemSnap.id, itemSnap.quantity, itemSnap.level)
@@ -882,6 +925,21 @@ local function restoreItem(itemSnap)
     -- durability existed, both of which read as "unworn" -- which is what they are.
     if item and itemSnap.durability ~= nil and item.durability ~= nil then
         item.durability = math.max(0, math.min(itemSnap.durability, Item.durabilityMax(item) or 0))
+    end
+    -- ...AND THE HEX (models/curse.lua). Restored through the model rather than by assignment, so an id
+    -- whose blueprint has since been deleted is refused here instead of riding a live grid as a curse
+    -- nothing can read or lift -- and so is one on a piece whose TYPE stopped being cursable under it.
+    --
+    -- THE SAVE IS AUTHORITATIVE, WHICH IS WHY THE LIFT COMES FIRST AND UNCONDITIONALLY. A blueprint may
+    -- be born hexed, so Item.instantiate has just stamped one on; without this line a born-cursed piece
+    -- the player PAID to have cleansed would walk back out of the Cathedral cursed again on the next
+    -- load, and there would be no field in the file that could say otherwise. Clearing first and
+    -- re-applying only what was written makes "no `curse` in the snapshot" mean what it says.
+    if item then
+        require("models.curse").lift(item)
+        if type(itemSnap.curse) == "string" then
+            require("models.curse").afflict(item, itemSnap.curse)
+        end
     end
     return item
 end
@@ -1016,6 +1074,24 @@ function Save.restore(snap)
     for _, itemSnap in ipairs(snap.touchstoneShelf or {}) do
         if known(Item.defs, itemSnap.id) then
             touchstoneShelf[#touchstoneShelf + 1] = restoreItem(itemSnap)
+        end
+    end
+
+    -- The Cathedral's altar: pieces committed to the free rite, each still owing trips (models/curse.lua).
+    -- Same restore path and same id guard as the two lists above -- a piece whose blueprint left the game
+    -- drops rather than crashing the load, which is the right answer even here: there is nothing to hand
+    -- back, and a save that will not open is worse than an item that no longer exists.
+    --
+    -- `left` IS CLAMPED TO AT LEAST ONE. A zero would be a rite that has already come due and never
+    -- ticked, which is a piece sitting on the altar that no descent can ever return -- so a hand-edited
+    -- or corrupted entry costs the player one more trip rather than the item.
+    local rites = {}
+    for _, entry in ipairs(snap.rites or {}) do
+        if entry and entry.item and known(Item.defs, entry.item.id) then
+            local item = restoreItem(entry.item)
+            if item then
+                rites[#rites + 1] = { item = item, left = math.max(1, tonumber(entry.left) or 1) }
+            end
         end
     end
 
@@ -1198,6 +1274,8 @@ function Save.restore(snap)
         deepest = snap.deepest or 0,  -- ...and a company that has never been down has no record to beat
         wounds = wounds,              -- ...nor any bones to set
         wounded = snap.wounded == true, -- ...and no history of any, which is what an older save reads as
+        cursed = snap.cursed == true,   -- ...nor of anything hexed, same one-way mark (models/curse.lua)
+        rites = rites,                  -- ...and nothing left on the Cathedral's altar, which is true of it
         climbedOut = snap.climbedOut == true, -- ...and has never turned back, which is what one reads as too
         tallyTaught = snap.tallyTaught == true, -- ...so nobody has had to explain the tally to them yet
         -- ...and an older save has not been coached at the stair by this flag. Harmless where it is

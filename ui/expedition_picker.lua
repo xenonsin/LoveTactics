@@ -22,6 +22,7 @@
 
 local BodyTooltip = require("ui.body_tooltip") -- the hovered body's pools, wounds and stats
 local Descent = require("models.descent")
+local Character = require("models.character") -- Character.spriteOf: the skin an aspect item draws the bearer in
 local InputMode = require("input_mode")
 local Scale = require("scale")
 local Theme = require("ui.theme")
@@ -347,7 +348,7 @@ end
 -- ---------------------------------------------------------------------------
 
 local function drawBody(char, x, y, size, font, dim)
-    local sprite = char and char.sprite
+    local sprite = char and Character.spriteOf(char)
     if type(sprite) == "userdata" then
         if dim then love.graphics.setColor(0.45, 0.45, 0.48) else love.graphics.setColor(1, 1, 1) end
         local sw, sh = sprite:getDimensions()

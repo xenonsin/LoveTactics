@@ -458,30 +458,57 @@ function Trait.tryCounterMagic(combat, unit, attacker, tags)
     return false
 end
 
--- Does a once-per-battle Second Wind reflex (a `revivesOnLethal` trait) catch a blow that would drop
--- `unit`, standing it back up at a share of its (unreserved) max health -- half, unless the trait
--- names its own `revivesAt`? Mirrors Trait.tryEvade in shape:
--- Combat.dealFlatDamage consults it at the moment a hit reaches 0 HP and, if it fires, keeps the unit
--- alive and skips the kill. The trait's own `stacks` latch spends the one charge, so it saves the
--- bearer exactly once a battle. Mutates (restores HP, latches, logs), so it must run on a REAL lethal
--- hit only -- never the damage preview, which never reaches the death path.
+-- Does a refusal to fall (a `revivesOnLethal` trait) catch a blow that would drop `unit`, standing it
+-- back up at a share of its (unreserved) max health -- half, unless the trait names its own
+-- `revivesAt`? Mirrors Trait.tryEvade in shape: Combat.dealFlatDamage consults it at the moment a hit
+-- reaches 0 HP and, if it fires, keeps the unit alive and skips the kill. Mutates (restores HP, spends,
+-- logs), so it must run on a REAL lethal hit only -- never the damage preview, which never reaches the
+-- death path.
+--
+-- WHAT LIMITS A REFUSAL, and it is exactly one of two things, never both:
+--
+--   * A CHARGE. The trait's own `stacks` latch spends the one charge, so it saves the bearer once a
+--     battle and then never again. Second Wind, the Empty Chair, a general's own rule -- everything
+--     that was here before.
+--   * A PRICE. The trait names a `cost` and the refusal is billed instead of counted: it fires as
+--     often as the bearer can pay for it. Which is a different rule and not the same one cheaper --
+--     what bounds it is a POOL rather than a tally, so how many deaths it buys is a fact about the
+--     body wearing it and about what that body has been spending its mana on. Marrowlight is the one
+--     that wanted this: a skeleton stands up for as long as there is light left in it
+--     (data/traits/trait_bone_knit.lua), and mana does not regenerate mid-fight, so the budget is
+--     finite without a counter anywhere.
+--
+-- Declaring a cost therefore CANCELS the latch rather than stacking with it -- a priced refusal that
+-- also latched would be a once-per-battle reflex the bearer is billed for, which is neither of the two
+-- things above and is not a shape anything asked for. The cost is read through Trait.param like every
+-- other tunable, so a granting item may name its own toll for a rule written once.
+--
+-- `revivesLine` is the log, for the same reason: "catches a second wind" is the right sentence for the
+-- charm it was written for and the wrong one for a body reassembling itself. One `%s`, the bearer.
 function Trait.trySurvive(combat, unit)
     if not unit or not unit.traits then return false end
     local Combat = require("models.combat")
     for _, t in ipairs(unit.traits) do
-        if t.def.revivesOnLethal and t.stacks == 0 then
-            t.stacks = 1
-            local hp = unit.char.stats.health
-            -- How much of the bar the refusal is worth. Half by default (Second Wind, which is priced
-            -- as a relic and as a general's own rule), but a granter may name its own -- the Cafe's Empty Chair
-            -- rises at a sliver, because a supper that stood the WHOLE company back up at half health
-            -- would be the only thing on the menu anybody ever ordered.
-            local fraction = Trait.param(t, "revivesAt", 0.5)
-            hp.current = math.max(1, math.floor(Combat.unreservedMax(unit.char, "health") * fraction + 0.5))
-            Combat.logEvent(combat, "action",
-                string.format("%s catches a second wind and rises!", (unit.char and unit.char.name) or "Unit"),
-                unit)
-            return true
+        if t.def.revivesOnLethal then
+            local cost = Trait.param(t, "cost")
+            -- canPay only ASKS; payCost is the line under it that bills. Kept apart for the reason
+            -- the pay helpers' own header gives -- a reflex that checks affordability and then
+            -- declines for some other reason must not already have charged its bearer.
+            if (cost and canPay(unit, cost)) or (not cost and t.stacks == 0) then
+                if cost then payCost(unit, cost) else t.stacks = 1 end
+                local hp = unit.char.stats.health
+                -- How much of the bar the refusal is worth. Half by default (Second Wind, which is priced
+                -- as a relic and as a general's own rule), but a granter may name its own -- the Cafe's Empty Chair
+                -- rises at a sliver, because a supper that stood the WHOLE company back up at half health
+                -- would be the only thing on the menu anybody ever ordered.
+                local fraction = Trait.param(t, "revivesAt", 0.5)
+                hp.current = math.max(1, math.floor(Combat.unreservedMax(unit.char, "health") * fraction + 0.5))
+                Combat.logEvent(combat, "action",
+                    string.format(Trait.param(t, "revivesLine", "%s catches a second wind and rises!"),
+                        (unit.char and unit.char.name) or "Unit"),
+                    unit)
+                return true
+            end
         end
     end
     return false
@@ -1091,7 +1118,11 @@ function Trait.attach(unit, combat)
     end
     if unit.char then
         for _, item in ipairs(Character.eachItem(unit.char)) do
-            for _, id in ipairs(item.traits or {}) do
+            -- THE PIECE'S OWN TRAITS, AND WHATEVER THE HEX ON IT BRINGS (Curse.traitsOn). A curse
+            -- declares the item's own fields and is folded as a second item in the same cell; `traits`
+            -- is one of them. Both attach with the PIECE as their owner, which is what lets a hex's
+            -- reaction read Trait.param off the thing it is nailed to exactly as a blueprint's own does.
+            for _, id in ipairs(require("models.curse").traitsOn(item)) do
                 list[#list + 1] = Trait.instantiate(id, item)
             end
         end

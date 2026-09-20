@@ -16,6 +16,7 @@
 --   grid:keypressed(key); grid:gamepadpressed(joystick, button); grid:cancelPickup()
 
 local Character = require("models.character")
+local Curse = require("models.curse") -- the hex a grid piece may be carrying (docs/curses.md)
 local Item = require("models.item")
 local Combat = require("models.combat")
 local AdjacencyLinks = require("ui.adjacency_links")
@@ -39,6 +40,31 @@ local function drawLock(x, y)
     Theme.set(Theme.accentAmber)                                -- body (spotlight gold)
     love.graphics.rectangle("fill", x - 5, y - 1, 10, 7, 2, 2)
     love.graphics.setLineWidth(1)
+end
+
+-- THE CURSE MARK (models/curse.lua): a filled diamond, bottom-left of a hexed cell.
+--
+-- IT HAD TO DIFFER FROM THE PADLOCK BY SHAPE AND NOT ONLY BY COLOUR, because the two stack. A binding
+-- hex makes Item.isBound answer true, so a cursed sword already wears the lock above -- and a lock is
+-- the game's word for "a signature relic, welded to its bearer", which is a reward. Left at that, the
+-- best thing a body owns and the worst thing in its grid would be the same mark in two tints.
+--
+-- So there are three readings now and each is a different geometry, not a different hue:
+--   lock alone        a signature relic -- bound because it is yours
+--   lock + diamond    a binding hex -- bound because something put it there
+--   diamond alone     a hex that can simply be taken off and shelved (The Witness)
+--
+-- Bottom-left, which is the one free corner: top-left is the lock and the stack count, top-right the
+-- default-action star. The bruised violet is status_cursed's own badge tint, so the mark on a piece of
+-- gear and the mark on a body under a hex read as the same family.
+local CURSE_TINT = { 0.404, 0.286, 0.451 }
+local function drawCurseMark(x, y)
+    love.graphics.setColor(0, 0, 0, 0.5)
+    love.graphics.circle("fill", x, y, 8)  -- backing, so it reads over any icon
+    love.graphics.setColor(CURSE_TINT[1], CURSE_TINT[2], CURSE_TINT[3], 1)
+    love.graphics.polygon("fill", x, y - 6, x + 5, y, x, y + 6, x - 5, y)
+    love.graphics.setColor(0, 0, 0, 0.55)
+    love.graphics.polygon("line", x, y - 6, x + 5, y, x, y + 6, x - 5, y)
 end
 
 -- Vertices of a 5-point star inscribed in radius `r` about (cx, cy), point-up. Used for the
@@ -282,6 +308,11 @@ function InventoryGrid:draw()
             love.graphics.setColor(0.16, 0.30, 0.20) -- green: drop the held item here and it works
         elseif auraCells[i] then
             love.graphics.setColor(0.30, 0.17, 0.08) -- ember: this item gains from what's in hand
+        elseif item and Curse.isCursed(item) then
+            -- A HEXED CELL, asked BEFORE the bound one, because a binding hex answers both and the
+            -- curse is the thing worth saying. A warm plate means "this is yours and welded on"; the
+            -- same plate under a curse would say a reward's word about a problem.
+            love.graphics.setColor(0.20, 0.14, 0.22) -- a bruised plate marks a hexed cell
         elseif item and Item.isBound(item) then
             love.graphics.setColor(0.24, 0.20, 0.14) -- a warm plate marks a bound (locked) cell
         else
@@ -344,6 +375,16 @@ function InventoryGrid:draw()
         if item and Item.isBound(item) then
             local sx, sy = self:slotRect(i)
             drawLock(sx + 13, sy + 13)
+        end
+        -- ...and the hex, bottom-left, in the one free corner. Drawn beside the lock rather than
+        -- instead of it: a binding curse is two facts -- it is nailed down, and it is nailed down
+        -- because something did that to you -- and the pair of marks is what says both (drawCurseMark).
+        if item and Curse.isCursed(item) then
+            -- ABOVE THE NAME STRIP, not on it. The strip is the bottom 16px of the cell (drawn a
+            -- hundred lines up), and a mark centred any lower sits over the first letter of the item's
+            -- own name -- which is the one piece of text on the cell that says WHICH thing is hexed.
+            local sx, sy, _, sh = self:slotRect(i)
+            drawCurseMark(sx + 13, sy + sh - 26)
         end
     end
 

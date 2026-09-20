@@ -12,9 +12,22 @@ return {
     kind = "combat",
     weight = 3,
     minDay = 3,
+    -- IT HAS TO GROW, and the old slope (a fourth crawler on day 18, a fifth never) did not. Three of
+    -- the cheapest chaff in the game is a fight a deep company walks through without stopping, and
+    -- tests/descent_spec.lua says outright that a floor may not offer one of those -- it was only ever
+    -- kept off deep floors by Descent.floorPool's share filter, which drops a fight sitting under the
+    -- floor's MEDIAN worth. That is a proxy, and it moved the first time the underworld's roster grew
+    -- (data/encounters/encounter_the_bone_orchard.lua): two more mid-weight fights pulled the median
+    -- down and this cleared the cut by a point and a half, at 222% of the company -- a walkover the
+    -- filter had been hiding rather than a walkover anybody had decided on.
+    --
+    -- The fiction is unchanged and the slope is what carries it. "Nothing here can beat you" is a
+    -- statement about ONE crawler and always was; the fight is the number of mouths waiting for
+    -- somebody to go down, so a deeper floor wanting more mouths is the same sentence read further in.
+    -- Capped at seven, because past that it stops being a race to a fallen body and becomes a wall.
     composition = function(ctx)
         local list = {}
-        for _ = 1, 3 + math.floor((ctx.day or 1) / 18) do
+        for _ = 1, math.min(7, 3 + math.floor((ctx.day or 1) / 6)) do
             list[#list + 1] = "character_carrion_crawler"
         end
         return list

@@ -24,6 +24,7 @@ return {
         { "cathedral", "State your business.", tag = 2, id = "desk", choices = {
             { "Show me what the church will part with.", tag = 3, answer = "shelf", when = { offer = "shelf" } },
             { "Somebody needs mending.", tag = 4, answer = "mend", when = { offer = "mend" } },
+            { "Something we are carrying is cursed.", tag = 6, answer = "lift", when = { offer = "lift" } },
             { "Nothing today.", tag = 5, answer = "leave" },
         } },
     },

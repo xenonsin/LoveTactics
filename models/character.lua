@@ -127,6 +127,49 @@ function Character.eachItem(char)
     return list
 end
 
+-- THE BODY AS IT IS DRAWN, which is not always the body the blueprint named.
+--
+-- An item in the grid may declare `wearerSkin` -- a word, not a path -- and the bearer is then drawn
+-- from a VARIANT of its own token, `<its sprite>_<skin>.png`. Marrowlight declares `bone`, so a knight
+-- carrying it draws from `assets/chars/knight_bone.png` and a mage from `mage_bone.png`: their own
+-- silhouette, in bone (tools/char_compose.lua composes the variant beside every token it writes).
+--
+-- A WORD AND NOT A PATH, and that is the whole reason this is a resolver rather than a field copy. The
+-- aspect has to be "a skeleton version of THEMSELVES" on every body in the game, and an item naming one
+-- file could only ever be one skeleton -- the same anonymous token over a knight, a mage and a wolf,
+-- which is the thing this was asked not to be. The item names the TREATMENT; the body supplies the
+-- picture; the composer has already written the crossing of the two.
+--
+-- DERIVED FROM `spritePath` rather than from the character id, so it keeps working for a body whose art
+-- stops being composed: a painted knight.png gets a painted knight_bone.png beside it and nothing here
+-- changes. It also means a blueprint with no art at all resolves to nothing and falls through, rather
+-- than inventing a path.
+--
+-- FALLS BACK RATHER THAN FAILING. Sprite.load is tolerant -- a missing file comes back as the path
+-- string -- and a string handed to a drawer that wanted an image lands on that surface's no-art
+-- placeholder, which on the board is the bare letter disc. So the variant is asked for by EXISTENCE
+-- (Sprite.exists) and the body keeps its own sprite when there is no variant on disk. An un-built
+-- assets/ therefore costs the skeleton its bone token and nothing else.
+--
+-- READ AT DRAW TIME, never cached on the character, for the reason Item.rulesFor gives about rules: the
+-- grid changes at a camp, at a counter and on the loadout screen, and a skin baked in at the mouth of
+-- the stair would outlive the charm that granted it. The walk is nine cells and Sprite.load is memoized,
+-- so the cost is a table lookup.
+function Character.spriteOf(char)
+    if not char then return nil end
+    local base = char.spritePath
+    if type(base) == "string" then
+        for _, item in ipairs(Character.eachItem(char)) do
+            local skin = item.wearerSkin
+            if type(skin) == "string" and skin ~= "" then
+                local variant = base:gsub("%.png$", "_" .. skin .. ".png")
+                if variant ~= base and Sprite.exists(variant) then return Sprite.load(variant) end
+            end
+        end
+    end
+    return char.sprite
+end
+
 -- Which field on an ITEM carries a bonus to `key`: `maxBonus` for a resource pool, `bonus` for a flat
 -- stat. THE one answer to that question, because getting it wrong is silent -- an item raising
 -- `bonus.health` raises no ceiling anywhere in Combat, and a reader that checked `bonus` for HP would

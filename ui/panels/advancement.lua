@@ -24,6 +24,7 @@
 local CloseButton = require("ui.close_button")
 local ItemTooltip = require("ui.item_tooltip")
 local Scale = require("scale")
+local Character = require("models.character") -- Character.spriteOf: the skin an aspect item draws the bearer in
 local InputMode = require("input_mode")
 local Theme = require("ui.theme")
 local Growth = require("models.growth")
@@ -498,7 +499,7 @@ function Advancement:drawEntry(entry, x, y, w, h)
     local px, py = x + 4, y + 4
 
     -- Portrait (sprite, or the name's initial as a fallback -- same convention as party.lua).
-    local sprite = char.sprite
+    local sprite = Character.spriteOf(char)
     if type(sprite) == "userdata" then
         love.graphics.setColor(1, 1, 1)
         local sw, sh = sprite:getDimensions()

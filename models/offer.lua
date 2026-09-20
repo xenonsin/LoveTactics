@@ -29,17 +29,15 @@ local Offer = {}
 -- `{ expeditions = 2, wound = true }` ANDs. An offer with no gate is open always, which is the common
 -- case -- most rooms behind a door are simply the door's own business.
 --
--- `classLevel` is the one that needs the VENDOR rather than the player alone: a shelf belongs to exactly
--- one class (data/vendors/<id>.lua's `class`) and the building never repeats that fact, so the lookup
--- hops through the vendor exactly as Building's own house gate does.
+-- (`classLevel` stood here and is GONE WITH THE SHELF GATE. It read the roster's best level in the
+-- house's own class, and its only readers were the seven shelves -- one apiece, all at 1. That gate made
+-- sense while it also hid the CARD: under the card era a shut shelf hid the whole shopfront, so "you
+-- have not played a rogue" and "there is no Undercroft" were one fact. The fold put the doors on the
+-- plaza for other rooms' sake, and the gate quietly became "walk through a shopfront and be offered no
+-- shop". A class level buys the shelf's DEPTH now and nothing else -- Quest.shelfRung, where level 0 is
+-- rung 0 and the bottom band a gate at 1 had made unreachable. `vendorId` below is what it needed and
+-- is kept, because a house gate that has to hop through the vendor is the shape any successor takes.)
 local GATES = {}
-
-GATES.classLevel = function(player, need, vendorId)
-    local vdef = vendorId and require("models.vendor").defs[vendorId]
-    local class = vdef and vdef.class
-    if not (class and player) then return false end
-    return require("models.class").rosterLevel(player, class) >= need
-end
 
 -- HOW MANY TIMES THIS COMPANY HAS GONE DOWN, which is the clock the CITY grows on.
 --
@@ -87,12 +85,26 @@ GATES.unidentified = function(player, want)
     return is(require("models.identify").everFound(player), want)
 end
 
+-- Something this company owns has been hexed (models/curse.lua). The same one-way shape `wound` above
+-- has, and for a sharper version of the same reason: a curse can be LIFTED, so a gate that read a live
+-- count would put the rite on the desk, have the player use it, and take the room away in the same
+-- visit -- removing the door at the exact moment they learned what it was for. Once a company has met a
+-- curse, the Cathedral goes on offering to lift them.
+-- `noticed` rather than `everCursed`, and the difference is a room that would otherwise never open:
+-- most vectors cannot reach a player to stamp the mark (Combat.curseItem is handed a board, and a board
+-- does not know whose company it is fighting for), so the gate reads the live kit as well and writes the
+-- mark itself. See Curse.noticed for why that is one ledger rather than two.
+GATES.cursed = function(player, want)
+    return is(require("models.curse").noticed(player), want)
+end
+
 GATES.quest = function(player, questId)
     return player ~= nil and require("models.player").hasCompleted(player, questId) == true
 end
 
--- Is one offer open for this player? `vendorId` is the house the offer stands in, needed only by
--- `classLevel`. A nil gate is open; an unknown gate key is a typo in a blueprint and asserts rather than
+-- Is one offer open for this player? `vendorId` is the house the offer stands in, handed to any gate
+-- that has to hop through the vendor to read its class (see the block above -- no gate does today).
+-- A nil gate is open; an unknown gate key is a typo in a blueprint and asserts rather than
 -- silently reading as open -- a gate that quietly stops gating is a room delivered by accident.
 -- EVENT, OR A BACKSTOP. `any = { ... }` holds when ANY of its sub-gates does, which is what lets a room
 -- keep the gate that makes it land well AND still be guaranteed to arrive:
@@ -145,9 +157,9 @@ function Offer.list(player, building)
             vendor = offer.vendor or building.vendor,
             gate = offer.gate,
             quiet = offer.quiet, -- open without announcing its house; see Offer.any
-            -- The GATE is always asked of the house, never of the offer's own vendor: a `classLevel` on
-            -- a desk line means "climb this house's class", and the room the line opens may well belong
-            -- to somebody else (the town counter behind the fence's door).
+            -- The GATE is always asked of the house, never of the offer's own vendor: a gate on a desk
+            -- line is about THIS house, and the room the line opens may well belong to somebody else
+            -- (the town counter behind the fence's door).
             open = Offer.open(player, offer.gate, building.vendor),
         }
     end
@@ -173,12 +185,17 @@ end
 -- A QUIET ROOM DOES NOT ANNOUNCE ITS HOUSE. `quiet = true` on an offer means it can be open without
 -- putting the card on the plaza -- it is a room you find behind a door something else opened.
 --
--- Every house's SHELF is quiet, and that is the rule this field exists for. A shelf opens at level 1 of
--- its class, which a company banks by fighting -- so before it was quiet, walking out of Act 0 put two
--- shopfronts on the plaza that the player had done nothing deliberate to earn, onto rung-1 shelves that
--- stock almost nothing (a counter stocks a ware only once the company has carried one out). A class
--- level is a reward you cannot see; it is the wrong thing to hang a door on. What the plaza reacts to
--- is a deed the player can feel -- a wound, a trip home, a find nobody can read.
+-- Every house's SHELF is quiet, and that is the rule this field exists for. A shelf is ungated -- it is
+-- the house, and a shopfront that offers no shop is not a shopfront -- so without `quiet` all seven
+-- cards would stand on the plaza on the first morning, onto rung-0 racks of five buyable rows apiece (a
+-- counter stocks a ware only once the company has carried one out). The plaza reacts to a deed the
+-- player can FEEL -- a wound, a trip home, a find nobody can read -- and browsing is not one of them.
+--
+-- THE CARD AND THE ROOM ARE TWO QUESTIONS, which is the whole of what this field buys. They used to be
+-- one: the shelf carried a `classLevel = 1` gate that decided both, so a company with no rogue had no
+-- Undercroft at all and the contradiction never showed. The fold put the door on the plaza for the
+-- market's sake and left the shop behind it shut -- so the gate came off the room and `quiet` kept the
+-- card where it belonged.
 function Offer.any(player, building)
     local offers = (building and building.offers) or {}
     if #offers == 0 then return true end

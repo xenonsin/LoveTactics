@@ -403,7 +403,7 @@ something the player walks into is to hang it off a house's desk:
 -- in data/buildings/<house>.lua
 counter = "conversation_<vendor>_counter",
 offers = {
-    { answer = "shelf", panel = "shop", gate = { classLevel = 1 } },
+    { answer = "shelf", panel = "shop", quiet = true },  -- the house's own shop: never gated
     { answer = "mend",  panel = "ward", gate = { wound = true } },
     -- a room may keep its OWN vendor, so a folded counter is not merged into the house's shelf:
     { answer = "supper", panel = "cafe", vendor = "cafe", gate = { expeditions = 2 } },
@@ -424,9 +424,15 @@ to it (`Conversation.play`'s `opts.startAt`), and a desk resolved out of its own
 greeting forever. Every desk needs an ungated `leave` option. `tests/conversation_spec.lua` pins both.
 
 A room's `gate` uses the same vocabulary as a door's unlocks, minus the `unlock` prefix:
-`classLevel`, `expeditions`, `wound`, `unidentified`, `quest`. Every key in a gate must hold.
-**A door is drawn when ANY room behind it is open** (`models/offer.lua`), so the city grows one room at
-a time and a house's plate arrives on the morning its first room does.
+`trips`, `expeditions`, `wound`, `unidentified`, `quest`. Every key in a gate must hold.
+**A door is drawn when ANY non-quiet room behind it is open** (`models/offer.lua`), so the city grows
+one room at a time and a house's plate arrives on the morning its first room does.
+
+**A house's own shelf is never gated.** It is what the house IS, and a shopfront the player walks
+through to be offered no shop is the bug the class gate shipped: `classLevel = 1` decided the card and
+the room together while the shelf was the only thing behind its door, and the fold left it deciding
+only the room. What a class level buys now is the shelf's DEPTH -- `Quest.shelfRung`, where level 0 is
+rung 0 and the bottom band -- and what keeps browsing off the plaza is `quiet = true`.
 
 > **Teach `tools/extract_strings.lua` any new conversation field in the same change.** It regenerates
 > every scene it stamps, so a field it cannot serialize disappears the next time anyone adds a line --
@@ -451,7 +457,6 @@ The gates the play actually feeds are the other four, ANDed, and each names a di
 | field | opens when | who uses it |
 | --- | --- | --- |
 | `trips = N` | the company has begun N descents (`Player.tripsHome`) | **the city's clock** -- the counter at 1, the supper at 2, the forge at 3, the book at 4 |
-| `classLevel = N` | any body on the roster reaches level N of the house's class (`Class.rosterLevel`) | every house's shelf, all at 1 -- and all `quiet` |
 | `wound` | somebody has been carried up broken, ever (one-way) | the Cathedral's mending |
 | `unidentified` | the company is carrying something it cannot read | the Crucible's reading |
 | `quest = "<id>"` | that quest is finished | the Colosseum's duel, on its own first posting |
@@ -1322,6 +1327,62 @@ the scaled numbers in the tooltip. A unit reveals enemy traps by carrying a dete
 (`tags = { "detect traps" }`, `detectRadius = 2`).
 See `data/traps/spike_trap.lua`, `data/traps/snare_trap.lua`, `data/items/ability/ability_spike_trap.lua`, and
 `data/items/utility/utility_trap_sense.lua`.
+
+`ctx.curse(ctx.victim, id)` is the fourth helper, and it writes to something that outlives the fight:
+it sinks a **curse** into one piece of the victim's kit (`data/traps/hex_stone.lua`). See
+[curses.md](curses.md).
+
+## Add a curse
+
+A curse is a hex on one piece of gear — the mirror of *broken*, lifted at the Cathedral rather than the
+Forge. Drop a blueprint into `data/curses/<id>.lua`:
+
+```lua
+return {
+    name = "Dead Weight",
+    description = "-1 movement, and the piece cannot be moved, stowed, sold or taken from you.",
+    binds = true,                        -- Item.isBound answers true: every refusal in the game holds
+    depth = 1,                           -- shallowest floorLevel it may be ROLLED at (named casts ignore it)
+    fee = 120,                           -- optional; Curse.LIFT_COST otherwise
+    bonus = { movement = -1 },           -- ...and `resist`, `maxBonus`, `unarmedBonus`, `rules`,
+                                         -- `traits`, `openingBoon`: the ITEM's own fields, folded
+                                         -- beside the piece's own at Combat.applyUnitPassives
+}
+```
+
+That is the whole of it — the registry picks it up, the fold applies it, the tooltip prints it, the
+Cathedral's rite lifts it, and the save persists it. Four vectors put one on a piece: a trap's
+`ctx.curse`, an ability's `fx.curse(target, id)`, `curse = "<id>"` on an **item** blueprint (born hexed),
+and the Touchstone naming a find that was sealed carrying one. `tests/curse_spec.lua` holds every
+blueprint to the schema. Read [curses.md](curses.md) before authoring one — in particular the section on
+why the rite is free, which is the law the room is standing on.
+
+## Cast an ability outside a fight
+
+Add `outOfCombat = true` to an `activeAbility`, plus a `roadEffect(ctx)` beside its `effect`:
+
+```lua
+activeAbility = {
+    cost = { stat = "mana", amount = 12 },
+    effect = function(fx) ... end,        -- in a fight: the full fx table
+    outOfCombat = true,
+    roadEffect = function(ctx)            -- on the map: heal / restore / liftCurse / say
+        return ctx.heal(ctx.target, 12)
+    end,
+}
+```
+
+`Player.partyAbilities` sweeps the company's grids for it and the overworld Use panel lists it beside
+the draughts, sharing one cursor; `kind` tells a **drink** (spends a stack, gone) from a **cast**
+(spends a pool that `Player.camp` partly refills). The cast is paid through `Player.payCastCost` at the
+same price it costs in a fight. Two things are deliberate:
+
+- **The road context is four verbs, not forty.** An ability's `effect` is written against a board —
+  targets, tiles, an initiative order — none of which exist out here. Faking the rest would mean stubs
+  that parse, ship and do nothing, which is this codebase's worst failure shape. Widen `roadCtx` when
+  something genuinely needs more; never by adding a stub.
+- **The road version is usually a different spell**, and should say so. The Lesser Rite lifts a hex
+  *and bursts* in a fight; on a road it lifts, because there is nobody standing there to burn.
 
 ## Add a prop (battlefield furniture)
 

@@ -289,9 +289,14 @@ return {
             -- depth less one (models/vendor.lua's lockReason) -- so a rack dealt by the authored field
             -- would put two fifths of the catalogue, which carries no rank at all, at the top.
             local function rankOf(row) return row.entry.rung or row.entry.unlockQuests or 0 end
+            -- A MONSTER DROP CARRIES NO PRICE AT ALL (models/vendor.lua's lockReason), so the price
+            -- term has to read the same `or 0` Vendor.shelfOrder reads. Without it the comparator
+            -- faults the moment a trophy shares a band with priced stock -- which is a bug in the
+            -- CHECK rather than in the order: the shelf was sorting these correctly all along.
+            local function priceOf(row) return row.entry.price or 0 end
             local function climbs(a, b)
                 if rankOf(a) ~= rankOf(b) then return rankOf(a) <= rankOf(b) end
-                if a.entry.price ~= b.entry.price then return a.entry.price <= b.entry.price end
+                if priceOf(a) ~= priceOf(b) then return priceOf(a) <= priceOf(b) end
                 return a.item.name <= b.item.name
             end
             for i = 2, #band.rows do

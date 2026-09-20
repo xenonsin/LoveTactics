@@ -40,6 +40,24 @@ local KNOWN_KINDS = {
 -- blueprints -- is the recurring one, and it recurred once already.
 local ALIAS = {
     character_saber_bout = "character_saber",
+
+    -- THE RIFT'S DEAD, and they converge here on purpose. Each of these EXTENDS a living blueprint
+    -- (the character_saber_bout idiom) and inherits its `sprite`, because the whole premise is that the
+    -- dead down there are the companies that came before yours -- a player who has fought a knight
+    -- should recognise its corpse.
+    --
+    -- WHAT SEPARATES THEM ON THE BOARD is a thing this file cannot see: an aspect item in the grid names
+    -- a SKIN, and Character.spriteOf redraws the bearer from a variant of that same token
+    -- (tools/char_compose.lua's SKIN table). The Skeleton Knight is the knight's silhouette in bone; the
+    -- Barrow Lord is the same silhouette in bone with a crown struck over it; the living knight is
+    -- neither. Three distinct pictures off one composed body, which is the point -- and the reason
+    -- aliasing them here is a statement rather than a waiver.
+    --
+    -- The Skeleton King is deliberately NOT in this list. He is the one body down there that is nobody's
+    -- corpse, he carries his own silhouette (CHARACTER_SILHOUETTE), and the board is meant to say so.
+    character_skeleton_knight = "character_knight",
+    character_barrow_lord = "character_knight",
+    character_skeleton_archer = "character_archer",
 }
 
 -- Are these two blueprints allowed to converge? The relation is symmetric, and it composes through the

@@ -142,6 +142,61 @@ names it — the prologue's parry lesson is written against its exact arithmetic
 no physical line, because the lesson's blows are a sword and a mace. It carries the holy line below,
 which the lesson never touches.
 
+### …and one body wears an immunity instead
+
+The redistribution above is the rule for every creature in the folder but one, and the exception is
+worth stating because it is a different *kind* of answer rather than a bigger number on the same axis.
+`character_slime` declares **no physical line at all** — its slash/pierce/impact lines sum to zero by
+being absent — and carries `immune = { physical, slash, pierce, impact }` on a bound piece instead
+(`utility_amorphous_body`). A melee company cannot hurt it. Not "for less": at all.
+
+Nothing in the innate `resist` contract could have said that. Resist is subtractive and floors at 1
+([vulnerability.md](vulnerability.md)), so a scratch is always still a hit and no sum ever reaches
+zero — which is correct for a hide and wrong for a body with nothing in it to part. The immunity is
+folded onto the unit by the same pass, out of the same kind of table, and is read by
+`Status.immuneToDamage`; it is armour, not a ward, so Sundered does not touch it.
+
+Three things keep it a puzzle rather than a wall, and all three are in the blueprints:
+
+- **an element still lands** — an item's immunity is answered by any element on the blow, so the Dawn
+  Chrism, a Battlemage's Resonant Grip and a demon's burning claws all get through. *The element is
+  added; the channel is not moved* cuts both ways, and this is the other way.
+- **the answer is spent by using it** — `trait_adaptive` takes the first element it is shown into
+  itself, one at a time, so the question the body asks is how many elements the company brought
+  rather than how big the biggest one is.
+- **it is slow** — a body that could be neither cut nor outrun would be an attrition sink. Movement 3
+  at speed 3 is where the counterplay lives.
+
+This is not a licence for a second one. It is the one statement in the bestiary that the resist axis
+cannot make, made once, on a body whose whole identity is it.
+
+#### …and it is the one body that spends your durability
+
+A slime that could only lean on you was a fight a melee company lost by attrition and nothing else, so
+both slimes carry a cast that takes something the battle cannot give back: `ability_corrosive_touch`
+inflicts **Corroding**, which eats a piece of the target's kit every turn it holds, and the King adds
+`ability_engulf`, which takes the weapon out of the hand outright (`status_disarmed`).
+
+**The reflex version of this cannot work, and the reason is worth knowing before anyone writes
+another one.** "Hit it with a blade and the blade corrodes" is the obvious shape — `trait_spiteful_
+ichor`'s, one status along — and an immune hit returns a true 0 from `Combat.dealFlatDamage` *before*
+the trait dispatch. A slime never feels the sword that hits it, no `onDamaged` fires, and the reflex
+is dead against exactly the attack it was written for. A body that is immune to something can only
+threaten it by **spending a turn**.
+
+Four answers, and they are load-bearing rather than decorative:
+
+| | |
+|---|---|
+| **range 1** | on a body that moves 3 and acts at speed 3. Kiting answers both casts completely. |
+| **a windup** | telegraphed, so a stun, a shove or a step out of reach denies it outright. |
+| **a debuff** | Corroding and Disarmed are both `debuff = true` — Cure and Panacea strip them, and every turn stripped early is wear that never happens. |
+| **the forge, in town** | `Item.wear` never destroys. A corroded piece is worn to nought, still in the grid, and `Forge.mend` puts it back — but only at the Bastion's desk, never underground, so the answer costs a trip home. |
+
+Two things are immune to the corrosion without either file saying so, which is the good kind of
+inherited rule: `Item.durabilityMax` is nil for anything `noSteal` or `bound`, so a creature's natural
+weapon and a boss's phase relic cannot be eaten — and neither can a company fighting bare-handed.
+
 ### A demon takes holy the harder
 
 `kind` derives nothing anywhere else in this document; this is the one exception, and it is the one

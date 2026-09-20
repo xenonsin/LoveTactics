@@ -216,7 +216,7 @@ need engine work, so it drives build order far more than stock or quests do.
 | Ninja | **Shadowclone** — blink between decoy clones and vanish from sight; strike from stealth | ✗ |
 | Inquisitor | **Judgment** — mark a heretic; execute deals holy and dispels | ~ |
 | Saboteur | **Planted charges** — stealth-place delayed bombs, detonate on cue | ~ |
-| Shaman | **Spirit totems** — summoned spirits bound to hazards | ✗ |
+| Shaman | **Binding** — a spirit put into a thing and made to stay: into the ground as a hazard-bound spirit, or into a body's gear as a curse ([curses.md](curses.md)) | ~ |
 | Totemist | **Ward totems** — planted totems projecting holy heal / negate zones | ✗ |
 | Herbalist | **Field brewing** — convert field hazards / plants into consumables mid-fight | ✗ |
 | Theurge | **Channelled miracle** — wind-up holy spells scaling with channel turns | ~ |
@@ -225,6 +225,18 @@ need engine work, so it drives build order far more than stock or quests do.
 
 The mechanics are seeds, not final specs — enough to build against, ordered by the Engine column: ship
 the ✓ disciplines first (zero new combat code), then the ~, then fund the ✗ as real features.
+
+**The Shaman's seed was re-cut on 2026-09-20** and moved from ✗ to ~, which is worth recording because
+nothing was unwound to do it. It read *"Spirit totems — summoned spirits bound to hazards"*, and that was
+the wrong half of its own mechanic: "summon" describes Call Spirit and nothing else on the shelf, while
+Bind Spirit, the Ancestor Mask and Ghost-Wind all share **binding** instead — a spirit put into a thing
+and made to stay there. The seven spirit items are untouched; what changed is the word they are named by.
+
+Two things fall out. A **curse** is a spirit bound into somebody's gear, so the hex shelf belongs here
+rather than on a Hexer of its own ([curses.md](curses.md), shipped) — same verb, same craft, same
+counterplay. And the Shaman finally reads differently from the **Totemist** directly below it, which
+"spirit totems" never did: a Totemist plants stakes that project fields, and a Shaman under the old word
+was a stake that walked.
 
 ## The item roster — what a discipline unlocks
 

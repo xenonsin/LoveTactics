@@ -124,7 +124,7 @@ function Vendor.sells(def, item)
     return false
 end
 
--- WHY A WARE ON A SHELF IS SHUT -- "class" or "rung" -- or nil when it is out. Also hands back the
+-- WHY A WARE ON A SHELF IS SHUT -- "monster drop", "class" or "rung" -- or nil when it is out. Also hands back the
 -- three facts the gate is derived from that a row wants anyway: whether the item's class is an EARNED
 -- one (its `discipline`), the class level it names if any, and THE RUNG THE GATE ACTUALLY APPLIED.
 --
@@ -202,8 +202,25 @@ function Vendor.lockReason(item, rung, unlocked, levels)
     -- the discipline -- and a rack that greys both identically tells the player "no" twice without ever
     -- saying which of two different things to go and do about it. Decided here, once, for the same
     -- reason `discipline` is: the readers all want the same answer and none should be re-deriving it.
+    -- A MONSTER'S OWN DROP IS SHUT FOREVER, and it leads because it is the only refusal here that
+    -- nothing the player does will ever answer. The other two name something to go and do -- grow the
+    -- class, unlock the path -- and this one names where the thing comes from instead, because that IS
+    -- the answer: go and kill the body that carries it (docs/drops.md).
+    --
+    -- IT IS ON THE RACK RATHER THAN ABSENT FROM IT, which is the change. `unstocked` used to answer nil
+    -- at Vendor.foundPrice, and a ware with no price never entered Vendor.stock at all -- so the rarest
+    -- pieces in the game were invisible at every counter and a player had no way to learn they existed
+    -- short of meeting the creature. A shelf that shows them and refuses them is a want list again,
+    -- which is the job the discovery gate used to do and did badly: this one is permanent and honest
+    -- rather than a lock that opens once you have already got one.
+    --
+    -- THE PRICE STAYS NIL EITHER WAY, and that is not an oversight -- Vendor.foundPrice is unchanged, so
+    -- Vendor.sellValue still answers 0 and the piece has no market price in EITHER direction. There is
+    -- nobody to buy one from and nobody who would know what to pay. Visible is not the same as
+    -- merchandise.
     local lockReason = nil
-    if classLocked then lockReason = "class"
+    if item.unstocked then lockReason = "monster drop"
+    elseif classLocked then lockReason = "class"
     elseif (rung or 0) < gateRung then lockReason = "rung" end
     return lockReason, earned, unlockLevel, gateRung
 end
@@ -327,7 +344,12 @@ function Vendor.stock(vendorId, questsDone, recipes, unlocked, levels)
     local stock = {}
     for id, item in pairs(Item.defs) do
         local foundPrice = not item.price and Vendor.foundPrice(item) or nil
-        if (item.price or foundPrice) and Vendor.sells(def, item) then
+        -- A MONSTER'S DROP HAS NO PRICE AND IS STOCKED ANYWAY (see Vendor.lockReason). Admitted on its
+        -- `dropTier` rather than on a price, because the price is exactly what it does not have -- and
+        -- the tier is what places it on the rung ladder so it sorts into the rack where it belongs
+        -- rather than piling at one end.
+        local trophy = item.unstocked and item.dropTier ~= nil
+        if (item.price or foundPrice or trophy) and Vendor.sells(def, item) then
             -- The RANK, which every blueprint carries and which is not the gate -- see
             -- Vendor.lockReason, where the two parted company. Reported to everyone downstream: which
             -- band a row files under, how the shelf sorts, whether the Market counts it a staple

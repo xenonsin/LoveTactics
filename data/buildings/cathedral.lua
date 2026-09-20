@@ -29,15 +29,35 @@ return {
     -- The desk: what this house says on the way in, and the rooms it offers (models/counter.lua).
     counter = "conversation_cathedral_counter",
     offers = {
-        -- QUIET: a class rung stocks this shelf but never puts the card on the plaza. A class level is
-        -- a reward the player cannot see, and hanging a door on it put shopfronts in the city that
-        -- nobody chose to earn (models/offer.lua's Offer.any).
-        { answer = "shelf", panel = "shop", gate = { classLevel = 1 }, quiet = true },
+        -- THE SHELF IS NEVER GATED, because the shelf IS the house. Under the card era a shut shelf
+        -- hid the whole shopfront, so the gate and the door were one fact; the fold put these doors on
+        -- the plaza for OTHER rooms' sake, and the gate started meaning "walk through a shopfront and
+        -- be offered no shop" -- which is what every desk in the city shipped reading.
+        --
+        -- A CLASS LEVEL BUYS DEPTH NOW and nothing else, which is the job Quest.shelfRung already
+        -- describes itself doing: level 0 IS rung 0, the class's bottom band, and the ladder unlocks
+        -- upward from there. Under the level-1 gate nobody could ever see rung 0 at all.
+        --
+        -- QUIET all the same: a shelf never puts a card on the plaza. A class rung is a reward the
+        -- player cannot see, and hanging a door on it put shopfronts in the city that nobody chose to
+        -- earn (models/offer.lua's Offer.any).
+        { answer = "shelf", panel = "shop", quiet = true },
         -- The line arrives the first time anybody is carried up broken, which is Rowan at the end of
         -- Act 0 (models/combat.lua's spendScriptedFell) -- so this door opens on the first morning with
         -- only its mending on the desk, and the shelf joins it when somebody has climbed a priest rung.
         -- A player meets this counter holding exactly the problem it solves.
         { answer = "mend", panel = "ward", gate = { wound = true } },
+        -- ...AND THE RITE, which is the mending's twin with an item where the body goes
+        -- (models/curse.lua). Same house, same two ways out, same law underneath: free and slow, or
+        -- paid and now. It arrives the first time anything this company owns is hexed -- a trap in the
+        -- rift, a caster, or the Touchstone naming a bad find -- so like the mending above, a player
+        -- meets this room holding exactly the problem it solves.
+        --
+        -- NOT QUIET, and that is the difference between this and a shelf. A hexed piece is a thing the
+        -- player can feel: a sword they cannot put down, a knight who will not walk. A door announcing
+        -- itself on the plaza the morning after the first curse is the city answering a question the
+        -- player has just been made to ask, which is the one event Offer.any exists to let through.
+        { answer = "lift", panel = "rite", gate = { cursed = true } },
     },
     -- WHAT THIS ROOM SAYS THE FIRST TIME IT IS WALKED INTO, and who is standing in it. `grants` recruits
     -- as the scene opens so her join banner folds onto the end of it, exactly as every other companion's

@@ -36,11 +36,13 @@ local ForgeTrack = {}
 
 local NODE = 40      -- a node's box; the diamond is drawn inside it
 local GAP = 14       -- connector length between two nodes
+local MIN_GAP = 4    -- the tightest the connectors go; past this the chain reads as one bar
 local LABEL_H = 14   -- the "+n" caption under each node
 local CAP_H = 12     -- the NOW / NEXT marker over the two that carry one
 
 ForgeTrack.NODE = NODE
 ForgeTrack.GAP = GAP
+ForgeTrack.MIN_GAP = MIN_GAP
 -- What ForgeTrack.layout will occupy vertically, so a caller can reserve the band before laying out.
 ForgeTrack.HEIGHT = CAP_H + NODE + 2 + LABEL_H
 
@@ -51,6 +53,15 @@ function ForgeTrack.naturalWidth(max)
     return n * NODE + (n - 1) * GAP
 end
 
+-- THE FLOOR, AND IT IS A WALL RATHER THAN A PREFERENCE. Squeezing stops at MIN_GAP and the NODES never
+-- give -- a node too small to click is worse than a track that overhangs -- so a caller handed less
+-- than this draws PAST the box it was given. Named because a host has no other way to find out: the
+-- overflow is silent, and ui/panels/forge.lua solves its whole three-column layout against this number.
+function ForgeTrack.minWidth(max)
+    local n = (max or 10) + 1
+    return n * NODE + (n - 1) * MIN_GAP
+end
+
 -- Lay the chain out inside `w`, squeezing the GAPS (never the nodes) when the band is narrow, so a
 -- node never becomes too small to click. Returns { x, y, w, h, node, step, rungs = { {level,x,y,w,h} } }.
 function ForgeTrack.layout(x, y, w, opts)
@@ -59,7 +70,7 @@ function ForgeTrack.layout(x, y, w, opts)
     local n = max + 1
     local gap = GAP
     if n * NODE + (n - 1) * gap > w then
-        gap = math.max(4, (w - n * NODE) / math.max(1, n - 1))
+        gap = math.max(MIN_GAP, (w - n * NODE) / math.max(1, n - 1))
     end
     local step = NODE + gap
 

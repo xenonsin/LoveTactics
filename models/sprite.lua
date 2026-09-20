@@ -33,4 +33,22 @@ function Sprite.load(path)
     return image
 end
 
+-- Is there actually a file at `path`? Sprite.load cannot answer this: it is TOLERANT by design and
+-- hands back the path string when the art is missing, which is exactly right for "draw it if it is
+-- there" and exactly wrong for "choose between two files". A caller picking a variant has to know which
+-- of the two exists BEFORE it loads one, or it gets a string where the drawer wanted an image and falls
+-- through to whatever that surface's no-art placeholder is (the board's bare letter disc).
+--
+-- Answered off love.filesystem rather than off a load attempt, for the reason the loader's own comment
+-- gives at length: under love.js a failed newImage does not raise, it kills the main loop. Asking is
+-- free and never touches the graphics device -- so this is also true under the headless tests, where
+-- love.graphics is absent but the filesystem is not, and a spec can assert which file a body resolves to
+-- without a window. No love.filesystem at all (a bare Lua host) answers false, which lands every caller
+-- on its ordinary sprite.
+function Sprite.exists(path)
+    if type(path) ~= "string" then return false end
+    return not not (love and love.filesystem and love.filesystem.getInfo
+        and love.filesystem.getInfo(path))
+end
+
 return Sprite

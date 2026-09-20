@@ -293,6 +293,35 @@ local CHARACTER_SILHOUETTE = {
     -- Off the Totemist's totem: the discipline exemplar keeps it, the planted object gets the carved head.
     totem = "lorc/totem-head",
 
+    -- THE CROWN AT THE BOTTOM OF THE BARROWS, and the one body down there that gets an entry. The
+    -- Skeleton King is the only skeleton in the game that is its OWN blueprint rather than a living one
+    -- with something done to it, and the board is supposed to say so before he takes a turn: every other
+    -- body on that floor is a silhouette the player has seen alive, and this is the one that is not.
+    -- Without a line here he would fall through to the undead bucket's head (sbed/death-skull) and read
+    -- as generic chaff at the exact moment he most needs to read as the end of something.
+    the_skeleton_king = "lorc/crowned-skull",
+
+    -- THE REST OF THE ORCHARD'S DEAD, AND THEY WEAR THE SILHOUETTE THEY DIED IN. Each one extends a
+    -- living blueprint and rides that body's own token (they name the same `sprite`, so the composer
+    -- writes the file once and they ride along) -- and what separates them on the board is the bone SKIN
+    -- applied at draw time, not a picture of their own.
+    --
+    -- THEY NEED A LINE HERE ANYWAY, and the reason is worth writing down because it is not obvious: a
+    -- humanoid's silhouette is resolved from its CLASS, and a corpse declares no class -- an undead has
+    -- no shelf (docs/bestiary.md), so the inherited one is cleared on every one of these blueprints. That
+    -- drops them straight through to the undead bucket's head, where all three land on sbed/death-skull
+    -- together with the zombie. So the class lookup they can no longer reach is restated here, by hand,
+    -- which is also the honest way to say it: this is a dead KNIGHT, and it is shaped like one.
+    skeleton_knight = "delapouite/knight-banner",
+    barrow_lord = "delapouite/knight-banner",
+    skeleton_archer = "delapouite/archer",
+
+    -- (THE BONE ORCHARD'S DEAD ARE OTHERWISE ABSENT FROM THIS TABLE. They are not bodies of their
+    -- own -- each one EXTENDS a living blueprint and inherits its `sprite`, so the Skeleton Knight is
+    -- drawn from the knight's own token and the Skeleton Archer from the archer's. What makes them read
+    -- as dead is the bone SKIN (see the SKIN table below), applied at draw time off the aspect item they
+    -- carry. Giving them silhouettes here would be undoing the thing that makes them worth having.)
+
     -- Off the generic mage / alchemist bodies.
     gyeom = "lorc/wizard-staff",
     ren = "lorc/standing-potion",
@@ -404,6 +433,21 @@ local CHARACTER_SILHOUETTE = {
     -- paragraphs up in CREATURE_MATCH).
     the_unseeing = "lorc/boar-tusks",      -- the lord, not the animal: the ordinary boar keeps `boar`
     the_turning = "lorc/infested-mass",    -- what is wearing him by the end, and it is not a boar
+
+    -- THE FEN'S OOZES. Both are `beast`, so without names here they would land on the wolf grunt's head
+    -- together -- and the obvious pick (delapouite/slime) is already the Tallow Hound's, which is the
+    -- collision this table exists to catch.
+    --
+    -- Picked by LEGIBILITY AT TOKEN SIZE, which decided against two closer readings. sbed/slow-blob
+    -- would have said the thing the blueprint cares about (slow is its whole balance) and renders as an
+    -- amoeba that reads like a cog; cathelineau/transparent-slime is the honest puddle and is outline
+    -- only, so it nearly vanishes against the plate at 64px. The daemon is filled, dripping, and
+    -- unmistakable across a board -- at the cost of a face on a body whose own file says it has no
+    -- plan, which is a trade worth making for a silhouette nobody has to squint at.
+    slime = "lorc/gooey-daemon",
+    king_slime = "lorc/burst-blob",   -- a blob mid-burst, which is the only thing it does that a
+                                      -- common slime does not (data/traits/trait_split.lua) -- and it
+                                      -- is faceless, so the pair differ in shape and not only in size
 }
 
 -- Reverse index: the character key a discipline names as its `exemplar` -> the discipline id. Built from
@@ -538,10 +582,58 @@ local function foreground(slug, tint)
     return inner
 end
 
--- Compose the baked layers into one 512x512 SVG. Everything here is a function of `def`/`id`. No frame
--- is drawn -- the border is the runtime side, added by the board (see the header note).
-local function compose(def, id)
-    local tint = tintFor(def, id)
+-- 4. SKIN -- a token composed AGAIN, as something that happened to the body.
+--
+-- The one thing the three channels above cannot say. Base, tint and badge are all facts a blueprint
+-- declares once and never changes; a skin is a body's own token drawn as what it has BECOME, and the
+-- only thing in the game that does that is the skeleton aspect (data/items/utility/utility_marrowlight.lua).
+-- Marrowlight is not a class and not a transform -- your knight is still your knight -- so an anonymous
+-- skeleton token would have said the one thing about it that is false. The crossing of "which body" and
+-- "what happened to it" is 201 pictures nobody is going to draw, and that is precisely the problem this
+-- file exists to solve: the silhouette is kept, the treatment is applied, and a new body costs no art.
+--
+-- Written as `<token>_<skin>.png` beside every token, which is the contract Character.spriteOf reads --
+-- it derives the variant off the blueprint's own `sprite` path and falls back to the plain token when
+-- there is no file, so a half-built assets/ costs a skeleton its bone picture and nothing else.
+local SKIN = {
+    bone = {
+        -- Old bone. Warm on purpose, and pitched away from BOTH of its neighbours: the humanoid steel
+        -- above it (#dce1e6) is a cold near-white that reads as the SAME token at board size, and the
+        -- undead kind wash (#9fb8a0) is a green-grey rot. Those are three different claims -- an
+        -- ordinary body, a thing that was raised, and a body that is now a skeleton -- and a player
+        -- who meets all three on one board has to tell them apart at a glance, on a 48px tile, without
+        -- reading the mark.
+        tint = "#d8c49a",
+        -- Grave-dark under it: the plate is the one part of the token that is not the body, so darkening
+        -- it is how the whole tile reads as changed without touching the silhouette.
+        plate = "#12141c",
+        -- And the mark. A skull struck in the low corner, diagonally opposite the boss disc, on its own
+        -- dark ground so it reads over a busy silhouette. Marks stack by SHAPE, not hue: a boss skeleton
+        -- carries a gold circle up here and a skull down there, and neither is the other's colour.
+        mark = "sbed/death-skull",
+    },
+    -- THE SAME BONE, MARKED. A Barrow Lord is a dead knight standing in a room of dead knights, and the
+    -- one thing a player must be able to see about him is WHICH ONE HE IS -- his whole fight is that the
+    -- two bodies beside him stay down and he does not. Drawn identically he would be a rules quiz.
+    --
+    -- So the treatment is the bone one plus a crown, and the mark is deliberately the BOSS DISC's
+    -- geometry rather than another skull: two marks that stack on one token separate by SHAPE, never by
+    -- hue, so a crowned skeleton reads as "that one" at a glance and a crowned skeleton that is also a
+    -- boss still reads as both.
+    crowned = {
+        tint = "#d8c49a",
+        plate = "#12141c",
+        mark = "lorc/crown",
+        markTint = "#e6c14a", -- the boss gold, borrowed on purpose: rank is rank
+    },
+}
+
+-- Compose the baked layers into one 512x512 SVG. Everything here is a function of `def`/`id` -- plus
+-- `skin`, which is a function of the item the body is carrying rather than of the body. No frame is
+-- drawn -- the border is the runtime side, added by the board (see the header note).
+local function compose(def, id, skin)
+    local coat = skin and SKIN[skin]
+    local tint = coat and coat.tint or tintFor(def, id)
     local boss = def.boss and true or false
 
     local inner, err = foreground(slugFor(def, id), tint)
@@ -550,7 +642,9 @@ local function compose(def, id)
     local parts = { '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">' }
 
     -- Backing plate, so the token reads on any tile.
-    parts[#parts + 1] = '<rect x="24" y="24" width="464" height="464" rx="72" fill="#1b1f25"/>'
+    parts[#parts + 1] = string.format(
+        '<rect x="24" y="24" width="464" height="464" rx="72" fill="%s"/>',
+        (coat and coat.plate) or "#1b1f25")
 
     -- The silhouette, tinted, centred at ~64%.
     parts[#parts + 1] = string.format(
@@ -561,6 +655,20 @@ local function compose(def, id)
     if boss then
         parts[#parts + 1] = string.format(
             '<circle cx="396" cy="116" r="60" fill="%s" stroke="#12151a" stroke-width="12"/>', BOSS_GOLD)
+    end
+
+    -- A skin's MARK, last so it sits over the silhouette rather than under it. Low-left, which is the
+    -- corner the boss disc does not use.
+    if coat and coat.mark then
+        local markTint = coat.markTint or coat.tint
+        local glyph = foreground(coat.mark, markTint)
+        if glyph then
+            parts[#parts + 1] = string.format(
+                '<circle cx="124" cy="396" r="80" fill="%s" stroke="#12151a" stroke-width="10"/>',
+                (coat and coat.plate) or "#1b1f25")
+            parts[#parts + 1] = string.format(
+                '<g transform="translate(60 332) scale(0.25)" fill="%s">%s</g>', markTint, glyph)
+        end
     end
 
     parts[#parts + 1] = "</svg>"
@@ -655,6 +763,33 @@ function M.run(args)
                 elseif rasterize(stageRel, target) then
                     rendered = rendered + 1
                     if toAssets then doneTarget[target] = true end
+                    -- ...AND THE SAME BODY IN EVERY SKIN (see SKIN above). Written here rather than in
+                    -- a second pass so a variant can never be composed from a token that failed, and so
+                    -- the two files are always the same body drawn on the same day.
+                    --
+                    -- EVERY body, not a chosen few: `wearerSkin` is an item field and the grid is open
+                    -- (docs/classes.md -- anyone may carry anything), so the set of bodies that can wear
+                    -- the aspect is the roster plus every humanoid in the bestiary plus whatever a
+                    -- future scene hands a charm to. Picking a subset here would be a guess that fails
+                    -- silently, as a bare letter disc, on the one body nobody thought of.
+                    for skinName in pairs(SKIN) do
+                        local skinTarget = target:gsub("%.png$", "_" .. skinName .. ".png")
+                        if skinTarget == target or doneTarget[skinTarget] then
+                            -- nothing: not a .png target, or already written by a shared namesake
+                        elseif toAssets and not force and love.filesystem.getInfo(skinTarget) then
+                            doneTarget[skinTarget] = true
+                            skipped = skipped + 1 -- real art already on disk; leave it, as above
+                        else
+                            local skinSvg = compose(def, id, skinName)
+                            local skinStage = PREVIEW_ROOT .. "/staging/" .. id .. "_" .. skinName .. ".svg"
+                            if skinSvg and writeFile(skinStage, skinSvg) and rasterize(skinStage, skinTarget) then
+                                rendered = rendered + 1
+                                if toAssets then doneTarget[skinTarget] = true end
+                            else
+                                failures[#failures + 1] = id .. " (" .. skinName .. ") -- compose failed"
+                            end
+                        end
+                    end
                 else
                     failures[#failures + 1] = id .. " -- resvg failed"
                 end

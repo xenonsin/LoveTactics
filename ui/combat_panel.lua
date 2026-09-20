@@ -24,6 +24,7 @@
 
 local Scale = require("scale")
 local Combat = require("models.combat")
+local Character = require("models.character") -- Character.spriteOf: the skin an aspect item draws the bearer in
 local Item = require("models.item") -- for Item.costs: a cast may draw on more than one pool
 local Trait = require("models.trait") -- for Trait.stackReadout: a passive charm's banked stacks
 local Status = require("models.status") -- for waitNote: naming what a stance grants, not its id
@@ -1482,7 +1483,7 @@ end
 
 -- The portrait square (sprite, or a coloured letter box as a fallback) at (px, py), size ps.
 function CombatPanel:drawPortrait(unit, px, py, ps, a)
-    local sprite = unit.char.sprite
+    local sprite = Character.spriteOf(unit.char)
     if type(sprite) == "userdata" then
         love.graphics.setColor(1, 1, 1, a)
         local sw, sh = sprite:getDimensions()

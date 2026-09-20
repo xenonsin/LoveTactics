@@ -290,6 +290,11 @@ return {
     -- -- so it takes the rally instead, and the note above still holds for why it is not a drum.
     ["items/consumable_war_drums.png"] = "knight-banner",
 
+    -- ------------------------------------------- the skeleton aspect, 2026-09-20
+    -- Admitted to BESPOKE in the same change (tools/icon_compose.lua), since an entry here only draws
+    -- if the vocabulary holds the slug. See that list for why this one item buys a drawing.
+    ["items/marrowlight.png"] = "skeleton-inside",
+
     -- ---------------------------------------------------------------- props
     -- Board furniture. These sit on the terrain layer rather than the character layer, so an
     -- iconic treatment is the right register -- see the two-register rule in docs/art-assets.md.

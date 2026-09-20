@@ -81,12 +81,33 @@ Grow a class and its shelf deals deeper, at a price. Go down and the same gear f
 at depths that reach well below the rung you have climbed to. A find is worth what it always was — it
 is simply no longer the only door.
 
-Two refusals now, two words, one field (`Vendor.stock`'s `lockReason`):
+**So class level is the only gate.** `"rung"` reads it directly (`Quest.shelfRung`, the roster's best
+holder in that class) and `"class"` reads it one step removed -- an earned discipline is itself unlocked
+by class levels, so "grow the class" is the answer to both, at different distances.
+
+Three refusals now, three words, one field (`Vendor.stock`'s `lockReason`):
 
 | `lockReason` | What the player does about it |
 |---|---|
 | `"rung"` | grow the class |
 | `"class"` | unlock the discipline |
+| `"monster drop"` | go and kill the thing that carries it |
+
+### The third: a body's own trophy is visible and never sold
+
+`unstocked` is the one thing a found ware can say that keeps it off a counter forever (`Vendor.foundPrice`
+answers nil, so `Vendor.sellValue` answers 0 too). That has not changed. **What changed is that it is now
+ON the rack.**
+
+Until 2026-09-20 a price of nil meant the piece never entered `Vendor.stock` at all, so the rarest things
+in the game -- the boar's hide, the sow's pelt, the relic a general is put down for -- were *invisible* at
+every counter. A player could not learn they existed short of meeting the creature.
+
+A shelf that shows them and refuses them is a **want list** again, which is the job the discovery gate
+used to do and did badly: that one shut a ware until you had already got one, which is a checklist
+pretending to be a want list. This refusal is permanent and honest, it names a road rather than a lock --
+*go and kill the body that carries it* -- and it costs the counter nothing, because a trophy was never
+merchandise in either direction.
 
 **A found ware's rung is its depth, less one** — the same conversion `Vendor.foundPrice` already made to
 quote it. One number answers *what does it cost* and *what rung does it sit on*, so the two can never
@@ -106,9 +127,15 @@ figure, or a duplicate hauled out would be a thing the player could neither use 
 
 The exception is small and authored one piece at a time: **what a body is known for**. The boar's hide,
 the sow's pelt, the white wolf's teeth, the relic a general is put down for. `unstocked = true` makes
-`Vendor.foundPrice` refuse to quote one, which takes the row off every counter entirely — not greyed,
-gone — and refuses a sale in the same stroke. A piece that exists only where it fell has no market price
-in either direction. See [drops.md](drops.md#rift-only-pieces); `tests/discovery_spec.lua` holds it.
+`Vendor.foundPrice` refuse to quote one, which refuses a sale in the same stroke — a piece that exists
+only where it fell has no market price in either direction.
+
+**It is shown and refused, not hidden** (see the third lock reason above). Until 2026-09-20 a nil price
+also kept the row out of `Vendor.stock` entirely — *not greyed, gone* — which was a side effect of
+having no price rather than a decision, and it meant the rarest pieces in the game could not be learned
+about at any counter. `Vendor.stock` admits them on their `dropTier` now, and they wear
+`lockReason = "monster drop"`. See [drops.md](drops.md#rift-only-pieces);
+`tests/discovery_spec.lua` holds it.
 
 Fourteen blueprints carry the flag. The seven generals' relics need none: they are `class = "creature"`
 with no `dropTier`, so no counter could quote one to begin with.

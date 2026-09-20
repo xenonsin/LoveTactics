@@ -33,11 +33,13 @@ local Sprite = require("models.sprite")
 local BuildingMap = require("ui.building_map")
 local BurgerButton = require("ui.burger_button")
 local CoachBubble = require("ui.coach_bubble")
+local TutorialNote = require("ui.panels.tutorial_note") -- ...and the window that says what a wound IS
 local Conversation = require("models.conversation")
 local Class = require("models.class")
 local Vendor = require("models.vendor")  -- hasMarkedStock: the unread half of a shop's dot
 local Market = require("models.market")  -- hasUnread: the one shop whose dot is not a shelf question
 local Item = require("models.item")
+local Curse = require("models.curse")        -- what the company is carrying that the rite would lift
 local Identify = require("models.identify")
 local Wound = require("models.wound")     -- what a dive broke, and this door-step is where it stops being true
 local VendorVisit = require("models.vendor_visit") -- what a shop says before it shows you the shelf
@@ -54,6 +56,9 @@ local Descent = require("models.descent")    -- ...and what it reads, plus the m
 -- The plaza's coaching words, as a hint bag rather than strings in this file
 -- (data/conversations/tutorial/conversation_tutorial_city.lua; models/locale.lua's Locale.coach).
 local CITY = "conversation_tutorial_city"
+-- ...and the WINDOWS' words, which are a different bag because they are a different kind of teaching:
+-- a bubble points at a control, a window explains a feature (ui/panels/tutorial_note.lua).
+local NOTES = "conversation_tutorial_notes"
 
 local hub = {}
 
@@ -179,9 +184,30 @@ local INTRO_STAGES = {
     -- It is also the only order the wound ITSELF allows. That room exists because somebody is hurt
     -- (`wound`), and the wound now survives the walk into town -- so on this one morning the city has a
     -- door that is both new and urgent, which is exactly what the coach grammar is for.
+    --
+    -- AND IT IS SPENT BY THE DEED, NOT BY THE DOOR. `mend` says so, and it is the same field shape the
+    -- retired hall stage used (`hire`, still read below) for the same reason: opening a door is not
+    -- learning what is behind it. This stage held for one pass on the press alone, and what that
+    -- bought was a player who walked into the Cathedral, met Xin, said "nothing today" at the desk and
+    -- walked back out into a city that thought the lesson had landed -- carrying the wound, with the
+    -- one room that answers it now just another card among nine.
+    --
+    -- The deed is "nobody is carrying a wound nobody has seen to" (mendingDone), which either row of
+    -- the Inn satisfies: the bone set for gold, or the body laid up for nothing. It is always
+    -- reachable -- resting has no purse test and no gate (models/wound.lua) -- so this can hold the
+    -- stair without ever being a lock, which is the only condition under which a stage may be spent
+    -- on a deed at all.
+    --
+    -- THE DEED IS WIDER THAN THE INSTRUCTION, ON PURPOSE. The bubble inside the room names ONE row --
+    -- the paid one, because resting benches Rowan for the descent the city is about to ask four bodies
+    -- for (ui/panels/ward.lua's header argues it) -- and this clears on either. That gap is the whole
+    -- difference between a recommendation and a rail: a player who reads the window, disagrees, and
+    -- rests has understood the room better than one who pressed the ringed row, and a stage that held
+    -- the plaza against them would be punishing the only evidence that the lesson landed.
     ward = {
         building = "cathedral",
         line = "ward_card",
+        mend = true,
     },
     coach = {
         building = "the_gate",
@@ -193,6 +219,18 @@ local INTRO_STAGES = {
 -- visit at all on a loaded save.
 local function introStage()
     return hub.player and INTRO_STAGES[hub.player.hubIntro] or nil
+end
+
+-- Is there still a wound nobody has seen to? The Ward stage's deed, read off the one predicate the
+-- panel reads too (models/wound.lua's Wound.unattended), so the city and the room cannot disagree
+-- about whether the lesson has landed.
+--
+-- Either row of the Inn answers it -- the bone set for gold, or the body laid up for free -- even
+-- though the bubble in there names only the paid one. Pinning the DEED to one of the two would turn a
+-- recommendation into a rail, and would hand the free path a lock the room's whole legality rests on it
+-- never having (models/wound.lua's ward block).
+local function mendingDone()
+    return #Wound.unattended(hub.player) == 0
 end
 
 -- THE DOORS THE CITY HAS GROWN SINCE THE PLAYER LAST STOOD IN IT, and the one currently being coached.
@@ -296,6 +334,16 @@ end
 
 local function titleCase(s) return (s:gsub("^%l", string.upper)) end
 
+-- IS THE INN'S OWN COACHING IN FORCE? True only while the first morning's Ward stage is unspent, which
+-- (see INTRO_STAGES.ward) is exactly while somebody is still owed a mending. Handed to the room rather
+-- than drawn from here, because the thing being pointed at is a ROW inside a modal and only the modal
+-- knows where its rows landed -- the same division of labour the plaza's own bubble keeps with the
+-- building map.
+local function coachingMend()
+    local stage = introStage()
+    return stage ~= nil and stage.mend == true
+end
+
 -- The stash filters the Armory (Loadout) panel offers: one chip per item type, weapon type and
 -- discipline PRESENT in the stash, so the strip only ever offers a cut that returns something rather
 -- than a wall of the whole taxonomy (5 types, 13 weapon families, 37 disciplines) most of which the
@@ -384,6 +432,9 @@ local function newPanel(moduleName, vendorId, title, onClose)
         -- tab to be read (Descent.autoUnlocked). The panel's own default is on, so this is the only place
         -- the city says otherwise.
         tactics = (moduleName ~= "party") or Descent.tacticsUnlocked(hub.player),
+        -- The Inn's rows wear the coach bubble on the one morning the city is holding the plaza until
+        -- one of them is pressed (INTRO_STAGES.ward). Every other panel ignores the field.
+        coach = (moduleName == "ward") and coachingMend() or nil,
         -- THE HIRING HALL HANDS THE SCREEN OVER MID-VISIT. A pull opens a reveal
         -- (ui/panels/hire_reveal.lua) that owns the whole screen, and the hall goes back UNDER it
         -- rather than beside it -- so this state swaps `activePanel` for the reveal and swaps the hall
@@ -455,6 +506,46 @@ local function launchPanel(building)
     activePanel = newPanel(building.panel, building.vendor, building.name, dismissPanel)
 end
 
+-- A WOUND EXPLAINS ITSELF, ONCE, IN THE DOORWAY OF THE ROOM THAT ANSWERS IT.
+--
+-- The beat it lands on is the end of the Cathedral's `intro` -- the scene Xin joins out of
+-- (models/counter.lua's afterIntro, which exists for this). That is the exact moment the player has
+-- everything the lesson needs and nothing that explains it: a healer who just walked into the company
+-- because somebody is hurt, a wound on a body they watched go down at the end of Act 0, and a desk one
+-- press away with a line on it about mending. What is missing is the rule -- that the band on the bar
+-- is held back, that coming home does not lift it, and that there are two ways out priced against
+-- different things.
+--
+-- A WINDOW, NOT A BUBBLE. "Rest is free and costs trips; gold costs gold and costs nothing else" is a
+-- rule with a consequence, and a tail on a row cannot carry one (ui/panels/tutorial_note.lua draws that
+-- line). The bubble's half of the job is next: it goes on one of the rows, inside the room, and says
+-- only press (see coachingMend).
+--
+-- AND THE TWO DIVIDE THE WORK RATHER THAN REPEATING IT. This window teaches both ways out and ranks
+-- neither, because the ranking is not a property of wounds -- it is a property of THIS morning, where
+-- the company is three bodies deep and the stair wants four. So the window states the rule and the
+-- bubble makes the call, which is also the only order in which the call can be argued for.
+--
+-- GATED ON THERE BEING A WOUND rather than on the building, so it can never open onto nothing. Today
+-- the Cathedral is the only house with an `intro` at all, so that gate and "is this the Inn's door" are
+-- the same question -- but the honest one is the one about the lesson's subject, and it is the one that
+-- stays true when the second house grows a scene.
+--
+-- NO LEDGER OF ITS OWN. The intro scene fires exactly once, ever, off `flags.intro_<id>`, and this
+-- rides it -- which is the whole reason the seam was put there rather than on the desk. A second flag
+-- for "has the window been read" would be a second thing that can disagree with the first.
+local function teachWounds(go)
+    if mendingDone() then return go() end
+    activePanel = TutorialNote.new({
+        title = Locale.line(NOTES, "wound_title"),
+        body = Locale.line(NOTES, "wound_body"),
+        onClose = function()
+            activePanel = nil
+            go()
+        end,
+    })
+end
+
 -- THE SEVEN COUNTERS. The house speaks, ends on a desk of rooms, and a room the player picks opens over
 -- the city -- closing it comes back to the desk rather than to the plaza, so a player can set a bone,
 -- read a find and browse the shelf without the door shutting between them (models/counter.lua).
@@ -473,7 +564,11 @@ function hub.openCounter(building)
     end, function()
         -- Walked out. The city is already underneath; nothing to switch back to.
         activePanel = nil
-    end)
+    end, {
+        -- One beat between a house's first-visit scene and its desk, and the only house that has one
+        -- is the Cathedral (see teachWounds). `go` is the hand-back this owes the counter.
+        afterIntro = teachWounds,
+    })
 end
 
 -- WALK THROUGH A DOOR, whichever kind it is.
@@ -530,15 +625,15 @@ local function openPanel(building)
             return
         end
         -- SPENT BY THE DEED, NOT BY THE DOOR -- and only the Gate's stage can be spent on the door,
-        -- because opening the Gate IS leaving the city. The hall's stage is spent by the hire joining
-        -- the company (see introAdvance), so a player who walks in, reads her card and walks out is
-        -- coached back to the room rather than left in a city that thinks the lesson landed.
-        -- THE CATHEDRAL HANDS ON TO THE STAIR rather than ending the intro: two doors are coached on the
-        -- first morning now (see INTRO_STAGES), and a stage that cleared here would leave the Rift --
-        -- the door the whole mode is behind -- uncoached on the one visit that teaches the city.
-        if stage.building == "cathedral" then
-            hub.player.hubIntro = "coach"
-        elseif not stage.hire then
+        -- because opening the Gate IS leaving the city. A stage that names a deed (`hire`, `mend`) is
+        -- spent by introAdvance when the deed lands, so a player who walks in, looks around and walks
+        -- out is coached back to the room rather than left in a city that thinks the lesson landed.
+        --
+        -- THE CATHEDRAL HANDS ON TO THE STAIR rather than ending the intro, and it does that from
+        -- introAdvance for the reason above: two doors are coached on the first morning now (see
+        -- INTRO_STAGES), and a stage that cleared here would leave the Rift -- the door the whole mode
+        -- is behind -- uncoached on the one visit that teaches the city.
+        if not (stage.hire or stage.mend) then
             hub.player.hubIntro = nil
         end
         -- No scene between the COACH and the door. The flier was Rowan spotting the Colosseum's contract
@@ -559,24 +654,34 @@ local function openPanel(building)
     launchVendor(building)
 end
 
--- Has the coached deed been done? Asked every frame while the intro is on a stage that names a hire.
--- Cheap -- a walk of at most four bodies -- and it is the only way this state can hear about it: the
--- join happens inside the hall's own panel, and a panel reporting back up into whatever launched it
--- would be a seam built for one lesson.
+-- Has the coached deed been done? Asked every frame while the intro is on a stage that names one --
+-- `hire` (a body joining) or `mend` (a wound seen to). Cheap -- a walk of at most four bodies -- and
+-- it is the only way this state can hear about either: both happen inside a panel, and a panel
+-- reporting back up into whatever launched it would be a seam built for one lesson.
+--
+-- A stage whose deed is ALREADY done when it comes into force clears on the first frame, and that is
+-- the backstop rather than an accident: the Ward stage is handed on by the arrival scene, and a save
+-- that somehow reaches the city with nobody hurt would otherwise be held at a card whose room has
+-- nothing in it -- a coached door onto a desk with no line on it.
 local function introAdvance()
     local stage = introStage()
-    if not (stage and stage.hire) then return end
-    for _, char in ipairs((hub.player and hub.player.roster) or {}) do
-        if char.id == stage.hire then
-            hub.player.hubIntro = "coach"
-            Player.save()
-            -- The bubble moves to the stair on this frame, so the cursor under it has to as well --
-            -- otherwise the coached card and the highlighted card are two different cards until the
-            -- player happens to touch something (see focusCoachedCard).
-            focusCoachedCard()
-            return
+    if not stage then return end
+    local done
+    if stage.hire then
+        done = false
+        for _, char in ipairs((hub.player and hub.player.roster) or {}) do
+            if char.id == stage.hire then done = true break end
         end
+    elseif stage.mend then
+        done = mendingDone()
     end
+    if not done then return end
+    hub.player.hubIntro = "coach"
+    Player.save()
+    -- The bubble moves to the stair on this frame, so the cursor under it has to as well --
+    -- otherwise the coached card and the highlighted card are two different cards until the
+    -- player happens to touch something (see focusCoachedCard).
+    focusCoachedCard()
 end
 
 -- IS THERE SOMETHING ON THIS HOUSE'S SHELF NOBODY HAS READ -- the dot half of a shop's plate.
@@ -745,6 +850,20 @@ function hub.enter()
             -- behind the door that could clear it, which is the exact failure the Market's branch below
             -- was written for.
             for _, offer in ipairs(Offer.list(hub.player, b)) do
+                -- SOMETHING THE COMPANY IS CARRYING IS HEXED (models/curse.lua). The Touchstone's dot
+                -- wearing the Cathedral's colours, and for the identical argument: a curse is not NEWS,
+                -- it is a thing you are still carrying around, so this is a STATE rather than a
+                -- sighting. It goes out when the last hex is lifted or committed to the rite, never on
+                -- being looked at -- a dot that cleared on the first glance would stop reminding the
+                -- player at the exact moment they decided to deal with it after the next trip.
+                --
+                -- ASKED OF THE ROOM rather than of the building, so it cannot light before the rite is
+                -- on the desk: a dot for a room the counter will not offer yet is a dot with nothing
+                -- behind the door that could clear it, which is the failure the Market's branch below
+                -- was written for.
+                if offer.open and offer.panel == "rite" and Curse.count(hub.player) > 0 then
+                    return true
+                end
                 if offer.open and offer.vendor then
                     -- THE MARKET IS ASKED OF ITS COUNTER, not of its shelf, and it is the one room that
                     -- has to be. `sellsAll` makes the shelf question answer yes for every ware in the

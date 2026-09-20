@@ -159,8 +159,21 @@ end
 
 -- (Re)gather the party's restoratives and clamp the item cursor to the new length. Called on open and
 -- after every use, since draining a stash stack removes it from the list.
+-- TWO SWEEPS, ONE LIST. The draughts first, then every ability the company can cast out here
+-- (Player.partyAbilities -- an `outOfCombat` flag on the ability opts it in). They share the cursor,
+-- the scroll and the row geometry because they answer one question -- what can I spend, on whom,
+-- right now -- and splitting them into two columns would have made the player choose a TAB before
+-- choosing a thing.
+--
+-- `kind` is what tells them apart downstream: "drink" spends a stack and is gone, "cast" spends a
+-- pool that partly refills between fights (Player.camp). Every row that reads differently because of
+-- that branches on this field rather than on whether `quantity` happens to exist.
 function Consumables:refresh()
     self.entries = Player.partyRestoratives(self.player, { party = self.party, stash = self.stash })
+    for _, e in ipairs(self.entries) do e.kind = "drink" end
+    for _, e in ipairs(Player.partyAbilities(self.player, { party = self.party })) do
+        self.entries[#self.entries + 1] = { item = e.item, char = e.char, kind = "cast", where = "grid" }
+    end
     if self.itemCursor > #self.entries then self.itemCursor = math.max(1, #self.entries) end
     if #self.entries == 0 then self.focus = "members" end
     self:clampScroll()
@@ -230,6 +243,36 @@ function Consumables:useSelected()
     local entry = self.entries[self.itemCursor]
     local char = self:currentTarget()
     if not (entry and char) then return end
+
+    -- A CAST, not a swallow. Priced out of the caster's own pools rather than out of a stack, so the
+    -- refusal is about the body holding the spell and not about the body it is pointed at -- which is
+    -- why the message names the caster.
+    if entry.kind == "cast" then
+        local ok, why = Player.canCastOutOfCombat(entry.char, entry.item)
+        if not ok then
+            self:setMsg((entry.char and entry.char.name or "The caster")
+                .. " cannot cast " .. (entry.item.name or "that") .. " -- " .. tostring(why) .. ".", false)
+            return
+        end
+        local fired, result = Player.castOutOfCombat(self.player, entry, char)
+        if not fired then
+            self:setMsg(tostring(result or "Nothing happens."), false)
+            return
+        end
+        -- The road effect reports what it did; nil means it found nothing to work on, and the cost
+        -- was still paid. That is the mistake the player is allowed to make (Player.castOutOfCombat).
+        if result then
+            self:setMsg(string.format("%s casts %s on %s.",
+                entry.char and entry.char.name or "The caster",
+                entry.item.name or "the rite", char.name or "them"), true)
+        else
+            self:setMsg(string.format("%s casts %s -- nothing answers.",
+                entry.char and entry.char.name or "The caster", entry.item.name or "the rite"), false)
+        end
+        self:refresh()
+        return
+    end
+
     if not Player.canUseConsumableOn(char, entry.item) then
         local stat = Player.restorativeStat(entry.item)
         local label = BAR_LABEL[stat] or "pool"
@@ -339,7 +382,7 @@ function Consumables:drawMemberRow(i, char, r)
     -- otherwise), else the name's first letter -- the same fallback the loadout rail uses.
     local ps = MEMBER_H - 16
     local px, py = r.x + 8, r.y + 8
-    local sprite = char.sprite
+    local sprite = Character.spriteOf(char)
     if type(sprite) == "userdata" then
         love.graphics.setColor(1, 1, 1)
         local sw, sh = sprite:getDimensions()
@@ -422,7 +465,7 @@ function Consumables:drawItems()
     if #self.entries == 0 then
         love.graphics.setFont(self.bodyFont)
         love.graphics.setColor(0.6, 0.63, 0.72)
-        love.graphics.printf("No potions to use.", self.rightX, self.contentY + 20, self.rightW, "center")
+        love.graphics.printf("Nothing to use out here.", self.rightX, self.contentY + 20, self.rightW, "center")
         return
     end
 
@@ -439,7 +482,14 @@ function Consumables:drawItemRow(i, entry, r, target)
     local item = entry.item
     -- Dim a flask that would do the CURRENT target no good (their matching pool is full): the row
     -- is still there for another member, but it reads as spent effort on this one.
-    local usable = target and Player.canUseConsumableOn(target, item)
+    local usable
+    if entry.kind == "cast" then
+        -- A spell is dimmed by whether its CASTER can pay, not by the target's pools: the rite is
+        -- just as useful on a body whose bars are full.
+        usable = Player.canCastOutOfCombat(entry.char, item)
+    else
+        usable = target and Player.canUseConsumableOn(target, item)
+    end
     local cursored = (self.focus == "items" and i == self.itemCursor)
 
     love.graphics.setColor(cursored and 0.22 or 0.15, cursored and 0.26 or 0.16, cursored and 0.34 or 0.21)
@@ -468,19 +518,36 @@ function Consumables:drawItemRow(i, entry, r, target)
     love.graphics.print(item.name or "?", tx, r.y + 8)
 
     -- "+N HP" in the pool's own tint -- what one swallow of this flask would pour.
-    local stat = Player.restorativeStat(item)
     local ab = item.activeAbility or {}
-    local mag = ab.healing or ab.restore or 0
-    local c = BAR_COLOR[stat] or { 0.7, 0.7, 0.7 }
-    love.graphics.setFont(self.smallFont)
-    love.graphics.setColor(c[1] * dim + (1 - dim) * 0.5, c[2] * dim + (1 - dim) * 0.5, c[3] * dim + (1 - dim) * 0.5)
-    love.graphics.print("+" .. mag .. " " .. (BAR_LABEL[stat] or stat), tx, r.y + 30)
+    if entry.kind == "cast" then
+        -- WHAT IT COSTS, in the pool's own tint, where a flask prints what it pours. The two rows are
+        -- the same shape saying opposite things -- a draught gives and a spell takes -- and the sign
+        -- in front of the number is what says which.
+        local parts = {}
+        for _, cost in ipairs(require("models.item").costs(ab)) do
+            parts[#parts + 1] = "-" .. (cost.amount or 0) .. " " .. (BAR_LABEL[cost.stat] or cost.stat)
+        end
+        local c = BAR_COLOR[(require("models.item").costs(ab)[1] or {}).stat] or { 0.7, 0.7, 0.7 }
+        love.graphics.setFont(self.smallFont)
+        love.graphics.setColor(c[1] * dim + (1 - dim) * 0.5, c[2] * dim + (1 - dim) * 0.5, c[3] * dim + (1 - dim) * 0.5)
+        love.graphics.print(#parts > 0 and table.concat(parts, "  ") or "free", tx, r.y + 30)
+    else
+        local stat = Player.restorativeStat(item)
+        local mag = ab.healing or ab.restore or 0
+        local c = BAR_COLOR[stat] or { 0.7, 0.7, 0.7 }
+        love.graphics.setFont(self.smallFont)
+        love.graphics.setColor(c[1] * dim + (1 - dim) * 0.5, c[2] * dim + (1 - dim) * 0.5, c[3] * dim + (1 - dim) * 0.5)
+        love.graphics.print("+" .. mag .. " " .. (BAR_LABEL[stat] or stat), tx, r.y + 30)
+    end
 
     -- Quantity on the right, plus where it sits (a stash flask is shared; a grid flask a member
     -- is already carrying), so the player can tell a satchel potion from a carried one.
     love.graphics.setFont(self.smallFont)
     love.graphics.setColor(0.85, 0.87, 0.92)
-    love.graphics.printf("x" .. (item.quantity or 1), r.x, r.y + 8, r.w - 12, "right")
+    -- A stack count means nothing on a spell -- it is a technique somebody knows, not a thing with
+    -- copies -- so the corner names what it IS instead.
+    love.graphics.printf(entry.kind == "cast" and "cast" or ("x" .. (item.quantity or 1)),
+        r.x, r.y + 8, r.w - 12, "right")
     love.graphics.setFont(self.tinyFont)
     love.graphics.setColor(0.55, 0.58, 0.66)
     local from = entry.where == "stash" and "stash" or (entry.char and entry.char.name or "carried")

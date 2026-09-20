@@ -278,8 +278,11 @@ return {
             table.sort(open)
             -- THE MARKET IS THE ONE THAT LEFT. It stood open on the first morning for a long
             -- time on the argument that a shelf of unaffordable things teaches the ladder -- but a
-            -- counter stocks a ware only once the company has carried one out, so the shop it opened
-            -- onto was mostly locked rows anyway (data/buildings/market.lua). It arrives on the first
+            -- counter deals a ware only once the class has grown into it, so the shop it opened onto
+            -- was mostly locked rows anyway (data/buildings/market.lua). (This read "only once the
+            -- company has carried one out" until 2026-09-20: the discovery gate, gone since
+            -- 2026-09-19. The conclusion is unchanged -- a first-morning rack is mostly shut either
+            -- way -- which is exactly why nothing caught the sentence going stale.) It arrives on the first
             -- descent with the rest of them.
             --
             -- THE STAIR IS THE ONLY WAY OUT ON THE FIRST MORNING, and the armory is the only thing to
@@ -380,15 +383,25 @@ return {
         end,
     },
     {
-        -- THE SEVEN SHELVES, and the gate that brought them back: level 1 of the house's own class, in
-        -- any body on the roster (models/building.lua). Pinned in both directions, because the failure
-        -- this replaces was silent -- three gates in a row that nobody could ever satisfy, so seven
-        -- doors sat shut for good and the only tell was a shop nobody could name.
-        name = "a house's SHELF opens at level 1 of its class, and its DOOR on any room behind it",
+        -- THE SEVEN SHELVES, AND THE CARD/ROOM SPLIT THAT REPLACED THEIR GATE.
+        --
+        -- Each shelf used to carry `classLevel = 1` -- level 1 of the house's own class, in any body on
+        -- the roster -- and that gate decided TWO things while the shelf was the only room behind its
+        -- door: whether you could shop, and whether the shopfront existed. The fold gave every house a
+        -- second room and the plaza started drawing doors for THOSE, so the two came apart and the gate
+        -- was left answering only the first: the Undercroft stood open on the market from the first trip
+        -- home with no shop behind it, for any company without a rogue -- which is every company, since
+        -- the roster starts as one knight.
+        --
+        -- So the shelf is ungated and the CARD is held back by `quiet` instead, and this case pins both
+        -- halves. It is asserted in both directions because the failure was silent either way: a gated
+        -- shelf is a shopfront with no shop, and an unquiet one is seven plates on the first morning.
+        name = "a house's SHELF is always behind its door, and its CARD waits on a deed",
         fn = function()
             local Character = require("models.character")
             local Class = require("models.class")
             local Offer = require("models.offer")
+            local Quest = require("models.quest")
             local Wound = require("models.wound")
 
             local function shut(who, id)
@@ -402,9 +415,8 @@ return {
             end
 
             -- Every house names a vendor, that vendor names a class, and the house carries a desk with
-            -- rooms behind it. Without any one of those the door has nothing to read and is shut for
-            -- good -- which is the exact shape of the three failures the class gate replaced, so it is
-            -- asserted rather than assumed.
+            -- rooms behind it. The class is still load-bearing with the gate gone -- Quest.shelfRung
+            -- reads it for the RUNG -- so a vendor without one is a shelf frozen at its bottom band.
             local Vendor = require("models.vendor")
             local houses = 0
             for id, def in pairs(Building.defs) do
@@ -412,64 +424,79 @@ return {
                     houses = houses + 1
                     local vdef = def.vendor and Vendor.defs[def.vendor]
                     assert(vdef, id .. " is a house with no vendor blueprint")
-                    assert(vdef.class, id .. "'s vendor names no class, so its shelf can never open")
+                    assert(vdef.class, id .. "'s vendor names no class, so its shelf can never deepen")
                     assert(def.offers and #def.offers > 0, id .. " is a house with no rooms behind it")
-                    -- Every house keeps its own shelf, and that shelf is what the class level buys.
                     local shelf
                     for _, offer in ipairs(def.offers) do
                         if offer.answer == "shelf" then shelf = offer end
                     end
                     assert(shelf, id .. " keeps no shelf")
-                    assert(shelf.gate and shelf.gate.classLevel == 1,
-                        id .. "'s shelf is not gated on level 1 of its class")
+                    assert(shelf.gate == nil,
+                        id .. "'s shelf is gated; a shopfront that offers no shop is not a shopfront")
+                    assert(shelf.quiet == true,
+                        id .. "'s shelf is not quiet, so browsing alone would put its card on the plaza")
                 end
             end
             assert(houses == 7, "the city is supposed to hold seven houses; it holds " .. houses)
 
-            -- SHUT ON A FRESH SAVE, all seven. Nothing has been climbed, nobody is hurt, nothing has
-            -- been carried up unread and the stair has not been walked -- so not one room is open, and
-            -- therefore not one door is.
+            -- ON A FRESH SAVE: every shelf OPEN, every card SHUT. The two questions, at the one moment
+            -- they most obviously differ -- nothing has been climbed, nobody is hurt, nothing has been
+            -- carried up unread and the stair has not been walked.
             local fresh = Player.new()
-            for _, b in ipairs(Building.list(fresh)) do
-                if Building.defs[b.id].counter then
-                    assert(b.locked, b.id .. " is open on a fresh save")
+            for id, def in pairs(Building.defs) do
+                if def.counter then
+                    assert(shelfOpen(fresh, id), id .. "'s shelf is shut on a fresh save")
+                    assert(shut(fresh, id), id .. "'s card is on the plaza on a fresh save")
                 end
             end
 
-            -- One body, one class, one level: the Bastion's shelf opens and nothing else does -- and
-            -- the CARD stays off the board, because a shelf is quiet (models/offer.lua). A class rung is
-            -- a reward the player cannot see, and it used to put two shopfronts on the plaza the moment
-            -- Act 0 ended.
+            -- AND THE OPEN SHELF IS NOT AN EMPTY ROOM. Ungating it is only an improvement if rung 0
+            -- stocks something -- Quest.shelfRung's own header says level 0 IS rung 0, "the class's
+            -- bottom band", which under the level-1 gate no player could ever reach. Asserted of every
+            -- house, because a house whose bottom band is all locked rows is the old bug wearing a shop.
+            for id, def in pairs(Building.defs) do
+                if def.counter then
+                    local gates = Quest.shelfGates(fresh, def.vendor)
+                    assert(gates.rung == 0, id .. " does not sit at rung 0 for a company with no class")
+                    local buyable = 0
+                    for _, row in ipairs(Quest.shelf(fresh, def.vendor) or {}) do
+                        if not row.locked then buyable = buyable + 1 end
+                    end
+                    assert(buyable > 0, id .. "'s rung-0 shelf has nothing on it a fresh company can buy")
+                end
+            end
+
+            -- A CLASS LEVEL BUYS DEPTH NOW, not the door. One body, one class, one level: the rung the
+            -- Bastion's shelf reads climbs, and the plaza does not move.
             local knight = Player.new()
             knight.roster = { Character.instantiate("character_rowan") }
             Character.recordTechnique(knight.roster[1], "knight", Class.classLevelCost(1))
-            assert(shelfOpen(knight, "bastion"), "knight 1 did not open the Bastion's shelf")
-            assert(shut(knight, "bastion"), "...and must not have opened its door")
-            assert(not shelfOpen(knight, "arcanum"), "knight 1 opened the mages' shelf as well")
-            assert(shut(knight, "arcanum"), "and its door with it")
-
-            -- THE DOOR AND THE SHELF ARE TWO QUESTIONS, and the Cathedral is the case that forced them
-            -- apart. A company walks out of Act 0 with Rowan hurt and no priest in the world: the shelf
-            -- stays shut, the mending is open, and the DOOR has to be open or the only bone-setting in
-            -- the game is behind a class nobody has.
-            local hurt = Player.new()
-            Wound.inflict(hurt, { { id = "character_rowan" } })
-            assert(not shelfOpen(hurt, "cathedral"), "a wound is not a priest level")
-            assert(not shut(hurt, "cathedral"), "a wound must stand the Cathedral's door open")
+            assert(Quest.shelfRung(knight, "bastion") == 1, "knight 1 did not raise the Bastion's rung")
+            assert(Quest.shelfRung(knight, "arcanum") == 0, "knight 1 raised the mages' rung as well")
+            assert(shut(knight, "bastion"), "a class level must not put a card on the plaza")
+            assert(shut(knight, "arcanum"), "and its neighbour's with it")
 
             -- ANY body on the roster, not the one standing in front of you: a shelf is bought from with
-            -- one purse into one stash, so the company's deepest holder is what the gate asks about.
+            -- one purse into one stash, so the company's deepest holder is what the rung asks about.
             local pair = Player.new()
             pair.roster = { Character.instantiate("character_kaya"), Character.instantiate("character_rowan") }
             Character.recordTechnique(pair.roster[2], "priest", Class.classLevelCost(1))
-            assert(shelfOpen(pair, "cathedral"), "a second body's class level did not open its shelf")
+            assert(Quest.shelfRung(pair, "cathedral") == 1, "a second body's class level did not count")
 
-            -- A hair under the rung is still shut: the gate is the LEVEL, not the technique banked
+            -- A hair under the rung does not count: the reading is the LEVEL, not the technique banked
             -- toward it.
             local nearly = Player.new()
             nearly.roster = { Character.instantiate("character_rowan") }
             Character.recordTechnique(nearly.roster[1], "rogue", Class.classLevelCost(1) - 1)
-            assert(not shelfOpen(nearly, "undercroft"), "a rung short of rogue 1 opened the shelf anyway")
+            assert(Quest.shelfRung(nearly, "undercroft") == 0, "a rung short of rogue 1 counted anyway")
+
+            -- WHAT PUTS A CARD ON THE PLAZA is the deed a player can feel. A company walks out of Act 0
+            -- with Rowan hurt and no priest in the world: the mending opens, and the Cathedral's door
+            -- with it -- or the only bone-setting in the game is behind a class nobody has.
+            local hurt = Player.new()
+            Wound.inflict(hurt, { { id = "character_rowan" } })
+            assert(not shut(hurt, "cathedral"), "a wound must stand the Cathedral's door open")
+            assert(shut(hurt, "colosseum"), "and must not open anybody else's")
         end,
     },
     {

@@ -548,6 +548,16 @@ function Player.new()
         -- has walked up the stair. What reads it is the one-time coach that teaches the mark on the bar
         -- (states/game.lua's inflictWounds). One-way, so the lesson is taught exactly once ever.
         wounded = false,
+        -- THE OTHER THING THE CATHEDRAL FIXES (models/curse.lua). `cursed` is the same one-way mark as
+        -- `wounded` above, for the same reason: it gates the rite's line on the Cathedral's desk, and a
+        -- gate that read a live count would take the room off the desk the moment the last hex was
+        -- lifted -- which is the moment the player has just learned what the room is.
+        cursed = false,
+        -- ...and what the priests are holding while they work on it: { item, left } per piece committed
+        -- to the free rite, `left` being trips still to serve (Curse.commit / Curse.tickRites). These
+        -- items are in no grid and in no stash while the rite runs, so this list is the only place they
+        -- exist -- which is why it is saved rather than derived.
+        rites = {},
         meal = nil,           -- the one supper bought at the Cafe and not yet eaten through (models/meal.lua)
         materials = {},       -- material id -> count; spent at the Blacksmith (see models/material.lua)
         recipes = {},         -- item id -> tier level; a consumable bought at its vendor comes at this level
@@ -1035,6 +1045,143 @@ function Player.consumeRestorative(player, entry, char)
         end
     end
     return amount, stat
+end
+
+-- ---------------------------------------------------------------------------
+-- CASTING OUTSIDE A FIGHT
+-- ---------------------------------------------------------------------------
+--
+-- THE GAP THIS CLOSES, in the words of the block directly above it: the Use panel gathers "every
+-- restorative DRAUGHT the company can reach", and Player.canUseConsumableOn refuses anything else with
+-- the comment "a Heal SPELL is not a draught". That was right about flasks and it meant there was no
+-- path in the game for a CAST outside a battle -- so a priest carrying a Heal could do nothing with it
+-- on a road, and the Exorcist's rite had nowhere to be used at all.
+--
+-- ONE FLAG OPENS THE WHOLE CLASS. An ability declares `outOfCombat = true` on its activeAbility and this
+-- sweep finds it, exactly as its twin finds draughts. Heal, Cure, Revive and The Lesser Rite all light
+-- up together the day somebody stamps them, and a new one is opted in by an author rather than by a
+-- list here that could go stale.
+--
+-- WHY A SEPARATE SWEEP RATHER THAN WIDENING THE OTHER ONE. Because the two are spent differently and the
+-- panel has to say so: a draught decrements a stack and is gone, and a cast spends a POOL that partly
+-- refills between fights (Player.camp). Merging them would have produced one list whose rows meant two
+-- different things about what you are giving up, which is the readout failure this file avoids
+-- everywhere else.
+--
+-- WHAT IT COSTS IS WHAT IT COSTS IN A FIGHT -- no surcharge, authored decision. The brake is that mana
+-- is itself a carried resource on an expedition: healing with it now is not having it for the next
+-- fight, and camp only hands part of it back. Worth watching in play; it is the one number here that a
+-- session of real descents could argue with.
+
+-- Every ability the company can cast outside a battle, gathered from each member's grid into one list
+-- for the overworld panel. Entries are { item, char } -- the caster is the body whose grid it sits in,
+-- because an ability is a technique somebody knows rather than a thing that can be passed round.
+--
+-- NO STASH, and that is the difference from the draught sweep. A flask in the satchel can be handed to
+-- anyone; a spell in the satchel is a book nobody has read. `opts.party` narrows to the four who walked
+-- down, exactly as its twin does, so a trip stays provisioned.
+function Player.partyAbilities(player, opts)
+    local out = {}
+    local bodies = (opts and opts.party) or (player and player.roster) or {}
+    for _, char in ipairs(bodies) do
+        for _, item in ipairs(Character.eachItem(char)) do
+            local ab = item and item.activeAbility
+            if ab and ab.outOfCombat then out[#out + 1] = { item = item, char = char } end
+        end
+    end
+    return out
+end
+
+-- Can `caster` cast `item` right now, out here? Returns true, or false plus a reason the panel prints.
+--
+-- ONLY THE COSTS, because everything else Combat.itemBlockReason checks is about a board -- a target in
+-- range, a turn not yet spent, a status that silences. None of those exist on a road, and asking about
+-- them would refuse every cast for reasons that cannot be true.
+function Player.canCastOutOfCombat(caster, item)
+    local ab = item and item.activeAbility
+    if not (ab and ab.outOfCombat) then return false, "not a road spell" end
+    if not caster then return false, "nobody to cast it" end
+    local Item = require("models.item")
+    for _, cost in ipairs(Item.costs(ab)) do
+        local pool = caster.stats and caster.stats[cost.stat]
+        local have = (type(pool) == "table") and (pool.current or 0) or (pool or 0)
+        if have < (cost.amount or 0) then
+            return false, "not enough " .. tostring(cost.stat)
+        end
+    end
+    return true
+end
+
+-- Pay for `item`'s cast out of `caster`'s pools. Returns true once every price is met and taken.
+--
+-- CHECKED IN FULL BEFORE ANYTHING IS SPENT, which matters for a two-pool cast: a crescent blade priced
+-- in mana AND stamina must not take the mana and then find the stamina short, leaving the caster poorer
+-- and the spell uncast. Combat's own spend path draws the same line.
+function Player.payCastCost(caster, item)
+    local ok, why = Player.canCastOutOfCombat(caster, item)
+    if not ok then return false, why end
+    local Item = require("models.item")
+    for _, cost in ipairs(Item.costs(item.activeAbility)) do
+        local pool = caster.stats and caster.stats[cost.stat]
+        if type(pool) == "table" then
+            pool.current = math.max(0, (pool.current or 0) - (cost.amount or 0))
+        end
+    end
+    return true
+end
+
+-- THE ROAD'S OWN EFFECT CONTEXT, and it is deliberately tiny.
+--
+-- An ability's `effect` is written against Combat's fx table -- forty verbs about a board, a turn order
+-- and a target standing on a tile, none of which exist out here. Faking one would mean forty stubs that
+-- silently do nothing, which is the single worst failure shape this codebase has (a field that parses,
+-- ships and does nothing). So an ability that works on the road declares a SECOND, smaller effect,
+-- `roadEffect`, and says out loud what the road version of it is.
+--
+-- That is honest rather than lazy, and it is usually a different spell: The Lesser Rite in a fight lifts
+-- a hex AND bursts, and on a road it lifts the hex -- there is nobody standing there to burn.
+--
+-- Four verbs, which is what the approved stock actually needs. Widen it when something wants more, and
+-- never by adding a stub.
+local function roadCtx(player, caster, target)
+    local Combat = require("models.combat")
+    return {
+        player = player,
+        caster = caster,
+        target = target or caster,
+        -- Pour into a pool, capped at the ceiling a wound may have lowered (Combat.unreservedMax, the
+        -- one cap). Returns what actually landed, so a caller can say "+6 health" and mean it.
+        restore = function(char, stat, amount)
+            return Combat.restoreResource(char or target or caster, stat, amount or 0)
+        end,
+        heal = function(char, amount)
+            return Combat.restoreResource(char or target or caster, "health", amount or 0)
+        end,
+        -- Take the worst hex off a body (models/curse.lua). The Lesser Rite's whole road behaviour.
+        liftCurse = function(char)
+            local Curse = require("models.curse")
+            local worst = Curse.deepestOn(char or target or caster)
+            if not worst then return nil end
+            return Curse.lift(worst)
+        end,
+        say = function() end, -- the panel narrates from the return value; a hook needs no channel
+    }
+end
+
+-- Cast `entry` (from Player.partyAbilities) on `targetChar`, out here. Pays first, then runs the road
+-- effect. Returns true plus whatever the effect reported, or false plus a reason.
+--
+-- THE COST IS TAKEN BEFORE THE EFFECT RUNS and is not refunded if the effect finds nothing to do --
+-- the same rule combat keeps, and the reason a cast at a body with nothing wrong with it is a mistake
+-- the player is allowed to make. The panel's job is to make that mistake hard, not impossible.
+function Player.castOutOfCombat(player, entry, targetChar)
+    local item = entry and entry.item
+    local caster = entry and entry.char
+    local ab = item and item.activeAbility
+    if not (ab and ab.roadEffect) then return false, "nothing happens out here" end
+    local ok, why = Player.payCastCost(caster, item)
+    if not ok then return false, why end
+    return true, ab.roadEffect(roadCtx(player, caster, targetChar))
 end
 
 -- ---------------------------------------------------------------------------

@@ -110,6 +110,21 @@ function ItemHook.dispatch(event, ctx)
                 ctx.char = char
                 hook(item, ctx)
             end
+            -- ...AND THE HEX ON THE PIECE, which may declare the same hooks (models/curse.lua). A curse
+            -- speaks the item's own vocabulary everywhere else -- `bonus`, `rules`, `traits`,
+            -- `openingBoon` are all folded beside the piece's own -- and this is that rule reaching the
+            -- one seam that runs BETWEEN fights rather than inside one. The Spreading needs it: a hex
+            -- that creeps to the next cell has to fire somewhere, and the end of a fight is the only
+            -- moment on an expedition that a grid is quiet enough to rewrite.
+            --
+            -- Called with the ITEM, not the curse, so a hook can reach the piece it is riding -- which
+            -- is what a spread has to know (Curse.spreadWithin takes the cell it starts from).
+            local curse = require("models.curse").of(item)
+            local chook = curse and curse[event]
+            if type(chook) == "function" then
+                ctx.char = char
+                chook(item, ctx)
+            end
         end
     end
     ctx.char = nil

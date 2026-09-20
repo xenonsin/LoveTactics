@@ -78,10 +78,26 @@ end
 --                              sequence. `room.vendor` is the counter behind the room, which is not
 --                              always the house's own: see models/offer.lua's note on folded rooms.
 --   onLeave()                  optional, fired once when the player walks out.
+--   opts.afterIntro(go)        optional, fired ONCE -- on the single visit the house's `intro` scene
+--                              plays -- after that scene and before the desk. The host does whatever
+--                              it wants over the city and calls `go()` to hand back; not passing it,
+--                              or not calling back, is what would leave the player standing on a
+--                              closed scene, so a host that takes the seam owes the call.
+--
+-- WHY THE SEAM EXISTS AT ALL, since this file spent its first draft with no hooks in it: the
+-- Cathedral's intro is the scene Xin joins out of (`grants`), and what the player is holding the
+-- moment it ends is a wound and no idea that a wound is a thing you go and answer. That is a FEATURE
+-- lesson -- a tutorial window, not a bubble (ui/panels/tutorial_note.lua draws the line) -- and a
+-- window is a panel, which this module deliberately knows nothing about. So the host is handed the
+-- beat instead of this module learning what a modal is.
+--
+-- Keyed on the intro rather than on a flag of its own, which is the whole reason it is offered HERE
+-- and not from the desk: `flags.intro_<id>` already fires exactly once, ever, and a second ledger for
+-- "has the window been seen" would be a second thing that can disagree with the first.
 --
 -- `startAt` is nil on the way in -- the first visit of a session plays the scene whole -- and the desk's
 -- own id on every return from a room.
-function Counter.open(player, building, openPanel, onLeave)
+function Counter.open(player, building, openPanel, onLeave, opts)
     assert(Counter.has(building), "no counter scene for " .. tostring(building and building.id))
 
     local function leave()
@@ -136,7 +152,11 @@ function Counter.open(player, building, openPanel, onLeave)
         player.flags[introFlag] = true
         if building.grants then Player.recruit(player, building.grants) end
         Player.save()
-        Conversation.play(building.intro, function() desk(nil) end)
+        local afterIntro = opts and opts.afterIntro
+        Conversation.play(building.intro, function()
+            if afterIntro then return afterIntro(function() desk(nil) end) end
+            desk(nil)
+        end)
         return
     end
     greet()

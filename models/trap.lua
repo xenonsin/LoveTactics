@@ -53,6 +53,14 @@ local function ctxFor(combat, trap, victim)
             if not tgt then return nil end
             return Status.apply(combat, tgt, id, opts)
         end,
+        -- SINK A HEX INTO ONE PIECE OF THE VICTIM'S KIT (models/curse.lua). The trap's version of
+        -- fx.curse, and the vector a curse is most at home on: a thing laid in the ground that gets into
+        -- what you are carrying. `id` names the curse; omitted, the rift's shallowest is rolled.
+        -- Returns the item and the id, or nil when the grid had nothing a hex could take hold of.
+        curse = function(tgt, id)
+            if not tgt then return nil end
+            return Combat.curseItem(combat, tgt, id)
+        end,
         unitsNear = function(x, y, radius) return Combat.unitsNear(combat, x, y, radius) end,
     }
 end

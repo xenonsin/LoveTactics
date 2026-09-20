@@ -209,7 +209,14 @@ return {
                 local bp = Item.defs[entry.id]
                 local onShelf = Class.descendsFrom(bp.class, "rogue")
                 assert(onShelf, entry.id .. " is on the rogue shelf without being a rogue item or a rogue-discipline guest")
-                assert(entry.price, entry.id .. " is for sale with no price")
+                -- A MONSTER DROP IS THE ONE ROW WITH NO PRICE, and it is on the rack to be READ
+                -- rather than bought (models/vendor.lua's lockReason). Everything else a counter
+                -- shows, it is willing to deal.
+                if entry.lockReason == "monster drop" then
+                    assert(not entry.price, entry.id .. " is a trophy and must quote no price")
+                else
+                    assert(entry.price, entry.id .. " is for sale with no price")
+                end
             end
 
             assert(ids.ability_pickpocket, "pickpocket should be a rogue item")
@@ -373,7 +380,8 @@ return {
                 -- ...UNLESS IT HAS LEFT THE SHELF ALTOGETHER, which one of them now has. Wellspring
                 -- Sandals are the Meandering Stag's (data/characters/character_meandering_stag.lua) and
                 -- carry `unstocked`: no counter deals one however many the company carries out, and
-                -- none will buy one back. That is a deliberate, heavier reading of docs/drops.md than
+                -- none will buy one back. (It is SHOWN on the rack all the same, greyed as a
+                -- "monster drop" -- since 2026-09-20. What the flag takes is the price, not the row.) That is a deliberate, heavier reading of docs/drops.md than
                 -- the rest of this group got -- for the other four a drop is a head start, and for this
                 -- one it is the only road -- so the "it has a home" promise above genuinely does not
                 -- apply, and asserting it would be asserting the decision was not made.
@@ -382,7 +390,8 @@ return {
                 -- later does not redden this file before anybody has looked at it.
                 if def.unstocked then
                     assert(def.dropTier,
-                        id .. " is off every counter and has no depth, so nothing can pay it at all")
+                        id .. " is unbuyable at every counter and has no depth, so nothing can pay it "
+                        .. "at all -- and with no tier it cannot even be placed on a rack to be read")
                 else
 
                 local found

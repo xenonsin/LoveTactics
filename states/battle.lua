@@ -5230,13 +5230,14 @@ local function commitDeploy(opts, deployed, front, placed)
     for _, unit in ipairs(battle.combat.units) do
         if unit.alive and unit.char then
             for _, item in ipairs(Character.eachItem(unit.char)) do
-                local boon = item.openingBoon
-                -- One entry, or a list of them. A single table is the overwhelmingly common shape, so
-                -- it is written bare rather than wrapped in a one-element list by every author.
-                if boon then
-                    for _, b in ipairs(boon.id and { boon } or boon) do
-                        Status.apply(battle.combat, unit, b.id, b.opts)
-                    end
+                -- THE PIECE'S OWN BOON, AND THE ONE ITS HEX BRINGS, through one list. A curse declares
+                -- the item's own fields (models/curse.lua) and `openingBoon` is one of them, pointed the
+                -- other way round -- the cheapest way to make a hex felt in every fight rather than in a
+                -- stat nobody re-reads. Curse.openingBoons joins the two and unwraps the bare-table
+                -- shape an author may write, so what arrives here is always a flat list of `{ id, opts }`
+                -- and a hex's bleed is indistinguishable from a charm's blessing once it has landed.
+                for _, b in ipairs(require("models.curse").openingBoons(item)) do
+                    Status.apply(battle.combat, unit, b.id, b.opts)
                 end
             end
         end

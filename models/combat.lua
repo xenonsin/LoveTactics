@@ -52,6 +52,7 @@ local Wall = require("models.wall")
 local Prop = require("models.prop")
 local Character = require("models.character")
 local Item = require("models.item") -- for Item.costs: the one place an ability's costs are normalized
+local Curse = require("models.curse") -- the hex a grid piece may be carrying, folded beside the piece
 local Class = require("models.class") -- growthClasses: which classes a use tallies
 local Growth = require("models.growth") -- classOf: the class a body stands in, which takes a share of every award
 local Experience = require("models.experience") -- what a body earns for acting; the descent spends it
@@ -1122,6 +1123,10 @@ end
 
 local function applyUnitPassives(unit)
     unit.bonus, unit.resist = {}, {}
+    -- Cleared rather than emptied, and rebuilt from scratch below like everything else here: an
+    -- immunity that outlived the grid it came off would be a body that kept shrugging off blades after
+    -- the bound piece granting it was gone. Nil is the common case (nothing declares one).
+    unit.immune = nil
     -- THE BODY'S OWN HIDE, seeded before anything is layered over it (Character.instantiate's `resist`).
     -- A creature wears no coat, so this is where its scale, husk or grave-cold subtracts from -- in the
     -- same unit, and into the same total, as the `item.resist` fold directly below. Seeded FIRST so an
@@ -1142,11 +1147,59 @@ local function applyUnitPassives(unit)
     local itemRules = nil
     for _, item in ipairs(Character.eachItem(unit.char)) do
         itemRules = Item.mergeRules(itemRules, item.rules)
+        -- THE HEX ON THIS PIECE, folded as if it were a SECOND ITEM in the same cell (models/curse.lua).
+        --
+        -- A curse declares the item's own fields -- `bonus`, `resist`, `maxBonus`, `unarmedBonus`,
+        -- `rules` -- and they are summed into the same totals the piece's own are, immediately below,
+        -- because that is the only way its -3 defense can be the same quantity a coat's +3 is. The whole
+        -- curve is tuned on one subtractive figure (docs/balance.md), and a penalty that arrived through
+        -- a table of its own would be a second axis nothing else in the game is measured against.
+        --
+        -- ITS RULES MERGE FIRST, so that on a tie the CURSE wins. Item.mergeRules is first-wins for
+        -- every name but the damage multiplier, and a hex that could be shrugged off by the piece it is
+        -- attached to declaring the same rule would be a curse the player cancels by accident.
+        local curse = Curse.of(item)
+        if curse then
+            itemRules = Item.mergeRules(itemRules, curse.rules)
+            for stat, amount in pairs(curse.bonus or {}) do
+                unit.bonus[stat] = (unit.bonus[stat] or 0) + amount
+            end
+            for tag, amount in pairs(curse.resist or {}) do
+                unit.resist[tag] = (unit.resist[tag] or 0) + amount
+            end
+            for stat, amount in pairs(curse.unarmedBonus or {}) do
+                unit.unarmedBonus[stat] = (unit.unarmedBonus[stat] or 0) + amount
+            end
+            for stat, amount in pairs(curse.maxBonus or {}) do
+                maxBonus[stat] = (maxBonus[stat] or 0) + amount
+            end
+        end
         for stat, amount in pairs(item.bonus or {}) do
             unit.bonus[stat] = (unit.bonus[stat] or 0) + amount
         end
         for tag, amount in pairs(item.resist or {}) do
             unit.resist[tag] = (unit.resist[tag] or 0) + amount
+        end
+        -- ...and the CATEGORICAL version of the line above, which is a different kind of thing and is
+        -- folded as one. `item.immune = { slash = true }` says a blow carrying that tag does not land at
+        -- all -- no arithmetic, no floor of 1 -- where `resist` says it lands for less. Kept as a
+        -- separate table rather than a very large resist for the reason docs/vulnerability.md gives: a
+        -- resistance floors at 1 and a scratch is still a hit (it counters, it feeds Rimebitten, it
+        -- wakes a sleeper), so no pile of subtraction ever reaches the true 0 this buys.
+        --
+        -- ON AN ITEM AND NEVER ON THE BLUEPRINT, which is the Demon Lord's crown argument
+        -- (tests/bestiary_spec.lua, "a demon takes holy the harder"): a body's per-tag line may live one
+        -- layer out, on a bound piece it can never take off, and then the thing has a NAME -- which is
+        -- what the log line reads back when a blow lands on nothing ("...is immune to the blow (Nothing
+        -- to Cut)"). A character-level table would have had to invent one.
+        --
+        -- Left NIL unless something declares one, so the overwhelming majority of bodies allocate
+        -- nothing and Status.immuneToDamage's innate branch costs them a single nil check.
+        if item.immune then
+            unit.immune = unit.immune or {}
+            for tag, on in pairs(item.immune) do
+                if on then unit.immune[tag] = item end
+            end
         end
         for stat, amount in pairs(item.unarmedBonus or {}) do
             unit.unarmedBonus[stat] = (unit.unarmedBonus[stat] or 0) + amount
@@ -1948,10 +2001,15 @@ Combat.FREE_ACTIONS_PER_TURN = 1
 -- Resonant Grip). A closed set rather than "any tag on the cast": a strike must not start carrying
 -- `utility` or `charm` around, and armour `resist` is keyed on exactly these words, so widening the set
 -- would quietly change what plate turns aside.
-Combat.ELEMENT_TAGS = {
-    fire = true, ice = true, lightning = true, water = true,
-    dark = true, holy = true, acid = true, poison = true,
-}
+--
+-- AUTHORED AS AN ORDERED LIST and derived into the set, because two readers now walk it looking for
+-- "the element on this thing" and a walk of a hash set is a walk in whatever order the interpreter
+-- feels like today. A `pairs` order that shifts when an unrelated file is required is a seeded fight
+-- that stops replaying (tests/determinism_spec.lua), which is a very expensive way to find out.
+Combat.ELEMENTS = { "fire", "ice", "lightning", "water", "dark", "holy", "acid", "poison" }
+
+Combat.ELEMENT_TAGS = {}
+for _, t in ipairs(Combat.ELEMENTS) do Combat.ELEMENT_TAGS[t] = true end
 
 -- How many free actions `unit` has left this turn. The single reader for both the spend in resolveCast
 -- and the grey-out in Combat.itemBlockReason, so the button and the rule can never disagree.
@@ -7777,20 +7835,54 @@ local function relicOutgoing(user, target, base)
     return base
 end
 
+-- The ELEMENT A UNIT'S WEAPON STRIKES CARRY, whatever put it there, or nil for the great majority who
+-- swing plain steel. One reader, two sources:
+--
+--   THE RESONANT GRIP (the Battlemage's charm, `carriesLastElement`) -- the element of whatever its
+--     bearer last cast, remembered on every caster in the game (`unit.lastCastElement`, stamped in
+--     resolveCast) so a charm bought three turns in does not begin empty.
+--   A WARDED BODY (`carriesWardedElement`) -- whatever it is currently proof against. A thing that
+--     drinks an element and then throws it back reads it straight off the immunity it gained, rather
+--     than off a second field beside it, so the two halves of an adaptation can never disagree about
+--     which element it is wearing (data/traits/trait_adaptive.lua).
+--
+-- Both are TAGS rather than damage bonuses, which is the whole design: a tag reaches armour `resist`,
+-- the per-type immunities, the elemental interactions (a lightning blow arcing into water, a fire blow
+-- biting a Wet body) and the scaling at once, so the same clause makes a strike situationally
+-- brilliant and situationally useless where a flat bonus never could.
+function Combat.strikeElement(unit)
+    if not unit then return nil end
+    if unit.lastCastElement and Trait.flag(unit, "carriesLastElement") then
+        return unit.lastCastElement
+    end
+    if Trait.flag(unit, "carriesWardedElement") then
+        -- The statuses in their own order, and within one status the authored element order
+        -- (Combat.ELEMENTS) rather than a hash walk -- a seeded fight has to replay the same way.
+        for _, s in ipairs(unit.statuses or {}) do
+            local im = s.def.immune
+            if im then
+                for _, t in ipairs(Combat.ELEMENTS) do
+                    if im[t] then return t end
+                end
+            end
+        end
+    end
+    return nil
+end
+
+-- Add that element to a blow's tag set, in place. Only ever onto a NON-magical strike: a spell already
+-- has its own element, and letting the memory of one Fireball overwrite another would be a bug that
+-- reads as flavour.
+local function foldStrikeElement(user, tags)
+    if hasTag(tags, "magical") then return end
+    local element = Combat.strikeElement(user)
+    if element then tags[#tags + 1] = element end
+end
+
 function Combat.dealDamage(combat, user, target, item, opts)
     opts = opts or {}
     local tags = collectTags(item, opts)
-    -- THE RESONANT GRIP (the Battlemage's): a bearer's weapon strikes carry the element of whatever they
-    -- last cast. Folded into the tag set here, so it reaches armour `resist`, the elemental interactions
-    -- (a lightning strike arcing into water, a fire blow burning through Wet) and the damage scaling all
-    -- at once -- which is the whole point of it being a tag rather than a damage bonus.
-    --
-    -- Only for a NON-magical strike: a spell already has its own element, and letting the grip overwrite
-    -- one Fireball with the memory of another would be a bug that reads as flavour.
-    if not hasTag(tags, "magical") and user and user.lastCastElement
-        and Trait.flag(user, "carriesLastElement") then
-        tags[#tags + 1] = user.lastCastElement
-    end
+    foldStrikeElement(user, tags)
     local magical = hasTag(tags, "magical")
     local atkStat = magical and "magicDamage" or "damage"
     local ab = item and item.activeAbility
@@ -7944,6 +8036,12 @@ end
 function Combat.computeDamage(combat, user, target, item, opts)
     opts = opts or {}
     local tags = collectTags(item, opts)
+    -- The hover asks the same question the blow does. It did NOT, for as long as the Resonant Grip was
+    -- folded inline in dealDamage alone: a battlemage's elemental strike quoted the mitigation of a
+    -- plain sword and then landed as fire, which under-promises against a coat and over-promises
+    -- against a weakness. One reader now, called from both, which is what relicOutgoing's own note a
+    -- few lines up is warning about.
+    foldStrikeElement(user, tags)
     local magical = hasTag(tags, "magical")
     local atkStat = magical and "magicDamage" or "damage"
     local ab = item and item.activeAbility
@@ -8710,6 +8808,9 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
             return Combat.chargeTile(combat, unit, x, y, distance)
         end,
         steal = function() touchesBoard() return nil end,
+        -- Writes to a grid that outlives the fight, so the preview refuses it like every other mutation
+        -- and answers the empty-handed shape a real miss answers with.
+        curse = function() touchesBoard() return nil end,
         -- Knowledge only, so there is nothing to preview on the timeline -- but pulling a hidden trap
         -- into the light IS something the cast does, so it counts as touching the board.
         reveal = function() touchesBoard() end,
@@ -9128,6 +9229,10 @@ function Combat.abilityOutput(unit, item)
         -- and the grader's stand-in aims its own origin.
         chargeTile = function() return userProxy.x or 0, userProxy.y or 0 end,
         steal = function() out.steal = true; return nil end,
+        -- Record that the ability hexes a piece of the target's kit, so the tooltip can name it -- the
+        -- same bookkeeping `steal` gets, and for the same reason: there is no grid here to write to, and
+        -- an effect whose whole point is the curse would otherwise describe itself as doing nothing.
+        curse = function(_, id) out.curse = id or true; return nil end,
         -- Record that the ability lays a foe's kit open, so the tooltip can name it (like `steal`).
         reveal = function() out.reveal = true end,
         hasten = function(_, ticks) out.hasten = (out.hasten or 0) + (ticks or 0); return 0 end,
@@ -10176,6 +10281,26 @@ function Combat.releaseClaims(char)
             -- fight: it stacks, it is cast, it is stolen, it is previewed, exactly like bought stock.
             -- The only thing it may not do is persist.
             if item.ephemeral then char.inventory[i] = nil end
+            -- A HEX THAT WENT FOR A WALK (data/items/ability/ability_let_it_walk.lua). The Shaman spent
+            -- a binding to summon something and the bell decides what it cost: a spirit still standing
+            -- hands the curse back to the piece it came off, and a spirit that fell took the binding
+            -- down with it.
+            --
+            -- THE ONLY PLACE IN THE GAME A CURSE ENDS WITHOUT A PRIEST, and the ruling survives it
+            -- intact -- the Shaman never lifted anything, they made it killable and somebody else swung.
+            -- Resolved HERE rather than at the outcome screen because this is the one sweep that already
+            -- runs per body at the end of every fight however it ended, so a win, a loss and a flight
+            -- all settle the loan the same way.
+            --
+            -- The leash is cleared either way: a curse restored is a curse riding the item normally
+            -- again, and a spirit that died leaves nothing behind to read.
+            local lent = item.lentCurse
+            if lent then
+                item.lentCurse = nil
+                if lent.spirit and lent.spirit.alive then
+                    require("models.curse").afflict(item, lent.id)
+                end
+            end
         end
     end
 end
@@ -10413,6 +10538,67 @@ function Combat.steal(combat, thief, victim)
         end
     end
     return item
+end
+
+-- HEX ONE PIECE OF `victim`'s KIT (models/curse.lua). Returns the item and the curse id, or nil plus a
+-- reason -- a caller narrates the miss rather than being told it landed.
+--
+-- IT PICKS AT RANDOM AMONG WHAT CAN CARRY ONE, deliberately, where Combat.steal picks the best. A theft
+-- is aimed -- the point of stealing is what you get -- and a hex is not: nothing about a curse says the
+-- caster chose which of nine cells it sank into, and letting the player aim it would turn this into a
+-- disarm with a longer name. Random also makes it read as a thing that HAPPENED TO the victim, which is
+-- what a curse is. Ties broken through Combat.roll, so a replayed fight hexes the same cell.
+--
+-- CURSABLE, NOT MERELY PRESENT: Curse.canAfflict refuses the fangs a beast cannot take off, the piece
+-- that is already hexed, and the unread husk whose name is still a secret. A unit whose whole grid
+-- refuses is a clean miss and says so -- no turn is silently eaten, and the log line does not name what
+-- it failed to find, for the reason Combat.steal's own header gives about an unassayed grid.
+--
+-- THE PASSIVES ARE REBUILT ON THE SPOT. A curse's penalties are folded at applyUnitPassives, which
+-- otherwise runs only at spawn -- so without this line a hex landed mid-fight would be entirely
+-- invisible until the next battle, which on an enemy (rebuilt every fight) means never. The rebuild is
+-- the same call a transformation makes and is safe to repeat: everything in it is built from scratch.
+function Combat.curseItem(combat, victim, curseId)
+    if not (victim and victim.char) then return nil, "no target" end
+    local Curse = require("models.curse")
+
+    -- CONSECRATED KIT TAKES NOTHING (Curse.warded). Checked before the grid is walked, because the ward
+    -- is a fact about the BODY and not about any one piece -- a hex that was refused cell by cell would
+    -- read as a run of bad luck rather than as a blessing doing its job. Said out loud for the same
+    -- reason the empty-grid miss below is: a turn that produced nothing has to say why.
+    if Curse.warded(victim.char) then
+        Combat.logEvent(combat, "status",
+            string.format("The hex finds no purchase on %s.", unitName(victim)), { victim })
+        return nil, "warded"
+    end
+
+    local pool = {}
+    for i = 1, Character.MAX_INVENTORY do
+        local item = victim.char.inventory[i]
+        if item and Curse.canAfflict(item) then pool[#pool + 1] = item end
+    end
+    if #pool == 0 then
+        Combat.logEvent(combat, "action",
+            string.format("The hex finds nothing in %s's kit to take hold of.", unitName(victim)),
+            { victim })
+        return nil, "nothing to curse"
+    end
+
+    local item = pool[Combat.roll(combat, #pool)]
+    -- THE CALLER NAMES THE HEX, and one that does not gets the shallow end of the ladder. A board has no
+    -- idea how deep it is -- `floorLevel` is a property of the descent stop that BUILT this fight, not of
+    -- the fight (states/battle.lua) -- so reaching for depth here would be reaching for a field that is
+    -- nil in every arena, draft and campaign battle in the game. A blueprint that wants a deep curse
+    -- says which one; the unnamed default is whatever the rift's first floor could have dealt.
+    local id = curseId or Curse.roll(1)
+    if not (id and Curse.afflict(item, id)) then return nil, "no such curse" end
+
+    -- Only the victim's, not the whole board's: nothing about one grid changing touches the other seven
+    -- bodies, and rebuilding them all would be three dozen table allocations for a hex on one sword.
+    applyUnitPassives(victim)
+    Combat.logEvent(combat, "action", string.format("%s falls on %s -- %s.",
+        Curse.name(item), item.name or "a piece of kit", unitName(victim)), { victim })
+    return item, id
 end
 
 -- Forward declaration so Combat.useItem (and Combat.resolveChannel below) can call resolveCast,
@@ -11521,6 +11707,20 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
         steal = function(tgt)
             if not tgt then return nil end
             return Combat.steal(combat, unit, tgt)
+        end,
+        -- SINK A HEX INTO ONE PIECE OF A UNIT'S KIT (models/curse.lua). `id` names the curse; omitted,
+        -- the rift's shallowest is rolled. Returns the item and the curse id, or nil when the grid had
+        -- nothing a hex could take hold of -- a real answer the caster's effect may narrate, exactly as
+        -- fx.steal's empty-handed nil is.
+        --
+        -- ON THE PLAYER'S SIDE IT IS A DEBUFF; ON THE ENEMY'S IT IS A BILL. An enemy is rebuilt from its
+        -- blueprint every fight, so a hex the party lays lasts exactly this battle. A hex laid on the
+        -- PARTY rides the item out of the rift and into the city, and is answered at the Cathedral. Same
+        -- verb, two lifetimes, and the asymmetry is the point rather than an oversight: it is what makes
+        -- a hexing enemy frightening and a hexing ability merely good.
+        curse = function(tgt, id)
+            if not tgt then return nil end
+            return Combat.curseItem(combat, tgt, id)
         end,
         -- Lay a foe's whole kit open (the Assayer's Eye): the battle UI may thereafter show its item
         -- grid and each item's tooltip. Pure knowledge -- it moves and costs nothing -- so it is safe

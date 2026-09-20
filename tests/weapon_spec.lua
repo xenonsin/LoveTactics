@@ -270,8 +270,9 @@ return {
                 -- strike tallies toward for growth; the rung is its grade rank, which is what
                 -- models/balance.lua measures its magnitude against. This used to forbid the rung on
                 -- the reasoning that a shelf gate with no price is dead data -- true while the rung was
-                -- only a gate, and false since the recut made the gate a different question (have you
-                -- carried one out) and left the rank alone.
+                -- only a gate, and false since the recut made the gate a different question (how far
+                -- the class has grown) and left the rank alone. (It read "have you carried one out"
+                -- until 2026-09-20 -- the discovery gate, gone since 2026-09-19.)
                 for _, id in ipairs(halves.quest) do
                     assert(Item.defs[id].class, id .. " is found with no class to tally growth against")
                 end

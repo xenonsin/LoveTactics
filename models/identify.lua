@@ -193,10 +193,19 @@ end
 -- Armory's weapon-family chips cannot name the blade; no `discipline`, so its house chip cannot either;
 -- no `price`, so Vendor.sellValue refuses to quote it and the Touchstone's own number is the only one
 -- anybody can see; no `traits`, `aura` or `activeAbility`, so there is nothing for a tooltip to spill.
-function Identify.sealed(id, floor, level)
+function Identify.sealed(id, floor, level, curse)
     local def = Item.defs[id]
     if not (def and Identify.canSeal(def)) then return nil end
     floor = math.max(1, math.floor(tonumber(floor) or 1))
+    -- A FRESH SEAL ROLLS ITS HEX; A REBUILT ONE NEVER DOES, and `level` is what tells the two apart --
+    -- the same signal that has always decided whether the LEVEL is rolled, one line down. Every restore
+    -- path passes a level (models/save.lua), so it also passes whatever curse was stored, and a husk
+    -- saved clean must come back clean: re-rolling here would hand the player a save they could hex or
+    -- un-hex by quitting to the menu.
+    --
+    -- Written out rather than folded into the table below, because the obvious `curse or roll()` is the
+    -- bug: an absent fourth argument on a REBUILD is "this husk is clean", not "nobody has decided yet".
+    if curse == nil and level == nil then curse = Identify.rollCurse(floor) end
     return {
         id = id,
         type = def.type,
@@ -205,8 +214,62 @@ function Identify.sealed(id, floor, level)
         sprite = Sprite.load(SPRITES[def.type]),
         quantity = 1,
         level = level or Identify.rollLevel(floor),
+        -- AND WHETHER IT IS HEXED (models/curse.lua), decided above for the same reasons the level is:
+        -- both are facts about the piece the player is not being shown, and both must be settled once.
+        --
+        -- NOTHING ELSE ON THIS TABLE GIVES IT AWAY, which is what makes it safe to store in the open.
+        -- The husk's name, description, sprite and fee are all keyed off the TYPE and the FLOOR, so a
+        -- hexed husk and a clean one are the same row on the same shelf at the same price -- and nothing
+        -- reads this field until somebody pays. Curse.canAfflict refuses a husk for the mirror reason:
+        -- a hex may travel INSIDE a seal, but nothing may put one on a piece whose name is still secret.
+        curse = curse,
         unidentified = floor,
     }
+end
+
+-- ---------------------------------------------------------------------------
+-- The other thing a seal can be hiding
+-- ---------------------------------------------------------------------------
+--
+-- WHAT MAKES THE FEE A GAMBLE RATHER THAN A DELAY. The block above argues at length that identification
+-- is how the rift pays ABOVE the band a floor can otherwise afford: an unread piece is drawn richer than
+-- the road it stands on, and the fee turns that luck into gear. Which makes the read a bet whose worst
+-- outcome, until curses existed, was a piece rolled at the bottom of its range -- a bad ROI on a bill,
+-- never a bad thing to own.
+--
+-- A HEX IS THE OTHER TAIL, and the room needed one. Wizardry's counter is famous for the same reason:
+-- the interesting question at an identification desk is not "how good", it is "what did I just take into
+-- my house". With one tail the satchel is a chore to be worked through; with two it is a decision per
+-- husk, which is what Identify.fee's re-price was reaching for and could not get from price alone.
+--
+-- AND IT IS NEVER A TRAP, because the Cathedral is free. A hexed read costs the reading, then two trips
+-- without the piece or a lifting fee -- and the player chooses which (models/curse.lua's header states
+-- the law it is keeping). A bet whose downside is unrecoverable would be a bet nobody should take.
+--
+-- THE NUMBERS, against the same run the fee is priced against (~16 husks read in a complete descent,
+-- floorLevels 1 to 15): 5% at the top of the rift climbing 1.2 points a level to a ceiling of 20%. That
+-- is roughly two hexed finds in a full descent, weighted toward the bottom where the gear is worth
+-- keeping and the deep curses live. Shallower than that and the mechanic never shows up; a flat 20% and
+-- floor one starts teaching a player to leave finds unread, which is the one behaviour this room exists
+-- to argue against.
+Identify.CURSE_BASE = 0.05
+Identify.CURSE_PER_LEVEL = 0.012
+Identify.CURSE_MAX = 0.20
+
+-- The chance a piece sealed at `floor` is carrying a hex. `floor` is a floorLevel (1..15 down a
+-- fifteen-floor rift), the same unit Identify.fee reads and for the same reason its block gives.
+function Identify.curseChance(floor)
+    floor = math.max(1, math.floor(tonumber(floor) or 1))
+    return math.min(Identify.CURSE_MAX, Identify.CURSE_BASE + Identify.CURSE_PER_LEVEL * floor)
+end
+
+-- Roll one, or nil for a clean piece. Deliberately two rolls rather than one weighted table: WHETHER
+-- and WHICH are separate questions, so the depth curve above can be tuned without touching the set of
+-- curses, and a new curse blueprint changes what you might get without changing how often.
+function Identify.rollCurse(floor)
+    if rnd() >= Identify.curseChance(floor) then return nil end
+    local Curse = require("models.curse")
+    return Curse.roll(floor)
 end
 
 -- ---------------------------------------------------------------------------
@@ -312,9 +375,26 @@ function Identify.read(player, item)
     local revealed = Item.instantiate(item.id, 1, item.level)
     if not Player.spendGold(player, fee) then return false, "not enough gold" end
 
+    -- THE HEX SURVIVES THE SWAP, and it has to be lifted out before the table is emptied. The seal has
+    -- been carrying it since it was sealed (Identify.sealed) and the revealed instance knows nothing
+    -- about it, so without this line the wipe-and-refill below would cleanse every hexed find at the
+    -- exact moment the player paid to be told what it was. Read first, re-stamped after.
+    local hex = item.curse
+
     for k in pairs(item) do item[k] = nil end
     for k, v in pairs(revealed) do item[k] = v end
     item.unidentified = nil
+
+    -- ...and now that the piece has a name, it may carry one. Curse.afflict refuses a hex whose
+    -- blueprint has been deleted, or one on a piece whose type stopped being cursable, and either reads
+    -- as a clean find -- which is the right failure: the player paid and got the item.
+    --
+    -- THE PLAYER IS TOLD BY THE REVEAL, not here. The counter's own panel draws what came out of the
+    -- husk (ui/panels/identify_reveal.lua), and a hex is part of what came out.
+    if hex then
+        local Curse = require("models.curse")
+        if Curse.afflict(item, hex) then Curse.markCursed(player) end
+    end
 
     -- The stash's unseen dot is keyed by item id, and until this moment the id was a secret the player
     -- was not being shown. Marking it here is what puts the red dot on the thing they just learned they

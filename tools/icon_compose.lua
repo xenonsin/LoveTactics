@@ -203,6 +203,11 @@ local BESPOKE = {
     "lorc/crown",                  -- armor_hollow_crown
     "lorc/crystal-ball",           -- utility_overflowing_focus
     "lorc/jeweled-chalice",        -- utility_reliquary_kept_trust
+    -- utility_marrowlight. The one item whose whole content is what the BEARER becomes, so the
+    -- fall-through read -- a charm glyph, tinted for `dark` -- says the one thing about it that is not
+    -- true: that it is a thing you carry. `skeleton-inside` is literally the aspect, a body drawn with
+    -- the bones showing through, and no structural slug in the vocabulary is within reach of that.
+    "lorc/skeleton-inside",        -- utility_marrowlight
 }
 
 -- The vocabulary as a set: everything structural, plus the two lists above. Built from the tables

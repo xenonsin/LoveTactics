@@ -26,6 +26,7 @@
 
 local CloseButton = require("ui.close_button")
 local Scale = require("scale")
+local Character = require("models.character") -- Character.spriteOf: the skin an aspect item draws the bearer in
 local Theme = require("ui.theme")
 
 local Rest = {}
@@ -86,7 +87,7 @@ function Rest:update(dt)
 end
 
 local function drawPortrait(char, x, y, size)
-    local sprite = char and char.sprite
+    local sprite = char and Character.spriteOf(char)
     if type(sprite) == "userdata" then
         love.graphics.setColor(1, 1, 1)
         local sw, sh = sprite:getDimensions()

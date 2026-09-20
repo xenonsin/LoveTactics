@@ -53,6 +53,7 @@ local Player = require("models.player")
 local Scale = require("scale")
 local Sound = require("models.sound")
 local Theme = require("ui.theme")
+local Keeper = require("ui.keeper") -- the city's keeper pane: face or mark, name, line
 local Vendor = require("models.vendor") -- only for the keeper's name and pitch
 local VendorIcons = require("ui.vendor_icons") -- the counter's mark, worn on its name in the header
 
@@ -106,6 +107,10 @@ function Touchstone.new(opts)
     self.colX = self.boxX + PAD
     self.colY = self.boxY + 64
     self.colBottom = self.boxY + BOX_H - 46
+    -- The keeper's pane over the column, and the purse-and-line slot under it. Height is what this
+    -- column affords once that slot has its rows; the WIDTH is the city's (ui/keeper.lua).
+    self.keeperH = 288
+    self.slotY = self.colY + self.keeperH + 12
     self.workX = self.colX + VENDOR_W + PAD
     self.workW = self.boxX + BOX_W - PAD - self.workX
 
@@ -329,14 +334,22 @@ end
 
 -- ---- drawing -----------------------------------------------------------------
 
--- The keeper's column: portrait, purse, and the house's own line. Laid out exactly as the Cafe's is, so
--- a player who has stood at one counter already knows where to look at this one.
--- NO PORTRAIT PANE, and the slot is measured off its content rather than running to the foot of the
--- panel -- see the note in ui/panels/shop.lua, which this matches so two counters still look like two
--- counters. The keeper's own NAME goes with the portrait too: it is printed across the header three
--- inches above, and a column repeating it was only ever a caption for the picture underneath.
+-- The keeper's column: the pane, then the purse and the house's own line. Laid out exactly as the
+-- Cafe's is, so a player who has stood at one counter already knows where to look at this one.
+--
+-- THE PANE IS BACK AND SHARED (ui/keeper.lua). It stood empty here for a while on the reading that the
+-- mark worn on the header named the house well enough -- which it does, but a desk introduces somebody
+-- and the room behind it should hold them. The keeper's NAME still rides the header three inches above
+-- and is repeated on the pane's own plate, which is a caption and not a duplicate: the plate says who
+-- the face is, and a face with no name under it is the letter-box this pane exists to avoid.
 function Touchstone:drawVendor()
-    local x, y, w = self.colX, self.colY, VENDOR_W
+    Keeper.draw(self.vendorId, self.colX, self.colY, VENDOR_W, self.keeperH, {
+        nameFont = self.promptFont,
+        title = self.title,
+        line = false, -- the house's line is printed in the slot below, under the purse
+    })
+
+    local x, y, w = self.colX, self.slotY, VENDOR_W
 
     local _, wrapped = self.subFont:getWrap(self.def.description or "", w - 24)
     local h = 12 + 28 + #wrapped * self.subFont:getHeight() + 12

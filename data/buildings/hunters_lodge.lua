@@ -24,10 +24,19 @@ return {
     -- The desk: what this house says on the way in, and the rooms it offers (models/counter.lua).
     counter = "conversation_hunters_lodge_counter",
     offers = {
-        -- QUIET: a class rung stocks this shelf but never puts the card on the plaza. A class level is
-        -- a reward the player cannot see, and hanging a door on it put shopfronts in the city that
-        -- nobody chose to earn (models/offer.lua's Offer.any).
-        { answer = "shelf", panel = "shop", gate = { classLevel = 1 }, quiet = true },
+        -- THE SHELF IS NEVER GATED, because the shelf IS the house. Under the card era a shut shelf
+        -- hid the whole shopfront, so the gate and the door were one fact; the fold put these doors on
+        -- the plaza for OTHER rooms' sake, and the gate started meaning "walk through a shopfront and
+        -- be offered no shop" -- which is what every desk in the city shipped reading.
+        --
+        -- A CLASS LEVEL BUYS DEPTH NOW and nothing else, which is the job Quest.shelfRung already
+        -- describes itself doing: level 0 IS rung 0, the class's bottom band, and the ladder unlocks
+        -- upward from there. Under the level-1 gate nobody could ever see rung 0 at all.
+        --
+        -- QUIET all the same: a shelf never puts a card on the plaza. A class rung is a reward the
+        -- player cannot see, and hanging a door on it put shopfronts in the city that nobody chose to
+        -- earn (models/offer.lua's Offer.any).
+        { answer = "shelf", panel = "shop", quiet = true },
         -- The kitchen keeps its own vendor: its portrait, its name and its one-time greeting all hang
         -- off `cafe`, and it sells no items at all (data/vendors/cafe.lua).
         { answer = "supper", panel = "cafe", vendor = "cafe", gate = { trips = 2 } },

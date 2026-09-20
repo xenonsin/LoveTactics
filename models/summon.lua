@@ -119,7 +119,28 @@ end
 --   control  = "player"|"ai"|"none"|"inherit",
 --   timeless = true,                  -- an object, not a body: no turns, no slot in the turn order
 --   fragile  = true, side = "party",
+--   summoner = false,                 -- nothing sustains it (see below)
+--   summoned = false,                 -- it is a real combatant, not a conjuration (see below)
+--   announce = false,                 -- the caller writes its own line
 -- }
+--
+-- THE THREE FALSE OPTIONS ARE ONE IDEA: a body that ARRIVES rather than one that is conjured. A King
+-- Slime coming apart into three smaller ones is not summoning them, it IS them
+-- (data/traits/trait_split.lua), and every default this function ships would be wrong for that:
+--
+--   * `summoner` binds the new body to the old one, and killUnit dismisses everything the fallen were
+--     sustaining one loop after Trait.onDeath fires -- so a split spawned with the default would be
+--     conjured and swept away in the same beat. `false` (rather than nil, which means "not given" here
+--     as it does in Summon.copyOf) orphans it.
+--   * `summoned` marks a body as not a real combatant: Combat.evaluate skips it for `assassinate`,
+--     killUnit's allyDown/foeDown broadcast passes over it, and it holds no ground for a `protect`.
+--     A piece of a boss is a body on the board and has to be killed like one.
+--   * `announce` writes "X summons Y", which a thing that just died did not do.
+--
+-- Everything else about the unit is unchanged -- it takes turns, it can be targeted, it arrives on its
+-- tile and springs what is under it -- because it was always an ordinary unit; these three fields are
+-- the only places "a summon" was ever a different thing.
+--
 -- Returns the new unit.
 function Summon.spawn(combat, summoner, charId, x, y, opts)
     local Combat = require("models.combat")
@@ -142,17 +163,28 @@ function Summon.spawn(combat, summoner, charId, x, y, opts)
     applyOverrides(char.stats, opts.stats)
     applyScaling(char.stats, opts.scaling, opts.amount)
 
+    -- WHO SUSTAINS IT: the caller, unless `opts.summoner` is explicitly false, which orphans it.
+    -- Written as a branch and NOT as `(opts.summoner == false) and nil or summoner`: that idiom
+    -- cannot yield nil, because `true and nil` is nil and `nil or summoner` is the summoner again --
+    -- so the orphan option silently did nothing, and the King's pieces were dismissed by the very
+    -- death that made them. Summon.copyOf's `~= nil` shape is the same distinction, kept so that
+    -- "not given" and "given as false" stay different answers in both files.
+    local sustainer = summoner
+    if opts.summoner == false then sustainer = nil end
+
     local unit = Combat.addUnit(combat, char, opts.side or summoner.side, x, y, {
         control = resolveControl(opts.control, summoner),
-        summoner = summoner,
+        summoner = sustainer,
         fragile = opts.fragile,
-        summoned = true,
+        summoned = opts.summoned ~= false,
         duration = opts.duration,
         timeless = opts.timeless,
     })
-    Combat.logEvent(combat, "system",
-        string.format("%s summons %s.", summoner.char.name or "Unit", char.name or "a creature"),
-        { summoner, unit })
+    if opts.announce ~= false then
+        Combat.logEvent(combat, "system",
+            string.format("%s summons %s.", summoner.char.name or "Unit", char.name or "a creature"),
+            { summoner, unit })
+    end
     -- A conjured body occupies its tile like any other: an opposing trap under it springs, and a
     -- hazard burning there takes hold. Last, and after the announcement, because the creature may not
     -- survive its own arrival -- the caller must check `unit.alive` before binding anything to it.

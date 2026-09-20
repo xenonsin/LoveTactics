@@ -124,9 +124,19 @@ The codebase is organized into layers loaded via `require()`. See
   gate (anyone can carry anything) — see [docs/classes.md](docs/classes.md), enforced by
   `tests/class_spec.lua`. An item's `unlockQuests` is its **grade rank, derived not authored** — what a
   thing is worth sets where it sits — and only three kinds of thing carry a `price` at all: abilities,
-  consumables, and a house's opening weapon. **Everything else is found in the rift** (`dropTier`) and
-  a counter stocks it only once the company has carried one out (`Player.recordFound`, `Vendor.stock`'s
-  `lockReason`). See [docs/shelf.md](docs/shelf.md) (`models/grade.lua`, `. grade-report`,
+  consumables, and a house's opening weapon. **Everything else is found in the rift** (`dropTier`) --
+  and a counter deals it once the CLASS HAS GROWN THAT FAR. **Class level is the only gate on a shelf**
+  (`Quest.shelfRung`, the roster's best holder): the rift is the head start, the class ladder is the
+  backstop that guarantees the piece is reachable at all. There is no discovery gate -- a ware is not
+  shut until you have carried one out, and `player.found` feeds the BESTIARY now, not a counter
+  (removed 2026-09-19; docs/shelf.md narrates why).
+
+  **Three lock reasons, one field** (`Vendor.lockReason`): `"rung"` (grow the class), `"class"` (unlock
+  the discipline -- itself a class-level gate one step removed), and `"monster drop"`. The last is
+  `unstocked`: a body's own trophy, which is **visible on the rack and never sold**. It used to be
+  invisible -- no price meant it never entered `Vendor.stock` at all -- so the rarest pieces in the game
+  could not be learned about at any counter. It is stocked and greyed now, and the price stays nil in
+  BOTH directions (`Vendor.sellValue` answers 0): visible is not the same as merchandise. See [docs/shelf.md](docs/shelf.md) (`models/grade.lua`, `. grade-report`,
   `. drop-tier recut`). *Which body* hands a found item over is [docs/drops.md](docs/drops.md) —
   `. drop-report` measures reachability by placement, and is the pass to run before authoring a
   drop list. An item may also rewrite a **rule of the game** for its bearer (`rules`, `Item.RULE_NAMES`
@@ -135,6 +145,34 @@ The codebase is organized into layers loaded via `require()`. See
   All three arrived when the **relic shelf was parked** and its 25 surviving effects became items — see
   [docs/relics.md](docs/relics.md), which also records the 11 pure-stat relics that were cut and how to
   lift the park. `models/relic.lua` is still on disk and still loads; treat nothing in it as live.
+
+  **A PIECE MAY ALSO BE CURSED, and a curse speaks the item's own vocabulary** (`models/curse.lua`,
+  `data/curses/`, [docs/curses.md](docs/curses.md)). It is the mirror of *broken*: broken means the piece
+  stops working and the Forge fixes it for gold; cursed means the piece works **against** you and the
+  Cathedral's rite lifts it — free but costing two trips with the piece on the altar, or `Curse.fee` in
+  gold to skip them, which is `models/wound.lua`'s law with an item where the body goes. A blueprint here
+  declares the fields an ITEM declares (`bonus`, `resist`, `maxBonus`, `rules`, `traits`, `openingBoon`),
+  so it folds in beside the piece at `Combat.applyUnitPassives` with no new balance surface; its one
+  field of its own is `binds`, which makes `Item.isBound` answer true and thereby reuses every refusal in
+  the game. Hexes arrive from a trap (`ctx.curse`), a cast (`fx.curse`), a blueprint born hexed
+  (`curse = "..."`), or the Touchstone naming a find that was sealed with one.
+
+  **AND A HEX IS A RESOURCE AS WELL AS A COST**, which is what keeps the Cathedral a decision rather
+  than a chore. Three verbs, one per house, asserted over the shelf by `tests/curse_shelf_spec.lua`
+  rather than only written down: the **Shaman** MANIPULATES (counts, moves, spreads, wakes, lends) and
+  never ends one; the **Exorcist** ENDS and PREVENTS (the two rites, and `curseWard`); the **Cathedral**
+  stays open to every company, priest or not, which is `docs/the-count.md`'s law holding. Counting rides
+  `ab.counter` + `counterGates = false` -- the pair `weapon_last_word` already wears -- so the grid
+  badge, the tooltip row and the effect's multiplier are one call. *Lifting is a high-level priest
+  thing* needed no new gate: `Quest.shelfRung(player, "cathedral")` already reads the roster's best
+  priest level, so a priced rite at a high `unlockQuests` is invisible until somebody has climbed it.
+  **AN ABILITY MAY NOW BE CAST OUTSIDE A FIGHT** (`outOfCombat = true`, `Player.partyAbilities`). The
+  overworld Use panel gathers it beside the draughts and `kind` tells them apart -- a *drink* spends a
+  stack and is gone, a *cast* spends a pool that `Player.camp` partly refills. A road cast runs a
+  second, smaller effect, **`roadEffect(ctx)`**, with a four-verb context (`heal`, `restore`,
+  `liftCurse`, `say`): an ability's `effect` is written against Combat's forty-verb `fx` table, all of
+  it about a board that does not exist out here, and faking one would be forty stubs that silently do
+  nothing. It costs exactly what it costs in a fight -- no surcharge (authored 2026-09-20).
   `data/meals/` is the one content type that is *not* an item: the Cafe's supper,
   one per day out, worn by the whole company — see [docs/meals.md](docs/meals.md).
   There is **one currency**, gold — no valuables to carry out and sell, no scrip; an end simply pays a

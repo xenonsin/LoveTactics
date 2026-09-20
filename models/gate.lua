@@ -54,10 +54,21 @@ local Gate = {}
 function Gate.night(player)
     if not player then return end
     require("models.calendar").spend(player)
-    -- ...AND THE WARD SERVES ITS TERMS. A rest is priced in DESCENTS rather than in calendar days
-    -- (models/wound.lua's ward block argues why: the calendar is nearly inert in a mode that reads its
-    -- danger off the floor ladder), and walking into the stair is the one moment a descent begins -- so
-    -- this is where a stay ticks. Returns who walked out of the ward, for a caller that wants to say so.
+    -- ...AND THE CATHEDRAL SERVES ITS TERMS, both of them, on this one beat.
+    --
+    -- A rest is priced in DESCENTS rather than in calendar days (models/wound.lua's ward block argues
+    -- why: the calendar is nearly inert in a mode that reads its danger off the floor ladder), and
+    -- walking into the stair is the one moment a descent begins -- so this is where a stay ticks.
+    --
+    -- A RITE TICKS ON THE SAME EVENT, and that is not a convenience, it is the design: the city's two
+    -- free paths cost the same span of the same clock, so a player learns the unit once and both prices
+    -- read as the same kind of thing (models/curse.lua). A body laid up and a piece left on the altar
+    -- both come back on the second homecoming, and both are paid in going down without them.
+    --
+    -- The rite's returns are dropped rather than merged into this function's: a hexed sword coming back
+    -- clean lands in the stash and is found there, where the WARD's return is a name the stair screen
+    -- puts on a line. Returns who walked out of the ward, for a caller that wants to say so.
+    require("models.curse").tickRites(player)
     return require("models.wound").tickRest(player)
 end
 

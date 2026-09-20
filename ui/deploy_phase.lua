@@ -42,6 +42,7 @@
 -- own -- the stack can grow a fourth plate without going hunting for a spare face button.
 
 local Scale = require("scale")
+local Character = require("models.character") -- Character.spriteOf: the skin an aspect item draws the bearer in
 local Theme = require("ui.theme")
 local InputMode = require("input_mode")
 local TileTooltip = require("ui.tile_tooltip")
@@ -683,7 +684,7 @@ end
 -- A company member's board token, or a lettered box when the art is missing (models/sprite.lua hands
 -- back a path string then). The same read the overworld strip and the turn cards take.
 local function drawPortrait(char, x, y, size, font)
-    local sprite = char and char.sprite
+    local sprite = char and Character.spriteOf(char)
     if type(sprite) == "userdata" then
         love.graphics.setColor(1, 1, 1)
         local sw, sh = sprite:getDimensions()

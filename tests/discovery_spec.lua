@@ -41,6 +41,12 @@ local TROPHIES = {
     -- odd one: they are not a new trophy but an existing SHELF item taken off the counter and given to
     -- an animal, which is the first time a piece has moved in that direction.
     "utility_wellspring_sandals", "utility_the_second_hound", "utility_swailing_brand",
+    -- The King Slime's two (data/characters/character_king_slime.lua), and they are the first pair
+    -- that are not a piece OF the body but the body's own RULES worn: the Surface is its immunity
+    -- bounded to an opening turn, the Mantle is its adaptation bounded to one. A counter dealing
+    -- either would be selling the boss fight's answer over the counter that the fight exists to
+    -- teach, which is exactly what this list is for.
+    "utility_unbroken_surface", "armor_quicksilver_mantle",
 }
 
 local function vendorFor(class)
@@ -141,7 +147,12 @@ return {
         -- TOP of the ladder with the discipline sets handed over, because "not yet" and "not ever" are
         -- the two answers this has to tell apart -- a trophy shut at rung 0 would pass a lazier check
         -- and open at rung 8.
-        name = "a trophy is on no counter at any rung, and nobody will buy one back",
+        -- SHOWN AND REFUSED, which is the 2026-09-20 reading. This case used to assert the opposite --
+        -- that a trophy stood on no rack at all -- and that was the behaviour rather than the intent: a
+        -- nil price kept it out of Vendor.stock as a side effect, so the rarest pieces in the game were
+        -- invisible at every counter and a player had no way to learn they existed. The MONEY half is
+        -- unchanged and is still asserted below: no price in either direction.
+        name = "a trophy is shown at every counter, refused by name, and bought back by nobody",
         fn = function()
             for _, id in ipairs(TROPHIES) do
                 local def = Item.defs[id]
@@ -155,24 +166,80 @@ return {
 
                 local vendorId = def.class and vendorFor(def.class)
                 if vendorId then
-                    assert(not rowFor(vendorId, id, 99),
-                        id .. " stands on " .. vendorId .. "'s rack at the top of the ladder")
+                    -- At the top of the ladder, so the only thing that can be shutting it is the flag.
+                    local row = rowFor(vendorId, id, 99)
+                    assert(row, id .. " vanished from " .. vendorId .. "'s rack -- a trophy is a want "
+                        .. "list entry, and a want list nobody can read is not one")
+                    assert(row.locked and row.lockReason == "monster drop",
+                        id .. " is on the rack unrefused, or refused by the wrong word: "
+                        .. tostring(row.lockReason))
+                    assert(not row.price, id .. " quotes a price on a tile nobody may press")
                 end
             end
         end,
     },
     {
+        -- CLASS LEVEL IS THE ONLY GATE, and this is the case that says so. The shelf has had gates come
+        -- and go -- a quest count, a discipline, a price band, a discovery ledger -- and every one of
+        -- them was removed by an argument rather than by anything going red, which is how the prose
+        -- describing them outlived them by a year (see the comments this file's own header corrects).
+        --
+        -- So the set is pinned from the closed end: a row is out, or it is shut for one of exactly
+        -- three reasons, and all three are answered by growing a class. "rung" reads the level
+        -- directly. "class" reads it one step removed -- an earned discipline is itself unlocked by
+        -- class levels. "monster drop" is the authored exception, and it is the only one that never
+        -- opens.
+        --
+        -- A FOURTH REASON APPEARING HERE IS THE POINT. If somebody adds a gate, this reddens with its
+        -- name in the message, and the decision to widen the rule gets made on purpose.
+        name = "a shelf is shut for exactly three reasons, and every one of them is a class level",
+        fn = function()
+            local ALLOWED = { rung = true, class = true, ["monster drop"] = true }
+            local player = Player.new()
+            local seen, offenders = {}, {}
+            for vendorId in pairs(Vendor.defs) do
+                for _, row in ipairs(Vendor.stock(vendorId, 0, nil,
+                    Class.unlockedSet(player), Class.levelSet(player))) do
+                    if row.locked then
+                        local why = row.lockReason
+                        seen[why or "<nil>"] = true
+                        if not ALLOWED[why] then
+                            offenders[#offenders + 1] = row.id .. " (" .. tostring(why) .. ")"
+                        end
+                    else
+                        -- An OPEN row must carry no reason at all: a tile that is buyable and also
+                        -- explains why it is not would print the refusal under a price the player can
+                        -- pay (ui/panels/shop.lua reads the two separately).
+                        if row.lockReason then
+                            offenders[#offenders + 1] = row.id .. " is open and still gives a reason"
+                        end
+                    end
+                end
+            end
+            table.sort(offenders)
+            assert(#offenders == 0, "a shelf row is shut for a reason that is not a class level: "
+                .. table.concat(offenders, ", "))
+
+            -- ...and the sweep really did walk shut rows of each kind, so a rack that quietly stopped
+            -- locking anything cannot read as a pass (the green-on-nothing failure).
+            assert(seen.rung, "no row anywhere was shut on the rung -- this sweep is not scanning")
+            assert(seen["monster drop"], "no trophy was shut: they are stocked now and must be refused")
+        end,
+    },
+    {
         -- THE SET IS CLOSED, from the other end. Without this, flagging a piece by accident -- or a
-        -- tool pass writing the field -- takes a ware off every counter in the game in silence, which
-        -- is the failure the recut already shipped once in the other direction.
+        -- tool pass writing the field -- makes a ware unbuyable at every counter in the game in
+        -- silence, which is the failure the recut already shipped once in the other direction.
+        -- (It no longer makes it INVISIBLE: since 2026-09-20 a trophy is stocked and greyed rather
+        -- than absent. The flag still decides the money, which is what this set is guarding.)
         name = "nothing outside the named trophies carries the flag",
         fn = function()
             local named = {}
             for _, id in ipairs(TROPHIES) do named[id] = true end
             for id, def in pairs(Item.defs) do
                 assert(not def.unstocked or named[id],
-                    id .. " carries `unstocked` and is not a named trophy -- it is off every counter "
-                    .. "in the game, and docs/drops.md says who is allowed to be")
+                    id .. " carries `unstocked` and is not a named trophy -- no counter in the game "
+                    .. "will deal or buy one, and docs/drops.md says who is allowed to be")
             end
         end,
     },

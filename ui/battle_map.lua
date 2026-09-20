@@ -21,6 +21,7 @@
 
 local Scale = require("scale")
 local Sprite = require("models.sprite")
+local Character = require("models.character") -- Character.spriteOf: the skin an aspect item draws the bearer in
 local Tileset = require("models.tileset")
 local Biome = require("models.biome")
 local Combat = require("models.combat")
@@ -1407,7 +1408,7 @@ end
 -- Runs through the sprite shader (grayscale); a token-only unit or a driver that refused the shader
 -- returns false, and the caller falls back to the subtle drained token an ordinary corpse draws.
 function BattleMap:drawFallenSprite(u, cx, cy, bw, bh)
-    local sprite = u.char.sprite
+    local sprite = Character.spriteOf(u.char)
     if type(sprite) ~= "userdata" then return false end
     local shader = self:spriteFx()
     if not shader then return false end
@@ -1501,7 +1502,7 @@ function BattleMap:drawUnits()
             -- the unit's side colour (blue ours / red theirs), so allegiance reads off the body itself
             -- and not only the HP bar. It hugs the token PLATE (inset from the tile edge), which keeps
             -- it clear of the tile-edge range band -- the collision that once argued against a ring.
-            local sprite = u.char.sprite
+            local sprite = Character.spriteOf(u.char)
             if type(sprite) == "userdata" then
                 local sw, sh = sprite:getDimensions()
                 local scale = bodyScale(sw, sh, bw, bh)

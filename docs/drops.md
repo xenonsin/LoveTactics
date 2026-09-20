@@ -252,7 +252,13 @@ authored rule-breakers this section is asking for.
 
 **The flag is `unstocked = true`**, and it keeps a piece out of the money economy in both directions:
 `Vendor.foundPrice` refuses to quote one, so no counter deals it however many you have carried out, and
-`Vendor.sellValue` reads the same figure, so none will buy one either. It is **not** `bound` — an
+`Vendor.sellValue` reads the same figure, so none will buy one either.
+
+**The counter still shows it.** `Vendor.stock` admits a trophy on its `dropTier` and greys it with
+`lockReason = "monster drop"` — *"taken from the body that carries it"*, and the floor it falls around.
+Before 2026-09-20 a nil price kept it out of the rack altogether, so a player had no way to learn a
+trophy existed short of meeting the creature; a want list nobody can read is not one. What did **not**
+change is the price, in either direction: visible is not the same as merchandise. It is **not** `bound` — an
 unstocked piece is yours to carry, move, forge and break
 ([models/salvage.lua](../models/salvage.lua)); it simply is not merchandise. A piece that exists only
 where it fell has no market price in either direction, and a duplicate is not a dead end because it

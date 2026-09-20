@@ -109,6 +109,39 @@ so the honest play was never to cast it. The ceiling answers that the other way,
 sharper for the merge**: burning coin that evaporated at the next staircase was close to free, and
 burning coin the Forge is waiting for is a real decision taken at the moment of the swing.
 
+## The Forge's mend: one of those prices, re-read
+
+The bullet below asks for the Forge to be measured rather than assumed. It has been, and it was worse
+than mis-tuned — it was **gone**.
+
+Mending was `10% of item.price, scaled by what is missing`, and the argument for the share was sound:
+the richer the company, the more it costs to keep what makes it rich, which is the shape a sink wants.
+Then the shelf recut took `price` off everything above a house's opener ([shelf.md](shelf.md)) and the
+formula read `(item.price or 0)` — so for most of the catalogue the bill collapsed onto its own
+`math.max(1, …)` floor. Measured: **a fully destroyed Frostfall Hammer mended for one gold**, and so
+did broken Leather Armor, while a priced iron sword still cost 8. Nothing failed, because a formula
+reading a field almost nobody carries still returns a number.
+
+It is now a **fixed rate per point of wear** (`Forge.MEND_PER_POINT = 2`) — the smith charges for the
+hour, not for the blade:
+
+| | |
+|---|---|
+| a full weapon bar (30) | **60g** |
+| a full armour bar (40) | **80g** |
+| one uncured Corroding (12 points) | **24g** |
+| *for comparison* — the Ward buying off a wound | 40g |
+
+Measured against descent income (`Spoils.roll`, 200 rolls a floor): an ordinary fight pays **54g on
+floor one** and **208g on floor fifteen**; elites 242g → 1267g. A fielded four keeping a dozen pieces
+whole runs roughly a fifth to a third of a trip's take.
+
+**What the fixed rate gives up**, recorded because it overrules the share version's own argument: it
+does not climb with the campaign. Income roughly quadruples across a descent and this does not, so the
+sink is heaviest in the first floors and thinnest at the bottom. If that trade is wrong the fix is one
+line — price it off `Vendor.foundPrice(item)`, which is the function that already answers *what is this
+unpriced found ware worth* and is what the share version should have been reading all along.
+
 ## What this obliges
 
 - **Every gold price in the game is quoted against a curve that moved twice** — once when income became

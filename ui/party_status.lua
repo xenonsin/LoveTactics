@@ -13,6 +13,7 @@
 -- readouts (see states/game.lua's drawHud).
 
 local Scale = require("scale")
+local Character = require("models.character") -- Character.spriteOf: the skin an aspect item draws the bearer in
 local Colors = require("ui.colors")
 local CloseButton = require("ui.close_button")
 local OverworldAbility = require("models.overworld_ability")
@@ -38,7 +39,7 @@ end
 -- The companion's portrait square (its board token, or a coloured letter box) -- the same read as a
 -- battle timeline card (ui/combat_panel.lua:drawPortrait).
 local function portraitImage(char)
-    local s = char.sprite
+    local s = Character.spriteOf(char)
     if type(s) == "userdata" then return s end
     if type(s) == "string" then
         local img = Sprite.load(s)

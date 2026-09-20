@@ -238,11 +238,15 @@ return {
         end,
     },
     {
-        -- P5's one piece of engineering: a rift-only ware sits on no counter, ever. Without `unstocked`
-        -- the recut's own rule (a found ware is stocked once one has been carried out) makes the rarest
-        -- thing in the game something you buy a second of, which is what "found only" was supposed to
-        -- mean in the first place (docs/drops.md).
-        name = "an unstocked piece has no price in either direction, and can still be broken",
+        -- P5's one piece of engineering: a rift-only ware is never MERCHANDISE. Without `unstocked` the
+        -- rarest thing in the game is something you eventually shop for, which is what "found only" was
+        -- supposed to mean in the first place (docs/drops.md).
+        --
+        -- IT IS ON THE RACK ALL THE SAME, since 2026-09-20. A nil price used to keep it out of
+        -- Vendor.stock entirely, so a trophy was invisible at every counter and a player had no way to
+        -- learn it existed. It is stocked and greyed now, wearing lockReason "monster drop" -- the price
+        -- is what stayed nil, in both directions, which is the half this case has always been about.
+        name = "an unstocked piece has no price in either direction, is shown, and can still be broken",
         fn = function()
             local Vendor = require("models.vendor")
             -- ...and one that is not ALREADY flagged, which fourteen now are (docs/drops.md's
@@ -262,8 +266,19 @@ return {
             -- Flagged, it leaves the money economy in both directions.
             local had = def.unstocked
             def.unstocked = true
-            assert(Vendor.foundPrice(def) == nil, "an unstocked ware is never stocked")
-            assert(Vendor.sellValue(def) == 0, "...and never bought")
+            assert(Vendor.foundPrice(def) == nil, "an unstocked ware quotes no price")
+            assert(Vendor.sellValue(def) == 0, "...and is never bought back")
+
+            -- ...AND IS STILL SHOWN, which is the difference between "not merchandise" and "not real".
+            -- Asked at the top of the ladder, so the only thing that could be shutting it is the flag.
+            local shelf, row = require("models.vendor").forClass(def.class), nil
+            for _, entry in ipairs(Vendor.stock(shelf, Class.CLASS_LEVEL_CAP)) do
+                if entry.id == id then row = entry end
+            end
+            assert(row, id .. " is flagged unstocked and vanished from the rack entirely")
+            assert(row.locked and row.lockReason == "monster drop",
+                "a trophy is shown and refused by name, got " .. tostring(row.lockReason))
+            assert(not row.price, "...and quotes no price on the tile")
 
             -- But it is still the company's: it breaks down like anything else, which is the whole
             -- difference between `unstocked` and `bound`.

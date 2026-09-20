@@ -11,6 +11,7 @@
 --   local panel = Pvp.new({ player = hub.player, onClose = function() ... end })
 
 local CloseButton = require("ui.close_button")
+local Keeper = require("ui.keeper") -- the city's keeper pane: face or mark, name, line
 local Scale = require("scale")
 local InputMode = require("input_mode")
 local Player = require("models.player")
@@ -21,14 +22,24 @@ local Theme = require("ui.theme")
 local Pvp = {}
 Pvp.__index = Pvp
 
-local BOX_W, BOX_H = 560, 320
+-- 560 x 320 until the sand grew a keeper. The Colosseum's door introduces somebody and this room is
+-- behind it, so the pane is here like everywhere else in the city (ui/keeper.lua) -- and it is ADDED
+-- rather than taken out of the middle: two buttons and three lines were never crowded, and squeezing
+-- them into half a box to make room for a picture would be the picture winning an argument it should
+-- not be in.
+local BOX_W, BOX_H = 820, 400
 local BTN_W, BTN_H = 220, 46
+local PAD = 24
 
 function Pvp.new(opts)
     opts = opts or {}
     local self = setmetatable({}, Pvp)
     self.player = opts.player or Player.active
     self.onClose = opts.onClose
+    -- The house behind this room (models/offer.lua hands it down); the Colosseum, unless something
+    -- opens the sand from outside the city.
+    self.vendorId = opts.vendor
+    self.title = opts.title or "Dueling Grounds"
     self.titleFont = Theme.display(28)
     self.bodyFont = Theme.body(17)
     self.smallFont = Theme.body(13)
@@ -37,10 +48,16 @@ function Pvp.new(opts)
     self.boxY = Scale.HEIGHT / 2 - BOX_H / 2
     self.closeButton = CloseButton.new(self.boxX + BOX_W, self.boxY)
 
-    local bx = self.boxX + BOX_W / 2 - BTN_W / 2
+    self.keeperX = self.boxX + PAD
+    self.keeperY = self.boxY + 64
+    self.keeperH = BOX_H - 64 - PAD
+    self.colX = self.keeperX + Keeper.W + PAD
+    self.colW = self.boxX + BOX_W - PAD - self.colX
+
+    local bx = self.colX + self.colW / 2 - BTN_W / 2
     self.buttons = {
-        { key = "assemble", label = "Assemble Build", x = bx, y = self.boxY + 150, w = BTN_W, h = BTN_H },
-        { key = "match",    label = "Find a Match",   x = bx, y = self.boxY + 208, w = BTN_W, h = BTN_H },
+        { key = "assemble", label = "Assemble Build", x = bx, y = self.boxY + 190, w = BTN_W, h = BTN_H },
+        { key = "match",    label = "Find a Match",   x = bx, y = self.boxY + 248, w = BTN_W, h = BTN_H },
     }
     self.cursor = 1 -- keyboard / gamepad selection
 
@@ -163,19 +180,28 @@ function Pvp:draw()
 
     love.graphics.setFont(self.titleFont)
     Theme.set(Theme.accentAmber)
-    love.graphics.printf("Dueling Grounds", self.boxX, self.boxY + 26, BOX_W, "center")
+    -- Centred on the COLUMN and not on the box: the keeper's pane holds the left of the panel, and a
+    -- title centred on the whole thing lands over the gutter between the two.
+    love.graphics.printf("Dueling Grounds", self.colX, self.boxY + 26, self.colW, "center")
+
+    Keeper.draw(self.vendorId, self.keeperX, self.keeperY, Keeper.W, self.keeperH, {
+        nameFont = self.bodyFont,
+        lineFont = self.smallFont,
+        title = self.title,
+        line = false, -- the pane runs to the foot of the box; there is no room under it for a line
+    })
 
     love.graphics.setFont(self.bodyFont)
     Theme.set(Theme.ink)
     love.graphics.printf(
         self.published and "Your build is on the sand." or "You have left no build to be fought.",
-        self.boxX + 30, self.boxY + 76, BOX_W - 60, "center")
+        self.colX, self.boxY + 96, self.colW, "center")
 
     love.graphics.setFont(self.smallFont)
     Theme.set(Theme.muted)
     local pool = self.opponents == 1 and "1 build waiting" or (self.opponents .. " builds waiting")
     love.graphics.printf(pool .. "   -   everyone fights at level " .. Build.NORMAL_LEVEL,
-        self.boxX + 30, self.boxY + 104, BOX_W - 60, "center")
+        self.colX, self.boxY + 128, self.colW, "center")
 
     for i, b in ipairs(self.buttons) do
         local on = b.hovered or (not InputMode.isMouse() and self.cursor == i)
@@ -196,7 +222,7 @@ function Pvp:draw()
     if self.message then
         love.graphics.setFont(self.smallFont)
         love.graphics.setColor(0.9, 0.6, 0.55)
-        love.graphics.printf(self.message, self.boxX + 24, self.boxY + BOX_H - 42, BOX_W - 48, "center")
+        love.graphics.printf(self.message, self.colX, self.boxY + BOX_H - 42, self.colW, "center")
     end
 
     self.closeButton:draw()

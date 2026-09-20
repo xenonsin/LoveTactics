@@ -15,6 +15,7 @@
 --   tactics  ui/panels/party.lua  -- the Armory tab that arrives with the first descent
 --   classes  ui/panels/party.lua  -- ...and the tab beside it, which has been there all along
 --   relics   states/game.lua      -- the first relic ever put in front of the company, underground
+--   wound    states/hub.lua       -- the Cathedral's mending, on the one visit Xin joins out of it
 --
 -- THE WINDOW'S OWN CHROME IS HERE TOO -- the three `dismiss_*` lines, which are the footer under every
 -- one of these bodies (ui/panels/tutorial_note.lua). Three lines rather than one with a token, because
@@ -43,6 +44,8 @@ return {
         { "character_rowan", "Leveling up increases the stats determined by your chosen class. You are free to change classes at any time.\n\nYour class level increases when you use actions in combat. Using an action that's the same class increases your class technique by 2, using an action that's not the same class increases your class technique by 1, and the action's class technique by 1.\n\nClass level unlocks abilities from trainers and new classes, while the technique can be spent to upgrade your items.", tag = 6, id = "classes_body" },
         { "character_rowan", "Relics", tag = 10, id = "relics_title" },
         { "character_rowan", "Relics are bonuses that affect the whole party that only last until you leave the rift.", tag = 11, id = "relics_body" },
+        { "character_rowan", "Wounds", tag = 12, id = "wound_title" },
+        { "character_rowan", "A body carried out of a fight comes back wounded. Part of its health is set aside and cannot be healed back into, and a body carrying more than one wound fights worse for them.\n\nA wound does not close on its own, and coming home does not close it either. The Inn is the only room that ends one, and it ends one two ways: rest the body, which costs nothing but keeps it out of the company for a few descents, or set the bone, which costs gold and is done before you leave the room.\n\nGold buys speed here and never recovery. Resting is free, always.", tag = 13, id = "wound_body" },
         { "character_rowan", "A to continue", tag = 7, id = "dismiss_pad" },
         { "character_rowan", "Tap to continue", tag = 8, id = "dismiss_touch" },
         { "character_rowan", "Click, or press Enter to continue", tag = 9, id = "dismiss_key" },

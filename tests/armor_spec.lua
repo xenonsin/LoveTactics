@@ -86,8 +86,13 @@ return {
         -- A RUNG ON AN UNPRICED WARE IS NOT DEAD DATA ANY MORE, and this case used to say it was. The
         -- rung is the item's GRADE RANK -- what models/balance.lua reads as its power level -- and it
         -- was only ever ALSO a shelf gate. The recut took the price and left the rank, and the gate
-        -- moved to a different question entirely: have you carried one out (models/vendor.lua). So what
-        -- an armor piece owes is a rank, always, and a price never.
+        -- moved to a different question entirely: HOW FAR HAS THE CLASS GROWN (Vendor.lockReason reads
+        -- `dropTier - 1` against Quest.shelfRung). So what an armor piece owes is a rank, always, and a
+        -- price never.
+        --
+        -- (This said "have you carried one out" until 2026-09-20, naming the DISCOVERY gate -- which
+        -- came off on 2026-09-19. It was describing a gate that had already stopped existing, which is
+        -- the failure mode a comment has and a spec does not: nothing goes red when prose goes stale.)
         name = "every armor names a class and a rank, and none of it is for sale",
         fn = function()
             for class in pairs(Class.roots()) do

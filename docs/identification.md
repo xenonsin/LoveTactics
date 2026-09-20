@@ -26,8 +26,27 @@ is one of those counters.
 
 ## What is hidden
 
-**The forge level, and nothing else.** An unidentified piece is a real blueprint at a real level, both
-decided the moment it dropped; what the player is not shown is which blueprint and which level.
+**The forge level, and whether it is cursed.** An unidentified piece is a real blueprint at a real
+level, both decided the moment it dropped; what the player is not shown is which blueprint, which level —
+and whether something came up out of the floor with it.
+
+The hex arrived on 2026-09-20 ([curses.md](curses.md)) and is rolled in the same line the level is, for
+the same reason: both are facts about the piece the player is not being shown, and both must be settled
+**once**. A seal whose answer changed every time the game was loaded would be a save the player could
+re-roll by quitting, which is the whole feature undone.
+
+**It is what makes the fee a gamble rather than a delay.** Until curses existed the worst outcome of a
+reading was a piece rolled at the bottom of its range — a bad return on a bill, never a bad thing to own.
+With two tails the room finally asks the question it exists to ask, which is not *how good* but *what did
+I just take into my house*. `Identify.CURSE_BASE` 5%, climbing 1.2 points per **floorLevel** to a ceiling
+of 20% — about two hexed finds in a complete descent, weighted toward the bottom where the gear is worth
+keeping. And it is never a trap: the Cathedral's rite is free.
+
+Nothing on the husk gives it away. Its name, description, sprite and fee are all keyed off the **type**
+and the **floor**, so a hexed husk and a clean one are the same row on the same shelf at the same price.
+
+Rolling **bonus stats** onto a found piece — Diablo's affixes, the obvious first cut — was considered
+and rejected, for three reasons that are all about this codebase rather than about the idea:
 
 Rolling **bonus stats** onto a found piece — Diablo's affixes, the obvious first cut — was considered
 and rejected, for three reasons that are all about this codebase rather than about the idea:
@@ -214,7 +233,8 @@ light.
 |---|---|
 | `models/identify.lua` | the roll, the husk, the fee, the reading, the shelf. Pure model, headless-safe. |
 | `models/spoils.lua` | `Spoils.rollSealed` — which stops pay one, and out of which pool |
-| `models/save.lua` | `unidentified` on an item, written only when set; and `touchstoneShelf` on the profile |
+| `models/curse.lua` | the hex a seal may be carrying, and the Cathedral room that lifts it ([curses.md](curses.md)) |
+| `models/save.lua` | `unidentified` and `curse` on an item, each written only when set; and `touchstoneShelf` on the profile |
 | `models/player.lua` | `takeFromStash` refuses a husk — the single funnel every equip path goes through |
 | `ui/panels/touchstone.lua` | the counter: two tabs, three verbs |
 | `ui/panels/identify_reveal.lua` | the four beats |

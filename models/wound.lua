@@ -414,4 +414,24 @@ function Wound.wounded(player)
     return out
 end
 
+-- ...and the subset of those who have not been SEEN TO yet: wounded, and not already lying up for it.
+--
+-- The distinction is invisible in this file's own machinery -- a resting body is still wounded, and
+-- Wound.rest deliberately drops no count (the stay is served by descending, Wound.tickRest) -- but it
+-- is the only honest way to ask "is there anything left to do about this", which is a question two
+-- surfaces ask and must not answer differently:
+--
+--   states/hub.lua        the first morning's coaching holds the plaza until it is empty
+--   ui/panels/ward.lua    ...and rings the rows of whoever is first in it while it is not
+--
+-- Written once here rather than twice there, because a city that thinks the lesson landed and a panel
+-- still pointing at a row are the same bug seen from two screens.
+function Wound.unattended(player)
+    local out = {}
+    for _, entry in ipairs(Wound.wounded(player)) do
+        if Wound.resting(player, entry.char.id) <= 0 then out[#out + 1] = entry end
+    end
+    return out
+end
+
 return Wound

@@ -81,6 +81,7 @@ local Market = require("models.market") -- the one counter: what it has out toda
 local Calendar = require("models.calendar") -- the day today's rotation is dealt against
 local Combat = require("models.combat")
 local Sound = require("models.sound") -- shop.buy: the coin cue a committed purchase makes
+local Keeper = require("ui.keeper") -- the pane this file used to own; see drawKeeper
 local Sprite = require("models.sprite")
 local Scale = require("scale")
 local InputMode = require("input_mode")
@@ -92,21 +93,18 @@ Shop.__index = Shop
 
 -- The Armory's box (ui/panels/party.lua), for the reason the header gives.
 local BOX_W, BOX_H = 1160, 650
--- THE KEEPER PANE: who is behind this counter. A house's trainer is its COMPANION -- they turn up
--- because the company has been fighting in their discipline, and recruiting them is a separate piece of
--- work done underground (models/errand.lua) -- so the face here is a body already in the art budget
--- rather than a shopkeeper drawn for one screen.
+-- THE KEEPER PANE: who is behind this counter -- the vendor's own shopkeeper, their name, their line
+-- (ui/keeper.lua, which holds the whole argument and is now drawn by every room in the city).
 --
 -- THIS PANE WAS DELETED AND IS BACK, and the reason it was deleted is the reason it can return. It went
--- because it was a tinted plate standing in for a painting that was never commissioned and, at the
--- time, never would be: the houses had shopkeepers of their own, and seven more portraits was seven
--- more than the budget had. The trainer is one of the six the game is already paying for.
+-- because it was a tinted plate standing in for a painting that was never commissioned; it came back
+-- with a fallback that is worth looking at on its own -- the house's MARK, the shape already on this
+-- shop's title and alone on a 32px tile out on the ground.
 --
--- 236 x 380 is the new exemplar rather than a copy of one. Every shelf used to fit its keeper into
--- 236 x 356 and every one of those panes has since been cut, so there is nothing left to back-solve
--- against; this is the number the rest should take. Width first, because the column it stands in is
--- what the rail and the rack are measured off.
-local KEEPER_W, KEEPER_H = 236, 380
+-- 236 x 380 was the new exemplar rather than a copy of one, and the rest of the city's rooms have
+-- since taken it: the pane and its numbers live in ui/keeper.lua now, and this file reads them from
+-- there. Width first, because the column it stands in is what the rail and the rack are measured off.
+local KEEPER_W, KEEPER_H = Keeper.W, Keeper.H
 -- The house's bar across the top of it: mark and name, the tabs, and the purse. It replaces the vendor
 -- card that used to hold a 240px column open for three lines of text.
 local TOPBAR_H = 76
@@ -1216,6 +1214,14 @@ function Shop:lockReason(entry)
     if entry.lockReason == "sold" then
         return "Bought today. The counter deals three fresh wares in the morning."
     end
+    -- A MONSTER'S OWN DROP, and the only refusal on this shelf that never opens. It leads for the same
+    -- reason "sold" does -- every sentence below it would be a lie about a row that is never going to be
+    -- buyable -- and it names the ROAD instead of the lock, because the road is the whole answer: there
+    -- is a body down there carrying this, and killing it is how you get one.
+    if entry.lockReason == "monster drop" then
+        local floor = entry.dropTier and (" Falls around floor " .. entry.dropTier .. ".") or ""
+        return "Taken from the body that carries it -- no counter deals one." .. floor
+    end
     -- (A THIRD REFUSAL STOOD HERE, "Found in Floor 6", for a ware no counter would deal until one had
     -- been hauled out of the rift. It is gone with the gate: a found ware opens on its class rung like
     -- everything else. The depth it falls at is not gone -- it is the OTHER road to the same piece, and
@@ -1643,61 +1649,20 @@ function Shop:drawRail()
     love.graphics.line(x + RAIL_W, self.topY + 6, x + RAIL_W, self.boxY + BOX_H - 14)
 end
 
--- WHO IS BEHIND THIS COUNTER: the shopkeeper, who is the vendor's own person and carries the vendor's
--- own portrait (data/vendors/*.lua's `portrait`). Their face, the house's name, and under it the one
--- sentence the house says about itself.
+-- WHO IS BEHIND THIS COUNTER: the shopkeeper, their face, the house's name, and under it the one
+-- sentence the house says about itself. The pane itself is ui/keeper.lua, which is where the argument
+-- for it lives -- why the face is the vendor's own and not the house's companion, and why the house's
+-- MARK is an honest placeholder to ship in front of art nobody has drawn yet.
 --
--- IT IS NOT THE COMPANION. That was tried and reversed: fronting each shelf with the house's companion
--- would have meant no vendor ever needed a face, and the six portraits already in the budget doing
--- triple duty. It also made every counter a person you were on your way to recruiting, which is a
--- different relationship from the one a shop wants. A shopkeeper is somebody you buy from and keep
--- buying from; a companion is met on a floor and leaves with you (models/errand.lua).
---
--- UNTIL THE ART LANDS, THE HOUSE'S MARK STANDS IN, big and in the house's own colour
--- (ui/vendor_icons.lua). That is a deliberate placeholder rather than the letter-box the dialogue box
--- falls back to: a mark is a shape this player already meets on the shop's title and alone on a 32px
--- tile out on the ground, so a pane carrying it says something true about the house rather than drawing
--- a hole where a painting goes.
+-- IT WAS THIS FILE'S OWN, and it moved out the day the rest of the city's rooms asked for it. Every
+-- panel behind a desk is a counter with somebody standing at it -- the bench, the ward, the sand, the
+-- stone -- and seven copies of a pane is the city's one fixed landmark drifting seven ways.
 function Shop:drawKeeper()
-    local x, y, w = self.keeperX, self.keeperY, self.keeperW
-    local body = self.def
-
-    Theme.set(Theme.slot)
-    love.graphics.rectangle("fill", x, y, w, KEEPER_H, Theme.R, Theme.R)
-    Theme.set(Theme.frame)
-    love.graphics.rectangle("line", x, y, w, KEEPER_H, Theme.R, Theme.R)
-
-    local art = body and body.portrait and Sprite.load(body.portrait)
-    if type(art) == "userdata" then
-        local sw, sh = art:getDimensions()
-        -- Fitted to the pane and pinned to its FOOT, the way a bust stands on a line rather than
-        -- floating in a box: a portrait taller than it is wide crops from the top, never the chin.
-        local scale = math.max(w / sw, KEEPER_H / sh)
-        love.graphics.setScissor(x + 1, y + 1, w - 2, KEEPER_H - 2)
-        love.graphics.setColor(1, 1, 1)
-        love.graphics.draw(art, x + w / 2, y + KEEPER_H, 0, scale, scale, sw / 2, sh)
-        love.graphics.setScissor()
-    else
-        local r, g, b = VendorIcons.color(self.vendorId)
-        local size = w * 0.52
-        VendorIcons.draw(self.vendorId, x + w / 2 - size / 2, y + KEEPER_H / 2 - size * 0.62,
-            size, size, r or 0.6, g or 0.6, b or 0.7, 0.5)
-    end
-
-    -- The name plate along the pane's foot, over whatever is behind it, so a face and a mark both get
-    -- named in the same place.
-    local plate = 30
-    love.graphics.setColor(0, 0, 0, 0.62)
-    love.graphics.rectangle("fill", x + 1, y + KEEPER_H - plate - 1, w - 2, plate, 0, 0, Theme.R, Theme.R)
-    love.graphics.setFont(self.bodyFont)
-    Theme.set(Theme.accentAmber)
-    local who = (body and body.name) or self.title
-    love.graphics.printf(Theme.ellipsize(who, self.bodyFont, w - 20),
-        x, y + KEEPER_H - plate + 5, w, "center")
-
-    love.graphics.setFont(self.smallFont)
-    Theme.set(Theme.muted)
-    love.graphics.printf(self.def.description or "", x, y + KEEPER_H + 12, w, "left")
+    Keeper.draw(self.vendorId, self.keeperX, self.keeperY, self.keeperW, KEEPER_H, {
+        nameFont = self.bodyFont,
+        lineFont = self.smallFont,
+        title = self.title,
+    })
 end
 
 function Shop:drawModeSelector()

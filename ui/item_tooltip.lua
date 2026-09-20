@@ -39,6 +39,7 @@
 local Scale = require("scale")
 local Combat = require("models.combat")
 local Character = require("models.character")
+local Curse = require("models.curse")
 local Identify = require("models.identify")
 local Item = require("models.item")
 local Trait = require("models.trait")
@@ -339,6 +340,35 @@ local function buildBlocks(item, actor, innerW, out, owner, warn)
             blocks[#blocks + 1] = { kind = "stat", label = "Condition",
                 value = item.durability .. " / " .. durMax .. " fights",
                 valueColor = low and WARN or nil }
+        end
+    end
+
+    -- THE HEX ON IT (models/curse.lua), directly under Condition, because the two rows answer the same
+    -- question -- what is wrong with this piece -- and a player scanning for that should find both
+    -- answers in one place. Broken and Cursed are the pair, and they are deliberately shaped alike: each
+    -- says the WORD rather than a number, each names the house that undoes it, and each is tinted WARN.
+    --
+    -- THREE LINES RATHER THAN ONE, and each is a different kind of fact:
+    --
+    --   the NAME     which hex this is, which is what the Cathedral's own rows are labelled by and what
+    --                the player has to match up when they get there. "Cursed" alone would leave them
+    --                reading a price list against a thing with no name.
+    --   the SENTENCE what it actually does, in the hex's own words. It is the only place this is ever
+    --                written down -- the penalty itself arrives folded into the stats above, where it is
+    --                indistinguishable from the piece's own numbers, which is exactly how it should
+    --                behave and exactly why it needs saying in words somewhere.
+    --   the BIND     only when it binds, because it is the half that changes what the player can DO. It
+    --                is also the half the grid enforces silently: a cell that refuses to be dragged out
+    --                of with no explanation reads as a bug, and this row is the explanation.
+    local curse = Curse.of(item)
+    if curse then
+        blocks[#blocks + 1] = { kind = "sep" }
+        blocks[#blocks + 1] = { kind = "stat", label = "Cursed",
+            value = curse.name or "Cursed", valueColor = WARN }
+        blocks[#blocks + 1] = { kind = "warn", text = Curse.description(item) }
+        if curse.binds then
+            blocks[#blocks + 1] = { kind = "note",
+                text = "Bound to its holder -- only the Cathedral can take it off" }
         end
     end
 

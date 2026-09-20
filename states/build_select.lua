@@ -20,6 +20,7 @@ local State = require("states")
 local Scale = require("scale")
 local InputMode = require("input_mode")
 local Player = require("models.player")
+local Character = require("models.character") -- Character.spriteOf: the skin an aspect item draws the bearer in
 local Build = require("models.build")
 
 local bs = {}
@@ -151,7 +152,7 @@ end
 -- ---------------------------------------------------------------------------
 
 local function drawPortrait(char, x, y, size)
-    local sprite = char.sprite
+    local sprite = Character.spriteOf(char)
     if type(sprite) == "userdata" then
         love.graphics.setColor(1, 1, 1)
         local sw, sh = sprite:getDimensions()

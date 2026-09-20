@@ -214,7 +214,7 @@ return {
         end,
     },
     {
-        name = "the skip's technique opens the two houses Act 0 is fought in, and no others",
+        name = "the skip's technique raises the two houses Act 0 is fought in, and no others",
         fn = function()
             local player = skipped()
             local Class = require("models.class")
@@ -223,7 +223,7 @@ return {
 
             -- The company arrives having SWUNG two houses: Rowan is declared knight and the avatar's
             -- starting sword is the Bastion's shelf, while the avatar's own badge is fighter
-            -- (Growth.NEUTRAL_CLASS -- it declares no class). Level 1 is what a house door asks for.
+            -- (Growth.NEUTRAL_CLASS -- it declares no class).
             for _, class in ipairs({ "knight", "fighter" }) do
                 assert(Class.rosterLevel(player, class) >= 1,
                     "Act 0 is fought in " .. class .. ", and the company arrives at class level "
@@ -231,18 +231,26 @@ return {
             end
 
             -- The road hands over an opener for all seven classes, which is not the same as having cast
-            -- them: the other five SHELVES are still shut, exactly as a PLAYED Act 0 leaves them.
+            -- them: the other five houses are still at the BOTTOM of their ladder, exactly as a PLAYED
+            -- Act 0 leaves them.
             --
-            -- Asked of the shelf rather than of the door, because those are two questions since the fold
-            -- (models/offer.lua): a house's door opens on ANY room behind it, so the Cathedral is
-            -- standing open on this same morning for Rowan's wound while its shelf waits on a priest
-            -- level nobody has. What Act 0 buys is the shelf.
+            -- ASKED OF THE RUNG, NOT OF THE DOOR AND NOT OF THE SHELF. All three used to be one gate
+            -- and this case counted the middle one; a shelf is ungated now (models/offer.lua) because a
+            -- shopfront that offers no shop is not a shopfront, so what Act 0 buys is DEPTH -- the two
+            -- houses it was fought in stand a rung up, and the other five stock their bottom band.
             local Offer = require("models.offer")
-            local open = 0
+            local Quest = require("models.quest")
+            local raised, total = 0, 0
             for _, def in pairs(Building.defs) do
-                if def.counter and Offer.openSet(player, def).shelf then open = open + 1 end
+                if def.counter then
+                    total = total + 1
+                    assert(Offer.openSet(player, def).shelf,
+                        (def.vendor or "?") .. "'s shop is not behind its door")
+                    if Quest.shelfRung(player, def.vendor) >= 1 then raised = raised + 1 end
+                end
             end
-            assert(open == 2, "two of the seven shelves open on a skipped Act 0, got " .. open)
+            assert(total == 7, "the city holds seven houses, got " .. total)
+            assert(raised == 2, "two of the seven shelves stand a rung up on a skipped Act 0, got " .. raised)
 
             -- Nothing is banked above what the fights could physically have paid: the per-fight ceiling
             -- a real fight enforces, over the four fights the road holds.

@@ -151,27 +151,26 @@ return {
         end,
     },
     {
-        -- A QUIET ROOM DOES NOT ANNOUNCE ITS HOUSE. Every shelf is quiet: a class rung is a reward the
-        -- player cannot see, and hanging a door on it put two shopfronts on the plaza the moment Act 0
-        -- ended -- onto rung-1 shelves that stock almost nothing.
+        -- A QUIET ROOM DOES NOT ANNOUNCE ITS HOUSE. Every shelf is quiet, and it is the only thing
+        -- holding the seven shopfronts off the first morning now that the shelves are ungated: browsing
+        -- is not a deed, and a plate arriving for one is the city reacting to nothing the player did.
         name = "a quiet room opens without putting its card on the plaza",
         fn = function()
             local quiet = 0
             for id, def in pairs(Building.defs) do
                 for _, offer in ipairs(def.offers or {}) do
                     if offer.answer == "shelf" then
-                        assert(offer.quiet, id .. "'s shelf must be quiet, or a class rung opens a door")
+                        assert(offer.quiet, id .. "'s shelf must be quiet, or every house opens at once")
                         quiet = quiet + 1
                     end
                 end
             end
             assert(quiet == 7, "all seven shelves are quiet, got " .. quiet)
 
-            -- A body a rung into the knight opens the Bastion's SHELF and nothing on the board.
+            -- A fresh company: the Bastion's SHELF is behind its door and nothing is on the board.
             local p = Player.new()
             p.roster = { Character.instantiate("character_rowan") }
-            Character.recordTechnique(p.roster[1], "knight", Class.classLevelCost(1))
-            assert(Offer.openSet(p, Building.defs.bastion).shelf, "the rung stocks the shelf")
+            assert(Offer.openSet(p, Building.defs.bastion).shelf, "the shelf is the house, and is open")
             assert(not Offer.any(p, Building.defs.bastion), "...and leaves the card off the plaza")
             for _, b in ipairs(Building.list(p)) do
                 if b.id == "bastion" then assert(b.locked, "the Bastion is still shut") end
@@ -179,10 +178,14 @@ return {
         end,
     },
     {
-        -- A DOOR AND ITS SHELF ARE TWO QUESTIONS. This is the whole reason the fold was possible: the
-        -- Cathedral has to be open on the first morning for a wound, while its shelf waits on a priest
-        -- level nobody has.
-        name = "a door opens on any room behind it, and a shelf on its own class",
+        -- A DOOR AND ITS ROOMS ARE TWO QUESTIONS, and the Cathedral is where they part: the card has to
+        -- arrive on a wound -- a deed -- while the mending behind it is the room that deed opened, and
+        -- the shelf beside it has never been gated on anything at all.
+        --
+        -- THE SHELF USED TO BE THE THIRD ANSWER HERE, shut until somebody held a priest level. That is
+        -- the case this file asserted for the whole of the fold and it was the bug: a card on the plaza,
+        -- a keeper at the desk, and no shop. A shelf is the house.
+        name = "a door opens on any room behind it, and the shop is always one of them",
         fn = function()
             local function locked(who, id)
                 for _, b in ipairs(Building.list(who)) do
@@ -195,18 +198,15 @@ return {
             local hurt = Player.new()
             Wound.inflict(hurt, { { id = "character_rowan" } })
             assert(not locked(hurt, cathedralId), "a wound stands the door open")
-            assert(not Offer.openSet(hurt, cathedral).shelf, "...and the shelf stays shut behind it")
+            assert(Offer.openSet(hurt, cathedral).shelf, "...and the shop is behind it, as it always is")
 
-            -- ...and NOT the other way round, which is the half the quiet flag buys. A priest rung with
-            -- nobody hurt stocks the shelf and leaves the card off the board: the player banked that rung
-            -- by fighting, never chose it, and a shopfront appearing for it is the city reacting to
-            -- something invisible.
-            local priest = Player.new()
-            priest.roster = { Character.instantiate("character_rowan") }
-            Character.recordTechnique(priest.roster[1], "priest", Class.classLevelCost(1))
-            assert(Offer.openSet(priest, cathedral).shelf, "a priest rung stocks the shelf")
-            assert(locked(priest, cathedralId), "...and leaves the door shut, because a shelf is quiet")
-            assert(not Offer.openSet(priest, cathedral).mend, "and there is still nothing to mend")
+            -- ...and NOT the other way round, which is the half the quiet flag buys. Nobody hurt: the
+            -- shelf is open behind a card that is not on the board, and there is nothing to mend.
+            local well = Player.new()
+            well.roster = { Character.instantiate("character_rowan") }
+            assert(Offer.openSet(well, cathedral).shelf, "the shop is open for anyone who reaches it")
+            assert(locked(well, cathedralId), "...and leaves the door shut, because a shelf is quiet")
+            assert(not Offer.openSet(well, cathedral).mend, "and there is still nothing to mend")
         end,
     },
     {

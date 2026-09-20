@@ -23,6 +23,7 @@ local Choice = require("ui.panels.choice") -- the generic yes/no modal, hosted h
 local CloseButton = require("ui.close_button")
 local ItemTooltip = require("ui.item_tooltip") -- printFlavor: the sheared italic story line, as everywhere else
 local Meal = require("models.meal")
+local Keeper = require("ui.keeper") -- the city's keeper pane: face or mark, name, line
 local Vendor = require("models.vendor") -- only for the shopkeeper's name and pitch
 local Player = require("models.player")
 local VendorIcons = require("ui.vendor_icons") -- the counter's mark, worn on its name in the header
@@ -84,9 +85,15 @@ function Cafe.new(opts)
     self.boxY = Scale.HEIGHT / 2 - BOX_H / 2
 
 
+    -- THE KEEPER'S COLUMN: the pane, and under it the two lines this room adds to it -- the purse and
+    -- what is already on the table. The pane's WIDTH is the city's (ui/keeper.lua) so a player who has
+    -- stood at one counter finds this one in the same place; its HEIGHT is what the column affords
+    -- after the lines beneath it, which is the half that differs per room.
     self.vendorX = self.boxX + 24
-    self.vendorY = self.boxY + 64
-    self.vendorW = 260
+    self.keeperY = self.boxY + 64
+    self.keeperH = 296
+    self.vendorY = self.keeperY + self.keeperH + 12
+    self.vendorW = Keeper.W
     self.listLeft = self.vendorX + self.vendorW + 24
     self.listW = 300
     self.listTop = self.boxY + 96
@@ -243,10 +250,20 @@ function Cafe:draw()
     love.graphics.setColor(1, 1, 1)
 end
 
--- NO PORTRAIT PANE, and the slot is measured off its content rather than running to the foot of the
--- panel -- see the note in ui/panels/shop.lua, which this matches so two counters still look like two
--- counters. The Cafe's mark rides on its name in the header.
+-- THE KEEPER, THEN WHAT THIS ROOM ADDS TO THEM. The pane is the city's (ui/keeper.lua) -- face or
+-- mark, name plate, and the house's own line under it -- and the slot beneath is the two facts that
+-- belong to the Cafe alone. It stood here without the pane for a while, on the reading that a mark on
+-- the header named the house well enough; it does, but the room behind a desk should hold the person
+-- the desk introduced, and every counter in the city draws them now.
+--
+-- The slot is still measured off its own content rather than running to the foot of the panel.
 function Cafe:drawVendor()
+    Keeper.draw(self.vendorId, self.vendorX, self.keeperY, self.vendorW, self.keeperH, {
+        nameFont = self.bodyFont,
+        title = self.title,
+        line = false, -- the house's line is printed in the slot below, where it always was
+    })
+
     local x, y, w = self.vendorX, self.vendorY, self.vendorW
 
     local _, wrapped = self.smallFont:getWrap(self.def.description or "", w - 24)

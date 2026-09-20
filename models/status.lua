@@ -506,8 +506,31 @@ end
 -- a hit -- it counters, feeds Rimebitten, wakes a sleeper), while immunity is categorical and returns a
 -- true 0. No amount of the former ever reaches the latter; immunity is a different thing you buy, not a
 -- pile of the same one. It voids even the `raw` path, because it is a ward and not armor.
+--
+-- TWO SOURCES, AND ONLY ONE OF THEM IS ANSWERABLE BY AN ELEMENT.
+--
+--   a STATUS (`def.immune`)  -- a ward somebody spent a turn opening. Seal: Slash promises that "every
+--                              slash-tagged hit is voided to 0", and it means every one. Checked first
+--                              and unchanged, because three shipped abilities say that sentence.
+--   an ITEM (`item.immune`)  -- a fact about what the BODY is, worn on a bound piece it can never take
+--                              off and folded onto the unit by Combat.applyUnitPassives. This one is
+--                              ANSWERED BY AN ELEMENT: a blow carrying an element the body is not also
+--                              immune to lands in full, whatever else it carries.
+--
+-- That clause is what makes a physically immune body a PUZZLE rather than a wall. docs/bestiary.md's
+-- "the element is added; the channel is not moved" means a demon's claw ships as `physical, slash,
+-- fire` -- a physical blow with an element on it -- and the Dawn Chrism does the same to anything the
+-- party is holding. Without the clause, a body with nothing in it to cut also could not be burned
+-- through a branded blade, and "put fire on your sword" would be the one obvious answer that silently
+-- did nothing. With it, weapons alone are useless against such a body and weapons carrying an element
+-- are not, which is the whole read of it.
+--
+-- "An element it is not ALSO immune to" is load-bearing rather than a flourish: it is what lets the
+-- same field state a body immune to an ELEMENT (a thing made of fire), where the element on the blow
+-- is exactly what is being refused and must not walk round the refusal it triggered.
 function Status.immuneToDamage(unit, tags)
-    for _, s in ipairs((unit and unit.statuses) or {}) do
+    if not unit then return nil end
+    for _, s in ipairs(unit.statuses or {}) do
         local im = s.def.immune
         if im then
             for _, t in ipairs(tags or {}) do
@@ -515,7 +538,24 @@ function Status.immuneToDamage(unit, tags)
             end
         end
     end
-    return nil
+
+    local innate = unit.immune
+    if not innate then return nil end
+    -- Reached only by the handful of bodies wearing one, so the lazy require and the second walk of
+    -- the tag list cost every other body in the game a single nil check.
+    local Combat = require("models.combat")
+    local hit, answered = nil, false
+    for _, t in ipairs(tags or {}) do
+        if innate[t] then
+            hit = hit or innate[t]
+        elseif Combat.ELEMENT_TAGS[t] then
+            -- No status above matched this tag either (we would have returned), so this is genuinely
+            -- an element the body has no answer to -- and one such tag on the blow is enough.
+            answered = true
+        end
+    end
+    if answered then return nil end
+    return hit
 end
 
 -- The CAST WARD on `unit` -- a status declaring `negates = "cast"` -- or nil. Its own kind of ward, and

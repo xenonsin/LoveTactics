@@ -108,11 +108,32 @@ return {
         local full = Forge.mendCost(weapon)
         assert(full and full > 0, "a broken piece costs nothing to mend")
 
-        -- HALF A BAR IS HALF THE BILL. The price is legible without a table: mending costs about a
-        -- tenth of what the thing is worth, scaled by what is missing.
+        -- HALF A BAR IS HALF THE BILL, and the bill is a FIXED RATE PER POINT rather than a share of
+        -- what the piece is worth (Forge.MEND_PER_POINT). The share version read `item.price`, which
+        -- the shelf recut took off everything above a house's opener -- so for most of the catalogue
+        -- it collapsed onto the max(1, ...) floor and a destroyed endgame hammer mended for ONE GOLD.
+        -- That is the failure this case now pins: the bill must be the WORK, and the work is the same
+        -- whatever the blade is worth.
+        assert(full == (max - 0) * Forge.MEND_PER_POINT, string.format(
+            "a full bar of %d points billed %d, not %d at the fixed rate",
+            max, full, max * Forge.MEND_PER_POINT))
+
         weapon.durability = math.floor(max / 2)
         local half = Forge.mendCost(weapon)
         assert(half < full, "mending half a bar costs as much as mending all of it")
+
+        -- AND AN UNPRICED PIECE IS BILLED THE SAME AS A PRICED ONE. The whole hole in one assertion:
+        -- pick something the recut left with no `price` at all and check it is not mending for the
+        -- floor of 1. Structural -- it reads the item's own absent field -- so it stays true however
+        -- the catalogue is re-priced.
+        local found = Item.instantiate("armor_leather_armor")
+        assert(Item.defs.armor_leather_armor.price == nil,
+            "the fixture stopped being an unpriced ware; pick another")
+        local fmax = Item.durabilityMax(found)
+        found.durability = 0
+        assert(Forge.mendCost(found) == fmax * Forge.MEND_PER_POINT,
+            "an unpriced ware mends for " .. tostring(Forge.mendCost(found))
+            .. " -- the bill is reading the piece's value again")
 
         player.gold = 0
         weapon.durability = 0
@@ -194,5 +215,51 @@ return {
             "a weapon that survives a whole stack unmaintained is not a sink")
         assert(Item.DURABILITY.armor > Item.DURABILITY.weapon,
             "armour is hit rather than hitting and should outlast a blade")
+    end },
+
+    { name = "a piece is mended IN TOWN and nowhere else", fn = function()
+        -- The case above states this rule in prose -- "mending is a thing you think about underground
+        -- where you cannot do it" -- and until now nothing enforced it, which is the shape of rule
+        -- that quietly stops being true. It matters more since data/status/status_corroding.lua: the
+        -- slimes eat durability mid-fight, and the whole reason that is fair is that the answer is a
+        -- trip home. An underground repair would delete the cost without deleting the mechanic.
+        --
+        -- Asserted on the CALL SITES rather than on a flag, because there is no flag to read -- the
+        -- rule is "only a hub panel may spend this verb", and the only way to check it is to look at
+        -- who calls it. Source-swept the way tests/item_coverage_spec.lua sweeps for named ids.
+        local ALLOWED = { ["ui/panels/forge.lua"] = true }
+        local offenders = {}
+        local function sweep(dir)
+            for _, entry in ipairs(love.filesystem.getDirectoryItems(dir)) do
+                local path = dir .. "/" .. entry
+                if love.filesystem.getInfo(path, "directory") then
+                    sweep(path)
+                elseif entry:match("%.lua$") then
+                    local src = love.filesystem.read(path)
+                    -- The model's own file defines the verb; it is not a caller of it.
+                    if src and path ~= "models/forge.lua" and not ALLOWED[path]
+                        and src:find("Forge%.mend%s*%(") then
+                        offenders[#offenders + 1] = path
+                    end
+                end
+            end
+        end
+        for _, root in ipairs({ "models", "states", "ui", "data", "tools" }) do sweep(root) end
+        table.sort(offenders)
+        assert(#offenders == 0, "gear is mended at the Bastion's forge and nowhere else, so a "
+            .. "corroded blade is a reason to go home. These reach Forge.mend from outside the hub "
+            .. "panel:\n  " .. table.concat(offenders, "\n  "))
+
+        -- ...and the panel those call sites belong to really is a room on a house's desk, which is
+        -- what makes it a town errand rather than something the run can carry with it.
+        local Registry = require("models.registry")
+        local buildings = Registry.load("data/buildings", "data.buildings")
+        local found = false
+        for _, def in pairs(buildings) do
+            for _, offer in ipairs(def.offers or {}) do
+                if offer.panel == "forge" then found = true end
+            end
+        end
+        assert(found, "no house opens the forge, so the one place gear can be mended is unreachable")
     end },
 }

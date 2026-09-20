@@ -292,6 +292,13 @@ Grade.TRAIT_COOLDOWN_FLOOR = 0.35
 -- when the pool is dry" is a rule about the whole fight, and nothing in the trait file says so. The
 -- inverse happened too: Demon Ascendant and Contagion seeded reactive and were judged at 0.5.
 Grade.TRAIT_GRADE = {
+    -- THE CURSE-COUNTING SHELF (docs/curses.md). All three are worth what the company has agreed to
+    -- carry, which the dry run cannot see: the bench reads a body with no hexes on it, where the whole
+    -- point of the piece is a body with several. Weighed by judgement against the items they ride --
+    -- The Gathered Weight is a +8 attack charm on the build it is for and a dead cell otherwise.
+    trait_common_burden =               2.0,  -- Common Burden (armour, but it reads the whole line)
+    trait_tether =                      2.0,  -- Tethered (a curse's own rule; a cost, not a gift)
+    trait_gathered_weight =             4.0,  -- Gathered Weight
     trait_blood_price =                 0.5,  -- Blood Price
     trait_boss_phases =                 0.5,  -- Demon Ascendant
     trait_contagion =                   0.5,  -- Contagion
@@ -540,6 +547,58 @@ Grade.TRAIT_GRADE = {
     trait_rot_fume =                    4.5,  -- Rot-Fume
     trait_sealed_reliquary =            4.5,  -- Sealed Reliquary
     trait_volatile =                    4.5,  -- Volatile
+
+    -- THE TWO SLIME RULES, and both are judged rather than estimated because the shape estimate
+    -- reads them at opposite ends of its scale for reasons that have nothing to do with what they
+    -- are worth. Neither is on a shelf -- they ride `class = "creature"` kit that no counter stocks
+    -- and no pool mints -- but a weight is what keeps the estimate from quietly answering for them
+    -- if either rule is ever lifted onto something a player can hold.
+    --
+    -- ADAPTIVE is the most valuable defensive trait in this table and is graded at the ceiling. The
+    -- estimate seeds it at onDamaged's 3.2 -- "fires when hit, which in a real fight is often" -- and
+    -- that is the half it gets right; what it cannot see is that each firing buys a CATEGORICAL
+    -- immunity, the thing docs/vulnerability.md says no amount of resistance ever reaches, plus an
+    -- element on every blow the bearer throws for as long as it holds. It is Rising Wrath's rank: an
+    -- effect that compounds with the fight going badly, and here the enemy chooses to feed it every
+    -- time they do the obvious thing.
+    trait_adaptive =                    6.0,  -- Adaptive
+    -- COMES APART is graded at Volatile's weight, which is the same beat -- a death that costs the
+    -- killer something -- and deliberately no higher despite putting three bodies on the board where
+    -- Volatile puts one blast. Two things hold it level: it pays out only when the bearer is already
+    -- dead, so it can never win a fight it is losing, and what it fields is three copies of the
+    -- CHEAPEST body its own file names rather than anything scaled to the bearer.
+    trait_split =                       4.5,  -- Comes Apart
+
+    -- BONE-KNIT, the skeleton's refusal to fall (data/items/utility/utility_marrowlight.lua), judged
+    -- because the shape estimate and the sibling weight disagree by a factor of three and BOTH are
+    -- wrong about it. `revivesOnLethal` seeds at 5.5 -- "a body that does not fall is the largest thing
+    -- a trait does" -- which was written about a refusal that happens once; Second Wind, the refusal
+    -- that happens once, is judged two rungs under that at 2.0. This is neither.
+    --
+    -- It lands at the CEILING, beside Adaptive, and for the same kind of reason. Each firing restores
+    -- the WHOLE bar, which is the largest single thing any effect in this game does; it fires as many
+    -- times as the pool covers rather than once; and on the body it actually ships on it is the only
+    -- healing that exists at all, because the aspect that grants it is grave-cold. "It cannot die while
+    -- it can pay" is a categorical claim about a fight in the way Adaptive's immunity is, and no amount
+    -- of ordinary mitigation is the same shape.
+    --
+    -- What holds it AT the ceiling rather than above it is the one thing this file cannot see: a trait's
+    -- `cost`. Forty mana is more than the costliest spell in the catalogue, mana does not regenerate
+    -- mid-fight, and so the real bill is a caster's entire turn budget or a non-caster's entire build.
+    -- The instrument reads none of that, which is exactly why the number is judged here.
+    trait_bone_knit =                   6.0,  -- Bone-Knit
+    -- COURT OF BONE (data/traits/trait_court_of_bone.lua) is graded LOW, and the estimate would have
+    -- read it high for the one reason this table exists to correct: the shape estimate weighs hooks, and
+    -- this is two of them (onCombatStart at 2.4, onAnyDeath at 1.6) on a rule that, taken by itself,
+    -- does nothing at all. It deals no damage, applies no status, saves nobody and changes no stat. All
+    -- it does is write a number into a pool.
+    --
+    -- What makes the Skeleton King hard is Bone-Knit, which is already weighed at the ceiling one line
+    -- up; this only decides where that rule's fuel comes from. Weighing the pair twice would price the
+    -- crown at eleven turns of advantage and file a boss relic above every weapon in the game. It is
+    -- also on nothing a player can hold -- the crown is `bound` creature kit -- so the number's only job
+    -- is to stop the estimator from answering for it.
+    trait_court_of_bone =               0.5,  -- Court of Bone
 }
 
 -- Which of the weights above were ADOPTED from the classifier's seed rather than weighed one by

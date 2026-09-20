@@ -31,6 +31,10 @@ local FIELDED = {
     { conv = CITY,  id = "gate_stair",    coach = true },
     { conv = CITY,  id = "rift_card",     coach = true },
     { conv = CITY,  id = "new_door",      coach = true },
+    -- The two bubbles in this bag pinned inside a PANEL rather than to a card (ui/panels/ward.lua):
+    -- the row it names when the purse covers the bone, and the row it falls back to when it does not.
+    { conv = CITY,  id = "mend_row",      coach = true },
+    { conv = CITY,  id = "mend_rest",     coach = true },
     { conv = NOTES, id = "tally_title" },
     { conv = NOTES, id = "tally_body" },
     { conv = NOTES, id = "tactics_title" },
@@ -39,6 +43,8 @@ local FIELDED = {
     { conv = NOTES, id = "classes_body" },
     { conv = NOTES, id = "relics_title" },
     { conv = NOTES, id = "relics_body" },
+    { conv = NOTES, id = "wound_title" },
+    { conv = NOTES, id = "wound_body" },
     -- The window's own footer, one line per device (ui/panels/tutorial_note.lua picks the id).
     { conv = NOTES, id = "dismiss_pad" },
     { conv = NOTES, id = "dismiss_touch" },
@@ -118,6 +124,16 @@ return {
                 assert(text:find("the Forge.", 1, true), "the door's name reaches the bubble")
                 assert(not text:find("{door}", 1, true), "...and no raw token is ever printed")
             end)
+
+            -- ...and the Inn's rows name the body they are ringing the same way, filled by the panel
+            -- from whoever is still owed a mending (ui/panels/ward.lua's coachRect).
+            withMode("mouse", false, function()
+                for _, id in ipairs({ "mend_row", "mend_rest" }) do
+                    local text = Locale.coach(CITY, id, { who = "Rowan" })
+                    assert(text:find("Rowan", 1, true), id .. ": the hurt body's name reaches the bubble")
+                    assert(not text:find("{who}", 1, true), id .. ": no raw token is ever printed")
+                end
+            end)
         end,
     },
     {
@@ -143,7 +159,7 @@ return {
         name = "no teaching surface carries its own English",
         fn = function()
             for _, path in ipairs({ "states/gate.lua", "states/hub.lua", "ui/panels/party.lua",
-                                    "states/game.lua" }) do
+                                    "states/game.lua", "ui/panels/ward.lua" }) do
                 local src = source(path)
                 local from = 1
                 while true do
@@ -175,6 +191,19 @@ return {
             local hub = source("states/hub.lua")
             assert(hub:find("\"rift_card\"", 1, true), "the first morning's bubble lost its line id")
             assert(hub:find("\"new_door\"", 1, true), "a grown door's bubble lost its line id")
+            -- ...and the window the Cathedral's first visit opens with, which is the beat Xin joins on
+            -- (states/hub.lua's teachWounds, handed the seam by models/counter.lua's afterIntro).
+            for _, id in ipairs({ "wound_title", "wound_body" }) do
+                assert(hub:find(id, 1, true), "states/hub.lua stopped asking for `" .. id .. "`")
+            end
+
+            -- The Inn's own rows carry the other half of that lesson -- the press -- and it is the one
+            -- coach bubble in the game drawn by a panel rather than by a state.
+            local ward = source("ui/panels/ward.lua")
+            for _, id in ipairs({ "mend_row", "mend_rest" }) do
+                assert(ward:find("\"" .. id .. "\"", 1, true),
+                    "the Inn's rows lost the `" .. id .. "` coaching line")
+            end
 
             -- The window widget's footer is the one string it owns, and it must be picked as an ID
             -- rather than as three sentences (the shape this whole sweep is enforcing).

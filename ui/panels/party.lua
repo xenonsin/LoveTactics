@@ -1914,7 +1914,7 @@ function Party:drawRailPortrait(char, i, rx, ry, rw, rh)
     Theme.set(focused and Theme.panel or Theme.panel2)
     love.graphics.rectangle("fill", rx, ry, rw, rh, 6, 6)
 
-    local sprite = char.sprite
+    local sprite = Character.spriteOf(char)
     local px, py, ps = rx + (rw - PORTRAIT) / 2, ry + 4, PORTRAIT
     if type(sprite) == "userdata" then
         love.graphics.setColor(1, 1, 1)

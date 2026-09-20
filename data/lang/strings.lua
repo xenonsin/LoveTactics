@@ -37,7 +37,7 @@ return {
     ["desc.rogue"] = { en = "Takes the opening and the purse. A strike that meets its condition hits for a multiple, blinks return you to where you stood, and blows bleed, disarm or steal.", ja = "" },  -- TODO
     ["desc.saboteur"] = { en = "Plants charges and picks the moment. Explosives are placed on tiles unseen and set off on your own signal rather than on a timer.", ja = "" },  -- TODO
     ["desc.sentinel"] = { en = "Takes the hits meant for someone else. Attacks aimed at an adjacent ally are redirected onto you instead.", ja = "" },  -- TODO
-    ["desc.shaman"] = { en = "Calls spirits out of the ground. Each one is bound to the hazard it stands in and fights on its own once it is summoned.", ja = "" },  -- TODO
+    ["desc.shaman"] = { en = "Binds spirits into things and makes them stay. Into the ground, where each one fights on its own -- or into a body's gear, where it becomes a curse.", ja = "" },  -- TODO
     ["desc.skirmisher"] = { en = "Strikes and moves on. Attacking frees a move afterwards, so you never end a turn standing where you swung.", ja = "" },  -- TODO
     ["desc.spellbreaker"] = { en = "Shuts casters down. A melee blow interrupts a spell being channelled, inflicts Silence, and negates the next cast made nearby.", ja = "" },  -- TODO
     ["desc.summoner"] = { en = "Fields elementals instead of spells. Mana is banked and spent to summon bodies that take turns of their own.", ja = "" },  -- TODO
@@ -193,6 +193,7 @@ return {
     ["line.conversation_cathedral_counter.3"] = { en = "Show me what the church will part with.", ja = "" },  -- TODO
     ["line.conversation_cathedral_counter.4"] = { en = "Somebody needs mending.", ja = "" },  -- TODO
     ["line.conversation_cathedral_counter.5"] = { en = "Nothing today.", ja = "" },  -- TODO
+    ["line.conversation_cathedral_counter.6"] = { en = "Something we are carrying is cursed.", ja = "" },  -- TODO
     ["line.conversation_cathedral_discipline_unlocked.1"] = { en = "The {discipline}'s calling is open to you, {name}. What the Cathedral kept back for that path is on the shelf. Take what serves.", ja = "" },  -- TODO
     ["line.conversation_cathedral_discipline_unlocked.2"] = { en = "Then it's earned. Show me.", ja = "" },  -- TODO
     ["line.conversation_cathedral_discipline_unlocked.3"] = { en = "The Light gives what is earned, and you earned this. Carry it gently.", ja = "" },  -- TODO
@@ -410,6 +411,8 @@ return {
     ["line.conversation_tutorial_city.3"] = { en = "{select} {door}", ja = "" },  -- TODO
     ["line.conversation_tutorial_city.4"] = { en = "{select} the Bounty Board. The houses post their work there.", ja = "" },  -- TODO
     ["line.conversation_tutorial_city.5"] = { en = "{select} the Inn. They will see to that arm, and it costs nothing to wait.", ja = "" },  -- TODO
+    ["line.conversation_tutorial_city.6"] = { en = "{select} to set {who}'s bone now. Resting mends it too, and costs the trips she is in bed for.", ja = "" },  -- TODO
+    ["line.conversation_tutorial_city.7"] = { en = "{select} to rest {who}. The purse will not cover setting the bone today.", ja = "" },  -- TODO
     ["line.conversation_tutorial_flight.1"] = { en = "Walk to the chest ahead. Use WASD, the arrow keys, or click a tile.", ja = "" },  -- TODO
     ["line.conversation_tutorial_flight.2"] = { en = "Open your loadout to see what you found.", ja = "" },  -- TODO
     ["line.conversation_tutorial_flight.3"] = { en = "{select} an item in your stash to equip it to a hero.", ja = "" },  -- TODO
@@ -418,6 +421,8 @@ return {
     ["line.conversation_tutorial_notes.1"] = { en = "The Tally", ja = "" },  -- TODO
     ["line.conversation_tutorial_notes.10"] = { en = "Relics", ja = "" },  -- TODO
     ["line.conversation_tutorial_notes.11"] = { en = "Relics are bonuses that affect the whole party that only last until you leave the rift.", ja = "" },  -- TODO
+    ["line.conversation_tutorial_notes.12"] = { en = "Wounds", ja = "" },  -- TODO
+    ["line.conversation_tutorial_notes.13"] = { en = "A body carried out of a fight comes back wounded. Part of its health is set aside and cannot be healed back into, and a body carrying more than one wound fights worse for them.\n\nA wound does not close on its own, and coming home does not close it either. The Inn is the only room that ends one, and it ends one two ways: rest the body, which costs nothing but keeps it out of the company for a few descents, or set the bone, which costs gold and is done before you leave the room.\n\nGold buys speed here and never recovery. Resting is free, always.", ja = "" },  -- TODO
     ["line.conversation_tutorial_notes.2"] = { en = "This meter measures the energy of the rift and tells us if a breach is imminent. It will increase every day, but clearing the champion on each floor reduces the meter.\n\nThe merchants lobby heavily to keep the rift active, but many lives are spent keeping the balance.", ja = "" },  -- TODO
     ["line.conversation_tutorial_notes.3"] = { en = "Tactics", ja = "" },  -- TODO
     ["line.conversation_tutorial_notes.4"] = { en = "Characters can be taught to fight on their own using tactics.\n\nTactics are prioritized and evaluated from top to bottom and are used when the character is set to auto mode.", ja = "" },  -- TODO
