@@ -1454,6 +1454,21 @@ end
 -- How far off its slot an item sits, as a verdict: "ok", "low" or "high". Honors the waivers, so a
 -- caller does not have to remember to.
 function Balance.magnitudeVerdict(id)
+    -- CREATURE KIT HAS NO SLOT, so the claim this function makes cannot be made about it. "The slot an
+    -- item unlocks from IS its power level" is a statement about a PURCHASE -- a later rung that opens
+    -- something weaker than an earlier one is a downgrade somebody paid for -- and a boss's natural
+    -- ability is on no shelf, at no rung, for no price (docs/bestiary.md: creature kit carries no axis
+    -- at all). Read against slot 0 it is simply asked to be a starter weapon, which it is not.
+    --
+    -- THIS WAS TRUE ALL ALONG AND ENFORCED BY ACCIDENT, which is why it is worth a gate rather than a
+    -- waiver. The 90-odd creature items escaped this pass only because none of them happened to carry
+    -- gradeable authored damage -- Howl summons, Gore is a lane, the Call reserves a pool -- so the
+    -- rule was being kept by a coincidence about the catalogue's contents rather than by anything that
+    -- could be read. The first creature ability authored with a damage curve (ability_swailing) landed
+    -- here at once, which is the proxy expiring exactly as docs/bestiary.md describes `price` expiring.
+    local def = Item.defs[id]
+    if def and def.class == "creature" then return nil end
+
     local want, have = Balance.itemMagnitude(id)
     if not want then return nil end
     if Balance.MAGNITUDE_WAIVERS[id] then return "ok", want, have end

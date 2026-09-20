@@ -1,10 +1,13 @@
 -- THE RUN AWAY PLATE'S NOTE (ui/deploy_phase.lua's fleeNotePlate).
 --
--- The plate quotes a price -- "Run Away (55%)" -- and names no stake, and the three things that decide
--- whether pressing it is sane are all off-screen: one attempt only, a loss opens the SAME fight from
--- behind rather than cancelling it, and the odds run the wrong way on purpose (models/flee.lua). The
--- note beside the plate is where those live, so what is pinned here is that it can be REACHED: on a
--- pad, which has no pointer to hover with, exactly as on a mouse.
+-- The plate says "Run Away" and names no consequence, and what actually happens to the fight is
+-- off-screen: a rolled fight is gone for good, while a threat standing on the floor stays standing
+-- (states/game.lua's onFlee). The note beside the plate is where that lives, so what is pinned here is
+-- that it can be REACHED: on a pad, which has no pointer to hover with, exactly as on a mouse.
+--
+-- The cases below still pass `fleeChance = 55`, which is now a value the live game never produces
+-- (Flee.CERTAIN quotes 100). That is deliberate: it exercises the plate's ODDS branch, so the label
+-- keeps being built and measured the way it will be again if the curve is ever unparked.
 --
 -- Driven through fleeNotePlate rather than drawFleeNote, which is why the gating is decided apart from
 -- the drawing: the answer IS what the player gets, and it can be read here without a window.

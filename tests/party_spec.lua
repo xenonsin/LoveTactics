@@ -170,19 +170,38 @@ return {
                 for _, e in ipairs(Vendor.stock(vid, 0)) do
                     -- A discipline item carries a SECOND lock (its discipline must be unlocked), so it
                     -- stays locked even at its unlockQuests -- not what this quest-only test measures.
-                    -- ...AND A FOUND WARE CARRIES A THIRD, which no amount of standing lifts: it
-                    -- reports a rank drawn from its DEPTH rather than a rung (models/vendor.lua), so
-                    -- `unlockQuests > 0` now catches items that will still be shut at any quest count.
-                    -- The rung lock is the one this case measures, and lockReason names it.
                     if e.lockReason == "rung" and not e.discipline then vId, locked = vid, e break end
                 end
                 if vId then break end
             end
             if not locked then return end -- no quest-gated wares in data; nothing to assert
             assert(locked.locked, "a quest-gated item should be locked with no quests done")
-            for _, e in ipairs(Vendor.stock(vId, locked.unlockQuests)) do
+
+            -- RE-STOCKED AT THE RUNG THE ROW WAS ACTUALLY MEASURED AGAINST, not at its `unlockQuests`.
+            -- Those are the same number for a PRICED ware and different for a found one -- a found
+            -- ware's gate is its depth less one (Vendor.lockReason) and its `unlockQuests` is usually
+            -- nil -- so asking at `unlockQuests` was asking at 0 for an item gated at 1, and the row
+            -- came back correctly shut.
+            --
+            -- THE OLD FILTER MEANT TO CATCH THAT AND COULD NOT. Its note said a found ware "reports a
+            -- rank drawn from its DEPTH rather than a rung ... The rung lock is the one this case
+            -- measures, and lockReason names it" -- but `lockReason = "rung"` is the ONLY reason
+            -- Vendor.lockReason ever returns for a depth gate as well, so the two are indistinguishable
+            -- from out here and the filter admitted both. Reading the reported rung is what makes the
+            -- distinction unnecessary: whatever gate a row was judged by, it must open at that gate.
+            --
+            -- It stayed green for months because WHICH row this case lands on is decided by `pairs`
+            -- order over the vendors, and it had never once handed back a found ware. Adding three
+            -- items to the catalogue moved the order and it landed on the Watchpost Draught at the
+            -- Bastion -- an unpriced, depth-2 knight consumable that is correctly shut at rung 0.
+            local gate = locked.rung or locked.unlockQuests or 0
+            for _, e in ipairs(Vendor.stock(vId, gate)) do
                 if e.id == locked.id then
-                    assert(not e.locked, "the same item should unlock once its quest count is met")
+                    -- Names the row, for the same reason: the next reader should not have to re-derive
+                    -- which item the order happened to pick this time.
+                    assert(not e.locked, string.format(
+                        "%s at %s is still shut at the rung it was judged by (%s): %s",
+                        tostring(e.id), tostring(vId), tostring(gate), tostring(e.lockReason)))
                 end
             end
         end,

@@ -32,6 +32,10 @@
 --                               its demon stage already half-spent -- the transform changes what it can
 --                               do, never how much killing it takes.
 --   enrage    { magnitude }     switch on the continuous Rising-Wrath curve for the rest of the fight
+--   ground    { from, to }      every zone of blueprint `from` on the board becomes one of `to`, in
+--                               this instant -- the healing trail a fleeing stag laid turning to
+--                               blight under the party standing on it (models/hazard.lua's convert).
+--                               The only response that writes the FLOOR rather than the bearer.
 --   log       { text }          a line in the combat log
 --   mark      { victim, scene,  the bearer picks a body and puts it down BY SCRIPT rather than by
 --               hitScene,       damage, on the threshold itself. See the paragraph below for why this
@@ -65,6 +69,22 @@ local RESPONSES = {
         end
     end,
     transform = function(ctx, r) if r.id then ctx.transform(r.id) end end,
+    -- THE BOARD, TURNED. Every zone of one kind becomes another, everywhere, in this instant -- the
+    -- Meandering Stag's healing trail becoming the Vengeful Spirit's blight (Hazard.convert).
+    --
+    -- It belongs in this table and not in a bespoke trait for the reason the header gives: a response
+    -- is authored data that may only WRITE STATE, and ground is state. It writes no act -- nothing
+    -- crosses a tile, nothing is felled, nobody takes a turn -- it is the floor being a different
+    -- floor, which is the same kind of thing as `transform` writing a different body.
+    --
+    -- And it obeys the threshold rule absolutely, which is why it may be a response at all: the blow
+    -- that crosses 50% is the blow the board turns on, in this dispatch, with nothing allowed to act
+    -- in between. A reversal deferred to the boss's next turn would be one a party could stun it out
+    -- of and then kill it before the floor ever changed.
+    ground = function(ctx, r)
+        if not (r.from and r.to and ctx.combat) then return end
+        require("models.hazard").convert(ctx.combat, r.from, r.to)
+    end,
     -- Set the magnitude the curve is worth at death's door; the onDamaged body below re-scales the
     -- bearer's damage off missing health every later survived blow (ctx.trait.applied tracks paid).
     enrage = function(ctx, r) ctx.trait.enrageMagnitude = r.magnitude end,

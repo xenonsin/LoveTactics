@@ -43,8 +43,31 @@ return {
     type = "utility",
     tags = { "boots", "arcane" },
     class = "alchemist",
-    unlockQuests = 0, -- opening shelf: a two-caster party should be able to buy this on day one
+    -- NO `unlockQuests` ANY MORE, and its absence is the point rather than tidiness. It read 0 -- the
+    -- opening shelf, "buyable on the first visit" -- and a rung on a piece no counter can deal is a
+    -- promise with nobody to keep it: Vendor.stock went on reporting a rung lock that no quest count
+    -- could ever lift, which is a shelf row that is shut forever and says the wrong reason why. Every
+    -- other trophy in the game (utility_the_last_sounder, utility_treeline_horn) carries a class and a
+    -- depth and no rung, for exactly this reason.
     dropTier = 3,
+    -- OFF THE SHELF, AND ONTO AN ANIMAL. These are the Meandering Stag's now
+    -- (data/characters/character_meandering_stag.lua) and nobody's to buy: `unstocked` is what makes a
+    -- piece rift-only -- no counter deals one however many the company carries out, and none will buy
+    -- one back (docs/drops.md, Vendor.foundPrice). The `class` above stays, as the Last Sounder's does,
+    -- because it still says what shelf this WOULD be filed on and the grade ladder reads it.
+    --
+    -- THE FIT IS THE TRAIL, NOT THE FLUID. The stag's own ground mends health and this pours mana, and
+    -- that gap is the reason to re-home this rather than author a near-twin beside it: the piece the
+    -- fight hands over should not be a copy of the boss's own floor. What it shares is the SHAPE --
+    -- ground you leave behind you by walking, which you can never stand in yourself -- and that shape
+    -- is the whole of the first half of that fight.
+    --
+    -- WHAT IT COSTS, stated plainly because the file above says so out loud: this was an opening-shelf
+    -- item, and its own header argues "a two-caster party should be able to buy this on day one". That
+    -- purchase is gone. A day-one caster option now sits behind a forest elite at minDay 8, with
+    -- nothing put in its place -- which is the deliberate, heavier reading of docs/drops.md's rule that
+    -- a drop is normally "a head start, not a source of record". Here it is the record.
+    unstocked = true,
     -- Derived, not chosen: slot 0 sets the price (docs/shelf.md, `. grade-report`). It was 30 as a
     -- consumable and is 80 as a charm for one reason -- the grader's `consumable = 0.4` multiplier is
     -- the discount a thing earns for being gone after one use, and this is not gone after one use.

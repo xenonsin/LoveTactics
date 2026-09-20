@@ -393,6 +393,62 @@ function Hazard.consume(combat, hazard)
     return false
 end
 
+-- MAKE THIS ZONE HAPPEN TO THIS BODY, once, wherever the body is standing.
+--
+-- The zone's own `onEnter` run against a unit that has not entered anything -- which is the whole
+-- point. Crossing ground is not the only way ground can reach you: a zone can be set off, and then
+-- what it does is what it would have done to whoever walked in (data/items/ability/ability_swailing.lua).
+-- Routing that through the def's own hook rather than through a table of per-hazard blast effects is
+-- what keeps a detonation honest -- fire burns, briar charms, a sanctuary heals -- with nothing to
+-- author twice and nothing to fall out of step the day a hazard is tuned.
+--
+-- The ctx is the ordinary one, so `ctx.consume` works from in here too: a one-shot zone spent by a
+-- blast is spent exactly as it would be spent by a boot. Nothing is done about `alive` -- a caller
+-- that means to take the ground as well says so with Hazard.consume, and the order is its choice.
+function Hazard.applyTo(combat, hazard, unit)
+    if not (combat and hazard and hazard.alive and unit and unit.alive) then return false end
+    if not (hazard.def and hazard.def.onEnter) then return false end
+    hazard.def.onEnter(ctxFor(combat, hazard, unit))
+    return true
+end
+
+-- TURN EVERY ZONE OF ONE KIND INTO ANOTHER, everywhere on the board, in one instant.
+--
+-- The board-wide reversal a boss relic scripts at a threshold (trait_boss_phases' `ground` response):
+-- what the Meandering Stag laid while it was running away becomes what the Vengeful Spirit stands in.
+-- Same tiles, same count, same places -- only what they do changes, and the party is standing on them.
+--
+-- SNAPSHOT FIRST, exactly as Hazard.spread does and for the same reason: `place` appends to the list
+-- this is walking, so a conversion that read the live table could convert what it had just made.
+--
+-- THE NEW GROUND IS NEW, and its clock starts now rather than inheriting what was left of the old
+-- one. A trail laid on the first turn would otherwise arrive at the threshold nearly expired and wink
+-- out the moment it turned, which would quietly delete the oldest half of the board -- the half that
+-- took the longest to earn. The reversal is an event, not a continuation.
+--
+-- The side carries across. Ground the stag laid is ground the spirit owns, and an unsided zone (both
+-- of this pair are) stays unsided because there was nothing to carry.
+--
+-- Returns how many were turned, which is what a caller logs.
+function Hazard.convert(combat, fromId, toId)
+    if not (combat and fromId and toId) then return 0 end
+    local doomed = {}
+    for _, h in ipairs(combat.hazards or {}) do
+        if h.alive and h.id == fromId then doomed[#doomed + 1] = h end
+    end
+    local turned = 0
+    for _, h in ipairs(doomed) do
+        local x, y, side, amount = h.x, h.y, h.side, h.amount
+        if Hazard.consume(combat, h) then
+            -- No `duration`: the new def's own clock (see above). `amount` DOES carry, so a zone
+            -- placed at a scaled magnitude turns into one at the same magnitude.
+            Hazard.place(combat, x, y, toId, { side = side, amount = amount })
+            turned = turned + 1
+        end
+    end
+    return turned
+end
+
 -- Carry every zone `owner` holds open along with it: shift each of its hazards by (dx, dy), the same
 -- delta the owner just travelled. The ground a body holds open is held open WHERE THAT BODY IS -- so a
 -- banner heaved across the field takes its rally square with it, and does not leave a live 3x3 blessing

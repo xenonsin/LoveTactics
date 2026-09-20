@@ -13,16 +13,26 @@
 -- reading behind it. That is later and better informed, and it is the one beat in the whole fight where
 -- backing out costs nobody a turn.
 --
--- IT IS A ROLL, AND IT CAN FAIL, which is the half that keeps the prowl dangerous. A guaranteed escape
--- would make the deploy screen a free look at every fight: walk, peek, leave, walk. Nothing would ever
--- be fought that the company did not already expect to win, attrition would never land, and the whole
--- reason the fighting moved off the board would be undone by the valve built to make it bearable.
+-- IT ALWAYS WORKS (Flee.CERTAIN), AND THE READOUT IS WHY. This was a roll off the muster margin -- 55%
+-- at parity, swinging to 20% against a fight far above the company -- and the curve is still below,
+-- parked behind one flag. What retired it is that the odds ran the WRONG WAY on purpose: the fight you
+-- most wanted out of was the one you were least likely to escape.
 --
--- AND THE ODDS RUN THE WRONG WAY ON PURPOSE. The fight you most want out of is the one you are least
--- likely to escape: the chance is read off the muster margin, so a company that is outmatched is also
--- slow, heavy and cornered. That is Wizardry's own cruelty and it is what makes a descent a series of
--- decisions rather than a series of previews -- going one floor deeper than you should have is a thing
--- you can still be punished for after you have seen what is waiting.
+-- That is a fine cruelty in the abstract and it breaks the one thing this screen is built around. The
+-- deploy phase stands the enemy line on the real board with the muster band behind it, whose entire job
+-- is to say "this is above you" in time to matter. Answering that reading with a 20% plate makes the
+-- band ADVISORY -- a number that names a decision the player is then not allowed to make, which is the
+-- one thing a readout in this game may never be. A marker that can only tell you how you died is not a
+-- marker. So the judgement the band offers is now a judgement the company can act on.
+--
+-- WHAT STILL COSTS SOMETHING, because a free exit is only free if nothing else is running. The prowl
+-- meter is spent walking whether or not a fight is taken (Descent.PROWL_STEPS), the floor still has to
+-- be crossed on the company's own legs, and a fight declined is spoils, drops and a bestiary row
+-- declined with it. A company that peeks and leaves every time walks a whole descent and comes home
+-- with nothing -- which is a real cost paid in the one currency this design charges, the trip.
+--
+-- THE CATCH IS PARKED, NOT DELETED (Flee.CAUGHT_STATUS below). Flip Flee.CERTAIN off and the curve, the
+-- penalty and both readouts come back exactly as they were.
 --
 -- Pure (no love.graphics, no Combat, no panel), so it loads under the headless tests.
 
@@ -52,6 +62,15 @@ end
 -- ---------------------------------------------------------------------------
 -- The odds
 -- ---------------------------------------------------------------------------
+
+-- THE PLATE ALWAYS WORKS. See the header for the argument; this is the flag that holds it, and it is a
+-- flag rather than a rewrite so the curve below stays on disk with its own reasoning intact and the
+-- revert is one word (the shape Descent.COUNT_PARKED already uses for a retired rule).
+--
+-- Everything downstream reads it through Flee.chance, which is the single door: the plate's label, the
+-- note beside it and the roll at the call site all ask that one function, so nothing can disagree about
+-- whether an escape is certain.
+Flee.CERTAIN = true
 
 -- AN EVEN FIGHT, in percent of the chance to get away from one. Muster.margin reads 100 for an even
 -- match, so this is the chance at exactly parity.
@@ -83,12 +102,21 @@ Flee.MIN, Flee.MAX = 20, 90
 -- even number rather than refusing. There is nothing to compare, so there is nothing to adjust by, and
 -- the company should still be allowed to run.
 function Flee.chance(margin)
+    -- Certain, and asked here rather than at the four call sites so a surface cannot quote one answer
+    -- while the roll takes another. Flee.roll is left a real function that honours the number it is
+    -- handed -- 100 in, true out -- so nothing about the draw had to be faked to make this true.
+    if Flee.CERTAIN then return 100 end
     if type(margin) ~= "number" then return Flee.EVEN end
     local c = Flee.EVEN + (margin - 100) / 100 * Flee.SWING
     return math.max(Flee.MIN, math.min(Flee.MAX, math.floor(c + 0.5)))
 end
 
 -- WHAT A FAILED ESCAPE COSTS: the enemy line opens the fight wearing this (Combat.dressSide).
+--
+-- PARKED WHILE Flee.CERTAIN STANDS. Nothing reaches this: the roll cannot fail, so the branch in
+-- states/game.lua that applies it never runs and the note beside the plate no longer threatens it.
+-- Kept whole, and still pinned by tests/flee_spec.lua as a unit, because it is the other half of the
+-- revert -- a penalty deleted is a penalty that has to be re-derived, and this one's argument is below.
 --
 -- A STATUS RATHER THAN A NUMBER, and the swap is the whole point. This was six initiative ticks added to
 -- the company's clock -- the enemy moved and swung first, which is exactly what an ambush is and exactly

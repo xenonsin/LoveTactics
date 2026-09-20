@@ -8614,6 +8614,14 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
         placeTrap = function() touchesBoard() return nil end,
         placeHazard = function() touchesBoard() return nil end,
         placeWall = function() touchesBoard() return nil end,
+        -- READING ground is not mutating it, so `hazardsAt` answers honestly and the dry run sees the
+        -- real board. The other two are mutations and are inert: setting a zone off and spending it
+        -- are exactly the Saboteur's fuse problem one layer over, and a hover that detonated the floor
+        -- it was describing would be the same bug with a different noun. Empty rather than nil so an
+        -- effect that walks the list does not fault out of the pcall and blank the tooltip.
+        hazardsAt = function(px, py) return Hazard.allAt(combat, px, py) end,
+        hazardTouch = function() touchesBoard() return false end,
+        consumeHazard = function() touchesBoard() return false end,
         -- Burying a charge and setting one off are board mutations, so both are inert here -- a dry run
         -- that planted a real fuse (and logged it) on every hover was the Saboteur's whole preview bug.
         -- plantCharge hands back a throwaway so a chained effect using the returned charge doesn't fault;
@@ -9036,6 +9044,12 @@ function Combat.abilityOutput(unit, item)
             return nil
         end,
         placeWall = function(_, _, id) out.wall = id or true; return nil end,
+        -- There is no board here at all -- this builds an INVENTORY row, with no tile to read -- so a
+        -- zone-reading ability describes itself by its own words rather than by what happens to be on
+        -- the floor. Empty list, and the two mutations report nothing, like every other placer.
+        hazardsAt = function() return {} end,
+        hazardTouch = function() return false end,
+        consumeHazard = function() return false end,
         -- No board and no clock here, so a fuse can neither be laid nor set off; both report nothing,
         -- like the other placers. plantCharge hands back a stand-in so a chained effect doesn't fault.
         plantCharge = function() return {} end,
@@ -11253,6 +11267,33 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
             if zone and Trait.flag(unit, "haltsOwnHazards") then zone.halts = true end
             return zone
         end,
+        -- THE OTHER THREE THINGS AN ABILITY CAN DO TO GROUND, beside laying it. Every zone effect in
+        -- the game until now was a placement; Swailing reads ground, makes it happen to bodies that
+        -- never walked into it, and then takes it off the board
+        -- (data/items/ability/ability_swailing.lua). These are the three verbs that costs.
+        --
+        -- Primitives rather than one `detonate` helper, deliberately. A single fused call would bake
+        -- the blast's shape, its ordering and its consume rule into the engine, where no author could
+        -- see them -- and the whole character of that ability is that the blast is whatever the def
+        -- under it says. Handed the parts, an item composes its own; handed a verb, it inherits
+        -- somebody else's opinion about radius.
+
+        -- The live zones standing on a tile, in board order. Empty (never nil) for clean ground, so a
+        -- caller can `#` it without a guard -- and an ability that needs ground to work says so by
+        -- checking that length rather than by a special return.
+        hazardsAt = function(px, py) return Hazard.allAt(combat, px, py) end,
+
+        -- Make a zone happen to a body, once, wherever that body is standing. The def's own onEnter
+        -- (Hazard.applyTo), so a blast burns, charms or heals exactly as the ground it came from
+        -- would have -- there is no second account of what a hazard does.
+        hazardTouch = function(zone, tgt) return Hazard.applyTo(combat, zone, tgt) end,
+
+        -- ...and spend it. The same call a one-shot zone makes on itself when it is drunk dry
+        -- (Hazard.consume), so a zone taken by a blast unwinds by the ordinary rule: its onExpire
+        -- fires, and anything it was granting lapses when Hazard.reap next finds no ground under the
+        -- bearer. False for a zone already gone, so a double-spend is inert rather than an error.
+        consumeHazard = function(zone) return Hazard.consume(combat, zone) end,
+
         -- Raise a wall segment on a tile, owned by the caster's side (models/wall.lua). Summon Wall
         -- calls this once per tile of its 3x1 line; a tile that can't hold a wall (a unit on it,
         -- solid terrain, another wall) is silently skipped by Wall.place returning nil.

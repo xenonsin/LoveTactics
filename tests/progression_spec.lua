@@ -370,6 +370,21 @@ return {
                 -- off (docs/shelf.md), so what survives is the weaker and still meaningful claim: the
                 -- goods have a home, on the class shelf they were redistributed to, and a company that
                 -- has grown that class can walk in and buy one.
+                -- ...UNLESS IT HAS LEFT THE SHELF ALTOGETHER, which one of them now has. Wellspring
+                -- Sandals are the Meandering Stag's (data/characters/character_meandering_stag.lua) and
+                -- carry `unstocked`: no counter deals one however many the company carries out, and
+                -- none will buy one back. That is a deliberate, heavier reading of docs/drops.md than
+                -- the rest of this group got -- for the other four a drop is a head start, and for this
+                -- one it is the only road -- so the "it has a home" promise above genuinely does not
+                -- apply, and asserting it would be asserting the decision was not made.
+                --
+                -- Read off the flag rather than naming the id, so a second piece moved onto a body
+                -- later does not redden this file before anybody has looked at it.
+                if def.unstocked then
+                    assert(def.dropTier,
+                        id .. " is off every counter and has no depth, so nothing can pay it at all")
+                else
+
                 local found
                 for _, entry in ipairs(Vendor.stock(vendorId, Class.CLASS_LEVEL_CAP)) do
                     if entry.id == id then found = entry end
@@ -387,6 +402,7 @@ return {
                     assert(opening and not opening.locked,
                         id .. " is priced and must be buyable on the first visit")
                 end
+                end -- `if def.unstocked then ... else` -- see the trophy note above
             end
         end,
     },

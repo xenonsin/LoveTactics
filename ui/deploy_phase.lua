@@ -519,11 +519,16 @@ function DeployPhase:controls()
     -- is what makes the pair read as a choice rather than making the escape a utility hidden among the
     -- tools -- and it puts the riskier option first, where the eye lands before the default.
     --
-    -- THE ODDS ARE ON THE PLATE. The player is being asked to stake a round of initiative on a roll, so
-    -- the number that decides it belongs on the thing they press. A button reading only "Run Away" is
-    -- asking for a wager at a price it will not quote.
+    -- THE ODDS ARE ON THE PLATE, AND ONLY WHEN THERE ARE ANY. A wager has to quote its price, so while
+    -- the escape was a roll the number that decided it belonged on the thing the player pressed. It is
+    -- certain now (Flee.CERTAIN), and a plate reading "Run Away (100%)" quotes a wager that is not being
+    -- made -- it invites the player to weigh a risk the game has stopped taking. So at certainty the
+    -- plate says what it does and nothing else, and the percent comes back with the curve.
     if self.onFlee then
-        add("flee", "Run Away (" .. tostring(self.fleeChance or 0) .. "%)")
+        local odds = tonumber(self.fleeChance)
+        add("flee", (odds and odds < 100)
+            and ("Run Away (" .. tostring(odds) .. "%)")
+            or "Run Away")
     end
     -- The bell says which fight it is ringing for. A player who armed auto and then pressed a button
     -- reading "Begin Battle" would have been told nothing about the fight they were about to not play.
@@ -923,6 +928,16 @@ end
 -- would drift the day the status is tuned.
 local FLEE_NOTE = { "If you fail to run away, enemies start combat Hasted." }
 
+-- ...AND WHAT IT SAYS NOW THE ESCAPE IS CERTAIN (Flee.CERTAIN). There is no stake left to name, so the
+-- note stops pricing a wager and answers the question the player actually has left: what happens to the
+-- fight. The two lines are the two cases, and they are genuinely different -- a rolled fight is not a
+-- place and leaving takes it off the board, while a seated elite IS one and stays standing in the
+-- corridor (states/game.lua's onFlee argues both).
+local FLEE_NOTE_CERTAIN = {
+    "A fight that found you is gone for good.",
+    "A threat standing on the floor stays where it is.",
+}
+
 -- The status as the note shows it -- built by the model that also applies it (Flee.caughtStatus), so
 -- the hourglass here is the one the badge will carry and neither surface names the duration itself.
 -- Memoized: it is read-only, and the note is drawn every frame the pointer rests on the plate.
@@ -973,11 +988,15 @@ end
 -- so the two read as one column rather than two boxes that happen to be near each other. Placed off the
 -- rect the note reports rather than off a second guess at where it went, which is what keeps them
 -- together when the note has flipped sides or been clamped by the screen.
+-- The status box under the note is the PENALTY's readout, so it stands exactly as long as the penalty
+-- can happen. At certainty there is no catch to show and the note is a single box.
 function DeployPhase:drawFleeNote()
     local rect = self:fleeNotePlate()
     if not rect then return end
-    local box = NoteTooltip.draw("Run Away", FLEE_NOTE, rect.x + rect.w, rect.y - 16, Scale.WIDTH)
-    if not box then return end
+    local certain = Flee.CERTAIN
+    local box = NoteTooltip.draw("Run Away", certain and FLEE_NOTE_CERTAIN or FLEE_NOTE,
+        rect.x + rect.w, rect.y - 16, Scale.WIDTH)
+    if not box or certain then return end
     StatusTooltip.draw(fleeCaughtStatus(), 0, 0, Scale.WIDTH,
         { x = box.x, y = box.y + box.h + NOTE_GAP })
 end

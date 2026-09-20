@@ -505,6 +505,11 @@ Grade.TRAIT_GRADE = {
     -- than the hide on the same body. The claim being corrected is about the MECHANIC, so it belongs on
     -- the trait, where anything else that ever grants it inherits the correction for free.
     trait_in_and_out =                  2.5,  -- In and Out
+    -- The Second Hound. Under Slipstep's 3.0, which steps AND stabs on every blow it answers; this only
+    -- steps, only when a second foe is actually adjacent, and only once every two turns. Above In and
+    -- Out's 2.5 because that one pays for a swing the bearer chose to make and this one fires on a blow
+    -- they did not -- being got out of a surround is worth more than leaving one you walked into.
+    trait_the_second_hound =            2.75, -- The Second Hound
     trait_follow_up =                   3.0,  -- Follow-Up
     trait_hollow_crown =                3.0,  -- The Hollow Crown
     trait_keen_senses =                 3.0,  -- Keen Senses

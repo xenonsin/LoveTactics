@@ -26,32 +26,67 @@ return {
         end,
     },
     {
-        name = "the odds run the wrong way: the fight you most want out of is the hardest to leave",
+        name = "the plate always works, at every margin and with no reading at all",
         fn = function()
-            -- This is the whole cruelty of the thing, and it is what keeps going one floor too deep a
-            -- real mistake rather than a preview the company can always walk out of.
-            local outmatched = Flee.chance(40)   -- "far above you" (Muster.BANDS)
-            local even = Flee.chance(100)
-            local ahead = Flee.chance(Muster.WALK_OVER)
+            -- THE BAND HAS TO BE ACTIONABLE. The deploy screen stands the enemy line on the real board
+            -- with the muster reading behind it, whose whole job is to say "this is above you" in time
+            -- to matter; a plate that then refused four times in five would make that reading advisory,
+            -- which is the one thing a readout in this game may never be (models/flee.lua's header).
+            assert(Flee.CERTAIN, "the escape is no longer certain -- this case pins the live rule")
 
-            assert(outmatched < even and even < ahead, string.format(
-                "the odds do not climb with the company: %d%% outmatched, %d%% even, %d%% ahead",
-                outmatched, even, ahead))
-            assert(even == Flee.EVEN,
-                "an even fight reads " .. even .. "%, not the authored " .. Flee.EVEN .. "%")
-
-            -- NEVER CERTAIN AND NEVER HOPELESS. A plate whose answer is known before it is pressed is
-            -- not a decision, and a cornered party with no way out is a cutscene rather than a fight.
-            for _, margin in ipairs({ 0, 1, 25, 60, 100, 150, 200, 400, 10000 }) do
-                local c = Flee.chance(margin)
-                assert(c >= Flee.MIN and c <= Flee.MAX, string.format(
-                    "a margin of %d reads %d%%, outside the declared %d-%d",
-                    margin, c, Flee.MIN, Flee.MAX))
+            for _, margin in ipairs({ 0, 1, 25, 40, 60, 100, 150, 200, 400, 10000 }) do
+                assert(Flee.chance(margin) == 100, string.format(
+                    "a margin of %d quotes %d%%, not certainty", margin, Flee.chance(margin)))
             end
 
-            -- A fight with no reading at all is still escapable: there is nothing to adjust by, so the
-            -- company gets the even number rather than a refusal.
-            assert(Flee.chance(nil) == Flee.EVEN, "an unreadable fight cannot be fled at all")
+            -- A fight with no reading at all (an empty or unresolvable composition) is escapable on the
+            -- same terms. There is nothing to compare, and there is nothing left to compare it FOR.
+            assert(Flee.chance(nil) == 100, "an unreadable fight cannot be fled at all")
+
+            -- AND THE NUMBER REACHES THE ROLL. Flee.roll was never faked into always answering true --
+            -- it honours the chance it is handed, and what changed is the chance.
+            for leg = 0, 20 do
+                assert(Flee.roll(77, leg, Flee.chance(100)),
+                    "a certain break-away failed at leg " .. leg)
+            end
+        end,
+    },
+    {
+        name = "the parked curve still derives, so the revert is one flag",
+        fn = function()
+            -- PARKED, NOT DELETED (Flee.CERTAIN). A retired rule that nobody exercises is a rule that
+            -- rots quietly and has to be re-derived the day it is wanted back, so this case flips the
+            -- flag and holds the old curve to the argument it was authored with.
+            local was = Flee.CERTAIN
+            Flee.CERTAIN = false
+            local ok, err = pcall(function()
+                -- The odds ran the WRONG WAY on purpose: the fight you most wanted out of was the one
+                -- you were least likely to escape. That is what retired it, and it is what the curve is.
+                local outmatched = Flee.chance(40)   -- "far above you" (Muster.BANDS)
+                local even = Flee.chance(100)
+                local ahead = Flee.chance(Muster.WALK_OVER)
+
+                assert(outmatched < even and even < ahead, string.format(
+                    "the parked odds do not climb with the company: %d%% outmatched, %d%% even, %d%% ahead",
+                    outmatched, even, ahead))
+                assert(even == Flee.EVEN,
+                    "an even fight reads " .. even .. "%, not the authored " .. Flee.EVEN .. "%")
+
+                -- Never certain and never hopeless: a plate whose answer is known before it is pressed
+                -- is not a decision, and a cornered party with no way out is a cutscene.
+                for _, margin in ipairs({ 0, 1, 25, 60, 100, 150, 200, 400, 10000 }) do
+                    local c = Flee.chance(margin)
+                    assert(c >= Flee.MIN and c <= Flee.MAX, string.format(
+                        "a margin of %d reads %d%%, outside the declared %d-%d",
+                        margin, c, Flee.MIN, Flee.MAX))
+                end
+
+                assert(Flee.chance(nil) == Flee.EVEN, "an unreadable fight cannot be fled at all")
+            end)
+            -- Restored whether or not the body threw: a spec that leaves a global flag flipped takes
+            -- every later case down with it, and the failure would name the wrong file.
+            Flee.CERTAIN = was
+            assert(ok, err)
         end,
     },
     {
@@ -129,9 +164,13 @@ return {
         end,
     },
     {
-        -- The status is one the game already teaches, which is the whole reason the plate can name its
-        -- stake in a single line: "enemies start combat Hasted" needs no gloss of its own.
-        name = "the caught status is Hasted, cut to the opening",
+        -- The status is one the game already teaches, which is the whole reason the plate could name
+        -- its stake in a single line: "enemies start combat Hasted" needed no gloss of its own.
+        --
+        -- PARKED (Flee.CERTAIN): no escape can fail, so nothing applies this today. Held whole anyway,
+        -- because the other half of parking a rule rather than deleting it is that the rule keeps being
+        -- checked -- a penalty left untested for a year is one that has to be re-derived to come back.
+        name = "the parked catch is Hasted, cut to the opening",
         fn = function()
             local def = Status.defs[Flee.CAUGHT_STATUS]
             assert(def, "Flee.CAUGHT_STATUS names no status at all")
@@ -149,11 +188,14 @@ return {
         end,
     },
     {
-        -- ONE NUMBER, BOTH SURFACES. The note beside the Run Away plate draws this very instance
-        -- (ui/deploy_phase.lua's fleeCaughtStatus), so the hourglass read before the press is the one
-        -- the badge carries after it. Two constructions would be two accounts, free to drift on the
+        -- ONE NUMBER, BOTH SURFACES. The note beside the Run Away plate drew this very instance
+        -- (ui/deploy_phase.lua's fleeCaughtStatus), so the hourglass read before the press was the one
+        -- the badge carried after it. Two constructions would be two accounts, free to drift on the
         -- next tune -- and the readout, being the one nobody tests by playing, is the one that lies.
-        name = "the note shows the status the catch actually lands",
+        --
+        -- PARKED with the catch: the note shows FLEE_NOTE_CERTAIN now and stacks no status box under it.
+        -- This still pins the pairing, so the revert brings back one account rather than two.
+        name = "the parked note would show the status the catch lands",
         fn = function()
             local shown = Flee.caughtStatus()
             assert(shown and shown.id == Flee.CAUGHT_STATUS,

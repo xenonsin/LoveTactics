@@ -513,6 +513,32 @@ AI.POSTURES = {
         engage = function() return true end,
     },
 
+    -- WANTS TO BE SOMEWHERE ELSE, and it is the only thing in this table that does. Every other
+    -- posture is written TOWARD something -- a body, a post, an objective tile, an ally who needs
+    -- healing -- and even `skirmish`, which wants distance, wants the distance its WEAPON has and
+    -- closes when it has no shot. This one is not kiting. It is leaving.
+    --
+    -- `engage` refuses outright, which is the half `skirmish` cannot express: a kiter that finds
+    -- itself in reach takes the swing, and a quarry has nothing to take it with. Paired with an empty
+    -- rule list (escort's trick) so AI.plan drops straight to the walk, and with `unarmed = false` on
+    -- the blueprint, which the engine already understands as a body that cannot strike anything ever.
+    --
+    -- IT IS STILL TAUNTABLE, and that is not an exception carved for it. AI.preempt sits ABOVE the
+    -- rule list and above the posture both, and its last branch shambles a weaponless body toward the
+    -- taunter -- so a jeer pulls a quarry into reach and it arrives with nothing to do, which is
+    -- exactly what a company wanted when it jeered.
+    quarry = {
+        desc = "Will not have the fight. It spends every turn putting ground between itself and"
+            .. " whoever is nearest, and strikes at nothing even when it is cornered.",
+        rules = {},
+        move = "flee",
+        -- EXPOSURE dear and STEPS free. The walk itself already maximises distance; these only tilt
+        -- the rules-driven scorer on the turns something else has an opinion, and a body that is
+        -- running has no reason to be tidy about how far it goes.
+        weights = { EXPOSURE = 8, STEPS = 0 },
+        engage = function() return false end,
+    },
+
     -- Plays the map rather than the bodies: goes for whoever the objective names, and falls back to
     -- ordinary aggression on a map whose objective has no unit to point at (a plain killAll).
     objective = {
@@ -538,6 +564,9 @@ AI.DEFAULT_POSTURE = "aggressive"
 -- checks the two agree).
 AI.POSTURE_ORDER = {
     "aggressive", "objective", "skirmish", "support", "guard", "defensive", "holdGround", "escort",
+    -- Last, because the scale this list is ordered on ends here: `escort` will not START a fight and
+    -- `quarry` will not HAVE one.
+    "quarry",
 }
 
 -- A posture's name as the UI says it: `holdGround` is one word to Lua and two to a reader, and the
@@ -1384,10 +1413,73 @@ function AI.clearing(ctx, goal, here)
     }
 end
 
+-- THE WALK AWAY, and it is its own function because every other mode in fallbackMove below shares one
+-- shape this one cannot use: pick a goal, field the road to it, take the reachable tile with the
+-- smallest road cost. There is no goal here. What is being maximised is the gap to whatever is
+-- NEAREST, which changes with every candidate tile and is a different foe on half of them, so there is
+-- nothing to field a road toward.
+--
+-- Straight-line rather than by road (Combat.cellGap, not travelField), and the difference matters in
+-- the one case this posture exists for: a body that flees by ROAD would happily back into a dead end
+-- whose exit is long, because the road out is what it is measuring. Crow's-line distance corners it
+-- honestly -- a pocket reads as close no matter how the walls run, and the animal keeps to open
+-- ground. That is what makes the map the thing that catches it rather than the party's feet.
+--
+-- IT PREFERS THE LONGER WAY, which is the last tie-break and the one that is not tidiness. Among tiles
+-- that break the same distance it takes the one that cost the most steps to reach -- so it uses its
+-- whole stride instead of stopping the moment it is far enough. That wanders, deliberately: a body
+-- whose trail IS its mechanic should lay as much of it as its legs allow, and the wandering is the
+-- name (data/characters/character_meandering_stag.lua).
+--
+-- CORNERED IS A nil, not a shuffle. When nothing reachable is farther than where it already stands it
+-- returns nothing and the body holds -- so "cornered by the map" needs no rule of its own; it is just
+-- what this function answers when the geometry has run out.
+local function fleeMove(ctx)
+    local Combat = require("models.combat")
+    local unit, combat = ctx.unit, ctx.combat
+    local hostiles = foes(ctx)
+    if #hostiles == 0 then return nil end
+
+    -- How close the nearest of them is to a tile. cellGap treats a unit as its nearest footprint
+    -- cell, so a wide body is measured from its edge on both ends.
+    local function pressure(x, y)
+        local near
+        for _, f in ipairs(hostiles) do
+            local d = Combat.cellGap(x, y, f)
+            if not near or d < near then near = d end
+        end
+        return near or 0
+    end
+
+    local here = pressure(unit.x, unit.y)
+    local best
+    -- Board order, not key order, as every other scan in this file: distance, bias and steps can all
+    -- tie at once and then first-wins is the whole decision (Combat.reachableList).
+    for _, node in ipairs(Combat.reachableList(combat, unit)) do
+        local d = pressure(node.x, node.y)
+        -- The same hazard and prop read the approach makes, unchanged: a body running for its life
+        -- still does not run through fire, and ground it OWNS is still worth standing in.
+        local bias = Hazard.tileBias(combat, node.x, node.y, unit.side)
+            + Prop.tileBias(combat, node.x, node.y)
+        if not best or d > best.d
+            or (d == best.d and bias > best.bias)
+            or (d == best.d and bias == best.bias and node.steps > best.steps) then
+            best = { x = node.x, y = node.y, d = d, bias = bias, steps = node.steps }
+        end
+    end
+
+    if best and best.d > here then
+        return { move = { x = best.x, y = best.y }, reason = "flee: breaking away" }
+    end
+    return nil
+end
+
 local function fallbackMove(ctx, mode)
     local Combat = require("models.combat")
     local unit, combat = ctx.unit, ctx.combat
     if mode == "hold" then return nil end
+    -- Away, not toward: handled before the goal machinery below, which has no goal to offer it.
+    if mode == "flee" then return fleeMove(ctx) end
 
     local goal
     if mode == "defend" then

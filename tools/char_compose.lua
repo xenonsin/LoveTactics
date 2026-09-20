@@ -60,6 +60,17 @@ local CREATURE_MATCH = {
     { "wolf", "lorc/wolf-head" },
     { "hawk", "lorc/hawk-emblem" },
     { "raven", "lorc/raven" },
+    -- THE TWO STAGS ARE NOT ONE STAG, on the two bears' rule above and for the same reason: the
+    -- Ancient Stag is a body on the road and the Meandering Stag is the apex above it, and a pair of
+    -- blueprints that a player meets separately may not be one picture. Both of these must sort ABOVE
+    -- the bare "stag" key, which their ids contain.
+    --
+    -- The apex takes the WHOLE ANIMAL rather than a head, which is the one silhouette decision here
+    -- that is about the fight: this thing is never standing in front of you long enough to be a face.
+    { "meandering_stag", "caro-asercion/deer" },
+    -- ...and what it becomes is not a deer at all. It keeps nothing of the animal's outline, because
+    -- the whole beat is that something else is looking out of it.
+    { "vengeful_spirit", "lorc/spark-spirit" },
     { "stag", "lorc/stag-head" },
     { "pig", "lorc/pig-face" },
     { "ogre", "delapouite/ogre" },

@@ -37,6 +37,10 @@ local TROPHIES = {
     "ability_mothers_howl", "utility_the_wood_remembers", "weapon_the_second_bite",
     "armor_raveners_hide", "utility_in_and_out",
     "armor_runners_hide",
+    -- The Meandering Stag's three (data/characters/character_meandering_stag.lua). The sandals are the
+    -- odd one: they are not a new trophy but an existing SHELF item taken off the counter and given to
+    -- an animal, which is the first time a piece has moved in that direction.
+    "utility_wellspring_sandals", "utility_the_second_hound", "utility_swailing_brand",
 }
 
 local function vendorFor(class)
