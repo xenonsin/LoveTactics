@@ -22,10 +22,10 @@ return {
     script = {
         { "cathedral", "Cold in here. It is always cold in here. The faithful arm those who purge, and we keep beds for the ones who come back needing them.", tag = 1 },
         { "cathedral", "State your business.", tag = 2, id = "desk", choices = {
-            { "Show me what the church will part with.", tag = 3, answer = "shelf", when = { offer = "shelf" } },
-            { "Somebody needs mending.", tag = 4, answer = "mend", when = { offer = "mend" } },
-            { "Something we are carrying is cursed.", tag = 6, answer = "lift", when = { offer = "lift" } },
-            { "Nothing today.", tag = 5, answer = "leave" },
+            { "Visit priest class trainer", tag = 3, answer = "shelf", when = { offer = "shelf" } },
+            { "Heal a wound", tag = 4, answer = "mend", when = { offer = "mend" } },
+            { "Lift a curse", tag = 6, answer = "lift", when = { offer = "lift" } },
+            { "Leave", tag = 5, answer = "leave" },
         } },
     },
 }

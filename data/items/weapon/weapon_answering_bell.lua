@@ -28,7 +28,7 @@ return {
     tags = { "mace", "impact", "physical", "melee" },
     traits = { "trait_shield_shove" }, -- the whole extra; see armor_bulwark_shield for what it costs
     class = "knight",
-    dropTier = 7,
+    unlockLevel = 11,
     activeAbility = {
         target = "enemy",
         range = 1,
@@ -36,7 +36,7 @@ return {
         cost = { stat = "stamina", amount = 9 },
         -- Under an iron mace's: the reflex is the rest, and a weapon that both answers and hits full
         -- would make standing next to it strictly worse than any other tile on the board.
-        damage = Curve.ramp(8, 18),
+        damage = Curve.ramp(15, 25),
         effect = function(fx)
             fx.damage(fx.target, { knockback = { distance = 2, amount = fx.amount } })
         end,

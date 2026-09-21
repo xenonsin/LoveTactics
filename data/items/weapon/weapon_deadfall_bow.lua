@@ -47,7 +47,7 @@ return {
     tags = { "longbow", "pierce", "physical", "ranged" },
     hands = 2,
     class = "hunter",
-    dropTier = 6,
+    unlockLevel = 10,
     activeAbility = {
         target = "tile",       -- the path, not the animal: the aim is a square the foe has not reached
         allowOccupied = true,  -- and a square they may already have reached (see the note above)
@@ -60,7 +60,7 @@ return {
         -- Its slot's number (Balance.slotTarget), which is the longbow family's base exactly -- the shot
         -- is a real shot now. It used to be a token 2, and the header above still argues for that; see
         -- the note on the trap below for why the two halves had to be repriced together.
-        damage = Curve.ramp(10, 20),
+        damage = Curve.ramp(18, 28),
         effect = function(fx)
             -- Somebody is standing on the read: the shaft pins them instead of the ground. Root delivered
             -- now, and nothing left behind -- the trap would have no one left to catch.

@@ -26,8 +26,11 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 8, luck = 4,
     },
+    -- The Snare Stake sits in cell 2, BESIDE THE BOW it declares (`requiresAdjacent = { tag = "bow" }`).
+    -- Authored in cell 3 it touched only cells 2, 5 and 6 -- never the longbow in cell 1 -- so the
+    -- ambusher's own stake was refused in every fight it stood in. See tests/kit_adjacency_spec.lua.
     startingItems = {
-        "weapon_iron_longbow", "ability_bear_trap",   "ability_snare_stake",
+        "weapon_iron_longbow", "ability_snare_stake", "ability_bear_trap",
         "ability_blightstake", "consumable_snare_stake", "utility_caltrop_greaves",
         "utility_trap_sense",  "consumable_healing_potion", "utility_patient_line",
     },

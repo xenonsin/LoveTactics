@@ -14,7 +14,7 @@ return {
     type = "ability",
     class = "mage",
     price = 575,
-    unlockQuests = 6,
+    unlockLevel = 11,
     tags = { "support", "magical" },
     activeAbility = {
         target = "ally", -- includes the caster

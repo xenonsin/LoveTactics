@@ -20,8 +20,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "alchemist",
-    unlockQuests = 4,
-    dropTier = 4,
+    unlockLevel = 5,
     statusImmunity = { "status_poison", "status_acid" },
     -- immunity taken in doses -- the whole item is resistance
     bonus = { magicDefense = 3 },

@@ -647,7 +647,7 @@ spelling belongs in quest stock, not on the rack), not an oversight. Priest 33 �
   does not wants none. Its two existing tiers survived the move untouched: the **earners** (The Ledger's
   Due, A Price on the Head, Skimmer's Cut) sit at q4–q7 and the **spenders** (Blood Money, The Gilded
   Wound, Grease Palms, The Open Account) at q9, so slot 6 lands the gate between the halves — the shelf
-  opens on the income side and completes once Aurea falls. Not one `unlockQuests` moved. Cutpurse's Coat
+  opens on the income side and completes once Aurea falls. Not one `unlockLevel` moved. Cutpurse's Coat
   is tagged too, unpriced, for growth and identity rather than stock.
 
 ## Content bill

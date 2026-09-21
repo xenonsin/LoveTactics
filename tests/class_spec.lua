@@ -54,11 +54,11 @@ local WEAPON_FLOOR = 3
 local function weaponsOf(class)
     local out = {}
     for id, def in pairs(Item.defs) do
-        -- `price or dropTier`: a house's rack is what it can ever put in front of the player, and after
+        -- `price or unlockLevel`: a house's rack is what it can ever put in front of the player, and after
         -- the shelf recut most of a class's weapons reach the counter by being FOUND rather than by
         -- being stocked (tools/drop_tier.lua). Counting priced ones only would have measured the iron
         -- floor and called it the rack.
-        if def.type == "weapon" and (def.price or def.dropTier) and def.class == class then
+        if def.type == "weapon" and (def.price or def.unlockLevel) and def.class == class then
             out[#out + 1] = { id = id, def = def }
         end
     end
@@ -144,7 +144,7 @@ return {
             for class in pairs(Class.roots()) do
                 local entry = false
                 for _, w in ipairs(weaponsOf(class)) do
-                    if (w.def.unlockQuests or 0) <= 0 then entry = true end
+                    if (w.def.unlockLevel or 0) <= 0 then entry = true end
                 end
                 assert(entry, class .. " sells no opening-shelf weapon: nothing to start with")
             end

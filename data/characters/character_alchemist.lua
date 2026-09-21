@@ -34,11 +34,11 @@ return {
     -- The go-to action pinned by default (Combat.defaultAction): armed at the start of its turn so its
     -- range shows, and driving the basic click-to-use. The player can re-pin any ability.
     drops = {
-        "armor_choking_apron",
-        "armor_volatile_carapace",
-        "utility_salvage_rig",
-        "weapon_vitriol_wand",
-        "utility_field_still",
+        "armor_quicksilver_mantle",
+        "utility_far_mark",
+        "weapon_envenomed_kris",
+        "utility_open_wound",
+        "utility_round_for_the_house",
     },
     defaultAction = "consumable_fire_bomb",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

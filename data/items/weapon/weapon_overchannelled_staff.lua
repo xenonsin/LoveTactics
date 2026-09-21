@@ -27,7 +27,7 @@ return {
     type = "weapon",
     tags = { "staff", "magical", "arcane", "melee" },
     class = "mage",
-    dropTier = 4,
+    unlockLevel = 6,
     waitBehavior = {
         kind = "focus",
         -- Roughly double a plain staff's 8-18, which is the sale.
@@ -43,7 +43,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 6 },
-        damage = Curve.ramp(4, 14),
+        damage = Curve.ramp(8, 18),
         effect = function(fx)
             fx.damage(fx.target)
         end,

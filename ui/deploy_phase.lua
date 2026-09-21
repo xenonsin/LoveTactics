@@ -46,12 +46,9 @@ local Character = require("models.character") -- Character.spriteOf: the skin an
 local Theme = require("ui.theme")
 local InputMode = require("input_mode")
 local TileTooltip = require("ui.tile_tooltip")
-local NoteTooltip = require("ui.note_tooltip")
-local StatusTooltip = require("ui.status_tooltip")
 local Combat = require("models.combat")
 local Hazard = require("models.hazard")
 local Player = require("models.player")
-local Flee = require("models.flee")
 
 local DeployPhase = {}
 DeployPhase.__index = DeployPhase
@@ -142,12 +139,11 @@ local TITLE_SIZE, TITLE_MIN = 16, Theme.MIN_DISPLAY
 --                       objective is work the company chose to walk onto, not something it is cornered
 --                       by) and every board with no overworld behind it to flee back ONTO. The host
 --                       owns the roll and everything after it; the phase only offers the plate.
---   fleeChance          what that attempt is worth, in percent, for the plate to say out loud. The
---                       player is being asked to gamble a round of initiative, so the odds are on the
---                       button and not in a tooltip -- a wager whose price is hidden is not a decision
---                       (docs/readouts: numbers name their decision). The note that opens beside the
---                       plate (FLEE_NOTE) says what is being STAKED; the number itself never moves off
---                       the button into it.
+--   fleeChance          what that attempt is worth, in percent, for the plate to say out loud. It is
+--                       the whole readout: the odds are on the button and there is no note behind it
+--                       -- a wager whose price is hidden is not a decision (docs/readouts: numbers
+--                       name their decision), and the stake is a status the board shows for itself
+--                       (the enemy line wears Hasted from the moment a break-away is caught).
 function DeployPhase.new(opts)
     opts = opts or {}
     local self = setmetatable({}, DeployPhase)
@@ -520,16 +516,13 @@ function DeployPhase:controls()
     -- is what makes the pair read as a choice rather than making the escape a utility hidden among the
     -- tools -- and it puts the riskier option first, where the eye lands before the default.
     --
-    -- THE ODDS ARE ON THE PLATE, AND ONLY WHEN THERE ARE ANY. A wager has to quote its price, so while
-    -- the escape was a roll the number that decided it belonged on the thing the player pressed. It is
-    -- certain now (Flee.CERTAIN), and a plate reading "Run Away (100%)" quotes a wager that is not being
-    -- made -- it invites the player to weigh a risk the game has stopped taking. So at certainty the
-    -- plate says what it does and nothing else, and the percent comes back with the curve.
+    -- THE ODDS ARE ON THE PLATE. A wager has to quote its price, and this one has nowhere else to quote
+    -- it: there is no note behind the button any more, so the number that decides the attempt is on the
+    -- thing the player presses or it is nowhere. A host that hands over no chance at all (a probe, a
+    -- board with no muster behind it) still gets a working plate, unlabelled rather than lying.
     if self.onFlee then
         local odds = tonumber(self.fleeChance)
-        add("flee", (odds and odds < 100)
-            and ("Run Away (" .. tostring(odds) .. "%)")
-            or "Run Away")
+        add("flee", odds and ("Run Away (" .. tostring(odds) .. "%)") or "Run Away")
     end
     -- The bell says which fight it is ringing for. A player who armed auto and then pressed a button
     -- reading "Begin Battle" would have been told nothing about the fight they were about to not play.
@@ -857,7 +850,6 @@ function DeployPhase:draw(bounds)
 
     self:drawHover(bounds)
     self:drawHeld()
-    self:drawFleeNote()
 
     -- The carried portrait rides the cursor above everything else.
     if self.drag and self.drag.active and self.drag.char then
@@ -913,93 +905,6 @@ function DeployPhase:drawHeld()
     end
     drawPortrait(self.held, px - 22, py - 22, 44, self.font)
     love.graphics.setColor(1, 1, 1)
-end
-
--- ---------------------------------------------------------------------------
--- The escape, explained
--- ---------------------------------------------------------------------------
-
--- WHAT "RUN AWAY (55%)" IS ACTUALLY OFFERING. The plate quotes a price and names no stake: the percent
--- says how likely the attempt is, and nothing anywhere says what losing it does.
---
--- ONE LINE, AND THEN THE STATUS ITSELF. The whole cost is a status the game has already taught, so the
--- note says which one and hands the reading over to the status's own tooltip -- the identical box the
--- player gets off the badge on an enemy token, in the log and in the turn strip. Naming Hasted and then
--- paraphrasing what Hasted does would be a second gloss to keep in step with the first, and the two
--- would drift the day the status is tuned.
-local FLEE_NOTE = { "If you fail to run away, enemies start combat Hasted." }
-
--- ...AND WHAT IT SAYS NOW THE ESCAPE IS CERTAIN (Flee.CERTAIN). There is no stake left to name, so the
--- note stops pricing a wager and answers the question the player actually has left: what happens to the
--- fight. The two lines are the two cases, and they are genuinely different -- a rolled fight is not a
--- place and leaving takes it off the board, while a seated elite IS one and stays standing in the
--- corridor (states/game.lua's onFlee argues both).
-local FLEE_NOTE_CERTAIN = {
-    "A fight that found you is gone for good.",
-    "A threat standing on the floor stays where it is.",
-}
-
--- The status as the note shows it -- built by the model that also applies it (Flee.caughtStatus), so
--- the hourglass here is the one the badge will carry and neither surface names the duration itself.
--- Memoized: it is read-only, and the note is drawn every frame the pointer rests on the plate.
-local fleeStatus
-local function fleeCaughtStatus()
-    if not fleeStatus then fleeStatus = Flee.caughtStatus() end
-    return fleeStatus
-end
-
--- The gap between the note and the status box under it: the same 6px the docked hover boxes keep
--- between their own two (hoverDock's `gap` is 8 against a wider column; these two are narrow and read
--- as one stack).
-local NOTE_GAP = 6
-
--- WHETHER THE NOTE STANDS THIS FRAME, and the plate it hangs off: the rect, or nil. Asked the same two
--- ways every other readout in the phase is -- the pointer on the plate, or the keyboard/pad selection
--- sitting on it -- so the explanation is reachable on a pad, which has no pointer to hover with.
---
--- Never while a body is IN HAND. The carried portrait rides the cursor and the player is mid-placement,
--- not mid-decision; a box opening under the thing they are carrying is in the way of the move, not an
--- answer to it.
---
--- Pure (it measures, it never draws), on the model of hoverDock above and for the same reason: the
--- gating IS what the player gets, and it can be pinned without a window (tests/deploy_flee_spec.lua).
-function DeployPhase:fleeNotePlate()
-    if not self.onFlee then return nil end
-    if self.held or (self.drag and self.drag.active) then return nil end
-    local rect
-    for _, c in ipairs(self:controls()) do
-        if c.key == "flee" then rect = c.rect break end
-    end
-    if not rect then return nil end
-    if InputMode.isMouse() then
-        -- A finger has no hover: on touch the press IS the answer, and a box that could only appear
-        -- under a fingertip already on the plate would teach nobody anything.
-        if InputMode.touch or not rectHas(rect, self.mx, self.my) then return nil end
-    elseif self.focus ~= "flee" then
-        return nil
-    end
-    return rect
-end
-
--- Anchored off the plate's RIGHT edge rather than off the cursor, so it opens over the board, beside
--- the thing it is about, and at the same place whether a pointer or a pad asked for it. NoteTooltip
--- flips it back across the plate where the screen has no room on that side.
---
--- The status box is then stacked UNDER the note at the note's own left edge (StatusTooltip's `origin`),
--- so the two read as one column rather than two boxes that happen to be near each other. Placed off the
--- rect the note reports rather than off a second guess at where it went, which is what keeps them
--- together when the note has flipped sides or been clamped by the screen.
--- The status box under the note is the PENALTY's readout, so it stands exactly as long as the penalty
--- can happen. At certainty there is no catch to show and the note is a single box.
-function DeployPhase:drawFleeNote()
-    local rect = self:fleeNotePlate()
-    if not rect then return end
-    local certain = Flee.CERTAIN
-    local box = NoteTooltip.draw("Run Away", certain and FLEE_NOTE_CERTAIN or FLEE_NOTE,
-        rect.x + rect.w, rect.y - 16, Scale.WIDTH)
-    if not box or certain then return end
-    StatusTooltip.draw(fleeCaughtStatus(), 0, 0, Scale.WIDTH,
-        { x = box.x, y = box.y + box.h + NOTE_GAP })
 end
 
 -- ---------------------------------------------------------------------------

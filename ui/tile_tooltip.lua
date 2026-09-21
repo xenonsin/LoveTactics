@@ -959,6 +959,13 @@ end
 -- read: the same prediction is a badge on the body, a mark on its turn card, and a hover note on
 -- each of those. The stats above it have no second reading anywhere. Only when even the trimmed box
 -- will not fit does the whole of it go, which is the rule exactly as it was.
+--
+-- THAT ORIGINAL CROWDING NO LONGER ARRIVES from the fight: an aimed body's caller now withholds the
+-- intent itself (states/battle.lua's drawTileTooltipAt says why -- a prediction made before the blow
+-- is not a consequence of it), so the exchange box and the intent section never share a column. The
+-- valve stays, and is still reached by a column crowded any other way -- a tall terrain box carrying
+-- hazards, objective ground and a watch tax over a body wearing four statuses. It is a fitting rule,
+-- not a rule about aiming, and it is measured here rather than assumed.
 function TileTooltip.dockPlan(terrainInfo, objInfo, width, budget, gap)
     gap = gap or 8
     local plan = { occupant = objInfo ~= nil, intent = objInfo ~= nil and objInfo.intent ~= nil }

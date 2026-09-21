@@ -139,7 +139,7 @@ function Market.isStaple(item)
     if not (item and item.price) then return false end
     if item.class and not Class.isRoot(item.class) then return false end
     if not Market.STAPLE_TYPES[item.type] then return false end
-    return (item.unlockQuests or 0) <= Market.STAPLE_RUNG
+    return (item.unlockLevel or 0) <= Market.STAPLE_RUNG
 end
 
 -- Will the market actually put this staple out for THIS company?
@@ -185,7 +185,7 @@ end
 -- game makes.
 --
 -- Capped at the class ladder's own height so the tier and a rung are the same unit, which is what lets
--- the rotation filter on `unlockQuests` directly. Nought for a company that has never gone down: the
+-- the rotation filter on `unlockLevel` directly. Nought for a company that has never gone down: the
 -- counter opens on its standing rack, which is the plain kit and is never banded.
 function Market.tier(player)
     local Descent = require("models.descent")
@@ -258,11 +258,11 @@ function Market.stock(player, day)
                 counter[#counter + 1] = row
             end
         -- BANDED ON THE GATE, not on the authored rank. `rung` is the rung Vendor.stock actually
-        -- measured the row against -- `unlockQuests` on a priced ware, the depth less one on a found
+        -- measured the row against, which since the fold is the authored `unlockLevel` on every
         -- one -- and the two part on most of the catalogue now that a found ware has a rung at all.
         -- Reading the authored field banded every rungless ware at 0, which is two fifths of the
         -- catalogue crowding the shallow end of a rack three tiles wide.
-        elseif not row.locked and (row.rung or row.unlockQuests or 0) <= tier then
+        elseif not row.locked and (row.rung or row.unlockLevel or 0) <= tier then
             pool[#pool + 1] = row
         end
     end

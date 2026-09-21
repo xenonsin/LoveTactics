@@ -35,6 +35,18 @@
 -- Measured 2026-09-19 at day 20, level 11, forest, one freshly built company per fight and the RNG
 -- pinned per fight -- so re-running reproduces these exactly. Regenerate by printing `turns` in the
 -- spec's loop; do not hand-edit a number upward to make a build pass.
+--
+-- ONE NUMBER HAS BEEN RAISED SINCE, and this is the argument for it, written here rather than left as
+-- a nudge. THE ASSAY went 54 -> 64 on 2026-09-20, when models/ai.lua learned to score a status landed
+-- on its own side (AI.WEIGHTS.BUFF). Before that a buff cast scored a flat 0 outcome and was refused
+-- by the planner's own gate, so THE MAMMONITE'S SIGNATURE HAD NEVER ONCE BEEN CAST -- The Open Account
+-- soaks each wound out of that body's 300-gold coffer at five coins a point, which is sixty points of
+-- flesh it was authored to have and had never had. Two mammonites open the account twice between them
+-- and the fight is ten unit-turns longer, because the enemy is finally as hard as its own data says.
+-- That is not the decay this ratchet is here to catch; it is a set-piece that was being measured with
+-- one of its bodies half switched off. The fight is still too long for the label it wears, and it was
+-- already on this list for that reason -- see the header's note about warband content wearing the
+-- `combat` tag.
 return {
     -- Did not resolve inside Autobattle.run's 400-turn cap. Look here first.
     encounter_warband_beast_line    = 400,
@@ -46,7 +58,7 @@ return {
     encounter_sloth_standing_watch  = 110,
     encounter_rival_company         = 77,
     encounter_gluttony_overstayed   = 57,
-    encounter_warband_the_assay     = 54,
+    encounter_warband_the_assay     = 64, -- was 54; see the header -- the mammonite's coffer ward started working
     encounter_pride_cited           = 53,
     encounter_warband_the_writ      = 50,
     encounter_warband_press_gang    = 41,

@@ -28,7 +28,7 @@ return {
     -- (Iron Dagger, Cutpurse, Throughline) and 1/4 on the alchemist's (this, Envenomed Kris), and each
     -- of those starts at 1 because `repRank` gates standing with one vendor rather than mastery of a
     -- weapon type.
-    unlockQuests = 0,
+    unlockLevel = 0,
     activeAbility = {
         target = "enemy",
         range = 1,

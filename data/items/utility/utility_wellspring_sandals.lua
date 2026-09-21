@@ -49,7 +49,7 @@ return {
     -- could ever lift, which is a shelf row that is shut forever and says the wrong reason why. Every
     -- other trophy in the game (utility_the_last_sounder, utility_treeline_horn) carries a class and a
     -- depth and no rung, for exactly this reason.
-    dropTier = 3,
+    unlockLevel = 4,
     -- OFF THE SHELF, AND ONTO AN ANIMAL. These are the Meandering Stag's now
     -- (data/characters/character_meandering_stag.lua) and nobody's to buy: `unstocked` is what makes a
     -- piece rift-only -- no counter deals one however many the company carries out, and none will buy

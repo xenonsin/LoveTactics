@@ -64,7 +64,7 @@ return {
                 assert(def.class == "creature", id .. " belongs to no job")
                 assert(def.noSteal, id .. " cannot be lifted off him")
                 assert(def.price == nil, id .. " is on no shelf")
-                assert(def.dropTier == nil, id .. " is at no depth")
+                assert(def.unlockLevel == nil, id .. " is at no depth")
             end
             -- The signature relic is the one that would hurt most to lose in a grab: it carries the
             -- whole phase script, so lifting it would delete the second half of the fight.

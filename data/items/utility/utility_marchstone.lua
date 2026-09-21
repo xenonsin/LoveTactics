@@ -25,8 +25,7 @@ return {
     type = "utility",
     tags = { "charm", "control" },
     class = "warden",
-    unlockQuests = 5,
-    dropTier = 4,
+    unlockLevel = 6,
     incense = { hazard = "hazard_halting_ground", radius = 1 },
     -- it stops bodies moving, which is a wall's job
     bonus = { defense = 2 },

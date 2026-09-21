@@ -75,7 +75,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "mammonite",
-    dropTier = 5,
+    unlockLevel = 7,
     unstocked = true,
     -- The half that works on the road. Six is about a floor and a half of extra trip against a twenty
     -- find ceiling -- felt on the long dive this is meant to extend, invisible on a short one.

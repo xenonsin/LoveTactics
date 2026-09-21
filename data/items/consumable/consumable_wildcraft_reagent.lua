@@ -24,6 +24,7 @@ return {
     sprite = "assets/items/consumable_wildcraft_reagent.png",
     type = "consumable",
     class = "herbalist",
+    unlockLevel = 15,
     tags = { "draught", "restorative" },
     ephemeral = true, -- belt and braces: the grant stamps the instance too
     maxStack = 5,

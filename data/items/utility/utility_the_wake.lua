@@ -39,7 +39,7 @@ return {
     -- the same number for two different items. The figure below is what free, damaging, unhealable
     -- ground laid on every step is worth, and it still sits under the horn, which is where the list
     -- wants it.
-    dropTier = 4,
+    unlockLevel = 5,
     -- RIFT-ONLY. It comes off the body and nowhere else: no counter deals one however many
     -- the company carries out, and none will buy one back (docs/drops.md, Vendor.foundPrice).
     unstocked = true,

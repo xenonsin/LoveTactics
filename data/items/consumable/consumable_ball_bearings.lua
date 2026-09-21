@@ -17,7 +17,7 @@ return {
     tags = { "snare" },
     class = "rogue",
     price = 30,
-    unlockQuests = 0,
+    unlockLevel = 0,
     activeAbility = {
         target = "tile", -- thrown at a tile and bursts around it, like the Flash Bomb
         allowOccupied = true,

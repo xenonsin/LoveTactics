@@ -29,7 +29,7 @@ return {
     tags = { "longbow", "pierce", "physical", "ranged" },
     hands = 2,
     class = "hunter",
-    dropTier = 8,
+    unlockLevel = 14,
     activeAbility = {
         target = "enemy",
         range = 5,
@@ -40,7 +40,7 @@ return {
         windup = 2,
         -- The lowest curve in the family by a wide margin. A weapon that kills outright must not also
         -- hit hard, and this one's damage exists mostly so the shot is not literally nothing.
-        damage = Curve.ramp(10, 20),
+        damage = Curve.ramp(21, 31),
         effect = function(fx)
             local t = fx.target
             if not t then return end

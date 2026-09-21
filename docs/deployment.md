@@ -170,16 +170,13 @@ ends; the encounter's own name comes back the instant the bell rings.
   (`Flee.MIN`/`MAX`, 20–90) because a plate whose answer is known before it is pressed is not a decision
   either way.
 
-  **The stake is in a note beside the plate**, opened by the pointer resting on it or by the pad
-  selection sitting on it (`DeployPhase:fleeNotePlate`, drawn through `ui/note_tooltip.lua`). The
-  number stays on the button, where the press is; the note is one line — *"If you fail to run away,
-  enemies start combat Hasted."* — and under it the **status's own tooltip**, the identical box the
-  player gets off a badge on an enemy token, in the log or in the turn strip — built by the model that
-  applies it (`Flee.caughtStatus`), so the hourglass read before the press is the one the badge carries
-  after it. Naming Hasted and then paraphrasing it would be a second gloss to keep in step with the
-  first. A finger never opens the
-  note: a box that could only appear under a fingertip already on the plate would teach nobody
-  anything.
+  **And the odds are the whole readout.** There was a note beside this plate for a while — a line
+  naming the stake, with the status's own tooltip stacked under it — opened on hover and on a pad
+  selection. It is gone. The percent is the decision and it is on the thing the player presses; the
+  stake needs no box of its own, because a catch says it twice in the player's own words — the hint
+  line names it (*"They cut you off. They start this fight Hasted."*) and the **Hasted** badge is on
+  every enemy token before the bell, a word the game teaches everywhere else it appears. A second box
+  saying the same thing was covering the board to do it.
 
   **One attempt.** A success leaves the screen — the company steps back onto the tile it came from, and a
   *rolled* fight goes off the board entirely while a *seated* elite stays exactly where it was, still

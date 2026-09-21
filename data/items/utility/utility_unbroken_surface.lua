@@ -41,7 +41,7 @@ return {
     -- That reading is right for pricing a ward nobody knows they will need and wrong for placing a
     -- boss's unique piece, which is a fact about where it is FOUND. Four, so the King's list pays one
     -- thing at each rank an elite band can reach it at (4-5 at day 14, 7-8 at the bottom).
-    dropTier = 4,
+    unlockLevel = 5,
     unstocked = true,
     -- A LIST, which `Curse.openingBoons` unwraps for the one reader that matters (states/battle.lua's
     -- setup). Three statuses because the engine keys immunity per tag, not per school.

@@ -25,7 +25,7 @@ return {
     tags = { "greatsword", "slash", "physical", "melee" },
     hands = 2,
     class = "fighter",
-    dropTier = 7,
+    unlockLevel = 12,
     activeAbility = {
         target = "tile",
         allowOccupied = true,
@@ -35,7 +35,7 @@ return {
         windup = 2,
         cost = { stat = "stamina", amount = 16 },
         -- Under the iron greatsword's: the ground is the rest of the price, and it is worth a lot.
-        damage = Curve.ramp(24, 44),
+        damage = Curve.ramp(45, 65),
         effect = function(fx)
             if fx.target then fx.damage(fx.target) end
             -- Laid on the aimed CELL rather than on whoever was standing in it, which is the whole

@@ -28,11 +28,11 @@ return {
         "armor_leather_armor", "consumable_healing_potion", "utility_unheld_hand",
     },
     drops = {
-        "armor_hem_of_the_stayed_hand",
-        "armor_warding_chasuble",
+        "armor_vow_marked_plate",
         "utility_aegis_of_the_oath",
         "weapon_confessors_needle",
-        "utility_pilgrims_sandals",
+        "utility_held_breath",
+        "utility_kept_vigil",
     },
     defaultAction = "ability_flurry",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

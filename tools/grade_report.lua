@@ -86,7 +86,7 @@ local function explain(id)
     local value, b = Grade.of(id)
     print(string.format("\n%s  (%s, %s)", def.name or id, def.type, def.class or "classless"))
     print(string.format("  shelf today: slot %s, %s gold",
-        tostring(def.unlockQuests or "-"), tostring(def.price or "-")))
+        tostring(def.unlockLevel or "-"), tostring(def.price or "-")))
     print(string.format("  one turn is worth %.1f damage (Grade.PRESTIGE %d)",
         Grade.turnValue(), Grade.PRESTIGE))
     print("  ---")
@@ -127,7 +127,7 @@ local function writeFile(rel, text)
 end
 
 -- Set `field = value` in a blueprint, whether or not the field is already there. An item that never
--- authored `unlockQuests` is a real case -- the field defaults to 0 -- so a rewriter that could only
+-- authored `unlockLevel` is a real case -- the field defaults to 0 -- so a rewriter that could only
 -- replace an existing literal would silently skip every item that needed the change most.
 -- Returns the new text, or nil if there was nowhere sensible to put it.
 local function setField(text, field, value)
@@ -289,7 +289,7 @@ local function planFor(class, maxGate, pinned)
     for i = di, #deepQ do deepQ[i].want = maxGate end
 
     for _, row in ipairs(asc) do
-        row.have = row.def.unlockQuests or 0
+        row.have = row.def.unlockLevel or 0
         row.adopted = false
         for _, tid in ipairs(row.def.traits or {}) do
             if Grade.TRAIT_ADOPTED[tid] then row.adopted = true break end
@@ -450,7 +450,7 @@ function M.run(args)
         return
     end
 
-    -- THE REWRITE. Writes `unlockQuests` and `price` into every priced blueprint from the plan above.
+    -- THE REWRITE. Writes `unlockLevel` and `price` into every priced blueprint from the plan above.
     -- Everything else in this file only reports; this is the one door that moves data, and it is behind
     -- an explicit word.
     --
@@ -476,7 +476,7 @@ function M.run(args)
                 else
                     local rel = "data/items/" .. tostring(row.def.type) .. "/" .. row.id .. ".lua"
                     local text = readFile(rel)
-                    local out = text and setField(text, "unlockQuests", row.want)
+                    local out = text and setField(text, "unlockLevel", row.want)
                     out = out and setField(out, "price", price)
                     if not out then
                         missed[#missed + 1] = row.id
@@ -516,7 +516,7 @@ function M.run(args)
 
         for _, row in ipairs(blindRows) do
             blind[#blind + 1] = string.format("%-10s %-40s was slot %2d  %5sg",
-                class, row.id, row.def.unlockQuests or 0, tostring(row.def.price or "-"))
+                class, row.id, row.def.unlockLevel or 0, tostring(row.def.price or "-"))
         end
 
         if #asc > 0 then

@@ -26,6 +26,7 @@ local Item = require("models.item")
 local ButtonPrompt = require("ui.button_prompt")
 local SpeechBox = require("ui.speech_box")
 local ItemTooltip = require("ui.item_tooltip")
+local Glyphs = require("ui.glyphs")       -- unseenDot: the red mark on an option with something behind it
 local Debug = require("models.debug")
 local utf8 = require("utf8") -- the typewriter reveals whole CHARACTERS, not bytes (CJK is multibyte)
 
@@ -207,8 +208,14 @@ function Dialogue.new(def, onComplete, convId, startAt)
                 -- player; an answer changes what the caller does next -- a floor's errand asks whether
                 -- to fight it at all, and "accept" is not a thing to grant, it is a branch to take.
                 -- Carried through untouched, like `effect`; this widget never reads its value.
+                -- `news` is the red dot: something is waiting behind this option RIGHT NOW -- a body
+                -- to mend, a hex to lift, a find nobody has read, stock nobody has looked at. Stamped
+                -- by models/conversation.lua from a set the caller put on the context, never authored,
+                -- and asked again on every pass through a counter's desk -- so it goes out on the visit
+                -- the player deals with the thing (models/offer.lua's Offer.news). Carried through
+                -- untouched, like `answer`; the widget only draws it.
                 node.choices[j] = { text = c.text or c[1] or "", tag = c.tag, goto = c.goto,
-                                    answer = c.answer,
+                                    answer = c.answer, news = c.news,
                                     effect = c.effect, reward = rewardOf(c.effect) }
             end
         end
@@ -919,6 +926,12 @@ function Dialogue:draw()
                     ry = ry + rewardH
                 end
             end
+            -- THE UNSEEN DOT, top-right of the option's own plate, drawn last so it sits over the
+            -- plate and its border -- the same mark in the same corner ui/menu.lua's rows and the
+            -- city's own door plates wear (ui/glyphs.lua). A desk of four rooms is otherwise four
+            -- identical lines, and the player has to open all of them to find out which one wants
+            -- them today.
+            if choice.news then Glyphs.unseenDot(cx + cw - 10, cy + 10, 4) end
             self.choiceRects[i] = { x = cx, y = cy, w = cw, h = ch, reward = choice.reward }
             cy = cy + ch + gap
         end

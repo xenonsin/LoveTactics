@@ -27,7 +27,7 @@ return {
     tags = { "longbow", "pierce", "physical", "fire", "ranged" },
     hands = 2,
     class = "hunter",
-    dropTier = 6,
+    unlockLevel = 10,
     activeAbility = {
         target = "enemy",
         range = 5,
@@ -37,7 +37,7 @@ return {
         windup = 2,
         cost = { stat = "stamina", amount = 11 },
         -- Under the iron longbow's: the halo is the weapon, and the arrow is the delivery.
-        damage = Curve.ramp(10, 20),
+        damage = Curve.ramp(18, 28),
         effect = function(fx)
             if fx.target then fx.damage(fx.target) end
             -- On the aimed cell and the ring around it: a halo is a ring, and one tile of white fire

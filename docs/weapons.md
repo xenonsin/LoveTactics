@@ -132,7 +132,7 @@ Within that, each family's plain, undecorated weapon is named **`weapon_iron_<fa
 implementation: the mechanic and nothing else, the thing every other weapon in the family is
 measured against.
 
-**Every base weapon is `unlockQuests = 0`.** A family's plain expression is stocked from the first visit
+**Every base weapon is `unlockLevel = 0`.** A family's plain expression is stocked from the first visit
 and what gates it is the purse, not the standing — `weapon_iron_greatsword` needs no quests at 300 gold,
 which is five times an iron sword and still on the shelf on day one.
 
@@ -140,7 +140,7 @@ which is five times an iron sword and still on the shelf on day one.
 
 Each of the thirteen shoppable families carries **ten** weapons, split down the middle:
 
-- **Five on the vendor's shelf** — `class` + `price` + `unlockQuests`, climbing the shelf's ladder. The
+- **Five on the vendor's shelf** — `class` + `price` + `unlockLevel`, climbing the shelf's ladder. The
   top tier (`Vendor.TIERS` = `{ 0, 3, 6, 10 }`, so 10 quests) is the ceiling, so a family reads
   0-3-6-10-10 with its two capstones sharing the top wave.
 - **Five quest-only** — `class` and **no `price`**. The missing price is what makes it quest-only rather
@@ -178,7 +178,7 @@ The corollary of the contract: if a weapon's only claim over `iron_<family>` is 
 not a weapon, it is a `+n`. That is what the forge is for. Every named weapon therefore owes an
 **extra** — a mechanic its base counterpart does not have.
 
-The rosters below are the whole catalog. **S** is a shelf weapon (with its `unlockQuests`); **Q** is
+The rosters below are the whole catalog. **S** is a shelf weapon (with its `unlockLevel`); **Q** is
 quest-only. Each family's base weapon needs 0 quests and is listed first; signature and relic weapons sit
 outside the count and are not listed here.
 
@@ -703,7 +703,7 @@ a free always-on mitigation would be untouchable.
    `models/curve.lua`, e.g. `damage = Curve.ramp(6, 16)`. See
    [Per-level curves](adding-content.md#per-level-curves).
 5. Decide which half of the ten it is:
-   - **Shelf** — set `class`, `price` and `unlockQuests` (one of `Vendor.TIERS` = 0/3/6/10; 10 is the vendor ceiling).
+   - **Shelf** — set `class`, `price` and `unlockLevel` (one of `Vendor.TIERS` = 0/3/6/10; 10 is the vendor ceiling).
    - **Quest-only** — set `class` and **no `price`**. The missing price is the whole mechanism: it keeps
      the weapon out of the spoils pool (`models/spoils.lua`), while `class` still tallies it toward
      growth. Grant it from a quest's `rewardItems`.

@@ -25,7 +25,7 @@ return {
     tags = { "dark", "magical" },
     class = "necromancer",
     price = 245,
-    unlockQuests = 2,
+    unlockLevel = 3,
     activeAbility = {
         target = "enemy",
         range = 6,

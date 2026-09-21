@@ -25,7 +25,7 @@ return {
     type = "armor",
     tags = { "leather", "poison" },
     class = "alchemist",
-    dropTier = 5,
+    unlockLevel = 7,
     incense = { hazard = "hazard_choking", radius = 1 },
     bonus = { defense = Curve.ramp(3, 13), movement = -1 },
     resist = { poison = 3 },

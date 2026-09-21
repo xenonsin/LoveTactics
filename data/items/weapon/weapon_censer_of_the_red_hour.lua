@@ -24,8 +24,7 @@ return {
     type = "weapon",
     tags = { "censer", "impact", "physical", "melee" },
     class = "priest",
-    unlockQuests = 2,
-    dropTier = 4,
+    unlockLevel = 5,
     incense = {
         hazard = "hazard_bloodsong",
         radius = 1,

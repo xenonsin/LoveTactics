@@ -23,7 +23,7 @@ return {
     tags = { "dark", "magical" },
     class = "necromancer", -- deeper cut of the shelf: buyable only once the necromancer gate is cleared
     price = 575,
-    unlockQuests = 6,
+    unlockLevel = 12,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

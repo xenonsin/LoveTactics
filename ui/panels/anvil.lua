@@ -1,12 +1,19 @@
--- The Cold Forge's panel: pick ONE piece the company is carrying and take it up a rung, free
--- (data/encounters/encounter_cold_forge.lua, models/forge.lua's Forge.grant).
+-- THE WAYSIDE BENCH'S PANEL, drawn for whichever of the two stops opened it: pick ONE piece the company
+-- is carrying and take it up a rung, free (models/forge.lua's Forge.grant).
 --
 --   local panel = Anvil.new({
---       title  = "The Cold Forge",
+--       room   = Forge.FORGE,              -- the Cold Forge (gear) / Forge.STUDY, the Cold Lectern
 --       player = player,
 --       onStrike = function(row) ... end,  -- row.item has been swapped for row.newItem in its cell
 --       onLeave  = function() ... end,     -- walked away; nothing spent, the cell stays uncleared
 --   })
+--
+-- TWO STOPS, ONE SCREEN, AND THE ROOM PICKS THE HALF OF THE KIT. The city splits the ladder between the
+-- Bastion's forge and the Arcanum's study (models/forge.lua's Forge.WORK), and the road keeps that line:
+-- the coals take gear, the chained book takes abilities (Forge.WAYSIDE). Everything else here -- the
+-- list, the reading, the refusals, the one irreversible press -- is the same at both, so the room
+-- changes four strings and the filter on the collector and nothing else. See
+-- data/encounters/encounter_cold_forge.lua and encounter_cold_lectern.lua.
 --
 -- IT IS THE BENCH'S SCREEN, CUT DOWN TO THE ONE QUESTION IT ASKS. The city's Forge (ui/panels/forge.lua)
 -- is three categories, a scrubbable track and a three-track bill, because standing at a bench you are
@@ -61,12 +68,32 @@ local function pointIn(r, x, y)
     return r and x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h
 end
 
+-- EVERY WORD THAT DIFFERS BETWEEN THE TWO STOPS, in one table, so adding a third is a row rather than a
+-- sweep. `verb` is the button AND the key hint under it -- one word per action, said the same way in
+-- both places -- and `deaf` is what the stop says about a piece its own trade cannot touch.
+local ROOM_COPY = {
+    [Forge.FORGE] = {
+        title = "The Cold Forge",
+        prompt = "The coals hold enough for one piece. It will not be here when you come back.",
+        verb = "Strike",
+        empty = "Nobody is carrying gear a rung would improve.",
+        deaf = "The coals will not take it.",
+    },
+    [Forge.STUDY] = {
+        title = "The Cold Lectern",
+        prompt = "The book is chained open and half-copied. There is enough left in it to teach one thing.",
+        verb = "Read",
+        empty = "Nobody is carrying an ability a rung would improve.",
+        deaf = "There is nothing in the page for it.",
+    },
+}
+
 -- The refusal in words. `locked` is the only one with anything to say -- it names the class the ceiling
 -- is measured on and the house that teaches it, exactly as the bench's own lock line does
 -- (ForgePanel:ceilingReason), because "you have not climbed far enough" is useless without "in what".
-local function refusalText(item)
+local function refusalText(item, copy)
     local class = Item.classOf(item)
-    if not class then return "The coals will not take it." end
+    if not class then return copy.deaf end
     local name = Item.classDisplayName(class) or class
     local vendorId = Forge.houseVendorFor(class)
     local house = vendorId and (Vendor.get(vendorId) or {}).name
@@ -86,8 +113,13 @@ function Anvil.new(opts)
     opts = opts or {}
     local self = setmetatable({}, Anvil)
     self.player = opts.player
-    self.title = opts.title or "The Cold Forge"
-    self.prompt = opts.prompt or "The coals hold enough for one piece. It will not be here when you come back."
+    -- WHICH STOP THIS IS. A caller that names none gets the coals, which is what every call site meant
+    -- before the lectern existed.
+    self.room = opts.room or Forge.FORGE
+    self.copy = ROOM_COPY[self.room]
+    assert(self.copy, "no wayside stop works the room '" .. tostring(self.room) .. "'")
+    self.title = opts.title or self.copy.title
+    self.prompt = opts.prompt or self.copy.prompt
     self.onStrike = opts.onStrike
     self.onLeave = opts.onLeave
     self.finished = false
@@ -110,7 +142,7 @@ function Anvil.new(opts)
     -- Every piece the company walked in wearing, each already carrying the model's own verdict on
     -- whether the coals may touch it.
     self.rows = {}
-    for _, up in ipairs(Forge.equipped(self.player)) do
+    for _, up in ipairs(Forge.equipped(self.player, self.room)) do
         local reason = Forge.grantRefusal(self.player, up.item)
         local tail, state = tailFor(reason)
         self.rows[#self.rows + 1] = {
@@ -234,7 +266,10 @@ function Anvil:strike()
     row.up.char.inventory[row.up.cell] = newItem
     row.newItem = newItem
     self.finished = true
-    Sound.play("stone.mark") -- a jeweller's hammer on a stamp: one rung, struck in
+    -- The game's "one rung landed" note (data/sounds.lua), the same one the Touchstone strikes per
+    -- rung. Struck metal at the coals and struck metal at the lectern: the cue is about the LADDER
+    -- moving, not about the trade, which is why one note serves both stops.
+    Sound.play("stone.mark")
     if self.onStrike then self.onStrike(row) end
 end
 
@@ -454,7 +489,7 @@ function Anvil:drawDetail()
         love.graphics.setColor(SHORT[1], SHORT[2], SHORT[3])
         love.graphics.printf(row.reason == "max level"
             and ((row.item.name or "It") .. " has no rung left to take.")
-            or refusalText(row.item), x, self.boxY + BOX_H - 168, w, "left")
+            or refusalText(row.item, self.copy), x, self.boxY + BOX_H - 168, w, "left")
     end
 end
 
@@ -490,19 +525,20 @@ function Anvil:draw()
     else
         love.graphics.setFont(self.promptFont)
         Theme.set(Theme.muted)
-        love.graphics.printf("Nobody is carrying anything a rung would improve.",
+        love.graphics.printf(self.copy.empty,
             self.boxX + PAD, self.boxY + 240, BOX_W - PAD * 2, "center")
     end
 
     local row = self:current()
     self:drawButton(self.leaveBtn, "Leave", true, Theme.muted)
-    self:drawButton(self.strikeBtn, "Strike", row ~= nil and row.reason == nil, Theme.accentAmber)
+    self:drawButton(self.strikeBtn, self.copy.verb, row ~= nil and row.reason == nil, Theme.accentAmber)
 
+    local verb = self.copy.verb:lower()
     love.graphics.setFont(self.smallFont)
     Theme.set(Theme.muted)
     love.graphics.printf(InputMode.isGamepad()
-        and "D-pad up/down: pick a piece    A: strike    B: leave"
-        or "Click a piece to pick it    Enter: strike    Esc: leave",
+        and ("D-pad up/down: pick a piece    A: " .. verb .. "    B: leave")
+        or ("Click a piece to pick it    Enter: " .. verb .. "    Esc: leave"),
         self.boxX, self.boxY + BOX_H - 28, BOX_W, "center")
 
     self.closeButton:draw()

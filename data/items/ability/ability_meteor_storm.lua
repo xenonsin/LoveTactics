@@ -22,7 +22,7 @@ return {
     tags = { "fire", "magical" },
     class = "elementalist", -- deeper cut of the shelf: buyable only once the elementalist gate is cleared
     price = 660,
-    unlockQuests = 7,
+    unlockLevel = 13,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

@@ -23,8 +23,7 @@ return {
     tags = { "water", "magical" },
     class = "mage",
     dropOnly = true,
-    dropTier = 5,
-    unlockQuests = 3,
+    unlockLevel = 8,
     activeAbility = {
         target = "enemy",
         range = 4,

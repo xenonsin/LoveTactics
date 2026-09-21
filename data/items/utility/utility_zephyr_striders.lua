@@ -27,8 +27,7 @@ return {
     type = "utility",
     tags = { "boots", "flying" },
     class = "rogue",
-    unlockQuests = 4,
-    dropTier = 3,
+    unlockLevel = 4,
     -- footwear, and the flattest ground-cost item there is
     bonus = { movement = 1 },
 }

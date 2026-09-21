@@ -14,5 +14,5 @@ return {
     description = "Avoids the blow and answers it. Blinks out of reach, leaves a clone standing to take "
         .. "the hit, and stays unseen until the strike that kills.",
     exemplar = "character_ninja", -- was character_kaen (kept as the marquee named boss); dedicated body authored
-    requires = { rogue = 7, mage = 7 },
+    requires = { rogue = 11, mage = 11 },
 }

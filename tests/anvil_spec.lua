@@ -1,9 +1,11 @@
--- Tests for THE COLD FORGE: the road stop that raises one carried piece a rung for nothing
--- (data/encounters/encounter_cold_forge.lua, the branch in states/game.lua, ui/panels/anvil.lua).
+-- Tests for THE TWO WAYSIDE BENCHES: the road stops that raise one carried piece a rung for nothing --
+-- the Cold Forge for gear and the Cold Lectern for abilities (data/encounters/encounter_cold_forge.lua
+-- and encounter_cold_lectern.lua, the one branch in states/game.lua, ui/panels/anvil.lua).
 --
 -- The model half is models/forge.lua's Forge.equipped / Forge.grantRefusal / Forge.grant, and what
 -- these cases are really about is the ONE line that separates a gift from a cheat: the bill is waived
--- and the ceiling is not. Headless.
+-- and the ceiling is not. The SPLIT is the second thing they pin -- that the city's line between the
+-- forge and the study is the same line out here, and that neither stop is unreachable. Headless.
 
 local Character = require("models.character")
 local Class = require("models.class")
@@ -101,6 +103,12 @@ return {
             p.roster[1].inventory[1] = Item.instantiate(potion, 1, 0)
             assert(#Forge.equipped(p) == 0,
                 "a consumable refines per recipe at the bench and must not be offered a rung out here")
+            -- NOR AT THE LECTERN, which is the stop that DOES work the study's half of the ladder. A
+            -- recipe climbs per TYPE, so a free refining would be a permanent upgrade to every copy
+            -- bought afterwards -- not a thing a tile on a floor gives away
+            -- (data/encounters/encounter_cold_lectern.lua argues it).
+            assert(#Forge.equipped(p, Forge.STUDY) == 0,
+                "a recipe is refined in town, never on the road")
         end,
     },
 
@@ -251,6 +259,97 @@ return {
             end
             assert(combat == 0 or seated.weight < combat,
                 "a free rung must stay rarer than an ordinary fight")
+        end,
+    },
+    {
+        -- THE CITY'S LINE, HELD ON THE ROAD. The Bastion's forge works what a smith holds in tongs and
+        -- the Arcanum's study works what is written down (Forge.WORK); the coals and the chained book
+        -- are those two rooms with the bill waived. A stop that offered the other half would rebuild
+        -- underground exactly the muddle the split took apart -- and it would do it where the only way
+        -- to find out is to walk onto the tile.
+        name = "the two wayside stops split the carried kit exactly as the two city rooms do",
+        fn = function()
+            local p = pauper()
+            local gearId, abilityId
+            for id, def in pairs(Item.defs) do
+                local item = Item.instantiate(id)
+                if Forge.canWork(item) then
+                    if def.type == "ability" then
+                        if abilityId == nil or id < abilityId then abilityId = id end
+                    elseif gearId == nil or id < gearId then gearId = id end
+                end
+            end
+            assert(gearId and abilityId, "the shelf needs one workable piece of each half to test this")
+
+            p.roster[1].inventory[1] = Item.instantiate(gearId, 1, 0)
+            p.roster[1].inventory[2] = Item.instantiate(abilityId, 1, 0)
+
+            local coals = Forge.equipped(p, Forge.FORGE)
+            assert(#coals == 1 and coals[1].item.type ~= "ability",
+                "the coals offer the gear and nothing else, got " .. #coals .. " row(s)")
+            local page = Forge.equipped(p, Forge.STUDY)
+            assert(#page == 1 and page[1].item.type == "ability",
+                "the book offers the ability and nothing else, got " .. #page .. " row(s)")
+            -- ...and between them they still reach everything the ladder touches, so the split moved
+            -- the offer without quietly deleting half of it.
+            assert(#Forge.equipped(p) == 2, "nothing carried may fall between the two stops")
+        end,
+    },
+    {
+        -- A ROOM WITH NO STOP IS HALF A LADDER THE ROAD SILENTLY DROPPED, and a stop whose kind
+        -- states/game.lua does not know is a tile that opens nothing at all. Both directions, because
+        -- the wiring is three files apart: the table in the model, the blueprint on disk, and the
+        -- branch that reads the table.
+        name = "every city room has a wayside stop, and every wayside stop has a blueprint",
+        fn = function()
+            local rooms = {}
+            for kind, room in pairs(Forge.WAYSIDE) do
+                assert(Forge.WORK[room], "wayside kind '" .. kind .. "' names no room")
+                assert(not rooms[room], "two wayside stops work the same room: " .. room)
+                rooms[room] = kind
+
+                local seated
+                for id, def in pairs(Encounter.defs) do
+                    if def.kind == kind then seated = id end
+                end
+                assert(seated, "no encounter blueprint carries kind '" .. kind
+                    .. "', so that room's wayside stop can never be placed")
+                assert(Encounter.GLOSS[kind], "'" .. kind .. "' would be marked on the board mute")
+            end
+            for room in pairs(Forge.WORK) do
+                assert(rooms[room], "the road has no stop for the " .. room
+                    .. ", so half the ladder cannot be climbed out here at all")
+            end
+        end,
+    },
+    {
+        name = "the Cold Lectern is a stop, not a fight, and it holds off the first floor",
+        fn = function()
+            local def = Encounter.get("encounter_cold_lectern")
+            assert(def, "encounter_cold_lectern missing from the registry")
+            assert(def.kind == "lectern", "the branch in states/game.lua keys on Forge.WAYSIDE")
+            assert(Forge.WAYSIDE[def.kind] == Forge.STUDY, "the book works the study's half")
+            assert(not Encounter.opensBattle({ kind = def.kind }),
+                "the Cold Lectern must never wear the combat border")
+
+            local function has(pool)
+                for _, e in ipairs(pool) do if e.id == "encounter_cold_lectern" then return e end end
+                return nil
+            end
+            assert(not has(Encounter.pool({ day = 1, biome = "forest" })),
+                "on the opening floor every ability is at +0 and the rungs all look alike")
+            local seated = has(Encounter.pool({ day = 2, biome = "forest" }))
+            assert(seated and seated.weight > 0, "it should be drawable from the second day down")
+
+            -- NEVER COMMONER THAN THE COALS, because the half of the kit it works is the smaller one.
+            -- Asserted as an ordering rather than as the two numbers, so a re-weighting that keeps the
+            -- shape does not have to come back here.
+            local forge
+            for _, e in ipairs(Encounter.pool({ day = 4, biome = "forest" })) do
+                if e.id == "encounter_cold_forge" then forge = e end
+            end
+            assert(forge and seated.weight <= forge.weight,
+                "the book serves ninety abilities where the coals serve three item types")
         end,
     },
     {

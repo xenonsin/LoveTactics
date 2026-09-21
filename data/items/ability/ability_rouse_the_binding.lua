@@ -23,7 +23,7 @@ return {
     tags = { "dark", "magical" },
     class = "shaman",
     price = 410,
-    unlockQuests = 4,
+    unlockLevel = 7,
     activeAbility = {
         target = "enemy",
         range = 3,

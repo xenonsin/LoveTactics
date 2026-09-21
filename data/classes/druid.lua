@@ -11,5 +11,5 @@ return {
     description = "Changes shape mid-fight. Wild Shape trades your whole grid for a beast form for a few "
         .. "turns. Bear holds ground, wolf covers it.",
     exemplar = "character_druid", -- NEW, pending
-    requires = { hunter = 4 },
+    requires = { hunter = 5 },
 }

@@ -29,5 +29,5 @@ return {
     description = "Binds spirits into things and makes them stay. Into the ground, where each one fights "
         .. "on its own -- or into a body's gear, where it becomes a curse.",
     exemplar = "character_shaman", -- NEW, pending
-    requires = { hunter = 6, mage = 6 },
+    requires = { hunter = 9, mage = 9 },
 }

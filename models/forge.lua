@@ -1,6 +1,9 @@
--- The Forge: the one bench in the city that raises an item's `level`. Upgrading bakes into the item's
--- scaling magnitudes and its " +n" name (Item.instantiate). Vendors SELL; the Forge UPGRADES -- one
--- bill, one ladder, one place to look. Pure logic, headless-safe: ui/panels/forge.lua drives it.
+-- The ladder that raises an item's `level`. Upgrading bakes into the item's scaling magnitudes and
+-- its " +n" name (Item.instantiate). Vendors SELL; this UPGRADES -- one bill, one ladder. Pure logic,
+-- headless-safe: ui/panels/forge.lua drives it.
+--
+-- ONE LADDER, TWO ROOMS -- see Forge.WORK. The bill, the ceiling and the rung are the same wherever
+-- the player is standing; what differs is who does the work, and a smith does not hone a spell.
 --
 -- THREE KINDS OF WORK, all raising the same level:
 --   gear       weapon / armor / utility, per instance -- you own one and hammer it
@@ -56,7 +59,7 @@ Forge.GOLD_PER_LEVEL = 40
 --
 -- This used to read Vendor.tier -- the four-value wave enum { 0, 3, 6, 10 } -- and by the end the
 -- FORGE was its last consumer anywhere in the game: tools/unlock_rescale.lua moved all 339 item gates
--- onto per-quest `unlockQuests` and left the bench behind. So the shelf moved every quest while the
+-- onto per-quest `unlockLevel` and left the bench behind. So the shelf moved every quest while the
 -- bench moved four times a line, which put the ceiling at +2 for a house's first three quests. Against
 -- a common weapon curve of +1 power per rung, that is two points of answer at exactly the moment the
 -- player has the least of everything else -- the bench was at its least useful where it was most
@@ -82,6 +85,68 @@ Forge.GOLD_PER_LEVEL = 40
 -- scrap, 2 steel ingot, 250 gold and no technique). This makes the early rungs reachable; it does not
 -- make them free.
 Forge.CEILING_BASE = 3
+
+-- ---------------------------------------------------------------------------
+-- WHICH BENCH -- one ladder, two rooms
+-- ---------------------------------------------------------------------------
+
+-- THE FORGE IS THE BASTION'S AND THE STUDY IS THE ARCANUM'S, and the line between them is what the
+-- work is DONE WITH. A weapon, a coat and a piece of kit are hammered: heat, stock, a hand that has
+-- made one before. An ability and the recipe behind a draught are written down: they are honed by
+-- reading them more exactly, which is a library's trade and not a smith's.
+--
+-- It was one bench holding all five, and the tell was that its own panel could not describe itself in
+-- one sentence -- five tabs, three verbs, two houses' worth of subject matter behind a door the knights
+-- keep. A player looking for where a spell gets better had no reason to try the armoury.
+--
+-- NOTHING ABOUT THE LADDER MOVED. The bill (technique, gold, craft stock, house stock), the ceiling and
+-- the rung are this file's, and both rooms ask this file for all three -- so an ability costs at the
+-- Arcanum exactly what it cost at the Bastion yesterday. The split is about who you walk to, which is
+-- the only thing a room is.
+Forge.FORGE = "forge" -- the Bastion's
+Forge.STUDY = "study" -- the Arcanum's
+
+-- The room that takes an item, keyed by type. A type absent here is on no bench at all.
+Forge.BENCH = {
+    weapon = Forge.FORGE,
+    armor = Forge.FORGE,
+    utility = Forge.FORGE,
+    ability = Forge.STUDY,
+    consumable = Forge.STUDY,
+}
+
+-- The kinds of work each room does, in the order its tabs stand (ui/panels/forge.lua draws its
+-- category strip straight off this, so a room cannot offer a tab this table does not give it).
+--
+-- MEND AND BREAK STAY WITH THE SMITH, and neither is a rung. Mending only ever reaches a weapon or a
+-- coat (Item.WEARS), so it could not follow the abilities anywhere. Breaking is the odd one: Salvage
+-- will take an ability or a draught as readily as a blade, so the Break tab at the forge lists things
+-- the forge cannot RAISE. That is right -- breaking a thing down into stock is the opposite of raising
+-- it, and stock is what a forge is for. The Study reads and writes; it does not smash.
+Forge.WORK = {
+    [Forge.FORGE] = { "gear", "mend", "break" },
+    [Forge.STUDY] = { "ability", "recipe" },
+}
+
+-- Which room raises this piece, or nil for something no room touches. Asked by the panel so that what
+-- a tab lists and what the split says are one answer.
+function Forge.benchFor(item)
+    if not item then return nil end
+    return Forge.BENCH[item.type]
+end
+
+-- THE ROAD KEEPS THE SAME LINE, one wayside stop per room: the Cold Forge is the forge's coals left
+-- burning (data/encounters/encounter_cold_forge.lua) and the Cold Lectern is the study's book left
+-- chained open (encounter_cold_lectern.lua). Each gives ONE free rung on the half of the kit its city
+-- room works, and nothing out here does both -- a single stop that hammered a blade and honed a spell
+-- would be the thing the split just took apart, rebuilt underground where nobody could see it.
+--
+-- Keyed by ENCOUNTER KIND, because states/game.lua's branch is what reads it: one branch for both
+-- stops, so neither can be given the other's list by a copy-paste.
+Forge.WAYSIDE = {
+    anvil = Forge.FORGE,
+    lectern = Forge.STUDY,
+}
 
 -- Is this item worked at the bench per INSTANCE? Weapons, armor, utility gear and abilities all are.
 -- Consumables are not: they refine per-type through Forge.recipeCost/refineRecipe instead, because a
@@ -444,12 +509,17 @@ end
 -- inventory open; a stop on the road is not. What a wayside forge can reach is what somebody walked in
 -- wearing, so the offer is a question about the LOADOUT -- the kit the player has already committed to
 -- for this floor -- rather than about the pile back home.
-function Forge.equipped(player)
+--
+-- `room` narrows it to one bench's half (Forge.WAYSIDE hands the stop's own), and nil is every piece
+-- the ladder touches. The two callers on the road both name one: the coals take gear and the book
+-- takes abilities, which is the city's own line held out here.
+function Forge.equipped(player, room)
     local out = {}
     for _, char in ipairs((player and player.roster) or {}) do
         for cell = 1, Character.MAX_INVENTORY do
             local item = char.inventory and char.inventory[cell]
-            if item and Forge.canWork(item) then
+            if item and Forge.canWork(item)
+                and (room == nil or Forge.benchFor(item) == room) then
                 out[#out + 1] = { item = item, char = char, cell = cell, where = char.name or "?" }
             end
         end
@@ -592,8 +662,8 @@ end
 -- Consumable recipes (per type)
 -- ---------------------------------------------------------------------------
 
--- Which consumables the bench refines: any upgradable one. Unlike the old vendor rule there is no
--- "whose house is this" check -- there is only one bench now, so the question does not arise.
+-- Which consumables the Study refines: any upgradable one. Unlike the old vendor rule there is no
+-- "whose house is this" check -- a recipe is refined in one room, wherever the draught was bought.
 function Forge.canRefine(item)
     return item ~= nil and item.type == "consumable" and Item.isUpgradable(item)
 end

@@ -25,8 +25,7 @@ return {
     tags = { "hammer", "impact", "physical", "ice", "melee" },
     hands = 2,
     class = "fighter",
-    unlockQuests = 8,
-    dropTier = 7,
+    unlockLevel = 12,
     activeAbility = {
         target = "enemy",
         range = 1,

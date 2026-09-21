@@ -11,5 +11,5 @@ return {
     description = "Fights unarmed and banks the hits. Every strike stores chi, and the whole bank is spent "
         .. "at once on a single heavy blow.",
     exemplar = "character_monk", -- NEW, pending
-    requires = { priest = 4 },
+    requires = { priest = 5 },
 }

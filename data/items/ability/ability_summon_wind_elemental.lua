@@ -9,7 +9,7 @@ return {
     tags = { "summon", "wind" },
     class = "summoner", -- deeper cut of the shelf: buyable only once the summoner gate is cleared
     price = 740,
-    unlockQuests = 8,
+    unlockLevel = 15,
     activeAbility = {
         target = "tile",
         range = 2,

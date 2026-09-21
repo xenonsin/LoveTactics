@@ -52,14 +52,14 @@ local function obtainableIds()
     -- for the wrong reason, off a grid nobody can loot, rather than off the drop table that actually
     -- hands them over. It went red the moment the retired board's quest-only stock moved onto these
     -- lists and had no second home to be found in.
-    -- AND WHAT THE RIFT GIVES UP ON ITS OWN. An unpriced item carries a `dropTier` now
+    -- AND WHAT THE RIFT GIVES UP ON ITS OWN. An unpriced item carries a `unlockLevel` now
     -- (tools/drop_tier.lua): the grade that would have set a priced item's shelf slot, spread
     -- along DEPTH instead, because an item with no shelf to sit on still has a place it belongs.
     -- Spoils.lootCandidates admits it once the company is that deep, so "quest-only" is no
     -- longer a synonym for unreachable -- which it became the moment the houses stopped posting
     -- quests and thirty-five of them were deleted.
     for id, def in pairs(Item.defs) do
-        if def.dropTier then got[id] = true end
+        if def.unlockLevel and not def.price then got[id] = true end
     end
 
     for _, drop in pairs(require("models.descent").DROPS or {}) do
@@ -96,7 +96,7 @@ local function questOnly()
         -- player gear that happened to carry no class, so the creature pass swept them up; this comment
         -- named them and said "re-home them and this case will say so", and it did -- the reagent came
         -- back red the moment it stopped being creature kit, because brewing was a route nothing here
-        -- could see. The other five carry a price or a dropTier now. The brew sweep above is the rest
+        -- could see. The other five carry a price or a unlockLevel now. The brew sweep above is the rest
         -- of the answer.
         if def.class and def.class ~= "creature" and not def.price and not def.bound then
             out[#out + 1] = id

@@ -14,8 +14,8 @@
 -- -- the shop's Buy list wears it on stock a quest has just opened. The flag is read at draw time, so
 -- the host clears it the moment the row is looked at without rebuilding the menu.
 --
--- A row may carry a `sub` -- a muted second line printed under its name, the pair left-inset and
--- centred in the row as one block. It turns a button into a CARD: the save list's rows are a
+-- A row may carry a `sub` -- a muted second line printed under its name, the pair centred in the row
+-- as one block, left-inset unless `cardAlign = "center"` stands them on the plate's axis. It turns a button into a CARD: the save list's rows are a
 -- company's name over how deep, how long, how rich and how recently (states/saves.lua). Headers have
 -- always taken the field; a plain row takes it on the same terms, and `subFont` sets its face.
 --
@@ -76,6 +76,11 @@ function Menu.new(items, opts)
     -- The face for a header's second line (see Menu:drawHeader). Falls back to the row face, so a menu
     -- that sets no `sub` on anything never notices this exists.
     self.subFont = opts.subFont
+    -- Which way a CARD row (`sub`, no `value`) reads: "left", the save list's column of facts, or
+    -- "center", which stacks the two lines on the plate's axis like a plain row. A menu of ordinary
+    -- centred buttons with ONE card among them wants the latter -- the main menu's Continue sat a
+    -- pad-width left of every row under it otherwise.
+    self.cardAlign = opts.cardAlign or "left"
     self.axisThreshold = opts.axisThreshold or DEFAULTS.axisThreshold
     self.axisActive = false  -- edge detection so a held stick moves one step
 
@@ -418,11 +423,15 @@ function Menu:draw()
                 Theme.set(Theme.accentAmber)
                 love.graphics.printf(value, item.x + VALUE_PAD, ty, item.w - VALUE_PAD * 2, "right")
             elseif card then
-                local tw = item.w - VALUE_PAD * 2
-                love.graphics.printf(item.label, item.x + VALUE_PAD, ty, tw, "left")
+                -- Centred, the pair takes the whole plate so both lines sit on its axis; left-inset,
+                -- it takes the same pad the setting row's label does.
+                local centred = self.cardAlign == "center"
+                local lx = centred and item.x or (item.x + VALUE_PAD)
+                local tw = centred and item.w or (item.w - VALUE_PAD * 2)
+                love.graphics.printf(item.label, lx, ty, tw, self.cardAlign)
                 love.graphics.setFont(subFont)
                 Theme.set(Theme.muted, 0.9)
-                love.graphics.printf(item.sub, item.x + VALUE_PAD, ty + th - 3, tw, "left")
+                love.graphics.printf(item.sub, lx, ty + th - 3, tw, self.cardAlign)
                 love.graphics.setFont(self.font)
             else
                 love.graphics.printf(item.label, item.x, ty, item.w, "center")

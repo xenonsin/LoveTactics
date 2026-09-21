@@ -34,7 +34,7 @@ generals existed; they are the spec.
 
 > **Standing is now a count of completed quests, not reputation points.** Where this file speaks of
 > "rank 4", "200 reputation", or `ranks = { 0, 40, 100, 200 }`, read it as history: a vendor's standing
-> is `Quest.sponsorProgress` (how many of its quests you have finished), items gate on `unlockQuests`,
+> is `Quest.sponsorProgress` (how many of its quests you have finished), items gate on `unlockLevel`,
 > and the waves open at `Vendor.TIERS = { 0, 3, 6, 10 }`. The recurring note below that the ladder
 > "still wants standing as a count of distinct completed quests" is **done** — this is that change.
 

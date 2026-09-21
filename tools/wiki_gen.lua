@@ -190,7 +190,7 @@ local function hasTag(def, tag)
     return false
 end
 
--- WHERE ONE COMES FROM, which is the question `price` and `dropTier` answer between them. Only
+-- WHERE ONE COMES FROM, which is the question `price` and `unlockLevel` answer between them. Only
 -- abilities, consumables and a house's opening weapon carry a price at all; everything else is found
 -- in the rift, and `unstocked` is the body's own trophy that no counter will deal OR buy back.
 --
@@ -202,7 +202,7 @@ end
 local function sourceCell(def)
     if def.price then return tostring(def.price) .. "g" end
     if def.unstocked then return "Rift only" end
-    if def.dropTier then return "Found" end
+    if def.unlockLevel then return "Found" end
     if hasTag(def, "signature") then return "Signature relic" end
     if def.ephemeral then return "Crafted in the field" end
     if def.class == "creature" then return "Monster kit" end
@@ -293,7 +293,7 @@ local function renderTable(out, rows)
 end
 
 -- THE RANK BAND THE CATALOGUE ACTUALLY OCCUPIES, measured rather than quoted. The first cut of the
--- legend said "1-8" because that is Class.CLASS_LEVEL_CAP, and one item (a dropTier of 9) makes that
+-- legend said "1-8" because that is Class.CLASS_LEVEL_CAP, and one item (a unlockLevel of 9) makes that
 -- sentence false on a page that prints the 9. A ladder's ends are a property of what was authored onto
 -- it, so they are read off the authored set every time the pages are built.
 local RANK_LO, RANK_HI

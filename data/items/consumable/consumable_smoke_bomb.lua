@@ -21,6 +21,6 @@ return {
     tags = { "smoke" },
     class = "rogue",
     price = 65,
-    unlockQuests = 1,
+    unlockLevel = 2,
     traits = { "trait_smoke_screen" },
 }

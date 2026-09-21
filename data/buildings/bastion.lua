@@ -3,10 +3,15 @@
 -- ITS SHELF is an order's armoury -- the plate, and the oath that goes with it -- deepening as the
 -- roster's knight level climbs (Quest.shelfRung) rather than opening whole.
 --
--- AND ITS SECOND ROOM IS THE FORGE. Vendors sell; this is where every ladder is climbed, and it is the
--- only room in the game that spends MATERIALS (models/forge.lua). An order's armoury is where plate is
--- kept, and keeping plate is maintenance -- so the forge belongs behind the door the player has been
--- walking into since Rowan swore, rather than on a plate of its own.
+-- AND ITS SECOND ROOM IS THE FORGE. Vendors sell; this is where gear climbs, and it is one of the two
+-- rooms that spend MATERIALS (models/forge.lua). An order's armoury is where plate is kept, and
+-- keeping plate is maintenance -- so the forge belongs behind the door the player has been walking
+-- into since Rowan swore, rather than on a plate of its own.
+--
+-- WHAT IT WORKS IS WHAT A SMITH CAN HOLD IN A PAIR OF TONGS: a weapon, a coat, a piece of kit -- plus
+-- mending them and breaking them down, neither of which is a rung. An ability and the recipe behind a
+-- draught climb the same ladder in the Arcanum's study, because honing a spell is reading it more
+-- exactly and no amount of heat does that (data/buildings/arcanum.lua argues the other half).
 --
 -- THE ROOM IS CALLED THE FORGE, not the bench. `forge` is the word on the panel, in the docs and in
 -- every conversation about it, and the player met it as a building before it was a room -- so the desk

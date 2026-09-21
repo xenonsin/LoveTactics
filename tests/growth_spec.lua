@@ -392,28 +392,78 @@ return {
     },
     {
         -- THE ANCHOR, and the one number in the ladder that is not arbitrary: mastering one class is
-        -- one committed descent. Technique is TECHNIQUE_PER_ACTION an action capped at
-        -- TECHNIQUE_PER_BATTLE a fight, and a full descent is about seventy fights -- so a body that
-        -- commits to one house for a whole run banks in the neighbourhood of what the top rung costs.
-        -- Re-tune either constant without re-reading this and the ladder silently stops meaning
-        -- anything.
-        name = "mastering one class costs about one committed descent",
+        -- a committed descent AND A BIT. Re-tune either constant without re-reading this and the
+        -- ladder silently stops meaning anything.
+        --
+        -- IT USED TO ASK FOR EXACTLY ONE DESCENT, and the reason it asks for more is that a floor in
+        -- this mode can be walked again. The rift is a PLACE: its ground is dealt from the save's own
+        -- seed and the depth, its boards are kept whole on the player, its monsters re-arm
+        -- (Descent.rearmFloor), and a company re-enters at the deepest floor it has mapped. Price
+        -- mastery at one descent's banking and it is not fifteen floors of commitment -- it is
+        -- fifteen laps of floor three, and the anchor would be satisfied by a company that never
+        -- went deeper. So the bound below is a BAND, and the lower half of it is the load-bearing
+        -- one: a cleared rift must not be enough on its own.
+        name = "mastering one class costs more than one committed descent, and less than two",
         fn = function()
             local Class = require("models.class")
-            local FIGHTS = 70
-            local banked = Class.TECHNIQUE_PER_BATTLE * FIGHTS
+            local Descent = require("models.descent")
+
+            -- MEASURED AT BOTH ENDS, and against what a fight actually pays rather than against the
+            -- anti-grind ceiling. TECHNIQUE_PER_BATTLE is the cap a milked fight cannot exceed; an
+            -- honestly played skirmish banks 3.58 into ONE BODY's best house, an elite 5.64, a
+            -- lieutenant's stair 4.82 and a general's 7.00 -- measured through models/autobattle,
+            -- every kind of fight a floor fields rather than the road pool alone, and at the +1 level
+            -- gap the descent actually settles at (the award is scaled past that -- see
+            -- Combat.scaledAward). A floor deals its ordinary fight on the walk and SEATS the elite
+            -- and the end, so its ten blend to 3.97. Reading the ceiling here would overstate a
+            -- committed run sevenfold and call any ladder reachable.
+            --
+            -- AND IT IS A BODY OF FOUR, which is the correction that moved this number. It read 12,
+            -- off a measurement that fought all forty blueprints with `Player.new()`'s roster -- and
+            -- that roster is one body (data/player.lua's startingRoster), which takes every action
+            -- its side has. Four walk the rift (Player.MAX_FIELD): the party banks MORE per fight
+            -- (17.7 against 12.5) over a third of the turns (19.6 against 60.1), and each body gets a
+            -- quarter of it. A solo reading prices the ladder at three times what a company pays.
+            local PER_FIGHT = 3.97
+
+            -- TWO FLOOR COSTS, because the ladder is deliberately priced between them. A floor's
+            -- fights are dealt by WALKING (Descent.PROWL_STEPS), so what a floor costs depends on the
+            -- route: a greedy nearest-unvisited tour of every content cell measures 6.9 fights on
+            -- floor one rising to 8.6 at the Crown, and a real route -- re-trodden for a locked cache,
+            -- walked back to the stair, crossed again for a deeper one -- runs nearer ten.
+            local TOURED, WORKED = 8, 10
             local mastery = Class.classLevelCost(Class.CLASS_LEVEL_CAP)
 
-            assert(mastery <= banked,
-                "a committed run must be able to reach mastery: " .. mastery .. " > " .. banked)
-            assert(mastery >= banked * 0.35,
-                "and must not be reachable in a third of one: " .. mastery .. " vs " .. banked)
+            local worked = PER_FIGHT * WORKED * Descent.FLOORS
 
-            -- Triangular, not flat: the eighth rung must cost more than the first, or committing stops
-            -- being a decision after the second one.
+            -- NOT BOUGHT BY ONE TRIP, however hard it is worked. This is the half that prices the
+            -- repeatable floor: if a single cleared rift banked a whole ladder, so would a single
+            -- floor walked fifteen times, and the cheapest floor is the one everyone would walk.
+            assert(mastery > worked, string.format(
+                "a worked descent must leave mastery short, or the ladder is farmable on one floor: "
+                .. "%d against the %d a worked run banks", mastery, worked))
+            -- ...AND NOT A SECOND RIFT EITHER. The band's far side, because "more than a descent" is
+            -- satisfied by any number at all and the failure on this side is a grind wall rather than
+            -- a cheap ladder. A trip is not a run here -- you surface to the Ward and go again -- so
+            -- the cost of a class is allowed to span trips, and is not allowed to span many.
+            assert(mastery <= 2 * worked, string.format(
+                "mastery must not cost two whole rifts: %d against the %d a worked run banks",
+                mastery, worked))
+
+            -- EVERY RUNG THE SAME, WHICH IS WHY IT IS FLAT. This case asked the opposite until the
+            -- ladder was re-cut -- "the top rung must cost meaningfully more than the bottom one" --
+            -- and the triangle it was protecting is what front-loaded the shelf: rung 1 cost 1.9
+            -- fights, so a third of the way through floor ONE the city opened 42 rows, and the ladder
+            -- was spent by floor 12 of 15. The escalation lives in the RUNG COUNT now (fifteen
+            -- decisions to keep committing, not eight).
             local first = Class.classLevelCost(1)
             local last = mastery - Class.classLevelCost(Class.CLASS_LEVEL_CAP - 1)
-            assert(last > first * 2, "the top rung must cost meaningfully more than the bottom one")
+            assert(last == first, "every rung costs the same, the top one included")
+            -- ...AND A RUNG IS STILL READ IN FLOORS, which is what keeps the stretch honest: the
+            -- surcharge for a repeatable floor is a fraction of a floor per rung, not a free hand.
+            local floors = first / (PER_FIGHT * WORKED)
+            assert(floors > 1 and floors <= 1.5, string.format(
+                "a rung is a floor and a bit: %d buys %.2f floors of committed play", first, floors))
         end,
     },
 
@@ -525,7 +575,7 @@ return {
             assert(knight.char.technique[classId] == first, "onto the caster's own ledger")
             assert(c.techniqueEarned[classId] == first, "and onto the fight's ledger")
             assert(c.techniqueCrossing == nil,
-                "an ordinary action arms nothing: two technique is a twenty-third of a rung")
+                "an ordinary action arms nothing: two technique is a fraction of a rung")
             assert(#c.techniqueByActor[1].houses == 1,
                 "a body swinging its own house splits nothing off, so it banks under one house")
 

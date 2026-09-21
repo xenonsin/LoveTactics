@@ -18,8 +18,7 @@ return {
     type = "utility",
     tags = { "fist" },
     class = "monk", -- deeper cut of the shelf: buyable only once the monk gate is cleared
-    unlockQuests = 6,
-    dropTier = 5,
+    unlockLevel = 8,
     waitBehavior = { kind = "gather", speed = 3, power = Curve.ramp(4, 14) },
     -- centering is composure, and composure is aim
     bonus = { skill = 2 },

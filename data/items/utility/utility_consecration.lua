@@ -25,7 +25,6 @@ return {
     type = "utility",
     tags = { "charm", "holy" },
     class = "priest",
-    unlockQuests = 6,
-    dropTier = 6,
+    unlockLevel = 9,
     curseWard = true,
 }

@@ -28,7 +28,7 @@ return {
     type = "weapon",
     tags = { "staff", "magical", "holy", "melee" },
     class = "priest",
-    dropTier = 4,
+    unlockLevel = 6,
     waitBehavior = {
         kind = "focus",
         -- Shallower than a plain staff's: the silence is paid for out of the meditation's own depth.
@@ -42,7 +42,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 6 },
-        damage = Curve.ramp(4, 14),
+        damage = Curve.ramp(8, 18),
         effect = function(fx)
             fx.damage(fx.target)
         end,

@@ -31,7 +31,7 @@ return {
     tags = { "holy", "magical" },
     class = "priest",
     price = 575,
-    unlockQuests = 6,
+    unlockLevel = 11,
     activeAbility = {
         target = "ally",
         range = 5,

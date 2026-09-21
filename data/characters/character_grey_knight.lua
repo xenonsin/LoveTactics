@@ -43,11 +43,11 @@ return {
         false,               false,             false,
     },
     drops = {
-        "armor_chainmail",
-        "armor_wardens_oath",
-        "armor_runed_plate",
-        "utility_miasmal_plate",
-        "weapon_crescent_blade",
+        "armor_kept_wound_shield",
+        "armor_martyrs_shield",
+        "armor_unyielding_harness",
+        "weapon_wetstone_mace",
+        "weapon_knell_point",
     },
     defaultAction = "weapon_iron_spear",
     -- Basic tactics (models/ai.lua): a spearman charges a line. Held by his `guard` leash, he still

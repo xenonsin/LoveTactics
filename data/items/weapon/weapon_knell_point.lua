@@ -28,7 +28,7 @@ return {
     tags = { "spear", "pierce", "physical", "melee" },
     hands = 2,
     class = "knight",
-    dropTier = 8,
+    unlockLevel = 14,
     activeAbility = {
         target = "tile",
         allowOccupied = true,
@@ -37,7 +37,7 @@ return {
         speed = 4,
         cost = { stat = "stamina", amount = 10 },
         -- Well under an iron spear's. A weapon that also kills outright must not also hit hard.
-        damage = Curve.ramp(6, 16),
+        damage = Curve.ramp(15, 25),
         aoe = { shape = "line", length = 2 },
         effect = function(fx)
             -- The far tile is the aimed cell continued one step along the thrust's own vector -- the

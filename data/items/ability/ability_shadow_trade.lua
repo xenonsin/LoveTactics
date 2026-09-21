@@ -28,7 +28,7 @@ return {
     tags = { "illusion", "utility" },
     class = "ninja",
     price = 165,
-    unlockQuests = 1,
+    unlockLevel = 1,
     activeAbility = {
         target = "self",
         range = 0,

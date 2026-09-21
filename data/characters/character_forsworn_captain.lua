@@ -57,11 +57,11 @@ return {
         false,                false,                false,
     },
     drops = {
-        "armor_buckler",
-        "armor_oathkeeper_shield",
-        "utility_stripped_plate",
+        "armor_bulwark_shield",
         "weapon_second_rank",
-        "armor_skeptics_harness",
+        "armor_mirrorsilk",
+        "utility_empty_vessel",
+        "utility_rooted_oath",
     },
     defaultAction = "weapon_iron_mace",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

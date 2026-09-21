@@ -17,7 +17,7 @@ return {
     tags = { "guile", "utility" },
     class = "thief", -- deeper cut of the shelf: buyable only once the thief gate is cleared
     price = 660,
-    unlockQuests = 7,
+    unlockLevel = 13,
     activeAbility = {
         target = "enemy",
         range = 3,

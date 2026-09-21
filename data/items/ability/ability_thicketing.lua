@@ -29,7 +29,7 @@ return {
     tags = { "earth" },
     class = "druid", -- deeper cut of the shelf: buyable only once the druid gate is cleared
     price = 575,
-    unlockQuests = 6,
+    unlockLevel = 11,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

@@ -28,7 +28,7 @@ return {
     tags = { "spear", "pierce", "physical", "melee" },
     hands = 2,
     class = "knight",
-    dropTier = 7,
+    unlockLevel = 12,
     activeAbility = {
         target = "tile",
         allowOccupied = true,
@@ -37,7 +37,7 @@ return {
         speed = 4,
         cost = { stat = "stamina", amount = 10 },
         -- Under an iron spear's: the oath outlasts the wound by the whole battle.
-        damage = Curve.ramp(6, 16),
+        damage = Curve.ramp(14, 24),
         aoe = { shape = "line", length = 2 },
         effect = function(fx)
             local caught = fx.aoeUnits()

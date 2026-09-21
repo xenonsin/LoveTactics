@@ -24,8 +24,7 @@ return {
     type = "utility",
     tags = { "charm", "holy" },
     class = "priest",
-    unlockQuests = 0,
-    dropTier = 2,
+    unlockLevel = 2,
     statusImmunity = { "status_charm", "status_sleep" },
     -- "Recited until the reciting needs no attention. There is then nothing unattended to sit down in."
     -- The immunities keep things out of the bearer's head; the Luck is the same composure pointed at

@@ -4,7 +4,7 @@ Where a found item comes from, which body hands it over, and why the thing it is
 rare one.
 
 [shelf.md](shelf.md) settles what an item is *worth* and how deep it falls at. This is the other half:
-**who drops it.** The two meet at one field — `dropTier` says how deep, a body's `drops` list says
+**who drops it.** The two meet at one field — `unlockLevel` says how deep, a body's `drops` list says
 whose.
 
 > **A DROP IS A HEAD START, NOT A SOURCE OF RECORD.** This file was written while the rift was the only
@@ -61,7 +61,7 @@ draw entirely. And the reachability picture below is still how the catalogue is 
 no body that knows it is reached through Step 2's third rung, which is the "long tail" the old band
 named.
 
-Measured (`. drop-report`), over the 429 items carrying a `dropTier`:
+Measured (`. drop-report`), over the 429 items carrying a `unlockLevel`:
 
 | route | at the start | now |
 |---|---|---|
@@ -164,6 +164,27 @@ Four rules, none of them new:
    stock; applied to the prize it made the piece a body is known for the likeliest thing it pays on
    the one floor that can pay it — measured at 26% of fights, an errand rather than a chase.
 
+### A pin, for what the deal cannot see
+
+`. drop-assign apply` deals from scratch every time — that is what makes the lists auditable — so
+anything a human put on one is gone the next time it runs, silently, and the list still reads as
+derived. **`dropsPinned` on the body is the exception said out loud:** its ids are seated first,
+count against the five, and come off the table so the deal cannot hand them to anybody else.
+
+```lua
+-- data/characters/character_fen_lancer.lua
+dropsPinned = { "armor_scale_hauberk" },
+```
+
+The Scale Hauberk is why it exists. It is naga plate the nagas do not **wear** — a naga already
+carries `lightning = -4` and the coat would take the same body to -8 — so falling off a lancer who
+never had it on is the only way the race’s own armour reaches a player. No rule in `drop_assign`
+can see that: the hauberk is knight stock and a lancer is not a knight, so every re-deal took it
+off again. `tests/naga_spec.lua` is what noticed, which is the shape to copy — **pin it and pin it
+in a spec**, or the next re-deal is the one nobody checks.
+
+Pin the thing a body IS where the three dealing rules cannot reach it. Everything else is dealt.
+
 ### A third route: a trophy on a percent, outside the roll
 
 `drops` and `Descent.DROPS` between them answer *what is this body known for* and *what does this
@@ -183,7 +204,7 @@ set against how few of that body exist rather than against how good the piece is
 so there are about three in a playthrough and nothing can farm them.
 
 > **`unstocked` is a rule about SHOPS, not about the pool**, and every trophy's header glosses over it.
-> A piece carrying a `dropTier` sits in the band's long tail like anything else — `anyAtRank` filters
+> A piece carrying a `unlockLevel` sits in the band's long tail like anything else — `anyAtRank` filters
 > `bound` and `noSteal` and not this — so an ordinary fight at that rank can pay one, and so can a
 > chest. That is one row out of a whole rank's catalogue and it is the same backstop all fifteen named
 > trophies have had all along. What `unstocked` buys is that **no counter deals or buys one, ever**.
@@ -278,7 +299,7 @@ authored rule-breakers this section is asking for.
 `Vendor.foundPrice` refuses to quote one, so no counter deals it however many you have carried out, and
 `Vendor.sellValue` reads the same figure, so none will buy one either.
 
-**The counter still shows it.** `Vendor.stock` admits a trophy on its `dropTier` and greys it with
+**The counter still shows it.** `Vendor.stock` admits a trophy on its `unlockLevel` and greys it with
 `lockReason = "monster drop"` — *"taken from the body that carries it"*, and the floor it falls around.
 Before 2026-09-20 a nil price kept it out of the rack altogether, so a player had no way to learn a
 trophy existed short of meeting the creature; a want list nobody can read is not one. What did **not**
@@ -308,18 +329,18 @@ written animal, not a list `. drop-assign` spread for coverage:
 | `character_wolf_grunt` | Runner's Hide |
 
 **The seven generals' relics need no flag**, and that is worth knowing before anyone adds one: they are
-`class = "creature"` with no `dropTier`, so no counter could quote one to begin with and `unstocked`
+`class = "creature"` with no `unlockLevel`, so no counter could quote one to begin with and `unstocked`
 would be inert. The flag is for a piece that carries a real class and a real depth — one the shelf
 *would* otherwise deal.
 
 **One piece was deliberately left off.** `utility_endurance` is on the wolf grunt's list but reads as
-plain hunter shelf stock at `dropTier 2`; it stays buyable, and the grunt dropping it early is exactly
+plain hunter shelf stock at `unlockLevel 2`; it stays buyable, and the grunt dropping it early is exactly
 what a head start is. A trophy is a thing named for the body. If it could sit on a rack without anyone
 noticing, it is not one.
 
 **Everything else about these is authoring, not engineering**, and that is worth stating because it was
 not obvious until the flag was written. A rift-only piece needs no new item type, no new gate and no new
-shelf rule — it is an unpriced blueprint with a deep `dropTier`, an `unstocked` flag, an authored trait,
+shelf rule — it is an unpriced blueprint with a deep `unlockLevel`, an `unstocked` flag, an authored trait,
 a weight in `Grade.TRAIT_GRADE` (or a pin in `Grade.SLOT_PINS`), and a place on some body's list. Traits
 are data files hanging off existing hooks (`onAnyDeath`, `onAnyCast`, `onAllyStrike`, `onDamaged`,
 `onStatusApplied`, `onSummonLost`), with `ctx.damage`, `ctx.heal`, `ctx.applyStatus`, `ctx.summon` and

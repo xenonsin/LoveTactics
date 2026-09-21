@@ -21,8 +21,7 @@ return {
     type = "weapon",
     tags = { "dagger", "pierce", "physical", "poison", "melee" },
     class = "alchemist",
-    unlockQuests = 7,
-    dropTier = 7,
+    unlockLevel = 12,
     activeAbility = {
         target = "enemy",
         range = 1,

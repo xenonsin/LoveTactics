@@ -17,7 +17,7 @@ return {
     type = "ability",
     class = "summoner",
     price = 740,
-    unlockQuests = 8,
+    unlockLevel = 15,
     tags = { "summon", "fire" },
     activeAbility = {
         target = "tile",

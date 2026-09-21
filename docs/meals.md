@@ -21,7 +21,7 @@ hedge against the seven houses rather than a thing of its own.
   whole vocabulary is *knowing what is out there first*), the boots and the flare are the Undercroft's
   (greed already owns every other boot that buys a square, and already owns the hiding the flare
   answers), the Stormglass Rod is the Arcanum's, and the Wellspring Sandals are the Crucible's.
-- The **potion resale was a hole in the Crucible's own ladder.** A general store ignores `unlockQuests`
+- The **potion resale was a hole in the Crucible's own ladder.** A general store ignores `unlockLevel`
   by design, so a Panacea gated at ten alchemist quests was on the grocer's counter from the first
   visit. The gate was still authored, still displayed, and could be walked around by shopping next
   door.

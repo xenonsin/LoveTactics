@@ -31,6 +31,6 @@ return {
     -- The instrument reads net stat swing and replayed damage; this item's worth is in neither,
     -- so left underived it files at ~0 -- see models/grade.lua on a passive being BLIND.
     grade = 0.90,
-    dropTier = 6,
+    unlockLevel = 10,
     traits = { "trait_formation_fighter", "trait_standing_order_alone" },
 }

@@ -17,7 +17,6 @@ return {
     type = "utility",
     tags = { "charm", "dark" },
     class = "shaman",
-    unlockQuests = 6,
-    dropTier = 5,
+    unlockLevel = 7,
     traits = { "trait_gathered_weight" },
 }

@@ -1,7 +1,7 @@
 -- Tests for THE TWO ROADS TO A FOUND WARE, and for the handful that only ever have one.
 --
 -- Above a house's opening weapon nothing carries a price (tools/drop_tier.lua's recut): a weapon, a
--- utility or a piece of armor carries a `dropTier` instead. What that depth buys is THREE things, and
+-- utility or a piece of armor carries a `unlockLevel` instead. What that depth buys is THREE things, and
 -- the whole of this file is that they are one number -- how deep the rift gives it up, what a counter
 -- charges for one, and the class rung a counter deals it at. docs/shelf.md is the prose.
 --
@@ -79,7 +79,7 @@ end
 local function anyFound(want)
     local best
     for id, def in pairs(Item.defs) do
-        if def.dropTier and def.class and Class.isRoot(def.class) and not def.bound
+        if def.unlockLevel and not def.price and def.class and Class.isRoot(def.class) and not def.bound
             and not def.dropOnly
             and vendorFor(def.class) and Vendor.foundPrice(def) ~= nil
             and (not want or want(def)) and (not best or id < best) then
@@ -104,28 +104,30 @@ return {
         fn = function()
             -- A ware deep enough to have a rung to climb; a tier-1 piece is open from the first
             -- morning and could not tell a working gate from a missing one.
-            local id = anyFound(function(def) return def.dropTier >= 3 end)
+            local id = anyFound(function(def) return def.unlockLevel >= 3 end)
             assert(id, "no unpriced, classed ware below the opening tier -- the tier pass did not run")
             local def = Item.defs[id]
             local vendorId = vendorFor(def.class)
             assert(vendorId, def.class .. " has no vendor to stock " .. id)
-            local need = def.dropTier - 1
+            -- NO LONGER `- 1`: since the fold the rung IS the class level (tools/ladder_fold),
+            -- so the depth a thing falls at and the level that buys it are one number.
+            local need = def.unlockLevel
 
             local shut = rowFor(vendorId, id, need - 1)
             assert(shut, id .. " is not on " .. vendorId .. "'s shelf at all -- a shelf that hides what "
                 .. "it cannot yet deal is a record of what you have, not of what there is")
-            assert(shut.locked, id .. " (depth " .. def.dropTier .. ") is buyable at class level "
+            assert(shut.locked, id .. " (depth " .. def.unlockLevel .. ") is buyable at class level "
                 .. (need - 1) .. ", a rung under its own")
             assert(shut.lockReason == "rung",
                 id .. " is shut for the wrong reason: " .. tostring(shut.lockReason))
             -- THE ROW REPORTS THE RUNG IT WAS MEASURED AGAINST, not the authored rank. Two fifths of
-            -- the catalogue carries no `unlockQuests`, so a reader taking the rank would promise a
+            -- the catalogue carries no `unlockLevel`, so a reader taking the rank would promise a
             -- gate at 0 over a tile that refuses the press -- which is what the shop's refusal
             -- sentence and the market's rotation band both read (ui/panels/shop.lua, models/market.lua).
             assert(shut.rung == need, id .. " reports rung " .. tostring(shut.rung) .. ", not the "
                 .. need .. " its depth names")
             -- The OTHER road, still named on the row: climb to the rung, or go down to the floor.
-            assert(shut.dropTier, id .. " does not report the depth it falls at")
+            assert(shut.unlockLevel, id .. " does not report the depth it falls at")
 
             local open = rowFor(vendorId, id, need)
             assert(open and not open.locked,
@@ -171,7 +173,7 @@ return {
                 local def = Item.defs[id]
                 assert(def, id .. " is named a trophy and is not in the data")
                 assert(def.unstocked, id .. " lost its `unstocked` flag: a counter will deal one")
-                assert(def.dropTier, id .. " has no depth, so nothing can drop it either")
+                assert(def.unlockLevel, id .. " has no depth, so nothing can drop it either")
                 assert(Vendor.foundPrice(def) == nil, id .. " can still be quoted a price")
                 assert(Vendor.sellValue(Item.instantiate(id)) == 0,
                     id .. " sells back: a piece that exists only where it fell has no market price in "

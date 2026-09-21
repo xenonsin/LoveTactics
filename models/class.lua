@@ -73,8 +73,8 @@ end
 
 -- THE HIGHEST CLASS LEVEL `id` ASKS FOR: 0 for a root, for a classless thing, or for an unknown tag.
 --
--- `requires` is a map of parent class to the rung that parent must stand at -- Warden asks knight 8 AND
--- hunter 8 -- and every reader so far has wanted the whole map: may I have this, and what is missing.
+-- `requires` is a map of parent class to the rung that parent must stand at -- Warden asks knight 15 AND
+-- hunter 15 -- and every reader so far has wanted the whole map: may I have this, and what is missing.
 -- This wants the one number the map implies, which is how far into the game the class is AT ALL, quoted
 -- on the same 1..CLASS_LEVEL_CAP ladder a rung is. The MAX and not a sum or an average: a crossing is
 -- reachable once its DEAREST condition is paid, and the other half being cheap does not make it earlier.
@@ -227,26 +227,140 @@ end
 -- Growth.resolve. That ledger is gone with the blend that wrote it (models/growth.lua). Two ledgers
 -- measuring "how committed is this body to this house" could disagree, and one of them was already
 -- being collapsed to a max across the roster by its only reader.
-Class.CLASS_LEVEL_CAP = 8
+-- FIFTEEN, AND IT IS THE FLOOR COUNT. It was eight, and eight was a number the ladder carried over
+-- from an eight-floor descent -- which is a stack this mode has not had since the circle became a
+-- stratum (Descent.FLOORS_PER_CIRCLE). Nothing re-cut it when the stack went back to fifteen, and what
+-- that cost is the thing this constant is now sized against.
+--
+-- THE LADDER IS THE SHELF'S ONLY GATE. `Quest.shelfRung` reads the roster's best holder and hands it
+-- to Vendor.stock, so a rung is not a title -- it is how much of the catalogue the player can buy.
+-- Eight rungs over a 342-row shelf is 42 rows a rung, arriving in eight lumps; fifteen is twenty rows
+-- a rung, arriving fifteen times. Same catalogue, half the step, nearly twice the beats.
+--
+-- AND IT MAKES THE UNIT TRUE. tools/drop_tier.lua spreads every find across 1..CLASS_LEVEL_CAP and
+-- says out loud why it reads this rather than typing a number -- "so that 'how deep am I' and 'how far
+-- into a class am I' are quoted in one unit". At eight against fifteen floors that sentence was simply
+-- false: Spoils.rankBand had to squeeze fifteen floors through eight ranks, so two floors shared a rank
+-- most of the way down and the rift could not tell floor six from floor seven. One rung per floor is
+-- what the sentence was always claiming, and every ladder derived off this one -- the drop band, the
+-- forge ceiling, the market's rotation, the salvage span -- restretches to it without being touched.
+Class.CLASS_LEVEL_CAP = 15
 
--- THE STEP OF THE LADDER, which is triangular: reaching level N costs STEP * N * (N+1) / 2 in career
--- technique, so the rungs are 23, 69, 138, 230, 345, 483, 644, 828.
+-- THE STEP OF THE LADDER: reaching level N costs STEP * N in career technique. A FLOOR AND A QUARTER
+-- OF COMMITTED PLAY PER RUNG -- a floor is what it is MEASURED against, and the quarter on top is
+-- what being able to walk the floor again costs. Both halves are below, in that order.
 --
--- ANCHORED ON A COMMITTED DESCENT rather than picked. Technique is TECHNIQUE_PER_ACTION = 2 an action,
--- capped at TECHNIQUE_PER_BATTLE = 30 a fight, and a full descent is around seventy fights -- so a body
--- that commits to one house for a whole run banks in the neighbourhood of 840. 23 puts the top rung at
--- 828, one short of overshooting it: MASTERING ONE CLASS IS ONE COMMITTED DESCENT.
+-- ANCHORED ON A FLOOR rather than on a run, and BOTH HALVES OF THE MEASUREMENT ARE MEASURED.
 --
--- Triangular rather than flat for the reason a number spent many times always is: a flat ladder makes
--- the eighth rung cost exactly what the first did, so the decision to keep committing stops being a
--- decision after the second one.
-Class.CLASS_LEVEL_STEP = 23
+--   WHAT A FIGHT PAYS: 3.97, TO ONE BODY OF FOUR. Measured through models/autobattle -- the real
+--   combat model, the same instrument tests/skirmish_spec times fights with -- against a fresh
+--   company each fight, reading what one body banked into its best house. EVERY KIND OF FIGHT A
+--   FLOOR FIELDS, not just the road pool:
+--
+--     road, ordinary    3.58   19.6 turns   2.16 actions a body   -17% health   0.33 down
+--     road, elite       5.64   32.0 turns   3.47 actions a body   -29% health   0.52 down
+--     stair, lieutenant 4.82   24.1 turns   2.89 actions a body   -17% health   0.00 down
+--     stair, general    7.00   51.8 turns   4.22 actions a body   -65% health   2.13 down
+--
+--   A chaff-only sample would have been the wrong instrument and the general's stair is why: it is a
+--   fight twice the length of a road stop that takes two of the four bodies down. It is also one of
+--   ten, which is the other half of the answer -- eight prowl fights, one elite and one end blend to
+--   3.97, within a rounding of the road pool's own 3.58. The mix matters less than it looks; what it
+--   buys is knowing that rather than assuming it. Nothing came near TECHNIQUE_PER_BATTLE.
+--
+--   AND THE AWARD IS LEVEL-SCALED, which is the confound that has to be held still or the number is a
+--   fact about the harness's company instead of about the game. Combat.scaledAward runs every bank
+--   through Experience.rewardScale, so a company over its ground earns 0.65 a level past the grace.
+--   The descent's own equilibrium is +1 -- simulated through Growth.combatantLevel down all fifteen
+--   floors, the loop tests/reward_scale_spec walks -- and +1 sits inside REWARD_GRACE, so the figures
+--   above are at full pay and that is the right reading. It is a steep lever, steeper than the fight
+--   mix: at +2 the same floor pays 21.6 rather than 39.7. Re-measure this if either ladder moves.
+--
+--   AND 2.14 ACTIONS A BODY IS THE WHOLE OF IT, which is the reading to distrust first and the one
+--   that held. Counted at the call rather than inferred from the total: a 4-versus-4 road fight runs
+--   19.6 unit-turns -- two and a half rounds, inside tests/skirmish_spec's 22-turn budget -- and the
+--   party gets 8.6 actions across four bodies. EVERY ONE OF THEM BANKS (an item with no `class` would
+--   bank nothing; none came up), and 88% of the party's turns produce one, so the AI is not wasting
+--   them and a human could not find many more. It is not a walkover either: the company loses 17% of
+--   its health and puts a body down in a third of fights. The fight is simply SHORT, which is what
+--   Arena.SKIRMISH_CAP is for, and two actions a body is what short buys.
+--
+--   WHAT A FLOOR COSTS: ten fights. The prowl deals a fight per Descent.PROWL_STEPS of WALKING, so a
+--   floor's fight count is a property of how far the company walks and nothing declares it. Measured
+--   by greedy nearest-unvisited tours of every content cell on real rolled floors: 78 steps on floor
+--   one rising to 90 at the bottom, which is 4.9 to 5.6 prowl fights plus the two the board seats
+--   (1.98, `. board-report 40 descent`) -- and ten is that route with the BACKTRACKING in it. A
+--   greedy tour is the cheapest way to touch everything and no one walks it: a real floor is
+--   re-trodden for a cache that needed a key, walked back to the stair, and crossed again to reach a
+--   deeper one. Pricing a rung at the optimum would charge for a floor nobody walks.
+--
+--   AND THE TEN ARE NOT ALL ORDINARY, which is the mix the blend above is taken over. A descent floor
+--   deals the ordinary fight on the WALK (`wanderingCombat`), so what it SEATS is the elites and the
+--   ends -- 0.97 and 1.00 a floor, `. board-report 40 descent`. Eight, one and one.
+--
+-- SO A FLOOR PAYS 39.7 -- ten fights at 3.97 -- AND A RUNG COSTS FIFTY. The gap between those two
+-- numbers is the only part of this constant that is a judgement rather than a reading, and it is the
+-- one worth arguing for.
+--
+-- A FLOOR IS REPEATABLE, WHICH IS THE WHOLE REASON. This mode is a PLACE (docs/overworld.md): the
+-- ground is dealt from the save's seed and the depth, the boards a company has walked are kept whole
+-- on the player, the monsters re-arm and the places do not (Descent.rearmFloor), and a company
+-- re-enters at the deepest floor it has mapped. So floor three is available for the rest of the
+-- playthrough and can be walked as many times as anybody likes. Price a rung at exactly one floor of
+-- play and the ladder is not fifteen floors of commitment, it is fifteen laps of whichever floor is
+-- cheapest -- and the anchor sentence would be true of a company that never went past the third
+-- stair. The extra quarter is what makes the cap something you reach by going DOWN.
+--
+-- SO MASTERY IS 750 AGAINST THE ~596 A WORKED DESCENT BANKS: a rift cleared end to end gets a body
+-- most of the way, and the rest is a second trip or a deeper one. Not a grind wall -- one and a
+-- quarter descents, which is inside the loop this mode is built on (a trip is not a run; you come
+-- back up to the Ward and the Touchstone and go again). tests/growth_spec.lua pins BOTH ends of that:
+-- more than one descent, and less than two.
+--
+-- IT WAS 120, AND 120 WAS MEASURED ON A PARTY OF ONE. That is the error worth keeping, because the
+-- instrument looked right and was pointed at the wrong company: `Player.new()` opens with a roster of
+-- just Rowan (data/player.lua's startingRoster), so the harness fought all forty blueprints SOLO and
+-- read 11.5 a fight -- and a solo body takes every action its side has. The rift is walked by four
+-- (Player.MAX_FIELD). Re-measured at four, the same forty fights bank 3.58 to a body, the party banks
+-- MORE in total (17.7 against 12.5), and the fight is over in a third of the turns (19.6 against
+-- 60.1): more hands, fewer rounds, a quarter of the fight each. Three times too dear, which put one
+-- class at THREE full descents and a 15/15 crossing at five or six -- and the anchor sentence above
+-- went on saying one.
+--
+-- THE CEILING IS 4.31, which is what commitment buys. That is the same body's bank summed across
+-- every house rather than its best one, so it is the rate of a body whose every swing is the house it
+-- is climbing -- about a fifth faster, capping a little inside the fifteenth floor. And it is close
+-- to a hard bound: 19.6 unit-turns over seven bodies is 2.7 turns each, two actions at
+-- TECHNIQUE_PER_ACTION. Playing better cannot move this much, which is the property an anchor wants.
+--
+-- LINEAR, AND THE OLD TRIANGLE IS WHY. This was STEP * N * (N+1) / 2, anchored on the same committed
+-- descent and correct AT THE BOTTOM -- rung 8 landed at 828 against ~840 banked. What a triangle does
+-- is front-load, and measured against the shelf it front-loads catastrophically: rung 1 cost 23, which
+-- is 1.9 fights, so the first 42 rows opened a third of the way through floor ONE, rung 2 landed on the
+-- floor-one stair and the ladder was MAXED on floor 12 of 15 -- three floors with nothing left to open.
+-- Adding rungs makes a triangle worse at that end, not better: at fifteen rungs and the same anchor the
+-- step falls to 9 and rung 1 arrives inside the first fight.
+--
+-- AND LINEAR IS THE ONLY CURVE THAT FITS, which is worth writing down because it is not a preference.
+-- Ask for the rungs to be evenly spaced in floors -- rung 1 at one floor's play, rung 15 at fifteen
+-- times that -- over the family STEP_A * n + STEP_B * n(n+1)/2: A + B = STEP and 15A + 120B =
+-- 15 * STEP solve to B = 0 at any STEP. Any rising toll buys its rise by pulling rung 1 in earlier,
+-- which is the front-loading failure above. The scale of the whole ladder is a separate decision from
+-- its shape, and it is the one the quarter makes: stretching every rung by the same factor keeps B at
+-- zero and moves only how many floors the fifteen add up to.
+--
+-- WHAT THE TRIANGLE WAS PROTECTING IS NOT LOST. Its argument was that a flat ladder makes the decision
+-- to keep committing stop being a decision after the second rung. That argument is about how many
+-- decisions there are, and there are fifteen now rather than eight -- the escalation moved out of the
+-- per-rung toll and into the rung count. What a body pays to keep climbing is a floor, every time, and
+-- a floor is the most expensive unit this mode has.
+Class.CLASS_LEVEL_STEP = 50
 
 -- The career technique needed to reach class level `n`. Zero at nought, which is the floor every body
 -- starts on and the one Balance reads as the item's authored magnitude.
 function Class.classLevelCost(n)
     n = math.max(0, math.min(Class.CLASS_LEVEL_CAP, n or 0))
-    return Class.CLASS_LEVEL_STEP * n * (n + 1) / 2
+    return Class.CLASS_LEVEL_STEP * n
 end
 
 -- What level `char` holds in class or discipline `key`, 0..CLASS_LEVEL_CAP.
@@ -413,7 +527,7 @@ Class.TECHNIQUE_PER_ACTION = 2
 -- second commitment beside the technique ladder, and the free one.
 --
 -- OUT OF THE SAME AWARD, NEVER ON TOP OF IT. CLASS_LEVEL_STEP above is anchored on a committed descent
--- banking about 840 -- "mastering one class is one committed descent" -- and an additive bonus would
+-- banking about 596 -- "one class is a descent and a quarter" -- and an additive bonus would
 -- pay a body carrying somebody else's gear MORE per action than one carrying its own, which is both
 -- backwards and a move on every number that anchor holds. A split conserves it exactly: a body standing
 -- in the house it is swinging banks the full 2 into it, precisely as before, and a body swinging

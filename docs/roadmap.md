@@ -145,7 +145,7 @@ The bulk of the remaining authoring. 72 of 94 quests have no `intro`, `outro`, o
 18. **Localization** — 510 of 523 strings are `ja = ""`. The system works; the translation has not
     happened. Mechanical, and safely last.
 19. ~~**Reputation ladder shape**~~ **Done.** Reputation is gone entirely: a vendor's standing is now
-    the count of its quests you have finished (`Quest.sponsorProgress`), items gate on `unlockQuests`,
+    the count of its quests you have finished (`Quest.sponsorProgress`), items gate on `unlockLevel`,
     and the waves open at `Vendor.TIERS = { 0, 3, 6, 10 }`. The shop shows quest counts, not rank names.
 20. **Unresolved character TODOs** carried in the blueprints — Clem's flaw (forgives every debt but
     her own), Ren's flaw (the giver who never receives), Kaya's temperance-immunity fold-in.

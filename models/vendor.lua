@@ -4,13 +4,19 @@
 -- plain count of quests-completed, not a player) so models/player.lua and this module do
 -- not form a require cycle.
 --
--- A vendor SELLS. It does not upgrade: every ladder in the game is climbed at the one Forge
--- (models/forge.lua), which is also the only bench that spends materials. This module used to carry a
+-- A vendor SELLS. It does not upgrade: every ladder in the game is climbed at the one bench
+-- (models/forge.lua), which is also the only thing that spends materials. This module used to carry a
 -- second door onto the same `item.level` -- abilities honed at their class vendor, consumables refined
--- per-type -- and having two doors onto one ladder meant two bills, two ceilings, and no single place
+-- per-type -- and having two doors onto one ladder meant two BILLS, two CEILINGS, and no single place
 -- to look. Standing with a house is still the ceiling on how far its gear forges, but the Forge now
 -- counts that itself (Forge.ceilingFor, off Quest.sponsorProgress) rather than borrowing a ladder
 -- from here.
+--
+-- THE BENCH HAS TWO ROOMS AGAIN AND THIS IS NOT THAT BUG COMING BACK, which is worth saying here
+-- because it is this header's own argument. What was wrong was two IMPLEMENTATIONS -- a second bill
+-- and a second ceiling, quietly disagreeing with the first. The Bastion's forge and the Arcanum's
+-- study are two doors onto one model: they ask models/forge.lua for the price, the ceiling and the
+-- rung, and differ only in which kinds of work each offers (Forge.WORK). Two counters, one ledger.
 --
 -- A SHELF OPENS AS THE CLASS IT SELLS IS CLIMBED. Every ware names a rung and a rung is a class level
 -- -- how far the roster's best holder of that class has got (Quest.shelfRung -> Class.rosterLevel).
@@ -18,8 +24,9 @@
 -- the fold and the shelf has read the ladder ever since.
 --
 -- WHERE THAT RUNG COMES FROM DEPENDS ON WHETHER THE WARE IS FOR SALE OR FOUND. A priced one -- an
--- ability, a consumable, a house's opening weapon -- names it directly as `unlockQuests`, the slot its
--- grade put it in. Everything else carries a `dropTier` instead, and its rung is that depth less one:
+-- ability, a consumable, a house's opening weapon -- and everything else is found in the rift. BOTH
+-- name the same field: `unlockLevel`, the class level that opens it, which is also the floor the rift
+-- gives it up at (tools/ladder_fold folded the two apart axes into one):
 -- the same conversion Vendor.foundPrice makes to quote it a price, so a found ware's cost and its gate
 -- are one number (Vendor.lockReason).
 --
@@ -84,7 +91,7 @@ function Vendor.list()
 end
 
 -- (Vendor.TIERS / Vendor.tier -- the four-value wave enum { 0, 3, 6, 10 } -- used to live here. Item
--- gates left it when tools/unlock_rescale.lua rewrote all 339 onto per-quest `unlockQuests`, and the
+-- gates left it when tools/unlock_rescale.lua rewrote all 339 onto per-quest `unlockLevel`, and the
 -- Forge's class-item ceiling left it when that moved to Forge.CEILING_BASE + quests done. Nothing read
 -- it after that, and a dead enum with no callers is exactly how the two halves of a house's offer
 -- drifted onto different granularities in the first place, so it is deleted rather than kept around.)
@@ -148,29 +155,27 @@ function Vendor.lockReason(item, rung, unlocked, levels)
     -- TWO NUMBERS THAT USED TO BE ONE, and they still have to part -- but they part the other way round
     -- now that a found ware has a rung of its own.
     --
-    --   unlockQuests  THE RANK, and it is a per-CLASS position: the grader spreads one house's stock
+    --   unlockLevel  THE RANK, and it is a per-CLASS position: the grader spreads one house's stock
     --                 over the ladder, and models/balance.lua reads the result as the item's power
     --                 level. Reported to everyone downstream -- which band a row files under, how the
     --                 shelf sorts -- and it is the gate only on a ware that carries a price.
-    --   gateRung      THE GATE. On a priced ware it is the rank above. On a FOUND one it is the depth,
-    --                 off by one, which is the same conversion Vendor.foundPrice makes to quote it:
-    --                 one number answers what a thing costs and what rung it sits on, so the two can
-    --                 never disagree.
+    --   gateRung      THE GATE, and it is now the same field. `unlockLevel` IS the class level, so the
+    --                 gate is a read rather than a conversion.
     --
-    -- WHY THE DEPTH AND NOT THE AUTHORED RANK, since a found ware carries both. 145 of the 362 carry no
-    -- `unlockQuests` at all -- the recut left the field where it was authored and the tier pass has been
-    -- minting depths ever since -- and of those that do carry one, nine agree with their tier. Reading
-    -- the rank would hand two fifths of the catalogue rung 0 and put the deep end of every class on the
-    -- opening rack. `dropTier` is the field the whole unpriced set is actually spread along
-    -- (tools/drop_tier.lua), so it is the field the gate reads.
+    -- THIS USED TO BE TWO FIELDS AND A BRANCH, and the branch is what the fold deleted. A priced ware
+    -- named `unlockQuests` -- a grade rank carrying the name of a retired quest board -- while an
+    -- unpriced one named `dropTier`, a depth counting from 1 where class levels count from 0, so the
+    -- gate read `price and unlockQuests or dropTier - 1`. 231 blueprints carried BOTH and nothing on
+    -- the blueprint said which governed; measured across them the two axes already agreed within a
+    -- single rung four times in five (tools/ladder_fold's header carries the histogram), so they were
+    -- one ladder wearing two names and an off-by-one between them. One field, one reading, and no
+    -- conversion left that can fall out of step with itself.
     --
-    -- Tiers run 1..CLASS_LEVEL_CAP and class levels run 0..CLASS_LEVEL_CAP, so the deepest ware in the
-    -- game opens one level short of the cap. Nothing is gated past the top of the ladder that opens it.
-    local gateRung = item.price and (item.unlockQuests or 0)
-        or (item.dropTier and math.max(0, item.dropTier - 1))
-        or 0
-    -- AN EARNED CLASS'S STOCK is locked until that class is unlocked, on top of any quest gate -- and,
-    -- if it names an unlockLevel, until the class has grown that far.
+    -- Levels run 0..CLASS_LEVEL_CAP and so does this, so nothing is gated past the top of the ladder
+    -- that opens it -- and rung 0 is the opening rack, held from the first morning.
+    local gateRung = item.unlockLevel or 0
+    -- AN EARNED CLASS'S STOCK is locked until that class is unlocked, on top of the rung gate -- and,
+    -- if it names a `disciplineLevel`, until the class has grown that far.
     --
     -- `earned` is the fold's one predicate (docs/class-fold.md): a ROOT is held from the first morning
     -- and its stock is never locked by this, an earned class is the deeper cut and its stock is. It used
@@ -180,8 +185,13 @@ function Vendor.lockReason(item, rung, unlocked, levels)
     local class = item.class
     local earned = class ~= nil and not Class.isRoot(class) and Class.defs[class] ~= nil
     local classLocked = earned and not (unlocked and unlocked[class])
-    local unlockLevel = earned and item.unlockLevel or nil
-    if unlockLevel and ((levels and levels[class] or 0) < unlockLevel) then
+    -- NAMED `disciplineLevel` SINCE THE FOLD, and the rename was forced rather than chosen: the gate
+    -- above now owns the name `unlockLevel`. The two ask different questions and always did -- the rung
+    -- gate is measured against the HOUSE's class (Quest.shelfRung reads the vendor's), this against the
+    -- ITEM's own -- so one of them had to give the name up, and the one nothing in data/items has ever
+    -- set is the one that could.
+    local disciplineLevel = earned and item.disciplineLevel or nil
+    if disciplineLevel and ((levels and levels[class] or 0) < disciplineLevel) then
         classLocked = true
     end
     -- THE THIRD REFUSAL IS GONE, and it is worth saying what it was. A found ware used to be shut until
@@ -227,7 +237,7 @@ function Vendor.lockReason(item, rung, unlocked, levels)
     --   dropOnly    the city does not STOCK it, but yours is worth something. It carries no `price`
     --               either -- it does not need one, and the shelf recut's law is that only abilities,
     --               consumables and a house's opening weapon do. Vendor.foundPrice derives its worth
-    --               from its `dropTier` exactly as it does for every other found ware, so it sells back
+    --               from its `unlockLevel` exactly as it does for every other found ware, so it sells back
     --               at the usual half. What the flag changes is one thing only: no counter will ever
     --               deal you one.
     --
@@ -245,7 +255,7 @@ function Vendor.lockReason(item, rung, unlocked, levels)
     if item.unstocked or item.dropOnly then lockReason = "monster drop"
     elseif classLocked then lockReason = "class"
     elseif (rung or 0) < gateRung then lockReason = "rung" end
-    return lockReason, earned, unlockLevel, gateRung
+    return lockReason, earned, disciplineLevel, gateRung
 end
 
 -- Every item this vendor could ever sell, in shelf order (cheapest first). Quest-gated items are
@@ -255,7 +265,7 @@ end
 -- `questsDone` is the RUNG of this shelf the player has reached (Quest.shelfRung), which is a CLASS
 -- LEVEL -- how far the roster's best holder has got in the class this counter sells. An item is locked
 -- until that rung reaches its own, and a row reports the rung it was measured against as `rung`: a
--- priced ware's is its `unlockQuests`, a found one's is its depth less one (Vendor.lockReason). Passed
+-- every ware's is its `unlockLevel`, priced or found alike since the fold (Vendor.lockReason). Passed
 -- as a bare number (not a player) so this module stays player-free.
 --
 -- `recipes` is an optional plain { itemId = tier } map (the player's consumable recipe levels):
@@ -270,7 +280,7 @@ end
 --
 -- `levels` is the matching bare map { classId = level } (Class.levelSet). The broad shelf
 -- gates on QUEST COUNT; the deepest cut of a discipline gates on how far that discipline has actually
--- GROWN, via an optional `unlockLevel` on the item (default 0, so nothing gates on it until authored).
+-- GROWN, via an optional `disciplineLevel` on the item (default 0: nothing gates until authored).
 -- Two different questions -- "have you worked with this house" and "have you specialized" -- and the
 -- shelf should not answer both with the same number.
 -- `questsDone` may also be a FUNCTION of the item, returning the rung that item's own ladder has
@@ -278,13 +288,13 @@ end
 -- sells all seven (models/market.lua), and there each ware is gated on the level of ITS OWN class. A
 -- bare number still works and means what it always meant, so every existing caller is untouched.
 -- WHAT A FOUND WARE COSTS. Above the opener rung nothing is authored with a price any more
--- (tools/drop_tier.lua's recut): a weapon, a utility or a piece of armor carries a `dropTier` instead.
--- So the price has to be DERIVED, and the material is already there -- a dropTier is the item's grade
+-- (tools/drop_tier.lua's recut): a weapon, a utility or a piece of armor carries no price at all.
+-- So the price has to be DERIVED, and the material is already there -- a unlockLevel is the item's grade
 -- rank, the same rank a slot is, spread along depth rather than along a shelf (docs/shelf.md). Read it
 -- as the slot it would have had.
 --
 -- AND THE GATE READS THE SAME FIELD, which is the half that arrived later: Vendor.lockReason takes
--- `dropTier - 1` as the rung a found ware sits on, exactly as this takes it as the slot it prices at.
+-- `unlockLevel - 1` as the rung a found ware sits on, exactly as this takes it as the slot it prices at.
 -- One number, two questions, no way for the price and the gate to drift apart.
 --
 -- OFF BY ONE ON PURPOSE: tiers run 1..cap and slots run 0..cap-1, so tier 1 prices at Grade.PRICE_BASE,
@@ -318,9 +328,9 @@ end
 -- what to pay for one. The company's options are to use it or to break it, which is exactly the shape a
 -- thing this rare should have.
 function Vendor.foundPrice(item)
-    if not (item and item.dropTier) then return nil end
+    if not (item and item.unlockLevel) then return nil end
     if item.unstocked then return nil end
-    return require("models.grade").priceFor(math.max(0, item.dropTier - 1), item.type)
+    return require("models.grade").priceFor(item.unlockLevel, item.type)
 end
 
 -- THE ORDER A SHELF DEALS IN, and it leads with what the player can actually take home. Every rack in
@@ -341,15 +351,16 @@ end
 -- would rearrange under the hand mid-purchase, and a tile already prices itself against the purse in
 -- its own colour (ui/pool_grid.lua).
 --
--- THE RANK IT DEALS BY IS `rung`, NOT `unlockQuests`, and the two are only the same on a priced ware.
--- A found one's rung is its depth less one (Vendor.lockReason) and its authored `unlockQuests` is
--- whatever the last grade pass left on it -- which for two fifths of the catalogue is nothing at all.
--- Ordering on the authored field would pile every rungless ware at the top of the rack and deal the
--- ladder in an order no gate agrees with.
+-- THE RANK IT DEALS BY IS `rung`, the figure the gate was actually measured against. Since the fold it
+-- equals the authored `unlockLevel` on everything the ladder ranks, and the two are kept apart only so
+-- a row built without going through Vendor.lockReason still sorts somewhere sane.
+-- `rung` is what the gate was measured against and `unlockLevel` is what the blueprint authored; since
+-- the fold those are the same number on everything the ladder ranks, and the fallback is here for a row
+-- assembled by a caller that did not come through Vendor.lockReason.
 function Vendor.shelfOrder(a, b)
     local la, lb = a.locked or false, b.locked or false
     if la ~= lb then return lb end
-    local ra, rb = a.rung or a.unlockQuests or 0, b.rung or b.unlockQuests or 0
+    local ra, rb = a.rung or a.unlockLevel or 0, b.rung or b.unlockLevel or 0
     if ra ~= rb then return ra < rb end
     if a.price ~= b.price then return (a.price or 0) < (b.price or 0) end
     return (a.name or "") < (b.name or "")
@@ -368,19 +379,20 @@ function Vendor.stock(vendorId, questsDone, recipes, unlocked, levels)
     for id, item in pairs(Item.defs) do
         local foundPrice = not item.price and Vendor.foundPrice(item) or nil
         -- A MONSTER'S DROP HAS NO PRICE AND IS STOCKED ANYWAY (see Vendor.lockReason). Admitted on its
-        -- `dropTier` rather than on a price, because the price is exactly what it does not have -- and
-        -- the tier is what places it on the rung ladder so it sorts into the rack where it belongs
+        -- `unlockLevel` rather than on a price, because the price is exactly what it does not have --
+        -- and the rung is what places it on the ladder so it sorts into the rack where it belongs
         -- rather than piling at one end.
-        local trophy = item.unstocked and item.dropTier ~= nil
+        local trophy = item.unstocked and item.unlockLevel ~= nil
         if (item.price or foundPrice or trophy) and Vendor.sells(def, item) then
-            -- The RANK, which every blueprint carries and which is not the gate -- see
-            -- Vendor.lockReason, where the two parted company. Reported to everyone downstream: which
-            -- band a row files under, how the shelf sorts, whether the Market counts it a staple
-            -- (models/market.lua).
-            local unlockQuests = item.unlockQuests or 0
+            -- THE RUNG THE BLUEPRINT AUTHORED. Reported to everyone downstream: which band a row
+            -- files under, how the shelf sorts, whether the Market counts it a staple
+            -- (models/market.lua). Since the fold it is the gate as well, so `rung` below agrees with
+            -- it on everything the ladder ranks; the two are still reported apart because a row can be
+            -- built for something that carries no rung at all.
+            local unlockLevel = item.unlockLevel or 0
             local level = (recipes and recipes[id]) or 0
             local class = item.class
-            local lockReason, earned, unlockLevel, rung =
+            local lockReason, earned, disciplineLevel, rung =
                 Vendor.lockReason(item, rungOf(item), unlocked, levels)
 
             stock[#stock + 1] = {
@@ -391,16 +403,15 @@ function Vendor.stock(vendorId, questsDone, recipes, unlocked, levels)
                 type = item.type,
                 level = level,
                 price = Vendor.priceFor(item.price or foundPrice, level),
-                -- WHERE THE RIFT GIVES IT UP, which is the OTHER road to the same piece and is worth
-                -- printing beside the gate rather than instead of it: grow the class and buy one, or go
-                -- down to this floor and take one. A shut tile that names both names somewhere to go
-                -- either way (ui/panels/shop.lua's lockReason).
-                dropTier = item.dropTier,
-                unlockQuests = unlockQuests,
-                -- THE RUNG THE GATE WAS ACTUALLY MEASURED AGAINST, as distinct from the authored rank
-                -- above. Every reader that asks "how far must the class grow for this" wants this one:
-                -- the shelf's order, the rung sentence in the shop, the market's rotation band. Reading
-                -- `unlockQuests` there answers for a priced ware and lies about a found one.
+                -- WHERE THE RIFT GIVES IT UP IS THE SAME NUMBER, which is the whole of what the fold
+                -- bought: one rung says both "grow the class this far and buy one" and "go down to
+                -- this floor and take one", so the shut tile can name both roads with no second field
+                -- to drift off the first (ui/panels/shop.lua's lockReason).
+                unlockLevel = unlockLevel,
+                -- THE RUNG THE GATE WAS ACTUALLY MEASURED AGAINST. The same figure as above on
+                -- anything the ladder ranks; kept distinct because it is what Vendor.lockReason
+                -- actually compared, and a reader asking "how far must the class grow" wants the
+                -- answer the gate gave rather than the field it read.
                 rung = rung,
                 class = class,
                 -- The row's own name for "this is a deeper cut, not the open rack": the class when it
@@ -453,7 +464,7 @@ function Vendor.hasMarkedStock(vendorId, marked, gates)
         -- have left the city silent about the one thing the company just went down and got: a discovery
         -- opens a line permanently, and the walk back from the Rift should point at the door it opened
         -- rather than ask the player to re-read seven shelves. Asked through Vendor.foundPrice rather
-        -- than off `dropTier` so it is the SAME membership test Vendor.stock deals a rack by -- which
+        -- than off `unlockLevel` so it is the SAME membership test Vendor.stock deals a rack by -- which
         -- is also what keeps a rift-only piece off this plate, since `unstocked` is a thing a ware says
         -- to the price and nothing else ever sees it.
         local stocked = item and (item.price or Vendor.foundPrice(item))
@@ -536,7 +547,7 @@ end
 -- `price` was never for sale and so can't be sold (returns 0) -- the Party screen refuses those
 -- rather than giving them away for nothing. One place so the panel and its test agree on the rate.
 function Vendor.sellValue(item)
-    -- A FOUND WARE SELLS TOO, at the price its dropTier implies (Vendor.foundPrice). Reading `price`
+    -- A FOUND WARE SELLS TOO, at the price its unlockLevel implies (Vendor.foundPrice). Reading `price`
     -- alone here would have made every weapon, utility and piece of armor above the opener rung worth
     -- nothing at a counter the moment the recut took their prices off -- a company that hauled out a
     -- duplicate would be carrying a thing it could neither use twice nor sell.

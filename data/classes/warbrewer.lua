@@ -9,5 +9,5 @@ return {
     description = "Drinks in the middle of the swing. A self-buff draught costs no action, so you keep "
         .. "attacking while it takes hold.",
     exemplar = "character_warbrewer", -- NEW, pending
-    requires = { fighter = 8, alchemist = 8 },
+    requires = { fighter = 15, alchemist = 15 },
 }

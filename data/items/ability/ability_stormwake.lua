@@ -26,8 +26,7 @@ return {
     -- half that matters is the arc, and Combat.conductLightning is engine rather than an authored
     -- magnitude, so the grader sees a cheap bolt and none of what makes it the Tidecaller's fight.
     -- The same blindness the Wrap carries, for the same reason, written down in both files.
-    dropTier = 5,
-    unlockQuests = 5,
+    unlockLevel = 7,
     activeAbility = {
         target = "enemy",
         range = 4,

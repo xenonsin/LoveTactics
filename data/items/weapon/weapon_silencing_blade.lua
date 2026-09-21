@@ -22,8 +22,7 @@ return {
     type = "weapon",
     tags = { "sword", "slash", "physical", "melee" },
     class = "spellbreaker",
-    unlockQuests = 7,
-    dropTier = 7,
+    unlockLevel = 12,
     traits = { "trait_parry" },
     activeAbility = {
         target = "enemy",

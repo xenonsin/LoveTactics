@@ -21,7 +21,7 @@ return {
     type = "weapon",
     tags = { "axe", "slash", "physical", "melee" },
     class = "fighter",
-    dropTier = 7,
+    unlockLevel = 11,
     activeAbility = {
         target = "tile",
         allowOccupied = true,
@@ -31,7 +31,7 @@ return {
         cost = { stat = "stamina", amount = 10 },
         -- Below the iron axe's, and that is the FLOOR rather than the number: this is what it swings for
         -- on the opening turn, before the count has anything in it.
-        damage = Curve.ramp(5, 15),
+        damage = Curve.ramp(12, 22),
         aoe = { shape = "front", width = 3 },
         -- The count made visible, exactly as weapon_long_count wears its turn tally: the same `kill`
         -- number the effect below multiplies by, drawn on the slot and quoted in the tooltip. Without

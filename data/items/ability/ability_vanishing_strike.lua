@@ -12,7 +12,7 @@ return {
     tags = { "pierce", "physical", "guile" },
     class = "ninja", -- rogue x mage; the Shadowclone mechanic's first stock
     price = 740,
-    unlockQuests = 8,
+    unlockLevel = 15,
     activeAbility = {
         target = "enemy",
         range = 1,

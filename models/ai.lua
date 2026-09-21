@@ -134,6 +134,13 @@ AI.WEIGHTS = {
     -- with the animals charging at nothing. A friendly cast that produces no entries is doing something
     -- for its own side the entries cannot show; a hostile one that produces no entries missed.
     MUTATION     = 3,
+    -- A beneficial status landed on my OWN side -- the entire payload of a ward, a seal, a barrier, a
+    -- bond. Worth what a status inflicted on theirs is worth, because it is the same kind of fact read
+    -- from the other end, and pitched there for MUTATION's reason: enough to clear the `outcome` gate,
+    -- light enough to lose on net score to a real blow with a body under it. A supporter with a foe in
+    -- reach swings; one with nothing better to do opens the ward. Paid only for a status the target is
+    -- not already wearing -- see outcomeScore.
+    BUFF         = 3,
 }
 
 -- ---------------------------------------------------------------------------
@@ -1148,7 +1155,35 @@ local function outcomeScore(combat, unit, cand, w, previews)
         local odds = Combat.landChance(combat, unit, e.unit, cand.item)
         score = score + (e.damage or 0) * odds * (friendly and -w.FRIENDLY_FIRE or w.DAMAGE)
         score = score + (e.heal or 0) * (friendly and w.HEAL or -w.HEAL)
-        score = score + #(e.statuses or {}) * odds * (friendly and 0 or w.STATUS)
+        -- A status is priced by WHOSE body it lands on and WHICH WAY it points, which is two questions
+        -- where this used to ask one. `friendly and 0` meant a status on my own side was worth
+        -- nothing -- and a buff cast's whole payload is a status on my own side, so every one of them
+        -- scored exactly 0, and `outcome` is the gate that decides whether an action is worth taking
+        -- AT ALL. THE AI COULD NOT PLAN A BUFF. Not "planned it badly" -- never once, in any fight, by
+        -- any unit, however the rule was written: 69 abilities, including all 22 wards, every seal,
+        -- Haste, Blessing, both barriers, and the Sentinel's own Shared Burden -- that discipline's
+        -- signature verb, sitting in its blueprint's `urgent` rule and never firing. It is the hole
+        -- MUTATION was dug out of, one door over: a cast whose payload the per-unit entries record
+        -- faithfully, and the exchange rate then multiplies by nothing.
+        --
+        -- `def.debuff` is the polarity the status catalog already authors (Status.cleanse strips
+        -- exactly these), so both directions read off the field the rest of the game reads. A buff on
+        -- my own side counts; a debuff on my own side is friendly fire and keeps the old zero --
+        -- understated rather than inverted, and left there deliberately, since teaching an AoE to
+        -- flinch from its own line is a separate argument with its own balance surface.
+        --
+        -- ...and a buff ALREADY STANDING on that body is worth nothing, which is the guard that keeps
+        -- this from becoming a unit that re-swears the same oath every turn it can afford to. Without
+        -- it the credit falls due again next turn and the turn after, and a supporter never runs out
+        -- of reasons to skip the fight.
+        for _, s in ipairs(e.statuses or {}) do
+            local def = s.def or Status.defs[s.id]
+            if not friendly then
+                score = score + odds * w.STATUS
+            elseif not (def and def.debuff) and not Status.has(e.unit, s.id) then
+                score = score + w.BUFF
+            end
+        end
         -- WHOM THIS WOULD TAKE, recorded rather than priced. Charm is scored as an ordinary status
         -- above and that is right -- it is worth about what a status is worth -- but AI.plan has a
         -- policy about it that no weight can express (see AI.lastFreeBody), and policy is not a term

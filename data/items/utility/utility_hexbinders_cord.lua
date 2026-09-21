@@ -29,8 +29,7 @@ return {
     -- FOUND IN THE RIFT, NOT DEALT OVER A COUNTER (docs/shelf.md). Since the recut only abilities,
     -- consumables and a house's opening weapon carry a `price` at all; everything else is found,
     -- and a counter stocks it only once the company has carried one out.
-    unlockQuests = 7,
-    dropTier = 6,
+    unlockLevel = 9,
     -- BORN BOUND (models/item.lua's instantiate copies this straight through). The Clinging Hand costs
     -- nothing but the cell, which is the only hex on the ladder a counter has any business selling.
     curse = "curse_the_clinging_hand",

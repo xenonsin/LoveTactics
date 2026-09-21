@@ -21,14 +21,13 @@ return {
     type = "weapon",
     tags = { "dagger", "pierce", "physical", "guile", "melee" },
     class = "rogue",
-    unlockQuests = 7,
-    dropTier = 7,
+    unlockLevel = 12,
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 2, -- quick, as every dagger is
         cost = { stat = "stamina", amount = 4 }, -- cheap, and it usually pays for itself back
-        damage = Curve.ramp(15, 25), -- under an iron dagger's: what it takes is the point
+        damage = Curve.ramp(13, 23), -- under an iron dagger's: what it takes is the point
         effect = function(fx)
             fx.damage(fx.target, { inflicts = "status_bleed" }) -- the wound rides the blow
             -- Take, then keep: drain reports what was actually there to take (a foe already exhausted

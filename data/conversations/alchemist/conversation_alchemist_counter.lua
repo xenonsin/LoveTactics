@@ -22,9 +22,9 @@ return {
     script = {
         { "alchemist", "Mind the jars. Half of them are labelled with something else's name, and the labels are not the mistake.", tag = 1 },
         { "alchemist", "What do you want of us?", tag = 2, id = "desk", choices = {
-            { "Draughts and coatings.", tag = 3, answer = "shelf", when = { offer = "shelf" } },
-            { "I am carrying something nobody can name.", tag = 4, answer = "read", when = { offer = "read" } },
-            { "Nothing.", tag = 5, answer = "leave" },
+            { "Visit alchemist class trainer", tag = 3, answer = "shelf", when = { offer = "shelf" } },
+            { "Identify an unknown item", tag = 4, answer = "read", when = { offer = "read" } },
+            { "Leave", tag = 5, answer = "leave" },
         } },
     },
 }

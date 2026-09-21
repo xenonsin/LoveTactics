@@ -2,12 +2,12 @@
 
 Where an item sits, whether it is for sale at all, and why none of it is authored by hand any more.
 
-Every item names a **slot** (`unlockQuests`, its rank on its class's ladder). Most items name **no
+Every item names a **slot** (`unlockLevel`, its rank on its class's ladder). Most items name **no
 price**, because most of the catalogue is priced from the other axis:
 
 ```
 grade  ->  slot  ->  price        (abilities, consumables, a house's opening weapon)
-grade  ->  slot  ->  dropTier     (everything else: weapons, utilities, armor)
+grade  ->  slot  ->  unlockLevel     (everything else: weapons, utilities, armor)
                       |
                       +-- the depth the rift gives it up at
                       +-- the rung a counter deals it at, and what it charges
@@ -22,7 +22,7 @@ then answers both the shelf questions too. Nothing flows the other way, and two 
   `. drop-tier [recut] [apply]`
 - The guards: `tests/grade_spec.lua`, `tests/discovery_spec.lua`
 
-> **The field is still called `unlockQuests` and no quest has opened a shelf for some time.** The name
+> **The field is still called `unlockLevel` and no quest has opened a shelf for some time.** The name
 > survived three re-cuts because renaming it means touching every blueprint in the game to change
 > nothing, and a 485-file rename that subtracts nothing is 485 chances to be off by one. It means *the
 > rung*, and the rung is a class level (**The slot**, below).
@@ -34,8 +34,8 @@ then answers both the shelf questions too. Nothing flows the other way, and two 
 >
 > **And it is still not the gate on an unpriced ware** — but for the opposite reason it was not before.
 > It used to be no gate at all, because finding one was the whole gate. A found ware is gated on its
-> rung now like everything else; that rung is just derived from `dropTier` rather than read off
-> `unlockQuests`, because **145 of the 362 carry no `unlockQuests` at all** and of those that do, nine
+> rung now like everything else; that rung is just derived from `unlockLevel` rather than read off
+> `unlockLevel`, because **145 of the 362 carry no `unlockLevel` at all** and of those that do, nine
 > agree with their tier. The row reports what it was actually measured against as `rung`
 > (`Vendor.lockReason`), and every reader that asks *how far must the class grow* reads that one.
 
@@ -44,17 +44,17 @@ then answers both the shelf questions too. Nothing flows the other way, and two 
 
 The recut took `price` off everything a house sold above its **opening weapon** — 362 blueprints — and
 that half stands. Above the opener nothing carries an authored price; a weapon, a utility or a piece of
-armor carries a `dropTier` instead, and what a counter charges is derived from it.
+armor carries a `unlockLevel` instead, and what a counter charges is derived from it.
 
 | Kind | Reaches the player by | Carries |
 |---|---|---|
-| Ability | bought, on the class ladder | `price`, `unlockQuests` |
-| Consumable | bought — the stock decision before a descent has to be makeable | `price`, `unlockQuests` |
-| Opening weapon (rung 0) | bought — the floor that re-arms a company holding nothing | `price`, `unlockQuests` |
-| Weapon, utility, armor above that | bought at its rung, or **found early** | `dropTier` (the rung *and* the price) |
-| A body's own trophy | **found, and only ever found** | `dropTier`, `unstocked` |
+| Ability | bought, on the class ladder | `price`, `unlockLevel` |
+| Consumable | bought — the stock decision before a descent has to be makeable | `price`, `unlockLevel` |
+| Opening weapon (rung 0) | bought — the floor that re-arms a company holding nothing | `price`, `unlockLevel` |
+| Weapon, utility, armor above that | bought at its rung, or **found early** | `unlockLevel` (the rung *and* the price) |
+| A body's own trophy | **found, and only ever found** | `unlockLevel`, `unstocked` |
 
-**The floor is the rung, not the word "iron".** Nine of the ten iron weapons sit at `unlockQuests = 0`,
+**The floor is the rung, not the word "iron".** Nine of the ten iron weapons sit at `unlockLevel = 0`,
 but two houses have no iron anything — the Cathedral's rung 0 is a censer and the Alchemist's is a
 lancet. Cutting on the name would leave two of seven classes with no purchasable weapon at all. Cutting
 on the rung covers all seven exactly once and is derived, so a later re-cut of the ladder moves it.
@@ -109,17 +109,24 @@ pretending to be a want list. This refusal is permanent and honest, it names a r
 *go and kill the body that carries it* -- and it costs the counter nothing, because a trophy was never
 merchandise in either direction.
 
-**A found ware's rung is its depth, less one** — the same conversion `Vendor.foundPrice` already made to
-quote it. One number answers *what does it cost* and *what rung does it sit on*, so the two can never
-drift. It is read off `dropTier` and not off the authored `unlockQuests` because the authored field is
-per-class and two fifths of the catalogue does not carry it; the row reports the rung it was actually
-measured against as `rung`, and the shelf order, the shop's refusal sentence and the market's rotation
-band all read that rather than the rank.
+**There is one rung and it is `unlockLevel`** — the class level that opens a ware on a shelf, and the
+floor the rift gives it up at, in one number. It used to be two. A priced ware named `unlockQuests`, a
+grade rank carrying the name of a retired quest board; everything else named `dropTier`, a depth
+counting from 1 where a class level counts from 0, so the gate read `price and unlockQuests or
+dropTier - 1` and 231 blueprints carried both with nothing on them saying which governed. Measured
+before folding, the two axes already agreed within a single rung on four fifths of the set, so they
+were one ladder wearing two names and an off-by-one (`tools/ladder_fold`).
 
-Tiers run `1..CLASS_LEVEL_CAP` and class levels run `0..CLASS_LEVEL_CAP`, so the deepest ware in the
-game opens one level short of the cap. **Nothing is gated past the top of the ladder that opens it.**
+The fold also closed a hole nobody could see: `Balance.slotOf` read the priced field, which two fifths
+of the catalogue did not carry, so those items were judged at slot 0 — the family's base magnitude,
+which anything clears. Giving every ware its true rung put 84 of them under a real target for the
+first time, most of them deep rift gear sitting at half the power their depth implies.
 
-**What a found ware costs** is `Vendor.foundPrice`: its `dropTier` read as the slot it would have had,
+Rungs run `0..CLASS_LEVEL_CAP` and so do class levels. **Nothing is gated past the top of the ladder
+that opens it**, and rung 0 is the opening rack — held from the first morning, and the one rung no
+floor pays, because a floor pays what is deeper than nothing.
+
+**What a found ware costs** is `Vendor.foundPrice`: its `unlockLevel` read as the slot it would have had,
 off by one so the shallowest find prices level with a house's opener. `Vendor.sellValue` uses the same
 figure, or a duplicate hauled out would be a thing the player could neither use twice nor sell.
 
@@ -133,12 +140,12 @@ only where it fell has no market price in either direction.
 **It is shown and refused, not hidden** (see the third lock reason above). Until 2026-09-20 a nil price
 also kept the row out of `Vendor.stock` entirely — *not greyed, gone* — which was a side effect of
 having no price rather than a decision, and it meant the rarest pieces in the game could not be learned
-about at any counter. `Vendor.stock` admits them on their `dropTier` now, and they wear
+about at any counter. `Vendor.stock` admits them on their `unlockLevel` now, and they wear
 `lockReason = "monster drop"`. See [drops.md](drops.md#rift-only-pieces);
 `tests/discovery_spec.lua` holds it.
 
 Fourteen blueprints carry the flag. The seven generals' relics need none: they are `class = "creature"`
-with no `dropTier`, so no counter could quote one to begin with.
+with no `unlockLevel`, so no counter could quote one to begin with.
 
 **The obligation, which survives and is now met structurally.** A shelf *guarantees* an item is
 reachable; a drop table does not. That sentence is why the gate came off: reachability was statistical
@@ -150,13 +157,13 @@ and the answer is the deeper of them:
 
 | | Where it is read | What it answers |
 |---|---|---|
-| **Rank** | `dropTier`, or `unlockQuests + 1` for a priced ware | how dear a thing is |
+| **Rank** | `unlockLevel`, or `unlockLevel + 1` for a priced ware | how dear a thing is |
 | **Class gate** | the highest level in the class's `requires` (`Class.gateLevel`) | who is allowed it at all |
 
 The second half is the one a grade cannot see and must not: the grader reads what a thing *does*, and a
 grade that read a gate would be reading its own output. So a Warden charm with small numbers on it
 graded shallow, and the deepest-gated kit in the game fell out of floor one — 26 earned-class items sat
-at `dropTier` 1 or 2, one of them behind an eight-rung gate. A vendor already greys a crossing's stock
+at `unlockLevel` 1 or 2, one of them behind an eight-rung gate. A vendor already greys a crossing's stock
 until the crossing is earned; the rift now refuses it for the same reason and reads the same field.
 
 The gold band still applies on top for a priced ware. *How dear* and *how deep* are different
@@ -189,7 +196,7 @@ The last third of every shelf came out a third passive charms, with consumables 
 entirely out of it. That is the sort key showing through, not a design.
 
 It stopped being cosmetic when the slot became the grade (see [balance.md](balance.md), rule 8):
-`Balance.slotTarget` reads `unlockQuests` and *grants* the item its magnitude. So the power ladder
+`Balance.slotTarget` reads `unlockLevel` and *grants* the item its magnitude. So the power ladder
 was anchored on a field assigned by price — and `Balance.itemMagnitude` could not notice, because it
 derives the target it checks from the same field it is checking.
 
@@ -210,7 +217,7 @@ their grade put them in** — 38 of which were pre-existing drift, and 61 caused
 settled the way the doc prescribes and in this order:
 
 ```
-. grade-report apply        # 99 blueprints rewritten: unlockQuests + price
+. grade-report apply        # 99 blueprints rewritten: unlockLevel + price
 . balance-rescale 0 apply   # 29 magnitudes refitted to the slots that moved
 ```
 
@@ -461,7 +468,7 @@ Report first. Nothing here writes a blueprint until you say `apply`.
 & "E:\LOVE\lovec.exe" . grade-report diff         # only what would move 3+ slots
 & "E:\LOVE\lovec.exe" . grade-report explain ID   # one item's whole arithmetic
 & "E:\LOVE\lovec.exe" . grade-report full         # ...plus quest rewards and the trait worksheet
-& "E:\LOVE\lovec.exe" . grade-report apply        # rewrite unlockQuests + price
+& "E:\LOVE\lovec.exe" . grade-report apply        # rewrite unlockLevel + price
 ```
 
 **It is iterative, not one-shot.** `apply` moves slots; moving slots leaves magnitudes out of band by

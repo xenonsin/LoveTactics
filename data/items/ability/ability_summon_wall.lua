@@ -14,7 +14,7 @@ return {
     tags = { "holy", "illusion" },
     class = "priest",
     price = 410,
-    unlockQuests = 4,
+    unlockLevel = 7,
     activeAbility = {
         target = "tile",
         range = 4,

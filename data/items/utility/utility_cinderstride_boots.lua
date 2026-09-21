@@ -31,8 +31,7 @@ return {
     type = "utility",
     tags = { "boots", "fire" },
     class = "elementalist", -- element as terrain: the mage's own blaze laid behind every step
-    unlockQuests = 3,
-    dropTier = 3,
+    unlockLevel = 4,
     trail = { hazard = "hazard_fire", duration = 8 },
     -- footwear; the fire is what it leaves
     bonus = { movement = 1 },

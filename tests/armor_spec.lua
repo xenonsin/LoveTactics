@@ -76,7 +76,7 @@ return {
                 for _, a in ipairs(armors) do
                     assert(not a.def.price,
                         a.id .. " still carries a price -- armor is found, not stocked (docs/shelf.md)")
-                    assert(a.def.dropTier or a.def.bound,
+                    assert(a.def.unlockLevel or a.def.bound,
                         a.id .. " has neither a price nor a depth: it can never reach a player")
                 end
             end
@@ -87,7 +87,7 @@ return {
         -- rung is the item's GRADE RANK -- what models/balance.lua reads as its power level -- and it
         -- was only ever ALSO a shelf gate. The recut took the price and left the rank, and the gate
         -- moved to a different question entirely: HOW FAR HAS THE CLASS GROWN (Vendor.lockReason reads
-        -- `dropTier - 1` against Quest.shelfRung). So what an armor piece owes is a rank, always, and a
+        -- `unlockLevel - 1` against Quest.shelfRung). So what an armor piece owes is a rank, always, and a
         -- price never.
         --
         -- (This said "have you carried one out" until 2026-09-20, naming the DISCOVERY gate -- which
@@ -100,10 +100,10 @@ return {
                     assert(not a.def.price,
                         a.id .. " is for sale -- armor is found now (tools/drop_tier.lua)")
                     -- A RANK OR A DEPTH, and either will do. Everything the recut moved kept its
-                    -- `unlockQuests` -- that is the grade position models/balance.lua measures against.
+                    -- `unlockLevel` -- that is the grade position models/balance.lua measures against.
                     -- The pieces that were quest-only long before the recut never had one and grade at
                     -- the opening rung, which is a settled position and not this case's argument.
-                    assert(a.def.unlockQuests ~= nil or a.def.dropTier or a.def.bound,
+                    assert(a.def.unlockLevel ~= nil or a.def.unlockLevel or a.def.bound,
                         a.id .. " has neither a rank nor a depth: nothing places it at all")
                 end
             end

@@ -9,8 +9,7 @@ return {
     type = "utility",
     tags = { "banner" },
     class = "paladin", -- knight x priest; a banner is a Paladin or Warlord object (docs/classes.md)
-    unlockQuests = 2,
-    dropTier = 2,
+    unlockLevel = 2,
     traits = { "trait_formation_fighter" },
     -- formation banks defense live; drill steadies the other school
     bonus = { magicDefense = 2 },

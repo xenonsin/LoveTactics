@@ -31,6 +31,16 @@ local Item = require("models.item")
 
 local ALLOWLIST_PATH = "tests/support/untested_items.lua"
 
+-- Support files that are LISTS OF IDS BY CONSTRUCTION, and therefore not coverage. The allowlist is
+-- the obvious one -- counting it would make every grandfathered item look tested and the ratchet
+-- would assert nothing at all -- and the same reasoning applies to any other backlog written as a
+-- roll of ids. tests/support/dead_kit_cells.lua names the two abilities authored into a grid that
+-- cannot arm them, and naming a thing as BROKEN is the opposite of having tested it.
+local NOT_COVERAGE = {
+    [ALLOWLIST_PATH] = true,
+    ["tests/support/dead_kit_cells.lua"] = true,
+}
+
 -- Every id named anywhere in tests/, as a set. One pass over the spec sources, shared by the cases
 -- below so the directory is not walked twice.
 local mentioned
@@ -40,18 +50,18 @@ local function mentionedIds()
     for _, file in ipairs(love.filesystem.getDirectoryItems("tests")) do
         if file:match("%.lua$") and file ~= "item_coverage_spec.lua" then
             local src = love.filesystem.read("tests/" .. file)
-            -- The allowlist is a list of ids by construction; counting it as coverage would make
-            -- every grandfathered item look tested and the ratchet would assert nothing at all.
-            if src and ("tests/" .. file) ~= ALLOWLIST_PATH then
+            -- See NOT_COVERAGE: a backlog is a list of ids by construction, and counting one as
+            -- coverage would make every item on it look tested.
+            if src and not NOT_COVERAGE["tests/" .. file] then
                 for id in src:gmatch('"([%w_]+)"') do mentioned[id] = true end
             end
         end
     end
     -- tests/support/ holds fixtures rather than specs, but an id named there is still an id an
-    -- author pointed at, so it counts the same -- except in the allowlist itself, excluded above.
+    -- author pointed at, so it counts the same -- except for the backlogs in NOT_COVERAGE.
     for _, file in ipairs(love.filesystem.getDirectoryItems("tests/support")) do
         local path = "tests/support/" .. file
-        if file:match("%.lua$") and path ~= ALLOWLIST_PATH then
+        if file:match("%.lua$") and not NOT_COVERAGE[path] then
             local src = love.filesystem.read(path)
             if src then for id in src:gmatch('"([%w_]+)"') do mentioned[id] = true end end
         end

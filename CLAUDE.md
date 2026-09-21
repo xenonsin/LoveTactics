@@ -131,12 +131,24 @@ The codebase is organized into layers loaded via `require()`. See
   daggers bleed) — see [docs/weapons.md](docs/weapons.md), enforced by `tests/weapon_spec.lua`.
   Every item also belongs to a **class**, which is the vendor shelf that stocks it and never an equip
   gate (anyone can carry anything) — see [docs/classes.md](docs/classes.md), enforced by
-  `tests/class_spec.lua`. An item's `unlockQuests` is its **grade rank, derived not authored** — what a
+  `tests/class_spec.lua`. An item's `unlockLevel` is its **grade rank, derived not authored** — what a
   thing is worth sets where it sits — and only three kinds of thing carry a `price` at all: abilities,
-  consumables, and a house's opening weapon. **Everything else is found in the rift** (`dropTier`) --
-  and a counter deals it once the CLASS HAS GROWN THAT FAR. **Class level is the only gate on a shelf**
+  consumables, and a house's opening weapon. **Everything else is found in the rift** -- and a counter
+  deals it once the CLASS HAS GROWN THAT FAR. **Class level is the only gate on a shelf**
   (`Quest.shelfRung`, the roster's best holder): the rift is the head start, the class ladder is the
-  backstop that guarantees the piece is reachable at all. There is no discovery gate -- a ware is not
+  backstop that guarantees the piece is reachable at all.
+
+  **ONE LADDER, ONE FIELD, ONE RUNG PER FLOOR.** `unlockLevel` runs `0..Class.CLASS_LEVEL_CAP`, the cap
+  is **15 — the floor count** (`Descent.FLOORS`), and a rung costs a floor and a quarter of
+  committed play (`Class.CLASS_LEVEL_STEP = 50`, linear -- a floor measures 39.7, and the quarter on
+  top is what a floor you can walk AGAIN costs). So the class level that buys a piece and the floor
+  the rift gives it up at are the same number, which is what `tools/drop_tier.lua` always claimed and could not
+  deliver while the cap was 8 against fifteen floors. It WAS two fields -- `unlockQuests` (a grade rank
+  named for the retired quest board) and `dropTier` (a depth counting from 1) -- with 231 blueprints
+  carrying both and an off-by-one between them; `tools/ladder_fold.lua` folded them and records the
+  measurement that made it safe. Re-cutting the cap restretches the drop band, the forge ceiling, the
+  market's rotation, the salvage span and the mastery scalar on its own; what it does NOT restretch is
+  authored data, so a re-cut owes `. ladder-fold`, then `. balance-rescale apply 0`. There is no discovery gate -- a ware is not
   shut until you have carried one out, and `player.found` feeds the BESTIARY now, not a counter
   (removed 2026-09-19; docs/shelf.md narrates why).
 
@@ -174,7 +186,7 @@ The codebase is organized into layers loaded via `require()`. See
   `ab.counter` + `counterGates = false` -- the pair `weapon_last_word` already wears -- so the grid
   badge, the tooltip row and the effect's multiplier are one call. *Lifting is a high-level priest
   thing* needed no new gate: `Quest.shelfRung(player, "cathedral")` already reads the roster's best
-  priest level, so a priced rite at a high `unlockQuests` is invisible until somebody has climbed it.
+  priest level, so a priced rite at a high `unlockLevel` is invisible until somebody has climbed it.
   **AN ABILITY MAY NOW BE CAST OUTSIDE A FIGHT** (`outOfCombat = true`, `Player.partyAbilities`). The
   overworld Use panel gathers it beside the draughts and `kind` tells them apart -- a *drink* spends a
   stack and is gone, a *cast* spends a pool that `Player.camp` partly refills. A road cast runs a
@@ -227,7 +239,8 @@ is `max(bounties, deepest)`, and depth is bursty: measured, a company that dived
 first trip came home to four doors at once and then three empty homecomings, while a floor-one farmer's
 city froze forever. Trips climb one at a time, so **one room per homecoming** falls out of the unit.
 Trips pace the city; depth paces the shelves. The schedule: counter 1, supper 2, forge 3, book 4,
-reading (first unread find, or 5), duel (Saber's posting, or 6) — plus the mending, which is Act 0's.
+study 5, reading (first unread find, or 6), duel (Saber's posting, or 7) — plus the mending, which is
+Act 0's. The two backstops sit last on purpose, so inserting a room pushes them rather than colliding.
 `quiet = true` lets a room open without announcing its house (every shelf is quiet — a class rung is a
 reward the player cannot see). `gate = { any = {...} }` is the event-plus-backstop pattern.
 

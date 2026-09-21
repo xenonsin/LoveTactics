@@ -71,6 +71,7 @@ local SPENT = {
     rest = "Camped here already.",
     merchant = "Traded with.",
     anvil = "Used. A forge tempers one piece.",
+    lectern = "Read. A book hones one ability.",
     crossroads = "Answered.",
     event = "Already happened.",
 }

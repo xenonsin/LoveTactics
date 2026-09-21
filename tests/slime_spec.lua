@@ -273,7 +273,7 @@ return {
         name = "what it is known for is reachable at the depths it is met at",
         fn = function()
             -- docs/drops.md, Step 2: a body pays off its own list only at a rank the list HAS
-            -- something at. A list authored against `dropTier` rather than against
+            -- something at. A list authored against `unlockLevel` rather than against
             -- `Spoils.depthOf` is the silent failure here -- depthOf lifts a discipline's stock
             -- above its own tier, so a list that looks well spread on the blueprints can land
             -- three entries on one rank and pay nothing at the others.
@@ -292,16 +292,30 @@ return {
                 return out
             end
 
-            -- The common body is met from day 6, where the combat band is 1-2, and on down.
+            -- DERIVED FROM THE BANDS, NOT LISTED. These were the literals { 2, 4, 6 } -- rungs read
+            -- off the eight-rung ladder the finds were banded along before the fold widened it to
+            -- fifteen (tools/ladder_fold). A list of rung numbers is a list that silently means
+            -- different floors the moment the ladder is re-cut, and this one did: it went on asserting
+            -- rank 4 while rank 4 had moved two floors shallower.
+            --
+            -- What the case is actually about is whether a body can pay SOMETHING on the floors it is
+            -- met on, so it asks the floors and lets Spoils.rankBand say which rungs those are.
             local slime = depths("character_slime")
-            for _, d in ipairs({ 2, 4, 6 }) do
-                assert(slime[d], "a slime has nothing to pay at rank " .. d)
+            local function paysOn(set, floor, who)
+                local lo, hi = Spoils.rankBand({ floorLevel = floor })
+                for r = lo, hi do if set[r] then return end end
+                assert(false, string.format(
+                    "%s has nothing to pay on floor %d, whose band is %d-%d", who, floor, lo, hi))
             end
-            -- The King is an elite from day 14, where the band opens at 3-4 and reaches 7-8.
+            -- Shallow, middle and deep ground, which is what the literals { 2, 4, 6 } were reaching
+            -- for on the old ladder: those rungs are bands 1, 3 and 5, and the fold puts them on
+            -- rungs {1,2}, {5,6} and {9,10} -- the bands floors 3, 6 and 10 deal.
+            for _, floor in ipairs({ 3, 6, 10 }) do paysOn(slime, floor, "a slime") end
+            -- The King is an elite met on the middle and deep ground. Its literals were { 4, 5, 6, 7 }
+            -- -- bands 3 to 6 on the old ladder, which the fold spreads over rungs 5 to 12 -- so the
+            -- floors are the ones whose bands deal those, asked the same way as the common body's.
             local king = depths("character_king_slime")
-            for _, d in ipairs({ 4, 5, 6, 7 }) do
-                assert(king[d], "the King has nothing to pay at rank " .. d)
-            end
+            for _, floor in ipairs({ 6, 8, 10, 12 }) do paysOn(king, floor, "the King") end
 
             -- A body part is never on a list, and both cores are the bodies themselves.
             for _, id in ipairs({ "character_slime", "character_king_slime" }) do

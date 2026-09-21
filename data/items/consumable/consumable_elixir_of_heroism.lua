@@ -18,7 +18,7 @@ return {
     tags = { "potion", "elixir", "restorative" },
     class = "alchemist",
     price = 195,
-    unlockQuests = 5, -- backfills the rung the throwing stone left when it went to the Colosseum
+    unlockLevel = 9,
     activeAbility = {
         target = "ally",
         range = 1,

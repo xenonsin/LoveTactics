@@ -25,13 +25,13 @@ return {
     type = "weapon",
     tags = { "mace", "impact", "physical", "ice", "melee" },
     class = "knight",
-    dropTier = 7,
+    unlockLevel = 12,
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 10 },
-        damage = Curve.ramp(8, 18),
+        damage = Curve.ramp(16, 26),
         effect = function(fx)
             local t = fx.target
             if not t then return end

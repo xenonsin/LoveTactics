@@ -20,8 +20,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "warbrewer",
-    unlockQuests = 3,
-    dropTier = 3,
+    unlockLevel = 4,
     traits = { "trait_field_still" },
     -- something brewing in the grid every turn
     bonus = { magicDefense = 1 },

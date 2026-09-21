@@ -19,8 +19,7 @@ return {
     type = "armor",
     tags = { "heavy" },
     class = "vanguard",
-    unlockQuests = 5,
-    dropTier = 6,
+    unlockLevel = 9,
     bonus = { defense = Curve.ramp(6, 16), movement = -2 },
     traits = { "trait_breakers_harness" },
 }

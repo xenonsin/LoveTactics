@@ -15,8 +15,7 @@ return {
     type = "utility",
     tags = { "arcane" },
     class = "alchemist",
-    unlockQuests = 3,
-    dropTier = 3,
+    unlockLevel = 4,
     -- MASTERY, and the stat of the same name. The aura lends the neighbour a bigger number; the Skill is
     -- the hand that throws it -- and a thrown flask rolls to hit like anything else aimed at an
     -- unwilling body. "Dead weight on its own" stays true: this is still an item whose whole point is

@@ -31,7 +31,7 @@ return {
     tags = { "primal", "illusion", "utility" },
     class = "druid", -- deeper cut of the shelf: buyable only once the druid gate is cleared
     price = 660,
-    unlockQuests = 7,
+    unlockLevel = 13,
     activeAbility = {
         target = "self",
         range = 0,

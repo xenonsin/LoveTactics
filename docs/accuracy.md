@@ -201,7 +201,7 @@ luck   -1 Hit against you -> 0.57% less taken
 denies a *whole* one. Most of luck's value is in the crits that never happen to you, not the blows
 that miss — which is why it reads as a defensive stat that quietly does something offensive-feeling.
 
-Without those entries `Grade.statSwing` falls through to a generic `or 0.4`, and since `unlockQuests`
+Without those entries `Grade.statSwing` falls through to a generic `or 0.4`, and since `unlockLevel`
 and `price` are derived from the grade, every accuracy item in the game would have been shelved by an
 unconsidered fallback.
 

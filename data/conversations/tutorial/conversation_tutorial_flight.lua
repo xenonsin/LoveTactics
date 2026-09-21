@@ -45,5 +45,7 @@ return {
         { "character_rowan", "Walk to the chest ahead. Tap it, or swipe to take one step.", tag = 5, id = "move_hint_touch" },
         { "character_rowan", "Open your loadout to see what you found.", tag = 2, id = "loadout_hint" },
         { "character_rowan", "{select} an item in your stash to equip it to a hero.", tag = 3, id = "equip_hint" },
+        { "character_rowan", "You've leveled up! See how your stats have risen.", tag = 6, id = "class_hint" },
+        { "character_rowan", "Your class decides which stats rise. Open Classes to change it.", tag = 7, id = "classtab_hint" },
     },
 }

@@ -40,7 +40,7 @@ return {
     -- the horn and the Last Sounder both filed at rank 8 would drop at the same rate -- and this list is
     -- authored the other way round on purpose: the horn is the piece you meet, the Sounder is the one
     -- you are still after.
-    dropTier = 6,
+    unlockLevel = 10,
     -- RIFT-ONLY. It comes off the body and nowhere else: no counter deals one however many
     -- the company carries out, and none will buy one back (docs/drops.md, Vendor.foundPrice).
     unstocked = true,

@@ -9,5 +9,5 @@ return {
     description = "Stands as a ward for the party. A standing aura cuts the damage every ally beside you "
         .. "takes, and banners hold that ground while they stand.",
     exemplar = "character_paladin", -- NEW, pending
-    requires = { knight = 7, priest = 7 },
+    requires = { knight = 11, priest = 11 },
 }

@@ -75,7 +75,7 @@ return {
                 assert(def.class == "creature", id .. " belongs to no job")
                 assert(def.noSteal, id .. " cannot be lifted off the animal")
                 assert(def.price == nil, id .. " is on no shelf")
-                assert(def.dropTier == nil, id .. " is at no depth")
+                assert(def.unlockLevel == nil, id .. " is at no depth")
             end
             -- And the retag that made the ordinary blow answerable by armour at all: nothing in the
             -- game carries a `bite` resist, so for as long as the boar bit you no coat could blunt it.

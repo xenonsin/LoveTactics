@@ -70,7 +70,7 @@ return {
             -- them GRADES; what the number says is the report's business.
             local rewards = 0
             for id, def in pairs(Item.defs) do
-                if not def.price and not def.unlockQuests then
+                if not def.price and not def.unlockLevel then
                     local value = Grade.of(id)
                     assert(type(value) == "number",
                         id .. " is a quest reward and graded " .. tostring(value))
@@ -87,12 +87,12 @@ return {
             -- must not budge -- the day it does, the grade is reading the field it grades.
             local id = "weapon_iron_sword"
             local def = Item.defs[id]
-            local was = def.unlockQuests
+            local was = def.unlockLevel
             local before = Grade.of(id)
-            def.unlockQuests = 11
+            def.unlockLevel = 11
             Grade.reset()
             local after = Grade.of(id)
-            def.unlockQuests = was
+            def.unlockLevel = was
             Grade.reset()
             assert(math.abs(before - after) < 0.001,
                 "grade moved with the slot: " .. before .. " -> " .. after)

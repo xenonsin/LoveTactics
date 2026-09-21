@@ -8,5 +8,5 @@ return {
     description = "Fights one foe at a time. A stance builds a bonus that grows for every turn you stay "
         .. "locked with the same opponent.",
     exemplar = "character_duelist", -- NEW, pending
-    requires = { fighter = 7, rogue = 7 },
+    requires = { fighter = 10, rogue = 10 },
 }

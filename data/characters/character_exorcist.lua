@@ -35,11 +35,11 @@ return {
         "ability_heal",              "utility_rite_unspoken",                     false,
     },
     drops = {
-        "armor_crusaders_tabard",
-        "armor_robes_unbidden",
-        "utility_coveted_blood",
+        "armor_reliquary_mantle",
         "weapon_intercessors_staff",
-        "utility_vigil_beads",
+        "armor_warding_chasuble",
+        "utility_drill_standard",
+        "utility_second_utterance",
     },
     defaultAction = "ability_banish",
     -- Basic tactics: heal the moment healing matters; Banish and the dispels carry their own reads about

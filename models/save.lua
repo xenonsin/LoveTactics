@@ -809,6 +809,12 @@ function Save.snapshot(player)
         -- "absent" and "false" are different companies here, and only an explicit false says which.
         -- Still purely additive, so Save.VERSION does not move; see the reader for the older save.
         cityReached = player.cityReached == true,
+        -- ...AND THE OTHER HALF OF THE SAME GATE. The Roll opens at the Champion as well as at the
+        -- city (Descent.classesUnlocked), and a save written on the walk between the two -- which is
+        -- exactly where this leg now leaves the player standing -- has to carry it or the tab the
+        -- coach just pointed at is gone on resume. Elided when false: unlike `cityReached` there is no
+        -- older save to tell apart from a fresh one, so absent and false mean the same thing.
+        classesOpen = player.classesOpen or nil,
         -- ...AND THE TALLY ITSELF, which used to ride on the run (models/descent.lua's snapshot) and now
         -- rides here beside the mark that gates its readout. The note above is the reason it had to move:
         -- it said the tally "falls back to nought the moment they descend again", which was survivable
@@ -1293,6 +1299,7 @@ function Save.restore(snap)
         -- playing long enough to have a save from before it landed has certainly seen the town. A
         -- genuine pre-city save written since carries an explicit false, which is what this respects.
         cityReached = snap.cityReached ~= false,
+        classesOpen = snap.classesOpen == true,
         -- The tally (Descent.count). READ OFF THE RUN AS A FALLBACK, because that is where every save
         -- written before the move put it -- and it is read from the RAW snapshot rather than from the
         -- restored run, which no longer carries the field at all. A company mid-descent when this landed

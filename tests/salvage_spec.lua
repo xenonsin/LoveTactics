@@ -200,11 +200,11 @@ return {
         name = "a deeper unpriced find breaks into better ore, and never into more of it",
         fn = function()
             local shallow = findItem(function(_, def)
-                return def.dropTier and not def.bound and not def.price
+                return def.unlockLevel and not def.bound and not def.price
                     and Spoils.depthOf(def) <= 2
             end)
             local deep = findItem(function(_, def)
-                return def.dropTier and not def.bound and not def.price
+                return def.unlockLevel and not def.bound and not def.price
                     and Spoils.depthOf(def) >= 8
             end)
             assert(shallow and deep, "need a shallow and a deep unpriced find to compare")
@@ -253,7 +253,7 @@ return {
             -- trophies). The case flags its stand-in itself and restores it after, so picking a real
             -- trophy would assert the before-picture against a ware that has no before-picture.
             local id = findItem(function(_, def)
-                return def.dropTier and not def.bound and not def.price and def.class
+                return def.unlockLevel and not def.bound and not def.price and def.class
                     and Class.defs[def.class] and not def.unstocked
             end)
             assert(id, "need an unpriced found ware to stand in for one")

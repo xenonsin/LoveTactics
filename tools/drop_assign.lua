@@ -16,7 +16,7 @@
 --   CLASS   an item goes to a body of its own class, because that is the line the player is farming.
 --           A crossing's stock (an earned class) goes to a body of either PARENT, since no body is
 --           authored as a crossing and the parent houses are what the bench bills anyway.
---   DEPTH   an item goes to a body whose own rung is near its `dropTier`. A body's rung is its tier
+--   DEPTH   an item goes to a body whose own rung is near its `unlockLevel`. A body's rung is its tier
 --           spread up the class ladder (see rungOf) -- chaff at the top of the stair, a boss at the
 --           bottom -- so the deep catalogue lands on the deep bodies and a floor-one mook cannot hand
 --           over floor-eight kit even before Spoils.depthOf refuses it.
@@ -34,6 +34,19 @@
 --   BOUND         nailed to one grid by definition.
 --   SIGNATURES    an exemplar's own relic rides its bearer (tools/drop_tier.lua's own carve-out).
 --   PRICED        it has a counter. That is its answer (docs/shelf.md).
+--
+-- WHAT IT KEEPS RATHER THAN DEALS: `dropsPinned` on a body.
+--
+-- The deal is from scratch every time -- that is what makes it auditable -- so anything a HUMAN put on
+-- a list is gone the next time this runs, silently, and the list still looks derived. It happened: the
+-- Scale Hauberk is naga plate that the nagas do not WEAR (a naga already carries `lightning = -4`, and
+-- the coat would double it), so it was authored onto the lancer's list as the only way the race's own
+-- armour reaches a player at all -- and a re-deal took it off, because the coat is knight stock and no
+-- rule here would ever seat it on a naga. `tests/naga_spec.lua` is what noticed.
+--
+-- A pin is that exception said out loud: the ids on `dropsPinned` are seated first, count against
+-- TARGET_LIST, and are taken off the table so the deal cannot hand them to anybody else. Pin the thing
+-- a body IS where the three rules below cannot see it; everything else is dealt.
 --
 -- Report first. Nothing is written until you say `apply`.
 
@@ -89,7 +102,7 @@ local function sinOfClass(class)
     return class and sinByClass[class] or nil
 end
 
--- A BODY'S RUNG on the same 1..CLASS_LEVEL_CAP ladder an item's dropTier sits on.
+-- A BODY'S RUNG on the same 1..CLASS_LEVEL_CAP ladder an item's unlockLevel sits on.
 --
 -- Spread off `tier`, the bestiary's four bands (docs/bestiary.md: chaff, line, elite, boss), because
 -- that is the only depth signal a character blueprint carries and it was never designed for this --
@@ -108,13 +121,17 @@ local function eligibleBodies(placed)
     for _, charId in ipairs(sortedKeys(placed)) do
         local def = Character.defs[charId]
         if def and GEAR_KINDS[def.kind or ""] and not def.boss then
+            local list = {}
+            for _, id in ipairs(def.dropsPinned or {}) do
+                if Item.defs[id] then list[#list + 1] = id end
+            end
             out[#out + 1] = {
                 id = charId,
                 def = def,
                 class = def.class,
                 sin = sinOfClass(def.class),
                 rung = rungOf(def),
-                list = {},
+                list = list,
             }
         end
     end
@@ -127,7 +144,7 @@ local function dealable()
     for _, id in ipairs(sortedKeys(Item.defs)) do
         local def = Item.defs[id]
         local priced = def.price and def.price > 0
-        if def.dropTier and not def.bound and not priced and not hasTag(def, "signature")
+        if def.unlockLevel and not def.bound and not priced and not hasTag(def, "signature")
             and def.class and def.class ~= "creature" then
             out[#out + 1] = { id = id, def = def, depth = Spoils.depthOf(def) }
         end
@@ -180,7 +197,19 @@ local function assign()
         return a.id < b.id
     end)
 
+    -- PASS 0: the pins. Off the table before anything is dealt, so the deal cannot hand a pinned
+    -- piece to a second body -- and a pin deeper than its body's own rung IS that body's standout,
+    -- which is what stops pass 2 filling a list with something rarer than the thing it was pinned for.
     local taken = {}
+    for _, body in ipairs(bodies) do
+        for _, id in ipairs(body.list) do
+            taken[id] = true
+            local depth = Spoils.depthOf(Item.defs[id])
+            if depth > body.rung and depth > (body.standoutDepth or 0) then
+                body.standoutDepth = depth
+            end
+        end
+    end
 
     -- PASS 1: one standout each.
     local byRung = {}
@@ -191,7 +220,8 @@ local function assign()
     end)
     for _, body in ipairs(byRung) do
         for _, item in ipairs(items) do -- already deepest-first
-            if not taken[item.id] and item.depth > body.rung then
+            if body.standoutDepth then break end
+            if not taken[item.id] and item.depth > body.rung and #body.list < TARGET_LIST then
                 local ok = false
                 for _, cand in ipairs(bodiesForClass({ body }, item.def.class)) do
                     if cand == body then ok = true end

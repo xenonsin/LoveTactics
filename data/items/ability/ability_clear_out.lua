@@ -34,7 +34,7 @@ return {
     price = 575,
     -- Rank 1, not 3: the player is handed this mid-prologue (see above), so a shelf that withheld it
     -- until the third quest would be gating an ability they already own and have already been taught.
-    unlockQuests = 6,
+    unlockLevel = 11,
     activeAbility = {
         -- Aimed at the caster's own tile: the ring is centred on the body that spins, so there is
         -- nothing to pick but yourself (states/battle.lua's computeRange gives a self-target exactly

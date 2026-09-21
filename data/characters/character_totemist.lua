@@ -27,11 +27,11 @@ return {
         "consumable_healing_potion", "utility_standing_stone",           false,
     },
     drops = {
-        "armor_stalkers_pelt",
-        "utility_ghost_wind",
-        "utility_the_long_wait",
+        "utility_in_and_out",
+        "utility_the_second_hound",
+        "utility_cullers_kit",
         "weapon_long_silence",
-        "utility_surveyors_chain",
+        "ability_mothers_howl",
     },
     defaultAction = "ability_totem_of_renewal",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

@@ -393,7 +393,7 @@ local function rankOf(item)
     if not item or not item.id then return nil end
     if require("models.identify").isUnidentified(item) then return nil end
     local def = require("models.item").defs[item.id]
-    if not (def and def.dropTier) then return nil end
+    if not (def and def.unlockLevel) then return nil end
     return require("models.spoils").depthOf(def)
 end
 

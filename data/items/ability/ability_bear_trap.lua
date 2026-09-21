@@ -20,7 +20,7 @@ return {
     tags = { "trap", "utility" },
     class = "trapper", -- deeper cut of the shelf: buyable only once the trapper gate is cleared
     price = 165,
-    unlockQuests = 1,
+    unlockLevel = 1,
     activeAbility = {
         target = "tile",
         range = 3,

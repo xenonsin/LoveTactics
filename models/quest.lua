@@ -217,7 +217,7 @@ local shelfOf = Quest.shelf
 
 -- What a completion PUT ON the sponsor's shelf: every item that was locked in `before` and is for sale
 -- now. Derived by diffing the shelf rather than by re-deriving the gate here, because a shelf opens per
--- QUEST (each priced item names its own `unlockQuests`), so "did this quest open anything" has no
+-- QUEST (each priced item names its own `unlockLevel`), so "did this quest open anything" has no
 -- shorter honest answer than asking the shelf twice.
 --
 -- Returns nil when nothing opened -- most quests -- so the panel simply has no section to draw.

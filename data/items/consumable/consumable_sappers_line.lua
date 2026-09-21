@@ -23,7 +23,7 @@ return {
     tags = { "explosive" },
     class = "saboteur",
     price = 195,
-    unlockQuests = 5,
+    unlockLevel = 9,
     maxStack = 3,
     activeAbility = {
         target = "tile",

@@ -15,6 +15,11 @@
 --   * a DOOR is open when ANY offer behind it is (Offer.any -- models/building.lua's door gate)
 --   * a DESK LINE shows when ITS offer is (Offer.openSet -> the `offer` predicate in a scene's `when`)
 --
+-- ...AND WHETHER A ROOM HAS ANYTHING WAITING IN IT TODAY, which is a second question over the same
+-- rooms and lives at the bottom of this file: a gate says the mending line EXISTS, and Offer.news says
+-- somebody is actually hurt. The door's red dot and the desk line's are the OR and the one entry of
+-- that same call (Offer.anyNews / Offer.newsSet), for the same reason the gate is one call.
+--
 -- ONE FUNCTION ANSWERS BOTH, and that is the whole point of the file. Two readers asking the same
 -- question -- "is this room open" -- with two implementations is how a door ends up standing on a room
 -- nobody can reach, or a desk line offering a bench that is not built yet. The card-era gates had
@@ -217,6 +222,130 @@ function Offer.roomFor(player, building, answer)
         end
     end
     return nil
+end
+
+-- ---------------------------------------------------------------------------
+-- IS THERE ANYTHING WAITING IN THIS ROOM -- the red dot
+-- ---------------------------------------------------------------------------
+--
+-- A GATE SAYS THE ROOM EXISTS; THIS SAYS IT HAS SOMETHING FOR YOU TODAY. Two different questions, and
+-- the desk needs both: the Cathedral's mending line stands on that desk forever once anybody has been
+-- carried up broken (that is the gate doing its job), but it is only worth walking into on the trips
+-- where somebody is actually hurt. So the line wears a mark, and the mark is this.
+--
+-- THE DOOR AND THE LINE ARE ONE CALL, for the reason the header gives about the gate and for a failure
+-- this project has now shipped twice: a mark raised on a looser question than the screen behind it
+-- clears on is a mark the player cannot put out. They walk in, read everything, walk out, and the plate
+-- is still burning. So states/hub.lua's plate is the OR over these (Offer.anyNews) and a desk line is
+-- the one entry (Offer.newsSet) -- neither derives its own answer.
+--
+-- Keyed by PANEL rather than by answer, because the answer is the desk's word for a room ("mend",
+-- "lift", "read") and the panel is the room. Two houses could offer the same room under different
+-- words; nobody does today, and this way nobody has to remember not to.
+--
+-- EVERY ONE OF THESE IS A STATE, NOT A SIGHTING, with one deliberate exception. A wound, a hex and an
+-- unread find are things the company is still CARRYING -- a dot that went out on the first look would
+-- stop reminding the player at the exact moment they decided to deal with it after the next trip -- so
+-- they clear when the thing is dealt with, not when it is seen. The exception is a shelf, whose whole
+-- ledger is a sighting (Player.seeNew): stock is news, and news is read.
+--
+-- WHAT IS DELIBERATELY NOT HERE IS THE FORGE. "Something in the kit is damaged" is true after almost
+-- every trip, so a bench dot would be lit permanently within an hour and would teach the player that a
+-- dot on this board means nothing. A mark has to be able to go out.
+local NEWS = {}
+
+-- SOMEBODY IS HURT AND NOBODY HAS SEEN TO THEM YET. `unattended` rather than `wounded`: a body already
+-- lying up is being dealt with (the stay is served by descending -- models/wound.lua), and a room that
+-- went on flagging it would be asking for a decision the player has made.
+NEWS.ward = function(player)
+    return #require("models.wound").unattended(player) > 0
+end
+
+-- SOMETHING THE COMPANY OWNS IS HEXED (models/curse.lua). Counts the kit AND the stash, which is what
+-- Curse.count already walks -- a hex shelved rather than paid for is still a hex the rite would finish.
+NEWS.rite = function(player)
+    return require("models.curse").count(player) > 0
+end
+
+-- THE SATCHEL HOLDS SOMETHING NOBODY CAN READ (models/identify.lua). The most literal mark on the
+-- board: the player is carrying dead weight until this room is walked into.
+NEWS.touchstone = function(player)
+    return require("models.identify").count(player) > 0
+end
+
+-- A SHELF WITH SOMETHING ON IT NOBODY HAS LOOKED AT. See Offer.shelfNews.
+NEWS.shop = function(player, vendorId)
+    return Offer.shelfNews(player, vendorId)
+end
+
+-- Has this counter got a marked ware the player can actually be shown?
+--
+-- ASKED THROUGH THE SHELF'S OWN GATES (Quest.shelfGates) rather than of the catalogue. A mark can be
+-- laid on a ware sitting rungs above where the company is standing, and ui/panels/shop.lua draws no
+-- unseen dot on a row it cannot sell -- so a door asking only "does this house SELL a marked ware" lit
+-- for stock the rack will not mark, and the dot was still burning when the player walked out having
+-- read the lot. The gate makes the mark ask exactly what the rack answers, and the mark KEEPS: it
+-- lights on the day the ladder reaches the row, which is the only announcement a shelf opened by a
+-- class level ever gets.
+--
+-- THE MARKET IS ASKED OF ITS COUNTER, not of its shelf, and it is the one room that has to be.
+-- `sellsAll` makes the shelf question answer yes for every ware in the game (models/vendor.lua's
+-- Vendor.sells), so this lit for every discovery the company carried home -- two dozen wares the
+-- counter is not showing, and therefore a mark with nothing behind it that could clear. Market.hasUnread
+-- asks the standing rack.
+--
+-- Requires inline, the way the gates above do: a new top-level require reorders `pairs` over the
+-- registry, which is enough on its own to redden a spec that has nothing to do with this file.
+function Offer.shelfNews(player, vendorId)
+    if not (player and vendorId) then return false end
+    local Market = require("models.market")
+    if vendorId == Market.ID then return Market.hasUnread(player) end
+    if not player.newStock then return false end
+    local gates = require("models.quest").shelfGates(player, vendorId)
+    return require("models.vendor").hasMarkedStock(vendorId, player.newStock, gates) == true
+end
+
+-- Is anything waiting behind ONE room? `offer` is an entry from Offer.list. A room that is not open yet
+-- never carries a mark: a dot for a line the desk will not print is a dot with nothing behind it that
+-- the player could clear.
+function Offer.news(player, offer)
+    if not (player and offer and offer.open and offer.panel) then return false end
+    local fn = NEWS[offer.panel]
+    if not fn then return false end
+    return fn(player, offer.vendor) == true
+end
+
+-- The rooms with something waiting, as an id set keyed by ANSWER: { mend = true }. The mirror of
+-- Offer.openSet, and what a counter hands the conversation resolver so each desk line can wear its own
+-- mark (models/counter.lua).
+function Offer.newsSet(player, building)
+    local set = {}
+    for _, offer in ipairs(Offer.list(player, building)) do
+        if offer.answer and Offer.news(player, offer) then set[offer.answer] = true end
+    end
+    return set
+end
+
+-- Is anything waiting behind this DOOR -- the OR over its open rooms. What the plate on the plaza wears
+-- (states/hub.lua), so the city says which door to walk through before any of them is opened.
+--
+-- A QUIET ROOM STILL COUNTS, unlike Offer.any above, and the difference is what each question is for.
+-- `quiet` decides whether a room may ANNOUNCE ITS HOUSE -- put a card on the plaza that was not there
+-- yesterday -- and a shelf may not, because a class rung is not a deed the player can feel. A mark on a
+-- door already standing is not an announcement; it is the house saying there is something inside, which
+-- is exactly what a shelf with unread stock on it is.
+--
+-- A door that keeps a shelf and declares no rooms at all (nothing does today; the Armory's shape is one
+-- blueprint away from it) is asked about its own counter.
+function Offer.anyNews(player, building)
+    local offers = (building and building.offers) or {}
+    if #offers == 0 then
+        return building ~= nil and building.vendor ~= nil and Offer.shelfNews(player, building.vendor)
+    end
+    for _, offer in ipairs(Offer.list(player, building)) do
+        if Offer.news(player, offer) then return true end
+    end
+    return false
 end
 
 return Offer

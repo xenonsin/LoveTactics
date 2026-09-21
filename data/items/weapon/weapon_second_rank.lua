@@ -27,7 +27,7 @@ return {
     tags = { "spear", "pierce", "physical", "melee" },
     hands = 2,
     class = "knight",
-    dropTier = 7,
+    unlockLevel = 12,
     activeAbility = {
         target = "tile",
         allowOccupied = true,
@@ -35,7 +35,7 @@ return {
         minRange = 1,
         speed = 3,
         cost = { stat = "stamina", amount = 9 },
-        damage = Curve.ramp(5, 15),
+        damage = Curve.ramp(14, 24),
         aoe = { shape = "line", length = 2 },
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do

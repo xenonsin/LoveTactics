@@ -28,7 +28,7 @@ return {
     -- `magical` in place of the family's usual physical: routes through Magic Damage / Magic Defense.
     tags = { "axe", "slash", "magical", "melee" },
     class = "fighter",
-    dropTier = 8,
+    unlockLevel = 14,
     activeAbility = {
         target = "tile",
         allowOccupied = true,
@@ -38,7 +38,7 @@ return {
         cost = { stat = "stamina", amount = 11 },
         -- Measured against Magic Defense, which the heavy infantry an axe is aimed at have bought almost
         -- none of -- so the number is modest and what arrives is not.
-        damage = Curve.ramp(4, 14),
+        damage = Curve.ramp(14, 24),
         aoe = { shape = "front", width = 3 },
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do

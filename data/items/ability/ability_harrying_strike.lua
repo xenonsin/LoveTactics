@@ -13,7 +13,7 @@ return {
     tags = { "slash", "physical" },
     class = "skirmisher", -- fighter x hunter; the Hit-and-run mechanic's first stock
     price = 245,
-    unlockQuests = 2,
+    unlockLevel = 3,
     activeAbility = {
         target = "enemy",
         range = 1,

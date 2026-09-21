@@ -27,7 +27,7 @@ return {
     -- `magical` in place of the family's usual physical: this is the deviation and the weapon.
     tags = { "dagger", "pierce", "magical", "melee" },
     class = "rogue",
-    dropTier = 7,
+    unlockLevel = 11,
     activeAbility = {
         target = "enemy",
         range = 1,
@@ -37,7 +37,7 @@ return {
         cost = { stat = "stamina", amount = 5 },
         -- Measured against Magic Defense, which the armoured bodies a rogue struggles with have bought
         -- almost none of. Modest on paper; most of it arrives.
-        damage = Curve.ramp(5, 15),
+        damage = Curve.ramp(12, 22),
         effect = function(fx)
             fx.damage(fx.target, { inflicts = "status_bleed" }) -- tags default to the item's, so the cut is magical
         end,

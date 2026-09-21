@@ -6860,7 +6860,25 @@ function battle.drawTileTooltipAt(cx, cy)
     local objInfo
     -- Same precedence actionPreviewFor picks a strike target with (trap, then wall, then prop), so the
     -- box that opens describes the very thing a click would hit.
-    if unit and unit.char then objInfo = { unit = unit, preview = preview, intent = battle.intentFor(unit) }
+    -- THE INTENT SECTION GOES QUIET WHILE THE BODY IS BEING AIMED AT. The prediction is made on the
+    -- seams (computeIntents: hand-off, committed walk, committed action) and knows nothing of the blow
+    -- under the cursor -- which may kill this foe, move it, stun it, or take the very body it names off
+    -- the board. Read through a raised weapon it is a turn the foe will probably never take.
+    --
+    -- And the box is already answering that question a few rows up, properly: the EXCHANGE names what
+    -- this foe does back to the blow being weighed (its counter, its shove), conditioned on the blow.
+    -- An unconditioned prediction printed under a conditioned one reads as a second consequence of the
+    -- same click, and it is not one -- which is the misleading part, not the staleness.
+    --
+    -- Withheld, not lost: aim somewhere else and it is back on the next frame, the badge on the body
+    -- and the mark on its turn card never went anywhere, and a hover on that card (drawUnitTooltip)
+    -- still opens the full section in words. It goes quiet at the one moment it would be read as a
+    -- promise about the exchange.
+    local aimedAt = action and unit
+        and (action.target == unit or (action.entries and action.entries[unit] ~= nil))
+    if unit and unit.char then
+        objInfo = { unit = unit, preview = preview }
+        if not aimedAt then objInfo.intent = battle.intentFor(unit) end
     elseif body and body.char then objInfo = { unit = body, preview = preview }
     elseif trap then objInfo = { trap = trap, preview = preview }
     elseif wall then objInfo = { wall = wall, preview = preview }

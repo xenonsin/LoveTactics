@@ -28,8 +28,7 @@ return {
     type = "utility",
     tags = { "holy" },
     class = "exorcist", -- Banish, turned inward -- it strips what is riding the body and lifts it out of reach
-    unlockQuests = 5,
-    dropTier = 4,
+    unlockLevel = 6,
     traits = { "trait_stayed_hand" },
     bonus = { magicDefense = Curve.ramp(1, 11) },
 }

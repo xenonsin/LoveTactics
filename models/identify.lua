@@ -222,6 +222,11 @@ function Identify.sealed(id, floor, level, curse)
         -- hexed husk and a clean one are the same row on the same shelf at the same price -- and nothing
         -- reads this field until somebody pays. Curse.canAfflict refuses a husk for the mirror reason:
         -- a hex may travel INSIDE a seal, but nothing may put one on a piece whose name is still secret.
+        --
+        -- "NOTHING READS THIS FIELD" IS ENFORCED IN Curse.of, not here and not by hope. It was hope for
+        -- one release and four surfaces read it: the tooltip printed the hex's name and sentence, a
+        -- binding hex locked the stash cell, the Cathedral listed the husk and opened its door, and
+        -- Player.atRisk skipped it -- so a hexed find was the one thing that survived a wipe.
         curse = curse,
         unidentified = floor,
     }

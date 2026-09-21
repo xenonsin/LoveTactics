@@ -12,7 +12,7 @@ return {
     tags = { "snare" },
     class = "hunter",
     price = 30,
-    unlockQuests = 0,
+    unlockLevel = 0,
     activeAbility = {
         target = "enemy",
         range = 3,

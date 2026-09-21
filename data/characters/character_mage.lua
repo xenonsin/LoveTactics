@@ -37,11 +37,11 @@ return {
     -- The go-to action pinned by default (Combat.defaultAction): armed at the start of its turn so
     -- its range shows, and driving the basic click-to-use. The player can re-pin any ability.
     drops = {
-        "armor_overchannel_weave",
+        "armor_gaunt_vigil_plate",
         "utility_pale_vesture",
-        "utility_codex_of_hubris",
-        "weapon_second_utterance_wand",
-        "weapon_litany_staff",
+        "weapon_sealed_ward_wand",
+        "utility_the_last_sounder",
+        "utility_vigil_beads",
     },
     defaultAction = "ability_fireball",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

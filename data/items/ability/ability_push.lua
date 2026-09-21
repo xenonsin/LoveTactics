@@ -20,7 +20,7 @@ return {
     tags = { "impact", "physical" },
     class = "bulwark", -- deeper cut of the shelf: buyable only once the bulwark gate is cleared
     price = 575,
-    unlockQuests = 6,
+    unlockLevel = 11,
     activeAbility = {
         target = "tile",       -- an adjacent tile, so what is shoved may be friend, foe or furniture
         allowOccupied = true,

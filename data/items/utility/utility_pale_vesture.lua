@@ -28,8 +28,7 @@ return {
     type = "utility",
     tags = { "arcane" },
     class = "mage",
-    unlockQuests = 6,
-    dropTier = 6,
+    unlockLevel = 10,
     activeAbility = {
         target = "self",
         range = 0,

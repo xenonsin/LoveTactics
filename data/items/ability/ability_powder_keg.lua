@@ -29,7 +29,7 @@ return {
     tags = { "fire", "explosive" },
     class = "bombardier", -- deeper cut of the shelf: buyable only once the bombardier gate is cleared
     price = 165,
-    unlockQuests = 1,
+    unlockLevel = 1,
     activeAbility = {
         target = "tile",
         range = 3,

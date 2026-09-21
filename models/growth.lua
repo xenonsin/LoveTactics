@@ -165,6 +165,17 @@ end
 Growth.LEVEL_CAP = 50
 Growth.PRESTIGE_PER_LEVEL = 2
 
+-- THE DEEPEST LEVEL THE GAME ACTUALLY FIELDS, which is a different question from LEVEL_CAP and is the
+-- one the class-mastery stamp above needs. LEVEL_CAP bounds a prestige total that never stops; this is
+-- where the content tops out -- Descent.dangerLevel on the bottom floor, which is the Hollow Crown's.
+--
+-- DECLARED HERE RATHER THAN READ OFF Descent, and the reason is the require graph: models/descent.lua
+-- pulls this file in, so reading back would close a cycle. tests/growth_spec.lua asserts this against
+-- Descent.dangerLevel at Descent.FLOORS, so re-cutting the stack reddens a spec instead of quietly
+-- re-scaling every enemy in the game -- the rule models/descent.lua's own LEVEL_PER_FLOOR records
+-- ("re-derive this from the ceiling rather than from this comment").
+Growth.MASTERY_REACH = 17
+
 -- The level a character sits at for a given global prestige. The single owner of that mapping: the
 -- roster, enemy scaling (states/battle.lua), and the advancement bar all read levels through here, so
 -- there is one curve to retune rather than three.
@@ -300,11 +311,24 @@ function Growth.bossHitShare(level, ref) return shareAt(level, Growth.BOSS_FLOOR
 -- STAMPED AS CAREER TECHNIQUE rather than as a class level of its own, so there is ONE ledger and one
 -- reader. A second field saying "this body is Knight 5" could disagree with the technique that is
 -- supposed to mean the same thing, and Class.classLevel would have to choose between them.
+--
+-- SPREAD OVER THE LEVELS THE GAME REACHES, not over LEVEL_CAP, and the difference was the whole of what
+-- this function had stopped doing. It divided by `LEVEL_CAP - 1` -- 49 -- on the reading that the cap
+-- is the top of the level range. It is not, and has not been since the quest board was retired: the
+-- cap is a bound on a prestige total that never stops (models/growth.lua's own header says so), while
+-- the deepest thing the rift actually fields stands at Growth.MASTERY_REACH.
+--
+-- Measured before the fix: the Hollow Crown's floor spawns at level 17, which over a span of 49 stamps
+-- class level 3, and floors one through eight stamped ZERO. So every body in the bestiary swung at its
+-- item's authored magnitude while a committed player body swung at the top of the mastery span -- the
+-- exact "player-only power gain across the entire bestiary" this function's own header names as the
+-- reason it exists. It was not scaling the enemy; it was rounding the enemy to nothing.
 local function stampClassLevel(char, level)
     local Class = require("models.class")
     local key = Growth.classOf(char)
-    local span = math.max(1, Growth.LEVEL_CAP - 1)
-    local n = math.floor(Class.CLASS_LEVEL_CAP * math.max(0, (level or 1) - 1) / span + 0.5)
+    local span = math.max(1, Growth.MASTERY_REACH - 1)
+    local n = math.floor(Class.CLASS_LEVEL_CAP
+        * math.max(0, math.min(Growth.MASTERY_REACH, level or 1) - 1) / span + 0.5)
     char.technique = char.technique or {}
     local earned = Class.classLevelCost(n)
     if earned > (char.technique[key] or 0) then char.technique[key] = earned end

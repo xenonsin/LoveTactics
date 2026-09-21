@@ -64,7 +64,7 @@ return {
     price = 660,
     -- Gated to the END of the greed line: on sale only once all ten Undercroft quests are cleared -- i.e.
     -- Aurea is beaten (slot 10). Her gold ward is the one piece of her fight this is a straight copy of.
-    unlockQuests = 7,
+    unlockLevel = 13,
     activeAbility = {
         target = "self", -- nobody else's account is yours to open, and nobody else's to close
         range = 0,

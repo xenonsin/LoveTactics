@@ -300,7 +300,7 @@ return {
                         if (def.type == "weapon" or def.type == "ability")
                             and def.price and not def.discipline
                             and def.class and Forge.houseVendorFor(def.class) == vendorId
-                            and (def.unlockQuests or 0) <= gate then
+                            and (def.unlockLevel or 0) <= gate then
                             local w = Item.instantiate(id, 1, Balance.FORGE_BASELINE)
                             local power = (w.activeAbility and w.activeAbility.damage) or 0
                             if power > bestPower then best, bestPower = id, power end
@@ -404,7 +404,7 @@ return {
                     local def = Item.defs[id]
                     bad[#bad + 1] = string.format(
                         "%s (slot %d, %s%s): %d power against slot target %d -- %s",
-                        id, def.unlockQuests or 0, tostring(Balance.familyOf(id)),
+                        id, def.unlockLevel or 0, tostring(Balance.familyOf(id)),
                         def.price and "" or ", quest-only", have, want,
                         verdict == "low" and "raise it" or "it outreaches its own slot")
                 end
@@ -496,7 +496,7 @@ return {
                     -- case has always been about.
                     local allFound = {}
                     for id, def in pairs(Item.defs) do
-                        if def.dropTier then allFound[id] = true end
+                        if def.unlockLevel and not def.price then allFound[id] = true end
                     end
                     local plain = 0
                     for _, entry in ipairs(Vendor.stock(vendorId, done, nil, unlocked, levels, allFound)) do

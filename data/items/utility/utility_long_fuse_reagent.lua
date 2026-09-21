@@ -14,8 +14,7 @@ return {
     type = "utility",
     tags = { "arcane" },
     class = "alchemist",
-    unlockQuests = 3,
-    dropTier = 3,
+    unlockLevel = 4,
     aura = {
         appliesTo = { "consumable" }, -- only the throwables it sits beside
         rangeBonus = { 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2 },               -- added to the neighbor consumable's ability range

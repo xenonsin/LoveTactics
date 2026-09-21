@@ -21,7 +21,7 @@ return {
     tags = { "rally" },
     class = "warlord", -- deeper cut of the shelf: buyable only once the warlord gate is cleared
     price = 65,
-    unlockQuests = 1,
+    unlockLevel = 1,
     activeAbility = {
         target = "self", -- struck where the drummer stands; the cadence reaches the tile around them
         range = 0,

@@ -39,11 +39,11 @@ return {
     -- The go-to action pinned by default (Combat.defaultAction): armed at the start of its turn so its
     -- range shows, and driving the basic click-to-use. The player can re-pin any ability.
     drops = {
-        "utility_spellstrike",
         "weapon_bellfounders_hammer",
-        "weapon_bellowing_edge",
-        "weapon_carrion_axe",
-        "utility_round_for_the_house",
+        "weapon_frostfall_hammer",
+        "weapon_sealed_hour",
+        "weapon_tempo_debt",
+        "weapon_avalanche",
     },
     defaultAction = "weapon_iron_axe",
     -- The two items that ARE this unit. Draft mode strips a bought body down to exactly these

@@ -22,8 +22,7 @@ return {
     type = "weapon",
     tags = { "mace", "impact", "physical", "lightning", "melee" },
     class = "knight",
-    unlockQuests = 6,
-    dropTier = 7,
+    unlockLevel = 11,
     activeAbility = {
         target = "enemy",
         range = 1,

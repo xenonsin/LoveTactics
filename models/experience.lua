@@ -39,8 +39,34 @@ local Experience = {}
 Experience.PER_ACTION = 1
 Experience.PER_FELLING = 4
 
--- THE CURVE. Experience to climb one level is STEP x the level being left, so the cost of a level rises
--- linearly and the cumulative cost of reaching level L is triangular: STEP x L x (L-1) / 2.
+-- THE CURVE IS FLAT: every level costs STEP, at every level. ALL of the control is in the AWARD
+-- (Experience.rewardScale), and none of it is here.
+--
+-- FINAL FANTASY TACTICS' ARRANGEMENT, adopted deliberately after trying the other two. A level there
+-- costs 100 experience whether it is your second or your fiftieth; what varies is what an ACTION pays,
+-- which is scaled by how far the thing you acted on sits above or below you. Hit something well under
+-- your level and you are paid about one point. The flat table is not an oversight -- it is what lets
+-- the scaling be the whole rule.
+--
+-- WHY NOT A RISING CURVE, having shipped two. Triangular was the original and a farmer beats it: the
+-- twentieth lap of a cheap floor pays what the first did while the level it buys has only got linearly
+-- dearer. Geometric fixed that and broke something worse. The danger ladder down here is LINEAR -- one
+-- level a floor (Descent.LEVEL_PER_FLOOR) -- and a geometric cost against a linear ramp diverges by
+-- construction: the cheap early levels go by fast and the dear late ones do not, so a company playing
+-- the mode exactly as designed ran SIX levels over its own ground by floor two. Measured, and caught by
+-- tests/reward_scale_spec walking the ramp. Every grace band wide enough to stop taxing that company
+-- was also wide enough to let it farm.
+--
+-- FLAT AND SCALED IS SELF-STABILISING, which is the property the other two do not have and the reason
+-- this is the right borrow. A company that pulls ahead of its ground earns less and slows; one that
+-- falls behind earns full and catches up. So the party LEVEL TRACKS THE FLOOR rather than racing it,
+-- at whatever gap the falloff and the income settle on -- and the whole question of "does the curve
+-- keep pace with the ladder" stops being a thing anybody has to tune, because it answers itself.
+--
+-- WHAT WE DO NOT BORROW IS FFT'S TREATMENT OF JP. There, job points are flat per action and are NOT
+-- level-scaled, which is exactly why grinding weak enemies for JP is a known strategy in that game.
+-- Technique is scaled here on the same curve as experience (Combat.scaledAward) -- see
+-- Class.TECHNIQUE_PER_ACTION. The hole FFT leaves open is the one this was reported through.
 --
 -- ONE STEP, AND IT USED TO BE TWO. This file carried a second constant -- DESCENT_STEP, ten against the
 -- campaign's three -- on the reasoning that the descent and the quest board were separate games, and
@@ -85,12 +111,89 @@ Experience.PER_FELLING = 4
 -- the truth before it was measured. tests/experience_spec.lua pins the arithmetic and
 -- tests/descent_level_spec.lua walks all fifteen floors against it, so the number above is reproducible
 -- rather than remembered.
-Experience.STEP = 10
+--
+-- RE-ANCHORED ON A MEASURED FLOOR, AND THEN ON THE EQUILIBRIUM. Everything above was worked against "a
+-- floor is about six fights", which was Descent.FLOOR_FIGHTS read at the time and is not what a floor
+-- costs: the prowl deals a fight per PROWL_STEPS of WALKING, and a greedy tour of every content cell on
+-- a rolled floor runs 78 steps at the top and 90 at the bottom -- 6.9 fights a floor rising to 8.6. A
+-- worked route, which re-treads for a locked cache and walks back to the stair, is nearer ten a floor,
+-- which at twelve a fight is 120 nominal.
+--
+-- NINETY-SIX IS A FLOOR TOURED, and that is the whole derivation: a level costs exactly what one
+-- floor pays at FULL rate, so a company keeping pace with its ground gains the one level a floor that
+-- the ground gains, and the gap neither opens nor closes. The ladder and the ramp are parallel by
+-- construction rather than by tuning.
+--
+-- SOLVED AT THE TOUR RATE AND NOT THE WORKED ONE, deliberately. Pricing a level at a WORKED floor
+-- (120) leaves a toured one paying under a level, so the careful player falls behind the ground for
+-- being careful. Pricing it at the tour makes the thorough player gain a little -- and that surplus is
+-- what the falloff is FOR: they pull one to two levels ahead, earnings throttle, and they settle
+-- there. The error runs in the forgiving direction and the loop absorbs it.
+--
+-- WHAT THAT LANDS, walked floor by floor against the real spawn level: the company leaves Act 0 five
+-- sixths of the way to its second level -- so the first fight of floor one is a level-up -- tracks the
+-- stock on the board within a level or two the whole way down, and arrives at the Crown around 16 or
+-- 17 against a bottom that fights at 17. tests/reward_scale_spec runs that simulation at three
+-- different rates rather than restating any of it.
+Experience.STEP = 96
 
 -- Total experience needed to have REACHED `level`. Level 1 costs nothing -- everybody starts there.
 function Experience.totalFor(level)
     local l = math.max(1, math.min(Growth.LEVEL_CAP, level or 1))
-    return Experience.STEP * l * (l - 1) / 2
+    return Experience.STEP * (l - 1)
+end
+
+-- ---------------------------------------------------------------------------
+-- WHAT A FIGHT IS WORTH AGAINST WHAT YOU ARE
+-- ---------------------------------------------------------------------------
+--
+-- The share of its full award a fight pays a body `earnerLevel` standing against opposition at
+-- `oppositionLevel`. One over an even fight, falling away once the company has outgrown the ground.
+--
+-- THE FLOOR IS A PLACE AND IT RE-ARMS, which is what makes this necessary rather than tidy. A company
+-- can walk floor one for as long as it likes and the monsters come back every time (Descent.rearmFloor
+-- -- Wizardry's own split, and the right one). What must not come back is the PAY: in Wizardry a level
+-- one maze is worth nothing to a party that has been to ten, and that is the whole reason nobody farms
+-- it. Without this the shallow end is an infinite, safe, if slow, source of both ladders.
+--
+-- A GRACE BAND FIRST, and it is the part that keeps honest play whole. A company that fights its way
+-- down LEADS the ground it is standing on for most of the descent, draws level around floor twelve and
+-- finishes a little behind -- so a flat per-level falloff would tax the intended curve hardest exactly
+-- where the mode is hardest to keep up with, and a company playing it as designed would be paying a
+-- penalty for doing so.
+--
+-- ONE, AND IT WENT THREE -> FIVE -> ONE, which is worth recording because the first two were chasing a
+-- problem that belonged to the CURVE. While the cost curve was geometric it outran the linear danger
+-- ladder by construction, so honest play sat four, then six levels over its own ground and the grace
+-- had to keep widening to avoid taxing it -- each widening making the farming rule weaker. Flattening
+-- the curve removed the divergence at its source (see THE CURVE IS FLAT above) and the band no longer
+-- has to cover a drift that does not happen.
+--
+-- So this is small on purpose. FFT has no grace band at all -- one level above the target already pays
+-- you less there -- and one level is the smallest concession that stops a company being penalised for
+-- a single level of ordinary drift, which would read as arbitrary rather than as a rule.
+--
+-- IT IS ALSO HALF OF WHERE THE EQUILIBRIUM SITS, so it is not free and must not be widened casually:
+-- the party settles at GRACE plus log(STEP/income)/log(FALLOFF) levels over the ground, which is two
+-- at these numbers. Widen this and the whole ramp rises with it.
+--
+-- MEASURED AGAINST WHAT ACTUALLY SPAWNS, not against the ladder: ordinary stock is LAGGED under the
+-- floor's own danger (Growth.ENEMY_LEVEL_LAG) and Combat.oppositionLevel reads real units, so the gap
+-- in play runs about a level wider than the gap on paper. tests/reward_scale_spec simulates the whole
+-- descent through Growth.combatantLevel rather than restating any of this.
+--
+-- ...AND GEOMETRIC DECAY AFTER IT, never a cliff. A hard cutoff makes one level of drift the difference
+-- between full pay and nothing, which reads as the game breaking rather than as a rule. At 0.65 a body
+-- four levels past the grace still earns a fifth, and the level-15 company farming floor one -- twelve
+-- levels up, nine past the grace -- earns two per cent of what the fight is worth. Slow enough to be
+-- pointless, never zero, and never a wall anybody can be surprised by.
+Experience.REWARD_GRACE = 1
+Experience.REWARD_FALLOFF = 0.65
+
+function Experience.rewardScale(earnerLevel, oppositionLevel)
+    local gap = (earnerLevel or 1) - (oppositionLevel or 1) - Experience.REWARD_GRACE
+    if gap <= 0 then return 1 end
+    return Experience.REWARD_FALLOFF ^ gap
 end
 
 -- The level `xp` entitles a body to, capped by Growth.LEVEL_CAP -- the same ceiling the prestige ladder

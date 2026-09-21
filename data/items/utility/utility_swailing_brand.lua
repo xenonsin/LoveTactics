@@ -58,7 +58,7 @@ return {
     type = "utility",
     tags = { "charm", "nature", "zone" },
     class = "druid",
-    dropTier = 9, -- the chase: the deepest rung this fight reaches
+    unlockLevel = 15,
     -- RIFT-ONLY. It comes off the body and nowhere else: no counter deals one however many the company
     -- carries out, and none will buy one back (docs/drops.md, Vendor.foundPrice).
     unstocked = true,

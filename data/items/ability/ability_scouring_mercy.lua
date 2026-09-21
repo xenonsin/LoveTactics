@@ -33,7 +33,7 @@ return {
     tags = { "holy", "magical" },
     class = "exorcist", -- deeper cut of the shelf: buyable only once the exorcist gate is cleared
     price = 660,
-    unlockQuests = 7,
+    unlockLevel = 13,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

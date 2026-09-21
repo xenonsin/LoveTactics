@@ -8,5 +8,5 @@ return {
     description = "Strikes and moves on. Attacking frees a move afterwards, so you never end a turn "
         .. "standing where you swung.",
     exemplar = "character_skirmisher", -- NEW, pending
-    requires = { fighter = 7, hunter = 7 },
+    requires = { fighter = 11, hunter = 11 },
 }

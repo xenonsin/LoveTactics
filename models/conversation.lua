@@ -234,6 +234,11 @@ function Conversation.context(player)
         -- models/counter.lua for the one kind of scene that has a door in front of it: a context built
         -- for anything else has no offers, and the `offer` predicate simply never holds.
         offers = {},
+        -- ...and which of them have something waiting in them TODAY -- a body to mend, a hex to lift, a
+        -- find nobody has read. Not a `when`: it does not decide whether a line is printed, it MARKS the
+        -- line that is (see `resolve`), which is why it is a set on the context rather than a predicate.
+        -- Empty for every scene played outside a counter, so an ordinary choice is never marked.
+        news = {},
     }
 end
 
@@ -361,6 +366,16 @@ function Conversation.resolve(def, ctx)
                     local copy = shallowCopy(choice)
                     copy.when = nil -- spent here, exactly as a node's is
                     if copy.goto and redirect[copy.goto] then copy.goto = redirect[copy.goto] end
+                    -- THE RED DOT ON AN OPTION: there is something behind this one right now. Stamped
+                    -- here rather than authored, because it is a fact about the save at the instant the
+                    -- scene is played -- a counter hands the set over on its context and rebuilds it on
+                    -- every pass through the desk, so mending a bone takes the mark off the line the
+                    -- player just walked through (models/counter.lua, models/offer.lua's Offer.newsSet).
+                    --
+                    -- Written as an `if` rather than `a and b or nil`: the and-or idiom cannot yield nil
+                    -- in Lua, and a `news = false` on every unmarked choice is a field the widget would
+                    -- then have to know is not the same as absent.
+                    if copy.answer and (ctx.news or {})[copy.answer] then copy.news = true end
                     choices[#choices + 1] = copy
                 end
             end

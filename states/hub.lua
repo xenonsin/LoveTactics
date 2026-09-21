@@ -36,15 +36,12 @@ local CoachBubble = require("ui.coach_bubble")
 local TutorialNote = require("ui.panels.tutorial_note") -- ...and the window that says what a wound IS
 local Conversation = require("models.conversation")
 local Class = require("models.class")
-local Vendor = require("models.vendor")  -- hasMarkedStock: the unread half of a shop's dot
-local Market = require("models.market")  -- hasUnread: the one shop whose dot is not a shelf question
 local Item = require("models.item")
-local Curse = require("models.curse")        -- what the company is carrying that the rite would lift
 local Identify = require("models.identify")
 local Wound = require("models.wound")     -- what a dive broke, and this door-step is where it stops being true
 local VendorVisit = require("models.vendor_visit") -- what a shop says before it shows you the shelf
 local Counter = require("models.counter")    -- a house: the greeting, the desk, and the rooms behind it
-local Offer = require("models.offer")        -- ...and which of those rooms are open yet
+local Offer = require("models.offer")        -- which of those rooms are open, and which have news in them
 local Locale = require("models.locale")
 local Scale = require("scale")
 local ScreenFx = require("ui.screen_fx")
@@ -684,29 +681,6 @@ local function introAdvance()
     focusCoachedCard()
 end
 
--- IS THERE SOMETHING ON THIS HOUSE'S SHELF NOBODY HAS READ -- the dot half of a shop's plate.
---
--- Asked THROUGH THE SHELF'S OWN GATES (Quest.shelfGates) and not of the catalogue. A mark can be laid
--- on a ware sitting rungs above where the company is standing -- and the shop draws no unseen dot on a
--- row it cannot sell, on purpose. So a plate asking only "does this house SELL a marked ware" lit for
--- stock the shop will not mark, the player read the whole rack, and the dot was still burning when they
--- walked out. The gate makes the door ask exactly what the rack answers, and the mark keeps: it lights
--- this plate on the day the ladder reaches the row, which is the only announcement a shelf opened by a
--- class level gets.
---
--- The worst offender was DISCOVERY -- every ware carried out of the rift was marked, which was most of
--- a trip's haul. That is gone at the source rather than gated here: finding a thing opens no counter
--- line any more, so Player.markFound stamps the ledger and marks nothing.
---
--- `models.quest` inline rather than at the top of the file, the way models/vendor.lua's grade lookup is:
--- a new top-level require reorders `pairs` over the registry, which is enough on its own to redden a
--- spec that has nothing to do with this screen.
-local function unreadShelf(player, vendorId)
-    if not (player and vendorId and player.newStock) then return false end
-    local gates = require("models.quest").shelfGates(player, vendorId)
-    return Vendor.hasMarkedStock(vendorId, player.newStock, gates)
-end
-
 function hub.enter()
     require("models.sound").music("music.hub")
     -- The session's one player, carried across every hub visit. Rebuilding it here (as this
@@ -790,112 +764,44 @@ function hub.enter()
     -- getting richer (Building.list).
     mapOpts = {
         onActivate = openPanel,
-        -- A door behind which something unlooked-at is waiting wears the red dot. The advancement
-        -- panel names the house once, on the way home; the dot is what still says so three screens
-        -- later, and it goes out as soon as the goods have been read (Player.seeNew).
+        -- A DOOR WITH SOMETHING BEHIND IT WEARS THE RED DOT, and the question is asked of the rooms
+        -- rather than of the card: a plate is the OR over what is waiting inside (models/offer.lua's
+        -- Offer.anyNews), and the desk behind it marks the one line that news belongs to. Two readers,
+        -- one call -- a mark raised on a looser question than the screen behind it clears on is a mark
+        -- the player walks in, reads everything, walks out, and still cannot put out.
         --
-        --   a shop     wares a quest put on its shelf   (newStock, cleared in ui/panels/shop.lua)
-        --   the Armory items that arrived in the stash  (newItems, cleared in ui/panels/party.lua)
-        --   the Hall   a hiring voucher, unspent        (models/voucher.lua, cleared by spending it)
+        --   a shelf    wares a rung just opened, unlooked-at  (newStock, cleared in ui/panels/shop.lua)
+        --   the Ward   somebody hurt and not yet seen to      (models/wound.lua, cleared by resting or paying)
+        --   the rite   something the company owns is hexed    (models/curse.lua, cleared by the lift)
+        --   the stone  a find nobody can read                 (models/identify.lua, cleared by reading it)
+        --   the Armory items that arrived in the stash        (newItems, cleared in ui/panels/party.lua)
         --
-        -- The Armory is the non-vendor door onto the Party panel -- it holds the stash rather than a
-        -- shelf, which is exactly the difference the two ledgers draw.
-        --   a house    a request it is ready to make       (models/errand.lua, cleared by walking in)
-        --
-        -- THE THIRD ONE IS THE ONE THE CITY MOST NEEDS. A shelf climbs a rung at a time and each rung is
-        -- bought by running an errand, but the house only ASKS when you open its door -- so a company
-        --
+        -- The first is a SIGHTING and clears on a look; the middle three are STATES the company is
+        -- carrying and clear only when they are dealt with -- a dot that went out on the first glance
+        -- would stop reminding the player at the exact moment they decided to deal with it next trip.
         badge = function(b)
-            -- SOMETHING IN THE SATCHEL NOBODY HAS READ (models/identify.lua). Asked BEFORE the vendor
-            -- branch, and that order is the whole of this entry: the Touchstone declares a vendor id
-            -- without keeping a shelf (data/vendors/touchstone.lua), so the branch below would take it,
-            -- ask a shelf question about a house that stocks nothing, and answer false forever.
-            --
-            -- A STATE rather than a sighting, for the reason the voucher note below gives at length: an
-            -- unread piece is not news, it is something you are still carrying, and a dot that cleared
-            -- on the first look would stop reminding the player at the exact moment they decided to read
-            -- it later. It goes out when the last husk is read or sold, not when it is seen.
-            if b.panel == "touchstone" then return Identify.count(hub.player) > 0 end
-            -- A TOKEN IN THE PURSE, asked BEFORE the vendor branch for the same reason the Touchstone
-            -- is: the Crossing declares a vendor id to keep a keeper (a portrait, a name, a
-            -- greeting) without keeping a shelf, so the branch below would take it, ask a shelf
-            -- question about a house that stocks nothing, and answer false forever.
-            --
-            -- A STATE rather than a sighting. The shelf dots below go out when the goods have been
-            -- READ; this one cannot -- a token is not news, it is something you are still holding, and
-            -- a dot that cleared on the first look would stop reminding the player at the exact moment
-            -- they decided to spend it later. It goes out when the purse empties, which is the same
-            -- line the errand branch draws (cleared by being TAKEN ON, not by being seen).
-            -- THERE IS NO WOUND DOT, and there is no door for it to sit on. The Inn is gone with the
-            -- ledger it charged for (models/wound.lua): a dive's wounds end the moment the company is
-            -- standing in a town, so by the time this board is drawn there is never anybody carrying
-            -- one and a dot here could only ever be dark.
-            --
-            -- A SHELF WITH SOMETHING ON IT NOBODY HAS READ. The dot used to carry two halves -- this
-            -- house is asking for work, or it is holding wares you have not seen -- and the asking half
-            -- is gone with the errands. What is left is the shelf, which clears on being read
-            -- (Player.seeNew) rather than on being acted on.
-            -- THE MARKET IS ASKED OF ITS COUNTER, not of its shelf, and it is the one door that has
-            -- to be. `sellsAll` makes the shelf question below answer yes for every ware in the game
-            -- (models/vendor.lua's Vendor.sells), so this plate lit for every discovery the company
-            -- carried home -- two dozen wares the counter is not showing, and therefore a dot with
-            -- nothing behind the door that could clear it. Market.hasUnread asks the standing rack.
-            -- A HOUSE'S DOT IS THE OR OVER THE ROOMS BEHIND IT, because a mark behind a door is a mark
-            -- nobody sees. A card carries its own shelf AND whatever it took in from the plaza, and
-            -- those can have different counters -- the Undercroft's desk opens the town's shelf beside
-            -- the fence's own (models/offer.lua) -- so this walks the offers rather than asking the
-            -- building's single `vendor`.
-            --
-            -- Only OPEN rooms count. A dot for a room the desk will not offer yet is a dot with nothing
-            -- behind the door that could clear it, which is the exact failure the Market's branch below
-            -- was written for.
-            for _, offer in ipairs(Offer.list(hub.player, b)) do
-                -- SOMETHING THE COMPANY IS CARRYING IS HEXED (models/curse.lua). The Touchstone's dot
-                -- wearing the Cathedral's colours, and for the identical argument: a curse is not NEWS,
-                -- it is a thing you are still carrying around, so this is a STATE rather than a
-                -- sighting. It goes out when the last hex is lifted or committed to the rite, never on
-                -- being looked at -- a dot that cleared on the first glance would stop reminding the
-                -- player at the exact moment they decided to deal with it after the next trip.
-                --
-                -- ASKED OF THE ROOM rather than of the building, so it cannot light before the rite is
-                -- on the desk: a dot for a room the counter will not offer yet is a dot with nothing
-                -- behind the door that could clear it, which is the failure the Market's branch below
-                -- was written for.
-                if offer.open and offer.panel == "rite" and Curse.count(hub.player) > 0 then
-                    return true
-                end
-                if offer.open and offer.vendor then
-                    -- THE MARKET IS ASKED OF ITS COUNTER, not of its shelf, and it is the one room that
-                    -- has to be. `sellsAll` makes the shelf question answer yes for every ware in the
-                    -- game (models/vendor.lua's Vendor.sells), so this plate lit for every discovery the
-                    -- company carried home -- two dozen wares the counter is not showing. Market.hasUnread
-                    -- asks the standing rack.
-                    if offer.vendor == Market.ID then
-                        if Market.hasUnread(hub.player) then return true end
-                    elseif unreadShelf(hub.player, offer.vendor) then
-                        return true
-                    end
-                end
-            end
-            -- A door that keeps a shelf but declares no rooms (nothing does today, but the Armory's
-            -- shape is one blueprint away from it).
-            if b.vendor and not b.offers then
-                if b.vendor == Market.ID then return Market.hasUnread(hub.player) end
-                return unreadShelf(hub.player, b.vendor)
-            end
             -- THE ARMORY carries two things: stash nobody has read, and a TAB nobody has met. The
             -- second is why this branch is an `or` -- Tactics unlocks on a trip ending, which may well
             -- have happened underground (floor two), so the door itself is the only thing that can say
             -- the room has grown a control since the player last stood in it. It clears when the window
-            -- explaining it has been read (Descent.tacticsTaught), not on being seen, for the same
-            -- reason the voucher's does: an unread feature is a thing you still have to look at. That
-            -- same reading is what then puts Auto on the board (Descent.autoUnlocked), so this dot is
-            -- the one errand standing between the unlock and the button.
+            -- explaining it has been read (Descent.tacticsTaught), not on being seen: an unread feature
+            -- is a thing you still have to look at. That same reading is what then puts Auto on the
+            -- board (Descent.autoUnlocked), so this dot is the one errand standing between the unlock
+            -- and the button.
+            --
+            -- It is the one door this function answers for ITSELF, because it is the one door with no
+            -- counter behind it: a plain plate onto one panel, holding the stash rather than a shelf.
             if b.panel == "party" then
                 return Player.hasNewStash(hub.player)
                     or (Descent.tacticsUnlocked(hub.player) and not Descent.tacticsTaught(hub.player))
             end
-            return false
+            -- EVERY OTHER PLATE IS THE OR OVER THE ROOMS BEHIND IT -- a body to mend, a hex to lift, a
+            -- find nobody can read, a shelf with something on it nobody has looked at. Asked of
+            -- models/offer.lua rather than answered here, because THE DESK ASKS THE SAME QUESTION: a
+            -- counter marks the one line the news is behind (models/counter.lua's `news` context), and a
+            -- door whose mark was derived separately from its own lines is how a plate ends up burning
+            -- over a desk with nothing marked on it. This project has shipped that bug twice.
+            return Offer.anyNews(hub.player, b)
         end,
     }
     map = BuildingMap.new(Building.list(hub.player), mapOpts)

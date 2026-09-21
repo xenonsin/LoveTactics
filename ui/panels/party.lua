@@ -320,6 +320,9 @@ function Party.new(opts)
     -- lands in the grid). The flight tutorial uses it to clear the "equip an item" coach the moment
     -- the lesson is done, rather than waiting for the panel to close.
     self.onEquip = opts.onEquip
+    -- ...and which TAB was taken, for a host coaching one of them (states/game.lua's `classtab`
+    -- step). Same shape as onEquip: the lesson is spent by the deed, not by the panel closing.
+    self.onMode = opts.onMode
 
     -- Opt-in / opt-out extras, at their shipped defaults for the Loadout screen (states/hub.lua,
     -- states/game.lua):
@@ -610,6 +613,10 @@ function Party:setMode(mode)
     local unread = self:noteUnread(mode)
     self.mode = mode
     self:setFocus(self:columnEditor() and "editor" or "grid")
+    -- The host hears which tab was taken, so a coach step pointing at one is spent by the PRESS
+    -- rather than by the window behind it being closed -- the same rule `onEquip` keeps for the
+    -- stash. Fired before the note opens: the lesson is over the moment the player goes there.
+    if self.onMode then self.onMode(mode) end
     if unread then self:openNote(mode) end
 end
 
@@ -921,6 +928,17 @@ function Party:coachAnchor()
     local inRow = math.min(math.max(p:count(), 1), p.cols)
     local lastX = p:cellRect(inRow) -- x of the last filled cell in the first row
     return { x = x, y = y, w = (lastX + w) - x, h = h }
+end
+
+-- ...and the same for one of the TABS, which is what the overworld's second class-lesson bubble
+-- points at (states/game.lua's `classtab` step). The bubble above sends the player to this panel; this
+-- one sends them to the one tab on it they have never had a reason to press.
+--
+-- Returns the laid-out segment straight, so a tab that is not on this panel's strip (`classes` before
+-- the Champion opens it, `tactics` before the first trip ends) answers nil and the bubble simply is
+-- not drawn -- which is the correct behaviour rather than a guard: there is nothing there to point at.
+function Party:tabAnchor(mode)
+    return self.segRects and self.segRects[mode] or nil
 end
 
 -- Say so when `item` has just landed somewhere it will not work: on a body whose pools can never meet

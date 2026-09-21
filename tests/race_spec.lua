@@ -93,7 +93,7 @@ tests[#tests + 1] = { name = "a race is rules and a fixed line, never a class", 
         -- the failure rather than only in models/race.lua's header.
         assert(def.growth == nil, id .. ": a race may not carry a growth table -- that is a class")
         assert(def.class == nil and def.discipline == nil, id .. ": a race names no shelf")
-        assert(def.unlockQuests == nil and def.price == nil, id .. ": a race is not merchandise")
+        assert(def.unlockLevel == nil and def.price == nil, id .. ": a race is not merchandise")
 
         local spent = 0
         for stat, amount in pairs(def.bonus or {}) do

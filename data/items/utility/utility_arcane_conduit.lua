@@ -21,8 +21,7 @@ return {
     type = "utility",
     tags = { "charm", "magical" },
     class = "battlemage",
-    unlockQuests = 3,
-    dropTier = 3,
+    unlockLevel = 3,
     charge = { key = "arcane", from = { "cast" }, max = 5 },
     traits = { "trait_arcane_conduit" },
     -- the grid casts harder around it

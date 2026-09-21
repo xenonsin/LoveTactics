@@ -94,7 +94,7 @@ return {
     },
     {
         -- Replaces a case that pinned Vendor.tier's four-value wave enum. That enum is gone: item gates
-        -- moved to per-quest `unlockQuests` and the forge ceiling onto the errand ladder, which left it
+        -- moved to per-quest `unlockLevel` and the forge ceiling onto the errand ladder, which left it
         -- with no callers. What the case was really protecting -- "standing with a house turns into a
         -- deeper ladder, one house at a time" -- is what is checked here instead.
         --
@@ -282,7 +282,7 @@ return {
                     for done = 0, rungs - 1 do
                         local open = 0
                         for _, e in ipairs(Vendor.stock(vendorId, done)) do
-                            if (e.unlockQuests or 0) <= done then open = open + 1 end
+                            if (e.unlockLevel or 0) <= done then open = open + 1 end
                         end
                         if open == seen then silent[#silent + 1] = done end
                         seen = open
@@ -372,7 +372,7 @@ return {
                 -- The consumable is the exception and still opens un-gated: a consumable keeps its
                 -- price, because the stock decision made before a descent has to be makeable.
                 if def.price then
-                    assert((def.unlockQuests or 0) == 0,
+                    assert((def.unlockLevel or 0) == 0,
                         id .. " was available from the first visit at the Cafe and must stay so")
                 else
                     -- A DEPTH, AND DELIBERATELY NOT A SHALLOW ONE. These sat at rung 0 because the
@@ -382,7 +382,7 @@ return {
                     -- the decision working rather than a bug -- what a thing is worth now decides where
                     -- it is, on this axis as on the other. Pinned as "it has a home" rather than at a
                     -- number, so a re-grade moves it without reddening this.
-                    assert(def.dropTier, id .. " is found now and must have a depth to be found at")
+                    assert(def.unlockLevel, id .. " is found now and must have a depth to be found at")
                 end
 
                 local vendorId
@@ -407,7 +407,7 @@ return {
                 -- Read off the flag rather than naming the id, so a second piece moved onto a body
                 -- later does not redden this file before anybody has looked at it.
                 if def.unstocked then
-                    assert(def.dropTier,
+                    assert(def.unlockLevel,
                         id .. " is unbuyable at every counter and has no depth, so nothing can pay it "
                         .. "at all -- and with no tier it cannot even be placed on a rack to be read")
                 else

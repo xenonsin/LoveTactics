@@ -34,8 +34,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "warden", -- multiclass: stocked on the hunter's shelf too once the gate is cleared
-    unlockQuests = 2,
-    dropTier = 1,
+    unlockLevel = 0,
     -- Flat, like the boots': 1 is open field and a cap has nowhere below it to grow.
     escortsMovement = 1,
     -- it prices ground for the whole line

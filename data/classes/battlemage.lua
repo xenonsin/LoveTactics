@@ -9,5 +9,5 @@ return {
     description = "Casts with the swing. Folds a spell into a melee attack, so a single action both "
         .. "strikes and casts.",
     exemplar = "character_battlemage", -- NEW, pending
-    requires = { fighter = 7, mage = 7 },
+    requires = { fighter = 12, mage = 12 },
 }

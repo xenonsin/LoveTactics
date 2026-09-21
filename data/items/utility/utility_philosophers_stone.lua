@@ -17,8 +17,7 @@ return {
     type = "utility",
     tags = { "arcane", "illusion" },
     class = "alchemist",
-    unlockQuests = 8,
-    dropTier = 8,
+    unlockLevel = 14,
     noCopy = true,
     activeAbility = {
         target = "enemy",

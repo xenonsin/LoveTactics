@@ -5964,8 +5964,18 @@ end
 -- the tooltip promises is the number the swing delivers. `combat` may be absent in a board-less
 -- preview, where there is nothing to count and frenzy folds to nothing.
 -- HOW MUCH ONE CLASS LEVEL ADDS to what an item of that class does, as a fraction of its authored
--- magnitude. At CLASS_LEVEL_CAP = 8 the step below is a touch under a quarter more than the number on
--- the tin.
+-- magnitude -- and it is DERIVED from what mastery is worth END TO END rather than typed, which is the
+-- half of this that used to be able to go wrong in silence.
+--
+-- The step was 0.03, and 0.03 means "a touch under a quarter at the cap" only while the cap is eight.
+-- Re-cutting the ladder to fifteen rungs (Class.CLASS_LEVEL_CAP) would have taken a mastered body from
+-- +24% to +45% raw without a line of this file changing, and everything below -- the 1.4x delivered,
+-- the fifth-to-a-half of a whole shelf, tests/mastery_span_spec's 2.0x ceiling -- is measured against
+-- the TOTAL, not against the step. So the total is what is stated, and the step falls out of it: the
+-- ladder can be re-cut to any height and what committing to a house is worth does not move.
+--
+-- (`_STEP` keeps its name because every caller and every spec reads it as the per-level fraction, which
+-- is exactly what it still is.)
 --
 -- THE FLOOR IS THE AUTHORED MAGNITUDE AND THERE IS NOTHING BELOW IT. A body with no levels in an item's
 -- class gets exactly what the blueprint says, which is what keeps models/balance.lua's whole 485-item
@@ -5997,7 +6007,8 @@ end
 --     not what a class level pays out. A level opens a rung of that class's shelf and, at the authored
 --     gates, a discipline; those land on every level. This is the smooth background under them, and all
 --     it owes the player is never running backwards.
-Combat.CLASS_MASTERY_STEP = 0.03
+Combat.CLASS_MASTERY_TOTAL = 0.24
+Combat.CLASS_MASTERY_STEP = Combat.CLASS_MASTERY_TOTAL / Class.CLASS_LEVEL_CAP
 
 -- `value` as the body actually delivers it: the item's authored magnitude raised by the wielder's level
 -- in that item's own class or discipline (Class.classLevel).
@@ -7897,7 +7908,8 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
         -- Gated exactly as the action award is (Combat.useItem): a player-controlled, unsummoned body.
         -- A kill by an escortee, a summon or the enemy pays nobody.
         if attacker and Combat.isPlayerControlled(attacker) and not attacker.summoned then
-            Experience.credit(combat, attacker.char, Experience.PER_FELLING)
+            Experience.credit(combat, attacker.char,
+                Combat.scaledAward(combat, attacker, attacker.char, Experience.PER_FELLING))
         end
         killUnit(combat, target)
     else
@@ -10933,6 +10945,55 @@ end
 --
 -- Each half is capped independently, because the cap is per house across the whole field -- so a capped
 -- hand does not stop the badge earning, and either half alone still arms the floater.
+-- ---------------------------------------------------------------------------
+-- WHAT THIS FIGHT IS WORTH, against what the company has become
+-- ---------------------------------------------------------------------------
+--
+-- THE LEVEL THE OPPOSITION STANDS AT: the highest level on the other side. Max rather than mean,
+-- because a fight is priced by what could actually hurt you -- a lieutenant with four gnats around it
+-- is a lieutenant fight, and averaging would let a deep body be padded down into a cheap one by
+-- standing it next to swarm stock.
+--
+-- Computed once and cached on the combat. Lazily rather than at Combat.openBattle so a fight built by
+-- a headless caller that never opened is still priced; the first award happens on the first action, by
+-- which point nothing has died -- the felling credit in dealFlatDamage runs BEFORE killUnit.
+--
+-- `false` and not nil for "asked and there is nobody", so a board with no opposition is not re-walked
+-- on every action of a fight that has none.
+function Combat.oppositionLevel(combat)
+    if combat.oppositionLevelCache ~= nil then return combat.oppositionLevelCache or nil end
+    local top = 0
+    for _, u in ipairs(combat.units or {}) do
+        if not Combat.isPlayerControlled(u) and u.char then
+            local l = u.char.level or 1
+            if l > top then top = l end
+        end
+    end
+    combat.oppositionLevelCache = top > 0 and top or false
+    return combat.oppositionLevelCache or nil
+end
+
+-- Scale one award by Experience.rewardScale, carrying the remainder so the shortfall is not rounded
+-- away. Both ladders are paid in ones and twos, so a naive multiply-and-floor turns every share under
+-- a half into nothing and every share over it into everything -- a 0.65 falloff would read as a cliff
+-- at the first step and the curve would be decoration. The carry rides the COMBAT, so it is per-fight
+-- and cannot accumulate into a free level across a floor.
+--
+-- `slot` keys the remainder: a character for experience, a character and a house for technique, since
+-- those are banked against different ledgers and must not share a purse.
+function Combat.scaledAward(combat, unit, slot, amount)
+    if not (combat and unit and unit.char) or not amount or amount <= 0 then return amount or 0 end
+    local against = Combat.oppositionLevel(combat)
+    if not against then return amount end
+    local scale = Experience.rewardScale(unit.char.level or 1, against)
+    if scale >= 1 then return amount end
+    combat.rewardCarry = combat.rewardCarry or {}
+    local have = (combat.rewardCarry[slot] or 0) + amount * scale
+    local whole = math.floor(have)
+    combat.rewardCarry[slot] = have - whole
+    return whole
+end
+
 function Combat.awardTechnique(combat, unit, item)
     combat.techniqueCrossing = nil
     local key = Class.growthClasses(item)[1]
@@ -10951,6 +11012,11 @@ function Combat.awardTechnique(combat, unit, item)
 
     local function bank(house, want)
         if not house or want <= 0 then return 0 end
+        -- Scaled BEFORE the per-battle cap rather than after, so TECHNIQUE_PER_BATTLE goes on meaning
+        -- "the most one fight can bank" instead of quietly becoming a floor that a scaled-down fight
+        -- could still reach by running long.
+        want = Combat.scaledAward(combat, unit, tostring(unit.char) .. "/" .. house, want)
+        if want <= 0 then return 0 end
         local earned = combat.techniqueEarned[house] or 0
         local amount = math.min(want, Class.TECHNIQUE_PER_BATTLE - earned)
         if amount <= 0 then return 0 end
@@ -12153,7 +12219,8 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
         --
         -- Banked unconditionally, in every mode. Only a descent ever turns it into levels -- see
         -- models/experience.lua's header on why that is a resolution-side decision and not a branch here.
-        Experience.credit(combat, unit.char, Experience.PER_ACTION)
+        Experience.credit(combat, unit.char,
+            Combat.scaledAward(combat, unit, unit.char, Experience.PER_ACTION))
     end
 
     -- Using an item ends the turn: advance by (this turn's move cost) + the ability speed (or the

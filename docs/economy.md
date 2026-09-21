@@ -151,7 +151,7 @@ unpriced found ware worth* and is what the share version should have been readin
 - **The ceiling is a magnitude and magnitudes drift.** It is anchored to `Grade.PRICE_BASE` so a shelf
   re-cut carries it, but if the Merchant ever stops being worth stopping at, that number is the dial.
 - **Gold became a gear currency the day the discovery gate came off** — **347 wares** now reach a
-  counter that did not, each priced at `Grade.priceFor(dropTier - 1)`. Measured rather than feared,
+  counter that did not, each priced at `Grade.priceFor(unlockLevel - 1)`. Measured rather than feared,
   and the two ladders turn out to be roughly parallel, because both are keyed to depth:
 
   | depth it drops at | 1 | 3 | 6 | 8 |

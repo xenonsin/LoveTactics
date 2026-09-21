@@ -26,7 +26,7 @@ return {
     type = "weapon",
     tags = { "staff", "magical", "dark", "melee" },
     class = "shaman",
-    dropTier = 6,
+    unlockLevel = 9,
     waitBehavior = {
         kind = "focus",
         mana = Curve.ramp(6, 17),
@@ -37,7 +37,7 @@ return {
         range = 1,
         speed = 6,
         cost = { stat = "stamina", amount = 5 },
-        damage = Curve.ramp(4, 14),
+        damage = Curve.ramp(10, 20),
         counter = function(unit)
             return require("models.curse").countOn(unit and unit.char)
         end,

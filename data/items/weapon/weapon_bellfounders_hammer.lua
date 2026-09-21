@@ -27,14 +27,14 @@ return {
     tags = { "hammer", "impact", "physical", "melee" },
     hands = 2,
     class = "fighter",
-    dropTier = 7,
+    unlockLevel = 12,
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 8, -- slower even than an iron hammer: the ring is paid for in tempo, as everything here is
         cost = { stat = "stamina", amount = 14 },
         -- Under an iron hammer's, per body. The breadth is the extra and it must not also be depth.
-        damage = Curve.ramp(12, 23),
+        damage = Curve.ramp(22, 33),
         effect = function(fx)
             local t = fx.target
             if not t then return end

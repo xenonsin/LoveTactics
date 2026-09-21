@@ -34,11 +34,11 @@ return {
         "armor_stalkers_pelt", "utility_second_leash",                     false,
     },
     drops = {
-        "armor_quarryhide",
-        "weapon_corvids_bow",
-        "weapon_stillhunter",
-        "weapon_unravelling_shaft",
-        "utility_wardens_writ",
+        "utility_ancestor_mask",
+        "utility_treeline_horn",
+        "weapon_struck_ledger",
+        "weapon_witchlight_bow",
+        "weapon_hailfall_longbow",
     },
     defaultAction = "weapon_iron_longbow",
     -- Basic tactics: loose the bow at whatever is in reach; the Bond beast and the horns carry the rest.

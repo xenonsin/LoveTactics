@@ -39,7 +39,11 @@ return {
         false,               false, false,
     },
     drops = {
-        "weapon_silt_knife",
+        "armor_unlit_hood",
+        "utility_gluttons_purse",
+        "utility_skimmers_cut",
+        "utility_still_hungry",
+        "armor_breakers_harness",
     },
     defaultAction = "weapon_silt_knife",
     signatureWeapon = "weapon_silt_knife",

@@ -1,4 +1,4 @@
--- THE ARCANUM: the mages' house, the bestiary, and the room where a body is given a job.
+-- THE ARCANUM: the mages' house, the study where a spell is honed, and the bestiary.
 --
 -- ITS SHELF is staves, foci and the reading that makes them work, deepening as the roster's mage level
 -- climbs (Quest.shelfRung) rather than opening whole.
@@ -26,6 +26,22 @@
 --
 -- IT IS DELIBERATELY THE LIGHT ONE, and it sits where it does for that: a read-only room, no currency
 -- and no commitment, landing the trip after the forge -- which is the heaviest lesson the city has.
+--
+-- THE STUDY IS THE OTHER HALF OF THE FORGE'S LADDER. The Bastion works what a smith can hold in a pair
+-- of tongs -- a weapon, a coat, a piece of kit -- and this room works what is written down: an ability
+-- per instance, and the recipe behind a draught per type. One ladder, one bill, one ceiling, two rooms
+-- (models/forge.lua's Forge.WORK); the split is about who you walk to, which is the only thing a room
+-- has ever been. A player hunting for where a spell gets better had no reason to try the armoury.
+--
+-- IT LANDS ON THE FIFTH TRIP, a clear trip after the bestiary and two after the forge, and the order is
+-- the argument: the bench teaches what a rung IS on the gear the player has been swinging since the
+-- first morning, and this room then says the same thing about the half of the kit that is read rather
+-- than swung. Teaching both in one homecoming is two currencies, a ladder, ceilings and materials twice
+-- over -- and the city hands over one room per homecoming for exactly that reason (models/offer.lua).
+--
+-- (Consumables belong to the Alchemist by smell and to the Study by mechanism. A recipe is a text, it
+-- is refined by reading it more exactly, and it climbs the same `level` an ability does -- so sending
+-- it to a third room would put one ladder in three places to satisfy a theme.)
 return {
     name = "The Arcanum",
     order = 9,
@@ -51,6 +67,7 @@ return {
         -- earn (models/offer.lua's Offer.any).
         { answer = "shelf", panel = "shop", quiet = true },
         { answer = "bestiary", panel = "bestiary", gate = { trips = 4 } },
+        { answer = "study", panel = "study", gate = { trips = 5 } }, -- see the header
     },
-    description = "Staves, foci, a catalogue of what is down there, and what a body may become.",
+    description = "Staves, foci, the honing of a spell, and a catalogue of what is down there.",
 }

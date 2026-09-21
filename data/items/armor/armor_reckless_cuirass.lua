@@ -36,7 +36,7 @@ return {
     type = "armor",
     tags = { "plate" },
     class = "fighter",
-    dropTier = 6,
+    unlockLevel = 9,
     bonus = { damage = Curve.ramp(5, 15), defense = Curve.ramp(2, 12), movement = -1 },
     -- NEGATIVE on purpose: see the header. This is the one blueprint in the game that adds to incoming
     -- damage rather than subtracting from it, and the sign is the whole item.

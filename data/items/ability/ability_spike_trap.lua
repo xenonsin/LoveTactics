@@ -10,7 +10,7 @@ return {
     tags = { "trap", "utility" },
     class = "poacher", -- rogue x hunter; the rogue half of Snare-execute -- the trap that sets up the finish
     price = 245,
-    unlockQuests = 2,
+    unlockLevel = 3,
     activeAbility = {
         target = "tile",
         range = 3,

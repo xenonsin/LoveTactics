@@ -30,7 +30,7 @@ return {
     tags = { "holy", "magical" },
     class = "priest",
     price = 80,
-    unlockQuests = 0,
+    unlockLevel = 0,
     activeAbility = {
         target = "ally", -- includes the caster: a priest may keep their own wound
         range = 4,

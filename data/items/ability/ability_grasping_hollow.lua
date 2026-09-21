@@ -28,7 +28,7 @@ return {
     tags = { "earth" },
     class = "warden", -- the Lockdown zone itself -- ground that Roots whatever crosses it
     price = 245,
-    unlockQuests = 2,
+    unlockLevel = 3,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

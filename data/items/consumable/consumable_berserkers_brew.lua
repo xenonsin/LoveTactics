@@ -15,7 +15,7 @@ return {
     tags = { "restorative" },
     class = "warbrewer", -- fighter x alchemist; the Combat-draught mechanic's first stock
     price = 295,
-    unlockQuests = 8,
+    unlockLevel = 15,
     activeAbility = {
         target = "self",
         range = 0,

@@ -28,7 +28,7 @@ return {
     tags = { "holy", "magical" },
     class = "exorcist",
     price = 660,
-    unlockQuests = 7,
+    unlockLevel = 13,
     activeAbility = {
         target = "ally",
         range = 2,

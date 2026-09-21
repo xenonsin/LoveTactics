@@ -34,11 +34,11 @@ return {
         false,               false,             false,
     },
     drops = {
-        "armor_muster_cuirass",
-        "utility_held_ground",
+        "armor_reflecting_shield",
+        "armor_aegis_unbidden",
         "armor_tower_shield",
-        "utility_odds_against",
-        "weapon_disarming_pike",
+        "utility_martyrs_icon",
+        "weapon_mailpiercer",
     },
     defaultAction = "weapon_iron_sword",
     -- Basic tactics (models/ai.lua): press the wounded -- finish the foe already closest to falling.

@@ -22,7 +22,7 @@ return {
     type = "weapon",
     tags = { "axe", "slash", "physical", "melee" },
     class = "fighter",
-    dropTier = 7,
+    unlockLevel = 11,
     activeAbility = {
         target = "tile",
         allowOccupied = true,
@@ -30,7 +30,7 @@ return {
         minRange = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 10 },
-        damage = Curve.ramp(4, 14),
+        damage = Curve.ramp(12, 22),
         aoe = { shape = "front", width = 3 },
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do

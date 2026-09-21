@@ -7,6 +7,10 @@
 --   icon = false  deliberately has no icon yet; left for an artist.
 --
 -- Correct a bad guess by editing `icon` and setting `by = "hand"`.
+--
+-- Two keys naming the SAME icon is normally a collision the mapper refuses. The exception is a declared
+-- shared set (tools/icons/shared.lua) -- one object told apart by colour, e.g. the pool potions -- whose
+-- members are written here as `by = "hand"` and keep their pairing across a regeneration.
 -- `. icon-build` renders every entry here into assets/.
 return {
     ["items/ability_aegis.png"] = { icon = "delapouite/attached-shield", by = "auto" },
@@ -516,7 +520,7 @@ return {
     ["items/mace.png"] = { icon = "delapouite/bone-mace", by = "auto" },
     ["items/mail_of_the_unappeased.png"] = { icon = "delapouite/chest-armor", by = "hand" },
     ["items/mailpiercer.png"] = { icon = "lorc/spotted-arrowhead", by = "hand" },
-    ["items/mana_potion.png"] = { icon = "lorc/manacles", by = "auto" },
+    ["items/mana_potion.png"] = { icon = "lorc/standing-potion", by = "hand" },
     ["items/mana_shield.png"] = { icon = "delapouite/templar-shield", by = "auto" },
     ["items/mana_wellspring.png"] = { icon = "delapouite/water-fountain", by = "hand" },
     ["items/marching_standard.png"] = { icon = "lorc/tattered-banner", by = "auto" },
@@ -554,7 +558,7 @@ return {
     ["items/piercing_draw.png"] = { icon = "faithtoken/card-draw", by = "auto" },
     ["items/pilgrims_sandals.png"] = { icon = "delapouite/sandal", by = "auto" },
     ["items/pincer_banner.png"] = { icon = "lorc/pincers", by = "auto" },
-    ["items/potion.png"] = { icon = "lorc/standing-potion", by = "auto" },
+    ["items/potion.png"] = { icon = "lorc/standing-potion", by = "hand" },
     ["items/pseudopod.png"] = { icon = "lorc/curled-tentacle", by = "hand" },
     ["items/quarrys_answer.png"] = { icon = "lorc/broken-shield", by = "hand" },
     ["items/quenchless_gut.png"] = { icon = "lorc/mouth-watering", by = "hand" },

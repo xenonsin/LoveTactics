@@ -30,8 +30,7 @@ return {
     type = "armor",
     tags = { "heavy" },
     class = "champion", -- fighter x knight; the Riposte-wall's plate -- answer every striker at once
-    unlockQuests = 6,
-    dropTier = 6,
+    unlockLevel = 9,
     traits = { "trait_whirl_answer" },
     bonus = { defense = Curve.ramp(3, 13), movement = -2 },
 }

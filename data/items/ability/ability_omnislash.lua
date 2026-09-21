@@ -13,7 +13,7 @@ return {
     type = "ability",
     class = "fighter",
     price = 660,
-    unlockQuests = 7,
+    unlockLevel = 13,
     tags = { "slash", "physical" },
     activeAbility = {
         target = "enemy",

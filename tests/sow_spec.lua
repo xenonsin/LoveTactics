@@ -89,7 +89,7 @@ return {
                 assert(def.class == "creature", id .. " belongs to no job")
                 assert(def.noSteal, id .. " cannot be lifted off the animal")
                 assert(def.price == nil, id .. " is on no shelf")
-                assert(def.dropTier == nil, id .. " is at no depth")
+                assert(def.unlockLevel == nil, id .. " is at no depth")
             end
             -- The rage carries the whole back half of the fight, so it may not be disarmed out of it.
             assert(Item.defs.utility_the_year_behind_her.bound, "her relic does not come out")
@@ -269,7 +269,7 @@ return {
         name = "every piece she is known for can actually be found, and depth is the rarity",
         fn = function()
             -- THE DROP CONTRACT (docs/drops.md), asserted structurally. Each of these is a silent
-            -- failure otherwise: a list entry with no dropTier is a row no floor can ever pay, and
+            -- failure otherwise: a list entry with no unlockLevel is a row no floor can ever pay, and
             -- noSteal, bound or creature class all have the pool refuse it outright -- in every case the
             -- list still reads correctly in the file and simply never fires.
             local list = Character.defs.character_sow.drops
@@ -277,7 +277,7 @@ return {
             for _, id in ipairs(list) do
                 local def = Item.defs[id]
                 assert(def, "she names " .. id .. ", which does not exist")
-                assert(def.dropTier, id .. " has no dropTier, so no floor can pay it")
+                assert(def.unlockLevel, id .. " has no unlockLevel, so no floor can pay it")
                 assert(not def.noSteal, id .. " is sealed to a body and can never drop")
                 assert(not def.bound, id .. " is bound to one grid and can never drop")
                 assert(def.class ~= "creature", id .. " is creature kit; the pool refuses it")
@@ -289,20 +289,20 @@ return {
             for _, id in ipairs({ "weapon_great_claws", "ability_overpower",
                                   "utility_the_same_wound", "utility_the_year_behind_her" }) do
                 local def = Item.defs[id]
-                assert(def.dropTier == nil and def.price == nil,
+                assert(def.unlockLevel == nil and def.price == nil,
                     id .. " carries an axis, so the pool could reach her own fight")
             end
 
             -- DEPTH IS THE RARITY. A floor picks a rank before it looks at who died, so the ORDER of
             -- these three numbers is the entire drop-rate design; there is no per-entry weight.
-            local hide = Item.defs["armor_winterhide"].dropTier
-            local claw = Item.defs["utility_knapped_claw"].dropTier
-            local pelt = Item.defs["utility_the_yearling_pelt"].dropTier
+            local hide = Item.defs["armor_winterhide"].unlockLevel
+            local claw = Item.defs["utility_knapped_claw"].unlockLevel
+            local pelt = Item.defs["utility_the_yearling_pelt"].unlockLevel
             assert(pelt > claw, "the pelt is the chase; a shallower tier would make it the COMMON drop")
             assert(claw > hide, "and her rule is dearer than her coat")
 
             -- The coat is one rung over the boar's, because the animal is one rung harder.
-            assert(hide > Item.defs["armor_bristlehide"].dropTier,
+            assert(hide > Item.defs["armor_bristlehide"].unlockLevel,
                 "Winterhide sits over Bristlehide -- a bear is not a boar")
         end,
     },

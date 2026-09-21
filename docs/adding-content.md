@@ -318,7 +318,7 @@ return {
 ```
 
 A vendor declares no thresholds of its own: standing is the count of its quests you have finished, and
-each item names how many of that count unlock it (`unlockQuests`, below).
+each item names how many of that count unlock it (`unlockLevel`, below).
 
 Then point a building at it with `panel = "shop", vendor = "<id>"`.
 
@@ -348,10 +348,10 @@ which has a `price`. To put an item on a shelf, give it both:
 tags  = { "sword", "slash", "physical" },  -- combat: damage scaling + armor mitigation
 class = "fighter",                         -- shop: which vendor stocks it
 price = 60,
-unlockQuests = 0,  -- how many of the vendor's quests unlock it (default 0 = opening shelf); higher waves show as locked
+unlockLevel = 0,  -- how many of the vendor's quests unlock it (default 0 = opening shelf); higher waves show as locked
 ```
 
-**`price` and `unlockQuests` are DERIVED — write what you like, then let the tool set them.** Where an
+**`price` and `unlockLevel` are DERIVED — write what you like, then let the tool set them.** Where an
 item sits is decided by what it is worth, and what it costs is decided by where it sits:
 `grade -> slot -> price`. Author the item's *effect* and run `. grade-report` to see where it lands;
 `. grade-report apply` writes both fields. Two numbers you type here are a starting guess, not a
@@ -414,10 +414,17 @@ offers = {
 
 ```lua
 { "<vendor>", "State your business.", id = "desk", choices = {
-    { "Somebody needs mending.", answer = "mend", when = { offer = "mend" } },
-    { "Nothing today.", answer = "leave" },
+    { "Heal a wound", answer = "mend", when = { offer = "mend" } },
+    { "Leave", answer = "leave" },
 } },
 ```
+
+**A DESK OPTION IS A LABEL, NOT A LINE.** The keeper's own lines carry the house's voice; the choices
+under them are the menu, and a player reading `Whatever came up the stair today.` has to decode which
+room it opens before they can pick it. So a room line names the room in plain words, imperative and
+unpunctuated -- `Go to market`, `Visit rogue class trainer`, `Lift a curse` -- and the exit is always
+`Leave`. This is [docs/ui-style.md](ui-style.md)'s flat interface register reaching the one menu that
+used to be written in character.
 
 The desk node's id must be `desk` and it must never carry a `when` of its own -- closing a room returns
 to it (`Conversation.play`'s `opts.startAt`), and a desk resolved out of its own scene opens onto the
@@ -427,6 +434,25 @@ A room's `gate` uses the same vocabulary as a door's unlocks, minus the `unlock`
 `trips`, `expeditions`, `wound`, `unidentified`, `quest`. Every key in a gate must hold.
 **A door is drawn when ANY non-quiet room behind it is open** (`models/offer.lua`), so the city grows
 one room at a time and a house's plate arrives on the morning its first room does.
+
+**A ROOM ALSO SAYS WHETHER IT HAS ANYTHING IN IT TODAY, and that is a different question from its
+gate.** The gate decides whether the mending line is on the desk at all -- once somebody has been
+carried up broken it is there for good -- and `Offer.news` decides whether it wants the player *this*
+trip. A room with something waiting wears the red unseen dot on its desk line, and the house's plate
+out on the plaza wears the OR over all of them (`Offer.anyNews`), so the city says which door and the
+desk says which room. Both readers call the same function; a plate derived separately from the lines
+behind it is how a dot ends up burning over a desk with nothing marked on it, which this project has
+shipped twice.
+
+A new room is marked by adding its panel to `NEWS` in `models/offer.lua`. Two rules decide what belongs
+there:
+
+* **A mark must be able to go out.** It is raised on the same question the screen behind it clears --
+  a wound nobody has seen to, a hex nobody has lifted, a find nobody has read, stock nobody has looked
+  at. "Something in the kit is damaged" is true after nearly every trip, which is why the Forge keeps
+  no mark: a dot that never goes out teaches the player that no dot means anything.
+* **A shut room is never marked.** A dot on a line the desk will not print is a dot with nothing behind
+  it the player can clear.
 
 **A house's own shelf is never gated.** It is what the house IS, and a shopfront the player walks
 through to be offered no shop is the bug the class gate shipped: `classLevel = 1` decided the card and
@@ -456,7 +482,7 @@ The gates the play actually feeds are the other four, ANDed, and each names a di
 
 | field | opens when | who uses it |
 | --- | --- | --- |
-| `trips = N` | the company has begun N descents (`Player.tripsHome`) | **the city's clock** -- the counter at 1, the supper at 2, the forge at 3, the book at 4 |
+| `trips = N` | the company has begun N descents (`Player.tripsHome`) | **the city's clock** -- the counter at 1, the supper at 2, the forge at 3, the book at 4, the study at 5 |
 | `wound` | somebody has been carried up broken, ever (one-way) | the Cathedral's mending |
 | `unidentified` | the company is carrying something it cannot read | the Crucible's reading |
 | `quest = "<id>"` | that quest is finished | the Colosseum's duel, on its own first posting |

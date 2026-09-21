@@ -27,7 +27,7 @@ return {
     tags = { "bow", "pierce", "physical", "ranged" },
     hands = 2,
     class = "hunter",
-    dropTier = 6,
+    unlockLevel = 10,
     activeAbility = {
         target = "enemy",
         range = 3,
@@ -36,7 +36,7 @@ return {
         speed = 2,
         cost = { stat = "stamina", amount = 7 },
         -- Under an iron bow's: taking an enemy archer's reach away is worth more than the arrow.
-        damage = Curve.ramp(5, 15),
+        damage = Curve.ramp(12, 22),
         effect = function(fx)
             -- Blind rides the shaft: it lands on whoever the arrow hits (a guardian who steps in), and
             -- only if it connects with a survivor -- the .alive guard the carried path enforces for free.

@@ -15,14 +15,13 @@ return {
     type = "weapon",
     tags = { "dagger", "pierce", "physical", "melee" },
     class = "poacher", -- rogue x hunter; the Snare-execute mechanic's first stock
-    unlockQuests = 7,
-    dropTier = 7,
+    unlockLevel = 12,
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 2, -- quick, like every dagger
         cost = { stat = "stamina", amount = 5 },
-        damage = Curve.ramp(15, 25),
+        damage = Curve.ramp(13, 23),
         effect = function(fx)
             -- A Rooted foe cannot flinch away from the point: half the swing again goes straight in.
             -- Read on the target as it stands, so it rewards a snare already set (by the Bolas, a trap,

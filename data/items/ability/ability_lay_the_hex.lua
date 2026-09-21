@@ -33,7 +33,7 @@ return {
     -- that is a downgrade. Four is where the everyday hex wants to be: cheap enough to cast most turns,
     -- which is what makes running a grid out of cursable pieces a real plan. Price is slot 4's band.
     price = 410,
-    unlockQuests = 4,
+    unlockLevel = 7,
     activeAbility = {
         target = "enemy",
         range = 4,

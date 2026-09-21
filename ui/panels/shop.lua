@@ -39,9 +39,11 @@
 -- the way the Armory's class column words it (ui/class_editor.lua): the level this house asks for,
 -- and -- for a crossing -- the other house and the level it asks there.
 --
--- A vendor SELLS. Upgrading anything -- gear, abilities, consumable recipes -- happens at The Forge
--- (ui/panels/forge.lua), the city's one bench. This screen used to carry an Upgrade tab for abilities
--- and recipes, which meant the same `item.level` had two doors with two bills and two ceilings.
+-- A vendor SELLS. Upgrading anything happens at the bench (ui/panels/forge.lua) -- gear at the
+-- Bastion's forge, abilities and consumable recipes at the Arcanum's study, one ladder billed by one
+-- model whichever door you came through (models/forge.lua's Forge.WORK). This screen used to carry an
+-- Upgrade tab for abilities and recipes, which meant the same `item.level` had two doors with two
+-- bills and two ceilings -- the thing the rooms above are careful NOT to be.
 --
 -- ONE PRESS PER THING: D-pad moves the cursor (the detail follows with no extra press), A buys/sells
 -- what it is on, the shoulder buttons cycle Buy<->Sell, B closes. No drag, no member targeting. The
@@ -132,9 +134,10 @@ local SECTION_MAX_ROWS = 2
 -- racks); Sell is the stash with a price on it, and says so.
 local GRID_SECTION_LABEL = { buy = "Stock", sell = "Your Stash" }
 
--- Buy and Sell, and nothing here upgrades: every ladder in the game is climbed at The Forge
--- (ui/panels/forge.lua), which is also the only screen that spends materials -- see the header of
--- models/vendor.lua for why that second door was closed, and note that a SERVICE is not it. A service
+-- Buy and Sell, and nothing here upgrades: every ladder in the game is climbed at the bench
+-- (ui/panels/forge.lua, in whichever of its two rooms), which is also the only screen that spends
+-- materials -- see the header of models/vendor.lua for why that second door was closed, and note that
+-- a SERVICE is not it. A service
 -- does not touch `item.level` and bills no materials; it is a house's own verb, which is a different
 -- thing from a second bench.
 --
@@ -413,10 +416,10 @@ function Shop:buildBuyRows()
         local item = Item.instantiate(entry.id, nil, entry.level)
         local key = entry.discipline or false -- false == the base shelf, not a discipline
         -- THE BAND ORDERS ON THE GATE, like the rack inside it (Vendor.shelfOrder). `rung` is what the
-        -- row was measured against and `unlockQuests` is the authored rank; they agree on a priced
+        -- row was measured against and `unlockLevel` is the authored rank; they agree on a priced
         -- ware and part on a found one, and two fifths of the catalogue carries no rank at all -- so
         -- the authored field would pull every discipline holding one rungless ware to the top.
-        local rung = entry.rung or entry.unlockQuests or 0
+        local rung = entry.rung or entry.unlockLevel or 0
         local g = groups[key]
         if not g then
             g = { rows = {}, minUnlock = rung,
@@ -1218,14 +1221,22 @@ function Shop:lockReason(entry)
     -- reason "sold" does -- every sentence below it would be a lie about a row that is never going to be
     -- buyable -- and it names the ROAD instead of the lock, because the road is the whole answer: there
     -- is a body down there carrying this, and killing it is how you get one.
+    --
+    -- AND IT IS THE ONE PLACE ON THIS SHELF THAT STILL SAYS A DEPTH OUT LOUD. Everywhere else a floor
+    -- is the rift's to hand over rather than a shopkeeper's to read off a list (see the rung sentence
+    -- at the foot of this function); here the floor IS the road, and the only one, so withholding it
+    -- would leave the row saying nothing but no. And it is ONLY the road: the greyed plate already says
+    -- the counter will not deal one, so a clause saying so again spends the line on the half the player
+    -- can see and crowds out the half they can act on.
     if entry.lockReason == "monster drop" then
-        local floor = entry.dropTier and (" Falls around floor " .. entry.dropTier .. ".") or ""
-        return "Taken from the body that carries it -- no counter deals one." .. floor
+        if entry.unlockLevel then
+            return "Dropped by creatures on Floor " .. entry.unlockLevel .. "."
+        end
+        return "Dropped by creatures."
     end
     -- (A THIRD REFUSAL STOOD HERE, "Found in Floor 6", for a ware no counter would deal until one had
     -- been hauled out of the rift. It is gone with the gate: a found ware opens on its class rung like
-    -- everything else. The depth it falls at is not gone -- it is the OTHER road to the same piece, and
-    -- it rides on the rung sentence at the foot of this function.)
+    -- everything else -- and the depth went with it, see the rung sentence below.)
     if entry.discipline and not Class.isUnlocked(self.player, entry.discipline) then
         -- A CROSSING names the parent path still missing, and the house that teaches it. "Unlock the
         -- Ninja path first" is true and useless -- it restates the lock. Naming the Arcanum turns it
@@ -1251,14 +1262,14 @@ function Shop:lockReason(entry)
         return "Locked: the " .. name .. " path is not open yet."
     end
     -- The deepest cut: the path is open, but this piece asks that you have actually GROWN into it.
-    if entry.unlockLevel and Class.level(self.player, entry.discipline) < entry.unlockLevel then
+    if entry.disciplineLevel and Class.level(self.player, entry.discipline) < entry.disciplineLevel then
         local name = Class.displayName(entry.discipline) or entry.discipline
-        return "Locked: grow " .. name .. " to level " .. entry.unlockLevel .. "."
+        return "Locked: grow " .. name .. " to level " .. entry.disciplineLevel .. "."
     end
     -- THE RUNG IS A CLASS LEVEL, and this sentence was the last place still calling it a quest count.
     -- A house asks for no work at all any more -- its shelf climbs as the class it teaches does
     -- (Quest.shelfRung -> Class.rosterLevel) -- so "complete 3 more of this house's quests" named a
-    -- deed the player cannot go and do, in a currency the game stopped counting. `unlockQuests` keeps
+    -- deed the player cannot go and do, in a currency the game stopped counting. `unlockLevel` keeps
     -- its authored name on the blueprint (docs/shelf.md, where it is the derived slot); what it MEANS
     -- is the rung, and the rung is a level.
     --
@@ -1266,25 +1277,23 @@ function Shop:lockReason(entry)
     -- sells all seven and gates each ware on its own class (models/market.lua's per-item rung), so a
     -- shelf-wide name would be wrong on the one counter that has no class of its own.
     --
-    -- IT READS `rung`, NOT `unlockQuests`, and the two only agree on a priced ware. A found one's rung
-    -- is its depth less one (models/vendor.lua's lockReason); its authored rank is whatever the last
+    -- IT READS `rung`, NOT `unlockLevel`, and the two only agree on a priced ware. A found one's rung
+    -- is its authored `unlockLevel` (models/vendor.lua's lockReason); before the fold it was whatever the last
     -- grade pass left on it, which for two fifths of the catalogue is nothing at all. Reading the rank
     -- here would promise a gate at level 0 over a tile that refuses the press until level 5.
-    local need = entry.rung or entry.unlockQuests or 0
+    local need = entry.rung or entry.unlockLevel or 0
     if need > (self.shelfRung or 0) then
         local class = entry.class or self.def.class
         local name = class and (Item.classDisplayName(class) or class)
         local said = name and ("Locked: grow " .. name .. " to level " .. need .. ".")
             or ("Locked: grow this house's class to level " .. need .. ".")
-        -- AND THE OTHER ROAD, on anything the rift gives up. A found ware is reached two ways -- climb
-        -- the class and buy one, or go down to the floor that drops it and take one -- and naming only
-        -- the gate the tile is standing on would leave a player waiting on a ladder for a thing that is
-        -- three floors down. This is what is left of the old "not found" refusal, and it is the half
-        -- worth keeping: a depth was never a lock, it was somewhere to go.
-        --
-        -- Same "Floor N" wording the stash and the Touchstone use (Identify.floorOf), so a depth read
-        -- on a shelf and a depth read on a piece of loot are plainly the same number.
-        if entry.dropTier then return said .. " Found in Floor " .. entry.dropTier .. "." end
+        -- AND NO DEPTH, which is the half that came off. This used to end " Found in Floor 6." on
+        -- anything the rift gives up, on the grounds that a found ware is reached two ways and naming
+        -- only the ladder leaves a player waiting on the wrong road. But this gate OPENS: grow the
+        -- class and the counter deals the piece, which is the whole answer the sentence owes. The other
+        -- road is a place in the rift, and where a thing falls is the rift's to give up -- a shelf that
+        -- reads the drop table aloud spoils the one surprise the descent is made of. (The trophy above
+        -- is the exception, and it earns it by having no ladder at all.)
         return said
     end
     return "Locked."
@@ -1834,9 +1843,12 @@ function Shop:drawBandPane()
     -- Steel for a path this company stands in, muted for one it has yet to open: the gate is a fact
     -- about somewhere else, and the theme keeps that distinction between "live" and "structure".
     Theme.set(row.shut and Theme.muted or Theme.cursor)
-    -- The base shelf is not a path and pathMeta gives it nothing; say what it is instead of nothing.
-    love.graphics.print(Theme.ellipsize(row.pathLine or "this house's own rack", self.smallFont,
-        math.min(w * 0.42, gateRoom)), after, sy)
+    -- The base shelf is not a path and pathMeta gives it nothing -- and it needs nothing, because the
+    -- name beside it already said which house's rack this is. A clause saying so again says less.
+    if row.pathLine then
+        love.graphics.print(Theme.ellipsize(row.pathLine, self.smallFont,
+            math.min(w * 0.42, gateRoom)), after, sy)
+    end
 
     local g = self.sections[1]
     if g and g.pool and g.key == row.key then

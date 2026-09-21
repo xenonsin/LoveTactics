@@ -25,7 +25,7 @@ return {
     hands = 2, -- two-handed, like every bow -- and a longbow more literally than most
     class = "hunter",
     price = 80,
-    unlockQuests = 0, -- a family's base weapon is always rank 1 (docs/weapons.md)
+    unlockLevel = 0,
     activeAbility = {
         target = "enemy",
         range = 5,     -- two tiles further than data/items/weapon/weapon_iron_bow.lua's 3

@@ -30,7 +30,7 @@ local LootReveal = require("ui.panels.loot_reveal")
 local RelicOffer = require("ui.panels.relic_offer")   -- the Reliquary's pick-one-of-three
 local RelicReveal = require("ui.panels.relic_reveal") -- the Sin's Altar's single relic + toll
 local Merchant = require("ui.panels.merchant") -- the road's shop: ordinary goods, priced under the ceiling
-local Anvil = require("ui.panels.anvil")   -- the Cold Forge's pick-one-piece, and the free rung it takes
+local Anvil = require("ui.panels.anvil")   -- the wayside pick-one-piece, and the free rung it takes
 local Forge = require("models.forge")      -- ...and what the road may and may not give away for nothing
 local Choice = require("ui.panels.choice")
 local Crossroads = require("models.crossroads")
@@ -212,7 +212,11 @@ end
 -- so Items is the single live thing on the screen, which is what makes the hold readable rather than
 -- a game that stopped responding.
 local function mapHeld()
-    return game.coach == "loadout"
+    -- BOTH DOOR STEPS HOLD IT. `loadout` and `class` are the two coach steps out here that ask for a
+    -- BUTTON rather than for a tile, and a lesson whose control the player can simply walk away from
+    -- is a lesson that does not land. The class prompt is the Champion's whole payoff -- it is the one
+    -- moment Act 0 has to say the ladder exists -- and the road out is standing open two tiles away.
+    return game.coach == "loadout" or game.coach == "class"
 end
 
 -- Where each button actually sits this frame. One reading of the row, used by the draw, the hit test
@@ -425,6 +429,10 @@ local function openLoadout()
     -- During the flight tutorial, opening the loadout is the step that unlocks the equip lesson: the
     -- coach moves from pointing at the button to pointing at the stash.
     if game.coach == "loadout" then game.coach = "equip" end
+    -- ...and the class lesson HANDS OVER to its second half rather than ending: the panel is open
+    -- now, and the tab the whole beat is about is one the player has never had a reason to press. A
+    -- red pip on it is a mark, not an instruction (ui/panels/party.lua's noteUnread).
+    if game.coach == "class" then game.coach = "classtab" end
     game.activePanel = Party.new({
         player = game.player,
         -- The Tactics tab is hidden until the first trip ends -- home to the city, or down onto floor
@@ -442,9 +450,18 @@ local function openLoadout()
         onEquip = function()
             if game.coach == "equip" then game.coach = nil end
         end,
+        -- Spent by GOING THERE. Taking the tab is the whole of what the lesson asked for; what the
+        -- Roll then is gets explained by the tab's own window (Party:openNote), which fires on the
+        -- same press.
+        onMode = function(mode)
+            if mode == "classes" and game.coach == "classtab" then game.coach = nil end
+        end,
         onClose = function()
             game.activePanel = nil
             if game.coach == "equip" then game.coach = nil end -- lesson done (closed without equipping)
+            -- ...and the same for the class tab: a player who shut the panel without taking it has
+            -- declined the lesson, and a bubble that outlived its own screen would point at nothing.
+            if game.coach == "classtab" then game.coach = nil end
         end,
     })
 end
@@ -984,6 +1001,7 @@ end
 --     (OverworldMap:retreatFromEncounter), puts it in front of them instead.
 --   it is said out loud. Without a line the whole change is one marker swapping shape on the tile the
 --     party is standing on, which is the least visible square on the board to put news in.
+
 function game:openStairDown(cell)
     if not Descent.openStair(cell) then return end
     if game.map and game.map.retreatFromEncounter then game.map:retreatFromEncounter() end
@@ -1221,6 +1239,9 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
     game.day = (resume and resume.day) or Calendar.day(player)
     game.player = player -- kept so combat encounters can deploy the active party
     game.onComplete = onComplete
+    -- Cleared with the rest of the leg's state: an `opensExit` end sets it and nothing else does, so a
+    -- board quest entered after one must not inherit the prologue's hook.
+    game.onExitOpened = nil
     -- A DESCENT floor rather than a board quest. The descriptor is synthesized (models/descent.lua) and
     -- carries the run itself, which is what makes one expedition out of a stack of floors: the same table
     -- travels from floor to floor, so the rollback point taken at the top survives all of them.
@@ -1746,6 +1767,70 @@ function game:refreshMuster()
     game:refreshHaul()
 end
 
+-- (SEATED HERE, BELOW game.enter, ON PURPOSE. It calls game.endFight, and tests/hosted_battle_spec
+-- reads this file as SOURCE -- it scans from the first `game.activePanel = nil` to the next
+-- `game.endFight()` and expects the enter reset between them. Defined above that block, this
+-- function's own call silently truncated the span the guard reads, which is a spec broken by
+-- proximity rather than by anything being wrong. Both call sites are further down the file.)
+-- THE OBJECTIVE THAT OPENS A WAY OUT INSTEAD OF ENDING THE LEG, which is the prologue's Champion and
+-- nothing else today (states/prologue.lua's FLIGHT_QUEST declares `opensExit`).
+--
+-- The shape is the descent's, deliberately: a guardian standing on a stair opens it and the step down
+-- stays the player's (models/descent.lua's Descent.openStair argues why at length -- winning must not
+-- take the rest of the board out of the player's hands). This is the same rule for a leg that has a
+-- city at the end of it rather than another floor.
+--
+-- Left UNCLEARED for the same reason the stair is: ui/overworld_map fires onEncounter on arrival at any
+-- uncleared stop, so the road answers every time it is walked onto rather than once.
+local function openExitRoad(cell, spec)
+    if not (cell and spec and spec.opensExit) then return false end
+    cell.cleared = nil
+    cell.encounter = { kind = spec.opensExit.kind or "road",
+                       name = spec.opensExit.name or "The Way Out" }
+    -- BACK ONTO THE BOARD, BY HAND, and it is not optional: the battle state is still current and
+    -- frozen on its last frame when this runs, and returning to the map skips game.enter. The descent's
+    -- stair-guardian arm three hundred lines down says the same thing in the same words and does the
+    -- same three calls -- this arm was written without them and the result was a won fight that never
+    -- handed the screen back. The map never stopped being the state; it simply had no input and no
+    -- music until told.
+    require("models.sound").music("music.overworld")
+    game.endFight()
+    game:refreshMuster() -- the fight was paid for in health and potions; re-rate
+    if game.map and game.map.retreatFromEncounter then game.map:retreatFromEncounter() end
+    -- WHAT THE CALLER OWES ITSELF, BEFORE THE ROLL OPENS, and the order is the whole reason this
+    -- callback exists rather than the caller doing its bookkeeping when the leg ends. Act 0 pays its
+    -- exit level here (states/prologue.lua's payExit): a class screen opened in front of a company
+    -- that has not levelled yet is the empty screen Descent.classesUnlocked spent a paragraph
+    -- refusing to show, and it would be this beat that put it there.
+    if game.onExitOpened then game.onExitOpened() end
+    -- THE LADDER IS WORTH READING NOW, and this is the moment it becomes so: the company crossed a
+    -- level on the killing blow. See Descent.classesUnlocked for why the Roll waits for this rather
+    -- than for the city.
+    Descent.markClassesOpen(game.player)
+    -- THE BUTTON THE PROMPT POINTS AT HAS TO EXIST, and on this leg it is not there by default:
+    -- `itemsVisible` is held false for the whole flight tutorial and only opened by the first chest
+    -- (game.enter), because the panel is introduced when there is loot to put in it.
+    --
+    -- THE FLIGHT MAP'S CHESTS ARE OPTIONAL. A company that walked past them reaches the Champion with
+    -- the button still hidden -- and this step HOLDS THE MAP (mapHeld), so the road is shut, the
+    -- bubble is never drawn (drawCoach's own `itemsVisible` guard), and the only control that clears
+    -- the coach does not exist. That is a soft lock, and it was reached the first time this beat was
+    -- driven end to end rather than reasoned about.
+    --
+    -- So the beat that needs the panel opens it. By the Champion there is nothing left to introduce
+    -- gently: the company has levelled and there is a class ladder to read.
+    game.itemsVisible = true
+    -- ...and the lesson is a PROMPT, not a pushed window. The Roll already owns a window of its own
+    -- (ui/panels/party.lua's openNote, on the tab's red pip); what this beat owes is the thing the
+    -- loadout step owes two stops earlier -- "there is a screen, go and open it". Pushing the window
+    -- here instead put a modal in front of a player who had not asked for one, on the same frame the
+    -- battle was handing the board back, and taught the feature before they had seen the tab it lives
+    -- on. Prompt, press, tab, window: the same four beats the items lesson runs.
+    game.coach = "class"
+    game:pushToast("The way to the city is open")
+    return true
+end
+
 -- What this fight is worth, memoised per cell. Fixed for the whole run -- an encounter's composition
 -- is a deterministic function of prestige, and prestige does not move until the quest pays out -- so
 -- this is computed once per marker and never again.
@@ -1918,6 +2003,7 @@ function game:teachRelics()
     })
 end
 
+
 -- Engaging an encounter. Combat kinds (combat / elite / objective) drop into the
 -- battle arena; the non-combat kinds (town / treasure) keep the simple modal.
 --
@@ -2010,6 +2096,7 @@ function game:openEncounter(cell, opts)
         cell.cleared = true
         game.complete = true
         local function finish()
+            if openExitRoad(cell, objSpec) then return end
             if game.onComplete then
                 game.onComplete()
                 return
@@ -2548,6 +2635,10 @@ function game:openEncounter(cell, opts)
 
                 if kind == "objective" then
                     game.complete = true
+                    -- ...unless this end was standing ON the way out, in which case clearing it opens
+                    -- that and the leg carries on (openExitRoad). Above the reroute below because the
+                    -- whole point is that the sequencer is NOT called yet: the road is.
+                    if openExitRoad(cell, objectiveAt(cell)) then return end
                     -- Prologue (or any scripted caller) reroute: hand the cleared objective back to
                     -- its sequencer instead of paying out and going home. No reward, no save -- the
                     -- prologue is not a board quest.
@@ -3737,36 +3828,47 @@ function game:openEncounter(cell, opts)
         return
     end
 
-    -- THE COLD FORGE: one free rung, on one piece the company is CARRYING. The road's only source of
-    -- depth -- everything else out here (the Merchant, the Reliquary, the Altar, a chest) hands over
-    -- something new, and nothing made what you already had better. See
+    -- THE TWO WAYSIDE BENCHES: one free rung, on one piece the company is CARRYING. Between them the
+    -- road's only source of depth -- everything else out here (the Merchant, the Reliquary, the Altar,
+    -- a chest) hands over something new, and nothing made what you already had better. See
     -- data/encounters/encounter_cold_forge.lua for why the road is allowed to give this, and
     -- models/forge.lua's Forge.grant for the one rule it keeps: the BILL is waived, the CEILING is not.
+    --
+    -- ONE BRANCH FOR BOTH STOPS, and the kind picks the half of the kit (Forge.WAYSIDE): the Cold
+    -- Forge's coals take gear, the Cold Lectern's chained book takes abilities, which is the city's own
+    -- split held out here. Written as a lookup rather than as two branches because everything below the
+    -- first line is identical, and two copies of it is how one of them keeps the other's item list.
     --
     -- LEAVING KEEPS THE CELL, like the Merchant's and unlike the Reliquary's. There is nothing rolled
     -- here to re-roll -- the offer is the player's own kit, which is the same kit whichever way they walk
     -- in -- so coming back to it costs the run nothing and refusing it once should not spend it. The
     -- cell clears on the STRIKE, which is the only thing that happens here.
     --
-    -- An empty forge is a real state and it clears itself rather than opening onto a shrug: a company
-    -- early enough to be carrying nothing a level can improve should walk over the tile, not be shown a
-    -- panel with an empty list in it.
-    if kind == "anvil" then
-        local rows = Forge.equipped(game.player)
+    -- An empty stop is a real state and it clears itself rather than opening onto a shrug: a company
+    -- carrying nothing this bench's trade can improve should walk over the tile, not be shown a panel
+    -- with an empty list in it.
+    local waysideRoom = Forge.WAYSIDE[kind]
+    if waysideRoom then
+        local rows = Forge.equipped(game.player, waysideRoom)
         if #rows == 0 then
-            game:pushToast("The coals are cold, and there is nothing here worth working.")
+            game:pushToast(waysideRoom == Forge.STUDY
+                and "The page is open, and nobody here has a reading for it."
+                or "The coals are cold, and there is nothing here worth working.")
             cell.cleared = true
             saveRun()
             return
         end
         game.activePanel = Anvil.new({
-            title = cell.encounter.name or "The Cold Forge",
+            room = waysideRoom,
+            title = cell.encounter.name,
             player = game.player,
             onStrike = function(row)
                 cell.cleared = true
                 -- The new name already carries its "+n" (Item.instantiate bakes it on), so the toast
-                -- names the thing the player now owns rather than restating the rung beside it.
-                game:pushToast("Forged on the road: " .. row.newItem.name)
+                -- names the thing the player now owns rather than restating the rung beside it. The
+                -- verb is the stop's own -- a spell is not forged.
+                game:pushToast((waysideRoom == Forge.STUDY and "Studied on the road: "
+                    or "Forged on the road: ") .. row.newItem.name)
                 game.activePanel = nil
                 saveRun()
             end,
@@ -4340,6 +4442,15 @@ function game:openEncounter(cell, opts)
     -- ONE-WAY, and the panel says so rather than implying it. The board is kept on the way through
     -- (Descent.keepFloor), but nothing walks back UP a floor -- the only route to this ground again is
     -- climbing out to the gate and coming back down -- so what is left here is left.
+    -- ACT 0's WAY OUT. Straight through -- no panel and no scene: the leg is a tutorial and the city
+    -- on the other side is the thing it has been pointing at since the first bubble. The decision the
+    -- descent's stair asks ("is this floor finished with") has no counterpart here; there is nothing
+    -- left on this board to leave behind.
+    if kind == "road" then
+        if game.onComplete then game.onComplete() else State.switch(require("states.hub")) end
+        return
+    end
+
     if kind == "stair" then
         local run = game.descent
         if not run then cell.cleared = true; return end
@@ -4902,6 +5013,29 @@ function game.drawCoach()
         end
         return
     end
+    -- THE CLASS SCREEN, pointed at the button that opens the panel it lives on. Spent by opening it
+    -- (openLoadout), not by reading the bubble -- the same rule every other step out here keeps.
+    if step == "class" and not game.activePanel and game.itemsVisible then
+        local node = hintNode("conversation_tutorial_flight", "class_hint")
+        local anchor = itemsRect()
+        local belowBounds = { x = 20, y = anchor.y,
+            w = Scale.WIDTH - 40, h = Scale.HEIGHT - anchor.y - 44 }
+        -- The same strip rect the loadout step hands over, built the same way (PartyStatus exposes a
+        -- height, not a rect) so the two bubbles cannot pick different sides of the same corner.
+        local strip = { x = STRIP_X - 6, y = STRIP_Y - 6, w = 218,
+            h = PartyStatus.stripHeight(#(game.player and game.player.roster or {})) }
+        -- THE SCRIM, FOR THE REASON THE LOADOUT STEP HAS ONE. This step holds the road (mapHeld), and
+        -- a map that has stopped answering while still drawn at full brightness reads as a game that
+        -- hung -- which is exactly how this beat was first reported. Pushing everything but the button
+        -- back says in light what the hold says in input: one live control, and the bubble is on it.
+        CoachBubble.dim(anchor)
+        if node then
+            CoachBubble.draw(Locale.text("conversation_tutorial_flight", node), anchor,
+                { prefer = "below", key = loadoutKey(), bounds = belowBounds, avoid = { strip } })
+        end
+        return
+    end
+
     if step == "move" and not game.activePanel then
         local node = hintNode("conversation_tutorial_flight", moveHintId())
         CoachBubble.draw(Locale.text("conversation_tutorial_flight", node), game.map:tokenRect(),
@@ -4930,6 +5064,30 @@ function game.drawCoach()
         CoachBubble.dim(anchor)
         CoachBubble.draw(Locale.text("conversation_tutorial_flight", node), anchor,
             { prefer = "below", key = loadoutKey(), bounds = belowBounds, avoid = { strip } })
+    elseif step == "classtab" and game.activePanel and game.activePanel.tabAnchor then
+        -- THE SECOND HALF OF THE CLASS LESSON, inside the panel the first half opened. Shaped like
+        -- the equip step rather than like the button steps: it points at something on a screen that
+        -- is already up, so it needs no scrim and holds nothing -- the panel is modal already.
+        local anchor = game.activePanel:tabAnchor("classes")
+        if anchor then
+            local node = hintNode("conversation_tutorial_flight", "classtab_hint")
+            -- THE CAP IS THE TAB'S OWN NUMBER, not the confirm key. Locale.coachLine hands back the
+            -- confirm -- which is right for the equip step, where {select} picks an item up, and
+            -- wrong here: Enter is "Pick up" on this panel and pressing it does nothing to the tab
+            -- strip. Tabs are taken by their position (ui/panels/party.lua's keypressed walks
+            -- `modes` against tostring(i)), so the number is the only true key, and it is READ off
+            -- the panel rather than typed -- the strip grows a Tactics tab after the first trip, and
+            -- a hardcoded 2 would point at the wrong one from then on.
+            local cap
+            for i, m in ipairs(game.activePanel.modes or {}) do
+                if m == "classes" then cap = tostring(i) end
+            end
+            -- ...and nothing for a mouse, on loadoutKey's rule: the gold ring on the tab is the
+            -- instruction, and a key cap offered to a hand that is not on a keyboard is noise.
+            if not InputMode.isKeyboard() then cap = nil end
+            CoachBubble.draw(Locale.text("conversation_tutorial_flight", node), anchor,
+                { prefer = "below", key = cap, bounds = coachBounds() })
+        end
     elseif step == "equip" and game.activePanel and game.activePanel.coachAnchor then
         local anchor = game.activePanel:coachAnchor()
         if anchor then
@@ -5073,7 +5231,11 @@ function game.drawHud()
 
     -- Items button. Hidden on the flight tutorial until the first chest is opened (game.itemsVisible),
     -- so the Loadout panel is introduced only once there is loot to arrange.
-    if game.itemsVisible then drawRowButton(itemsRect(), "Items") end
+    -- "PARTY", NOT "ITEMS". The button opens ui/panels/party.lua, whose tabs are the loadout, the
+    -- rule list and the class ladder -- the grid is one of four things behind it, and the only one
+    -- the old label named. It mattered once the Champion started pointing a lesson at this control
+    -- for a reason that has nothing to do with items.
+    if game.itemsVisible then drawRowButton(itemsRect(), "Party") end
 
     -- Potions button (drink a draught), beside Items. Same visibility gate save for the flight tutorial.
     if useVisible() then drawRowButton(useRect(), "Potions") end
@@ -5232,7 +5394,7 @@ function game.drawHud()
     love.graphics.setColor(0.55, 0.6, 0.7)
     -- Show the glyphs for the device last used: pad buttons only in gamepad mode, keyboard/mouse
     -- otherwise. The items key only appears once the Loadout button itself does.
-    local items = game.itemsVisible and (InputMode.isGamepad() and "Y: items      " or "I: items      ") or ""
+    local items = game.itemsVisible and (InputMode.isGamepad() and "Y: party      " or "I: party      ") or ""
     local use = useVisible() and (InputMode.isGamepad() and "X: potions      " or "U: potions      ") or ""
     -- The "back to hub" hint is dropped alongside the button itself -- during the flight tutorial, and
     -- on every floor of a descent, which has no Back button any more (see backVisible). It read

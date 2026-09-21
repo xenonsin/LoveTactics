@@ -104,8 +104,20 @@ end)
 -- bird. Nothing here composes it -- `icon-compose assets` writes only into assets/items/ and skips a
 -- sprite pointing elsewhere, and `. icon-map` never indexes the chars bucket -- so asking it for a
 -- silhouette of its own would be asking it to stop being the picture it deliberately borrows.
+--
+-- THE OTHER EXEMPTION is a DECLARED SET (tools/icons/shared.lua): a handful of assets that are one
+-- object told apart by colour, the pool potions being the case that named the file. It is not a waiver
+-- either -- the two halves of the promise are asserted right below, that a clash is only forgiven
+-- between members of ONE set, and that the members it forgives actually differ in tint. A set that
+-- drew its members in one colour would be the duplicate this case exists to catch, wearing a note.
 local function composedItem(def)
     return type(def.sprite) == "string" and def.sprite:find("^assets/items/") ~= nil
+end
+
+-- The set a sprite path belongs to (its icon slug stands in for the set's identity), or nil.
+local function sharedSetOf(sprite)
+    local entry = Icon.SHARED[sprite:gsub("^assets/", "")]
+    return entry and entry.icon or nil
 end
 
 case("no two items draw the same silhouette", function()
@@ -124,7 +136,10 @@ case("no two items draw the same silhouette", function()
         if composedItem(def) then
             local slug, sprite = Icon.baseFor(def), def.sprite
             local held = holder[slug]
-            if held and held ~= sprite then
+            -- Forgiven only when BOTH halves are in the same declared set -- which, since a set's
+            -- members all draw the set's own icon, is the same question as "is this slug the set's".
+            local sameSet = held and sharedSetOf(sprite) == slug and sharedSetOf(held) == slug
+            if held and held ~= sprite and not sameSet then
                 clashes[#clashes + 1] = string.format("%s and %s both draw %s", held, sprite, tostring(slug))
             elseif not held then
                 holder[slug] = sprite
@@ -154,6 +169,44 @@ case("every item blueprint has a mapped glyph of its own", function()
     table.sort(unmapped)
     assert(#unmapped == 0, string.format("%d item(s) with no silhouette of their own; run `. icon-map`: %s",
         #unmapped, table.concat(unmapped, ", ", 1, math.min(#unmapped, 8))))
+end)
+
+-- The set's own promise: one silhouette, and a colour per member that no sibling repeats. Asked through
+-- Icon.baseFor/tintFor rather than off the declaration, because the declaration is not what the renderer
+-- reads -- a set whose members fell through to the map (or to steel) would satisfy the file and ship two
+-- unrelated pictures anyway.
+case("a shared set draws one silhouette in a colour per member", function()
+    local Registry = require("models.registry")
+    local items = Registry.load("data/items", "data.items")
+
+    local bySet, byId = {}, {}
+    for id, def in pairs(items) do
+        if composedItem(def) then byId[def.sprite] = byId[def.sprite] or id end
+    end
+
+    local keys = {}
+    for key in pairs(Icon.SHARED) do keys[#keys + 1] = key end
+    table.sort(keys) -- a stable failure names the same member every run
+    assert(#keys > 0, "tools/icons/shared.lua declares no members; delete it rather than leaving a stub")
+
+    for _, key in ipairs(keys) do
+        local sprite = "assets/" .. key
+        local id = byId[sprite]
+        -- A member naming a sprite no blueprint carries is a typo that costs nothing and does nothing,
+        -- which is the worst kind: the pairing silently never happens.
+        assert(id, "shared-set member names no item sprite: " .. key)
+
+        local set = Icon.SHARED[key].icon
+        assert(Icon.baseFor(items[id]) == set,
+            string.format("%s is declared in the %s set but draws %s", id, set, tostring(Icon.baseFor(items[id]))))
+
+        local tint = Icon.tintFor(items[id])
+        bySet[set] = bySet[set] or {}
+        assert(not bySet[set][tint], string.format(
+            "%s and %s are the same picture in the same colour (%s) -- a set is told apart by tint",
+            tostring(bySet[set][tint]), id, tostring(tint)))
+        bySet[set][tint] = id
+    end
 end)
 
 -- 2. THE OVERLAY ------------------------------------------------------------------------------------

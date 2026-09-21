@@ -22,8 +22,7 @@ return {
     type = "weapon",
     tags = { "wand", "magical", "fire", "ranged" },
     class = "mage",
-    unlockQuests = 5,
-    dropTier = 6,
+    unlockLevel = 9,
     activeAbility = {
         target = "enemy",
         range = 3,

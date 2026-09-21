@@ -27,8 +27,7 @@ return {
     type = "utility",
     tags = { "charm", "holy" },
     class = "crusader",
-    unlockQuests = 3,
-    dropTier = 2,
+    unlockLevel = 2,
     traits = { "trait_kept_faith" },
     charge = { key = "zeal", from = { "foeDown", "allyHealed" }, max = 10 },
     -- the vow banks magic defense per Zeal, so the floor is the plainer guard

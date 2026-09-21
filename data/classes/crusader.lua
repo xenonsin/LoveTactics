@@ -9,5 +9,5 @@ return {
     description = "Strikes with holy damage. Blows land for extra damage against demons and undead, and a "
         .. "killing blow heals the one who dealt it.",
     exemplar = "character_crusader", -- NEW, pending
-    requires = { fighter = 5, priest = 5 },
+    requires = { fighter = 6, priest = 6 },
 }

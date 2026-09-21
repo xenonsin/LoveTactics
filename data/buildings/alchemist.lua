@@ -48,8 +48,11 @@ return {
         -- Keeps its own vendor without keeping a shelf, exactly as the kitchen does: the portrait, the
         -- name, the one-time greeting -- and its record in `visitedVendors`, which is also what keeps
         -- the line standing once it has been used (models/identify.lua's Identify.everFound).
+        -- The backstop moved 5 -> 6 when the Arcanum's study took the fifth trip: two rooms landing on
+        -- one homecoming is the one thing the trip clock exists to prevent, and this is the half that
+        -- is only a guarantee -- a company carrying a find it cannot read has the room already.
         { answer = "read", panel = "touchstone", vendor = "touchstone",
-          gate = { any = { { unidentified = true }, { trips = 5 } } } },
+          gate = { any = { { unidentified = true }, { trips = 6 } } } },
     },
     description = "Draughts, coatings, and a stone that will say what a thing is.",
 }

@@ -34,11 +34,11 @@ return {
         "consumable_healing_potion",  "utility_ninth_sigil",                    false,
     },
     drops = {
-        "armor_gaunt_vigil_plate",
-        "utility_mana_wellspring",
-        "armor_sealed_coat",
-        "weapon_sealed_ward_wand",
-        "utility_second_utterance",
+        "utility_overreach",
+        "weapon_second_utterance_wand",
+        "utility_overdraft",
+        "weapon_swineherds_wand",
+        "utility_pilgrims_sandals",
     },
     defaultAction = "ability_blizzard",
     -- Basic tactics: a glass body breaks off when bloodied rather than standing to trade; the Blizzard

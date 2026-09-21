@@ -18,9 +18,9 @@ return {
     script = {
         { "hunters_lodge", "Antlers on every beam and a pot on every fire. We ask what you killed before we ask your name.", tag = 1 },
         { "hunters_lodge", "So. What is it.", tag = 2, id = "desk", choices = {
-            { "Field kit.", tag = 3, answer = "shelf", when = { offer = "shelf" } },
-            { "Feed my company before the road.", tag = 4, answer = "supper", when = { offer = "supper" } },
-            { "Neither, thank you.", tag = 5, answer = "leave" },
+            { "Visit hunter class trainer", tag = 3, answer = "shelf", when = { offer = "shelf" } },
+            { "Buy a meal", tag = 4, answer = "supper", when = { offer = "supper" } },
+            { "Leave", tag = 5, answer = "leave" },
         } },
     },
 }

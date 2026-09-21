@@ -22,17 +22,31 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 4, luck = 2,
     },
+    -- THE GRID IS THE KIT, and two cells of it were dead.
+    --
+    -- Single Combat declares `requiresAdjacent = { type = "weapon" }` and was authored in the
+    -- top-right cell, whose neighbours are the two abilities beside and below it -- so the
+    -- discipline's duel verb was refused by Combat.itemBlockReason in every fight this body has ever
+    -- stood in. It sits beside the sword now, which is the whole of that fix.
+    --
+    -- ...and the Bulwark was a SECOND SHIELD on a body already carrying one. It and the Standing Debt
+    -- both swap Wait for Defend and both cost a point of movement, so the pair bought one stance twice
+    -- and paid double for it -- while INTERCEPT, the thing this discipline IS (data/classes/sentinel.lua,
+    -- and the description on its own card), was on no item in the grid and therefore on no body here at
+    -- all: `unit.guard` was nil. The Warden's Oath IS that mechanic (armor_wardens_oath, `class =
+    -- "sentinel"`), it costs the same point of movement the Bulwark did, and it is the difference
+    -- between an exemplar and a knight carrying a sentinel's shopping list.
     startingItems = {
-        "weapon_iron_sword",   "ability_shared_burden", "ability_single_combat",
+        "weapon_iron_sword",   "ability_single_combat", "ability_shared_burden",
         "ability_straw_sentry", "utility_lent_aegis",   "utility_unyielding_seal",
-        "armor_bulwark_shield", "consumable_healing_potion", "armor_standing_debt",
+        "armor_wardens_oath",  "consumable_healing_potion", "armor_standing_debt",
     },
     drops = {
-        "armor_given_guard",
-        "armor_unyielding_harness",
-        "weapon_long_fall",
+        "weapon_brackish_lance",
         "weapon_sworn_lance",
-        "utility_dampening_oath",
+        "utility_bared_nerve",
+        "weapon_boar_spear",
+        "utility_wardens_writ",
     },
     defaultAction = "weapon_iron_sword",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

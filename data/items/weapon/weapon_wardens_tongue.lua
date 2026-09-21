@@ -21,13 +21,13 @@ return {
     hands = 1,
     traits = { "trait_wardens_parry" },
     class = "knight",
-    dropTier = 4,
+    unlockLevel = 6,
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 3,
         cost = { stat = "stamina", amount = 8 },
-        damage = Curve.ramp(6, 16), -- an iron sword's: the answer is the extra
+        damage = Curve.ramp(10, 20), -- an iron sword's: the answer is the extra
         effect = function(fx)
             fx.damage(fx.target)
         end,

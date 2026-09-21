@@ -57,9 +57,16 @@ Counter.LEAVE = "leave"
 -- Rebuilt on every pass through the desk rather than captured once, because a room can OPEN while the
 -- player is standing at the counter -- setting a bone at the Cathedral is the case it was built for, and
 -- a desk that still offered it afterwards would be a line about a problem the player just solved.
+--
+-- IT ALSO CARRIES WHAT IS WAITING IN EACH ROOM (`news`), which is a different question from whether the
+-- line is there at all: the Cathedral's mending stands on the desk forever once anybody has been carried
+-- up broken, and it is worth walking into only on the trips where somebody is hurt. A marked line is how
+-- a desk says which of its four rooms wants you today -- the same red dot the house's own plate wears
+-- out on the plaza, asked of one room instead of all of them (models/offer.lua's Offer.news).
 function Counter.context(player, building)
     local ctx = Conversation.context(player)
     ctx.offers = Offer.openSet(player, building)
+    ctx.news = Offer.newsSet(player, building)
     return ctx
 end
 
@@ -122,7 +129,23 @@ function Counter.open(player, building, openPanel, onLeave, opts)
 
     -- The house speaks first: the greeting, and any discipline it has not announced yet. Unchanged, and
     -- still the first thing behind a shop door.
-    local function greet() VendorVisit.play(player, building.vendor, function() desk(nil) end) end
+    --
+    -- AND IF IT HAS NOTHING TO SAY, THE DESK IS THE FIRST THING YOU SEE. A counter scene opens on a line
+    -- of the keeper's flavour and ends on the desk, and that line is a GREETING -- it is the room
+    -- introducing itself. Played from the top on every visit it became a keypress between the player and
+    -- the four words they came through the door for, forever, at seven doors. So the preamble rides the
+    -- visit the house is already speaking on -- the one-time intro, a newly unlocked discipline -- and
+    -- every other visit opens ON the desk (`startAt`), the same node a closing room comes back to.
+    --
+    -- `spoke` is VendorVisit's own answer to "did I play anything", not a second ledger derived from the
+    -- flags it writes: it records them BEFORE each scene plays, so anything asking afterwards would be
+    -- told no.
+    local function greet()
+        VendorVisit.play(player, building.vendor, function(spoke)
+            if spoke then return desk(nil) end
+            desk(Counter.DESK)
+        end)
+    end
 
     -- A ROOM WITH ITS OWN ONE-TIME SCENE, ahead of the shopkeeper's greeting. `intro` is a scene the
     -- blueprint names and `grants` is the companion it hands over as it opens -- which is how the
@@ -153,9 +176,12 @@ function Counter.open(player, building, openPanel, onLeave, opts)
         if building.grants then Player.recruit(player, building.grants) end
         Player.save()
         local afterIntro = opts and opts.afterIntro
+        -- Straight to the desk afterwards, for the reason the paragraph above this one gives twice over:
+        -- the house has just spoken at length, and its keeper's preamble on the back of that is the
+        -- third scene this branch exists to avoid.
         Conversation.play(building.intro, function()
-            if afterIntro then return afterIntro(function() desk(nil) end) end
-            desk(nil)
+            if afterIntro then return afterIntro(function() desk(Counter.DESK) end) end
+            desk(Counter.DESK)
         end)
         return
     end

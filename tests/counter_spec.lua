@@ -28,6 +28,17 @@ local function houseHolding(answer)
     end
 end
 
+-- The same house as the CARD a screen would hand to Counter.open, rather than its raw blueprint. The
+-- difference matters exactly once and it is load-bearing: a blueprint carries no `id` (models/registry
+-- keys the table, it does not stamp the def), and Counter.open keys the one-time intro flag off
+-- `building.id`. A spec passing the raw def would test a door whose intro flag is "intro_nil".
+local function cardFor(player, id)
+    for _, card in ipairs(Building.list(player)) do
+        if card.id == id then return card end
+    end
+    error(id .. " is not a card in the city")
+end
+
 return {
     {
         name = "every offer names a panel that exists, and every house's desk scene is authored",
@@ -275,6 +286,238 @@ return {
             assert(Offer.any(Player.new(), Building.defs.the_gate), "the Rift has no rooms and is open")
             assert(not Counter.has(Building.defs.armory), "the Armory keeps no desk")
             assert(not Counter.has(Building.defs.the_gate), "the Rift keeps no desk")
+        end,
+    },
+    {
+        -- THE DESK IS WHAT THE PLAYER CAME THROUGH THE DOOR FOR, so on an ordinary visit it is the first
+        -- thing they see. A counter scene opens on a line of the keeper's flavour, and that line is a
+        -- greeting -- fine on the visit the house is introducing itself, a keypress in the way on the
+        -- two hundred visits after it. Counter.open hands `startAt` the desk's own id whenever
+        -- VendorVisit had nothing to play.
+        --
+        -- STUBBED AT Conversation.play, because the sequencing is the whole feature and it is the one
+        -- part of this model that cannot be reached without a window. The stub answers LEAVE so the
+        -- pass walks straight back out; what it records is the id and the `startAt` of every scene.
+        name = "a house with nothing new to say opens ON the desk, not on the keeper's preamble",
+        fn = function()
+            local Conversation = require("models.conversation")
+            local Vendor = require("models.vendor")
+            local VendorVisit = require("models.vendor_visit")
+            local cathedralId = houseHolding("mend")
+
+            -- A company that has been here: the room's one-time scene spent, the greeting heard, every
+            -- discipline this shelf stocks already announced.
+            local known = Player.new()
+            known.flags = known.flags or {}
+            known.flags["intro_" .. cathedralId] = true
+            local cathedral = cardFor(known, cathedralId)
+            Player.markVendorVisited(known, cathedral.vendor)
+            local class = Vendor.get(cathedral.vendor).class
+            for _, classId in ipairs(Class.pendingAnnouncements(known, class)) do
+                Player.markDisciplineAnnounced(known, classId)
+            end
+            assert(#VendorVisit.steps(known, cathedral.vendor, 0) == 0,
+                "this house has nothing left to say, which is the case under test")
+
+            local played = {}
+            local real = Conversation.play
+            Conversation.play = function(id, onDone, ctx, opts)
+                played[#played + 1] = { id = id, startAt = opts and opts.startAt }
+                onDone(Counter.LEAVE)
+            end
+            local ok, err = pcall(Counter.open, known, cathedral, function() end, nil)
+            Conversation.play = real
+            assert(ok, tostring(err))
+
+            assert(#played == 1, "one scene plays behind the door, the counter's own; got " .. #played)
+            assert(played[1].id == cathedral.counter, "...and it is this house's counter scene")
+            assert(played[1].startAt == Counter.DESK,
+                "the scene opened at its top, so the player reads flavour before the desk again")
+
+            -- THE DESK MUST SURVIVE RESOLUTION or `startAt` falls back to the top of the script without
+            -- saying so (ui/dialogue.lua), which is this feature silently doing nothing. That is why the
+            -- desk node carries no `when` -- asserted here for every house rather than only written down.
+            for id, def in pairs(Building.defs) do
+                if def.counter then
+                    local resolved = Conversation.resolve(Conversation.defs[def.counter],
+                        Counter.context(known, def))
+                    local at = Conversation.nextIndex(resolved.script, 0, Counter.DESK)
+                    assert(at, id .. "'s desk does not survive resolution, so its counter opens on the top")
+                end
+            end
+        end,
+    },
+    {
+        -- The other half of the same switch: a house that HAS something to say still says it, and its
+        -- counter scene then plays whole -- the preamble rides the visit the greeting is on.
+        name = "a house with something to say speaks first, and its scene plays from the top",
+        fn = function()
+            local Conversation = require("models.conversation")
+            local cathedralId = houseHolding("mend")
+
+            local stranger = Player.new()
+            stranger.flags = stranger.flags or {}
+            stranger.flags["intro_" .. cathedralId] = true -- the room's own scene is not what is tested
+            local cathedral = cardFor(stranger, cathedralId)
+
+            local played = {}
+            local real = Conversation.play
+            Conversation.play = function(id, onDone, ctx, opts)
+                played[#played + 1] = { id = id, startAt = opts and opts.startAt }
+                onDone(Counter.LEAVE)
+            end
+            local ok, err = pcall(Counter.open, stranger, cathedral, function() end, nil)
+            Conversation.play = real
+            assert(ok, tostring(err))
+
+            assert(#played >= 2, "the greeting plays and then the counter; got " .. #played .. " scene(s)")
+            assert(played[1].id == "conversation_" .. cathedral.vendor .. "_vendor_intro",
+                "the house greets a stranger first, got " .. tostring(played[1].id))
+            local last = played[#played]
+            assert(last.id == cathedral.counter, "...and the counter scene follows it")
+            assert(last.startAt == nil, "which plays whole, preamble included, on the visit it is earned")
+        end,
+    },
+    {
+        -- A GATE SAYS THE ROOM IS THERE; THE MARK SAYS IT WANTS YOU TODAY. The Cathedral's mending
+        -- stands on the desk forever once anybody has been carried up broken -- that is the gate doing
+        -- its job, and the spec above pins it -- so without a second question a desk of four identical
+        -- lines makes the player open all four to find out which one has anything in it.
+        --
+        -- AND THE MARK MUST BE ABLE TO GO OUT, which is the half that decides whether any of this is
+        -- worth drawing. `unattended` rather than `wounded`: a body already lying up is being dealt
+        -- with, and a room that went on flagging it would be asking for a decision already made.
+        name = "a room is marked while it has something in it, and the mark goes out when it is dealt with",
+        fn = function()
+            local _, cathedral = houseHolding("mend")
+            assert(cathedral, "no house holds the mending")
+
+            local well = Player.new()
+            assert(not Offer.newsSet(well, cathedral).mend,
+                "nobody is hurt, so the mending has nothing waiting in it")
+
+            local hurt = Player.new()
+            Wound.inflict(hurt, { { id = "character_rowan" } })
+            assert(Offer.newsSet(hurt, cathedral).mend, "a body nobody has seen to marks the room")
+
+            -- Lying up is an ANSWER to a wound, not a wound ignored: the stay is served by descending
+            -- (models/wound.lua), so the room stops asking the moment the player has decided.
+            Wound.rest(hurt, "character_rowan")
+            assert(not Offer.newsSet(hurt, cathedral).mend,
+                "a body already resting is being dealt with -- a mark that cannot go out is noise")
+        end,
+    },
+    {
+        -- THE RITE IS THE MENDING'S TWIN WITH AN ITEM WHERE THE BODY GOES, and it wears the same mark
+        -- on the same terms -- a hex is a thing the company is still CARRYING, so it clears when the
+        -- curse is lifted rather than when the line is looked at.
+        name = "a hex marks the rite, and lifting it puts the mark out",
+        fn = function()
+            local Item = require("models.item")
+            local Curse = require("models.curse")
+            local _, cathedral = houseHolding("lift")
+            assert(cathedral, "no house holds the rite")
+
+            local p = Player.new()
+            assert(not Offer.newsSet(p, cathedral).lift, "nothing is hexed on a fresh save")
+
+            local sword = Item.instantiate("weapon_iron_sword")
+            p.stash[#p.stash + 1] = sword
+            assert(Curse.afflict(sword, "curse_cold_iron"), "the sword takes Cold Iron")
+            assert(Offer.newsSet(p, cathedral).lift, "a hexed piece marks the rite")
+
+            Curse.lift(sword)
+            assert(not Offer.newsSet(p, cathedral).lift, "and lifting it takes the mark off")
+        end,
+    },
+    {
+        -- A MARK IS ONLY EVER PUT ON SOMETHING THE PLAYER CAN WALK IN AND SEE. The rule is older than
+        -- this file -- it cost the Market its dot once and all seven houses theirs a second time -- and
+        -- the shape of the failure is always the same: a mark raised on a looser question than the
+        -- screen behind it clears on, so the player opens the door, reads everything, walks out, and the
+        -- plate is still burning. A room the desk will not print is the purest case of that.
+        name = "a shut room never carries a mark, and no house marks a line it would not print",
+        fn = function()
+            local hurt = Player.new()
+            Wound.inflict(hurt, { { id = "character_rowan" } })
+
+            assert(Offer.news(hurt, { answer = "mend", panel = "ward", open = true }),
+                "the ward has a body waiting in it")
+            assert(not Offer.news(hurt, { answer = "mend", panel = "ward", open = false }),
+                "...and a room that is not on the desk yet must not be marked for it")
+
+            -- The sweep: whatever any house is marking, its desk is printing.
+            for id, def in pairs(Building.defs) do
+                local open, news = Offer.openSet(hurt, def), Offer.newsSet(hurt, def)
+                for answer in pairs(news) do
+                    assert(open[answer], id .. " marks '" .. answer .. "', which its desk will not offer")
+                end
+            end
+        end,
+    },
+    {
+        -- THE DOOR AND THE DESK ASK ONE QUESTION. The plate out on the plaza is the OR over the rooms
+        -- behind it and a desk line is one entry of the same call, so a city that says "there is
+        -- something in this house" always opens on a line saying which room it is in.
+        name = "a house's plate is the OR over the marks on its own desk",
+        fn = function()
+            local hurt = Player.new()
+            Wound.inflict(hurt, { { id = "character_rowan" } })
+
+            local marked = 0
+            for id, def in pairs(Building.defs) do
+                local any = false
+                for _ in pairs(Offer.newsSet(hurt, def)) do any = true; break end
+                assert(Offer.anyNews(hurt, def) == any,
+                    id .. "'s plate and its desk disagree about whether anything is waiting")
+                if any then marked = marked + 1 end
+            end
+            assert(marked == 1, "one wound lights exactly the house that mends it, got " .. marked)
+        end,
+    },
+    {
+        -- ...AND THE MARK REACHES THE LINE. Everything above is about the model; this is the wiring,
+        -- which is the half that can ship green and draw nothing. A counter hands its news set over on
+        -- the conversation context, the resolver stamps the option it belongs to, and ui/dialogue.lua
+        -- draws the same red dot the plate outside wears (ui/glyphs.lua's unseenDot).
+        --
+        -- Rebuilt on every pass through the desk, which is why the mark can go out WITHOUT closing the
+        -- door: see to the bone, come back from the room, and the line the player just used is plain.
+        name = "the desk's own option carries the mark, and only that option",
+        fn = function()
+            local Conversation = require("models.conversation")
+            local id, cathedral = houseHolding("mend")
+            local hurt = Player.new()
+            Wound.inflict(hurt, { { id = "character_rowan" } })
+
+            local scene = Conversation.resolve(Conversation.defs[cathedral.counter],
+                Counter.context(hurt, cathedral))
+            local desk
+            for _, node in ipairs(scene.script) do
+                if node.id == Counter.DESK then desk = node end
+            end
+            assert(desk and desk.choices, id .. "'s scene ends on a desk of rooms")
+
+            local marked, leave = nil, nil
+            for _, choice in ipairs(desk.choices) do
+                if choice.news then marked = choice.answer end
+                if choice.answer == Counter.LEAVE then leave = choice end
+            end
+            assert(marked == "mend", "the mending line wears the dot, got " .. tostring(marked))
+            assert(leave and not leave.news, "and the way out never does")
+
+            -- Seen to, asked again: the same desk, no dot.
+            Wound.rest(hurt, "character_rowan")
+            local after = Conversation.resolve(Conversation.defs[cathedral.counter],
+                Counter.context(hurt, cathedral))
+            for _, node in ipairs(after.script) do
+                if node.id == Counter.DESK then
+                    for _, choice in ipairs(node.choices or {}) do
+                        assert(not choice.news, "'" .. tostring(choice.answer)
+                            .. "' still wears a dot after the wound was answered")
+                    end
+                end
+            end
         end,
     },
 }

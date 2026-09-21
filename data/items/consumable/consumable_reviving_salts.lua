@@ -25,7 +25,7 @@ return {
     tags = { "salts", "restorative" },
     class = "alchemist",
     price = 265,
-    unlockQuests = 7,
+    unlockLevel = 14,
     activeAbility = {
         target = "tile",
         support = true, -- friendly cast: preview green

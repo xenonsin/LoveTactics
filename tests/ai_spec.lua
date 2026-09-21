@@ -1371,4 +1371,53 @@ return {
             assert(ok, err)
         end,
     },
+
+    -- ---------------------------------------------------------------------
+    -- A buff is an outcome
+    -- ---------------------------------------------------------------------
+    {
+        -- THE PLANNER COULD NOT CAST A BUFF. `outcome` gates whether an action is worth taking at all,
+        -- and a status landed on the caster's OWN side was multiplied by zero -- which is the entire
+        -- payload of a ward, a seal, a barrier or a bond, so all 69 of them scored a flat 0 and were
+        -- thrown out of the pool before the sort ever saw them. Nothing went red because nothing had
+        -- to: the unit fell through to the next rule and swung, which is a perfectly ordinary-looking
+        -- turn. Asserted on `outcome` rather than on the plan, because the gate is the thing that was
+        -- wrong -- a buff is still allowed to lose the sort to a better action.
+        name = "a buff cast on an ally is worth a turn",
+        fn = function()
+            local c = Combat.new(arena(9, 9),
+                { unit(swordsman(), 1, 1) },
+                { unit(caster("ability_aegis", "aggressive"), 5, 5), unit("character_bandit", 5, 6) })
+            local warder = c.units[2]
+            local w = setmetatable({}, { __index = AI.WEIGHTS })
+            local tiles = { { x = warder.x, y = warder.y, steps = 0 } }
+            local best = 0
+            for _, cand in ipairs(AI.candidates(c, warder, { warder.char.inventory[1] }, tiles, true)) do
+                AI.scoreCandidate(c, warder, cand, w, {})
+                if cand.outcome > best then best = cand.outcome end
+            end
+            assert(best > 0, "warding the body beside you accomplishes nothing (outcome " .. best .. ")")
+        end,
+    },
+    {
+        -- ...and the guard that keeps the credit from falling due every turn. Without it a supporter
+        -- re-swears the same oath for as long as it can afford the stamina and never joins the fight.
+        name = "a buff already standing on that body is worth nothing",
+        fn = function()
+            local Status = require("models.status")
+            local c = Combat.new(arena(9, 9),
+                { unit(swordsman(), 1, 1) },
+                { unit(caster("ability_aegis", "aggressive"), 5, 5), unit("character_bandit", 5, 6) })
+            local warder = c.units[2]
+            Status.apply(c, c.units[2], "status_aegis")
+            Status.apply(c, c.units[3], "status_aegis")
+            local w = setmetatable({}, { __index = AI.WEIGHTS })
+            local tiles = { { x = warder.x, y = warder.y, steps = 0 } }
+            for _, cand in ipairs(AI.candidates(c, warder, { warder.char.inventory[1] }, tiles, true)) do
+                AI.scoreCandidate(c, warder, cand, w, {})
+                assert(cand.outcome <= 0,
+                    "re-warding a line that is already warded scored " .. cand.outcome)
+            end
+        end,
+    },
 }

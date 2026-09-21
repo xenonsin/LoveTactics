@@ -52,7 +52,7 @@ return {
     tags = { "impact", "physical" },
     class = "fighter",
     price = 245,
-    unlockQuests = 2,
+    unlockLevel = 4,
     activeAbility = {
         target = "tile",       -- an adjacent tile, so what is thrown may be friend, foe or furniture
         allowOccupied = true,

@@ -27,7 +27,7 @@ return {
     tags = { "bow", "pierce", "physical", "light", "ranged" },
     hands = 2,
     class = "hunter",
-    dropTier = 6,
+    unlockLevel = 10,
     activeAbility = {
         target = "enemy",
         range = 3,
@@ -36,7 +36,7 @@ return {
         speed = 3,
         cost = { stat = "stamina", amount = 7 },
         -- Under an iron bow's: the light is the weapon and the arrow is how it gets delivered.
-        damage = Curve.ramp(5, 15),
+        damage = Curve.ramp(12, 22),
         effect = function(fx)
             fx.damage(fx.target)
             -- Laid on the aimed CELL rather than on the body, which is the whole point: the light stays

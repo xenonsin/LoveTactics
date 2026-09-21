@@ -21,8 +21,7 @@ return {
     type = "armor",
     tags = { "hide" },
     class = "druid", -- deeper cut of the shelf: buyable only once the druid gate is cleared
-    unlockQuests = 7,
-    dropTier = 6,
+    unlockLevel = 9,
     traits = { "trait_keen_senses" },
     bonus = { defense = Curve.ramp(4, 14), movement = -1 },
     resist = { physical = 1 },

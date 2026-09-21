@@ -9,5 +9,5 @@ return {
     description = "Holds a holy spell and lets it grow. A wind-up gains power for every turn you keep "
         .. "channelling, and leaves blessed ground where it lands.",
     exemplar = "character_theurge", -- NEW, pending
-    requires = { mage = 8, priest = 8 },
+    requires = { mage = 15, priest = 15 },
 }

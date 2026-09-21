@@ -29,7 +29,7 @@ return {
     tags = { "holy", "magical" },
     class = "exorcist",
     price = 740,
-    unlockQuests = 8,
+    unlockLevel = 15,
     activeAbility = {
         target = "self",
         range = 0,      -- a self-cast offers no reach to choose

@@ -8,11 +8,11 @@
 -- Measured across the 484 priced items, the last third of every shelf came out 35% passive utilities
 -- and 2% consumables. That is the ranking, not a coincidence.
 --
--- It stopped being cosmetic when the slot became the grade: Balance.slotTarget reads `unlockQuests` and
+-- It stopped being cosmetic when the slot became the grade: Balance.slotTarget reads `unlockLevel` and
 -- GRANTS an item its magnitude. So the power ladder is anchored on a field that was assigned by price,
 -- and Balance.itemMagnitude cannot notice, because it derives the target it checks from the same field.
 --
--- SO THE GRADE MAY NEVER READ `unlockQuests` OR `price`. Not as a hint, not as a tiebreak. Both are
+-- SO THE GRADE MAY NEVER READ `unlockLevel` OR `price`. Not as a hint, not as a tiebreak. Both are
 -- downstream of it now (grade -> slot -> price), and a grader that peeked at either would be the same
 -- tautology this file was written to break -- the one Balance.slotAnchors' header already describes,
 -- where a target read off the audited data raises itself to meet whatever it was supposed to judge.
@@ -1008,7 +1008,7 @@ end
 
 -- The wielder the dry run casts as: the reference body grown to Grade.PRESTIGE, so an item's damage
 -- carries the same attack stat every other item's does and the difference between two grades is the
--- ITEMS. Deliberately NOT Balance.wielderStatFor, which reads `unlockQuests`.
+-- ITEMS. Deliberately NOT Balance.wielderStatFor, which reads `unlockLevel`.
 local function caster(magical)
     local key = magical and "casterMagic" or "casterPhys"
     if cache[key] then return cache[key] end

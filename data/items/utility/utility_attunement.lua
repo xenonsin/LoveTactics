@@ -12,8 +12,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "mage",
-    unlockQuests = 2,
-    dropTier = 2,
+    unlockLevel = 2,
     maxBonus = { mana = Curve.ramp(12) },
     -- a deeper pool is more castings
     bonus = { magicDamage = 1 },

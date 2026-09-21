@@ -17,8 +17,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "fighter",
-    unlockQuests = 0,
-    dropTier = 2,
+    unlockLevel = 1,
     maxBonus = { health = Curve.ramp(20) },
     -- the pool is its point; the plate is the sentiment
     bonus = { defense = 1 },

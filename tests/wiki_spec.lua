@@ -128,7 +128,7 @@ return {
     {
         -- The legend quotes a band, and a quoted band is a second statement of something the data
         -- already says. It is measured off the catalogue, so this only has to check it was not
-        -- replaced by a constant again (it was Class.CLASS_LEVEL_CAP once, and one dropTier of 9
+        -- replaced by a constant again (it was Class.CLASS_LEVEL_CAP once, and one unlockLevel of 9
         -- made that sentence false on a page that printed the 9).
         name = "the rank legend names the band the catalogue actually occupies",
         fn = function()

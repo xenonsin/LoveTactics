@@ -7,5 +7,5 @@ return {
     description = "Coats the blade before the swing. A weapon infusion adds its own damage and status to "
         .. "every hit, and is used up as it goes.",
     exemplar = "character_poisoner", -- NEW, pending
-    requires = { alchemist = 4 },
+    requires = { alchemist = 5 },
 }

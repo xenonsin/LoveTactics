@@ -17,7 +17,7 @@ return {
     tags = { "banner", "rally" },
     class = "warlord", -- deeper cut of the shelf: buyable only once the warlord gate is cleared
     price = 740,
-    unlockQuests = 8,
+    unlockLevel = 15,
     activeAbility = {
         target = "tile", -- aim an empty tile; the standard rises there
         range = 3,

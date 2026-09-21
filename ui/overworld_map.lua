@@ -613,7 +613,13 @@ local function markerColor(kind, enc)
     -- blue, well clear of the rest's teal (which is green-blue in equal parts, where this is plainly
     -- blue) and of the ward's darker steel (which always wears the red combat ring this never does).
     -- The anvil mark is unlike any other silhouette out there and settles what the hue narrows.
-    if kind == "anvil" then return 0.48, 0.74, 0.98 end
+    --
+    -- THE COLD LECTERN TAKES THE SAME BLUE, and it is the hazards' rule used for a kinder category: the
+    -- two wayside stops are ONE thing to learn -- a free rung on something you are carrying -- and what
+    -- separates them is which half of the kit, which is a detail you read off the mark (an anvil, a
+    -- book) and the hover line, not off a nineteenth hue on a wheel that has run out of room. A second
+    -- blue near enough to be a sibling would be near enough to be misread as this one.
+    if kind == "anvil" or kind == "lectern" then return 0.48, 0.74, 0.98 end
     -- THE WEEPING STONE deals the reliquary's goods and charges the run's body for them, so it wears the
     -- reliquary's violet banked dark: a bruise rather than a bloom. It had NO ENTRY here at all and fell
     -- through to the combat red at the bottom of this function, wearing the crossed swords with it -- the
@@ -827,6 +833,24 @@ function MarkerIcon.anvil(x, y, w, h, r, g, b, a)
     -- The waist, and the foot it stands on.
     love.graphics.rectangle("fill", x + w * 0.38, y + h * 0.50, w * 0.24, h * 0.26)
     love.graphics.rectangle("fill", x + w * 0.20, y + h * 0.76, w * 0.60, h * 0.16, 1, 1)
+end
+
+-- A book on a stand: the Cold Lectern, where one carried ability takes a free rung. Drawn as the OPEN
+-- BOOK and not as the lectern under it -- the stand is a pair of sticks at fourteen pixels, where the
+-- book's two leaves and the gutter between them read at any size, and it is the book that is doing the
+-- work. Deliberately nothing like the anvil beside it in the same colour: that one is a solid mass low
+-- in the box, this one is two wings high in it.
+function MarkerIcon.lectern(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a)
+    -- Two leaves falling away from a V at the top centre, with the crease left as BACKGROUND rather
+    -- than painted in the detail shade. Measured at the size this is actually drawn: at fourteen
+    -- pixels each leaf is six across, a painted gutter lands under a pixel and vanishes, and the first
+    -- cut of this mark -- leaves square at the top, a desk bar beneath -- read as two grey blocks. The
+    -- slope is what says "book", and it has to be steep enough to survive the rounding.
+    love.graphics.polygon("fill", x + w * 0.06, y + h * 0.22, x + w * 0.45, y + h * 0.36,
+        x + w * 0.45, y + h * 0.84, x + w * 0.06, y + h * 0.70)
+    love.graphics.polygon("fill", x + w * 0.94, y + h * 0.22, x + w * 0.55, y + h * 0.36,
+        x + w * 0.55, y + h * 0.84, x + w * 0.94, y + h * 0.70)
 end
 
 -- A tent: a safe camp to rest at.

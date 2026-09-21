@@ -24,8 +24,7 @@ return {
     hands = 2,
     class = "knight",
     dropOnly = true,
-    dropTier = 7,
-    unlockQuests = 3,
+    unlockLevel = 12,
     activeAbility = {
         target = "tile",
         allowOccupied = true,
@@ -33,7 +32,7 @@ return {
         minRange = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 8 },
-        damage = Curve.ramp(10, 20),
+        damage = Curve.ramp(14, 24),
         aoe = { shape = "line", length = 2 },
         effect = function(fx)
             -- The spear convention: the status lands on the FAR tile only, which is the aimed cell plus

@@ -29,8 +29,7 @@ return {
     type = "armor",
     tags = { "heavy" },
     class = "barbarian", -- deeper cut of the shelf: buyable only once the barbarian gate is cleared
-    unlockQuests = 5,
-    dropTier = 5,
+    unlockLevel = 8,
     traits = { "trait_unspent_heart" },
     bonus = {
         health = Curve.ramp(10, 30),

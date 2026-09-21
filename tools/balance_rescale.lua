@@ -316,14 +316,14 @@ function M.walkItemMagnitudes()
                 local newBase = math.max(1, want)
                 if newBase ~= base then
                     edits[#edits + 1] = {
-                        id = id, path = itemPath(id), gate = def.unlockQuests or 0,
+                        id = id, path = itemPath(id), gate = def.unlockLevel or 0,
                         ramp = { field = "damage", base = newBase, top = newBase + span },
                         from = base, ratio = have / math.max(1, want), want = want,
                         family = Balance.familyOf(id),
                     }
                 end
             else
-                edits[#edits + 1] = { id = id, skipFlat = true, gate = def.unlockQuests or 0,
+                edits[#edits + 1] = { id = id, skipFlat = true, gate = def.unlockLevel or 0,
                     from = have, want = want, family = Balance.familyOf(id) }
             end
         end

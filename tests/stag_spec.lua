@@ -256,13 +256,13 @@ return {
         name = "the stag's whole kit is creature gear, and what it drops is not",
         fn = function()
             -- docs/bestiary.md: a boss's own fight is never handed to the player. Creature kit carries
-            -- no axis at all -- no price, no dropTier -- so neither the pool nor a counter can mint it.
+            -- no axis at all -- no price, no unlockLevel -- so neither the pool nor a counter can mint it.
             for _, id in ipairs({ "utility_what_the_wood_owes_it", "utility_the_turned_year",
                                   "weapon_deadfall", "ability_swailing" }) do
                 local def = Item.defs[id]
                 assert(def, id .. " does not exist")
                 assert(def.class == "creature", id .. " is not creature kit")
-                assert(def.price == nil and def.dropTier == nil,
+                assert(def.price == nil and def.unlockLevel == nil,
                     id .. " carries an axis, so the drop pool can mint a boss's own fight")
                 assert(def.noSteal, id .. " can be lifted off the boss")
             end
@@ -274,16 +274,16 @@ return {
                 local def = Item.defs[id]
                 assert(def, "the stag drops " .. id .. ", which does not exist")
                 assert(def.class ~= "creature", id .. " is creature kit and cannot be carried home")
-                assert(def.dropTier, id .. " has no depth, so no floor can pay it")
+                assert(def.unlockLevel, id .. " has no depth, so no floor can pay it")
                 assert(def.unstocked, id .. " is still dealt by a counter")
                 -- DEPTH IS RARITY (docs/drops.md), so the ORDER of the numbers is the drop-rate design:
                 -- the print you meet, the rule, the chase.
                 if last then
-                    assert(def.dropTier > last, string.format(
+                    assert(def.unlockLevel > last, string.format(
                         "%s sits at rank %d, not deeper than the entry before it (%d)",
-                        id, def.dropTier, last))
+                        id, def.unlockLevel, last))
                 end
-                last = def.dropTier
+                last = def.unlockLevel
             end
         end,
     },

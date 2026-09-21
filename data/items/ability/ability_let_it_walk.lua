@@ -26,7 +26,7 @@ return {
     tags = { "summon", "dark" },
     class = "shaman",
     price = 575,
-    unlockQuests = 6,
+    unlockLevel = 11,
     activeAbility = {
         target = "tile",
         range = 2,

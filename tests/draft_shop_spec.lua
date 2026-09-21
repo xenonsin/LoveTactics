@@ -270,7 +270,7 @@ return {
                 DraftShop.roll(run)
                 for _, entry in ipairs(run.shop.gear) do
                     assert(onShelf[entry.id], "round " .. round .. " offered off-shelf gear: " .. entry.id)
-                    assert((Item.defs[entry.id].unlockQuests or 0) <= DraftShop.gearUnlockCap(round),
+                    assert((Item.defs[entry.id].unlockLevel or 0) <= DraftShop.gearUnlockCap(round),
                         "and it respected the round's quest gate")
                 end
             end
@@ -279,7 +279,7 @@ return {
     {
         name = "the early shop is a shelf, not a potion stall",
         fn = function()
-            -- Why the round gate reads unlockQuests and not price (DraftShop.gearUnlockCap): consumables
+            -- Why the round gate reads unlockLevel and not price (DraftShop.gearUnlockCap): consumables
             -- are the cheapest things in the game because they are one-shot, so a gold cap sorted almost
             -- the whole consumable catalogue into the opening rounds. Under the old cap they were 60-67%
             -- of everything rounds 1-4 could show -- the entire build phase of a run, spent buying

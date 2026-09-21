@@ -456,7 +456,7 @@ return {
         assert(bite.class == "creature", "a mimic's bite is on somebody's shelf")
         assert(not bite.price, "a mimic's bite is priced, so a counter could stock it")
         assert(bite.noSteal, "a mimic's bite can be lifted off it -- creature kit never leaves the body")
-        assert(not bite.dropTier, "a mimic's bite is in the floor's drop pool")
+        assert(not bite.unlockLevel, "a mimic's bite is in the floor's drop pool")
         assert(Character.defs[Mimic.BODY].defaultAction == "weapon_mimic_bite",
             "the mimic does not open with its own weapon")
     end },

@@ -32,7 +32,7 @@ return {
     -- line every other item's target sits on and quietly re-scaled all of them downward. A deep
     -- ability belongs at the deep end of the ladder that exists, not past it. Price is slot 8's band.
     price = 740,
-    unlockQuests = 8,
+    unlockLevel = 15,
     activeAbility = {
         target = "enemy",
         range = 2,

@@ -350,7 +350,7 @@ It is **visible and greyed** rather than absent, because that argument is alread
 player had no way to learn they existed short of meeting the creature.*
 
 Every naga piece takes it, and carries a real house `class` for the shelf taxonomy — a spear is a spear,
-and a classless unpriced item never gets a `dropTier` at all, so it would never drop.
+and a classless unpriced item never gets a `unlockLevel` at all, so it would never drop.
 
 ### The pieces
 
@@ -418,7 +418,7 @@ up — the pike sets up, the cast finishes. A weapon that both positioned and ki
 Undertow's other two items decorations.
 
 **`dropOnly` needs no `price` at all.** The plan said it kept one. It does not have to: `Vendor.foundPrice`
-derives a found ware's worth from its `dropTier` exactly as it does for every other found ware, so the
+derives a found ware's worth from its `unlockLevel` exactly as it does for every other found ware, so the
 flag's only job is to keep the piece off every rack. That keeps the shelf recut's law intact — only
 abilities, consumables and a house's opening weapon carry a price — and makes the change about two lines.
 

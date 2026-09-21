@@ -22,8 +22,7 @@ return {
     type = "armor",
     tags = { "heavy", "holy" },
     class = "paladin",
-    unlockQuests = 5,
-    dropTier = 6,
+    unlockLevel = 9,
     bonus = { defense = Curve.ramp(6, 16), movement = -2 },
     traits = { "trait_vow_marked" },
 }

@@ -13,26 +13,28 @@
 -- reading behind it. That is later and better informed, and it is the one beat in the whole fight where
 -- backing out costs nobody a turn.
 --
--- IT ALWAYS WORKS (Flee.CERTAIN), AND THE READOUT IS WHY. This was a roll off the muster margin -- 55%
--- at parity, swinging to 20% against a fight far above the company -- and the curve is still below,
--- parked behind one flag. What retired it is that the odds ran the WRONG WAY on purpose: the fight you
--- most wanted out of was the one you were least likely to escape.
+-- IT IS A WAGER, AND THE WHOLE WAGER IS ON THE BUTTON. The escape is a roll off the muster margin --
+-- 55% at parity, swinging down against a fight far above the company and up against one beneath it --
+-- and the plate quotes that number out loud: "Run Away (55%)". A failed attempt does not take the
+-- escape away, it takes the OPENING away: the enemy line starts the fight Hasted (Flee.CAUGHT_STATUS).
 --
--- That is a fine cruelty in the abstract and it breaks the one thing this screen is built around. The
--- deploy phase stands the enemy line on the real board with the muster band behind it, whose entire job
--- is to say "this is above you" in time to matter. Answering that reading with a 20% plate makes the
--- band ADVISORY -- a number that names a decision the player is then not allowed to make, which is the
--- one thing a readout in this game may never be. A marker that can only tell you how you died is not a
--- marker. So the judgement the band offers is now a judgement the company can act on.
+-- NOTHING ELSE EXPLAINS IT. There used to be a note beside the plate and a status box stacked under
+-- that, opened on hover and on a pad selection, and both are gone. The percent is the decision and the
+-- percent is on the thing the player presses; the STAKE names itself when it lands -- the hint line
+-- says it in words ("They cut you off. They start this fight Hasted.") and the badges are on the enemy
+-- tokens before the bell, wearing a word the game teaches with a colour, a log line and a tooltip of
+-- its own everywhere else it appears. A box that opened to say all that twice was covering the board.
 --
--- WHAT STILL COSTS SOMETHING, because a free exit is only free if nothing else is running. The prowl
--- meter is spent walking whether or not a fight is taken (Descent.PROWL_STEPS), the floor still has to
--- be crossed on the company's own legs, and a fight declined is spoils, drops and a bestiary row
+-- THE ODDS RUN THE WRONG WAY ON PURPOSE, and that is the cruelty this is buying back: the fight you
+-- most want out of is the one you are least likely to escape. Flee.MIN is what keeps it a decision
+-- rather than a cutscene -- the floor never reaches zero, so a company that read the band and believed
+-- it always has a draw to make.
+--
+-- WHAT IT COSTS EVEN WHEN IT WORKS, because a free exit is only free if nothing else is running. The
+-- prowl meter is spent walking whether or not a fight is taken (Descent.PROWL_STEPS), the floor still
+-- has to be crossed on the company's own legs, and a fight declined is spoils, drops and a bestiary row
 -- declined with it. A company that peeks and leaves every time walks a whole descent and comes home
 -- with nothing -- which is a real cost paid in the one currency this design charges, the trip.
---
--- THE CATCH IS PARKED, NOT DELETED (Flee.CAUGHT_STATUS below). Flip Flee.CERTAIN off and the curve, the
--- penalty and both readouts come back exactly as they were.
 --
 -- Pure (no love.graphics, no Combat, no panel), so it loads under the headless tests.
 
@@ -63,14 +65,12 @@ end
 -- The odds
 -- ---------------------------------------------------------------------------
 
--- THE PLATE ALWAYS WORKS. See the header for the argument; this is the flag that holds it, and it is a
--- flag rather than a rewrite so the curve below stays on disk with its own reasoning intact and the
--- revert is one word (the shape Descent.COUNT_PARKED already uses for a retired rule).
+-- ONE DOOR FOR THE NUMBER: Flee.chance. The plate's label and the roll at the call site both ask that
+-- one function, so no surface can quote odds the draw does not take.
 --
--- Everything downstream reads it through Flee.chance, which is the single door: the plate's label, the
--- note beside it and the roll at the call site all ask that one function, so nothing can disagree about
--- whether an escape is certain.
-Flee.CERTAIN = true
+-- THE ESCAPE WAS CERTAIN FOR A WHILE and it is a roll again. Certainty was a flag over this curve, and
+-- what it bought was that the muster band could always be acted on; what it cost was the decision --
+-- a plate that cannot fail is a plate nobody weighs, and the stake below had nothing left to ride on.
 
 -- AN EVEN FIGHT, in percent of the chance to get away from one. Muster.margin reads 100 for an even
 -- match, so this is the chance at exactly parity.
@@ -102,21 +102,12 @@ Flee.MIN, Flee.MAX = 20, 90
 -- even number rather than refusing. There is nothing to compare, so there is nothing to adjust by, and
 -- the company should still be allowed to run.
 function Flee.chance(margin)
-    -- Certain, and asked here rather than at the four call sites so a surface cannot quote one answer
-    -- while the roll takes another. Flee.roll is left a real function that honours the number it is
-    -- handed -- 100 in, true out -- so nothing about the draw had to be faked to make this true.
-    if Flee.CERTAIN then return 100 end
     if type(margin) ~= "number" then return Flee.EVEN end
     local c = Flee.EVEN + (margin - 100) / 100 * Flee.SWING
     return math.max(Flee.MIN, math.min(Flee.MAX, math.floor(c + 0.5)))
 end
 
 -- WHAT A FAILED ESCAPE COSTS: the enemy line opens the fight wearing this (Combat.dressSide).
---
--- PARKED WHILE Flee.CERTAIN STANDS. Nothing reaches this: the roll cannot fail, so the branch in
--- states/game.lua that applies it never runs and the note beside the plate no longer threatens it.
--- Kept whole, and still pinned by tests/flee_spec.lua as a unit, because it is the other half of the
--- revert -- a penalty deleted is a penalty that has to be re-derived, and this one's argument is below.
 --
 -- A STATUS RATHER THAN A NUMBER, and the swap is the whole point. This was six initiative ticks added to
 -- the company's clock -- the enemy moved and swung first, which is exactly what an ambush is and exactly
@@ -125,9 +116,9 @@ end
 -- and a shrug.
 --
 -- Hasted is a word the game has already taught: a badge on the token, a colour, a line in the log, a
--- tooltip of its own. So the wager states itself -- "fail and they start Hasted" -- and the board keeps
--- the promise where it can be seen, since the badges land during the deploy phase and stand there while
--- the player decides whether to ring the bell anyway.
+-- tooltip of its own. That is why the plate needs no note of its own to name the stake -- the badges
+-- land during the deploy phase and stand on the enemy tokens while the player decides whether to ring
+-- the bell anyway.
 --
 -- PAID BY THE BODIES, NOT BY THE BOARD. Nothing about the arena, the spoils or the win condition
 -- changes: it is the same fight, entered badly. That matters for the retry story -- a player who loses a
@@ -148,17 +139,10 @@ Flee.CAUGHT_STATUS = "status_hasted"
 -- most likely to be caught is the one least able to survive the catch; a penalty that outlasts the
 -- opening would turn a 45% risk into a fight decided by the roll rather than by the board.
 --
--- ONE NUMBER, BOTH SURFACES. The note beside the Run Away plate shows this status at this duration
--- (Flee.caughtStatus), so the hourglass the player reads before pressing is the hourglass the badge
--- carries afterwards -- there is no second account of it to drift.
+-- ONE NUMBER, ONE SURFACE. Nothing quotes this duration before the press any more -- the hourglass the
+-- player reads is the one on the badge the catch lands, which is the same instance the fight goes on
+-- to tick down. There is no second account of it to drift.
 Flee.CAUGHT_TICKS = 10
-
--- The status a caught company faces, as an instance -- for the readout that shows it before the press
--- (ui/deploy_phase.lua) and for the apply that lands it after (states/game.lua). Built here so neither
--- surface names the duration itself.
-function Flee.caughtStatus()
-    return require("models.status").instantiate(Flee.CAUGHT_STATUS, { duration = Flee.CAUGHT_TICKS })
-end
 
 -- ---------------------------------------------------------------------------
 -- The roll

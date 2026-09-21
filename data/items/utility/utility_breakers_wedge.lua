@@ -19,8 +19,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "vanguard",
-    unlockQuests = 3,
-    dropTier = 3,
+    unlockLevel = 3,
     traits = { "trait_breakers_wedge" },
     -- a shove that also Sunders is a blow
     bonus = { damage = 2 },

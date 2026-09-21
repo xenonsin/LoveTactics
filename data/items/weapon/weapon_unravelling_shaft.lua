@@ -35,7 +35,7 @@ return {
     tags = { "bow", "pierce", "physical", "ranged" },
     hands = 2,
     class = "hunter",
-    dropTier = 6,
+    unlockLevel = 10,
     activeAbility = {
         target = "tile",       -- the square, not the body: the ground is what is being bought
         allowOccupied = true,  -- and a square somebody is standing on is still a square (see above)
@@ -45,7 +45,7 @@ return {
         speed = 3,
         cost = { stat = "stamina", amount = 7 },
         -- Under an iron bow's: this weapon's output is measured on the mage's turn, not on the archer's.
-        damage = Curve.ramp(5, 15),
+        damage = Curve.ramp(12, 22),
         effect = function(fx)
             -- Nobody there on an empty-ground shot, and that is the intended shot: fx.damage takes the
             -- nil and reports nothing rather than throwing, so the hazard below is the whole cast.

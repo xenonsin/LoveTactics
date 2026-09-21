@@ -29,11 +29,11 @@ return {
         false,               false,             false,
     },
     drops = {
-        "weapon_gathering_bell",
-        "armor_reflecting_shield",
-        "utility_crowds_favour",
-        "weapon_shepherds_crook",
-        "weapon_boar_spear",
+        "armor_buckler",
+        "armor_given_guard",
+        "armor_shared_bulwark",
+        "weapon_long_fall",
+        "weapon_exposing_pike",
     },
     defaultAction = "weapon_iron_spear",
     -- Basic tactics (models/ai.lua): the spear is the whole job. Press hard whenever two or more foes

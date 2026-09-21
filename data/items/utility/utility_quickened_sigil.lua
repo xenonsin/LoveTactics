@@ -27,8 +27,7 @@ return {
     type = "utility",
     tags = { "arcane", "sigil" },
     class = "elementalist", -- deeper cut of the shelf: buyable only once the elementalist gate is cleared
-    unlockQuests = 3,
-    dropTier = 3,
+    unlockLevel = 4,
     aura = {
         appliesTo = { "ability", "weapon" },
         requiresTags = { "magical" },

@@ -8,5 +8,5 @@ return {
     description = "Kills one target and leaves. Blinks to a wounded foe, lands a strike that is certain to "
         .. "finish it, and returns to the tile you started on.",
     exemplar = "character_assassin", -- NEW, pending
-    requires = { rogue = 4 },
+    requires = { rogue = 5 },
 }

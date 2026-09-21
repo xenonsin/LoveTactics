@@ -27,10 +27,10 @@ return {
         "consumable_healing_potion", "armor_marching_vow",               false,
     },
     drops = {
-        "armor_outriders_harness",
-        "utility_arcane_conduit",
-        "utility_battle_casting",
+        "utility_bared_head",
         "utility_resonant_grip",
+        "weapon_anvil_of_the_ninth",
+        "weapon_hollow_arc",
         "utility_brawlers_bandolier",
     },
     defaultAction = "ability_smite",

@@ -8,8 +8,7 @@ return {
     type = "utility",
     tags = { "ward" },
     class = "exorcist", -- deeper cut of the shelf: buyable only once the exorcist gate is cleared
-    unlockQuests = 3,
-    dropTier = 2,
+    unlockLevel = 2,
     traits = { "trait_cleansing_ward" },
     -- the first debuff simply does not land
     bonus = { magicDefense = 2 },

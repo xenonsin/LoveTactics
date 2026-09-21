@@ -26,19 +26,24 @@ return {
     -- Starting loadout (row-major; false = empty). The dagger opens a wound (Bleed), Shadow Step is the
     -- rogue's return-to-origin blink, Exploit is the conditional multiplier the shelf is built on,
     -- leather and a potion keep the glass body standing.
+    -- Exploit sits in cell 2, BESIDE THE DAGGER, and that is a requirement rather than a preference:
+    -- it declares `requiresAdjacent = { type = "weapon", tag = "melee" }` and was authored in cell 3,
+    -- whose neighbours in a 3x3 grid are cells 2, 5 and 6 -- never cell 1. It was refused in every
+    -- fight this body has ever stood in, silently, the way Combat.itemBlockReason refuses anything.
+    -- See tests/kit_adjacency_spec.lua, which now sweeps every authored grid for exactly this.
     startingItems = {
-        "weapon_iron_dagger", "ability_shadow_step", "ability_exploit",
+        "weapon_iron_dagger", "ability_exploit",    "ability_shadow_step",
         "armor_leather_armor", "consumable_healing_potion", false,
         false,                false,                 false,
     },
     -- The go-to action pinned by default (Combat.defaultAction): armed at the start of its turn so its
     -- range shows, and driving the basic click-to-use. The player can re-pin any ability.
     drops = {
-        "utility_sidelong_greaves",
-        "utility_vanishing_act",
-        "armor_opportunists_harness",
-        "utility_skimmers_cut",
-        "armor_smoke_mantle",
+        "utility_the_long_wait",
+        "utility_thin_blade",
+        "weapon_quietus",
+        "weapon_nightjar",
+        "weapon_mired_kris",
     },
     defaultAction = "weapon_iron_dagger",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

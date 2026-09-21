@@ -25,7 +25,7 @@ return {
     tags = { "impact" },
     class = "sentinel", -- deeper cut of the shelf: buyable only once the sentinel gate is cleared
     price = 330,
-    unlockQuests = 3,
+    unlockLevel = 5,
     activeAbility = {
         target = "unit",
         range = 3,

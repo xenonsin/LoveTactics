@@ -135,8 +135,8 @@ end
 Encounter.MARKER_KINDS = {
     "combat", "elite", "pack", "objective", "quest", "ward",
     "treasure", "rest", "town", "merchant", "crossroads", "event",
-    "relic_cache", "shrine", "weeping_stone", "anvil", "translation",
-    "spinner", "dark", "drop", "stair", "ascent",
+    "relic_cache", "shrine", "weeping_stone", "anvil", "lectern", "translation",
+    "spinner", "dark", "drop", "stair", "ascent", "road",
 }
 
 -- ONE SENTENCE PER KIND OF STOP, read by every surface that has to say what walking there does: the
@@ -168,12 +168,20 @@ Encounter.GLOSS = {
     shrine        = "An altar that trades. It wants gold up front, and what it gives back bites.",
     weeping_stone = "A stone that deals in rare goods and charges a body for them.",
     anvil         = "A cold forge. One piece you are carrying is tempered here, for nothing.",
+    -- THE ANVIL'S PAIR. Same gift, other half of the kit -- the line says which half, because the two
+    -- stops share a colour on the board and are told apart by their marks alone (ui/overworld_map.lua).
+    lectern       = "A book left chained open. One ability you are carrying is honed here, for nothing.",
     translation   = "The ground moves under you. A step onto it puts the company somewhere else.",
     spinner       = "The ground turns you. A step onto it sends the next one the wrong way.",
     dark          = "Blind ground. The company sees no further than the tile it stands on.",
     drop          = "A hole through the floor. It goes down without the stair, and you are asked first.",
     stair         = "The way down to the next circle.",
     ascent        = "The way back up. The trip ends here, and what you are carrying comes with you.",
+    -- ACT 0's WAY OUT, and it is a stair in everything but the direction. The Champion stands ON it
+    -- (states/prologue.lua's FLIGHT_QUEST), so the tile is an objective until the boss falls and the
+    -- way to the city afterwards -- the same shape a circle's guardian and its stair already have
+    -- (models/descent.lua's Descent.openStair), which is why this is a kind rather than a special case.
+    road          = "The road to the city. Act 0 ends here.",
 }
 
 -- The sentence for `enc`, or nil for a stop with no kind at all. Read through Encounter.markerKind, so

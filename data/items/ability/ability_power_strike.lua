@@ -13,7 +13,7 @@ return {
     tags = { "impact", "physical" },
     class = "fighter",
     price = 660,
-    unlockQuests = 7,
+    unlockLevel = 13,
     activeAbility = {
         target = "enemy",
         range = 1,

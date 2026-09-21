@@ -9,5 +9,5 @@ return {
     description = "Builds machines that fight for you. Sentries and turrets are placed on the board and "
         .. "take a turn of their own each round without orders.",
     exemplar = "character_artificer", -- NEW, pending
-    requires = { mage = 7, alchemist = 7 },
+    requires = { mage = 10, alchemist = 10 },
 }

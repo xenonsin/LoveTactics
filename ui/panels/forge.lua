@@ -1,17 +1,24 @@
--- The Forge pop-up panel: the one bench in the city, and the only screen that spends materials.
--- Lists everything the player owns that a level can improve -- across each roster member's 3x3 grid
--- and the stash -- as cards down the left, and on the right lays the highlighted thing's whole path
--- out as a TRACK: one node per level 0..10, the rung it stands on filled, the rungs past the player's
--- standing dashed out (ui/forge_track.lua).
+-- The upgrade bench, drawn for whichever ROOM opened it. Lists everything the player owns that a level
+-- can improve -- across each roster member's 3x3 grid and the stash -- as cards down the left, and on
+-- the right lays the highlighted thing's whole path out as a TRACK: one node per level 0..10, the rung
+-- it stands on filled, the rungs past the player's standing dashed out (ui/forge_track.lua).
 --
---   local panel = Forge.new({ player = p, onClose = fn })
+--   local panel = Forge.new({ player = p, onClose = fn })            -- the Bastion's forge
+--   local panel = Study.new({ player = p, onClose = fn })            -- the Arcanum's study
 --
--- THREE CATEGORIES, because the bench does three kinds of work and one flat list of 40 rows is not a
--- list anybody reads (models/forge.lua):
---   Gear        weapons, armor, utility -- per instance, swapped in place for a fresh "+n"
---   Abilities   per instance too. Used to be the class vendor's Upgrade tab.
---   Recipes     consumables, per TYPE -- refine the recipe and every copy bought after comes at that
---               tier. Only consumables the player actually holds are listed.
+-- ONE SCREEN, TWO ROOMS, AND THE ROOM PICKS THE TABS (models/forge.lua's Forge.WORK):
+--   the Forge   Gear      weapons, armor, utility -- per instance, swapped in place for a fresh "+n"
+--               Mend      a worn piece back to whole, in gold
+--               Break     a piece down into stock (models/salvage.lua)
+--   the Study   Abilities per instance too. Used to be the class vendor's Upgrade tab.
+--               Recipes   consumables, per TYPE -- refine the recipe and every copy bought after comes
+--                         at that tier. Only consumables the player actually holds are listed.
+--
+-- IT IS ONE FILE AND NOT TWO, because nothing about the bench differs between them: the same cards, the
+-- same track, the same three-track bill, the same refusals. What differs is the tab strip and the word
+-- on the button, and a second copy of 1300 lines to vary two of those is how the two halves of a ladder
+-- start disagreeing about what a rung costs. ui/panels/study.lua is the other door onto this.
+--
 -- The segment strip is the same widget the shop uses for Buy/Sell, down to the Tab / LB-RB bindings.
 --
 -- AIM: the player may scrub the track to a rung further up and buy the whole climb in one commit
@@ -58,19 +65,23 @@ local COL_GAP = 18 -- between columns; the box's own margin is still 24
 local CARD_H, CARD_GAP, MAX_VISIBLE = 54, 6, 7
 local CONTENT_TOP = 112 -- below the title and the category strip
 
--- A FOURTH MODE, AND IT IS A MODE RATHER THAN A SECOND BUTTON ON THE GEAR ROW.
+-- BREAKING IS ITS OWN TAB RATHER THAN A SECOND BUTTON ON THE GEAR ROW.
 --
 -- Breaking a piece is the one irreversible thing this bench can do -- there is no buy-back the way the
 -- Touchstone has one (docs/identification.md) -- and a destructive verb sitting beside a constructive
 -- one on the same selected row is how somebody loses a relic to muscle memory. Its own tab means
 -- reaching it is a decision before the button is a decision.
 --
--- It belongs at the FORGE and not at a counter of its own, because this is the only screen in the city
--- that spends stock, and the place that spends it is the place that should make it. See
--- models/salvage.lua for what a break pays and docs/drops.md for why the faucet exists.
-local MODES = { "gear", "ability", "recipe", "mend", "break" }
+-- It belongs at the FORGE and not at a counter of its own, because a break pays in STOCK, and the room
+-- that spends stock is the room that should make it. See models/salvage.lua for what a break pays and
+-- docs/drops.md for why the faucet exists.
+
+-- EVERY TAB THE TWO ROOMS HAVE BETWEEN THEM. Which of them a given room actually offers is the MODEL's
+-- answer and not this file's (Forge.WORK) -- the panel held all five when there was one room, and a
+-- split written here as well would be the same question answered in two places.
 local MODE_LABEL = { gear = "Gear", ability = "Abilities", recipe = "Recipes",
                      mend = "Mend", ["break"] = "Break" }
+
 local EMPTY_LABEL = {
     gear = "No weapons, armor or gear to forge.",
     ability = "No abilities to hone.",
@@ -80,6 +91,15 @@ local EMPTY_LABEL = {
     -- should read as good news rather than as a missing feature.
     mend = "Every piece the company carries is whole.",
 }
+-- THE VERB ON THE BUTTON AND IN THE HINT LINE, one per kind of work and the same word in both places.
+-- A smith forges, a scholar hones, a recipe is refined -- which is what the empty-state lines above
+-- have been saying since before the rooms were separate, and the button said "Forge" at both of them.
+local MODE_VERB = { gear = "forge", ability = "hone", recipe = "refine",
+                    mend = "mend", ["break"] = "break" }
+
+-- What a room calls itself when the door did not say (a room hands the panel no title -- states/hub.lua
+-- passes one only for a plain door onto a building).
+local ROOM_TITLE = { [Forge.FORGE] = "Forge", [Forge.STUDY] = "Study" }
 
 local DIM = Theme.muted
 local MARK = Theme.accentAmber
@@ -108,8 +128,13 @@ function ForgePanel.new(opts)
     -- The house whose room this is (models/offer.lua hands it down). The bench is the Bastion's, and
     -- nil only if something opens this panel outside the city.
     self.vendorId = opts.vendor
-    self.title = opts.title or "Forge"
-    self.mode = "gear"
+    -- WHICH ROOM THIS IS. ui/panels/study.lua is the only caller that names the other one; a door
+    -- that names none gets the forge, which is what every existing call site meant.
+    self.room = opts.room or Forge.FORGE
+    self.modes = Forge.WORK[self.room]
+    assert(self.modes, "no bench does the work of room '" .. tostring(self.room) .. "'")
+    self.title = opts.title or ROOM_TITLE[self.room]
+    self.mode = self.modes[1]
 
     self.titleFont = Theme.display(28)
     self.nameFont = Theme.display(22)
@@ -144,8 +169,8 @@ function ForgePanel.new(opts)
     self.modeY = self.boxY + 66
     self.modeH = 30
     self.segRects = {}
-    local segW = LIST_W / #MODES
-    for i, m in ipairs(MODES) do
+    local segW = LIST_W / #self.modes
+    for i, m in ipairs(self.modes) do
         self.segRects[m] = { x = self.listLeft + (i - 1) * segW, y = self.modeY, w = segW, h = self.modeH }
     end
 
@@ -270,9 +295,12 @@ function ForgePanel:refresh()
                 cost = cost, tail = tail, state = state, where = "recipe" }
         end
     else
-        local wantAbility = (self.mode == "ability")
+        -- The two per-instance tabs partition Forge.canWork between the rooms -- what a smith can hold
+        -- in a pair of tongs, and what is written down. Asked of the model (Forge.benchFor) rather than
+        -- re-tested here, so a tab cannot list a piece the other room is the one that works it.
+        local want = (self.mode == "ability") and Forge.STUDY or Forge.FORGE
         for _, up in ipairs(self:collect(function(item)
-            return Forge.canWork(item) and ((item.type == "ability") == wantAbility)
+            return Forge.canWork(item) and Forge.benchFor(item) == want
         end)) do
             local cost = Forge.upgradeCost(self.player, up.item)
             local tail, state = costTail(cost)
@@ -315,8 +343,8 @@ end
 
 function ForgePanel:cycleMode(delta)
     local idx = 1
-    for i, m in ipairs(MODES) do if m == self.mode then idx = i end end
-    self:setMode(MODES[(idx - 1 + delta) % #MODES + 1])
+    for i, m in ipairs(self.modes) do if m == self.mode then idx = i end end
+    self:setMode(self.modes[(idx - 1 + delta) % #self.modes + 1])
 end
 
 function ForgePanel:setMsg(text, ok) self.message, self.messageOk = text, ok end
@@ -646,7 +674,7 @@ function ForgePanel:draw()
         self.track, self.forgeRect, self.breakRect, self.chipRects = nil, nil, nil, {}
         love.graphics.setFont(self.bodyFont)
         Theme.set(Theme.muted)
-        love.graphics.printf(EMPTY_LABEL[self.mode] or "Nothing to forge.",
+        love.graphics.printf(EMPTY_LABEL[self.mode] or "Nothing to work on.",
             self.listLeft, self.boxY + 220, LIST_W, "center")
     end
 
@@ -664,16 +692,16 @@ function ForgePanel:draw()
     -- doing nothing is worse than no hint, because the player presses it and concludes the panel is
     -- broken. (A control appears only where it is legal; so does its instruction.)
     local trackless = self.mode == "mend" or self.mode == "break"
-    local verb = self.mode == "mend" and "mend" or self.mode == "break" and "break" or "forge"
+    local verb = MODE_VERB[self.mode] or "forge"
     local hint
     if InputMode.isGamepad() then
         hint = trackless
             and ("A: " .. verb .. "    D-pad up/down: pick    LB/RB: category    B: close")
-            or "A: forge    D-pad up/down: pick    left/right: aim a rung    LB/RB: category    B: close"
+            or ("A: " .. verb .. "    D-pad up/down: pick    left/right: aim a rung    LB/RB: category    B: close")
     else
         hint = trackless
             and ("Enter: " .. verb .. "    Tab: category    Esc: close")
-            or "Hover a rung to preview, click to pick    Enter: forge    Tab: category    Esc: close"
+            or ("Hover a rung to preview, click to pick    Enter: " .. verb .. "    Tab: category    Esc: close")
     end
     love.graphics.printf(hint, self.boxX, self.boxY + BOX_H - 30, BOX_W, "center")
 
@@ -690,7 +718,7 @@ end
 
 function ForgePanel:drawModeSelector()
     love.graphics.setFont(self.bodyFont)
-    for _, m in ipairs(MODES) do
+    for _, m in ipairs(self.modes) do
         local r = self.segRects[m]
         local active = (self.mode == m)
         Theme.set(active and Theme.panel or Theme.panel2)
@@ -1255,7 +1283,11 @@ function ForgePanel:drawBill(row, cost, x, y, w, batch, aim, level)
 
     love.graphics.setFont(self.cardFont)
     Theme.set(live and Theme.accentAmber or Theme.muted, live and 1 or 0.6)
-    local label = batch and ("Forge x" .. (aim - level) .. " to +" .. aim) or ("Forge to +" .. aim)
+    -- The tab's own verb, capitalised -- "Forge to +3" at the Bastion, "Hone to +3" at the Arcanum. One
+    -- word per kind of work, and it is the same word the hint line at the foot of the panel prints.
+    local verb = MODE_VERB[self.mode] or "forge"
+    verb = verb:gsub("^%l", string.upper)
+    local label = batch and (verb .. " x" .. (aim - level) .. " to +" .. aim) or (verb .. " to +" .. aim)
     if row.kind == "recipe" then label = "Refine to +" .. cost.level end
     love.graphics.printf(label, bx, y + 6, bw, "center")
 
@@ -1308,7 +1340,7 @@ end
 
 function ForgePanel:cursorKind(x, y)
     if self.closeButton:contains(x, y) then return "hand" end
-    for _, m in ipairs(MODES) do
+    for _, m in ipairs(self.modes) do
         if pointIn(self.segRects[m], x, y) then return "hand" end
     end
     if pointIn(self.forgeRect, x, y) then return "hand" end
@@ -1329,7 +1361,7 @@ end
 function ForgePanel:mousepressed(x, y, button)
     if button ~= 1 then return end
     if self.closeButton:mousepressed(x, y, button) then self:close() return end
-    for _, m in ipairs(MODES) do
+    for _, m in ipairs(self.modes) do
         if pointIn(self.segRects[m], x, y) then self:setMode(m) return end
     end
     if self:hasRows() then

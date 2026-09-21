@@ -8,5 +8,5 @@ return {
     description = "Draws the whole field onto you. Taunts pull attacks your way, and every foe that takes "
         .. "the bait is struck back automatically.",
     exemplar = "character_champion",
-    requires = { fighter = 6, knight = 6 },
+    requires = { fighter = 8, knight = 8 },
 }

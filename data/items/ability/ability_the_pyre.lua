@@ -24,7 +24,7 @@ return {
     tags = { "holy", "fire" },
     class = "inquisitor",
     price = 330,
-    unlockQuests = 3,
+    unlockLevel = 5,
     activeAbility = {
         target = "self",
         range = 0,

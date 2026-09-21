@@ -13,7 +13,7 @@ return {
     tags = { "scroll", "restorative" },
     class = "priest",
     price = 295,
-    unlockQuests = 8,
+    unlockLevel = 15,
     activeAbility = {
         target = "tile",
         support = true, -- friendly cast: preview green

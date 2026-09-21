@@ -41,7 +41,7 @@ return {
     type = "weapon",
     tags = { "wand", "magical", "arcane", "ranged" },
     class = "mage",
-    dropTier = 7,
+    unlockLevel = 12,
     activeAbility = {
         target = "enemy",
         range = 3,
@@ -50,7 +50,7 @@ return {
         cost = { stat = "mana", amount = 11 }, -- dearer than the Sealed Ward wand: greed costs more
         -- Its slot's number, which at slot 0 is the plain wand's exactly (Balance.slotTarget): same
         -- family, same slot, same magnitude, and the mirror is the whole of what tells them apart.
-        damage = Curve.ramp(5, 15),
+        damage = Curve.ramp(13, 23),
         effect = function(fx)
             fx.damage(fx.target)
             -- On the CASTER, and shorter than the status's own fifteen: this covers the answer to the shot,

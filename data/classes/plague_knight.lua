@@ -10,5 +10,5 @@ return {
     description = "Carries the plague into melee. Blows inflict Poison, and standing next to you poisons "
         .. "whoever is standing there.",
     exemplar = "character_plague_knight", -- was character_forsworn_knight (a story-critical Bastion enemy); dedicated exemplar authored
-    requires = { knight = 6, alchemist = 6 },
+    requires = { knight = 9, alchemist = 9 },
 }

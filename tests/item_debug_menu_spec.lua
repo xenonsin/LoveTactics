@@ -130,7 +130,7 @@ return {
             assert(rowNamed(page, "GRADE"), "the total leads")
             assert(rowNamed(page, "  active"), "the active half is named")
             assert(rowNamed(page, "  passive"), "the passive half is named")
-            assert(rowNamed(page, "  slot (unlockQuests)"), "the authored slot is on the page")
+            assert(rowNamed(page, "  unlock level"), "the authored slot is on the page")
             local price = rowNamed(page, "  price")
             assert(price and price.rhs == "80g", "the authored price is on the page, got " .. tostring(price and price.rhs))
             assert(rowNamed(page, "  price for that slot"), "and what that slot implies, to compare it against")

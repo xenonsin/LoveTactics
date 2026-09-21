@@ -23,8 +23,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "herbalist",
-    unlockQuests = 3,
-    dropTier = 3,
+    unlockLevel = 3,
     traits = { "trait_cullers_kit" },
     -- culling is precise work, and the Lodge is the aiming house
     bonus = { skill = 2 },

@@ -27,7 +27,7 @@ return {
     type = "armor",
     tags = { "heavy", "plate" },
     class = "fighter",
-    dropTier = 6,
+    unlockLevel = 10,
     traits = { "trait_last_stand" },
     bonus = { defense = Curve.ramp(4, 14), movement = -2 },
     resist = { physical = 3 },

@@ -199,7 +199,7 @@ tests[#tests + 1] = { name = "every earned class stocks at least five reachable 
     local FLOOR = 5
     local count = {}
     for _, def in pairs(Item.defs) do
-        if Class.isEarned(def.class) and (def.price or def.dropTier) then
+        if Class.isEarned(def.class) and (def.price or def.unlockLevel) then
             count[def.class] = (count[def.class] or 0) + 1
         end
     end
@@ -231,23 +231,68 @@ end }
 -- way to be authored. A case whose failure mode is unreachable does not fail; it passes forever and
 -- reads as coverage.)
 
-tests[#tests + 1] = { name = "no rung of a class ladder opens more than three disciplines", fn = function()
-    -- IT USED TO BE ONE PER QUEST, and that was right while a house had twelve rungs to hang seven
-    -- subclasses from. The ladder is a class level now (Class.classLevel) and it has
-    -- CLASS_LEVEL_CAP rungs for every class, with 38 disciplines spread over seven of them -- so some
-    -- crowding is arithmetic rather than sloppiness.
+tests[#tests + 1] = { name = "a house's shelf opens one discipline at a time, and never two at once", fn = function()
+    -- IT USED TO BE THREE PER RUNG, and three was a ceiling picked to be survivable rather than a
+    -- shape anybody wanted: 38 disciplines were spread over SIX rungs of a fifteen-rung ladder
+    -- (3, 4, 6, 8, 10, 12), so the Crucible's shelf handed over three crossings at level 12 and then
+    -- nothing for the last three levels of the game. Every house was that shape. A rung that opens
+    -- three paths at once is a reward the player cannot read as one thing, and three rungs that open
+    -- nothing at all are the climb's last third paying nothing.
     --
-    -- What the cap is protecting is the moment of arrival: a level that opened four paths at once is a
-    -- reward the player cannot read as one thing. Three is the ceiling, and a rung that reaches it
-    -- should be a SUBJECT rather than a leftover pile.
+    -- ONE IS THE CEILING NOW, and it is a ceiling the data can actually hold: the 21 crossings are the
+    -- edges of a complete graph on the seven houses, so a rung is a colour and "no house meets the
+    -- same rung twice" is a proper edge colouring -- which exists. See docs/classes.md, "The unlock
+    -- ladder". What this case is really pinning is that a level-up is a SUBJECT: when the city tells
+    -- a player a path has opened, it can name it.
     local counts, who = {}, {}
     for id, def in pairs(Class.defs) do
         for class, level in pairs(def.requires or {}) do
             local key = class .. " " .. level
             counts[key] = (counts[key] or 0) + 1
             who[key] = who[key] and (who[key] .. ", " .. id) or id
-            assert(counts[key] <= 3, "rung '" .. key .. "' opens " .. counts[key] .. ": " .. who[key])
+            assert(counts[key] <= 1, "rung '" .. key .. "' opens " .. counts[key] .. " disciplines at "
+                .. "once: " .. who[key])
         end
+    end
+end }
+
+-- ...AND IT KEEPS OPENING ONE ALL THE WAY DOWN. The case above stops a rung carrying two; this stops
+-- the shelf running out. They are the same defect read from the two sides, and neither alone is the
+-- rule -- a house could satisfy the first by opening its nine disciplines at 3, 4, 5, 6, 7, 8, 9, 10,
+-- 11 and leaving the last four levels of a fifteen-level climb empty, which is exactly the failure
+-- that was shipping with the top rung at 12.
+--
+-- THE NUMBERS ARE DERIVED, not typed: the floor is the subclass floor above and the ceiling is
+-- Class.CLASS_LEVEL_CAP, so re-cutting the cap reddens this rather than quietly leaving the top of the
+-- ladder bare (the trap tests/unlock_ladder_spec.lua names for the item shelf).
+local MAX_QUIET_RUNGS = 3 -- levels a house may pass with nothing to hand over
+
+tests[#tests + 1] = { name = "and it keeps opening one, from the subclass floor to the cap", fn = function()
+    for house in pairs(Class.roots()) do
+        local rungs = {}
+        for id, def in pairs(Class.defs) do
+            local need = (def.requires or {})[house]
+            if need then rungs[#rungs + 1] = need end
+        end
+        table.sort(rungs)
+        assert(#rungs > 0, house .. ": nothing hangs off it at all")
+        assert(rungs[1] == SUBCLASS_GATE_FLOOR, house .. ": its first discipline opens at "
+            .. rungs[1] .. ", not at the subclass floor of " .. SUBCLASS_GATE_FLOOR)
+
+        local prev = rungs[1]
+        for i = 2, #rungs do
+            assert(rungs[i] - prev <= MAX_QUIET_RUNGS, string.format(
+                "%s: nothing opens between level %d and level %d -- %d quiet rungs is a stretch of the "
+                .. "climb that pays the player nothing", house, prev, rungs[i], rungs[i] - prev - 1))
+            prev = rungs[i]
+        end
+        -- The deepest may sit one short of the cap -- seven houses cannot each own the top rung of a
+        -- graph whose edges are shared two ways -- but no further, or mastering the house is a level
+        -- that hands over nothing.
+        assert(prev >= Class.CLASS_LEVEL_CAP - 1, string.format(
+            "%s: its deepest discipline opens at %d against a cap of %d, so the last %d levels of the "
+            .. "climb open nothing on this shelf",
+            house, prev, Class.CLASS_LEVEL_CAP, Class.CLASS_LEVEL_CAP - prev))
     end
 end }
 

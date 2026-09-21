@@ -1,4 +1,4 @@
--- Tests for the Forge: the three-track bill (a currency track -- TECHNIQUE for anything belonging to a
+-- Tests for the upgrade ladder: the three-track bill (a currency track -- TECHNIQUE for anything belonging to a
 -- house, keyed on the item's discipline or else its class, and gold only for classless stock -- plus
 -- craft stock by the item's own quality and house stock by its class, doubled across both parents for
 -- a discipline item) and the ceiling rules (house standing, uncapped). Also covers the material model's
@@ -512,6 +512,76 @@ return {
             assert(Forge.costTo(p, maxed, Item.MAX_LEVEL) == nil, "a fully forged piece prices nothing")
             local out, reason = Forge.upgradeTo(p, maxed, Item.MAX_LEVEL)
             assert(out == nil and reason == "max level", "and refuses with 'max level'")
+        end,
+    },
+    {
+        -- ONE LADDER, TWO ROOMS, AND NOTHING MAY FALL BETWEEN THEM. The Bastion's forge works what a
+        -- smith can hold in a pair of tongs; the Arcanum's study works what is written down. A type
+        -- the split forgot is a piece nowhere in the city will raise -- silently, forever, with every
+        -- other spec in this file still green, because the BILL for it goes on being perfect.
+        --
+        -- Walked over the shipped catalogue rather than over a list of type names: a sixth item type
+        -- authored tomorrow arrives here on its own.
+        name = "every kind of upgradable stock has a room, and every room has a door",
+        fn = function()
+            local worked = {}
+            for id in pairs(Item.defs) do
+                local item = Item.instantiate(id)
+                if Forge.canWork(item) or Forge.canRefine(item) then
+                    worked[item.type] = (worked[item.type] or 0) + 1
+                end
+            end
+            assert(next(worked), "nothing in the catalogue can be upgraded at all")
+
+            for itemType in pairs(worked) do
+                local room = Forge.BENCH[itemType]
+                assert(room, "a '" .. itemType .. "' can be upgraded and no room does the work")
+                assert(Forge.WORK[room], "'" .. itemType .. "' is sent to room '" .. tostring(room)
+                    .. "', which does no work at all")
+            end
+
+            -- The two per-instance tabs must PARTITION Forge.canWork: the gear tab takes the forge's
+            -- side and the ability tab the study's, so a piece listed by neither is a piece the panel
+            -- cannot see (ui/panels/forge.lua asks Forge.benchFor for exactly this).
+            for id in pairs(Item.defs) do
+                local item = Item.instantiate(id)
+                if Forge.canWork(item) then
+                    local room = Forge.benchFor(item)
+                    assert(room == Forge.FORGE or room == Forge.STUDY,
+                        id .. " is workable and belongs to no bench")
+                end
+            end
+            assert(Forge.benchFor(Item.instantiate("weapon_iron_greatsword")) == Forge.FORGE,
+                "a blade is the smith's")
+
+            -- No kind of work in two rooms. Two tabs listing one thing is two prices for one rung as
+            -- soon as either room grows a rule of its own.
+            local seen = {}
+            for room, kinds in pairs(Forge.WORK) do
+                assert(#kinds > 0, "room '" .. room .. "' offers no work")
+                for _, kind in ipairs(kinds) do
+                    assert(not seen[kind], "'" .. kind .. "' is done in both " .. room
+                        .. " and " .. tostring(seen[kind]))
+                    seen[kind] = room
+                end
+            end
+
+            -- AND EVERY ROOM IS REACHABLE. A bench nobody can walk to is the same bug as a type with
+            -- no bench, one layer out -- so this asks the CITY, not the model. The room id is the
+            -- panel module's name, which is what states/hub.lua opens it by.
+            local Registry = require("models.registry")
+            local buildings = Registry.load("data/buildings", "data.buildings")
+            for room in pairs(Forge.WORK) do
+                local door = false
+                for _, def in pairs(buildings) do
+                    for _, offer in ipairs(def.offers or {}) do
+                        if offer.panel == room then door = true end
+                    end
+                end
+                assert(door, "no house in the city opens the " .. room)
+                assert(love.filesystem.getInfo("ui/panels/" .. room .. ".lua"),
+                    "the " .. room .. " names no panel module")
+            end
         end,
     },
 }

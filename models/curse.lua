@@ -29,7 +29,7 @@
 --   one place to look        an author asking "what may a curse do?" reads models/item.lua, which is
 --                            where they were going to end up anyway.
 --
--- WHAT IS *NOT* BORROWED IS `price`, `grade`, `dropTier`, `class`. A curse is not a thing on a shelf.
+-- WHAT IS *NOT* BORROWED IS `price`, `grade`, `unlockLevel`, `class`. A curse is not a thing on a shelf.
 -- It is never bought, never sold, never found on its own -- it arrives attached to something else.
 --
 -- AND THE ONE FIELD THAT IS ITS OWN: `binds`. A binding curse makes Item.isBound answer true, which is
@@ -125,8 +125,34 @@ end
 -- a tooltip row or prices a lifting comes through here rather than testing `item.curse` itself, so an
 -- id left on an instance by a deleted blueprint reads as "not cursed" everywhere at once instead of
 -- reading as cursed in the grid and clean in the fold.
+--
+-- AND A SEALED PIECE READS AS CLEAN, which is the whole of "the seal stores the truth and withholds
+-- it" (models/identify.lua's Identify.sealed, and Curse.canAfflict's `unread` clause above, which is
+-- this same rule pointed the other way: a hex may travel INSIDE a seal, but nothing may put one on a
+-- piece whose name is still secret, and nothing may read one out of a piece whose name is still
+-- secret). The field stays on the husk -- the read has to find it, and the save has to carry it -- and
+-- it is simply not answered for until Identify.reveal hands over the true item and stamps it on.
+--
+-- IT BELONGS HERE RATHER THAN ON THE FOUR SURFACES, because there were four and each had found its
+-- own way to say it:
+--
+--   the tooltip    ui/item_tooltip.lua printed "Cursed: The Shut Hand", the hex's own sentence and the
+--                  bind note on a card whose title said Unidentified Weapon. Its comment argues no
+--                  guard is needed because a husk "carries no tags, no class, no ability and no bonus"
+--                  -- which was true of every field a husk had on the day it was written.
+--   the lock       a binding hex made Item.isBound answer true, so the stash cell refused to be
+--                  dragged, silently, on a nameless object.
+--   the Cathedral  Curse.kit walks the stash, so the rite listed the husk -- and ui/panels/rite.lua
+--                  names the hex on the paid row deliberately. Curse.noticed then opened the door on
+--                  the plaza, so the CITY announced it.
+--   the wipe       Player.atRisk skips a bound item, so a hexed husk survived a death that dropped the
+--                  clean ones. The worst of the four: it reads as luck and it rewards the bad roll.
+--
+-- One guard in the one reader answers all four, which is what the paragraph above promised this
+-- function was for.
 function Curse.of(item)
     if type(item) ~= "table" then return nil end
+    if (item.unidentified or 0) > 0 then return nil end
     local id = item.curse
     if type(id) ~= "string" then return nil end
     return Curse.defs[id]
@@ -468,6 +494,12 @@ end
 -- THE STASH IS WALKED TOO, and a bound hex cannot be in there -- Item.isBound refuses the stow -- so
 -- anything this finds in the stash is a hex the player chose to shelve rather than pay for. That is a
 -- legitimate answer to a curse and the room should still offer to finish the job.
+--
+-- AND NOT A HUSK, which is the one thing in the stash that can be carrying a hex without being one:
+-- Curse.isCursed goes through Curse.of, which answers nil for anything still sealed. Before that guard
+-- this sweep listed unread finds, and ui/panels/rite.lua names the hex on its paid row deliberately --
+-- so the Cathedral read the seal out loud, and Curse.noticed opened its door on the plaza to announce
+-- it.
 function Curse.kit(player)
     local Character = require("models.character")
     local out = {}

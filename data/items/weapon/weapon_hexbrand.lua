@@ -24,7 +24,7 @@ return {
     type = "weapon",
     tags = { "staff", "magical", "dark", "melee" },
     class = "shaman",
-    dropTier = 7,
+    unlockLevel = 11,
     waitBehavior = {
         kind = "focus",
         mana = Curve.ramp(7, 18),
@@ -35,7 +35,7 @@ return {
         range = 1,
         speed = 6,
         cost = { stat = "stamina", amount = 5 },
-        damage = Curve.ramp(3, 14),
+        damage = Curve.ramp(11, 22),
         effect = function(fx)
             fx.damage(fx.target)
             fx.curse(fx.target)

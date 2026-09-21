@@ -34,5 +34,5 @@ return {
     description = "Spends gold as a combat resource. Coin buys damage, tempo and your own survival, and "
         .. "every blow you land banks more of it.",
     exemplar = "character_mammonite",
-    requires = { rogue = 6 },
+    requires = { rogue = 7 },
 }

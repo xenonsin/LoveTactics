@@ -319,7 +319,7 @@ return {
             assert(Status.has(b, "status_stun"), "and so does the apprentice's version")
             assert(jolted > shocked,
                 "Jolt hits harder than the apprentice's version (" .. jolted .. " vs " .. shocked .. ")")
-            assert((Item.defs.ability_jolt.unlockQuests or 0) > (Item.defs.ability_minor_shock.unlockQuests or 0),
+            assert((Item.defs.ability_jolt.unlockLevel or 0) > (Item.defs.ability_minor_shock.unlockLevel or 0),
                 "and it sits deeper on the shelf for it")
         end,
     },

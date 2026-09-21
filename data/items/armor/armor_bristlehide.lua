@@ -30,7 +30,7 @@ return {
     -- SHALLOW, and it has to be: it drops off a day-one body (character_boar), and a floor only pays
     -- ranks it reaches (Spoils.rankBand). A deep tier on the commonest animal in the game is an item
     -- nobody meets until the animal has stopped being interesting.
-    dropTier = 3,
+    unlockLevel = 3,
     -- RIFT-ONLY. It comes off the body and nowhere else: no counter deals one however many
     -- the company carries out, and none will buy one back (docs/drops.md, Vendor.foundPrice).
     unstocked = true,

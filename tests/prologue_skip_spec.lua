@@ -122,12 +122,67 @@ return {
     {
         name = "the skip's experience is the level the prologue's four fights pay",
         fn = function()
-            -- models/experience.lua states it in prose from the other end: "around eighty a head, which
-            -- is level 4 here". If the curve is ever retuned, this is what says the skip moved with it.
+            -- TWO CLAIMS, AND THEY ARE ABOUT DIFFERENT THINGS. It asked for level 4, which was the
+            -- prose in models/experience.lua read off the old triangular table -- whose first levels
+            -- cost 10, 20 and 30, so eighty experience bought three of them. The curve is flat now
+            -- (FFT's arrangement: a level costs what a floor pays), so what the FIGHTING pays and
+            -- what the company LEAVES ON are two questions.
+            --
+            --   the income   SKIP_XP stands in for what a played Act 0 earns, so the skip cannot
+            --                drift off the road it is standing in for.
+            --   the exit     prologue.EXIT_LEVEL is the level the Champion leaves the company on,
+            --                topped up rather than earned, because four fights land within a whisker
+            --                of the line either side of it and a tutorial that never levels anybody
+            --                is a tutorial that never shows the level-up panel.
             local level = Experience.levelFor(prologue.SKIP_XP)
-            assert(level == 4, "Act 0 pays a body to level 4, got " .. level)
+            local played = Experience.levelFor(84) -- measured, a real Act 0 (see experience_spec)
+            assert(level == played, string.format(
+                "the skip lands level %d where a played Act 0 lands %d -- SKIP_XP has drifted off "
+                .. "what the road actually pays", level, played))
+            assert(prologue.EXIT_LEVEL >= level, string.format(
+                "Act 0 ends on level %d, under the %d its own fighting already pays -- the top-up "
+                .. "would be taking something away", prologue.EXIT_LEVEL, level))
         end,
     },
+    {
+        -- THE PLAYED ROAD PAYS THE SAME EXIT, and this is the half the skip cases cannot reach: a
+        -- walked Act 0 leaves through prologue.next, which calls prologue.payExit on its way to the
+        -- city. What is under test is the payer -- that it tops a company UP to Act 0's exit level
+        -- without ever taking anything off one that got there on its own.
+        name = "Act 0 leaves every body on its exit level, however the fighting went",
+        fn = function()
+            local Experience = require("models.experience")
+
+            -- A company that earned nothing at all -- the floor case.
+            local green = { roster = {
+                { id = "a", name = "Stranger", level = 1, xp = 0 },
+                { id = "b", name = "Rowan", level = 1, xp = 0 },
+            } }
+            prologue.payExit(green)
+            for _, char in ipairs(green.roster) do
+                assert(Experience.levelFor(char.xp) == prologue.EXIT_LEVEL, string.format(
+                    "%s leaves Act 0 at level %d, not the %d the Champion ends on",
+                    char.name, Experience.levelFor(char.xp), prologue.EXIT_LEVEL))
+            end
+
+            -- IDEMPOTENT, because the skip pays it after its own award and a re-entered prologue
+            -- must not hand out a second level.
+            local twice = green.roster[1].xp
+            prologue.payExit(green)
+            assert(green.roster[1].xp == twice, "paying the exit twice paid twice")
+
+            -- ...AND IT IS A FLOOR, NOT A SETTING. A body that out-earned it keeps what it earned --
+            -- topping DOWN would make finishing the fights worse than skipping them.
+            local rich = Experience.totalFor(prologue.EXIT_LEVEL + 2)
+            local veteran = { roster = { { id = "c", name = "Veteran", level = 1, xp = rich } } }
+            prologue.payExit(veteran)
+            assert(veteran.roster[1].xp == rich,
+                "the exit level took experience away from a body that had already passed it")
+            assert(veteran.roster[1].level > prologue.EXIT_LEVEL,
+                "and it must resolve what that body earned into the levels it bought")
+        end,
+    },
+
     {
         name = "every scene gift is an item a branch of the scene it names really grants",
         fn = function()
@@ -152,9 +207,14 @@ return {
             assert(player.roster[1].id == "character_avatar", "the avatar leads the roster")
             assert(player.roster[2].id == "character_rowan", "Rowan is the second body")
             assert(player.roster[3].id == "character_xin", "and Xin joins out of the Inn")
+            -- THE LEVEL ACT 0 ENDS ON, read off the prologue rather than named here: the Champion
+            -- leaves the company a level up (prologue.EXIT_LEVEL), and the skip owes the same.
+            -- Naming the number pinned this case to a curve it has no opinion about, and it did --
+            -- it read 4 off the old triangular table.
             for _, char in ipairs(player.roster) do
-                assert(char.level == 4, char.name .. " reaches the gate at level 4, got "
-                    .. tostring(char.level))
+                assert(char.level == prologue.EXIT_LEVEL, string.format(
+                    "%s reaches the gate at level %s, where Act 0 ends on %d",
+                    char.name, tostring(char.level), prologue.EXIT_LEVEL))
             end
 
             -- The join banner Player.recruit queues is dropped: the scene it belonged to was skipped,
@@ -224,10 +284,35 @@ return {
             -- The company arrives having SWUNG two houses: Rowan is declared knight and the avatar's
             -- starting sword is the Bastion's shelf, while the avatar's own badge is fighter
             -- (Growth.NEUTRAL_CLASS -- it declares no class).
+            --
+            -- ASKED AS A COMPARISON, NOT AS A THRESHOLD, and the threshold it replaces is worth
+            -- recording. This used to demand class level 1 in each, because a house's DOOR was gated
+            -- on `unlockClassLevel` and a skipped company would otherwise have reached a city with
+            -- every door shut. Two things have moved since. The door is not class-gated at all any
+            -- more -- models/building.lua's shelfNeed reads a `gate.classLevel` that no offer in the
+            -- game authors, so it answers nil for every card and the plaza opens whole -- and a rung
+            -- is a floor of committed play rather than two fights (Class.CLASS_LEVEL_STEP), which Act
+            -- 0's four scripted fights are not meant to buy outright.
+            --
+            -- What Act 0 owes is the thing it always actually owed: the company arrives POINTED at the
+            -- two houses it fought in. That is a fact about where the technique went, and it survives
+            -- every re-cut of what a rung costs.
+            local elsewhere = 0
+            for _, class in ipairs({ "mage", "rogue", "priest", "hunter", "alchemist" }) do
+                elsewhere = math.max(elsewhere, Class.rosterLevel(player, class))
+            end
             for _, class in ipairs({ "knight", "fighter" }) do
-                assert(Class.rosterLevel(player, class) >= 1,
-                    "Act 0 is fought in " .. class .. ", and the company arrives at class level "
-                    .. Class.rosterLevel(player, class))
+                local banked = 0
+                for _, char in ipairs(player.roster) do
+                    banked = math.max(banked, (char.technique or {})[class] or 0)
+                end
+                -- NOT MEASURED AS A FRACTION OF A RUNG, which is what this asked first and is a
+                -- coupling that keeps breaking: a rung is Class.CLASS_LEVEL_STEP and that number moves
+                -- whenever the descent is re-measured, while what Act 0 pays is a fact about four
+                -- scripted fights and does not move with it. What the road owes is that the fighting
+                -- landed here at all; how far up a ladder that gets you is the ladder's business, and
+                -- the "stands clear" comparison below is where the real claim lives.
+                assert(banked > 0, "Act 0 is fought in " .. class .. " and banked nothing there")
             end
 
             -- The road hands over an opener for all seven classes, which is not the same as having cast
@@ -239,18 +324,46 @@ return {
             -- shopfront that offers no shop is not a shopfront, so what Act 0 buys is DEPTH -- the two
             -- houses it was fought in stand a rung up, and the other five stock their bottom band.
             local Offer = require("models.offer")
-            local Quest = require("models.quest")
-            local raised, total = 0, 0
+            local Vendor = require("models.vendor")
+            local banked, total = {}, 0
             for _, def in pairs(Building.defs) do
                 if def.counter then
                     total = total + 1
                     assert(Offer.openSet(player, def).shelf,
                         (def.vendor or "?") .. "'s shop is not behind its door")
-                    if Quest.shelfRung(player, def.vendor) >= 1 then raised = raised + 1 end
+                    local class = (Vendor.defs[def.vendor] or {}).class
+                    local best = 0
+                    for _, char in ipairs(player.roster) do
+                        best = math.max(best, (char.technique or {})[class or ""] or 0)
+                    end
+                    banked[def.vendor] = best
                 end
             end
             assert(total == 7, "the city holds seven houses, got " .. total)
-            assert(raised == 2, "two of the seven shelves stand a rung up on a skipped Act 0, got " .. raised)
+
+            -- ASKED AS A COMPARISON RATHER THAN A RUNG, for the reason the case above records: a rung
+            -- is a floor of committed play now (Class.CLASS_LEVEL_STEP) and Act 0's four scripted
+            -- fights are not meant to buy one outright. Two houses standing CLEAR of the other five is
+            -- the claim that survives the re-cut -- it is about where the technique went.
+            --
+            -- Clear, not alone. A body's actions divide across every castable house on its grid and
+            -- the badge takes TECHNIQUE_DECLARED_SHARE of each, so four houses see something; what the
+            -- two it actually fought in get is a different order of magnitude. Asserting "exactly two
+            -- were touched at all" measures the SPLIT rather than the commitment, and the split is
+            -- Combat.awardTechnique working correctly.
+            local ranked = {}
+            for vendor, amount in pairs(banked) do ranked[#ranked + 1] = { vendor, amount } end
+            table.sort(ranked, function(a, b)
+                if a[2] ~= b[2] then return a[2] > b[2] end
+                return a[1] < b[1]
+            end)
+            local top = { [ranked[1][1]] = true, [ranked[2][1]] = true }
+            assert(top.bastion and top.colosseum, string.format(
+                "Act 0 is fought in the Bastion and the Colosseum; the roster leans on %s and %s",
+                ranked[1][1], ranked[2][1]))
+            assert(ranked[2][2] >= ranked[3][2] * 2, string.format(
+                "the two houses Act 0 is fought in must stand clear: %s banked %d against %s at %d",
+                ranked[2][1], ranked[2][2], ranked[3][1], ranked[3][2]))
 
             -- Nothing is banked above what the fights could physically have paid: the per-fight ceiling
             -- a real fight enforces, over the four fights the road holds.
@@ -260,11 +373,25 @@ return {
                     assert(amount <= ceiling, char.name .. " banked " .. amount .. " " .. key
                         .. ", over what four fights can pay (" .. ceiling .. ")")
                 end
-                -- The level already landed, so the level-up reading is caught up rather than sitting on
-                -- a fight's worth of progress the company has not made since (Growth.resolve's snapshot).
-                for key in pairs(char.technique or {}) do
-                    assert(Character.techniqueSinceLevel(char, key) == 0,
-                        char.name .. " reaches the city owing a level-up in " .. key)
+                -- ONLY IF A LEVEL ACTUALLY LANDED. The snapshot Growth.resolve takes is what makes
+                -- `techniqueSinceLevel` read zero, and it is taken when a body LEVELS -- so a company
+                -- that banked technique without crossing a rung legitimately carries progress since
+                -- its last one, and that is the readout being correct rather than owing.
+                --
+                -- This demanded zero unconditionally, which held only while Act 0's four fights
+                -- crossed a rung -- true when a rung cost 23 and false now that it costs a floor of
+                -- committed play (Class.CLASS_LEVEL_STEP). The claim worth keeping is the narrow one:
+                -- nobody arrives owing a level-up they have already earned.
+                for key, banked in pairs(char.technique or {}) do
+                    -- The snapshot can never claim more progress than the body has ever earned, and
+                    -- it can never go backwards. That is the invariant Growth.resolve's snapshot has
+                    -- to hold whether or not a level landed, and it is the part of the old assertion
+                    -- that was actually about correctness rather than about the prologue's income.
+                    local since = Character.techniqueSinceLevel(char, key)
+                    assert(since >= 0, char.name .. " reads negative progress in " .. key)
+                    assert(since <= banked, string.format(
+                        "%s reads %d progress since its last level in %s, having banked %d in total",
+                        char.name, since, key, banked))
                 end
             end
         end,

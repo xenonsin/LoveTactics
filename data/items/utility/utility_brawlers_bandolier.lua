@@ -11,8 +11,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "warbrewer", -- fighter x alchemist; the Combat-draught mechanic's first stock
-    unlockQuests = 4,
-    dropTier = 3,
+    unlockLevel = 4,
     traits = { "trait_brawlers_bandolier" },
     -- a drink and a swing, neither of them slow
     bonus = { speed = 1, damage = 1 },

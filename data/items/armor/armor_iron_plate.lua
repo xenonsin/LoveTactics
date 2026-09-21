@@ -10,8 +10,7 @@ return {
     sprite = "assets/items/iron_plate.png",
     type = "armor",
     class = "fighter",
-    unlockQuests = 3,
-    dropTier = 5,
+    unlockLevel = 8,
     -- Heavy tier: the most steel a body can carry, and it shows in the pace.
     bonus = { defense = Curve.ramp(1, 14), movement = -2 },
     resist = { physical = 4, slash = 3, pierce = 4 },

@@ -15,8 +15,7 @@ return {
     type = "weapon",
     tags = { "mace", "impact", "physical", "melee", "poison" },
     class = "plague_knight", -- knight x alchemist; the Contagion mechanic's first stock
-    unlockQuests = 7,
-    dropTier = 7,
+    unlockLevel = 12,
     activeAbility = {
         target = "enemy",
         range = 1,

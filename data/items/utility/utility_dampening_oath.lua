@@ -21,8 +21,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "spellbreaker",
-    unlockQuests = 4,
-    dropTier = 5,
+    unlockLevel = 8,
     traits = { "trait_dampening_oath" },
     -- an oath that makes magic cost double is anti-magic entire
     bonus = { magicDefense = 3 },

@@ -191,7 +191,7 @@ function Balance.probe(nameOrTags)
 end
 
 -- The most one piece of armour may take off one weapon, as a share of the reference attack budget at
--- the prestige that armour's own `unlockQuests` names.
+-- the prestige that armour's own `unlockLevel` names.
 --
 -- This is where the resist-stacking problem is enforced, and it is enforced as an AUTHORING rule
 -- rather than a code one. Combat.mitigatedDamage sums resists across every tag on the blow, and
@@ -245,7 +245,7 @@ Balance.INNATE_WEAKNESS_FACTOR = 2
 Balance.INNATE_PHYSICAL = { "slash", "pierce", "impact" }
 
 -- THE SLOT IS THE GRADE. What a WEAPON or damaging ABILITY contributes is decided by ONE thing: the
--- slot it unlocks from (`unlockQuests`, the count of its house's quests you have finished). Later slot,
+-- slot it unlocks from (`unlockLevel`, the count of its house's quests you have finished). Later slot,
 -- bigger number. Nothing else earns a discount.
 --
 -- WHY THE SHARE-BASED RULE WAS REPLACED. The old target was a constant share of the wielder's attack
@@ -510,7 +510,7 @@ end
 -- Read the deepest reachable weapon rather than a hand-named "late reference" for the usual reason: a
 -- second authored loadout would be one more thing to drift, and this one moves the day the shelf does.
 --
--- `unlockQuests <= prestige` is the gate, since prestige is a flat count of quests finished
+-- `unlockLevel <= prestige` is the gate, since prestige is a flat count of quests finished
 -- (Quest.PRESTIGE_PER_QUEST) and a shelf gate counts the sponsoring house's. That conflates "eleven quests
 -- anywhere" with "eleven of this house's", which is generous -- it assumes a player who committed to one
 -- line. Generous is the correct direction here: this is measuring the CEILING of what a player could be
@@ -518,7 +518,7 @@ end
 function Balance.progressedWeapon(prestige, family)
     local best, bestSlot = nil, -1
     for id, def in pairs(Item.defs) do
-        if (def.price or def.dropTier) and def.type == "weapon" and Balance.familyOf(def) == family then
+        if def.unlockLevel and def.type == "weapon" and Balance.familyOf(def) == family then
             local slot = Balance.slotOf(def)
             if slot <= (prestige or 1) and slot > bestSlot and Balance.gradesOnMagnitude(def) then
                 best, bestSlot = id, slot
@@ -1307,32 +1307,34 @@ end
 local maxSlotCache
 -- THE RANK AN ITEM IS JUDGED AT, whichever axis it was put on.
 --
--- A priced ware names a rung (`unlockQuests`) and that rung is its power level -- later slot, bigger
+-- A priced ware names a rung (`unlockLevel`) and that rung is its power level -- later slot, bigger
 -- number, which is the rule this whole file exists to enforce. An unpriced one has no rung at all: it
--- is found in the rift, and what stands in for the rung is the DEPTH it falls at (`dropTier`), which is
+-- is found in the rift, and what stands in for the rung is the DEPTH it falls at (`unlockLevel`), which is
 -- the identical grade spread along the other axis (docs/shelf.md, tools/drop_tier.lua).
 --
--- AND A `dropTier` IS DELIBERATELY NOT CONSULTED. It is tempting -- a depth looks like a rank, and
--- Vendor.foundPrice does read it as one to derive a price. But tools/drop_tier.lua spreads that axis
--- EVENLY BY COUNT and says so in as many words: "what is being decided here is an order, not a
--- magnitude." Feeding it to slotTarget re-premises sixty-four long-settled items at once, every one of
--- them suddenly under a target drawn from a number that was never a power level.
+-- THERE IS ONE AXIS NOW, and the paragraph this replaces argued at length that there must be two.
+-- It refused to read `unlockLevel` -- "a depth looks like a rank" -- because that axis was spread EVENLY
+-- BY COUNT while `unlockLevel` was a power grade, so feeding the depth to slotTarget would have
+-- re-premised sixty-four long-settled items against a number that was never a power level.
 --
--- WHICH IS THE POINT OF THE SHELF RECUT, STATED AS A RULE: it changes where a thing is BOUGHT, never
--- what it does. Every blueprint kept its `unlockQuests` through the recut precisely so that this file
--- reads exactly what it read before, and no magnitude in the game moved.
+-- That argument was measured before the fold rather than repeated. Across the 230 unpriced blueprints
+-- carrying both, `depth - rank` ran -3 to +4 with 184 of them inside a single rung and exactly two
+-- outliers. The two axes had converged: a rung is a band items SHARE a magnitude within, so a move of
+-- one is a move inside the band, and the fold costs at most that on four fifths of the set. The rule
+-- the old paragraph was protecting still holds and is now trivially true -- a recut changes where a
+-- thing is BOUGHT, never what it does -- because there is only one number left to change.
 function Balance.slotOf(def)
-    return (def and def.unlockQuests) or 0
+    return (def and def.unlockLevel) or 0
 end
 
 function Balance.maxSlot()
     if maxSlotCache then return maxSlotCache end
     local m = 0
     for _, def in pairs(Item.defs) do
-        -- `price or dropTier` -- the span is over everything the ladder ranks, and after the recut most
-        -- of what it ranks is unpriced. Reading `price` alone would have collapsed the span to the
-        -- abilities' ladder and re-scaled every weapon target against it.
-        if def.price or def.dropTier then
+        -- Everything the ladder ranks, which since the fold is exactly "carries an `unlockLevel`".
+        -- Reading `price` alone would collapse the span to the abilities' ladder and re-scale every
+        -- weapon target against it; most of what this ranks is unpriced.
+        if def.unlockLevel then
             local slot = Balance.slotOf(def)
             if slot > m then m = slot end
         end
@@ -1399,7 +1401,7 @@ function Balance.familyShareAt(fam, slot)
     if not want then return nil end
     local baseId = Balance.FAMILY_BASE[fam]
     local def = baseId and Item.defs[baseId]
-    local stat = Balance.wielderStatFor({ tags = (def and def.tags) or {}, unlockQuests = slot or 0 })
+    local stat = Balance.wielderStatFor({ tags = (def and def.tags) or {}, unlockLevel = slot or 0 })
     if stat <= 0 then return nil end
     return want / stat
 end

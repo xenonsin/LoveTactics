@@ -240,7 +240,7 @@ end
 
 -- Every priced item's LEVEL-0 magnitude against the gate it unlocks at.
 --
--- The question this answers is "does an item's power respect its `unlockQuests`" -- is a thing the
+-- The question this answers is "does an item's power respect its `unlockLevel`" -- is a thing the
 -- shelf opens after nine quests actually better than what it sold on day one, and is anything on the
 -- opening shelf so strong the gate behind it means nothing.
 --
@@ -256,7 +256,7 @@ function M.walkItems()
     local rows = {}
     for id, def in pairs(Item.defs) do
         if def.price then
-            local gate = def.unlockQuests or 0
+            local gate = def.unlockLevel or 0
             local prestige = math.max(1, gate)
 
             -- The headline magnitude, at level 0, and which axis it sits on.
@@ -324,7 +324,7 @@ function M.walkPace()
             for id, def in pairs(Item.defs) do
                 if def.price and (def.type == "weapon" or def.type == "ability")
                     and not Class.isEarned(def.class) and def.class == class then
-                    local g = def.unlockQuests or 0
+                    local g = def.unlockLevel or 0
                     local item = Item.instantiate(id, 1, 0)
                     local power = (item.activeAbility and item.activeAbility.damage) or 0
                     if type(power) == "number" and power > 0 then
@@ -351,7 +351,7 @@ function M.walkPace()
                 -- price the last shelf against the first one's target.
                 local level = fam and Balance.familyShareAt(fam, until_)
                 local stat = Balance.wielderStatFor({ tags = entry.def.tags,
-                    unlockQuests = until_ })
+                    unlockLevel = until_ })
                 local ceiling = Balance.forgeCeiling(entry.id, math.max(1, until_), until_)
                 local forged = Item.instantiate(entry.id, 1, ceiling)
                 local forgedPower = (forged.activeAbility and forged.activeAbility.damage) or entry.power
@@ -396,7 +396,7 @@ function M.walkForgeEconomy()
         for id, def in pairs(Item.defs) do
             if def.class and Forge.houseVendorFor(def.class) == v.id
                 and def.type == "weapon" and not Class.isEarned(def.class) and def.price
-                and (def.unlockQuests or 0) == 0 then
+                and (def.unlockLevel or 0) == 0 then
                 if not sample or id < sample.id then sample = { id = id, def = def } end
             end
         end

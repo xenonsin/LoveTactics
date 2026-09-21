@@ -29,8 +29,7 @@ return {
     tags = { "water", "magical" },
     class = "mage",
     dropOnly = true,
-    dropTier = 8,
-    unlockQuests = 5,
+    unlockLevel = 14,
     activeAbility = {
         target = "tile",
         allowOccupied = true,
@@ -38,7 +37,7 @@ return {
         minRange = 1,
         speed = 5,
         cost = { stat = "mana", amount = 9 },
-        damage = Curve.ramp(12, 22),
+        damage = Curve.ramp(15, 25),
         aoe = { shape = "line", length = 3 },
         effect = function(fx)
             local dx, dy = fx.tx - fx.user.x, fx.ty - fx.user.y

@@ -1,22 +1,19 @@
--- THE RUN AWAY PLATE'S NOTE (ui/deploy_phase.lua's fleeNotePlate).
+-- THE RUN AWAY PLATE (ui/deploy_phase.lua's controls).
 --
--- The plate says "Run Away" and names no consequence, and what actually happens to the fight is
--- off-screen: a rolled fight is gone for good, while a threat standing on the floor stays standing
--- (states/game.lua's onFlee). The note beside the plate is where that lives, so what is pinned here is
--- that it can be REACHED: on a pad, which has no pointer to hover with, exactly as on a mouse.
+-- THE WHOLE READOUT IS THE LABEL. There used to be a note beside this plate, opened on hover and on a
+-- pad selection, with a status box stacked under it naming what a failed attempt costs; both are gone.
+-- What is left has to carry the decision on its own -- the odds on the thing the player presses -- so
+-- what is pinned here is that the number reaches the label, and that the plate only stands on a fight
+-- there is a way out of.
 --
--- The cases below still pass `fleeChance = 55`, which is now a value the live game never produces
--- (Flee.CERTAIN quotes 100). That is deliberate: it exercises the plate's ODDS branch, so the label
--- keeps being built and measured the way it will be again if the curve is ever unparked.
---
--- Driven through fleeNotePlate rather than drawFleeNote, which is why the gating is decided apart from
--- the drawing: the answer IS what the player gets, and it can be read here without a window.
+-- The stake needs nothing here: a caught company's enemies wear Hasted from the moment the roll fails
+-- (states/game.lua's onFlee, tests/flee_spec.lua) -- the hint line says so in words and the badges are
+-- on the tokens before the bell.
 --
 -- Constructed by hand rather than through DeployPhase.new, as tests/deploy_input_spec.lua does and for
 -- the same reason (the constructor builds fonts, and love.graphics.newFont throws headless).
 
 local DeployPhase = require("ui.deploy_phase")
-local InputMode = require("input_mode")
 
 local function phase(opts)
     opts = opts or {}
@@ -34,100 +31,47 @@ local function phase(opts)
     }, DeployPhase)
 end
 
--- The plate's own rect, however tall the stack above it happens to stand.
-local function fleeRect(p)
+local function flee(p)
     for _, c in ipairs(p:controls()) do
-        if c.key == "flee" then return c.rect end
+        if c.key == "flee" then return c end
     end
-end
-
--- The same plate, by its geometry: controls() builds its rects fresh on every call, so the note's
--- answer is never the identical table the probe read -- it is the same RECT, which is the claim.
-local function sameRect(a, b)
-    return a and b and a.x == b.x and a.y == b.y and a.w == b.w and a.h == b.h
-end
-
-local function withMode(mode, touch, fn)
-    local oldMode, oldTouch = InputMode.current, InputMode.touch
-    InputMode.current, InputMode.touch = mode, touch
-    local ok, err = pcall(fn)
-    InputMode.current, InputMode.touch = oldMode, oldTouch
-    assert(ok, err)
 end
 
 return {
     {
-        name = "the note opens under the pointer that is on the plate",
+        name = "the plate quotes the odds it is offering",
         fn = function()
-            local p = phase({ onFlee = function() end, fleeChance = 55 })
-            local r = fleeRect(p)
-            assert(r, "the plate itself is missing")
-            withMode("mouse", false, function()
-                p.mx, p.my = r.x + r.w / 2, r.y + r.h / 2
-                assert(sameRect(p:fleeNotePlate(), r), "hovering the plate says nothing")
-                p.mx, p.my = r.x + r.w / 2, r.y - 40
-                assert(p:fleeNotePlate() == nil, "the note stands with the pointer off the plate")
-            end)
+            -- A wager has to quote its price, and this is the only surface left that can.
+            local c = flee(phase({ onFlee = function() end, fleeChance = 55 }))
+            assert(c, "the plate itself is missing")
+            assert(c.label == "Run Away (55%)",
+                "the plate reads '" .. tostring(c.label) .. "' and names no price")
+            assert(c.enabled, "the way out is drawn and cannot be pressed")
+
+            -- Every rung of the curve reaches the label, not just the even one.
+            for _, odds in ipairs({ 20, 37, 55, 72, 90 }) do
+                local label = flee(phase({ onFlee = function() end, fleeChance = odds })).label
+                assert(label == ("Run Away (" .. odds .. "%)"),
+                    "a " .. odds .. "% escape reads '" .. tostring(label) .. "'")
+            end
         end,
     },
     {
-        -- The half a pointer-only reading would have lost: a pad selection sits ON a plate and never
-        -- hovers one, so a note gated on the cursor is a note a pad can never open.
-        name = "a pad sitting on the plate opens it too",
+        -- A probe or a debug board hands over a way out with no muster behind it to price. The plate
+        -- still works; it just stops claiming a number nobody computed.
+        name = "a plate with no odds behind it says nothing rather than lying",
         fn = function()
-            local p = phase({ onFlee = function() end, fleeChance = 55 })
-            local r = fleeRect(p)
-            withMode("gamepad", false, function()
-                p.focus = "flee"
-                assert(sameRect(p:fleeNotePlate(), r), "the selection on the plate says nothing")
-                p.focus = "begin"
-                assert(p:fleeNotePlate() == nil, "the note follows the selection off the plate")
-            end)
+            local c = flee(phase({ onFlee = function() end }))
+            assert(c and c.label == "Run Away",
+                "an unpriced escape reads '" .. tostring(c and c.label) .. "'")
         end,
     },
     {
-        -- A finger has no hover, and the last tap's coordinates are wherever the player last pressed.
-        name = "a finger never opens it",
+        -- No way out, no plate: a fight that may not be fled (an objective, a campaign board) never
+        -- draws the button at all, and a button that is there is a promise about the board.
+        name = "a fight with no way out has no plate",
         fn = function()
-            local p = phase({ onFlee = function() end, fleeChance = 55 })
-            local r = fleeRect(p)
-            withMode("mouse", true, function()
-                p.mx, p.my = r.x + r.w / 2, r.y + r.h / 2
-                assert(p:fleeNotePlate() == nil, "a tap on the plate left a box behind it")
-            end)
-        end,
-    },
-    {
-        -- No plate, no note: a fight that may not be fled (an objective, a campaign board) never draws
-        -- the button at all, and an explanation of a control that is not there is a lie about the board.
-        name = "a fight with no way out has no note",
-        fn = function()
-            local p = phase()
-            withMode("mouse", false, function()
-                p.mx, p.my = p.column.x + 10, p.column.y + 10
-                assert(p:fleeNotePlate() == nil, "a board with no escape explained one")
-            end)
-            withMode("gamepad", false, function()
-                p.focus = "flee"
-                assert(p:fleeNotePlate() == nil, "a stale selection opened a plate that is gone")
-            end)
-        end,
-    },
-    {
-        -- Mid-placement the carried portrait is over the cursor. A box under it is in the way of the
-        -- move rather than an answer to it.
-        name = "a body in hand keeps it shut",
-        fn = function()
-            local p = phase({ onFlee = function() end, fleeChance = 55 })
-            local r = fleeRect(p)
-            withMode("mouse", false, function()
-                p.mx, p.my = r.x + r.w / 2, r.y + r.h / 2
-                p.drag = { active = true, char = {} }
-                assert(p:fleeNotePlate() == nil, "the note opened under a dragged body")
-                p.drag = nil
-                p.held = {}
-                assert(p:fleeNotePlate() == nil, "the note opened under a picked-up body")
-            end)
+            assert(flee(phase()) == nil, "a board with no escape offered one")
         end,
     },
 }

@@ -9,5 +9,5 @@ return {
     description = "Shuts casters down. A melee blow interrupts a spell being channelled, inflicts Silence, "
         .. "and negates the next cast made nearby.",
     exemplar = "character_spellbreaker", -- NEW, pending
-    requires = { knight = 8, mage = 8 },
+    requires = { knight = 13, mage = 13 },
 }

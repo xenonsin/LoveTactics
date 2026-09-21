@@ -35,7 +35,7 @@ return {
     -- The counter-to-your-own-trick reading is a nice line; the mixing bench is the item.
     class = "alchemist",
     price = 30,
-    unlockQuests = 0, -- opening shelf: every party should be able to carry one from the first night
+    unlockLevel = 0,
     maxStack = 3,
     activeAbility = {
         target = "tile",

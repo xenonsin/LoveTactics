@@ -29,7 +29,7 @@ return {
     tags = { "spear", "pierce", "physical", "water", "melee" },
     hands = 2,
     class = "knight",
-    dropTier = 8,
+    unlockLevel = 13,
     activeAbility = {
         target = "tile",
         allowOccupied = true,
@@ -37,7 +37,7 @@ return {
         minRange = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 10 },
-        damage = Curve.ramp(6, 16),
+        damage = Curve.ramp(15, 25),
         aoe = { shape = "line", length = 2 },
         effect = function(fx)
             -- The spear convention (docs/weapons.md): Wet lands on the FAR tile only. Capture the far

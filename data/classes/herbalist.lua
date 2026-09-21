@@ -9,5 +9,5 @@ return {
     description = "Brews from the ground it stands on. Harvests hazards and growth on the board into "
         .. "consumables mid-fight, and the same stem makes a poison or a cure.",
     exemplar = "character_herbalist", -- NEW, pending
-    requires = { hunter = 8, alchemist = 8 },
+    requires = { hunter = 12, alchemist = 12 },
 }

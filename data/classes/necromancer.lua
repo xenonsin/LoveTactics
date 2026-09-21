@@ -12,5 +12,5 @@ return {
     description = "Raises the dead. A foe that falls on the board gets back up fighting on your side, and "
         .. "a corpse you do not raise can be burst where it lies.",
     exemplar = "character_necromancer", -- NEW, pending
-    requires = { mage = 4 },
+    requires = { mage = 5 },
 }

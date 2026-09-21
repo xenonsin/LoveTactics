@@ -41,7 +41,7 @@ return {
     type = "weapon",
     tags = { "wand", "magical", "arcane", "ranged" },
     class = "mage",
-    dropTier = 7,
+    unlockLevel = 11,
     activeAbility = {
         target = "enemy",
         range = 3,
@@ -50,7 +50,7 @@ return {
         cost = { stat = "mana", amount = 11 }, -- the deleted telegraph is the dearest of the three riders
         -- Its slot's number, which at slot 0 is the plain wand's exactly (Balance.slotTarget): same
         -- family, same slot, same magnitude, and the free channel is what tells them apart.
-        damage = Curve.ramp(5, 15),
+        damage = Curve.ramp(12, 22),
         effect = function(fx)
             fx.damage(fx.target)
             -- On the CASTER. Ten ticks against the status's own twelve -- long enough that the very next

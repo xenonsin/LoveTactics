@@ -29,7 +29,7 @@ return {
     type = "weapon",
     tags = { "dagger", "pierce", "physical", "melee" },
     class = "rogue",
-    dropTier = 8,
+    unlockLevel = 14,
     -- Quest-only: `class` with no `price` tallies toward rogue growth but sits on no shelf, and the
     -- missing `price` also keeps it out of the random spoils pool (models/spoils.lua reads `price` as
     -- the "is this ordinary stock?" marker). Granted by data/quests/undercroft/quest_undercroft_slot_09.lua.
@@ -48,7 +48,7 @@ return {
         cost = { stat = "stamina", amount = 5 },
         -- Under a plain Iron Dagger's, deliberately: what this blade sells is the second body, and a
         -- knife that spilled AND hit hardest would simply retire the rest of the rack.
-        damage = Curve.ramp(5, 15),
+        damage = Curve.ramp(14, 24),
         -- What the spill scales off, declared so the loadout draws its connector lines to exactly the
         -- knives it will actually count (Combat.adjacencyLinks reads this).
         adjacencyScaling = { tag = "dagger" },

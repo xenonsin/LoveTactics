@@ -185,7 +185,7 @@ end
 --
 -- IT NAMES THE LEVELS AND STOPS THERE, though a crossing is also gated on holding a subclass of each
 -- parent (Class.isUnlocked). That second rule is not dropped, it is implied: the cheapest subclass in
--- every house opens at 3, and no crossing asks less than 5 of a parent -- so a body that meets the
+-- every house opens at 3, and no crossing asks less than 6 of a parent -- so a body that meets the
 -- levels has met the subclass rule on the way past. A second clause would be a line the player can
 -- never fail.
 local function lockParts(id, house)
@@ -397,6 +397,49 @@ function ClassEditor.new(opts)
     return self
 end
 
+-- OPEN ON WHAT THE BODY ALREADY IS, which is the one row on this screen the player did not have to
+-- go looking for.
+--
+-- The tab used to open on house 1, row 1 -- the Alchemist's base class -- for every body on the
+-- roster, so a Knight reading their own ladder arrived on somebody else's shelf and had to find
+-- themselves before the screen said anything about them. That is a whole column of navigation spent
+-- before the first question ("what am I now") is even answered, and it is answered by a cursor.
+--
+-- BOTH COLUMNS MOVE, because the house is half the answer: a crossing hangs off two shelves and a
+-- subclass off one, so the row cannot be reached without opening the shelf it is filed under first.
+-- A crossing takes whichever of its parents comes first in the rail's order -- either is correct, and
+-- the row itself carries the other (buildRows' `cross`).
+--
+-- FAILS SOFT AND STAYS PUT. A classless body (the avatar before it declares -- Growth.NEUTRAL_CLASS),
+-- a class with no house on the rail, a row that is somehow not selectable: each leaves the cursor
+-- exactly where it was, which is the old behaviour and a perfectly readable screen.
+function ClassEditor:focusCurrent()
+    local declared = self.char and Growth.classOf(self.char)
+    if not (declared and self.houses) then return end
+
+    local function houseIndex(id)
+        for i, h in ipairs(self.houses) do if h.id == id then return i end end
+        return nil
+    end
+    local idx = houseIndex(declared)
+    if not idx then
+        for _, parent in ipairs(Class.parents(declared)) do
+            idx = idx or houseIndex(parent)
+        end
+    end
+    if not idx then return end
+
+    self.house = idx
+    self:buildRows()
+    for i, row in ipairs(self.rows) do
+        if row.id == declared and self:isSelectable(i) then
+            self.cursor = i
+            self:scrollToCursor()
+            return
+        end
+    end
+end
+
 function ClassEditor:setChar(char)
     self.char = char
     self.cursor = 1
@@ -404,6 +447,9 @@ function ClassEditor:setChar(char)
     self.hoverRow, self.hoverHouse, self.hoverChange = nil, nil, nil
     self:buildHouses()
     self:buildRows()
+    -- ...and then onto the body itself. After the two builds rather than instead of them: focusCurrent
+    -- reads the house rail it is choosing from, and re-builds the row list once it has moved.
+    self:focusCurrent()
 end
 
 -- Open a house's shelf. The cursor goes back to the top of it rather than holding its index across the

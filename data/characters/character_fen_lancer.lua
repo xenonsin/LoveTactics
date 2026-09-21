@@ -34,9 +34,17 @@ return {
         false,                   false, false,
         false,                   false, false,
     },
+    -- The race's own plate, and it falls off a body that is not wearing it: a naga already carries
+    -- `lightning = -4` and the coat would take it to -8 (tests/naga_spec.lua). Pinned, because no
+    -- rule in tools/drop_assign.lua can see that -- the hauberk is knight stock and a lancer is not
+    -- a knight, so a re-deal takes it off every time it is not said out loud.
+    dropsPinned = { "armor_scale_hauberk" },
     drops = {
-        "weapon_brackish_lance",
         "armor_scale_hauberk",
+        "weapon_bellowing_edge",
+        "weapon_mired_maul",
+        "weapon_slow_verdict",
+        "utility_whetted_vow",
     },
     defaultAction = "weapon_brackish_lance",
     signatureWeapon = "weapon_brackish_lance",

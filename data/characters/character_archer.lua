@@ -38,11 +38,11 @@ return {
     -- The go-to action pinned by default (Combat.defaultAction): armed at the start of its turn so
     -- its range shows, and driving the basic click-to-use. The player can re-pin any ability.
     drops = {
-        "armor_bogwalkers_coat",
-        "utility_thrill_of_the_hunt",
-        "weapon_limning_bow",
-        "weapon_sunfall",
-        "utility_totem_carvers_kit",
+        "armor_stalkers_pelt",
+        "weapon_deadfall_bow",
+        "weapon_unravelling_shaft",
+        "weapon_hexbrand",
+        "utility_yoked_company",
     },
     defaultAction = "weapon_iron_bow",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

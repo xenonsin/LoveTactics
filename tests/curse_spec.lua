@@ -451,4 +451,94 @@ return {
             assert(Curse.everCursed(player), "...and the Cathedral has heard about it")
         end,
     },
+    {
+        name = "a sealed husk is clean to every surface until somebody pays to read it",
+        fn = function()
+            -- THE OTHER HALF OF THE CASE ABOVE, and the half that shipped broken. Curse.canAfflict has
+            -- refused to hex a husk since the day curses landed -- "the player would be told about a hex
+            -- on an item they have not been told the identity of" -- but the refusal was only pointed at
+            -- PUTTING one on. A husk sealed WITH one answered every reader in the game, and four
+            -- surfaces asked: the tooltip printed the hex's name and its sentence under a card titled
+            -- Unidentified Weapon; a binding hex locked the stash cell; the Cathedral listed the husk
+            -- and the plaza opened its door; and Player.atRisk skipped it, so a hexed find survived a
+            -- wipe that dropped the clean ones.
+            --
+            -- Every one of those is a call to Curse.of, so all four are asserted here through the
+            -- predicates they branch on. The source pass below is what keeps them coming through it.
+            local Character = require("models.character")
+            local player = Player.new()
+            local char = Character.instantiate("character_knight")
+            player.roster, player.stash, char.inventory = { char }, {}, {}
+            player.gold = 9000
+
+            local husk = Identify.sealed("weapon_iron_sword", 12)
+            husk.curse = "curse_the_shut_hand" -- a BINDING hex: the loudest of the four leaks
+            assert(Curse.defs["curse_the_shut_hand"].binds, "the fixture wants a hex that nails a piece down")
+
+            -- The truth is on the table and none of it is answered for.
+            assert(husk.curse == "curse_the_shut_hand", "the seal is still carrying it")
+            assert(Curse.of(husk) == nil, "...and will not hand it to a tooltip")
+            assert(not Curse.isCursed(husk), "...nor to a badge")
+            assert(not Item.isBound(husk), "...nor lock the cell it sits in")
+
+            -- The company as it walked in: empty, so the husk below is a find and nothing else is.
+            local entry = Save.snapshot(player)
+
+            Player.addToStash(player, husk)
+            assert(#Curse.kit(player) == 0, "the Cathedral has nothing to list")
+            assert(not Curse.noticed(player), "...so the plaza keeps its door shut")
+
+            -- A WIPE DROPS IT LIKE ANY OTHER FIND. This is the one the player could have read as luck:
+            -- with the bind live, the hexed husk was the only thing in the satchel that came home.
+            assert(Player.atRisk(player, entry)[husk] == 1, "a sealed find is at stake, hex or no hex")
+
+            -- ...and the read turns all four on at once.
+            assert(Identify.read(player, husk), "the counter names it")
+            assert(Curse.of(husk), "now it has a name, the hex on it has one too")
+            assert(Item.isBound(husk), "and the bind bites from the moment the player can see why")
+            assert(#Curse.kit(player) == 1, "the Cathedral can list what it is being asked to lift")
+        end,
+    },
+    {
+        name = "nothing reads a hex off the raw field",
+        fn = function()
+            -- Curse.of's own header calls itself THE one reader, and the seal guard lives inside it --
+            -- so a surface that tests `item.curse` itself is a surface the seal does not cover. That is
+            -- not hypothetical: ui/item_tooltip.lua printed the hex for months because its block was
+            -- written when a husk had nothing on it worth hiding.
+            --
+            -- The raw field is legitimate in exactly five places, and each is a WRITER or a PERSISTER
+            -- rather than something the player can see:
+            local ALLOWED = {
+                ["models/curse.lua"] = true,    -- afflict, lift, and the spirit verbs that move one
+                ["models/identify.lua"] = true, -- reveal: lifts the hex out of the husk and re-stamps it
+                ["models/item.lua"] = true,     -- instantiate: a blueprint born hexed
+                ["models/save.lua"] = true,     -- the snapshot, which must carry a sealed hex through
+                ["models/combat.lua"] = true,   -- fx.curse, which WRITES an id into a trap's context
+            }
+            local offenders = {}
+            local function walk(dir)
+                for _, entry in ipairs(love.filesystem.getDirectoryItems(dir)) do
+                    local path = dir .. "/" .. entry
+                    if love.filesystem.getInfo(path).type == "directory" then
+                        walk(path)
+                    elseif entry:sub(-4) == ".lua" and not ALLOWED[path] then
+                        for line in (love.filesystem.read(path) or ""):gmatch("[^\r\n]+") do
+                            -- `x.curse` on something that is not a comment and not `models.curse`.
+                            if not line:match("^%s*%-%-") and line:match("[%w_%)%]]%.curse[^%w_]")
+                                and not line:match("models%.curse") then
+                                offenders[#offenders + 1] = path .. ": " .. line:match("^%s*(.-)%s*$")
+                            end
+                        end
+                    end
+                end
+            end
+            walk("models")
+            walk("ui")
+            walk("states")
+            assert(#offenders == 0,
+                "read the hex through Curse.of, which is where the seal is kept:\n  "
+                .. table.concat(offenders, "\n  "))
+        end,
+    },
 }

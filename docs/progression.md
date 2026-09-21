@@ -388,8 +388,12 @@ is in the code.
 - **Stat growth is flat on purpose.** `models/growth.lua` proves linear growth against subtractive
   mitigation converges to a constant however it is tuned. Growth comes from gear, abilities,
   disciplines and roster — never from the curve. Do not go looking for a knob.
-- **One bench, The Forge.** The only thing that raises an `item.level` and the only thing that spends
-  materials. A vendor sells and buys back, nothing else.
+- **One bench, two rooms.** `models/forge.lua` is the only thing that raises an `item.level` and the
+  only thing that spends materials — one bill, one ceiling, one ladder. It is reached through two
+  doors (`Forge.WORK`): the **Bastion's forge** works what a smith can hold in a pair of tongs —
+  weapons, armor, utility, plus mending and breaking — and the **Arcanum's study** works what is
+  written down: abilities per instance, consumable recipes per type. A vendor sells and buys back,
+  nothing else.
 - **Technique is earmarked.** Banked per house per character by playing that house's gear, spent at the
   Forge to buy depth. Gold buys breadth. *This is why walking a ground cannot pay technique* — the
   earmark ("ninja technique comes only from ninja play") is the entire justification for a second

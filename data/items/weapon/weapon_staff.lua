@@ -21,7 +21,7 @@ return {
     tags = { "staff", "magical", "melee" }, -- magical: routes through magicDamage / magicDefense
     class = "mage",
     price = 80,
-    unlockQuests = 0,
+    unlockLevel = 0,
     -- The Focus swap: mana recovered per Focus, and the time it costs. Both climb with the forge --
     -- an upgraded staff meditates deeper, not faster.
     waitBehavior = { kind = "focus", mana = Curve.ramp(8, 18), speed = 10 },

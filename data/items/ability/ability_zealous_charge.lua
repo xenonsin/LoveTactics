@@ -13,7 +13,7 @@ return {
     tags = { "holy", "slash" },
     class = "crusader", -- fighter x priest; the Smite mechanic's first stock
     price = 575,
-    unlockQuests = 6,
+    unlockLevel = 11,
     activeAbility = {
         target = "enemy",
         range = 1,

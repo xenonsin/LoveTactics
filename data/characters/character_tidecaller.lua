@@ -40,9 +40,11 @@ return {
         false,                false,               false,
     },
     drops = {
+        "utility_bloodstone_focus",
+        "utility_marrowlight",
+        "armor_sealed_coat",
+        "weapon_reflecting_wand",
         "ability_riptide",
-        "ability_breaker",
-        "armor_scale_hauberk",
     },
     defaultAction = "ability_brine_bolt",
     signatureAbility = "ability_stormwake",

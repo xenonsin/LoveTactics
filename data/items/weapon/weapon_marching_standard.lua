@@ -43,8 +43,7 @@ return {
     tags = { "spear", "pierce", "physical", "melee", "banner" },
     hands = 2, -- a two-handed polearm, as every spear is
     class = "knight",
-    unlockQuests = 8,
-    dropTier = 8,
+    unlockLevel = 14,
     -- Rank 4 is the ceiling: every vendor's `ranks` table is four rungs long (data/vendors/), and the
     -- general quests gate on rank 4 as "the highest standing". A shelf therefore climbs 1..4 with its two
     -- capstones sharing the top rung -- here this and the Mailpiercer.

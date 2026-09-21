@@ -26,11 +26,11 @@ return {
         "armor_chainmail",     "consumable_healing_potion", "utility_bound_mile",
     },
     drops = {
-        "armor_kept_wound_shield",
-        "utility_drill_standard",
         "weapon_pestilent_flail",
-        "weapon_wetstone_mace",
-        "utility_empty_vessel",
+        "weapon_undertow_pike",
+        "utility_counter_magic",
+        "weapon_silencing_blade",
+        "weapon_crescent_blade",
     },
     defaultAction = "weapon_iron_spear",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

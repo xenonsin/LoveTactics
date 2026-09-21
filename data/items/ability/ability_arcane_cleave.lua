@@ -13,7 +13,7 @@ return {
     tags = { "magical", "fire" }, -- magical: routes through magicDefense; fire: the element it carries
     class = "battlemage", -- fighter x mage; the Spellstrike mechanic's first stock
     price = 660,
-    unlockQuests = 7,
+    unlockLevel = 13,
     activeAbility = {
         target = "enemy",
         range = 1,

@@ -28,8 +28,7 @@ return {
     type = "utility",
     tags = { "dark" },
     class = "barbarian", -- deeper cut of the shelf: buyable only once the barbarian gate is cleared
-    unlockQuests = 1,
-    dropTier = 1,
+    unlockLevel = 0,
     activeAbility = {
         target = "self",
         range = 0,

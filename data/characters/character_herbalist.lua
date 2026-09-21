@@ -27,11 +27,11 @@ return {
         "consumable_healing_potion", "utility_cullers_basket",          false,
     },
     drops = {
-        "utility_caltrop_greaves",
-        "weapon_deadfall_bow",
-        "weapon_struck_ledger",
-        "weapon_witchlight_bow",
-        "weapon_hailfall_longbow",
+        "armor_kennelbound_jerkin",
+        "utility_common_burden",
+        "weapon_corvids_bow",
+        "weapon_sunfall",
+        "weapon_knell_shaft",
     },
     defaultAction = "weapon_iron_bow",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

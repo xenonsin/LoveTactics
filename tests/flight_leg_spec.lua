@@ -496,11 +496,21 @@ return {
                 "the mechanic-bubble table is gone; a route that wants one again needs its channel back")
 
             local CONV = "conversation_tutorial_flight"
-            -- The chain is three STEPS; the first of them is three LINES, one per device (the only
+            -- The chain is FOUR steps; the first of them is three LINES, one per device (the only
             -- step that names hardware -- see the file's header and states/game.lua's moveHintId).
             -- Every one of them is checked here, because a variant nobody fields is exactly the
             -- dead line this case exists to catch.
-            local WANT = { "move_hint", "move_hint_pad", "move_hint_touch", "loadout_hint", "equip_hint" }
+            --
+            -- `class_hint` is the fourth step and the only one that fires after the Champion: the
+            -- capstone opens the Roll (models/descent.lua's Descent.markClassesOpen) and leaves the
+            -- company standing on the map in front of the road out, which is the one moment in Act 0
+            -- when there is a ladder to read. See tests/prologue_road_spec.lua for the beat itself.
+            -- `class_hint` sends the player to the Party panel; `classtab_hint` is the second half,
+            -- pointing at the Classes tab once that panel is up. Two bubbles because they point at
+            -- two different controls on two different screens -- the same split the loadout lesson
+            -- already makes between its button and the stash inside it.
+            local WANT = { "move_hint", "move_hint_pad", "move_hint_touch", "loadout_hint", "equip_hint",
+                           "class_hint", "classtab_hint" }
             local script = require("data.conversations.tutorial." .. CONV).script
             assert(#script == #WANT, "the flight bag holds " .. #WANT .. " lines, got " .. #script)
             for i, id in ipairs(WANT) do

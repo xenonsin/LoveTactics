@@ -104,10 +104,15 @@ end
 --
 -- `onDone` is called synchronously when there is nothing to say, which is the common case and must not
 -- cost the player a frame of black screen on every shop they open.
+--
+-- IT IS HANDED `spoke`: true when this visit played at least one scene. The caller cannot work that out
+-- for itself afterwards -- each step records its flag BEFORE its scene, so by the time `onDone` runs the
+-- player looks exactly like one who had already heard all of it. models/counter.lua uses it to decide
+-- whether the keeper's preamble plays or the desk opens straight away.
 function VendorVisit.play(player, vendorId, onDone, deepest)
     local steps = VendorVisit.steps(player, vendorId, deepest)
     if #steps == 0 then
-        if onDone then onDone() end
+        if onDone then onDone(false) end
         return
     end
 
@@ -116,7 +121,7 @@ function VendorVisit.play(player, vendorId, onDone, deepest)
         if not step then
             player.announcingDiscipline = nil -- clear the token after the last scene
             Player.save()
-            if onDone then onDone() end
+            if onDone then onDone(true) end
             return
         end
         if step.before then step.before() end

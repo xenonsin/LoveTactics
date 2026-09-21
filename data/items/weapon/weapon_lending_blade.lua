@@ -26,13 +26,13 @@ return {
     hands = 1,
     traits = { "trait_parry" }, -- the plain Parry: this blade's extra is the swing, not the answer
     class = "knight",
-    dropTier = 4,
+    unlockLevel = 6,
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 3,
         cost = { stat = "stamina", amount = 8 },
-        damage = Curve.ramp(5, 15),
+        damage = Curve.ramp(10, 20),
         effect = function(fx)
             -- The strip rides the blow, so it lands on whoever the swing hits -- a guardian who steps in
             -- front of it has their own guard taken instead.

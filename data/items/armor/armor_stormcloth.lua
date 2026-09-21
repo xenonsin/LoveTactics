@@ -21,8 +21,7 @@ return {
     type = "armor",
     tags = { "cloth", "lightning" },
     class = "alchemist",
-    unlockQuests = 1,
-    dropTier = 2,
+    unlockLevel = 2,
     bonus = { magicDefense = Curve.ramp(3, 13), movement = -1 },
     resist = { lightning = 6 },
 }

@@ -19,8 +19,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "necromancer", -- deeper cut of the shelf: buyable only once the necromancer gate is cleared
-    unlockQuests = 4,
-    dropTier = 4,
+    unlockLevel = 6,
     traits = { "trait_deaths_dividend" },
     -- it banks Power per body; the reliquary itself only wards
     bonus = { magicDefense = 1 },

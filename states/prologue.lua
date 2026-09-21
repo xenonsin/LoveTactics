@@ -269,6 +269,18 @@ local FLIGHT_QUEST = {
                 return { "character_demon_champion", "character_demon_imp", "character_demon_grunt" }
             end,
             win = { type = "assassinate", target = "character_demon_champion" },
+            -- THE CHAMPION STANDS ON THE WAY OUT. Clearing this does not end the leg: the tile it was
+            -- holding becomes the road to the city and the company is put back on the map in front of
+            -- it, exactly as a circle's guardian opens its stair (models/descent.lua's
+            -- Descent.openStair) rather than descending on the killing blow.
+            --
+            -- WHAT THAT BUYS is the one beat Act 0 had nowhere to put. The kill is where the company
+            -- reaches level 2 (prologue.EXIT_LEVEL), and a leg that cut to the city on the same frame
+            -- had no moment in which to say so -- the level-up landed in a loading screen. Back on the
+            -- map there is a board to stand on, a party strip showing the new level, and a class
+            -- screen that has just opened (Descent.markClassesOpen). The road is then the player's own
+            -- step, taken when they are finished reading.
+            opensExit = { kind = "road", name = "The Road to the City" },
         },
         keyCount = 0,
     },
@@ -346,6 +358,12 @@ function prologue.runOverworld(quest)
     local p = Player.active
     Player.restore(p)
     State.switch(require("states.game"), quest, nil, p, prologue.resume)
+    -- ...and what Act 0 owes itself the moment the Champion falls, which is BEFORE the leg ends.
+    -- The capstone opens the road rather than the city (the objective's `opensExit`), so the company
+    -- is put back on the map with a class screen to read -- and it has to be holding the level that
+    -- makes reading it worth anything. Set after the switch because game.enter clears it.
+    local game = require("states.game")
+    game.onExitOpened = function() prologue.payExit(Player.active) end
 end
 
 -- ---------------------------------------------------------------------------
@@ -429,7 +447,17 @@ end
 function prologue.next()
     prologue.cursor = prologue.cursor + 1
     local beat = prologue.beats[prologue.cursor]
-    if beat then beat() else State.switch(require("states.hub")) end
+    if beat then
+        beat()
+    else
+        -- THE BACKSTOP, not the payment. The Champion pays the exit level where it falls
+        -- (runOverworld's onExitOpened), which is where the class screen then opens onto a company
+        -- that has actually levelled. This stays because it is the ONE door out of the prologue and
+        -- payExit is idempotent: a route that ever reaches the city without passing the capstone --
+        -- a beat reordered, a leg cut short in testing -- still arrives on the level Act 0 promises.
+        prologue.payExit(Player.active)
+        State.switch(require("states.hub"))
+    end
 end
 
 -- First entry of a New Game: build the avatar from the body and name chosen at character creation,
@@ -528,11 +556,44 @@ prologue.SCENE_GIFTS = {
 -- says nothing about which was chosen.
 prologue.SCENE_FLAGS = { "met_the_survivor" }
 
--- What Act 0's four fights pay a body. models/experience.lua states the figure from the other end --
--- "the prologue's four fights pay a two-body company around eighty a head, which is level 4 here" --
--- and this is that sentence as a number, so a skipped company stands at the Gate on the level a played
--- one does rather than three below the danger the first floor fights at.
+-- What Act 0's four fights pay a body, measured rather than chosen: a two-body company takes all four,
+-- and simulated through models/autobattle that is about 48 a head with real play landing nearer 84.
+-- This is the SKIP's stand-in for that income, so a skipped company arrives having "earned" what a
+-- played one earned. It is not what decides the level -- see prologue.EXIT_LEVEL.
 prologue.SKIP_XP = 80
+
+-- THE LEVEL THE COMPANY WALKS OUT OF ACT 0 ON, guaranteed rather than earned.
+--
+-- The Champion is the last thing the prologue fights and the company leaves it a level up. That is a
+-- BEAT, not an accident of arithmetic: four scripted fights that end with the party exactly as they
+-- started is a tutorial that never shows the player the thing every other fight in the game is for,
+-- and the level-up panel is itself a lesson the prologue is the only place to teach.
+--
+-- IT HAS TO BE PAID RATHER THAN LEFT TO THE CURVE, and the reason is worth keeping because it is why
+-- this constant exists at all. A level costs what a FLOOR pays (Experience.STEP -- the curve is flat
+-- now, FFT-style, with all the control in the award), and Act 0 is four fights: about a floor's worth
+-- of fighting, so it lands within a whisker of the line either side of it. It used to clear it easily
+-- and only because the old triangular table made the first levels nearly free -- eighty experience
+-- bought THREE of them, which is three floors' worth of advancement handed over before the rift, and
+-- part of why the opening floor read as a formality. Neither accident is a design: one gave too much
+-- and the other gives nothing, and both move again the next time the curve does.
+--
+-- So the prologue states its exit instead. Topped UP to, never granted flat, so the played road and
+-- the skip land in the same place whatever the fighting happened to pay, and a company that somehow
+-- earned more keeps it.
+prologue.EXIT_LEVEL = 2
+
+-- Bring every body up to the level Act 0 ends on and resolve it, exactly as a won fight resolves
+-- experience (states/game.lua's post-fight seam). Idempotent: a body already there is untouched.
+function prologue.payExit(player)
+    local Experience = require("models.experience")
+    local want = Experience.totalFor(prologue.EXIT_LEVEL)
+    for _, char in ipairs((player or {}).roster or {}) do
+        local have = char.xp or 0
+        if have < want then Experience.award(char, want - have) end
+        Experience.resolve(char)
+    end
+end
 
 -- How many ACTIONS a body takes in one of those fights, which is the other figure the data cannot
 -- state: technique is banked per action (Class.TECHNIQUE_PER_ACTION), and nothing in Act 0 records how
@@ -720,6 +781,9 @@ function prologue.skip(player)
         Experience.award(char, prologue.SKIP_XP)
         Experience.resolve(char)
     end
+    -- ...and the level Act 0 ends on, which the fighting above may or may not have bought. The played
+    -- road pays this at its own exit (prologue.next), so both arrive on the same level.
+    prologue.payExit(player)
 
     -- Stop 7 is a plain rest, so the company reaches the gate whole.
     Player.restore(player)

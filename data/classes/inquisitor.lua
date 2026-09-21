@@ -9,5 +9,5 @@ return {
     description = "Marks a foe and executes it. The mark strips their blessings, and the strike that "
         .. "follows lands as holy damage.",
     exemplar = "character_inquisitor", -- NEW, pending
-    requires = { rogue = 6, priest = 6 },
+    requires = { rogue = 9, priest = 9 },
 }

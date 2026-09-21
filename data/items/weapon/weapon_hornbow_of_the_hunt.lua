@@ -25,8 +25,7 @@ return {
     tags = { "bow", "pierce", "physical", "ranged" },
     hands = 2, -- two-handed, like every bow
     class = "hunter",
-    unlockQuests = 1, -- the reach bow, early: the deep bows are the Limning and the Hailfall
-    dropTier = 2,
+    unlockLevel = 2,
     activeAbility = {
         target = "enemy",
         range = 5, -- two tiles further than a plain bow

@@ -203,8 +203,7 @@ end
 -- per-body work deletes, so everything resting on it alone is the bill.
 local function inBand(def)
     if def.bound then return false end
-    local priced = def.price and def.price > 0
-    if not (priced or def.dropTier) then return false end
+    if not def.unlockLevel then return false end
     return Spoils.depthOf(def) <= Class.CLASS_LEVEL_CAP
 end
 
@@ -213,7 +212,10 @@ end
 local function riftPool()
     local out = {}
     for id, def in pairs(Item.defs) do
-        if def.dropTier and not def.bound then out[id] = def end
+        -- SINCE THE FOLD, CARRYING A RUNG NO LONGER MEANS "FOUND": `unlockLevel` is on priced stock
+        -- too (tools/ladder_fold). What marks a thing as the rift's is the absence of a counter price,
+        -- which is the test Vendor.stock already deals its rack by.
+        if def.unlockLevel and not def.price and not def.bound then out[id] = def end
     end
     return out
 end
@@ -317,7 +319,7 @@ function M.run(args)
     for _ in pairs(pool) do poolTotal = poolTotal + 1 end
 
     head("THE RIFT POOL — how each item reaches a player")
-    print(string.format("  %d items carry a dropTier and are not bound.", poolTotal))
+    print(string.format("  %d items carry an unlockLevel, no price, and are not bound.", poolTotal))
     print("")
     print(string.format("    %-22s %4d   %s", "drops (authored)", #byRoute.drops,
         "a body's own list"))
@@ -349,7 +351,7 @@ function M.run(args)
         for _, id in ipairs(byRoute.none) do
             local def = pool[id]
             print(string.format("    %-44s tier %-2s class %s", id,
-                tostring(def.dropTier), tostring(def.class)))
+                tostring(def.unlockLevel), tostring(def.class)))
         end
     end
 

@@ -30,7 +30,7 @@ return {
     tags = { "greatsword", "slash", "physical", "melee" },
     hands = 2,
     class = "fighter",
-    dropTier = 6,
+    unlockLevel = 10,
     activeAbility = {
         target = "tile",
         allowOccupied = true,
@@ -41,7 +41,7 @@ return {
         cost = { stat = "stamina", amount = 16 },
         -- Under the iron greatsword's: an ally's whole action is worth more than the six points of Power
         -- it gives up, and it should be, or nobody would ever swing the plain one.
-        damage = Curve.ramp(24, 45),
+        damage = Curve.ramp(41, 62),
         effect = function(fx)
             if fx.target then fx.damage(fx.target) end
             local Combat = require("models.combat")

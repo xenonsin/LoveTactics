@@ -8,5 +8,5 @@ return {
     description = "Traps first, kills second. A snare leaves the quarry Rooted, and your strikes hit a "
         .. "Rooted foe far harder.",
     exemplar = "character_poacher", -- NEW, pending
-    requires = { rogue = 6, hunter = 6 },
+    requires = { rogue = 8, hunter = 8 },
 }

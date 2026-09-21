@@ -9,5 +9,5 @@ return {
     description = "Plants totems that work on their own. Each stake projects a field around it that heals "
         .. "the party or negates what is cast into it.",
     exemplar = "character_totemist", -- NEW, pending
-    requires = { hunter = 8, priest = 8 },
+    requires = { hunter = 13, priest = 13 },
 }

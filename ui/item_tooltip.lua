@@ -276,10 +276,17 @@ local function buildBlocks(item, actor, innerW, out, owner, warn)
         blocks[#blocks + 1] = { kind = "desc", text = item.description }
     end
 
-    -- WHERE AN UNREAD PIECE WAS FOUND, and it is the only row a husk gets (models/identify.lua). No
-    -- guard is needed for the rest of this function: a husk is built from nothing rather than stripped
-    -- down, so it carries no tags, no class, no ability and no bonus, and every block below simply finds
-    -- nothing to draw. This is the one fact it does hold.
+    -- WHERE AN UNREAD PIECE WAS FOUND, and it is the only row a husk gets (models/identify.lua). Mostly
+    -- no guard is needed for the rest of this function: a husk is built from nothing rather than
+    -- stripped down, so it carries no tags, no class, no ability and no bonus, and every block below
+    -- simply finds nothing to draw. This is the one fact it does hold.
+    --
+    -- THAT ARGUMENT WAS TRUE OF EVERY FIELD A HUSK HAD ON THE DAY IT WAS WRITTEN, and it stopped being
+    -- true when curses arrived: Identify.sealed stamps the hex onto the seal, so the Cursed block a
+    -- couple of hundred lines down found something and printed "Cursed: The Shut Hand" on a card titled
+    -- Unidentified Weapon. The guard for that lives in Curse.of rather than here, because the tooltip
+    -- was one of four surfaces that had each found its own way to spill it. Anything ELSE a husk starts
+    -- carrying needs the same treatment -- in the model that reads it, not in a branch here.
     --
     -- It earns its row by being the reason the bill is the number it is. The Touchstone prices a reading
     -- off the floor a piece came off and never off the piece, so two husks on one shelf are quoted

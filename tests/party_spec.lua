@@ -28,9 +28,9 @@ for id, def in pairs(Item.defs) do
     end
     -- NEITHER A PRICE NOR A DEPTH, which is what "was never for sale" means since the shelf recut. An
     -- unpriced ware is usually FOUND gear now (docs/shelf.md) and sells perfectly well off its
-    -- dropTier; what genuinely cannot be sold is a thing with no worth authored on either axis --
+    -- unlockLevel; what genuinely cannot be sold is a thing with no worth authored on either axis --
     -- creature kit, a signature relic, a bound piece.
-    if not def.price and not def.dropTier and not noPriceId then noPriceId = id end
+    if not def.price and not def.unlockLevel and not noPriceId then noPriceId = id end
 end
 
 return {
@@ -169,7 +169,7 @@ return {
             for vid in pairs(Vendor.defs) do
                 for _, e in ipairs(Vendor.stock(vid, 0)) do
                     -- A discipline item carries a SECOND lock (its discipline must be unlocked), so it
-                    -- stays locked even at its unlockQuests -- not what this quest-only test measures.
+                    -- stays locked even at its unlockLevel -- not what this quest-only test measures.
                     if e.lockReason == "rung" and not e.discipline then vId, locked = vid, e break end
                 end
                 if vId then break end
@@ -177,10 +177,10 @@ return {
             if not locked then return end -- no quest-gated wares in data; nothing to assert
             assert(locked.locked, "a quest-gated item should be locked with no quests done")
 
-            -- RE-STOCKED AT THE RUNG THE ROW WAS ACTUALLY MEASURED AGAINST, not at its `unlockQuests`.
+            -- RE-STOCKED AT THE RUNG THE ROW WAS ACTUALLY MEASURED AGAINST, not at its `unlockLevel`.
             -- Those are the same number for a PRICED ware and different for a found one -- a found
-            -- ware's gate is its depth less one (Vendor.lockReason) and its `unlockQuests` is usually
-            -- nil -- so asking at `unlockQuests` was asking at 0 for an item gated at 1, and the row
+            -- ware's gate is its depth less one (Vendor.lockReason) and its `unlockLevel` is usually
+            -- nil -- so asking at `unlockLevel` was asking at 0 for an item gated at 1, and the row
             -- came back correctly shut.
             --
             -- THE OLD FILTER MEANT TO CATCH THAT AND COULD NOT. Its note said a found ware "reports a
@@ -194,7 +194,7 @@ return {
             -- order over the vendors, and it had never once handed back a found ware. Adding three
             -- items to the catalogue moved the order and it landed on the Watchpost Draught at the
             -- Bastion -- an unpriced, depth-2 knight consumable that is correctly shut at rung 0.
-            local gate = locked.rung or locked.unlockQuests or 0
+            local gate = locked.rung or locked.unlockLevel or 0
             for _, e in ipairs(Vendor.stock(vId, gate)) do
                 if e.id == locked.id then
                     -- Names the row, for the same reason: the next reader should not have to re-derive

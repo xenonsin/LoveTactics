@@ -23,8 +23,7 @@ return {
     tags = { "bow", "pierce", "physical", "ranged" },
     hands = 2, -- every bow is two-handed
     class = "hunter",
-    unlockQuests = 4,
-    dropTier = 6,
+    unlockLevel = 9,
     activeAbility = {
         target = "enemy",
         range = 3,

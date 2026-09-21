@@ -31,7 +31,7 @@ return {
     -- -- the one counter in the game that distance does not gate -- and a thing that answers a bowshot by
     -- appearing beside the archer should be earned rather than bought.
     class = "rogue",
-    dropTier = 7,
+    unlockLevel = 12,
     traits = { "trait_slipstep" }, -- the whole of the extra; see the file for why it costs what it costs
     activeAbility = {
         target = "enemy",
@@ -41,7 +41,7 @@ return {
         -- the strike's -- and it doubles for each answer already thrown this round. Deliberately a
         -- notch over the iron dagger's 5, because this blade answers things no other blade can.
         cost = { stat = "stamina", amount = 6 },
-        damage = Curve.ramp(4, 14), -- under the iron dagger: the reflex is what you bought
+        damage = Curve.ramp(13, 23), -- under the iron dagger: the reflex is what you bought
         effect = function(fx)
             fx.damage(fx.target, { inflicts = "status_bleed" })
         end,

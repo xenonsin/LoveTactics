@@ -14,7 +14,7 @@ return {
     -- Cafe sells suppers now (models/meal.lua), and a house whose own flavor line calls this "the
     -- Crucible's steadiest seller" cannot be the house you must run an errand for before it will sell
     -- you one.
-    unlockQuests = 0,
+    unlockLevel = 0,
     activeAbility = {
         target = "ally", -- includes the user (a unit is its own ally)
         range = 1,

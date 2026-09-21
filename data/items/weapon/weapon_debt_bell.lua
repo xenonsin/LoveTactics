@@ -24,14 +24,14 @@ return {
     type = "weapon",
     tags = { "mace", "impact", "physical", "melee" },
     class = "knight",
-    dropTier = 6,
+    unlockLevel = 9,
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 10 },
         -- Under an iron mace's: the splash is the rest of it.
-        damage = Curve.ramp(8, 18),
+        damage = Curve.ramp(14, 24),
         effect = function(fx)
             local t = fx.target
             fx.damage(t, { knockback = { distance = 2, amount = fx.amount } })

@@ -17,8 +17,7 @@ return {
     type = "utility",
     tags = { "holy" },
     class = "crusader", -- fighter x priest; Smite as an aura -- the Cathedral consecrating somebody else's steel
-    unlockQuests = 5,
-    dropTier = 4,
+    unlockLevel = 6,
     aura = {
         appliesTo = { "weapon", "ability" },
         exceptTags = { "shadow" },

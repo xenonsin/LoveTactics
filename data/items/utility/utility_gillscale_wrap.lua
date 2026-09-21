@@ -38,6 +38,5 @@ return {
     -- HAND-PLACED, and `. drop-tier` says 1. See the header: grade prices magnitudes, and this
     -- piece's whole payload is a sentence about which tiles exist for you -- so the best drop in
     -- the fen would fall out of floor one. Deep enough that the Mere is a real fight first.
-    dropTier = 4,
-    unlockQuests = 4,
+    unlockLevel = 5,
 }

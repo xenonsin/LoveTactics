@@ -18,9 +18,9 @@ return {
     script = {
         { "colosseum", "Sand, blood, and a crowd that does not care which of you it came from. What do you want off us.", tag = 1 },
         { "colosseum", "Well?", tag = 2, id = "desk", choices = {
-            { "What wins fights.", tag = 3, answer = "shelf", when = { offer = "shelf" } },
-            { "Put me against somebody.", tag = 4, answer = "duel", when = { offer = "duel" } },
-            { "Nothing.", tag = 5, answer = "leave" },
+            { "Visit fighter class trainer", tag = 3, answer = "shelf", when = { offer = "shelf" } },
+            { "Enter a duel", tag = 4, answer = "duel", when = { offer = "duel" } },
+            { "Leave", tag = 5, answer = "leave" },
         } },
     },
 }

@@ -933,8 +933,9 @@ produces duplicates by construction.
   the one house that has both.
 - `SWAP_BAND = 0.35` — a band, not an exact match, because prices are derived from grade
   ([docs/shelf.md](shelf.md)) and land on arbitrary numbers.
-- A service does **not** touch `item.level` and bills no materials. It is not a second Forge; see
-  `models/vendor.lua`'s header for why that door stays closed.
+- A service does **not** touch `item.level` and bills no materials. It is not another bench; see
+  `models/vendor.lua`'s header for why that door stays closed. (The forge and the Arcanum's study are
+  two rooms onto ONE bench — same model, same bill — which is the distinction being drawn here.)
 
 **The other six houses have no service yet, and that is an authoring job rather than an engine one.**
 The seam is a data field. Sketches only, deliberately unbuilt: the Crucible appraising a sealed find,

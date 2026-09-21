@@ -27,11 +27,11 @@ return {
         "consumable_healing_potion", "weapon_long_bout",             false,
     },
     drops = {
+        "armor_slipstep_leathers",
+        "utility_duelists_spur",
+        "utility_quick_draw",
         "weapon_kingsblood_dagger",
-        "weapon_main_gauche",
-        "weapon_nightjar",
-        "weapon_quietus",
-        "weapon_throughline",
+        "utility_long_wait",
     },
     defaultAction = "weapon_main_gauche",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

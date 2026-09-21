@@ -903,12 +903,13 @@ function Item.instantiate(id, quantity, level)
         class = def.class,                     -- which class vendor sells it; nil = sold by none
         discipline = def.discipline,           -- shop taxonomy: the locked discipline this item belongs to (docs/classes.md)
         price = def.price,                     -- vendor gold cost; nil means it is never sold
-        -- THE DEPTH IT IS FOUND AT, and it rides the instance rather than being looked up off the
-        -- blueprint, because the thing that reads it is handed live items and nothing else.
+        -- THE CLASS LEVEL IT UNLOCKS AT, which is also the depth the rift gives it up at -- one
+        -- number since the fold (tools/ladder_fold). It rides the instance rather than being looked up
+        -- off the blueprint, because the thing that reads it is handed live items and nothing else.
         -- Most of the catalogue carries no `price` since the shelf recut (docs/shelf.md), so a counter
         -- handed a live sword works out what it is worth from this (Vendor.foundPrice) -- and a counter
         -- that could not see it paid nothing for every weapon, utility and piece of armor in the game.
-        dropTier = def.dropTier,
+        unlockLevel = def.unlockLevel,
         -- ...AND THE ONE THING THAT CANCELS IT. `unstocked` is what makes a piece rift-only -- no
         -- counter deals one, nobody buys one back (docs/drops.md) -- and Vendor.foundPrice is where it
         -- is answered, one line under the depth above. So it has to ride the instance for the same
@@ -917,7 +918,6 @@ function Item.instantiate(id, quantity, level)
         -- the shelf refused a trophy correctly, off the blueprint, while the SELL tab beside it bought
         -- one at half price.
         unstocked = def.unstocked,
-        unlockQuests = def.unlockQuests,       -- its grade rank; also the shelf gate, on anything priced
         -- BORN HEXED (models/curse.lua). Almost every curse in the game is stamped onto a live instance
         -- long after it was made -- by a trap, by a caster, by the Touchstone naming a bad find -- and
         -- rides `item.curse` there. This line is the one case where the BLUEPRINT declares it: a piece

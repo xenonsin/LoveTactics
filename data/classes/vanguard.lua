@@ -9,5 +9,5 @@ return {
     description = "Opens a hole in the enemy line. Knockback strips guard and armor from the foe it "
         .. "pushes, leaving the gap for the rest of the party.",
     exemplar = "character_vanguard", -- NEW, pending
-    requires = { knight = 7, rogue = 7 },
+    requires = { knight = 12, rogue = 12 },
 }

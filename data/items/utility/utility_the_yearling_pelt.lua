@@ -27,7 +27,7 @@ return {
     -- once it has started losing people. `class` is the vendor shelf and never an equip gate -- anyone
     -- may carry it.
     class = "warlord",
-    dropTier = 8,
+    unlockLevel = 13,
     -- RIFT-ONLY. It comes off the body and nowhere else: no counter deals one however many
     -- the company carries out, and none will buy one back (docs/drops.md, Vendor.foundPrice).
     unstocked = true,

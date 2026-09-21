@@ -37,7 +37,7 @@ Three things fall out of that for free:
 - **One place to look.** An author asking *what may a curse do?* reads `models/item.lua`, which is where
   they were going anyway.
 
-What is **not** borrowed: `price`, `grade`, `dropTier`, `class`. A curse is not a thing on a shelf. It is
+What is **not** borrowed: `price`, `grade`, `unlockLevel`, `class`. A curse is not a thing on a shelf. It is
 never bought, sold or found on its own — it arrives attached to something else.
 
 ### The one field of its own: `binds`
@@ -276,7 +276,7 @@ Anchor, the cruellest hex in the rift, somebody's best caster.
 ### The Exorcist's shelf: ending and preventing
 
 "Lifting is a high-level priest thing" needed no new machinery. An ability is priced, a priced item is
-shelf-gated on `unlockQuests`, and `Quest.shelfRung(player, "cathedral")` already reads **the roster's
+shelf-gated on `unlockLevel`, and `Quest.shelfRung(player, "cathedral")` already reads **the roster's
 best priest class level**. A company that never played the priest never sees these and pays the room.
 
 | item | gate | what it does |

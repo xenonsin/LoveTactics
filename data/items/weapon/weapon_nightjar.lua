@@ -26,7 +26,7 @@ return {
     type = "weapon",
     tags = { "dagger", "pierce", "physical", "melee" },
     class = "rogue",
-    dropTier = 7,
+    unlockLevel = 12,
     activeAbility = {
         target = "enemy",
         range = 1,
@@ -34,7 +34,7 @@ return {
         cost = { stat = "stamina", amount = 5 },
         -- A shade under an iron dagger's: what it sells happens after the target is already down, so it
         -- must not also be the best knife at putting them there.
-        damage = Curve.ramp(4, 14),
+        damage = Curve.ramp(13, 23),
         effect = function(fx)
             local t = fx.target
             if not t then return end

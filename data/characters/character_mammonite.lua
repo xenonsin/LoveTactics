@@ -66,11 +66,11 @@ return {
         "weapon_iron_dagger",   "consumable_healing_potion", "utility_with_interest",
     },
     drops = {
+        "utility_breakers_wedge",
         "utility_greyveil_cloak",
-        "utility_reading_the_blade",
-        "utility_substitution",
+        "utility_honed_edge",
         "weapon_cutpurse_knife",
-        "weapon_mired_kris",
+        "utility_decoy",
     },
     defaultAction = "weapon_iron_dagger",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

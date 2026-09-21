@@ -14,18 +14,23 @@ local Descent = require("models.descent")
 
 return {
     { name = "the curve is a ladder, not a wall or a slide", fn = function()
-        -- Level 1 is free and every rung after it costs strictly more than the one below: a flat curve
-        -- would level a company faster the longer a floor ran, and a curve that ever dipped would make
-        -- some level cheaper to reach than the one under it.
+        -- Level 1 is free, every rung after it costs the same, and none of them costs nothing.
+        --
+        -- IT USED TO DEMAND A RISING CURVE and that demand is what is gone. Both rising shapes were
+        -- tried and both failed against the LINEAR danger ladder down here: triangular is out-earned
+        -- by farming, and geometric diverges from the ramp so badly that honest play ran six levels
+        -- over its own ground by floor two. models/experience.lua's THE CURVE IS FLAT records the
+        -- measurement that retired each. The control moved wholesale into the award
+        -- (Experience.rewardScale), which is FFT's arrangement, and tests/reward_scale_spec is where
+        -- the anti-farming claim is now made -- by simulation rather than by the shape of this table.
         assert(Experience.totalFor(1) == 0, "everybody starts at level 1 having earned nothing")
-        local previousStep
-        for level = 2, 20 do
+        local first = Experience.totalFor(2) - Experience.totalFor(1)
+        assert(first > 0, "a level must cost something")
+        for level = 3, 20 do
             local step = Experience.totalFor(level) - Experience.totalFor(level - 1)
-            assert(step > 0, "level " .. level .. " must cost something")
-            if previousStep then
-                assert(step > previousStep, "level " .. level .. " must cost more than the one below")
-            end
-            previousStep = step
+            assert(step == first, string.format(
+                "level %d costs %d against %d -- the curve is flat, and a rising one re-opens the "
+                .. "divergence models/experience.lua records", level, step, first))
         end
     end },
 
@@ -105,14 +110,19 @@ return {
         -- those units rather than as a total, so the assumption is arguable rather than a magic number --
         -- and driven off the real floor count, so a deeper descent re-derives instead of going stale.
         --
-        -- THE FIGHT COUNT IS SUMMED OFF THE REAL BUDGET, not assumed. This read `fightsPerFloor = 6`,
-        -- which was Descent.FLOOR_FIGHTS spelled out at the time -- so the case re-derived the floor
-        -- COUNT and then went stale on the floors themselves the moment the budget was re-cut. A floor
-        -- asks for eight at the top and eleven at the bottom now, and Descent.floorFights is the only
-        -- thing that knows it.
+        -- THE FIGHT COUNT IS THE MEASURED ONE, NOT Descent.floorFights, and that swap is the whole of
+        -- what this paragraph is for. This case used to sum the budget -- which is the honest-looking
+        -- choice and is wrong, because that pair is read by no code in the game and is about DOUBLE
+        -- what a floor costs. Descent.FLOOR_FIGHTS' own header now carries the measurement and says
+        -- so: the ordinary fight is dealt off the prowl meter as the company WALKS, so a floor's cost
+        -- is a property of the route, and greedy nearest-unvisited tours of real rolled floors run 6.9
+        -- fights on floor one rising to 8.6 at the Crown.
+        --
+        -- Anchoring on the budget made this case certify a curve against a descent half the length of
+        -- the one the player walks. Eight a floor is the measurement's mean, rounded, and is the same
+        -- figure tests/reward_scale_spec simulates the ramp at.
         local actionsPerFight, killsPerFight = 7, 1.25
-        local fights = 0
-        for f = 1, Descent.FLOORS do fights = fights + Descent.floorFights(f) end
+        local fights = Descent.FLOORS * 8
         local earned = fights *
             (actionsPerFight * Experience.PER_ACTION + killsPerFight * Experience.PER_FELLING)
 
@@ -150,11 +160,32 @@ return {
         --
         -- WHAT IS NOT CLAIMED: that four is the right gap. Nobody has played it. The number to watch is
         -- how many trips a real company takes to reach the bottom, not this arithmetic.
+        -- ---------------------------------------------------------------------------
+        -- AND THEN THE TWO LADDERS STOPPED BEING ABLE TO DRIFT APART AT ALL.
+        -- ---------------------------------------------------------------------------
+        --
+        -- Everything above is the reasoning that produced a band of 2-6, and it is kept because the
+        -- question it was answering is still live -- how much re-treading does the loop ask for. What
+        -- changed is that the answer is no longer a number anybody tunes.
+        --
+        -- The cost curve is flat and the AWARD is scaled by how far the company stands above the
+        -- ground it is fighting (Experience.rewardScale, FFT's arrangement). That loop is
+        -- self-correcting: pull ahead and you earn less, fall behind and you earn full. So a company
+        -- cannot arrive at the bottom five levels under the world however it plays -- it tracks. The
+        -- gap this case measures is now structurally near zero, and a band demanding it be 2-6 would
+        -- be demanding the loop be broken.
+        --
+        -- WHAT THAT COSTS, AND IT IS WORTH NAMING: re-treading is no longer REQUIRED. Under the old
+        -- arrangement a company had to re-walk the shallow end to close a level deficit before it
+        -- could go deeper, and that was the Wizardry loop expressed as arithmetic. It is expressed as
+        -- CONTENT now -- the haul you left on the floor you died on, the stair you have not opened,
+        -- the piece a body is known for -- and never as a level deficit, because grinding one shut no
+        -- longer works (tests/reward_scale_spec).
         local gap = wanted - reached
-        assert(gap >= 2 and gap <= 6, string.format(
-            "one pass down should leave a company 2-6 levels under the world at floor %d " ..
-            "(it wants %d, one pass earns %d, gap %d) -- if this moved, one of the two ladders was " ..
-            "retuned and how much re-treading the loop asks for moved with it",
+        assert(math.abs(gap) <= 3, string.format(
+            "one pass down should leave a company within three levels of the world at floor %d " ..
+            "(it wants %d, one pass earns %d, gap %d) -- the award scaling makes the two ladders " ..
+            "track, so a wide gap either way means one of them was retuned out from under it",
             Descent.FLOORS, wanted, reached, gap))
     end },
 
@@ -183,11 +214,25 @@ return {
         -- about 48 a head; real play, with its longer fights, its reinforcement waves and a retry or two,
         -- lands nearer 84. Both are checked, because the claim is about the BAND the prologue exits in,
         -- not about a single number nobody can hit twice.
+        -- AGAINST WHAT STANDS ON THE FLOOR, not against the floor's dial. This asked for a level
+        -- within one of Descent.OPENING_DANGER, which is the number the floor is GROWN from -- and
+        -- ordinary stock is lagged under it (Growth.ENEMY_LEVEL_LAG), so the body a company actually
+        -- meets on the first stair is a level below the dial. The comparison has to be with the body.
+        --
+        -- AND ACT 0 NO LONGER HANDS OVER FOUR LEVELS, which is the flat curve arriving rather than a
+        -- regression. Four was an artifact of the triangular table: its first levels cost 10, 20, 30,
+        -- so eighty experience bought three of them. On a flat curve a level costs what a FLOOR pays
+        -- (Experience.STEP), and Act 0 is four fights -- about a floor's worth of fighting, and
+        -- therefore about a level's worth. A tutorial that paid three levels was a tutorial paying
+        -- three floors, which is the thing that made the opening floor a formality in the first place.
+        local stock = Growth.combatantLevel({}, Descent.dangerLevel({ floor = 1 }),
+            Descent.floorLevel({ floor = 1 }))
         for _, banked in ipairs({ 48, 84 }) do
             local level = Experience.levelFor(banked)
-            assert(level >= Descent.OPENING_DANGER - 1 and level <= Descent.OPENING_DANGER + 1,
-                "a body leaving Act 0 with " .. banked .. " experience is level " .. level ..
-                ", which should be within a level of the first floor's " .. Descent.OPENING_DANGER)
+            assert(level >= stock - 2 and level <= stock + 1, string.format(
+                "a body leaving Act 0 with %d experience is level %d, and the first stair is held by "
+                .. "stock at %d -- the company has to arrive able to fight it",
+                banked, level, stock))
         end
     end },
 

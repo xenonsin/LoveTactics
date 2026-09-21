@@ -8,5 +8,5 @@ return {
     description = "Fields elementals instead of spells. Mana is banked and spent to summon bodies that "
         .. "take turns of their own.",
     exemplar = "character_summoner", -- NEW, pending
-    requires = { mage = 6 },
+    requires = { mage = 7 },
 }

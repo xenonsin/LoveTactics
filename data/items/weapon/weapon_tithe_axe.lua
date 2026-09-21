@@ -18,8 +18,7 @@ return {
     type = "weapon",
     tags = { "axe", "slash", "physical", "melee" },
     class = "fighter",
-    unlockQuests = 4,
-    dropTier = 7,
+    unlockLevel = 11,
     activeAbility = {
         target = "tile",
         allowOccupied = true,
@@ -28,7 +27,7 @@ return {
         speed = 4,
         cost = { stat = "stamina", amount = 10 },
         -- Under the iron axe's, which is already under a sword's. The tithe is the rest of the weapon.
-        damage = Curve.ramp(10, 20),
+        damage = Curve.ramp(12, 22),
         aoe = { shape = "front", width = 3 },
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do

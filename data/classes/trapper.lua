@@ -8,5 +8,5 @@ return {
     description = "Prepares the ground before the fight reaches it. Traps are placed on tiles in advance "
         .. "and inflict Root or damage on whoever walks in.",
     exemplar = "character_trapper_ambusher", -- character_trapper is the Colosseum debut spotter; dedicated exemplar authored
-    requires = { hunter = 5 },
+    requires = { hunter = 7 },
 }

@@ -186,19 +186,19 @@ end
 --
 --   * HANDED OVER. `rewardItems` on the quest. A quest that is deleted takes its grants with it, and
 --     an item granted nowhere else and sold nowhere else has no way into the game at all.
---   * GATED BEHIND STANDING. `unlockQuests` on the ITEM is a COUNT -- how many of that house's quests
+--   * GATED BEHIND STANDING. `unlockLevel` on the ITEM is a COUNT -- how many of that house's quests
 --     must be finished before the shelf will sell it -- and a house's standing can never exceed the
 --     number of its quests that can actually be posted. So deleting quests lowers a ceiling, and every
 --     row gated above the new ceiling goes quietly unbuyable. This is the one that does not announce
 --     itself: nothing errors, the row simply never appears, and the shelf looks complete.
 --
--- The second is why this is a report rather than a grep. `unlockQuests` names no quest, so no search
+-- The second is why this is a report rather than a grep. `unlockLevel` names no quest, so no search
 -- over the doomed files can find what they were holding up.
 -- EVERY WAY AN UNPRICED ITEM CAN STILL REACH A PLAYER once its quest is gone.
 --
 -- IT USED TO SAY an unpriced item could not come off a cache, a corpse or a merchant, because
 -- models/spoils.lua drew its pool from PRICED items inside a price band. That is no longer true and has
--- not been since `dropTier` landed: Spoils.lootCandidates admits an unpriced ware at its depth, and
+-- not been since `unlockLevel` landed: Spoils.lootCandidates admits an unpriced ware at its depth, and
 -- after the shelf recut (tools/drop_tier.lua) MOST of the catalogue reaches the player that way and no
 -- other. So the rift is the first source listed, and it is the one that carries a number.
 --
@@ -216,8 +216,9 @@ local function otherSources()
     -- depth rather than as a bare "it drops", because the depth is the only part a reader can act on:
     -- it is what tells you whether the thing is reachable in the floors a campaign actually walks.
     for id, def in pairs(Item.defs) do
-        if def.dropTier and not def.bound then
-            out[id] = "found in the rift, from depth " .. def.dropTier
+        -- No price is what makes it the rift's; the rung says how deep (tools/ladder_fold).
+        if def.unlockLevel and not def.price and not def.bound then
+            out[id] = "found in the rift, from depth " .. def.unlockLevel
         end
     end
 
@@ -286,7 +287,7 @@ local function shelfCost()
         if row then
             -- Gated above what the house could still reach. `price` is the test for "the shelf sells
             -- it at all": a relic carries no price and no class gate, and is never stranded by standing.
-            local gate = tonumber(def.unlockQuests) or 0
+            local gate = tonumber(def.unlockLevel) or 0
             if def.price and gate > row.ceiling then
                 row.stranded[#row.stranded + 1] = string.format("%s (needs %d, ceiling %d)", itemId, gate, row.ceiling)
             end

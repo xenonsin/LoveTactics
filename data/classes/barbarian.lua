@@ -7,5 +7,5 @@ return {
     description = "Hits harder the worse you are hurt. Damage climbs as your own health falls, and the "
         .. "heaviest strikes cost health to swing.",
     exemplar = "character_barbarian", -- NEW, pending
-    requires = { fighter = 4 },
+    requires = { fighter = 5 },
 }

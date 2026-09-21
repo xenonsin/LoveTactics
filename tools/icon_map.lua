@@ -434,6 +434,23 @@ local function loadOverrides()
     return {}
 end
 
+-- The declared SHARED SETS (tools/icons/shared.lua) -- the handful of assets that are one object told
+-- apart by colour, and therefore the one thing the claim ledger below must let through. Without this
+-- the ledger is exactly right and exactly wrong: the second potion would be reported as contesting the
+-- first and dropped to the guesser, which is how a deliberate pairing silently comes apart on the next
+-- run. Flattened to sprite key -> set number, so "same set?" is one comparison.
+local function loadShared()
+    local ok, sets = pcall(function() return require("tools.icons.shared") end)
+    if not (ok and type(sets) == "table") then return {}, {} end
+    local iconOf, setOf = {}, {}
+    for i, set in ipairs(sets) do
+        for key in pairs(set.members or {}) do
+            iconOf[key], setOf[key] = set.icon, i
+        end
+    end
+    return iconOf, setOf
+end
+
 -- An override may name an icon either fully ("lorc/incense") or by name alone ("incense"), because
 -- which artist drew a given icon is not something anyone writing these should have to look up.
 -- Returns the full slug, or nil if no icon by that name exists.
@@ -518,6 +535,7 @@ function M.run(args)
     local archetypes = spriteArchetypes()
     local existing = loadExisting()
     local overrides = loadOverrides()
+    local sharedIcon, sharedSet = loadShared()
     local map = {}
     local kept, guessed, stretched, unmatched, badOverrides = 0, 0, 0, {}, {}
 
@@ -550,7 +568,9 @@ function M.run(args)
     for _, path in ipairs(paths) do
         local key = path:gsub("^assets/", "")
         local prior = existing[key]
-        local override = overrides[key]
+        -- A set outranks an override the way it outranks the map in the composer: it is the only
+        -- statement in the pipeline about more than one asset at a time.
+        local override = sharedIcon[key] or overrides[key]
         local named = override or (prior and prior.by == "hand" and prior.icon or nil)
 
         if named then
@@ -559,7 +579,7 @@ function M.run(args)
                 -- Naming an icon that does not exist is a typo, not a decision to skip.
                 badOverrides[#badOverrides + 1] = key .. " -> " .. tostring(override)
                 toGuess[#toGuess + 1] = key
-            elseif claimed[slug] then
+            elseif claimed[slug] and not (sharedSet[key] and sharedSet[key] == sharedSet[claimed[slug]]) then
                 contested[#contested + 1] = string.format("%s -> %s (held by %s)", key, slug, claimed[slug])
                 toGuess[#toGuess + 1] = key
             else

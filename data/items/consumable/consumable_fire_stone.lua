@@ -45,7 +45,7 @@ return {
     tags = { "fire", "coating" },
     class = "alchemist",
     price = 130,
-    unlockQuests = 3,
+    unlockLevel = 5,
     aura = {
         appliesTo = { "weapon", "ability" }, -- which neighbor types the heat infuses
         exceptTags = { "water" },            -- water-aligned kit resists the infusion

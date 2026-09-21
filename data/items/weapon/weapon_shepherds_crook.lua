@@ -41,7 +41,7 @@ return {
     type = "weapon",
     tags = { "mace", "impact", "physical", "melee" },
     class = "knight",
-    dropTier = 6,
+    unlockLevel = 10,
     activeAbility = {
         target = "enemy",
         range = 1, -- the hook has to reach: the target starts adjacent, as Charge's pin does
@@ -53,7 +53,7 @@ return {
         -- Its slot's number, which at slot 0 is the iron mace's exactly (Balance.slotTarget). That is
         -- the ladder working rather than a coincidence: same family, same slot, same magnitude, and the
         -- motion is the whole of what tells them apart.
-        damage = Curve.ramp(8, 18),
+        damage = Curve.ramp(15, 25),
         effect = function(fx)
             local t = fx.target
             if not t or not t.alive then return end

@@ -38,7 +38,7 @@ return {
     type = "utility",
     tags = { "beast" },
     class = "skirmisher",
-    dropTier = 2,
+    unlockLevel = 2,
     -- RIFT-ONLY. It comes off the body and nowhere else: no counter deals one however many
     -- the company carries out, and none will buy one back (docs/drops.md, Vendor.foundPrice).
     unstocked = true,

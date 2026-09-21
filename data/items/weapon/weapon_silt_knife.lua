@@ -30,8 +30,7 @@ return {
     tags = { "dagger", "pierce", "physical", "melee" },
     class = "rogue",
     dropOnly = true,
-    dropTier = 3,
-    unlockQuests = 2,
+    unlockLevel = 4,
     activeAbility = {
         target = "enemy",
         range = 1,

@@ -67,7 +67,7 @@ tests[#tests + 1] = { name = "every piece of the Mere's kit exists and is drop-o
             .. "direction; `dropOnly` sells back. Pick the claim you mean.")
         assert(not def.price, id .. " carries a price. Only abilities, consumables and a house's "
             .. "opening weapon do (docs/shelf.md); a found ware is worth what its depth implies.")
-        assert(def.dropTier, id .. " has no depth, so nothing can ever drop it")
+        assert(def.unlockLevel, id .. " has no depth, so nothing can ever drop it")
         assert(def.class, id .. " names no shelf, so tools/drop_tier.lua will never mint it a depth")
     end
 end }
@@ -339,7 +339,7 @@ tests[#tests + 1] = { name = "Rising Water is boss machinery, on no shelf and in
     assert(def, "ability_rising_water is missing")
     assert(def.class == "creature", "a boss's rule belongs to no job")
     assert(def.bound and def.noSteal, "and never comes off her")
-    assert(not def.price and not def.dropTier, "creature kit carries no axis at all")
+    assert(not def.price and not def.unlockLevel, "creature kit carries no axis at all")
 
     local carried = false
     for _, id in ipairs(Character.defs.character_nethrys.startingItems or {}) do

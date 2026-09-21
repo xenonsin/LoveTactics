@@ -11,8 +11,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "skirmisher", -- fighter x hunter; the Hit-and-run mechanic's first stock
-    unlockQuests = 5,
-    dropTier = 5,
+    unlockLevel = 7,
     traits = { "trait_skirmishers_momentum" },
     -- the item is literally movement converted into a blow
     bonus = { movement = 1, damage = 1 },

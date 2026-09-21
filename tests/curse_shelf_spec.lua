@@ -327,7 +327,7 @@ return {
             for _, id in ipairs({ "ability_lesser_rite", "ability_greater_rite" }) do
                 local def = Item.defs[id]
                 assert(def and def.class == "exorcist", id .. " is the Exorcist's")
-                assert((def.price or 0) > 0 and (def.unlockQuests or 0) >= 7,
+                assert((def.price or 0) > 0 and (def.unlockLevel or 0) >= 7,
                     id .. " is priced and sits high on the Cathedral's rack -- lifting is earned")
             end
             assert(Item.defs.utility_consecration.curseWard, "and the ward is the third answer")

@@ -26,14 +26,14 @@ return {
     tags = { "hammer", "impact", "physical", "earth", "melee" },
     hands = 2,
     class = "fighter",
-    dropTier = 7,
+    unlockLevel = 12,
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 7,
         cost = { stat = "stamina", amount = 12 },
         -- Under an iron hammer's: the ground is the rest of the price.
-        damage = Curve.ramp(12, 23),
+        damage = Curve.ramp(22, 33),
         effect = function(fx)
             local t = fx.target
             if not t then return end

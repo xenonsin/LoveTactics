@@ -22,8 +22,7 @@ return {
     type = "utility",
     tags = { "charm", "control" },
     class = "warden",
-    unlockQuests = 3,
-    dropTier = 5,
+    unlockLevel = 8,
     traits = { "trait_wardens_writ" },
     -- hazards that Halt are ground held
     bonus = { defense = 2 },

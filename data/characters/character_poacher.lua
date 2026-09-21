@@ -27,11 +27,11 @@ return {
         "consumable_healing_potion", "utility_quarrys_end",             false,
     },
     drops = {
-        "utility_feather_boots",
-        "utility_opportunists_charm",
-        "armor_unlit_hood",
-        "armor_cutpurse_coat",
-        "armor_breakers_harness",
+        "utility_quarrys_due",
+        "utility_reading_the_blade",
+        "utility_substitution",
+        "weapon_main_gauche",
+        "utility_unpaid_tithe",
     },
     defaultAction = "weapon_poachers_kris",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

@@ -24,8 +24,7 @@ return {
     tags = { "axe", "slash", "physical", "melee" },
     hands = 2, -- a greataxe: two-handed (Dual Wield can pair it only once forged to +5)
     class = "fighter",
-    unlockQuests = 6,
-    dropTier = 7,
+    unlockLevel = 11,
     activeAbility = {
         target = "tile",       -- aim an adjacent tile: it sets the facing the arc sweeps
         allowOccupied = true,  -- the tile in front may hold a foe -- it's the centre of the arc

@@ -22,8 +22,7 @@ return {
     hands = 1, -- a sword is one-handed, and this one wants the free slot for whatever finishes the duel
     traits = { "trait_binding_parry" }, -- NOT trait_parry: the bind replaces the cut, it does not join it
     class = "knight", -- a blade that answers is the Bastion's argument (docs/classes.md)
-    unlockQuests = 1,
-    dropTier = 4,
+    unlockLevel = 6,
     activeAbility = {
         target = "enemy",
         range = 1,
@@ -31,7 +30,7 @@ return {
         cost = { stat = "stamina", amount = 8 },
         -- Under the iron sword's curve on purpose: an answer that removes a foe's whole retreat plan is
         -- worth more than the two points of Power it gives up for it.
-        damage = Curve.ramp(6, 16),
+        damage = Curve.ramp(10, 20),
         effect = function(fx)
             fx.damage(fx.target)
         end,

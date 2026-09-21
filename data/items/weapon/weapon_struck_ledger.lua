@@ -27,7 +27,7 @@ return {
     tags = { "bow", "pierce", "physical", "ranged" },
     hands = 2,
     class = "hunter",
-    dropTier = 6,
+    unlockLevel = 10,
     activeAbility = {
         target = "enemy",
         range = 3,
@@ -36,7 +36,7 @@ return {
         speed = 2,
         cost = { stat = "stamina", amount = 6 },
         -- Half an iron bow's, and that is the design rather than a tax. See the header.
-        damage = Curve.ramp(5, 15),
+        damage = Curve.ramp(12, 22),
         effect = function(fx)
             -- The bounty rides the blow: it lands on whoever the shot hits, and only a surviving hit --
             -- the .alive guard the carried path enforces for free.

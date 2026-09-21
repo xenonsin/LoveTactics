@@ -26,8 +26,7 @@ return {
     type = "armor",
     tags = { "cloth", "arcane" },
     class = "spellbreaker", -- knight x mage; the same deflection worn rather than carried
-    unlockQuests = 5,
-    dropTier = 6,
+    unlockLevel = 10,
     traits = { "trait_counter_magic" },
     bonus = { magicDefense = Curve.ramp(3, 13), movement = -1 },
     resist = { magical = 3 },

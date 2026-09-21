@@ -18,9 +18,9 @@ return {
     script = {
         { "bastion", "We measure a knight by what they refused to abandon. Plate, oath, or the both of them -- say which you came for.", tag = 1 },
         { "bastion", "Speak, then.", tag = 2, id = "desk", choices = {
-            { "The armoury.", tag = 3, answer = "shelf", when = { offer = "shelf" } },
-            { "I have work for the forge.", tag = 4, answer = "forge", when = { offer = "forge" } },
-            { "Neither.", tag = 5, answer = "leave" },
+            { "Visit knight class trainer", tag = 3, answer = "shelf", when = { offer = "shelf" } },
+            { "Go to the forge", tag = 4, answer = "forge", when = { offer = "forge" } },
+            { "Leave", tag = 5, answer = "leave" },
         } },
     },
 }

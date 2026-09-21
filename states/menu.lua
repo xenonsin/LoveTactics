@@ -371,8 +371,11 @@ local function buildMenu()
     end
 
     -- `subFont` is for Continue's one card row (the company it reopens); every other row here is a
-    -- plain label and ignores it.
-    return Menu.new(items, { startY = 280, subFont = hintFont })
+    -- plain label and ignores it. `cardAlign` centres that pair rather than left-insetting it: the
+    -- save list is a COLUMN of cards, read by scanning down one edge, while this is a stack of
+    -- centred buttons with a single card at the top of it -- left-inset, Continue alone sat off the
+    -- axis every row under it shares.
+    return Menu.new(items, { startY = 280, subFont = hintFont, cardAlign = "center" })
 end
 
 -- The dev-build corner column. Small buttons in their own left-hand gutter, clear of the title and

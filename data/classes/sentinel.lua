@@ -11,5 +11,5 @@ return {
     description = "Takes the hits meant for someone else. Attacks aimed at an adjacent ally are redirected "
         .. "onto you instead.",
     exemplar = "character_sentinel", -- was character_grey_knight (a story-disguised encounter unit); dedicated exemplar authored
-    requires = { knight = 4 },
+    requires = { knight = 5 },
 }

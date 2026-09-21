@@ -492,7 +492,7 @@ return {
             p.roster[1].technique = { rogue = Class.classLevelCost(rung) }
             assert(Class.isUnlocked(p, "mammonite"), "rogue " .. rung .. " is the gate")
 
-            local function gate(id) return Item.defs[id].unlockQuests or 0 end
+            local function gate(id) return Item.defs[id].unlockLevel or 0 end
             for _, id in ipairs({ "ability_ledgers_due", "ability_price_on_the_head" }) do
                 assert(gate(id) <= rung, id .. " is an earner: it must already be buyable at the gate")
             end

@@ -45,10 +45,10 @@ return {
     -- attack intuitive; the player can re-pin the heal or any other ability.
     drops = {
         "armor_censer_cloth_habit",
-        "armor_reliquary_mantle",
-        "armor_vestments_open_hand",
-        "utility_shared_ledger",
-        "armor_vow_marked_plate",
+        "armor_robes_unbidden",
+        "utility_consecration",
+        "armor_hem_of_the_stayed_hand",
+        "weapon_litany_staff",
     },
     defaultAction = "ability_minor_shock",
     -- The two items that ARE this unit, in one glance: its weapon and its signature verb.

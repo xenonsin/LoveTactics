@@ -574,8 +574,8 @@ local function gradePage(item)
 
     rows[#rows + 1] = readout("-- authored --")
     rows[#rows + 1] = readout("  class", def.class or "(none)")
-    local slot = def.unlockQuests or 0
-    rows[#rows + 1] = readout("  slot (unlockQuests)", slot)
+    local slot = def.unlockLevel or 0
+    rows[#rows + 1] = readout("  unlock level", slot)
     rows[#rows + 1] = readout("  price", def.price and (def.price .. "g") or "(unsold)")
     if def.price then
         local implied = Grade.priceFor(slot, def.type)

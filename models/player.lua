@@ -654,7 +654,7 @@ end
 --
 -- Numerically it is what prestige already was minus one -- prestige started at 1 and rose by 1 a quest
 -- -- so every authored gate shifted by one when it moved across, and the values in data now mean
--- exactly what they say: `unlockQuests = 2` is two finished quests.
+-- exactly what they say: `unlockLevel = 2` is two finished quests.
 --
 -- Counted rather than cached. The ledger is a set keyed by id (it has to be, since order is the
 -- player's and a quest may be repeatable), and a parallel counter is one more thing New Game+ could

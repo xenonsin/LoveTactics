@@ -47,7 +47,7 @@ return {
                                   "utility_the_turned_hide" }) do
                 assert(not has(list, id), id .. " is his fight, not his loot")
                 local def = Item.defs[id]
-                assert(def.dropTier == nil and def.price == nil,
+                assert(def.unlockLevel == nil and def.price == nil,
                     id .. " carries an axis, so the pool could reach it")
             end
         end,
@@ -55,14 +55,14 @@ return {
     {
         name = "every dropped piece can actually be found: an axis, a shelf, and no seal against it",
         fn = function()
-            -- A drops entry with no `dropTier` is a row the rift can never pay, and `noSteal` or `bound`
+            -- A drops entry with no `unlockLevel` is a row the rift can never pay, and `noSteal` or `bound`
             -- would have the pool refuse it outright -- both of which are silent failures: the list still
             -- reads correctly in the file and simply never fires.
             for _, body in ipairs({ "character_boar", "character_the_unseeing" }) do
                 for _, id in ipairs(drops(body)) do
                     local def = Item.defs[id]
                     assert(def, body .. " names " .. id .. ", which does not exist")
-                    assert(def.dropTier, id .. " has no dropTier, so no floor can pay it")
+                    assert(def.unlockLevel, id .. " has no unlockLevel, so no floor can pay it")
                     assert(not def.noSteal, id .. " is sealed to a body and can never drop")
                     assert(not def.bound, id .. " is bound to one grid and can never drop")
                     assert(def.class ~= "creature", id .. " is creature kit; the pool refuses it")
@@ -76,13 +76,13 @@ return {
             -- A floor picks a RANK before it looks at who died (Spoils.rankBand), so an item only drops
             -- on floors that reach its own tier. That makes the ORDER of these numbers the whole of the
             -- drop-rate design -- there is no per-entry weight to author, and nothing else to tune.
-            local hide = Item.defs.armor_bristlehide.dropTier
-            local spear = Item.defs.weapon_unclosing_spear.dropTier
+            local hide = Item.defs.armor_bristlehide.unlockLevel
+            local spear = Item.defs.weapon_unclosing_spear.unlockLevel
             assert(spear > hide, "the boar's spear is its chase and the hide is the piece you meet")
 
-            local wake = Item.defs.utility_the_wake.dropTier
-            local horn = Item.defs.utility_treeline_horn.dropTier
-            local sounder = Item.defs.utility_the_last_sounder.dropTier
+            local wake = Item.defs.utility_the_wake.unlockLevel
+            local horn = Item.defs.utility_treeline_horn.unlockLevel
+            local sounder = Item.defs.utility_the_last_sounder.unlockLevel
             assert(sounder > horn, "the Last Sounder must be rarer than the horn -- it is the chase, "
                 .. "and a shallower tier would make it the COMMON drop")
             assert(horn > wake, "and the horn is dearer than the ground he walks on")

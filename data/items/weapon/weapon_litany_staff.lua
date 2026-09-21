@@ -13,15 +13,14 @@ return {
     type = "weapon",
     tags = { "staff", "magical", "holy", "melee" },
     class = "theurge", -- mage x priest; the Channelled-miracle mechanic's first stock
-    unlockQuests = 5,
-    dropTier = 4,
+    unlockLevel = 6,
     waitBehavior = { kind = "focus", mana = Curve.ramp(9, 19), speed = 10 },
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 6 },
-        damage = Curve.ramp(10, 20), -- feeble: the Focus swap is the real weapon
+        damage = Curve.ramp(8, 18), -- feeble: the Focus swap is the real weapon
         effect = function(fx)
             fx.damage(fx.target)
         end,

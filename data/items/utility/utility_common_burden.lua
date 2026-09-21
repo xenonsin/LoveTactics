@@ -18,7 +18,6 @@ return {
     type = "utility",
     tags = { "charm", "dark", "morale" },
     class = "shaman",
-    unlockQuests = 7,
-    dropTier = 6,
+    unlockLevel = 9,
     traits = { "trait_common_burden" },
 }

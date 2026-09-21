@@ -55,6 +55,31 @@ do
     if ok and type(m) == "table" then IconMap = m end
 end
 
+-- 0. THE SHARED SET -- the one channel above the map (tools/icons/shared.lua).
+--
+-- A set says "these assets are one object told apart by colour", which is a more specific statement
+-- than the map's "this asset owns this shape", so it is asked first and answers BOTH channels at once:
+-- the silhouette every member draws, and the tint that makes each member itself. Flattened to sprite
+-- key -> { icon, tint } on load, because every lookup here is by key.
+local SharedIcon = {}
+do
+    local ok, sets = pcall(require, "tools.icons.shared")
+    if ok and type(sets) == "table" then
+        for _, set in ipairs(sets) do
+            for key, tint in pairs(set.members or {}) do
+                SharedIcon[key] = { icon = set.icon, tint = tint }
+            end
+        end
+    end
+end
+
+-- The set entry for an item, or nil. Keyed the way the map is keyed -- by the sprite path the game
+-- loads by, with "assets/" stripped -- so two blueprints pointing at one sprite are one member.
+local function sharedFor(def)
+    if type(def.sprite) ~= "string" then return nil end
+    return SharedIcon[def.sprite:gsub("^assets/", "")]
+end
+
 local M = {}
 
 local RESVG = "vendor/bin/resvg.exe"
@@ -283,6 +308,10 @@ end
 -- The item's element tint: first tag that names a colour; else the first element named by a status the
 -- ability applies; else steel.
 local function tintFor(def)
+    -- A shared set's colour IS the item's identity -- it is the only thing separating one member from
+    -- another -- so it outranks the element channels below rather than falling through to steel.
+    local shared = sharedFor(def)
+    if shared and shared.tint then return shared.tint end
     for _, tag in ipairs(def.tags or {}) do
         if ELEMENT_TINT[tag] then return ELEMENT_TINT[tag] end
     end
@@ -381,16 +410,22 @@ end
 
 -- The base silhouette slug.
 --
+--   0. a declared SHARED SET -- the pool potions and their kind, one object told apart by colour
 --   1. its own MAPPED glyph -- unique to this asset, and the only channel that identifies it
 --   2. a weapon's FAMILY -- an axe reads as an axe
 --   3. what an ability DOES (the dry run), or when a charm FIRES (its field or trait hook)
 --   4. the pool an ability spends
 --   5. the type base
 --
--- Step 1 leads because it is the only step that can be wrong about ONE item rather than about a
--- whole category: everything under it is a shape this item shares with its kin, and sharing is what
--- the map exists to end. Steps 2-5 are reached only by an asset the mapper has not seen yet.
+-- Step 1 leads the inferred channels because it is the only one that can be wrong about ONE item
+-- rather than about a whole category: everything under it is a shape this item shares with its kin,
+-- and sharing is what the map exists to end. Steps 2-5 are reached only by an asset the mapper has not
+-- seen yet. Step 0 sits over the map because a set is a person saying these two ARE one picture, which
+-- no amount of mapping can express -- the map's whole grammar is one asset, one shape.
 local function baseFor(def)
+    local shared = sharedFor(def)
+    if shared and shared.icon then return shared.icon end
+
     local mapped = mappedBase(def)
     if mapped then return mapped end
 
@@ -609,6 +644,8 @@ end
 -- other way is how a report starts disagreeing with the pipeline it reports on.
 M.baseFor = baseFor
 M.tintFor = tintFor
+M.sharedFor = sharedFor
+M.SHARED = SharedIcon -- sprite key -> { icon, tint }, for the mapper's ledger and the uniqueness spec
 M.verbFor = verbFor
 M.FAMILY_BASE = FAMILY_BASE
 M.TYPE_BASE = TYPE_BASE

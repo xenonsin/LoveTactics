@@ -12,9 +12,9 @@
 -- DOOR out on the plaza was drawn from (models/offer.lua). A line that could disagree with its own card
 -- would offer a room the player cannot reach, or hide one they can. The Exit line is never gated.
 --
--- THIS HOUSE'S TWO OTHER ROOMS WERE NEVER PLAZA CARDS -- the bestiary came off the Rift screen and the
--- roll out of the Armory (data/buildings/arcanum.lua argues both). Pride's house is where you learn what
--- a thing is and where you decide what you are.
+-- THIS HOUSE'S OTHER ROOMS WERE NEVER PLAZA CARDS -- the bestiary came off the Rift screen, and the
+-- study is the half of the forge's ladder a smith was never the right hand for (data/buildings/arcanum.lua
+-- argues both). Pride's house is where a thing is named and where what you already carry is read deeper.
 return {
     title = "The Arcanum",
     cast  = { "arcanum" },
@@ -22,9 +22,10 @@ return {
     script = {
         { "arcanum", "This library has outlived every scholar who swore he could read it safely. Do not touch the shelves you were not sent to.", tag = 1 },
         { "arcanum", "Name what you came for.", tag = 2, id = "desk", choices = {
-            { "Staves and foci.", tag = 3, answer = "shelf", when = { offer = "shelf" } },
-            { "What is down there.", tag = 4, answer = "bestiary", when = { offer = "bestiary" } },
-            { "Nothing.", tag = 5, answer = "leave" },
+            { "Visit mage class trainer", tag = 3, answer = "shelf", when = { offer = "shelf" } },
+            { "Go to the study", tag = 6, answer = "study", when = { offer = "study" } },
+            { "Open the bestiary", tag = 4, answer = "bestiary", when = { offer = "bestiary" } },
+            { "Leave", tag = 5, answer = "leave" },
         } },
     },
 }

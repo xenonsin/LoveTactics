@@ -36,7 +36,7 @@ return {
     tags = { "holy" },
     class = "theurge", -- multiclass: stocked on the mage's shelf too once the gate is cleared
     price = 245,
-    unlockQuests = 2,
+    unlockLevel = 3,
     -- Banked off what a priest does anyway, so the acolyte arrives at the payoff whether the fight
     -- went well or badly. Capped, like every pool: a charge that grew all battle would make the last
     -- turn the only one that mattered (docs/classes.md).

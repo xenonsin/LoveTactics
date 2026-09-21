@@ -530,6 +530,33 @@ Descent.FLOORS_PER_CIRCLE = 2
 -- are unchanged in their reasoning -- a floor is a sitting, and a sitting is priced in fights -- what
 -- moved is how long a sitting should be, which is a call about the floor and not about the curve.
 -- The run's whole bill goes with it, from about 53 fights end to end to about 68.
+-- ---------------------------------------------------------------------------
+-- THIS PAIR IS THE BUDGET, AND THE BUDGET IS NOT WHAT A FLOOR COSTS. MEASURED.
+-- ---------------------------------------------------------------------------
+--
+-- Everything above is reasoning about what a floor SHOULD cost, and it is the number the run's whole
+-- length is argued from -- tests/descent_floor_spec holds the total to the 40-70 a sitting can carry.
+-- What was never checked is whether a floor DOES cost it. It does not, by about double.
+--
+-- These two are read by nothing in the engine. Only specs read them, and one of those anchors the
+-- experience curve on them, so they are a claim that cannot be wrong in play and is wrong everywhere
+-- else. What a floor actually costs is a property of WALKING, because the ordinary fight is dealt off
+-- the prowl meter (Descent.PROWL_STEPS) rather than seated on the board -- so the fight count is
+-- whatever the route happens to be, and nothing here governs it.
+--
+-- MEASURED, by greedy nearest-unvisited tours of every content cell on twelve rolled floors apiece:
+-- 78 steps on floor one rising to 90 at the bottom, which at sixteen steps a fight is 4.9 to 5.6 prowl
+-- fights, plus the two or three the board seats (Descent.floorSeen). That is 6.9 fights on the opening
+-- floor and 8.6 at the Crown -- about 115 across the stack against the 68 this pair claims, and a
+-- greedy tour is a LOWER bound: a real floor is re-crossed for a cache that needed a key and walked
+-- back to the stair.
+--
+-- LEFT AT FOUR AND FIVE DELIBERATELY. Raising them to the measurement was tried and is wrong twice
+-- over: it does not change a single fight in play (nothing reads them), and it turns the one guard
+-- that polices run LENGTH into a rubber stamp -- the sitting budget started failing at 120 fights,
+-- which is the guard doing its job and saying the mode is four hours of combat. The number to move is
+-- Descent.PROWL_STEPS, which is what actually deals the fights, and that is a decision about how dense
+-- a floor should be rather than a constant to be quietly re-fitted. It is named here and left open.
 Descent.FLOOR_FIGHTS = 4
 
 -- WHAT THE BOTTOM HOLDS, and the whole argument is in how little it is above the top.
@@ -3460,8 +3487,31 @@ end
 -- is 1 in the city and 1 on the street, and `hubIntro` is a staging flag that a loaded save and the
 -- prologue skip both clear. Set the first time states/hub.lua opens the town, so it covers the played
 -- prologue, the skip, and a save loaded straight back onto an overworld leg alike.
+-- ...AND ONE MORE THING OPENS IT NOW, WHICH IS THE CHAMPION. Everything above is still true of the
+-- SWEEP -- a body picking its way to the ruins has one job and one kit -- and stops being true the
+-- moment the capstone falls: Act 0 ends on a level-up (states/prologue.lua's prologue.EXIT_LEVEL) and
+-- the company reaches the road having banked technique in two houses. There is a ladder to read by
+-- then, and the tab is the only place it can be read.
+--
+-- SO THE ARGUMENT ABOVE IS NOT REVERSED, IT IS DATED. It was written when four scripted fights left
+-- the party exactly as they started, which made the Roll a screen of rungs nobody could reach; the
+-- prologue pays a level now, and the thing that changed is the company rather than the tab. What the
+-- gate is really asking is "is there anything on this screen yet", and the Champion is the first
+-- moment the answer is yes.
+--
+-- Two marks rather than one predicate over both, for the reason the header gives for `cityReached`
+-- being its own flag: neither can be read off any other ledger, and a skipped prologue, a played one
+-- and a save loaded straight onto a leg all have to answer the same.
 function Descent.classesUnlocked(player)
-    return (player and player.cityReached) or false
+    return (player and (player.cityReached or player.classesOpen)) or false
+end
+
+-- Open the Roll early -- what the Champion's fall spends. Idempotent and one-way, like the mark beside
+-- it: a company that has seen the tab does not un-see it.
+function Descent.markClassesOpen(player)
+    if not player then return false end
+    player.classesOpen = true
+    return true
 end
 
 function Descent.markCityReached(player)

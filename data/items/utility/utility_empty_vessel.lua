@@ -20,8 +20,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "spellbreaker",
-    unlockQuests = 5,
-    dropTier = 5,
+    unlockLevel = 8,
     traits = { "trait_empty_vessel" },
     -- it banks its Power against the spent; empty is also hard to drain
     bonus = { magicDefense = 1 },

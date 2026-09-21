@@ -11,5 +11,5 @@ return {
     description = "Treats the party with doses. Elixirs heal an ally and lend them your own stats, so what "
         .. "you are carrying decides what a dose is worth.",
     exemplar = "character_apothecary", -- was character_ren (a root companion); dedicated exemplar authored
-    requires = { priest = 6, alchemist = 6 },
+    requires = { priest = 8, alchemist = 8 },
 }

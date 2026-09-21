@@ -77,7 +77,7 @@ end
 local function shallowItem()
     local best
     for id, def in pairs(Item.defs) do
-        if def.dropTier and not def.bound and Spoils.depthOf(def) <= 1 then
+        if def.unlockLevel and not def.price and not def.bound and Spoils.depthOf(def) <= 1 then
             if not best or id < best then best = id end
         end
     end
@@ -95,10 +95,10 @@ local function twoShallowItems()
         --
         -- It used to ask only `not def.bound`, and was green on a domain accident: the two alphabetically
         -- first shallow ids were ability_haste and ability_omnislash -- ordinary spells mis-bucketed as
-        -- `creature` and carrying a dropTier. Re-homing them onto real shelves slid the pick down onto
+        -- `creature` and carrying a unlockLevel. Re-homing them onto real shelves slid the pick down onto
         -- consumable_bannerets_steel, which no authored drop can ever hand over. The fixture moved; the
         -- rule did not.
-        if def.dropTier and not def.bound and not def.noSteal and def.type ~= "consumable"
+        if def.unlockLevel and not def.price and not def.bound and not def.noSteal and def.type ~= "consumable"
             and Spoils.depthOf(def) <= 1 then
             out[#out + 1] = id
         end
@@ -111,7 +111,7 @@ end
 local function deepItem()
     local best, bestDepth
     for id, def in pairs(Item.defs) do
-        if def.dropTier and not def.bound then
+        if def.unlockLevel and not def.price and not def.bound then
             local d = Spoils.depthOf(def)
             if d >= 8 and (not bestDepth or d > bestDepth or (d == bestDepth and id < best)) then
                 best, bestDepth = id, d
@@ -408,10 +408,10 @@ return {
                     assert(def, "rolled loot id must exist: " .. tostring(id))
                     assert(not def.bound, "a bound item must never drop: " .. tostring(id))
                     -- An unpriced item may drop NOW, but only on its own ladder: it has to carry a
-                    -- `dropTier` (tools/drop_tier.lua), which is what a shelf slot is for an item
+                    -- `unlockLevel` (tools/drop_tier.lua), which is what a shelf slot is for an item
                     -- with no shelf. What must still never fall out is something with neither --
                     -- a natural weapon, a signature, a body's phase machinery.
-                    assert((def.price and def.price > 0) or def.dropTier,
+                    assert((def.price and def.price > 0) or def.unlockLevel,
                         "an item with neither a price nor a drop tier must never drop: " .. tostring(id))
                 end
             end
@@ -735,7 +735,7 @@ return {
         -- A BODY PART IS NOT LOOT, and this is the case that would have caught it. docs/bestiary.md
         -- claims the engine enforces the creature/bodied split economically, via `price` as the
         -- shoppable marker -- and that stopped being true the day tools/drop_tier.lua began handing
-        -- unpriced items a `dropTier`, because the pool admits either. All 92 natural weapons in the
+        -- unpriced items a `unlockLevel`, because the pool admits either. All 92 natural weapons in the
         -- game were in the drop table, and nothing said so.
         --
         -- IT ASKS THE CLASS NOW, AND THAT IS THE WHOLE POINT OF THE REWRITE. This case used to build
@@ -743,7 +743,7 @@ return {
         -- it asserted that flagged items are refused by a pool whose only test IS the flag, so it
         -- could never see a body part that had not been flagged. Seventeen had not been. A demon
         -- grunt's Brimstone, the Champion's Cleave and Roar, Ira's own signature blow and Gula's
-        -- knife all sat in their carriers' grids carrying a `dropTier` and no gate, and a body's grid
+        -- knife all sat in their carriers' grids carrying a `unlockLevel` and no gate, and a body's grid
         -- feeds the pool directly (models/spoils.lua's `add`) -- so a boss's whole rule was a drop.
         --
         -- `class == "creature"` is the thing the rule is actually about (data/classes/creature.lua:
@@ -763,7 +763,7 @@ return {
             -- THE STRUCTURAL HALF, and the one that holds without throwing a single die. Un-droppable
             -- is not a property to sample for; it is two fields. `noSteal`/`bound` is what both pool
             -- doors read, and the absence of an axis is what keeps the ware off the Market counter as
-            -- well -- Vendor.stock lists on `price or dropTier`, and the Market's `sellsAll` means
+            -- well -- Vendor.stock lists on `price or unlockLevel`, and the Market's `sellsAll` means
             -- that shelf asks no class question at all.
             local bad = {}
             for id in pairs(creature) do
@@ -771,8 +771,8 @@ return {
                 if not (def.noSteal or def.bound) then
                     bad[#bad + 1] = id .. " carries neither `noSteal` nor `bound`"
                 end
-                if def.dropTier then
-                    bad[#bad + 1] = id .. " carries a dropTier, so a rank pool holds it"
+                if def.unlockLevel then
+                    bad[#bad + 1] = id .. " carries a unlockLevel, so a rank pool holds it"
                 end
                 if def.price then
                     bad[#bad + 1] = id .. " carries a price, so a shelf can stock it"
@@ -783,7 +783,7 @@ return {
                 .. table.concat(bad, "\n  "))
 
             -- Sweep the whole ladder, because the leak was depth-gated rather than absent: a natural
-            -- weapon with a deep dropTier simply waited for a deep floor.
+            -- weapon with a deep unlockLevel simply waited for a deep floor.
             for tier = 1, Class.CLASS_LEVEL_CAP do
                 for _, entry in ipairs(Spoils.shelf({ day = 40, floorLevel = tier, count = 400 })) do
                     assert(not creature[entry], entry .. " is creature kit and reached a shelf at tier "

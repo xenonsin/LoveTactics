@@ -19,7 +19,7 @@ return {
     tags = { "slash", "physical", "melee" },
     class = "fighter",
     price = 165,
-    unlockQuests = 1,
+    unlockLevel = 2,
     activeAbility = {
         target = "enemy",
         range = 1,

@@ -200,14 +200,14 @@ end
 -- TWO NUMBERS, AND THE ANSWER IS THE DEEPER OF THEM, because an item is held back by two different
 -- things and either one alone lets the other through:
 --
---   ITS RANK          what the thing is worth. A find wears it as `dropTier` outright; a priced item
---                     wears it as `unlockQuests`, the grade rank that IS its shelf slot (docs/shelf.md).
+--   ITS RANK          what the thing is worth. A find wears it as `unlockLevel` outright; a priced item
+--                     wears it as `unlockLevel`, the grade rank that IS its shelf slot (docs/shelf.md).
 --                     The two are one ladder a rung apart -- Vendor.foundPrice already reads a find's
---                     rank as `dropTier - 1` -- so `unlockQuests + 1` here is that identity read
+--                     rank as `unlockLevel - 1` -- so `unlockLevel + 1` here is that identity read
 --                     backwards and not a second mapping anybody has to keep in step.
 --
---   ITS CLASS'S GATE  what had to be played for before anybody may hold it. Warden asks knight 8 and
---                     hunter 8 (data/classes/warden.lua); a vendor greys a crossing's stock until that
+--   ITS CLASS'S GATE  what had to be played for before anybody may hold it. Warden asks knight 15 and
+--                     hunter 15 (data/classes/warden.lua); a vendor greys a crossing's stock until that
 --                     is paid (models/vendor.lua) and this pool had no such rule at all.
 --
 -- THE SECOND HALF IS THE BUG THIS ANSWERS. Rank is measured worth (models/grade.lua) and worth is the
@@ -222,7 +222,7 @@ end
 function Spoils.depthOf(def)
     if not def then return 0 end
     local Class = require("models.class") -- lazy: class -> item -> here at require time
-    local rank = def.dropTier or ((def.unlockQuests or 0) + 1)
+    local rank = def.unlockLevel or 0
     return math.max(rank, Class.gateLevel(def.class))
 end
 
@@ -238,7 +238,7 @@ end
 -- posting quests and thirty-five of them were deleted, and every unpriced item in the game lost its
 -- single source at once.
 --
--- What decides whether one falls out here is its `dropTier` (tools/drop_tier.lua): the same grade that
+-- What decides whether one falls out here is its `unlockLevel` (tools/drop_tier.lua): the same grade that
 -- would have set a priced item's shelf slot, spread along DEPTH instead, because an item with no shelf
 -- to sit on still has a place it belongs. So the strong half of the equipment in this game is found
 -- rather than bought, which is the whole of what the one market left room for.
@@ -251,14 +251,14 @@ end
 -- to find (tools/drop_tier.lua assigns neither).
 --
 -- AND NOTHING DEEPER THAN THE FLOOR REACHES, on either half. See Spoils.depthOf: the tier gate used to
--- be read off `dropTier` alone, which meant the priced half was gated by GOLD and by nothing else and
+-- be read off `unlockLevel` alone, which meant the priced half was gated by GOLD and by nothing else and
 -- the found half could not see a class gate at all.
 --
 -- `pricedOnly` drops the found half for a caller that is stocking a COUNTER rather than a floor
 -- (Spoils.shelf). It is a parameter and not a second function because the two want the same band, the
 -- same weighting and the same gate -- what a cart may sell is a subset of what the road may turn up,
 -- and the subset is "somebody wrote a price on it". Before the gate landed this happened by accident:
--- the shelf passed no tier at all, so the found half fell out of a `dropTier <= 0` test on its own.
+-- the shelf passed no tier at all, so the found half fell out of a `unlockLevel <= 0` test on its own.
 local function lootCandidates(maxPrice, tier, pricedOnly)
     local pool = {}
     tier = tier or 0
@@ -272,11 +272,11 @@ local function lootCandidates(maxPrice, tier, pricedOnly)
         -- THIS USED TO BE ENFORCED BY ACCIDENT AND STOPPED BEING. docs/bestiary.md still claims "the
         -- engine already enforces this economically ... models/spoils.lua uses `price` as the shoppable
         -- marker, so an unpriced natural weapon can never enter the drop pool." That was true until
-        -- tools/drop_tier.lua started handing every unpriced item a `dropTier` -- which is the second
+        -- tools/drop_tier.lua started handing every unpriced item a `unlockLevel` -- which is the second
         -- half of the `or` below, and which let all 92 of them straight back in. A proxy gate is only as
         -- good as the thing it is a proxy for, and this one's meaning changed underneath it.
         elseif def.noSteal then
-        elseif not (priced or (def.dropTier and not pricedOnly)) then -- nothing this caller may hand over
+        elseif not (priced or (def.unlockLevel and not pricedOnly)) then -- nothing this caller may hand over
         elseif Spoils.depthOf(def) > tier then -- ranked or gated deeper than this floor reaches
         elseif priced then
             if def.price <= maxPrice then
@@ -442,13 +442,49 @@ end
 -- a slot the rank draw wanted for gear.
 Spoils.SUPPLY_SHARE = 0.2
 
-Spoils.RANK_SPREAD = 1
+-- THE LADDER BOTH REACHES BELOW WERE CHOSEN AGAINST, kept as a constant rather than re-derived, for
+-- the reason Grade.PRICE_SPAN is: the numbers under it describe how much of a CATALOGUE a floor should
+-- see, and that judgement does not change when the ladder it is measured on is re-cut. What has to
+-- change is the rung count the judgement is expressed in.
+Spoils.LADDER_REF = 8
 
--- ...and how much rarer each step away from the centre is. Two, so a floor's own rung is twice as
--- likely as either neighbour -- which is what keeps the TOP of a band (the deep, dear end) the
+-- How far under its own rung a floor also reaches. Derived so that the BAND -- the slice of the
+-- catalogue one floor can see -- stays the same share of the ladder it was cut to be.
+--
+-- IT HAD TO BECOME A SHARE, and a bare 1 is what proved it. The rung ladder went from eight rungs to
+-- fifteen (Class.CLASS_LEVEL_CAP) and rankCandidates matches a body's kit on EXACT rank equality, so a
+-- reach held at one rung halved the slice any floor could see -- measured, drops off the beaten roster
+-- fell from most of them to 0 of 291, and a slime stopped being able to pay anything it is known for.
+-- Nothing about the drop design changed; the same rule stated in rungs stopped meaning the same thing
+-- when a rung got smaller.
+--
+-- THE WIDTH IS THE INVARIANT, NOT THE REACH, and reading it the other way is worth a line because the
+-- first attempt did. Scaling the REACH (one rung per eight of ladder) gives a band of three rungs in
+-- sixteen where the old one was two in nine -- 19% against 22%, still narrower, and it measured 80 of
+-- 291. What the design fixed was how much of the catalogue a floor sees; the reach is just how that is
+-- spelled. So the width is scaled and the reach falls out of it.
+Spoils.RANK_SPREAD = math.max(1, math.floor(
+    2 * (require("models.class").CLASS_LEVEL_CAP + 1) / (Spoils.LADDER_REF + 1) + 0.5) - 1)
+
+-- ...and how much rarer each step away from the centre is: a floor's own rung is twice as likely as
+-- the rung a WHOLE BAND-WIDTH away, which is what keeps the TOP of a band (the deep, dear end) the
 -- uncommon half of what a floor pays, and therefore keeps a body's best piece a chase rather than a
 -- routine.
-Spoils.RANK_FALLOFF = 2
+--
+-- IT WAS A FLAT 2 PER RUNG, and that is the third constant in this file to need the same correction
+-- (see RANK_SPREAD and SEALED_REACH above): a number whose unit is ONE RUNG stops meaning what it
+-- meant when a rung gets smaller. The ladder went from eight rungs to fifteen
+-- (Class.CLASS_LEVEL_CAP), so halving per rung became a far steeper curve across the same FRACTION of
+-- the catalogue -- it piled the draw onto the centre, and the centre is exactly where a body's
+-- deepest piece sits. Measured, the standout went to 16% of fights against a design that wants it
+-- under 15, and narrowing the band made it worse (17%) rather than better, which is what pointed at
+-- the weighting rather than at the width.
+--
+-- So the halving is expressed over the band instead of over a rung, and the per-rung figure falls out
+-- of it. At a spread of 3 that is about 1.26 a rung; at the old eight-rung ladder's spread of 1 it is
+-- exactly the 2 this used to be, which is the check that the rewrite changed nothing but the unit.
+Spoils.RANK_FALLOFF_PER_BAND = 2
+Spoils.RANK_FALLOFF = Spoils.RANK_FALLOFF_PER_BAND ^ (1 / math.max(1, Spoils.RANK_SPREAD))
 
 -- HOW MUCH A BODY'S OWN STOCK IS PREFERRED over its class's general stock at the same rank. Four, so
 -- roughly four in five drops at a rank the body has something at are THAT BODY'S -- its authored list
@@ -461,7 +497,8 @@ Spoils.RANK_FALLOFF = 2
 -- connection loud and the standout scarce at once.
 Spoils.BODY_PREFERENCE = 4
 
--- THE FLOOR'S RANK BAND: lo, hi, centre, on the 1..CLASS_LEVEL_CAP ladder `dropTier` is banded along.
+-- THE FLOOR'S RANK BAND: lo, hi, centre, on the 0..CLASS_LEVEL_CAP ladder `unlockLevel` is banded
+-- along -- the same ladder a class level is on, which is the whole of what the fold bought here.
 --
 -- SPREAD ACROSS THE WHOLE STACK rather than climbing two rungs a floor. `floorLevel` climbs by
 -- Descent.LEVEL_PER_FLOOR and the ladder caps at CLASS_LEVEL_CAP, so reading it directly pinned the
@@ -486,14 +523,44 @@ function Spoils.rankBand(opts)
     if opts.floorLevel then
         local Descent = require("models.descent")
         local floor = (opts.floorLevel or 0) / math.max(1, Descent.LEVEL_PER_FLOOR)
-        progress = floor / math.max(1, Descent.FLOORS)
+        -- FROM THE FIRST FLOOR TO THE LAST, not from nothing to the last. It was `floor / FLOORS`,
+        -- which starts a fifteenth of the way up and so can never reach the bottom rung -- and the
+        -- bottom rung is where the fold put the opening rack (tools/ladder_fold pins band 0 to rung 0).
+        -- Measured with the old expression, a bandit's own rusted sword sat one rung under the floor
+        -- it is met on and the "you took his axe" route quietly stopped paying on floor one.
+        --
+        -- The two ends are the two ends: the first floor centres on rung 0 and the Crown's floor on the
+        -- cap, so the ramp uses the whole ladder rather than a fifteen-sixteenths slice of it.
+        progress = (floor - 1) / math.max(1, Descent.FLOORS - 1)
     else
+        -- THE ROAD'S CLOCK, RE-BASED THE SAME WAY THE STACK'S WAS, and it has to be or the two
+        -- disagree about where a body's own kit sits. This read `day / DAYS` straight, which on the
+        -- old eight-rung ladder put day 3 on rung 1 -- exactly where a bandit's opening-rack sword
+        -- sat, because a priced item's depth was `unlockQuests + 1`. The fold took that `+ 1` out
+        -- (tools/ladder_fold unified on the GATE reading), so the same sword is rung 0 now and a
+        -- mapping left alone pointed the first week of the road one rung ABOVE everything the bodies
+        -- walking it carry. Measured, loot off a beaten roster fell to 27% of drops against a design
+        -- that promises most of them.
+        --
+        -- So the road is bucketed on the ladder it was authored against and the bucket is restretched,
+        -- which is the same correction `progress` above makes for the stack: the opening stretch of
+        -- the campaign centres on the opening rack, and the last day reaches the cap.
         local Calendar = require("models.calendar")
-        progress = (opts.day or 1) / math.max(1, Calendar.DAYS or 40)
+        local days = math.max(1, Calendar.DAYS or 40)
+        local bucket = math.ceil(math.max(0, math.min(1, (opts.day or 1) / days)) * Spoils.LADDER_REF)
+        progress = math.max(0, bucket - 1) / math.max(1, Spoils.LADDER_REF - 1)
     end
 
     progress = math.max(0, math.min(1, progress))
-    local centre = math.max(1, math.min(cap, math.ceil(progress * cap)))
+    -- ONE RUNG PER FLOOR, now that the ladder is as tall as the stack (Class.CLASS_LEVEL_CAP): floor
+    -- one centres on rung 0 and the Crown's floor on the cap, so `centre` IS the depth rather than a
+    -- squeezed reading of it. It used to be eight rungs over fifteen floors, which meant two floors
+    -- shared a rank most of the way down and the rift could not tell floor six from floor seven.
+    --
+    -- ROUNDED RATHER THAN CEILED, which the ends made necessary: `ceil` on a ramp that now starts at
+    -- zero pins floors one and two to the same rung and leaves the top rung reachable only exactly at
+    -- the bottom. Rounding spreads the fifteen floors evenly over the sixteen rungs.
+    local centre = math.max(0, math.min(cap, math.floor(progress * cap + 0.5)))
     -- An elite reaches one rung deeper, exactly as it always has and for the same reason it reaches a
     -- richer price band: it is the fight the player could have walked around.
     if opts.kind == "elite" then centre = math.min(cap, centre + 1) end
@@ -506,7 +573,10 @@ function Spoils.rankBand(opts)
     -- So the floor's own rung is the CEILING of what it pays, and the spread is how far under it the
     -- floor also reaches. That is also the more honest reading of "the floor picks the rank": it picks
     -- one, and the band beneath is the slack.
-    return math.max(1, centre - Spoils.RANK_SPREAD), centre, centre
+    -- DOWN TO RUNG 0, not to rung 1. Rung 0 is the opening rack since the fold -- the shallowest
+    -- thing the ladder ranks -- so a floor-one band that floored at 1 could not reach it, and the
+    -- gear a first floor is most obviously for would have been the one thing it never paid.
+    return math.max(0, centre - Spoils.RANK_SPREAD), centre, centre
 end
 
 -- Draw one rank out of the band, weighted toward its centre.
@@ -625,7 +695,7 @@ end
 local function anyAtRank(r, player)
     local pool = {}
     for id, def in pairs(Item.defs) do
-        if not def.bound and not def.noSteal and def.type ~= "consumable" and def.dropTier
+        if not def.bound and not def.noSteal and def.type ~= "consumable" and def.unlockLevel
             and Spoils.depthOf(def) == r and not Spoils.companyOwns(player, id) then
             pool[#pool + 1] = { id = id, weight = 1 }
         end
@@ -885,10 +955,18 @@ Spoils.SEALED_PITY = 1.0
 Spoils.SEALED_ABOVE = 2.5
 
 -- The same reach read on the RANK ladder instead of on gold: how many rungs above the floor's own tier a
--- sealed piece may come from. Two, which is what SEALED_ABOVE already buys in practice -- floor one's
--- band is 100 and its ceiling 250, and the price ladder puts rank 2 at 245 -- so this is the gold bound
--- said in the unit that can also see a class gate, not a second, tighter rule.
-Spoils.SEALED_REACH = 2
+-- sealed piece may come from. Two per eight rungs of ladder, which is what SEALED_ABOVE already bought
+-- in practice on the eight-rung shelf -- floor one's band was 100 and its ceiling 250, and the price
+-- ladder put rank 2 at 245 -- so this is the gold bound said in the unit that can also see a class
+-- gate, not a second, tighter rule.
+--
+-- A SHARE FOR THE SAME REASON RANK_SPREAD IS ONE, and here the arithmetic is explicit: Grade.priceFor
+-- spans what it always spanned end to end and lets the rung count decide the size of each step, so
+-- doubling the rungs halves the gold two of them buy. Left at a flat 2 the reach bought half the
+-- headroom its own comment claims, and the measured result was the feature going silent -- 400 chests
+-- on floor nine sealed nothing at all.
+Spoils.SEALED_REACH = math.max(1,
+    math.floor(2 * require("models.class").CLASS_LEVEL_CAP / Spoils.LADDER_REF + 0.5))
 
 -- WHAT A SEALED ROOM DRAWS FROM, and it is a SLICE rather than a taller ceiling.
 --

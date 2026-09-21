@@ -22,7 +22,7 @@ return {
     tags = { "dark", "magical" },
     class = "shaman",
     price = 495,
-    unlockQuests = 5,
+    unlockLevel = 9,
     activeAbility = {
         target = "self",
         range = 0,      -- a self-cast offers no reach to choose; the footprint says which tiles

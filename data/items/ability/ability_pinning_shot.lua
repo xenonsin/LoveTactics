@@ -12,7 +12,7 @@ return {
     tags = { "pierce", "physical" },
     class = "hunter",
     price = 410,
-    unlockQuests = 4,
+    unlockLevel = 8,
     activeAbility = {
         target = "enemy",
         range = 4,

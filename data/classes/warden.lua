@@ -8,5 +8,5 @@ return {
     name    = "Warden",
     description = "Marks a zone and holds it. Crossing the line inflicts Root or Halt on whoever walked in.",
     exemplar = "character_warden", -- NEW, pending
-    requires = { knight = 8, hunter = 8 },
+    requires = { knight = 15, hunter = 15 },
 }

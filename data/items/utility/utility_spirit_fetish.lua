@@ -13,8 +13,7 @@ return {
     type = "utility",
     tags = { "charm", "morale" },
     class = "shaman", -- hunter x mage; the Spirit-totems mechanic's first stock
-    unlockQuests = 5,
-    dropTier = 4,
+    unlockLevel = 6,
     incense = { hazard = "hazard_rally", radius = 1, amount = Curve.ramp(2, 12) },
     -- what it gives the line it keeps a share of
     bonus = { magicDefense = 2 },

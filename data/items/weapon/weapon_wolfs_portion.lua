@@ -29,7 +29,7 @@ return {
     type = "weapon",
     tags = { "axe", "slash", "physical", "melee" },
     class = "fighter",
-    dropTier = 6,
+    unlockLevel = 10,
     activeAbility = {
         target = "tile",
         allowOccupied = true,
@@ -38,7 +38,7 @@ return {
         speed = 4,
         cost = { stat = "stamina", amount = 11 },
         -- Well ABOVE the iron axe's -- this is the lone-target number, and it is what the weapon is for.
-        damage = Curve.ramp(5, 18),
+        damage = Curve.ramp(12, 25),
         aoe = { shape = "front", width = 3 },
         effect = function(fx)
             local caught = fx.aoeUnits()

@@ -11,7 +11,7 @@ return {
     tags = { "utility" },
     class = "warden", -- knight x hunter; the Lockdown-zone mechanic's first stock
     price = 165,
-    unlockQuests = 1,
+    unlockLevel = 1,
     activeAbility = {
         target = "tile",
         range = 4,

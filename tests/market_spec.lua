@@ -330,7 +330,7 @@ return {
             -- both halves are asserted, so this case fails if the door goes back to asking the shelf.
             local offCounter
             for id, def in pairs(Item.defs) do
-                if (def.price or def.dropTier) and not Market.isStaple(def) then
+                if (def.price or def.unlockLevel) and not Market.isStaple(def) then
                     offCounter = offCounter and (id < offCounter and id or offCounter) or id
                 end
             end
@@ -356,12 +356,51 @@ return {
     },
     {
         -- THE CALLER. Market.hasUnread with no caller is the same failure this file already pins for
-        -- Market.stock: a model that is correct and unasked. The city's plate is the only reader.
-        name = "the city asks the market's own counter for its dot",
+        -- Market.stock: a model that is correct and unasked.
+        --
+        -- ASKED OF THE MARK ITSELF rather than of the city's source text, which is what this case used
+        -- to read. The call moved when the plate and the desk line were folded into one question
+        -- (models/offer.lua's Offer.news -- the door out on the plaza is the OR over its rooms and the
+        -- counter's own desk marks the one room the news is in), and a spec that greps states/hub.lua
+        -- for the name of a function reddens on a move that changes nothing and stays green on a
+        -- rewrite that asks the wrong question from the same file.
+        --
+        -- BOTH HALVES, because the whole point of this door is which question it asks: a rack that
+        -- opened while the player was away raises the mark, and a marked ware the counter is not
+        -- standing does not -- even though the shelf question (Vendor.sells, which `sellsAll` answers
+        -- yes to for every ware in the game) says yes to it.
+        name = "the market's room is marked off its own counter, not off the shelf",
         fn = function()
+            local Offer = require("models.offer")
+            local room = { answer = "counter", panel = "shop", vendor = Market.ID, open = true }
+
+            local p = Player.new()
+            assert(not Offer.news(p, room), "a fresh counter has nothing waiting on it")
+
+            recruit(p, "bastion")
+            assert(Market.markOpened(p), "joining a companion opens a rack")
+            assert(Offer.news(p, room), "a rack that opened while the player was away marks the room")
+
+            -- ...and a ware the counter does not stand cannot mark it, whatever the shelf says.
+            local off = Player.new()
+            local offCounter
+            for id, def in pairs(Item.defs) do
+                if (def.price or def.unlockLevel) and not Market.isStaple(def) then
+                    offCounter = offCounter and (id < offCounter and id or offCounter) or id
+                end
+            end
+            assert(offCounter, "the catalogue has a ware the counter does not stand")
+            Player.markNew(off, Player.NEW_STOCK, offCounter)
+            assert(Vendor.hasMarkedStock(Market.ID, off.newStock),
+                "the shelf question answers yes for it -- which is exactly why the room cannot ask it")
+            assert(not Offer.news(off, room),
+                offCounter .. " is not on the counter and must not mark the market's room")
+
+            -- AND THE CITY ASKS IT. One reader, named: the plate on the plaza is the OR over the rooms
+            -- behind a door, so a door that stopped asking is a model correct and unasked again.
             local src = assert(love.filesystem.read("states/hub.lua"), "states/hub.lua is readable")
-            assert(src:find("Market.hasUnread", 1, true),
-                "the hub's badge must ask the counter, not the shelf, for the market's dot")
+            assert(src:find("Offer.anyNews", 1, true),
+                "the city's plate must ask the rooms behind the door what is waiting in them")
         end,
     },
     {

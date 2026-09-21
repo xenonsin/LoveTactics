@@ -65,13 +65,13 @@ is one way of *keeping* that rule, and an item can wear the class without wearin
 did: a demon grunt's Brimstone, the Champion's Cleave and Roar, Ira's signature blow, Gula's knife,
 the bare fist every unit falls back to. A body's own grid feeds the drop pool directly
 (`models/spoils.lua`'s `add`), so **a boss's whole rule was a thing you could be handed for killing
-her.** Creature kit now carries no axis at all — no `price`, no `dropTier` — which shuts the Market
+her.** Creature kit now carries no axis at all — no `price`, no `unlockLevel` — which shuts the Market
 counter as well as the pool, since `sellsAll` means that shelf asks no class question.
 
 > **It used to be enforced by accident, and the accident expired.** This paragraph read "`spoils.lua`
 > uses `price` as the shoppable marker, so an unpriced natural weapon can never enter the drop pool."
 > That was true right up until the shelf recut, when `tools/drop_tier.lua` began handing every unpriced
-> item a `dropTier` — and the pool admits *either* a price or a tier. All 92 natural weapons in the game
+> item a `unlockLevel` — and the pool admits *either* a price or a tier. All 92 natural weapons in the game
 > were in the drop table from that day, silently: a wolf's fangs could fall out of a fight and be carried
 > home. Nothing failed, because the only thing asserting the rule was this sentence.
 >

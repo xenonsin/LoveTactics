@@ -21,7 +21,7 @@ return {
     tags = { "impact" },
     class = "champion", -- fighter x knight; the Riposte-wall mechanic's first stock
     price = 165,
-    unlockQuests = 1,
+    unlockLevel = 2,
     activeAbility = {
         target = "self",
         range = 0,

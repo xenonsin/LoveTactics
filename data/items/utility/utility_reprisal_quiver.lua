@@ -11,8 +11,7 @@ return {
     type = "utility",
     tags = { "quiver" },
     class = "hunter",
-    unlockQuests = 1,
-    dropTier = 5,
+    unlockLevel = 8,
     traits = { "trait_ranged_counter" },
     -- an arrow back is an arrow
     bonus = { damage = 2 },

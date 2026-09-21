@@ -269,13 +269,13 @@ Two things about that belong in *this* file, because they are shelf rules rather
   `consumable_witchlight_flare` went to rogue in the same pass, on the argument that greed owns
   the hiding the flare answers, and has since moved to **alchemist**: a twist of ground glass thrown
   once to leave a hazard on the floor is a thing a house brews, and the mixing bench beat the
-  nice line about a house selling the counter to its own trick. All five sit at `unlockQuests = 0`,
+  nice line about a house selling the counter to its own trick. All five sit at `unlockLevel = 0`,
   because availability from the first visit was the one thing the general store was really providing.
 - **The potion resale is closed, and that was a hole in a ladder.** A general store ignores
-  `unlockQuests` by design, so a Panacea gated at ten alchemist quests was on the grocer's counter from
+  `unlockLevel` by design, so a Panacea gated at ten alchemist quests was on the grocer's counter from
   the first visit: the gate was authored, displayed, and walkable around by shopping next door. A potion
   is now sold by the house that brews it and nowhere else — which is why `consumable_healing_potion`
-  dropped to `unlockQuests = 0`. Its gate had only ever decided *which door* a new player bought their
+  dropped to `unlockLevel = 0`. Its gate had only ever decided *which door* a new player bought their
   first heal through, never whether they could.
 
 `tests/class_spec.lua` skips a `sells = false` vendor in its family-cluster sweep, and
@@ -406,6 +406,46 @@ names a price for a thing it never describes.
   parents have no subclass yet is unauthorable — its gate can never be satisfied, which is the build
   order the tree enforces on itself.
 
+### The unlock ladder
+
+**One rung, one discipline, from level 3 to the cap.** A gate is a class level (`requires` in
+`data/classes/*.lua`) and the ladder it is quoted on is the same 0..`Class.CLASS_LEVEL_CAP` ladder
+everything else in the game is quoted on — fifteen rungs, a floor and a quarter of committed play
+each (`Class.CLASS_LEVEL_STEP`; the surcharge over a measured floor is what a re-walkable floor
+costs, since this rift is a place and floor three is open for the rest of the playthrough). Every
+house hands over exactly one path per rung it speaks on, starting at 3 and running to the bottom:
+
+| | 3 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| **Alchemist** | Bombardier | Poisoner | | | Apothecary | Plague Knight | Artificer | | Herbalist | | Saboteur | Warbrewer |
+| **Fighter** | Warlord | Barbarian | Crusader | | Champion | | Duelist | Skirmisher | Battlemage | | | Warbrewer |
+| **Hunter** | Beastmaster | Druid | | Trapper | Poacher | Shaman | | Skirmisher | Herbalist | Totemist | | Warden |
+| **Knight** | Bulwark | Sentinel | | | Champion | Plague Knight | | Paladin | Vanguard | Spellbreaker | | Warden |
+| **Mage** | Elementalist | Necromancer | | Summoner | | Shaman | Artificer | Ninja | Battlemage | Spellbreaker | | Theurge |
+| **Priest** | Exorcist | Monk | Crusader | | Apothecary | Inquisitor | | Paladin | | Totemist | | Theurge |
+| **Rogue** | Thief | Assassin | | Mammonite | Poacher | Inquisitor | Duelist | Ninja | Vanguard | | Saboteur | |
+
+**The subclasses are 3, 5 and 7** — a house's own deepening, priced in its own house — and **the
+crossings run 6 to 15**, because a crossing asks a rung of two houses at once and is the more
+expensive thing by construction.
+
+**IT WAS SIX RUNGS OF FIFTEEN, AND IT FINISHED ON TWELVE.** The gates were authored against an
+eight-rung ladder and never re-cut when the cap moved to fifteen (`Class.CLASS_LEVEL_CAP`, the floor
+count). Everything sat on 3, 4, 6, 8, 10 or 12: the Crucible opened three crossings at level 12 and
+the last three levels of the game opened nothing, on every shelf. Two failures in one shape — a rung
+that hands over three paths is a reward the player cannot read as one thing, and the climb's last
+third paid nothing at all.
+
+**WHY ONE PER RUNG IS EVEN POSSIBLE**, rather than a target that has to be compromised somewhere: the
+21 crossings are the edges of a complete graph on the seven houses, so asking that no house meet the
+same rung twice is asking for a **proper edge colouring**, which exists. The one thing it cannot give
+is a top rung to all seven at once — an edge is shared two ways, so six houses end at 15 and one (the
+Undercroft, whose shelf is the densest) ends at 14.
+
+**A re-cut of the cap owes a re-spread.** There is no tool for it; `tests/class_ladder_spec.lua`
+derives both halves of the rule from `SUBCLASS_GATE_FLOOR` and `Class.CLASS_LEVEL_CAP`, so moving the
+cap reddens the suite rather than quietly leaving the bottom of the ladder bare.
+
 **Every discipline has an exemplar** — a character built as that discipline (their kit *is* its items),
 met in the quest that unlocks it. You do not read that a Ninja fuses two shelves; you watch one do it,
 then get to build it. Disposition varies (boss, mentor, recruit); exemplars reuse the roster where a
@@ -482,7 +522,7 @@ Warden items, so moving it would strip a parent shelf bare.
 
 ~~**A discipline consumable never wears the `potion` tag.**~~ **Moot, and kept because the shape of the
 bug is worth remembering.** The Cafe used to resell anything in its `stockTags` and, as a general store,
-ignored `unlockQuests` entirely — so a gated draught tagged `potion` sat on the grocer's shelf from the
+ignored `unlockLevel` entirely — so a gated draught tagged `potion` sat on the grocer's shelf from the
 first visit: the gate authored, displayed, and buyable around. Three discipline consumables tripped it
 and `tests/progression_spec.lua` caught them. The resale is gone (see *There is no general store*
 above), so the tag is free again. The lesson that outlives it is the general one: **a second shelf that
@@ -728,7 +768,7 @@ Recorded here so it stays a decision rather than drift:
 - ~~**`repRank` is misnamed, and standing is still points.**~~ **Done.** Standing is now literally a
   **count of the completed quests a vendor sponsors** (`Quest.sponsorProgress`); there is no reputation
   score and no rank titles. Each item names how many of the vendor's quests must be finished before it
-  is on sale (`unlockQuests`, on the item, default 0). The shop shows "Quests Completed: N" in place of
+  is on sale (`unlockLevel`, on the item, default 0). The shop shows "Quests Completed: N" in place of
   the old rank name, and each locked row says how many more of the house's quests (or which discipline
   path) unlock it. The waves open at `Vendor.TIERS = { 0, 3, 6, 10 }`, which also caps the
   ability/recipe upgrade bench. See *The ten slots* in [story.md](story.md).
@@ -760,7 +800,7 @@ Kept here rather than deleted, because what a debt looked like when it was paid 
 
 1. Pick the shelf from **The contract**, and use a keyword that shelf owns. If you cannot name one,
    you have the wrong shelf — or a `+n`, which the forge already sells.
-2. Set `class`, `price` and `unlockQuests` (how many of the vendor's quests unlock it; 0 = opening
+2. Set `class`, `price` and `unlockLevel` (how many of the vendor's quests unlock it; 0 = opening
    shelf). A `price` with no `class` is unbuyable dead data and fails the
    build (`tests/progression_spec.lua`). Stock is *derived, not authored*: the right `class` is all it
    takes to put it on that vendor's shelf.

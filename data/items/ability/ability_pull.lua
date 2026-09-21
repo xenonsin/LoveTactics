@@ -17,7 +17,7 @@ return {
     type = "ability",
     class = "bulwark",
     price = 575,
-    unlockQuests = 6,
+    unlockLevel = 11,
     tags = { "impact", "physical" },
     activeAbility = {
         target = "tile",       -- a tile in reach, so what is hauled in may be a body or furniture

@@ -22,8 +22,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "apothecary",
-    unlockQuests = 4,
-    dropTier = 3,
+    unlockLevel = 4,
     traits = { "trait_shared_ledger" },
     -- your guard, lent to whoever you mend
     bonus = { magicDefense = 2 },

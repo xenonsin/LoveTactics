@@ -266,7 +266,7 @@ return {
                 -- that family has no priced row at all and should not. What a new company is owed is a
                 -- weapon per HOUSE, which is a different promise kept in a different place
                 -- (tests/class_spec, and the floor report in tools/drop_tier.lua).
-                -- A FOUND WEAPON KEEPS BOTH ITS `class` AND ITS `unlockQuests`. The class is what a
+                -- A FOUND WEAPON KEEPS BOTH ITS `class` AND ITS `unlockLevel`. The class is what a
                 -- strike tallies toward for growth; the rung is its grade rank, which is what
                 -- models/balance.lua measures its magnitude against. This used to forbid the rung on
                 -- the reasoning that a shelf gate with no price is dead data -- true while the rung was
@@ -296,7 +296,7 @@ return {
             local Class = require("models.class")
             local top = Class.CLASS_LEVEL_CAP
             for id, def in pairs(Item.defs) do
-                local gate = def.unlockQuests or 0
+                local gate = def.unlockLevel or 0
                 assert(gate <= top,
                     id .. " is gated at rung " .. gate .. ", above the ladder's top of " .. top)
             end

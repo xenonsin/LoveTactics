@@ -21,10 +21,10 @@ return {
 
     script = {
         { "undercroft", "Everything on this floor belonged to somebody else once. Some of it twice.", tag = 1 },
-        { "undercroft", "Which pile?", tag = 2, id = "desk", choices = {
-            { "Whatever came up the stair today.", tag = 3, answer = "counter", when = { offer = "counter" } },
-            { "Your own shelf.", tag = 4, answer = "shelf", when = { offer = "shelf" } },
-            { "I am only passing.", tag = 5, answer = "leave" },
+        { "undercroft", "So what is it you need?", tag = 2, id = "desk", choices = {
+            { "Go to market", tag = 3, answer = "counter", when = { offer = "counter" } },
+            { "Visit rogue class trainer", tag = 4, answer = "shelf", when = { offer = "shelf" } },
+            { "Leave", tag = 5, answer = "leave" },
         } },
     },
 }

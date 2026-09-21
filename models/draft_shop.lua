@@ -12,7 +12,7 @@
 --
 -- WHAT A ROUND OPENS IS A QUEST GATE. The draft has no quest line, so its round stands in for one: round
 -- r offers what a campaign player would have unlocked by their r-th quest with a house, read off each
--- item's own `unlockQuests` (DraftShop.gearUnlockCap). The two modes therefore hand you the same gear in
+-- item's own `unlockLevel` (DraftShop.gearUnlockCap). The two modes therefore hand you the same gear in
 -- the same order, and a piece is early or late here for the reason it is early or late there.
 --
 -- The roll is DETERMINISTIC from the run's seed, its round, and how many times it has been rerolled
@@ -74,7 +74,7 @@ end
 -- How deep into a house's quest line the shelf reaches in `round` -- the draft's power gate, and the
 -- ONE thing that decides whether a piece is tier-appropriate yet. A round of the draft stands in for a
 -- quest of the campaign: round r offers what a campaign player would have unlocked by their r-th quest
--- with a house, reading each item's own `unlockQuests` (models/vendor.lua -- the number of that
+-- with a house, reading each item's own `unlockLevel` (models/vendor.lua -- the number of that
 -- sponsor's quests you must finish before it is on sale).
 --
 -- It gates on AVAILABILITY, not on price, and the difference is not cosmetic. The gate used to be a
@@ -83,7 +83,7 @@ end
 -- of the ~470 priced items sat under the old round-1 cap of 70g and eight of them were consumables, so
 -- the opening rounds of a draft were a potion stall: consumables were 67%/57%/66%/60% of everything
 -- rounds 1-4 could legally show, across the entire build phase of the run. On the quest gate the same
--- rounds run 27%/27%/23%/20%, because `unlockQuests` is authored as a TIER and every gate holds a
+-- rounds run 27%/27%/23%/20%, because `unlockLevel` is authored as a TIER and every gate holds a
 -- mix -- gate 0 alone is one iron weapon per class, chainmail, Heal, the bolts, and a few potions.
 --
 -- Rounds are 1-based and quest gates 0-based, so round 1 opens gates 0 AND 1; after that it is one gate
@@ -94,8 +94,9 @@ end
 
 -- An item's RANK on the campaign's ladder, which is what the draft's rounds are cut against.
 --
--- Through Balance.slotOf rather than off `unlockQuests` directly, because after the shelf recut most
--- gear has no rung at all -- it is found in the rift and carries a `dropTier` instead. Read bare, every
+-- Through Balance.slotOf rather than off `unlockLevel` directly, because after the shelf recut most
+-- gear carries no price -- it is found in the rift -- and is ranked by `unlockLevel` like everything
+-- else. Read bare, every
 -- weapon, utility and piece of armor in the game would answer 0 and the first round of a draft would
 -- deal from the whole catalogue.
 local function unlockOf(id)

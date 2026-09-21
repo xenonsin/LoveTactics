@@ -9,10 +9,10 @@
 -- the grades move (see M.runRecut for the rule, and docs/shelf.md for the axis).
 --
 -- HALF THE RECUT WAS REVERSED, AND IT IS NOT THE HALF THIS FILE WRITES. The pricing decision stands:
--- above a house's opener nothing carries an authored `price`, and everything below writes a `dropTier`
+-- above a house's opener nothing carries an authored `price`, and everything below writes a `unlockLevel`
 -- instead. What went with it at the time was a DISCOVERY GATE -- no counter would deal a found ware
 -- until the company had carried one out -- and that is gone (docs/shelf.md). A found ware is dealt at
--- its class rung now, and the rung is read off the very number this pass writes: `dropTier - 1`, the
+-- its class rung now, and the rung is read off the very number this pass writes: `unlockLevel - 1`, the
 -- same figure Vendor.foundPrice already quoted it at.
 --
 -- WHICH RAISES THE STAKES ON `apply` and is the one thing to know before re-running it. A tier used to
@@ -31,7 +31,7 @@
 -- (docs/shelf.md); an unpriced one has no slot to sit on, so its grade sets the DEPTH at which the rift
 -- will give it up instead. Same instrument, same ranking, a different axis to spread it along.
 --
--- WHAT THIS PASS DOES NOT DECIDE, AND MUST NOT. A `dropTier` is the WORTH axis -- what a thing is
+-- WHAT THIS PASS DOES NOT DECIDE, AND MUST NOT. A `unlockLevel` is the WORTH axis -- what a thing is
 -- graded at, and (through Vendor.foundPrice) what a counter charges for one once you have carried it
 -- out. Whether the player is ALLOWED it is a second question, answered at roll time by Spoils.depthOf
 -- off the class's own gate, so a Warden find is refused floor one whatever it grades. Folding that
@@ -114,7 +114,7 @@ function M.plan()
     local n, top = #ranked, tiers()
     for i, row in ipairs(ranked) do
         row.tier = n > 1 and (1 + math.floor((i - 1) * (top - 1) / (n - 1) + 0.5)) or 1
-        row.was = Item.defs[row.id].dropTier
+        row.was = Item.defs[row.id].unlockLevel
     end
     return ranked
 end
@@ -139,7 +139,7 @@ end
 -- in the rift or not at all, and reaches a counter only once the company has carried one out.
 --
 -- THE FLOOR IS THE RUNG, NOT THE WORD "IRON". Nine of the ten iron weapons are priced at
--- unlockQuests 0 -- but two houses have no iron anything, and their rung 0 is a censer (priest) and a
+-- unlockLevel 0 -- but two houses have no iron anything, and their rung 0 is a censer (priest) and a
 -- lancet (alchemist). Cutting on the name would leave those two classes with no purchasable weapon in
 -- the game, which is not a floor, it is a hole. Cutting on the rung covers all seven houses exactly
 -- once and is DERIVED, so a later re-cut of the ladder moves it rather than stranding a hand-written
@@ -161,7 +161,7 @@ local ALWAYS_STOCKED = {
 local function staysPriced(def, id)
     if ALWAYS_STOCKED[id] then return true end
     if def.type == "ability" or def.type == "consumable" then return true end
-    if def.type == "weapon" and (def.unlockQuests or 0) == 0 then return true end
+    if def.type == "weapon" and (def.unlockLevel or 0) == 0 then return true end
     return false
 end
 
@@ -181,7 +181,7 @@ end
 
 -- Take `price` off one blueprint -- and ONLY `price`.
 --
--- `unlockQuests` STAYS, and getting that wrong once is worth the paragraph. It looks like shelf
+-- `unlockLevel` STAYS, and getting that wrong once is worth the paragraph. It looks like shelf
 -- furniture: docs/shelf.md says the rung means nothing on a ware with no price, so the first cut of
 -- this pass took both. But the rung is not only a gate -- it IS the item's grade rank, and that is what
 -- models/balance.lua reads as its POWER LEVEL (Balance.slotOf, Balance.magnitudeVerdict). Strip it and
@@ -232,7 +232,7 @@ function M.runRecut(apply)
         for _, id in ipairs(byClass[cls]) do
             local def = Item.defs[id]
             print(string.format("      %-44s %-9s rung %d  %5dg", id, def.type or "-",
-                def.unlockQuests or 0, def.price or 0))
+                def.unlockLevel or 0, def.price or 0))
         end
     end
 
@@ -270,8 +270,8 @@ function M.runRecut(apply)
     end
 
     if not apply then
-        print("\nReport only -- nothing was written. Run `drop-tier recut apply` to strip price/unlockQuests,")
-        print("then `drop-tier apply` to spread dropTier over the enlarged set.")
+        print("\nReport only -- nothing was written. Run `drop-tier recut apply` to strip price/unlockLevel,")
+        print("then `drop-tier apply` to spread unlockLevel over the enlarged set.")
         return
     end
 
@@ -282,7 +282,7 @@ function M.runRecut(apply)
     end
     print(string.format("\n%d blueprint(s) stripped.", wrote))
     if #failed > 0 then print("could not write: " .. table.concat(failed, ", ")) end
-    print("Now run `drop-tier apply` to give them all a dropTier.")
+    print("Now run `drop-tier apply` to give them all an unlockLevel.")
 end
 
 local function rewrite(id, tier)
@@ -293,10 +293,10 @@ local function rewrite(id, tier)
     local src = f:read("*a")
     f:close()
 
-    local line = "    dropTier = " .. tier .. ","
+    local line = "    unlockLevel = " .. tier .. ","
     local out
-    if src:match("\n%s*dropTier%s*=") then
-        out = src:gsub("\n%s*dropTier%s*=[^\n]*", "\n" .. line, 1)
+    if src:match("\n%s*unlockLevel%s*=") then
+        out = src:gsub("\n%s*unlockLevel%s*=[^\n]*", "\n" .. line, 1)
     else
         -- Seated just after `class`, which is the field it is the counterpart of: one says whose shelf
         -- this would be on, the other says how deep the rift keeps it instead.
@@ -327,7 +327,7 @@ function M.run(args)
     end
 
     if not apply then
-        print("\nReport only -- nothing was written. Run `drop-tier apply` to write dropTier.")
+        print("\nReport only -- nothing was written. Run `drop-tier apply` to write unlockLevel.")
         return
     end
 

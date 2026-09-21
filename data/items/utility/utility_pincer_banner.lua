@@ -18,8 +18,7 @@ return {
     type = "utility",
     tags = { "banner" },
     class = "warlord", -- a banner is a Paladin or Warlord object (docs/classes.md), whatever it delivers
-    unlockQuests = 5,
-    dropTier = 5,
+    unlockLevel = 8,
     traits = { "trait_follow_up" },
     -- a second swing off an ally's, and swings are its unit
     bonus = { damage = 2 },
