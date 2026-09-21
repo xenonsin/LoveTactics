@@ -101,13 +101,17 @@ end
 -- the cells of one item's row
 -- ---------------------------------------------------------------------------
 
--- Name, what it does, and what it says about itself. One cell rather than three columns because the
--- three are read as a unit and a row that splits them puts a paragraph of prose in the middle of a
--- table of numbers.
+-- Name, what it does, and the id that addresses it. One cell rather than three columns because the
+-- three are read as a unit and a row that splits them puts prose in the middle of a table of numbers.
+--
+-- `flavor` IS NOT ON IT, and that is a deliberate cut rather than an oversight. The line is authored
+-- for the tooltip, where one item is being looked at and a sentence of voice is the reward for
+-- stopping on it; in a table of forty rows it is forty sentences of voice between the reader and the
+-- number they came for, and it triples the height of every row to say nothing a shelf decision turns
+-- on. It stays on the blueprint and stays in the game. This page is the lookup, not the reading.
 local function itemCell(def, id)
     local parts = { "**" .. cell(def.name or id) .. "**" }
     if def.description then parts[#parts + 1] = cell(def.description) end
-    if def.flavor then parts[#parts + 1] = "*" .. cell(def.flavor) .. "*" end
     parts[#parts + 1] = "`" .. id .. "`"
     return table.concat(parts, "<br>")
 end
