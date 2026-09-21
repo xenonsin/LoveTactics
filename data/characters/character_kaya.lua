@@ -26,7 +26,7 @@
 -- because there is nothing on her to eat -- is deferred with the general's devour mechanic it answers.
 return {
     name = "Kaya",
-    kind = "humanoid",
+    race = "human",
     tier = 2,
     sprite = "assets/chars/kaya.png",
     portrait = "assets/portraits/kaya.png", -- large VN portrait for conversations (falls back if missing)

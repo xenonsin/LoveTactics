@@ -10,7 +10,7 @@
 -- Tier 1's band is 1-30 health (Balance.HEALTH_BANDS). Bottom of it.
 return {
     name = "Petal-Drift",
-    kind = "beast",
+    race = "beast",
     tier = 1,
     sprite = "assets/chars/petal_drift.png",
     stats = {

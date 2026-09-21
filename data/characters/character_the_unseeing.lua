@@ -25,7 +25,7 @@
 -- nothing in those eyes to take.
 return {
     name = "The Unseeing",
-    kind = "beast",
+    race = "beast",
     tier = 3,
     boss = true, -- the fight is it: off the execute and Charm tables (tests/charm_balance_spec.lua)
     sprite = "assets/chars/the_unseeing.png",

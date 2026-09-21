@@ -2,7 +2,7 @@
 -- finish, return. Met as a killer sent for the player, a boss. Kit from data/classes/assassin.lua.
 return {
     name = "Assassin",
-    kind = "humanoid",
+    race = "human",
     tier = 3,
     sprite = "assets/chars/assassin.png",
     boss = true,

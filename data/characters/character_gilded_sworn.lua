@@ -8,7 +8,7 @@
 -- blueprint, which is the correct place for a formation body's power to live.
 return {
     name = "Gilded Sworn",
-    kind = "construct",
+    race = "construct",
     tier = 2,
     sprite = "assets/chars/gilded_sworn.png",
     stats = {

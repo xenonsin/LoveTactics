@@ -4,7 +4,7 @@
 -- is authored here with the full Bulwark kit. Kit from data/classes/bulwark.lua.
 return {
     name = "Bulwark",
-    kind = "humanoid",
+    race = "human",
     tier = 3,
     sprite = "assets/chars/bulwark.png",
     class = "knight",

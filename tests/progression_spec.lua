@@ -209,11 +209,29 @@ return {
                 local bp = Item.defs[entry.id]
                 local onShelf = Class.descendsFrom(bp.class, "rogue")
                 assert(onShelf, entry.id .. " is on the rogue shelf without being a rogue item or a rogue-discipline guest")
-                -- A MONSTER DROP IS THE ONE ROW WITH NO PRICE, and it is on the rack to be READ
-                -- rather than bought (models/vendor.lua's lockReason). Everything else a counter
-                -- shows, it is willing to deal.
+                -- A MONSTER DROP IS ON THE RACK TO BE READ rather than bought (models/vendor.lua's
+                -- lockReason), and there are TWO ways to be one now. They differ at the sell desk, not
+                -- here, which is why this case has to split them:
+                --
+                --   unstocked   there is no market for it in either direction. Vendor.foundPrice
+                --               answers nil, so the row quotes nothing at all -- a boar's hide is worth
+                --               nothing to anybody in the city because nobody knows what it is.
+                --   dropOnly    the city does not stock it, but yours is worth something. It has no
+                --               `price` either (the shelf recut's law), so the row quotes what its
+                --               DEPTH implies, exactly as every other found ware does -- and sells
+                --               back at half of it.
+                --
+                -- Both are refused at the counter, which is the thing this loop is actually about.
                 if entry.lockReason == "monster drop" then
-                    assert(not entry.price, entry.id .. " is a trophy and must quote no price")
+                    local bp2 = Item.defs[entry.id]
+                    if bp2.unstocked then
+                        assert(not entry.price, entry.id .. " is a trophy and must quote no price")
+                    else
+                        assert(bp2.dropOnly, entry.id .. " is shut as a monster drop and is neither "
+                            .. "`unstocked` nor `dropOnly` -- those are the only two ways to be one")
+                        assert(entry.price, entry.id .. " is drop-only and should still quote what "
+                            .. "its depth implies: it is not merchandise, but it is not worthless")
+                    end
                 else
                     assert(entry.price, entry.id .. " is for sale with no price")
                 end

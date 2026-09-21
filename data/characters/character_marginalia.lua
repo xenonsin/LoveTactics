@@ -18,7 +18,7 @@
 -- and Charm tables. Health sits between its circle's line body and its general.
 return {
     name = "Marginalia",
-    kind = "humanoid",
+    race = "human",
     tier = 4,
     sprite = "assets/chars/marginalia.png",
     referenceLevel = 13,

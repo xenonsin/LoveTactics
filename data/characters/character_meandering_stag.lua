@@ -45,7 +45,7 @@
 -- built to make ambiguous, and a Coup de Grace would skip the threshold outright.
 return {
     name = "Meandering Stag",
-    kind = "beast",
+    race = "beast",
     tier = 3,
     boss = true, -- see the header: off the execute and Charm tables (tests/charm_balance_spec.lua)
     sprite = "assets/chars/meandering_stag.png",

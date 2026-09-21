@@ -30,7 +30,7 @@
 -- asked to keep it alive.
 return {
     name = "Reagent",
-    kind = "construct",
+    race = "construct",
     tier = 0,
     archetype = "holdGround",
     sprite = "assets/chars/homunculus_discard.png",

@@ -7,7 +7,7 @@
 -- not a companion) -- it falls back to its composed token.
 return {
     name = "Ninja",
-    kind = "humanoid",
+    race = "human",
     tier = 3,
     sprite = "assets/chars/ninja.png",
     boss = true, -- a boss objective: immune to execute (Coup de Grace) and to Charm

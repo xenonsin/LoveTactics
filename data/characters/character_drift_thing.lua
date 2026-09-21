@@ -7,7 +7,7 @@
 -- it does not have to.
 return {
     name = "Drift-Thing",
-    kind = "elemental",
+    race = "elemental",
     tier = 2,
     sprite = "assets/chars/drift_thing.png",
     stats = {

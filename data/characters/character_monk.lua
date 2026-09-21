@@ -4,7 +4,7 @@
 -- data/classes/monk.lua.
 return {
     name = "Monk",
-    kind = "humanoid",
+    race = "human",
     tier = 3,
     sprite = "assets/chars/monk.png",
     class = "priest",

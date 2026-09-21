@@ -2,7 +2,7 @@
 -- chain-detonate. Met as a counterfeit-bomb runner, a boss. Kit from data/classes/bombardier.lua.
 return {
     name = "Bombardier",
-    kind = "humanoid",
+    race = "human",
     tier = 3,
     sprite = "assets/chars/bombardier.png",
     boss = true,

@@ -3,7 +3,7 @@
 -- (Poacher's Kris). Kit from data/classes/poacher.lua.
 return {
     name = "Poacher",
-    kind = "humanoid",
+    race = "human",
     tier = 2,
     sprite = "assets/chars/poacher.png",
     class = "rogue",

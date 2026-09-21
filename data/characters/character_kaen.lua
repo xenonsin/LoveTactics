@@ -4,7 +4,7 @@
 -- data/classes/ninja.lua.
 return {
     name = "Kaen",
-    kind = "humanoid",
+    race = "human",
     tier = 3,
     sprite = "assets/chars/kaen.png",
     boss = true,

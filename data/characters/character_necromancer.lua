@@ -2,7 +2,7 @@
 -- Corpse Burst. Met as an Adept of the inner circle, a boss. Kit from data/classes/necromancer.lua.
 return {
     name = "Necromancer",
-    kind = "humanoid",
+    race = "human",
     tier = 3,
     sprite = "assets/chars/necromancer.png",
     boss = true,

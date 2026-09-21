@@ -6,7 +6,7 @@
 -- VN portrait (a template, not a companion) -- it falls back to its composed token.
 return {
     name = "Elementalist",
-    kind = "humanoid",
+    race = "human",
     tier = 2,
     sprite = "assets/chars/elementalist.png",
     class = "mage",

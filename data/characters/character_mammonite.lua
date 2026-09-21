@@ -35,7 +35,7 @@
 -- them, and the coat pays a defense bonus on top of the skim.
 return {
     name = "Mammonite",
-    kind = "humanoid",
+    race = "human",
     tier = 3,
     sprite = "assets/chars/mammonite.png",
     class = "rogue",

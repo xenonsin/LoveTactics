@@ -15,7 +15,7 @@
 -- stamina and no attack, and its defense is low -- straw does not turn a blade, it only occupies one.
 return {
     name = "Straw Sentry",
-    kind = "object",
+    race = "object",
     tier = 0,
     sprite = "assets/chars/straw_sentry.png",
     stats = {

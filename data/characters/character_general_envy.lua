@@ -24,7 +24,7 @@
 -- Pall, Covet and Grudge. All are new work over what ships here.
 return {
     name = "Livia, the Unborn",
-    kind = "humanoid",
+    race = "human",
     tier = 4,
     -- WHAT LEVEL THESE NUMBERS WERE WRITTEN FOR. This body is authored as the fight it is at the end
     -- of its line, and models/growth.lua scales it DOWN toward the shallows rather than growing it up

@@ -19,7 +19,7 @@
 -- different threat from one that has to be shot four times.
 return {
     name = "Blightstake",
-    kind = "undead",
+    race = "undead",
     tier = 1,
     sprite = "assets/chars/blightstake.png",
     -- `guard` rather than `skirmish`: a stake with no movement must not be given a posture whose whole

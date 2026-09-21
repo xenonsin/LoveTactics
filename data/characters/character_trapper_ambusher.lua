@@ -7,7 +7,7 @@
 -- full trap kit; data/classes/trapper.lua's `exemplar` points here.
 return {
     name = "Ambusher",
-    kind = "humanoid",
+    race = "human",
     tier = 3,
     sprite = "assets/chars/trapper_ambusher.png",
     boss = true,

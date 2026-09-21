@@ -3,7 +3,7 @@
 -- is fighter for its steel, priest for the smite. Kit from data/classes/crusader.lua.
 return {
     name = "Crusader",
-    kind = "humanoid",
+    race = "human",
     tier = 3,
     sprite = "assets/chars/crusader.png",
     class = "fighter",

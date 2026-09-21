@@ -37,7 +37,7 @@
 -- party carrying four swords finds out -- one last time, expensively -- why it should have listened.
 return {
     name = "The Skeleton King",
-    kind = "undead",
+    race = "undead",
     tier = 4,
     boss = true,
     sprite = "assets/chars/the_skeleton_king.png",

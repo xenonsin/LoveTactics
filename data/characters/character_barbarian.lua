@@ -3,7 +3,7 @@
 -- dying. Kit drawn from the Barbarian shelf (data/classes/barbarian.lua).
 return {
     name = "Barbarian",
-    kind = "humanoid",
+    race = "human",
     tier = 3,
     sprite = "assets/chars/barbarian.png",
     boss = true,

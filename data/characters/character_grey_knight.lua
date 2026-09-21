@@ -21,7 +21,7 @@
 -- comment in data/quests/relief_column.lua.
 return {
     name = "Knight in Grey",
-    kind = "humanoid",
+    race = "human",
     tier = 2,
     sprite = "assets/chars/grey_knight.png",
     class = "knight",

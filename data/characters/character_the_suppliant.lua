@@ -19,7 +19,7 @@
 -- it off the execute and Charm tables.
 return {
     name = "The Suppliant",
-    kind = "demon",
+    race = "demon",
     tier = 4,
     sprite = "assets/chars/the_suppliant.png",
     referenceLevel = 13,

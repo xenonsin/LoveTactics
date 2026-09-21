@@ -200,7 +200,7 @@ return {
         end,
     },
     {
-        name = "exactly one armor sells a negative resist, and it is the wrath cuirass",
+        name = "only two armors sell a negative resist, and both argue for it",
         fn = function()
             -- A negative `resist` AMPLIFIES the hit (Combat.mitigatedDamage sums the term without a
             -- floor). The mechanic is old -- utility_demonic_essence carries holy = -8 so Demon Bane
@@ -217,11 +217,31 @@ return {
                     end
                 end
             end
+            -- TWO NOW, AND THE SECOND ONE EARNED ITS HEADER. armor_scale_hauberk is cut from naga
+            -- scale and takes lightning the way the thing it was cut from did (`lightning = -4`),
+            -- which is the honest reading of the faction it came off: they own the water, and the
+            -- water is what kills them. A company that puts on their armour inherits both halves.
+            --
+            -- The rule this list exists for is untouched: a wearable amplifier wants an argument
+            -- written down before it lands, not a quiet extra row. Both files have one, and the
+            -- hauberk's also says why no naga ever wears one -- the race already carries the same
+            -- line, and a body wearing both would sit at -8 and fold to a single bolt with nothing
+            -- saying why (data/items/armor/armor_scale_hauberk.lua, data/races/naga.lua).
+            -- Quoted keys rather than bare ones, and not for style: tests/item_coverage_spec.lua
+            -- counts an item as tested when some spec names it IN QUOTES, so a bare key here would
+            -- drop both of these off the coverage ratchet while still reading as if it named them.
+            local WEARABLE_AMPLIFIERS = {
+                ["armor_reckless_cuirass"] = true,
+                ["armor_scale_hauberk"] = true,
+            }
             table.sort(wearable)
-            assert(#wearable == 1 and wearable[1] == "armor_reckless_cuirass",
-                "exactly one ARMOR carries a negative resist; found " .. #wearable
-                    .. ": " .. table.concat(wearable, ", "))
-            assert(#all == 2, "and the only other one is the demon's own flesh; found " .. #all)
+            for _, id in ipairs(wearable) do
+                assert(WEARABLE_AMPLIFIERS[id], id .. " is a wearable negative resist and is not one of "
+                    .. "the two named here. Write the header first, then add the line.")
+            end
+            assert(#wearable == 2, "exactly two ARMORS carry a negative resist; found " .. #wearable
+                .. ": " .. table.concat(wearable, ", "))
+            assert(#all == 3, "and the only others are the demon's own flesh and the naga's; found " .. #all)
         end,
     },
 }

@@ -14,7 +14,7 @@
 -- two shelves, no overlap.
 return {
     name = "Raven",
-    kind = "beast",
+    race = "beast",
     tier = 1,
     sprite = "assets/chars/raven.png",
     stats = {

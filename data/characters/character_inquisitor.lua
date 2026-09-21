@@ -3,7 +3,7 @@
 -- Kit from data/classes/inquisitor.lua.
 return {
     name = "Inquisitor",
-    kind = "humanoid",
+    race = "human",
     tier = 3,
     sprite = "assets/chars/inquisitor.png",
     boss = true,

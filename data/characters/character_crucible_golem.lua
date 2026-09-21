@@ -19,7 +19,7 @@
 -- nothing to disarm it of and nothing to steal.
 return {
     name = "Crucible Golem",
-    kind = "construct",
+    race = "construct",
     tier = 2,
     sprite = "assets/chars/crucible_golem.png",
     stats = {

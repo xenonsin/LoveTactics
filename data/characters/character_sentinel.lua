@@ -4,7 +4,7 @@
 -- discipline exemplar is authored here with the full Sentinel kit. Kit from data/classes/sentinel.lua.
 return {
     name = "Sentinel",
-    kind = "humanoid",
+    race = "human",
     tier = 3,
     sprite = "assets/chars/sentinel.png",
     class = "knight",

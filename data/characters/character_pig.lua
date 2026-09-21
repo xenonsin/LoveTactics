@@ -17,7 +17,7 @@
 -- dangerous. Movement stays generous -- it can run, and running is the only thing left to it.
 return {
     name = "Pig",
-    kind = "beast",
+    race = "beast",
     tier = 0,
     sprite = "assets/chars/pig.png",
     -- Never scaled: the stats below are placeholders that nothing reads (models/transform.lua carries

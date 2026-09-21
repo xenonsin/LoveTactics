@@ -8,7 +8,7 @@
 -- the Anvil, and a line body that also escalated would make the escalation impossible to attribute.
 return {
     name = "Cinder-Kin",
-    kind = "demon",
+    race = "demon",
     tier = 2,
     sprite = "assets/chars/cinder_kin.png",
     stats = {

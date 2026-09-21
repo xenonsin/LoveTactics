@@ -4,7 +4,7 @@
 -- (Tests that use this body bare() its grid first, so the enriched kit below is safe.)
 return {
     name = "Champion",
-    kind = "humanoid",
+    race = "human",
     tier = 3,
     sprite = "assets/chars/champion.png",
     boss = true,

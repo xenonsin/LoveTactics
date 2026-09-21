@@ -44,7 +44,7 @@
 -- her standing, and her teeth, in the order depth can pay for them.
 return {
     name = "The White Wolf",
-    kind = "beast",
+    race = "beast",
     tier = 3,
     boss = true, -- see the header: off the execute and Charm tables
     sprite = "assets/chars/white_wolf.png",

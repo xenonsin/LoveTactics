@@ -2,7 +2,7 @@
 -- fence, a recruit/mentor. Kit from data/classes/thief.lua.
 return {
     name = "Thief",
-    kind = "humanoid",
+    race = "human",
     tier = 2,
     sprite = "assets/chars/thief.png",
     class = "rogue",

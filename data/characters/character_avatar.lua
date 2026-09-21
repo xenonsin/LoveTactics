@@ -74,7 +74,7 @@
 -- states/prologue.lua's begin).
 return {
     name = "Stranger",
-    kind = "humanoid",
+    race = "human",
     tier = 2,
     sprite = "assets/chars/avatar_1.png", -- default; overridden by the chosen body at creation
     portrait = "assets/portraits/avatar_1.png",

@@ -21,7 +21,7 @@
 -- scales on DEBUFFS rather than on raw damage; a mook with one sword cannot.
 return {
     name = "Bandit",
-    kind = "humanoid",
+    race = "human",
     tier = 2,
     sprite = "assets/chars/bandit.png",
     stats = {

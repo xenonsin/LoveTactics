@@ -7,7 +7,7 @@
 -- Undead, because the grove has been taking people for a long time and some of them are still up.
 return {
     name = "Bloom-Wraith",
-    kind = "undead",
+    race = "undead",
     tier = 2,
     sprite = "assets/chars/bloom_wraith.png",
     stats = {

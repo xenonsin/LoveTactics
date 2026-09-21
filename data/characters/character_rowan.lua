@@ -19,7 +19,7 @@
 -- data/characters/character_knight.lua for the generic she is built on.
 return {
     name = "Rowan",
-    kind = "humanoid",
+    race = "human",
     tier = 2,
     sprite = "assets/chars/rowan.png",
     portrait = "assets/portraits/knight.png", -- large VN portrait for conversations (falls back if missing)

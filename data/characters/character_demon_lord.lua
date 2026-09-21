@@ -9,7 +9,7 @@
 -- pool of health and almost nothing behind it. Every threat in this battle is borrowed.
 return {
     name = "The Hollow Crown",
-    kind = "demon",
+    race = "demon",
     tier = 4,
     -- WHAT LEVEL THESE NUMBERS WERE WRITTEN FOR. This body is authored as the fight it is at the end
     -- of its line, and models/growth.lua scales it DOWN toward the shallows rather than growing it up

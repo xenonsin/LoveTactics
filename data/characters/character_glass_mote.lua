@@ -12,7 +12,7 @@
 -- Tier 1's band is 1-30 health (Balance.HEALTH_BANDS). Bottom of it -- glass.
 return {
     name = "Glass-Mote",
-    kind = "elemental",
+    race = "elemental",
     tier = 1,
     sprite = "assets/chars/glass_mote.png",
     stats = {

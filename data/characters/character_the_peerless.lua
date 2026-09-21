@@ -13,7 +13,7 @@
 -- survive being focused.
 return {
     name = "The Peerless",
-    kind = "humanoid",
+    race = "human",
     tier = 3,
     boss = true, -- the fight is it: off the execute and Charm tables (tests/charm_balance_spec.lua)
     sprite = "assets/chars/the_peerless.png",

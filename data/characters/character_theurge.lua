@@ -3,7 +3,7 @@
 -- data/classes/theurge.lua.
 return {
     name = "Theurge",
-    kind = "humanoid",
+    race = "human",
     tier = 2,
     sprite = "assets/chars/theurge.png",
     class = "mage",

@@ -413,6 +413,33 @@ function Marks.water(x, y, w, h, r, g, b, col, row)
     love.graphics.setLineWidth(1)
 end
 
+-- DEEP WATER -- and the mark has one job the whole table shares: say YOU CANNOT GO THERE.
+--
+-- It is drawn against the shallows, because those two tiles are the ones a player will actually
+-- confuse, and confusing them costs a body. The ford (Marks.water) is TRANSPARENT: three pebbles of
+-- its bed showing through two pale ripples, the whole thing open and light. This is the opposite
+-- reading of the same material -- edge to edge, near-opaque, with the bed gone entirely and one
+-- swallowed highlight left on the surface. Loudness is information here (see the module header): free
+-- floors whisper, ground you cannot enter is drawn solid.
+--
+-- No bed, no pebbles, no crossing ripple. What you can see of deep water is the top of it.
+function Marks.deep(x, y, w, h, r, g, b, col, row)
+    -- The body of the channel, over the whole tile: the darkest wash any mark lays, because this is
+    -- the only floor in the game that kills and the one thing it must never read as is wadeable.
+    dark(r, g, b, 0.30, 0.96)
+    love.graphics.rectangle("fill", x, y, w, h)
+    -- Two slow swells across it, wider and flatter than the ford's ripples and drawn in the ground's
+    -- own tone rather than pale: light on deep water is a sheen, not a glint off the bottom.
+    love.graphics.setLineWidth(math.max(1.5, w * 0.05))
+    for i = 0, 1 do
+        local wy = y + h * (0.32 + i * 0.36) + (rnd(col, row, i + 7) - 0.5) * h * 0.06
+        pale(r, g, b, 0.18, 0.55)
+        love.graphics.line(x + w * 0.06, wy, x + w * 0.34, wy - h * 0.025,
+            x + w * 0.68, wy + h * 0.025, x + w * 0.94, wy)
+    end
+    love.graphics.setLineWidth(1)
+end
+
 -- LAVA -- cooled crust with the flow showing through the cracks. The ONE mark on the board that is
 -- brighter than its ground rather than darker, and it has to be: the tile is impassable and the reason
 -- is heat, not bulk, so it cannot be drawn as a mass. The crust plates are the dark part and the
@@ -648,6 +675,10 @@ TerrainArt.MARKS = {
     hill = Marks.hill, mountain = Marks.mountain, rough = Marks.rough,
     rock = Marks.rock, grass = Marks.grass,
     river = Marks.river, water = Marks.water, lava = Marks.lava, mire = Marks.mire,
+    -- The channel. Its own mark rather than the river's, and deliberately so: a river is a barrier you
+    -- walk around and this is a barrier you can be PUT into, which is the one distinction on this board
+    -- that a player pays for in bodies.
+    deep = Marks.deep,
     sand = Marks.sand, ice = Marks.ice,
     -- The built work, and the cover each country grows. `dune` and `drift` share a silhouette on
     -- purpose (see their marks): they are one tile in two biomes, and the tag is what differs.

@@ -1,7 +1,7 @@
 -- Enemy character blueprint. See data/characters/bandit.lua for the shape.
 return {
     name = "Wolf",
-    kind = "beast",
+    race = "beast",
     tier = 1,
     sprite = "assets/chars/wolf.png",
     stats = {

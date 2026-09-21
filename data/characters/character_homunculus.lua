@@ -6,7 +6,7 @@
 -- the blueprint shape.
 return {
     name = "Homunculus",
-    kind = "construct",
+    race = "construct",
     tier = 1,
     sprite = "assets/chars/homunculus.png",
     stats = {

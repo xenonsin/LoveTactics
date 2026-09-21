@@ -1,6 +1,6 @@
 return {
     name = "Priest",
-    kind = "humanoid",
+    race = "human",
     tier = 2,
     sprite = "assets/chars/priest.png",
     -- No portrait: retired from the player's party (data/player.lua). Only ever an enemy/ally/test

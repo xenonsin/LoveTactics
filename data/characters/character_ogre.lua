@@ -5,7 +5,7 @@
 -- with its bare fists. Placed directly on an arena (authored enemy spawn), not summoned.
 return {
     name = "Ogre",
-    kind = "beast",
+    race = "beast",
     tier = 3,
     sprite = "assets/chars/ogre.png",
     footprint = { w = 2, h = 2 },

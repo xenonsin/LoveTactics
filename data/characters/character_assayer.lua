@@ -8,7 +8,7 @@
 -- mechanic in the descent whose knob is that far upstream. Greed is the sin that punishes keeping things.
 return {
     name = "Assayer",
-    kind = "demon",
+    race = "demon",
     tier = 2,
     sprite = "assets/chars/assayer.png",
     stats = {

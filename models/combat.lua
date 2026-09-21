@@ -43,6 +43,7 @@
 -- this module at load time (they pull combat helpers through a lazy require), so there is no cycle.
 
 local Status = require("models.status")
+local Terrain = require("models.terrain") -- the one terrain table; Combat.floodTile rewrites a cell from it
 local Trap = require("models.trap")
 local Hazard = require("models.hazard")
 local Summon = require("models.summon")
@@ -330,6 +331,28 @@ function Combat.footprintFree(combat, w, h, ax, ay, ignoreUnit, alsoIgnore)
         local row = arena and arena.tiles and arena.tiles[c.y]
         local cell = row and row[c.x]
         if not (cell and cell.walkable) then return false end
+        if Combat.objectBlocksAt(combat, c.x, c.y) then return false end
+        local occ = Combat.unitAt(combat, c.x, c.y)
+        if occ and occ ~= ignoreUnit and occ ~= alsoIgnore then return false end
+    end
+    return true
+end
+
+-- footprintFree's question asked by a SHOVE rather than by a body choosing where to stand: same rule,
+-- plus the one exception drowning ground carries (footprintCanShift, which this is the pure twin of).
+--
+-- It exists as its own function instead of a flag on footprintFree because the two are genuinely
+-- different questions and the callers split cleanly along that line. "May this body stand here" --
+-- deployment, a summon's landing, a blink's destination, a charge's own advance -- must keep answering
+-- NO for deep water, or the player would be handed a way to walk into it after all. "Where does a shove
+-- come to rest" is the only caller that wants the water open, and there is exactly one of it: the
+-- preview below, which has to land the ghost on the tile the live shove will.
+function Combat.footprintShovable(combat, w, h, ax, ay, ignoreUnit, alsoIgnore)
+    local arena = combat.arena
+    for _, c in ipairs(Combat.cellsAt(w, h, ax, ay)) do
+        local row = arena and arena.tiles and arena.tiles[c.y]
+        local cell = row and row[c.x]
+        if not (cell and (cell.walkable or cell.drowns)) then return false end
         if Combat.objectBlocksAt(combat, c.x, c.y) then return false end
         local occ = Combat.unitAt(combat, c.x, c.y)
         if occ and occ ~= ignoreUnit and occ ~= alsoIgnore then return false end
@@ -3922,14 +3945,19 @@ end
 -- which was survivable while the only term was terrain and became a real hazard the moment a tile's
 -- price could depend on the board: three readers that disagree mean the move overlay offers a tile the
 -- route preview will not walk to. Add a term here and all three learn it at once.
-local function stepTerrainCost(combat, unit, x, y, flying)
+local function stepTerrainCost(combat, unit, x, y, flying, aquatic)
     if flying then return 1 end
     local tiles = combat.arena and combat.arena.tiles
     local worst = 0
     for _, c in ipairs(Combat.cellsAt(unit.w or 1, unit.h or 1, x, y)) do
         local row = tiles and tiles[c.y]
         local cell = row and row[c.x]
+        -- A SWIMMER PAYS ONE IN WATER AND ITS OWN WAY EVERYWHERE ELSE (Combat.isAquatic). Applied per
+        -- CELL rather than to the finished total, so a wide body half in the ford and half on the bank
+        -- is still charged for the bank -- the worst ground under it, which is the rule this loop has
+        -- always kept. Only the watery cells go free.
         local mc = (cell and cell.moveCost) or 1
+        if aquatic and cell and cell.swim then mc = 1 end
         if mc > worst then worst = mc end
     end
     local ease = Combat.terrainEase(combat, unit, x, y)
@@ -3970,6 +3998,28 @@ function Combat.isFlying(unit)
     return false
 end
 
+-- Does `unit` belong in water (the `swim` tag -- a naga's own coils, the Gillscale Wrap)?
+--
+-- FLYING SAYS THE GROUND STOPS MATTERING. SWIMMING SAYS THE WATER STOPS BEING GROUND. That is the
+-- whole difference, and it is why this is not a second copy of Combat.isFlying with a different word:
+-- the Striders open EVERY tile and charge 1 everywhere, and this opens exactly TWO tiles (the ones
+-- declaring `swim` -- the ford and the deep channel) and charges 1 THERE. Everywhere else a swimmer
+-- pays what anybody pays, which is what keeps it a lane rather than a map, and what makes a naga on
+-- dry ground an ordinary body rather than a Zephyr Strider with scales.
+--
+-- Read at the same two chokepoints flying is -- moveGraph's legality test and stepTerrainCost's
+-- price -- plus hazard_deep_water, which asks it in order to refuse to drown the thing that lives
+-- there. A grid scan, exactly as isFlying is, because it is a permanent property of what a body is
+-- wearing (or, for a naga, of what its race granted it: data/races/naga.lua puts the coils in the grid
+-- so this predicate never has to learn a second place to look).
+function Combat.isAquatic(unit)
+    if not (unit and unit.char) then return false end
+    for _, item in ipairs(Character.eachItem(unit.char)) do
+        if hasTag(item.tags, "swim") then return true end
+    end
+    return false
+end
+
 -- Does `unit` walk THROUGH bodies? True when any grid item carries a `moveBehavior` of mode "phase"
 -- (the Sidelong Greaves). Read once per move graph, and read off the grid rather than off a status,
 -- because it is a permanent property of what you are wearing.
@@ -3993,6 +4043,10 @@ local function moveGraph(combat, unit, tolls)
     local arena = combat.arena
     local budget = flatStat(unit, "movement")
     local flying = Combat.isFlying(unit)
+    -- A swimmer opens the two water tiles and pays 1 on them (Combat.isAquatic). Hoisted beside
+    -- `flying` for the same reason that is: it is a fact about the body, read once per graph rather
+    -- than per candidate cell inside a Dijkstra.
+    local aquatic = Combat.isAquatic(unit)
     -- A phaser treats an enemy body the way everyone already treats a friendly one: transit, never
     -- footing. It still cannot STOP on the tile (Combat.reachable drops every occupied node whoever
     -- is standing there), so what phasing buys is passage through a line, not the ability to share a
@@ -4043,7 +4097,11 @@ local function moveGraph(combat, unit, tolls)
                 for _, c in ipairs(Combat.cellsAt(w, h, nx, ny)) do
                     if c.x < 1 or c.x > arena.cols or c.y < 1 or c.y > arena.rows then ok = false; break end
                     local cell = arena.tiles[c.y][c.x]
-                    if not (flying or cell.walkable) then ok = false; break end
+                    -- A swimmer stands in deep water the way a flier stands over a mountain: the tile
+                    -- is unwalkable to everybody and open to the one body it is not poor footing for.
+                    -- `cell.swim` and not `cell.drowns`, deliberately -- the question here is "does
+                    -- this body belong in this ground", and the ford already answers yes for everyone.
+                    if not (flying or cell.walkable or (aquatic and cell.swim)) then ok = false; break end
                     if Combat.objectBlocksAt(combat, c.x, c.y) then ok = false; break end
                     local occ = Combat.unitAt(combat, c.x, c.y)
                     if occ and occ ~= unit then
@@ -4055,7 +4113,7 @@ local function moveGraph(combat, unit, tolls)
                     -- Priced by the shared reader rather than in the loop above: the legality question
                     -- (may this body stand here) and the cost question (what does standing here cost)
                     -- are different, and only the second one grows terms. See stepTerrainCost.
-                    local step = stepTerrainCost(combat, unit, nx, ny, flying)
+                    local step = stepTerrainCost(combat, unit, nx, ny, flying, aquatic)
                     local ncost = cur.cost + step
                     if ncost <= budget then
                         local nk = key(nx, ny)
@@ -4521,6 +4579,7 @@ function Combat.planMoveVia(combat, unit, cells)
     -- re-derivation of the identical legality question (a steered route rather than a derived one),
     -- so the two must answer it the same way or a flier's own move band would refuse its own route.
     local flying = Combat.isFlying(unit)
+    local aquatic = Combat.isAquatic(unit)
     local w, h = unit.w or 1, unit.h or 1
     local seen = { [key(unit.x, unit.y)] = true }
     local cost = 0
@@ -4536,7 +4595,7 @@ function Combat.planMoveVia(combat, unit, cells)
         for _, fc in ipairs(Combat.cellsAt(w, h, c.x, c.y)) do
             if fc.x < 1 or fc.x > arena.cols or fc.y < 1 or fc.y > arena.rows then return nil, "off grid" end
             local tile = arena.tiles[fc.y][fc.x]
-            if not (flying or tile.walkable) then return nil, "blocked" end
+            if not (flying or tile.walkable or (aquatic and tile.swim)) then return nil, "blocked" end
             if Combat.objectBlocksAt(combat, fc.x, fc.y) then return nil, "wall" end
             local occ = Combat.unitAt(combat, fc.x, fc.y)
             if occ and occ ~= unit then
@@ -4549,7 +4608,7 @@ function Combat.planMoveVia(combat, unit, cells)
         -- Priced by the same reader the derived path uses, so a hand-steered detour costs exactly what
         -- walking it costs -- including the ground watched by an enemy's Overwatch. This used to
         -- re-derive the terrain arithmetic locally; see stepTerrainCost on why it no longer may.
-        cost = cost + stepTerrainCost(combat, unit, c.x, c.y, flying)
+        cost = cost + stepTerrainCost(combat, unit, c.x, c.y, flying, aquatic)
         if cost > budget then return nil, "too far" end
     end
 
@@ -4663,7 +4722,7 @@ function Combat.walkStop(combat, unit, path)
         -- on the tile BEFORE it, and never pays for the tile it refused. Mirrors Combat.stepMove's
         -- pre-step check, so the drawn route stops on the tile the feet will.
         if grants and not carrying and bodyInTheWay(combat, unit, t.x, t.y) then return i - 1, cost end
-        cost = cost + stepTerrainCost(combat, unit, t.x, t.y, flying)
+        cost = cost + stepTerrainCost(combat, unit, t.x, t.y, flying, Combat.isAquatic(unit))
         if grants and not carrying then return i, cost end
         carrying = grants
     end
@@ -4815,7 +4874,19 @@ local function footprintCanShift(combat, unit, dx, dy)
     for _, c in ipairs(Combat.cellsAt(unit.w or 1, unit.h or 1, unit.x + dx, unit.y + dy)) do
         local row = combat.arena and combat.arena.tiles and combat.arena.tiles[c.y]
         local cell = row and row[c.x]
-        if not (cell and cell.walkable) then return false, nil end
+        -- A SHOVE DOES NOT STOP AT THE BANK, and this clause is the whole of the deep-water feature.
+        --
+        -- Unwalkable ground is refused here because a body cannot STAND on it. Water is the one
+        -- landform a body can FALL into: the shove carries, the body lands in the channel, and
+        -- hazard_deep_water takes it on arrival through Combat.enterTile like any other ground. Every
+        -- other unwalkable tile keeps the collision rule exactly as it was -- a mace still slams a foe
+        -- into a rock face and still pays the extra for the travel it was denied.
+        --
+        -- This is also the ONLY way a non-swimmer ever reaches deep water, by construction: `deep` is
+        -- walkable = false, so it never appears in a move band and no player can walk into it. Which
+        -- means the tile is a weapon the enemy points at you rather than a hole you fall down -- and it
+        -- is why the naga kit is built out of shoves and pulls rather than out of damage.
+        if not (cell and (cell.walkable or cell.drowns)) then return false, nil end
         if Combat.objectBlocksAt(combat, c.x, c.y) then
             local obj, kind = Combat.objectAt(combat, c.x, c.y)
             return false, obj, kind
@@ -4874,9 +4945,12 @@ function Combat.knockbackTile(combat, source, target, distance, opts)
     local w, h = target.w or 1, target.h or 1
     for _ = 1, total do
         -- Test the whole body at the next anchor, ignoring the target's own cells (it slides through
-        -- them). footprintFree is exactly canShoveInto's rule (walkable, no object, no other unit),
-        -- lifted to the footprint -- so the preview lands where the live shove below comes to rest.
-        if not Combat.footprintFree(combat, w, h, x + dx, y + dy, target) then break end
+        -- them). footprintShovable is exactly footprintCanShift's rule (walkable OR drowning ground, no
+        -- object, no other unit), lifted to the footprint -- so the preview lands where the live shove
+        -- below comes to rest, deep water included. It used to call footprintFree, which is the same
+        -- rule minus the water, and would have drawn the ghost stopping on the bank while the blow put
+        -- the body in the channel.
+        if not Combat.footprintShovable(combat, w, h, x + dx, y + dy, target) then break end
         x, y = x + dx, y + dy
     end
     return x, y
@@ -6822,7 +6896,16 @@ local function killUnit(combat, target)
     -- (Revive puts the same character back on its feet) or raised (Raise Dead turns it into a zombie).
     -- A summoned creature and a decoy leave nothing -- they were never truly there -- so they are
     -- skipped, which also keeps a raised zombie or a dismissed wolf from itself becoming a corpse.
-    if not target.summoned and not target.decoyOf then
+    -- ...AND A BODY THAT WENT UNDER LEAVES NOTHING EITHER. `sank` is stamped by Combat.drown, and it
+    -- sits beside the summon and the decoy here because it is the same statement: there is no body on
+    -- that tile. A corpse floating on deep water would be a thing a necromancer could harvest, a thing
+    -- Combat.corpseAt would answer with, and a thing drawn standing on ground nothing can stand on.
+    -- The body is in the channel.
+    --
+    -- Combat.reviveFallenParty reads the flag and still carries a drowned companion home after the
+    -- win, which is the half of this that keeps docs/the-count.md's law: a bad trip costs a body on
+    -- the bench, never the character. Without that line this clause would be permadeath by terrain.
+    if not target.summoned and not target.decoyOf and not target.sank then
         -- Two states a body can land in, and it is one OR the other, never both at once:
         --   * A revivable unit is INCAPACITATED first, not yet a corpse. It carries a countdown
         --     (status_downed) as the window in which the same character can still be brought back where
@@ -6973,6 +7056,92 @@ function Combat.fell(combat, target, opts)
     -- Read by killUnit: a felling by script lays the body down rather than turning it into one.
     target.laidDown = true
     target.char.stats.health.current = 0
+    killUnit(combat, target)
+    return true
+end
+
+-- THE WATER RISES: turn a shallow tile into a deep one, and take whatever was standing in it.
+--
+-- The only terrain mutation in the game, and it exists for exactly one body (character_nethrys). Her
+-- fight is that the board you deployed onto stops being the board you are standing on -- a threat no
+-- other blueprint can make and one that would be wasted on any of them.
+--
+-- IT ONLY EVER DEEPENS WATER. `water` -> `deep` and nothing else: a verb that could turn open ground
+-- into a channel would be able to delete a company from under itself with no warning and no counter,
+-- and the whole design of this tile is that it is a place you can SEE and choose not to stand beside.
+-- A board with no shallows on it is a board where her rule does nothing, which is correct -- she is the
+-- Mere's boss and the Mere fights in water.
+--
+-- The cell is rewritten from the terrain table rather than by hand, so a tile that has risen is
+-- indistinguishable from one the generator laid: same walkability, same cost, same `swim` and `drowns`,
+-- same everything every reader downstream asks it. The zones are swapped to match -- the shallows are
+-- gone and a drowning zone stands in their place -- which is what makes the new ground behave for a
+-- body that walks in later, not only for the one caught in it now.
+--
+-- WHAT IS STANDING THERE GOES UNDER. Through Combat.drown, so a swimmer and a flier are spared by the
+-- same predicate that spares them everywhere else, and a companion still walks home after the win.
+--
+-- Returns true when a tile actually rose, so a caster can tell "the water came up" from "there was no
+-- water to bring".
+function Combat.floodTile(combat, x, y)
+    local tiles = combat.arena and combat.arena.tiles
+    local cell = tiles and tiles[y] and tiles[y][x]
+    if not (cell and cell.type == "water") then return false end
+
+    local deep = Terrain.get("deep")
+    cell.type = "deep"
+    cell.moveCost = deep.moveCost
+    cell.walkable = deep.walkable
+    cell.sightCost = deep.sightCost or 0
+    cell.bonus = deep.bonus
+    cell.tags = deep.tags
+    cell.swim = deep.swim
+    cell.drowns = deep.drowns
+
+    -- The ground's own zone changes with the ground. The shallows are consumed rather than left to
+    -- expire: a tile that is now a channel should not go on soaking people as if it were a ford.
+    local shallows = Hazard.at(combat, x, y, "hazard_shallows")
+    if shallows then Hazard.consume(combat, shallows) end
+    Hazard.place(combat, x, y, "hazard_deep_water", { duration = 9999 })
+
+    Combat.logEvent(combat, "action",
+        string.format("The water rises over (%d, %d).", x, y))
+
+    -- ...and whoever was standing in the ford is now standing in the deep. Hazard.place fires its own
+    -- onEnter for an occupant, so this is belt and braces -- but the belt is worth having: a body that
+    -- survived because a zone refused to place would be the quietest possible bug.
+    local victim = Combat.unitAt(combat, x, y)
+    if victim and victim.alive then Combat.drown(combat, victim, "rising water") end
+    return true
+end
+
+-- TAKE A BODY UNDER. The one death in the game that terrain deals, spent by hazard_deep_water when
+-- something that cannot swim arrives in a channel (Combat.enterTile -> Hazard.onEnter).
+--
+-- IT IS NOT A BIG HIT, and that is why it is a verb rather than a damage call. Drowning ignores
+-- defence, resists, wards, barriers, Aegis and every immunity on the sheet -- none of which is a thing
+-- Combat.dealFlatDamage can be asked to skip -- and it SEALS: `noRevive` with no `laidDown`, which is
+-- exactly the demon's path through killUnit, so there is no incapacitated window and no hourglass. A
+-- window is a promise that somebody can reach the body, and nobody can reach this one.
+--
+-- `sank` is the other half and is read in three places (killUnit, Combat.fallenParty,
+-- Combat.reviveFallenParty). It says there is no body on the tile at all: nothing to raise, nothing to
+-- harvest, nothing drawn standing on ground nothing can stand on -- and, at the victory seam, a
+-- casualty the party still carries home.
+--
+-- WHO IS SPARED, decided here rather than in the hazard blueprint, because it is the same question
+-- twice and one answer is enough: a SWIMMER is at home in the channel, and a FLIER is over the water
+-- rather than in it (docs/terrain.md's rule, held in the direction that pays). Returns false when the
+-- body was never going under, so a caller can tell "spared" from "already dead".
+function Combat.drown(combat, target, sourceName)
+    if not (target and target.alive) then return false end
+    if Combat.isAquatic(target) or Combat.isFlying(target) then return false end
+    target.noRevive = true
+    target.sank = true
+    target.char.stats.health.current = 0
+    Combat.logEvent(combat, "death",
+        string.format("%s goes under the %s.", unitName(target),
+            (sourceName or "deep water"):lower()), target)
     killUnit(combat, target)
     return true
 end
@@ -8326,7 +8495,9 @@ end
 function Combat.fallenParty(combat)
     local out = {}
     for _, u in ipairs((combat and combat.units) or {}) do
-        if u.side == "party" and not u.alive and (u.incapacitated or u.corpse)
+        -- `sank` rides along for the same reason it does in Combat.reviveFallenParty below: a drowned
+        -- body is a body that ended the fight down, and a lost fight must wound it like any other.
+        if u.side == "party" and not u.alive and (u.incapacitated or u.corpse or u.sank)
             and not u.summoned and not u.decoyOf and u.char then
             out[#out + 1] = u.char
         end
@@ -8387,7 +8558,13 @@ function Combat.reviveFallenParty(combat, fraction)
     fraction = fraction or 0.2
     local carried = {}
     for _, u in ipairs(combat.units) do
-        if u.side == "party" and not u.alive and (u.incapacitated or u.corpse)
+        -- THREE FALLEN STATES NOW, and the third is why terrain is allowed to kill at all. `sank` is
+        -- a body that went into deep water: it left nothing on the board, so it is neither
+        -- incapacitated nor a corpse, and without naming it here a drowned companion would never be
+        -- carried off the won board -- permadeath by terrain, arriving silently, in a mode whose
+        -- founding law (docs/the-count.md) is that a bad trip costs a body on the bench, never a
+        -- character.
+        if u.side == "party" and not u.alive and (u.incapacitated or u.corpse or u.sank)
             and not u.summoned and not u.decoyOf
             -- Either fallen state is carried out: still INCAPACITATED when the fight ended, or gone
             -- cold when the count ran out. A body that never comes back stays down even in victory (a
@@ -8399,6 +8576,12 @@ function Combat.reviveFallenParty(combat, fraction)
             u.alive = true
             u.incapacitated = false
             u.corpse = false
+            -- ...and the body is out of the water. Cleared with the other two rather than left behind:
+            -- `sank` is read by killUnit to decide whether a death leaves anything on the tile, so a
+            -- companion who drowned once and was carried home would go on leaving no body for the rest
+            -- of the campaign -- no corpse, no revive window, unreachable by every rescue in the game,
+            -- from a flag nothing would ever print.
+            u.sank = false
             u.statuses = {}
             carried[#carried + 1] = u.char
         end
@@ -8771,6 +8954,9 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
             return 0
         end,
         pull = function() touchesBoard() return false end,
+        -- A forecast never edits the board. Reported as board-touching so the panel knows the cast does
+        -- something it cannot draw, and answering false so the effect's own `if` takes the quiet branch.
+        flood = function() touchesBoard() return false end,
         -- The object layer answers where a throw/drag GRABS from (read-only, truthful) but moves
         -- nothing: a shoved prop deals no damage to a unit, so there is no row for it to record. Present
         -- so a Push/Heave/Pull effect that reads the tile's furniture completes rather than faulting
@@ -9211,6 +9397,10 @@ function Combat.abilityOutput(unit, item)
         knockback = function(_, distance) out.knockback = distance or 1; return 0, false end,
         retreat = function() return 0 end, -- the caster's own step-back moves nobody the row quotes
         pull = function() out.pull = true; return false end,
+        -- No board here to raise the water over. Present for the reason the tail of this table spells
+        -- out: a missing helper faults while the effect is still building its arguments, and the
+        -- tooltip goes blank rather than wrong.
+        flood = function() return false end,
         -- No board here, so there is no furniture to grab: the object layer reports nothing and moves
         -- nothing. Present for the reason the tail of this table spells out -- a missing helper faults
         -- while the effect is still building its arguments, and the tooltip goes blank rather than wrong.
@@ -11659,6 +11849,11 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
             if not obj then return false end
             return Combat.pullObject(combat, unit, obj, kind)
         end,
+        -- THE WATER RISES over a shallow tile, turning it into a channel and taking whatever was
+        -- standing there (Combat.floodTile). The one verb in this table that edits the BOARD rather
+        -- than what is on it, and it is deliberately narrow: it deepens water and refuses everything
+        -- else, so no cast can ever open a hole under a company standing on dry ground.
+        flood = function(x, y) return Combat.floodTile(combat, x, y) end,
         -- Teleport the CASTER onto a tile, springing whatever it lands on (Leaping Crash's jump).
         teleportUser = function(x, y) return Combat.teleportUnit(combat, unit, x, y) end,
         -- Teleport SOMEBODY ELSE onto a tile. The general form of the line above, and kept separate

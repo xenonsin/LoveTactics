@@ -19,7 +19,7 @@
 -- moment it falls even though the Undercroft will not sell you one until you have earned the shelf.
 return {
     name = "Bandit Chief",
-    kind = "humanoid",
+    race = "human",
     tier = 3,
     class = "rogue",
     discipline = "thief",

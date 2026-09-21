@@ -20,7 +20,7 @@
 -- is rooted at the gate, because by then the climb is over and there is nowhere further up to go.
 return {
     name = "Caravan Master",
-    kind = "humanoid",
+    race = "human",
     tier = 0,
     archetype = "holdGround",
     sprite = "assets/chars/caravan_master.png",

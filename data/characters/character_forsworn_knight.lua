@@ -8,7 +8,7 @@
 -- oath forces is the formation these punish. She makes the shape; they charge for it.
 return {
     name = "Forsworn Knight",
-    kind = "humanoid",
+    race = "human",
     tier = 2,
     sprite = "assets/chars/forsworn_knight.png",
     class = "knight",

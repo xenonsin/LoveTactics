@@ -12,7 +12,7 @@
 -- (character_forsworn_knight), not this.
 return {
     name = "The Breachward",
-    kind = "construct",
+    race = "construct",
     tier = 3,
     archetype = "holdGround",
     sprite = "assets/chars/siege_breaker.png",

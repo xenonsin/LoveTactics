@@ -33,7 +33,7 @@
 -- (Trait.answerCost). The pool is small and that is correct: an imp out of fire is out of arguments.
 return {
     name = "Imp",
-    kind = "demon",
+    race = "demon",
     tier = 1,
     sprite = "assets/chars/demon_imp.png",
     revivable = false, -- a demon does not come back: no downed window, and no revive takes it

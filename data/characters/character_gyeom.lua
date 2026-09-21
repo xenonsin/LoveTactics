@@ -50,7 +50,7 @@
 -- her -- it carries the argument, including what her late-paying Ledger costs a first-time player.
 return {
     name = "Gyeom",
-    kind = "humanoid",
+    race = "human",
     tier = 2,
     sprite = "assets/chars/gyeom.png",
     portrait = "assets/portraits/gyeom.png", -- large VN portrait for conversations (falls back if missing)

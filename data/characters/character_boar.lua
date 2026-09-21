@@ -13,7 +13,7 @@
 -- somebody else's teeth. See docs/bestiary.md on why a shared blueprint splits rather than lies.
 return {
     name = "Wild Boar",
-    kind = "beast",
+    race = "beast",
     tier = 2,
     sprite = "assets/chars/boar.png",
     stats = {

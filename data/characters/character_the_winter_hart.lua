@@ -12,7 +12,7 @@
 -- An apex should read differently per stratum rather than being the same wall in seven tilesets.
 return {
     name = "The Winter Hart",
-    kind = "beast",
+    race = "beast",
     tier = 3,
     boss = true, -- the fight is it: off the execute and Charm tables (tests/charm_balance_spec.lua)
     sprite = "assets/chars/the_winter_hart.png",

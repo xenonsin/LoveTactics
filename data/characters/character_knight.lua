@@ -1,6 +1,6 @@
 return {
     name = "Knight",
-    kind = "humanoid",
+    race = "human",
     tier = 2,
     sprite = "assets/chars/knight.png",
     -- No portrait: this is the GENERIC knight template, not a companion. Rowan (the knight companion)

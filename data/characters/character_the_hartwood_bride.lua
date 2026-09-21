@@ -11,7 +11,7 @@
 -- Tier 3's band is 81-154 health.
 return {
     name = "The Hartwood Bride",
-    kind = "demon",
+    race = "demon",
     tier = 3,
     -- The fight is her: `boss = true` keeps her off the execute and Charm tables. She is the body whose
     -- own sweep takes a rank at a time, so turning her was the shortest way to hand the party the

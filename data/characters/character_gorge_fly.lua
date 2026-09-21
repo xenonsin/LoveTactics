@@ -13,7 +13,7 @@
 -- to any blow that touches it.
 return {
     name = "Gorge-Fly",
-    kind = "beast",
+    race = "beast",
     tier = 1,
     sprite = "assets/chars/gorge_fly.png",
     stats = {

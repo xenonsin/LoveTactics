@@ -4,7 +4,7 @@
 -- Frail, so it lives by never standing still. See data/characters/fire_elemental.lua.
 return {
     name = "Wind Elemental",
-    kind = "elemental",
+    race = "elemental",
     tier = 1,
     sprite = "assets/chars/wind_elemental.png",
     stats = {

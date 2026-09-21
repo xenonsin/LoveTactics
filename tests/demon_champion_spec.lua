@@ -365,8 +365,26 @@ return {
             assert(a.tiles[7][3].type == "hill" and a.tiles[7][6].type == "hill", "two hill vantages")
 
             -- The hazard seam: the authored smouldering treeline is carried into the built arena.
-            assert(#a.hazards == 2, "both authored hazards were carried (models/arena.lua)")
-            for _, h in ipairs(a.hazards) do assert(h.id == "hazard_fire", "each is a fire hazard") end
+            --
+            -- COUNTED BY ID RATHER THAN BY TOTAL, and the change is worth reading. This used to assert
+            -- `#a.hazards == 2`, which was the authored pair and nothing else -- true right up until
+            -- `water` started standing a zone on itself (Arena.TERRAIN_ZONES), at which point the two
+            -- tiles of pool on row 6 began contributing a Shallows each and this line failed for a
+            -- reason that has nothing to do with what it is about. The seam being tested is "an
+            -- AUTHORED hazard survives the build"; the ground's own zones are a different promise, kept
+            -- by tests/terrain_spec.lua, and a curated board gets them exactly as a rolled one does.
+            local fires = 0
+            for _, h in ipairs(a.hazards) do
+                if h.id == "hazard_fire" then fires = fires + 1 end
+            end
+            assert(fires == 2, "both authored hazards were carried (models/arena.lua)")
+            -- ...and the pool the board authored is wet ground now, which is the other half of the
+            -- same seam: the curated path and the rolled path stand the same zones on the same tiles.
+            local shallows = 0
+            for _, h in ipairs(a.hazards) do
+                if h.id == "hazard_shallows" then shallows = shallows + 1 end
+            end
+            assert(shallows == 2, "the authored pool stands its own shallows, one per water tile")
 
             -- Every spawn lands on walkable ground.
             for _, group in ipairs({ a.party, a.enemies }) do

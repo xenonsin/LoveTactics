@@ -3,7 +3,7 @@
 -- data/classes/artificer.lua.
 return {
     name = "Artificer",
-    kind = "humanoid",
+    race = "human",
     tier = 3,
     sprite = "assets/chars/artificer.png",
     boss = true,

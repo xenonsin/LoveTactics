@@ -58,7 +58,7 @@
 -- `. drop-report`), and guessing one here would put two items on a shelf nothing has priced.
 return {
     name = "Bear",
-    kind = "beast",
+    race = "beast",
     tier = 2,
     sprite = "assets/chars/bear.png",
     stats = {

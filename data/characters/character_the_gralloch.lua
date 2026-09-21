@@ -26,7 +26,7 @@
 -- as a real step up from the line and a real step below the sin.
 return {
     name = "The Gralloch",
-    kind = "beast",
+    race = "beast",
     tier = 4,
     sprite = "assets/chars/the_gralloch.png",
     referenceLevel = 13,

@@ -9,7 +9,7 @@
 -- stopped.
 return {
     name = "Hollow Sleeper",
-    kind = "undead",
+    race = "undead",
     tier = 2,
     sprite = "assets/chars/hollow_sleeper.png",
     stats = {

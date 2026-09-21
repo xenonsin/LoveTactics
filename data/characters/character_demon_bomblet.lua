@@ -30,7 +30,7 @@
 -- shot or one Clear Out, so the "kill it at range" answer is always available.
 return {
     name = "Bomblet",
-    kind = "demon",
+    race = "demon",
     tier = 1,
     sprite = "assets/chars/demon_bomblet.png",
     revivable = false, -- a demon does not come back (and it bursts on death regardless)

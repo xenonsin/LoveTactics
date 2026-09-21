@@ -8,7 +8,7 @@
 -- standing in will quietly eat it.
 return {
     name = "Zombie",
-    kind = "undead",
+    race = "undead",
     tier = 1,
     sprite = "assets/chars/zombie.png",
     stats = {

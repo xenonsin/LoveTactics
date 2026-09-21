@@ -165,6 +165,15 @@ local function ctxFor(combat, hazard, unit)
             if tgt.summoner and Trait.flag(tgt.summoner, "summonsShrugHazards") then return 0 end
             return Combat.dealFlatDamage(combat, tgt, amount, tags, hazard.name or hazard.id)
         end,
+        -- TAKE THE BODY UNDER. Its own verb rather than ctx.damage with a large number, because
+        -- drowning is not a big hit: it seals (no revive window, nothing left on the tile) and it
+        -- ignores every resist, ward and barrier in the game, none of which is a thing a damage call
+        -- can say. Combat.drown answers whether the body could swim or fly, so this file does not have
+        -- to -- the one place that question is asked for the one thing that asks it.
+        drown = function(tgt)
+            if not tgt then return false end
+            return Combat.drown(combat, tgt, hazard.name or hazard.id)
+        end,
         unitsNear = function(x, y, radius) return Combat.unitsNear(combat, x, y, radius) end,
         isAlly = function(tgt) return tgt ~= nil and Hazard.allied(hazard, tgt.side) end,
     }
@@ -257,7 +266,15 @@ function Hazard.place(combat, x, y, id, opts)
     -- Off the map (no cell) or on impassable terrain: nothing to stand on, so no hazard takes. The
     -- off-grid guard lets an effect paint a rough footprint (a splash around a shoved foe) without
     -- clamping every cell itself -- out-of-bounds tiles are simply skipped.
-    if not (cell and cell.walkable) then return nil end
+    --
+    -- DROWNING GROUND IS THE ONE EXCEPTION, and it is an exception to the REASON rather than to the
+    -- rule. "Nothing stands on a wall" is why unwalkable ground holds no zone; deep water is unwalkable
+    -- because of what its zone DOES, which is the argument running the other way. Refusing it here
+    -- would have left the tile inert -- Arena.terrainZones would dutifully hand over a spec per channel
+    -- tile and every one of them would be dropped on the floor, silently, with the feature shipping
+    -- dead. Narrow on purpose: `drowns` is declared by exactly one terrain row and read at exactly the
+    -- places that have an argument for it.
+    if not (cell and (cell.walkable or cell.drowns)) then return nil end
 
     combat.hazards = combat.hazards or {}
 

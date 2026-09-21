@@ -376,6 +376,20 @@ local CHARACTER_SILHOUETTE = {
     the_sated = "delapouite/stomach",      -- what it has eaten IS the silhouette
     the_gralloch = "lorc/meat-hook",       -- named for Gula's tool, and wearing it
 
+    -- THE MERE. Four nagas and a boss, and they are the first faction to hit this table from the
+    -- HUMANOID side rather than the creature side: `race = "naga"` rolls up to `kind = "humanoid"`
+    -- (data/races/naga.lua), so without a name here each of them would collapse onto its CLASS
+    -- silhouette and come out pixel-identical to the plain rogue, fighter and mage. That is the right
+    -- fallback for a bandit and exactly wrong for a serpent -- the whole point of the race axis is that
+    -- what a body IS and what it DOES are different questions, and this table answers the first.
+    --
+    -- Each wears what it does, on the rule the Gluttony circle above follows.
+    shoalkin = "delapouite/sand-snake",        -- low, quick, and there are several
+    fen_lancer = "delapouite/magic-trident",   -- the fen's own spear, reaching out of the water
+    tidecaller = "lorc/sea-serpent",           -- the thing in the channel that is calling the weather
+    undertow = "delapouite/kraken-tentacle",   -- it does not chase you; it reaches and takes
+    nethrys = "delapouite/mermaid",            -- the only one of them with a face worth drawing
+
     -- THE ENVY CIRCLE. Glass, all of it -- an `elemental`, three `construct`s and the mini sin -- which
     -- without names here would collapse onto two kind fallbacks between them.
     glass_mote = "lorc/crystal-shine",
@@ -413,6 +427,9 @@ local CHARACTER_SILHOUETTE = {
     -- THE GREED CIRCLE. A beast, a construct, two demons, a beast and an object.
     coin_chitter = "delapouite/two-coins",
     coffer_crawler = "delapouite/cave-entrance", -- a shell you have to open
+    -- ...and its cousin that learned to stay still. Keyed by exact id, which also keeps it clear of
+    -- character_mimic_of_ash above -- two unrelated bodies whose ids share a word.
+    mimic = "delapouite/mimic-chest",
     assayer = "delapouite/gold-stack",           -- it is reading your purse, not you
     the_gilt_wyrm = "lorc/dragon-head",
     the_hoard = "lorc/cash",                     -- it IS the pile

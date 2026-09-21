@@ -7,7 +7,7 @@
 -- falls back to its composed token.
 return {
     name = "Exorcist",
-    kind = "humanoid",
+    race = "human",
     tier = 2,
     sprite = "assets/chars/exorcist.png",
     class = "priest",

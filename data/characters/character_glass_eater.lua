@@ -10,7 +10,7 @@
 -- what a Mimic finds easiest to out-trade. Ignoring the eater is a decision about the next fight.
 return {
     name = "Glass-Eater",
-    kind = "construct",
+    race = "construct",
     tier = 2,
     sprite = "assets/chars/glass_eater.png",
     stats = {

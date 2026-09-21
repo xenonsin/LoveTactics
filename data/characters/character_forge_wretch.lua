@@ -9,7 +9,7 @@
 -- can watch the number, understand the rule, and carry it down the stair.
 return {
     name = "Forge-Wretch",
-    kind = "demon",
+    race = "demon",
     tier = 2,
     sprite = "assets/chars/forge_wretch.png",
     stats = {

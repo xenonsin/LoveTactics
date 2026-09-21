@@ -5,7 +5,7 @@
 -- crosses. Real health so an enemy must spend a turn cutting it down to pass freely.
 return {
     name = "March Standard",
-    kind = "object",
+    race = "object",
     tier = 0,
     sprite = "assets/chars/march_standard.png",
     stats = {

@@ -9,7 +9,7 @@
 -- hitting you". The same lesson the Long Note warband teaches with a Rally Banner, told again in armour.
 return {
     name = "Standard-Bearer",
-    kind = "construct",
+    race = "construct",
     tier = 2,
     sprite = "assets/chars/standard_bearer.png",
     stats = {

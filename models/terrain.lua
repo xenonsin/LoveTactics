@@ -175,8 +175,51 @@ Terrain.TYPES = {
     -- interesting is what it does to feet and to reach, not what it hides behind.
 
     -- A ford or shallow pool: wadeable but slow, and it carries a charge to whoever stands in it.
-    water   = { moveCost = 2, walkable = true, sightCost = 0, tags = { "conductable" },
+    -- `swim` is the OTHER half of that sentence and is new: a body at home in water crosses this at a
+    -- flat 1 whatever it costs everybody else (Combat.isAquatic, read in stepTerrainCost). The ford is
+    -- the tile a naga and a knight both stand on and do not both pay the same for.
+    --
+    -- It also SOAKS now. models/arena.lua stands an unowned hazard_shallows on every one of these
+    -- (Arena.TERRAIN_ZONES), granting Wet -- which lingers, so you walk out of the water still wet and
+    -- dry on the status's own clock. Ground that does something to you is a hazard in this codebase and
+    -- has been since long before this tile; the fort renews and the mire bogs by exactly this seam.
+    water   = { moveCost = 2, walkable = true, sightCost = 0, tags = { "conductable" }, swim = true,
                 index = 6, color = { 0.30, 0.50, 0.62 } },
+    -- DEEP WATER: the black channel. Unwalkable, and it DROWNS what is put into it.
+    --
+    -- THE LOAD-BEARING DECISION IS `walkable = false`, and it is what keeps this tile from being a
+    -- catastrophe. Every generator carve, every connectivity guard, every deployment filter and every
+    -- enemy path already reads unwalkable correctly -- so a rolled channel can never cut a company off
+    -- from the stair, and no player can ever walk into it by misclicking the move overlay. The
+    -- alternative that was considered and rejected -- walkable in the table, closed per-unit at
+    -- moveGraph -- would have made every one of those guards lie, silently, on exactly the boards where
+    -- it mattered. This is `river` with one new field on it, not a new kind of thing.
+    --
+    -- SO WHO EVER MEETS IT? Two bodies. A swimmer (`swim`, above) opens it and stops in it the way a
+    -- flier opens a mountain -- one tag, one predicate, the same two chokepoints. And ANYTHING THAT IS
+    -- FORCED IN: a shove, a throw, a pull. footprintCanShift refuses unwalkable terrain because a body
+    -- cannot STAND there, and water is the one landform a body can FALL into, so that refusal has one
+    -- exception and this field is it. That is the whole mechanic: deep water is a threat somebody else
+    -- delivers, never a button you press on yourself.
+    --
+    -- The drowning itself is NOT here. It is hazard_deep_water, stood on every one of these tiles by
+    -- Arena.terrainZones -- one word per mechanic, and ground that kills is not the exception to the
+    -- rule that says ground that heals and ground that bogs are hazards.
+    --
+    -- THE MOVE COST IS SOLID, like every other unwalkable tile's, and the swimmer's 1 is a SUBSTITUTION
+    -- made at the price rather than a number written here. That is not a dodge around the invariant --
+    -- it is the invariant kept. Unwalkable ground costs the earth so that nothing can route a body
+    -- through a wall it may never stand on (tests/terrain_spec.lua), and a swimmer is not an exception
+    -- to that: it is a body for which this ground is not a wall, and stepTerrainCost swaps the cost for
+    -- exactly the bodies moveGraph has already admitted. A finite cost written HERE would be a hole
+    -- every reach search in the game could fall into, for the sake of one that does not need it.
+    --
+    -- sightCost 0: you see across water and you shoot across it, which is the counterplay to a body
+    -- standing in the middle of it. Conducts, like every other water in the table -- and that is the
+    -- answer to a pack of nagas sharing one channel, which is the best reason the tile has to exist.
+    deep    = { moveCost = SOLID, walkable = false, sightCost = 0, tags = { "conductable" },
+                swim = true, drowns = true,
+                index = 6, color = { 0.10, 0.20, 0.30 } },
     -- Loose sand: forest's cost without forest's cover, so a desert board is a long ranged exchange
     -- nobody can cross quickly or safely.
     sand    = { moveCost = 2, walkable = true, sightCost = 0, index = 2, color = { 0.78, 0.68, 0.44 } },

@@ -18,7 +18,7 @@ local dead = {}
 for k, v in pairs(base) do dead[k] = v end
 
 dead.name = "Skeleton Archer"
-dead.kind = "undead"
+dead.race = "undead"
 
 -- NO SHELF. A body that is not humanoid declares no `class` -- a class is a vendor shelf and a growth
 -- declaration, and neither is a thing a corpse has (docs/bestiary.md, "creatures carry no discipline

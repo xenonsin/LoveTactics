@@ -21,7 +21,7 @@
 -- the execute and Charm tables. Health sits near 60% of a general (they run 266-327).
 return {
     name = "The Anvil",
-    kind = "demon",
+    race = "demon",
     tier = 4,
     sprite = "assets/chars/the_anvil.png",
     referenceLevel = 13,

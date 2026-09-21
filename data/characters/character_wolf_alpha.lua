@@ -2,7 +2,7 @@
 -- prestige. See data/characters/bandit.lua for the shape.
 return {
     name = "Alpha Wolf",
-    kind = "beast",
+    race = "beast",
     tier = 2,
     sprite = "assets/chars/wolf_alpha.png",
     stats = {

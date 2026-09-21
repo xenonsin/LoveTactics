@@ -1,6 +1,6 @@
 return {
     name = "Rogue",
-    kind = "humanoid",
+    race = "human",
     tier = 2,
     sprite = "assets/chars/rogue.png",
     -- No portrait: the GENERIC rogue template, not a companion. Clem (the rogue companion) is the named

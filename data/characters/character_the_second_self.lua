@@ -18,7 +18,7 @@
 -- Tier 3's band is 81-154 health. Middling: the copy is the threat, not the caster.
 return {
     name = "The Second Self",
-    kind = "construct",
+    race = "construct",
     tier = 3,
     boss = true, -- the fight is it: off the execute and Charm tables (tests/charm_balance_spec.lua)
     sprite = "assets/chars/the_second_self.png",

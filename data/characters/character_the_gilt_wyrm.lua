@@ -12,7 +12,7 @@
 -- what an apex should mean on ground that has doors.
 return {
     name = "The Gilt Wyrm",
-    kind = "beast",
+    race = "beast",
     tier = 3,
     boss = true, -- the fight is it: off the execute and Charm tables (tests/charm_balance_spec.lua)
     sprite = "assets/chars/the_gilt_wyrm.png",

@@ -3,7 +3,7 @@
 -- Blade). Kit from data/classes/spellbreaker.lua.
 return {
     name = "Spellbreaker",
-    kind = "humanoid",
+    race = "human",
     tier = 3,
     sprite = "assets/chars/spellbreaker.png",
     boss = true,

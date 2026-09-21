@@ -5,7 +5,7 @@
 -- Kit from data/classes/plague_knight.lua.
 return {
     name = "Plague Knight",
-    kind = "humanoid",
+    race = "human",
     tier = 3,
     sprite = "assets/chars/plague_knight.png",
     boss = true,

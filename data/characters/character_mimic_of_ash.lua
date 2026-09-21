@@ -14,7 +14,7 @@
 -- with the small stuff, or walk around it.
 return {
     name = "Mimic-of-Ash",
-    kind = "construct",
+    race = "construct",
     tier = 2,
     sprite = "assets/chars/mimic_of_ash.png",
     stats = {

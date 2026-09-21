@@ -45,7 +45,7 @@
 -- left" a question the board asks rather than a sum.
 return {
     name = "Slime",
-    kind = "beast",
+    race = "beast",
     tier = 2,
     sprite = "assets/chars/slime.png",
     stats = {

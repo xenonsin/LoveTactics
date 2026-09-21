@@ -16,7 +16,7 @@
 -- a stray blow would never reach a body, and then it would be nothing at all.
 return {
     name = "Carrion Crawler",
-    kind = "beast",
+    race = "beast",
     tier = 1,
     sprite = "assets/chars/carrion_crawler.png",
     stats = {

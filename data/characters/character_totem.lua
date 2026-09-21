@@ -5,7 +5,7 @@
 -- one. Real (modest) health so an enemy can cut it down to lift the zone.
 return {
     name = "Totem",
-    kind = "object",
+    race = "object",
     tier = 0,
     sprite = "assets/chars/totem.png",
     stats = {

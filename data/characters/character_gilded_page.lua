@@ -7,7 +7,7 @@
 -- Tier 1's band is 1-30 health (Balance.HEALTH_BANDS).
 return {
     name = "Gilded Page",
-    kind = "construct",
+    race = "construct",
     tier = 1,
     sprite = "assets/chars/gilded_page.png",
     stats = {

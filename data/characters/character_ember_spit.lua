@@ -11,7 +11,7 @@
 -- Tier 1's band is 1-30 health (Balance.HEALTH_BANDS). Bottom of it.
 return {
     name = "Ember-Spit",
-    kind = "elemental",
+    race = "elemental",
     tier = 1,
     sprite = "assets/chars/ember_spit.png",
     stats = {

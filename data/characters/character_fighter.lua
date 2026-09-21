@@ -1,6 +1,6 @@
 return {
     name = "Fighter",
-    kind = "humanoid",
+    race = "human",
     tier = 2,
     sprite = "assets/chars/fighter.png",
     -- No portrait: the GENERIC fighter template, not a companion. Saber (the fighter companion) is the

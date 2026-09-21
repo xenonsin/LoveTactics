@@ -3,7 +3,7 @@
 -- (Harrier's Bow). Kit from data/classes/skirmisher.lua.
 return {
     name = "Skirmisher",
-    kind = "humanoid",
+    race = "human",
     tier = 3,
     sprite = "assets/chars/skirmisher.png",
     boss = true,

@@ -2,7 +2,7 @@
 -- a conjurer with an elemental court, a boss. Kit from data/classes/summoner.lua.
 return {
     name = "Summoner",
-    kind = "humanoid",
+    race = "human",
     tier = 3,
     sprite = "assets/chars/summoner.png",
     boss = true,

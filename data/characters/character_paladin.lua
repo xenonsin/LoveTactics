@@ -3,7 +3,7 @@
 -- is knight. Kit from data/classes/paladin.lua.
 return {
     name = "Paladin",
-    kind = "humanoid",
+    race = "human",
     tier = 3,
     sprite = "assets/chars/paladin.png",
     class = "knight",

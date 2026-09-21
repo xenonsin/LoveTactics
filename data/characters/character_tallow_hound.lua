@@ -13,7 +13,7 @@
 -- ALSO did something would bury the rule the whole circle is built to teach.
 return {
     name = "Tallow Hound",
-    kind = "beast",
+    race = "beast",
     tier = 2,
     sprite = "assets/chars/tallow_hound.png",
     stats = {

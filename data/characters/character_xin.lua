@@ -58,7 +58,7 @@
 -- refusal still stands.
 return {
     name = "Xin",
-    kind = "humanoid",
+    race = "human",
     tier = 2,
     sprite = "assets/chars/xin.png",
     portrait = "assets/portraits/xin.png", -- large VN portrait for conversations (falls back if missing)

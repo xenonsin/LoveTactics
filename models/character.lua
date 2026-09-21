@@ -5,6 +5,9 @@
 local Registry = require("models.registry")
 local Item = require("models.item")
 local Sprite = require("models.sprite")
+-- WHAT A BODY IS, one axis above what it does (models/race.lua). Required at file scope rather than
+-- lazily: every instantiate reads it, and Race is plain data over a registry with no cycle back here.
+local Race = require("models.race")
 
 local Character = {}
 
@@ -99,6 +102,24 @@ function Character.normalizeFootprint(fp)
 end
 
 Character.defs = Registry.load("data/characters", "data.characters")
+
+-- KIND ROLLS UP FROM RACE, stamped onto the blueprint once at load.
+--
+-- `kind` is no longer authored anywhere: 167 blueprints used to declare it, and before that a tool
+-- GUESSED it from words in the id. Both are gone. What every reader in the tree still wants is the
+-- coarse answer -- is this a bodied thing that shops, or a creature that does not -- and there are
+-- twenty-odd of them across models, tools and specs. Rather than teach each one to ask a race, the
+-- answer is derived here, at the one place a blueprint becomes visible to any of them.
+--
+-- THIS IS NOT A SECOND LEDGER. It is computed from `race` and is never written by a file; the race is
+-- the only thing an author can set, and tests/race_spec.lua reads the blueprint SOURCES to assert that
+-- nobody has quietly added a `kind` line back. Deriving it from the field it must agree with is the
+-- only arrangement where the two cannot come apart -- which is the whole reason this pass happened.
+--
+-- A body whose race is missing or misspelled gets nil, loudly, at the same spec.
+for _, def in pairs(Character.defs) do
+    def.kind = Race.kindOf(def.race)
+end
 
 -- The first empty grid cell (1..MAX_INVENTORY), or nil if the grid is full.
 function Character.firstEmptySlot(char)
@@ -455,15 +476,30 @@ function Character.instantiate(id, progress)
         -- Progression state (models/growth.lua): innate growth class (fallback/tie-break), the level
         -- (tracks player prestige), the per-class cast tally, and the accumulated stat growth.
         class = def.class,
-        -- What KIND of body this is: "humanoid" | "beast" | "demon" | "undead" | "construct" |
-        -- "elemental" | "object". Declared by every blueprint rather than guessed -- tools/char_compose
-        -- used to infer it from words in the id, which read every wolf and boar as a humanoid because
-        -- nothing in "character_boar" says otherwise. It is also the line the bestiary's outfitting rule
-        -- is drawn along (docs/bestiary.md): a HUMANOID carries priced, lootable, shareable gear off a
-        -- shelf and names the class that shelf belongs to; every other kind carries natural weapons
-        -- only -- unpriced, `noSteal`, and never a discipline item. A wolf is not a Beastmaster; a wolf
-        -- is what a Beastmaster has.
-        kind = def.kind,
+        -- WHAT A BODY IS (data/races/*.lua): "human" | "naga" | "demon" | "beast" | "undead" |
+        -- "construct" | "elemental" | "object". One axis above `class` below -- a naga knight and a
+        -- naga mage are both nagas, and neither fact tells you the other. A race carries RULES and a
+        -- FIXED stat line and may never carry a growth table; see models/race.lua for the whole of
+        -- that discipline.
+        race = def.race,
+        -- ...and what KIND of body that makes it: "humanoid" | "beast" | "demon" | "undead" |
+        -- "construct" | "elemental" | "object". DERIVED FROM THE RACE and no longer authored anywhere.
+        --
+        -- It was authored on 167 blueprints, and it was a GUESS before that -- tools/char_compose
+        -- inferred it from words in the id and defaulted to "most portraitless enemies are people",
+        -- which read every wolf and boar in the folder as a humanoid because nothing in
+        -- "character_boar" says otherwise. Two authored ledgers of one fact drift; this one is derived,
+        -- so a race is the only place the answer lives.
+        --
+        -- It still means exactly what it always meant, and every rule downstream is untouched: it is
+        -- the line the bestiary's outfitting rule is drawn along (docs/bestiary.md). A HUMANOID carries
+        -- priced, lootable, shareable gear off a shelf and names the class that shelf belongs to; every
+        -- other kind carries natural weapons only -- unpriced, `noSteal`, never a discipline item. A
+        -- wolf is not a Beastmaster; a wolf is what a Beastmaster has.
+        --
+        -- Nil for a blueprint whose `race` is missing or misspelled, which is what makes that a loud
+        -- failure at tests/race_spec.lua rather than a quiet one at a shelf.
+        kind = Race.kindOf(def.race),
         -- Which RUNG of the ladder this body sits on (docs/bestiary.md): 1 chaff · 2 line · 3 elite ·
         -- 4 boss, or 0 for a body that is not on the ladder at all -- a prop, an escortee, or a shape
         -- worn by Wild Shape. A DECLARED LABEL, never a multiplier: nothing derives a stat from it.
@@ -526,11 +562,19 @@ function Character.instantiate(id, progress)
         -- Copied field-by-field like everything else on this table, and SHALLOW-COPIED rather than
         -- referenced: a blueprint is immutable and shared by every body minted from it, so handing the
         -- runtime character the def's own table would let one unit's future edit reach every wolf.
-        resist = def.resist and (function()
-            local out = {}
-            for tag, amount in pairs(def.resist) do out[tag] = amount end
-            return out
-        end)() or nil,
+        -- THE RACE'S LINE IS THE FLOOR AND THE BLUEPRINT'S LAYERS OVER IT. A naga's scale is a fact
+        -- about every naga (data/races/naga.lua) and is stated once; a particular body that is tougher
+        -- than its kin says so here and wins the tag. Same order, and the same argument, as the item
+        -- fold one layer further out in Combat.applyUnitPassives: flesh first, then what was put on
+        -- top of it.
+        resist = (function()
+            local out, any = {}, false
+            for tag, amount in pairs(Race.get(def.race) and Race.get(def.race).resist or {}) do
+                out[tag] = amount; any = true
+            end
+            for tag, amount in pairs(def.resist or {}) do out[tag] = amount; any = true end
+            return any and out or nil
+        end)(),
         -- What this body stands in front of (models/ai.lua's AI.postedUnit): a character id, or
         -- "priority" for "whoever my side cannot afford to lose", ranked off the board each turn.
         -- A `defensive` unit takes a post and holds it; this decides that post instead of letting the
@@ -579,6 +623,28 @@ function Character.instantiate(id, progress)
         unarmed = def.unarmed ~= false and Item.instantiate(def.unarmed or Character.DEFAULT_UNARMED) or nil,
     }
 
+    -- THE RACIAL STAT LINE, folded into the BASE stats rather than banked as a bonus.
+    --
+    -- Combat's flatStat reads `char.stats[name]` as the base and adds the grid, the statuses, the
+    -- traits and the ground on top; a race belongs underneath all four, because it is not something the
+    -- body is carrying or standing on -- it is the body. Folding it here also makes it FIXED by
+    -- construction: it lands once, at instantiate, and no level-up can ever touch it. That is the
+    -- border between a race and a class stated in code rather than in a comment.
+    --
+    -- Resource stats have already been split into { max, current } by this point, so a line naming one
+    -- moves the ceiling and tops the pool up to it -- a race that granted health would grant it whole
+    -- rather than leaving a body spawning wounded. Nothing ships one; the path exists so the first race
+    -- that does is not a special case somebody has to notice.
+    for stat, amount in pairs(Race.statBonus(def.race)) do
+        local cur = char.stats[stat]
+        if type(cur) == "table" then
+            cur.max = (cur.max or 0) + amount
+            cur.current = cur.max
+        elseif type(cur) == "number" then
+            char.stats[stat] = cur + amount
+        end
+    end
+
     -- Starting loadout, authored as a positional 3x3 grid: cell i holds startingItems[i] (an item id,
     -- a { id, count } stack, or false/nil for empty). Placed by cell, not merged -- the designer's
     -- layout is exactly what the character starts with. A character's innate reaction is no longer a
@@ -589,6 +655,27 @@ function Character.instantiate(id, progress)
         local id = layoutId(layout[cell])
         if id then
             char.inventory[cell] = Item.instantiate(id, layoutCount(layout[cell]))
+        end
+    end
+
+    -- WHAT THE RACE PUTS IN THE GRID (data/races/*.lua's `grants`): a naga's own coils, and in time a
+    -- demon's crown. Bound, unstealable, and seeded AFTER the authored layout so a designer's own cell
+    -- assignments are never displaced -- the grant takes the first free cell and nothing else moves.
+    --
+    -- This is what makes the race do real work rather than being a label. Combat.isAquatic scans the
+    -- grid for the `swim` tag and needs no second place to look; four naga blueprints do not each have
+    -- to remember to carry their own legs; and the fifth naga somebody writes cannot forget. The cost
+    -- is a grid cell, which is the price the demons have always paid for their own.
+    --
+    -- A body with a full grid simply does not get it. That is a loud enough failure to be worth leaving
+    -- unguarded -- it means a nine-item blueprint of a race that grants something, which is an
+    -- authoring mistake the race spec catches by counting cells rather than a runtime case to handle.
+    for _, itemId in ipairs(Race.grantsOf(def.race)) do
+        for cell = 1, Character.MAX_INVENTORY do
+            if not char.inventory[cell] then
+                char.inventory[cell] = Item.instantiate(itemId)
+                break
+            end
         end
     end
 

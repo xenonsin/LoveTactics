@@ -29,7 +29,7 @@
 -- `assassinate` is the honest objective -- her retinue is a wall to pass, not a thing to grind.
 return {
     name = "Aurea, the Ever-Owed",
-    kind = "humanoid",
+    race = "human",
     tier = 4,
     -- WHAT LEVEL THESE NUMBERS WERE WRITTEN FOR. This body is authored as the fight it is at the end
     -- of its line, and models/growth.lua scales it DOWN toward the shallows rather than growing it up

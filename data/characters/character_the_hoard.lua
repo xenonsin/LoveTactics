@@ -12,7 +12,7 @@
 -- Tier 3's band is 81-154 health. High -- there has to be enough of it to lose.
 return {
     name = "The Hoard",
-    kind = "object",
+    race = "object",
     tier = 3,
     boss = true, -- the fight is it: off the execute and Charm tables (tests/charm_balance_spec.lua)
     sprite = "assets/chars/the_hoard.png",

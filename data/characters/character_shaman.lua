@@ -2,7 +2,7 @@
 -- a spirit-caller, a mentor. Home shelf is hunter. Kit from data/classes/shaman.lua.
 return {
     name = "Shaman",
-    kind = "humanoid",
+    race = "human",
     tier = 3,
     sprite = "assets/chars/shaman.png",
     class = "hunter",

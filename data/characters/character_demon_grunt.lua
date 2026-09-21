@@ -47,7 +47,7 @@
 -- never be worth the mana -- which, on the card, would have read as a demon promising nothing.
 return {
     name = "Demon Grunt",
-    kind = "demon",
+    race = "demon",
     tier = 2,
     sprite = "assets/chars/demon_grunt.png",
     revivable = false, -- a demon does not come back: no downed window, and no revive takes it

@@ -2,7 +2,7 @@
 -- Halted. Met as a march-warden, a mentor. Home shelf is knight. Kit from data/classes/warden.lua.
 return {
     name = "Warden",
-    kind = "humanoid",
+    race = "human",
     tier = 3,
     sprite = "assets/chars/warden.png",
     class = "knight",

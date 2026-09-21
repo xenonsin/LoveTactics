@@ -20,7 +20,7 @@
 -- Health sits around 60% of a general at the same reference level (they run 266-327).
 return {
     name = "Second Water",
-    kind = "construct",
+    race = "construct",
     tier = 4,
     sprite = "assets/chars/second_water.png",
     referenceLevel = 13,

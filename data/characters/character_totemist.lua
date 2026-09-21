@@ -3,7 +3,7 @@
 -- data/classes/totemist.lua.
 return {
     name = "Totemist",
-    kind = "humanoid",
+    race = "human",
     tier = 3,
     sprite = "assets/chars/totemist.png",
     class = "hunter",

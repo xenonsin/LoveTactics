@@ -15,7 +15,7 @@
 -- is why encounter_gluttony_fen_mouth.lua fields it alone with a screen of chaff in front.
 return {
     name = "Grendlemaw",
-    kind = "beast",
+    race = "beast",
     tier = 3,
     boss = true, -- the fight is it: off the execute and Charm tables (tests/charm_balance_spec.lua)
     sprite = "assets/chars/grendlemaw.png",

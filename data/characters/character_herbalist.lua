@@ -3,7 +3,7 @@
 -- is hunter. Kit from data/classes/herbalist.lua.
 return {
     name = "Herbalist",
-    kind = "humanoid",
+    race = "human",
     tier = 2,
     sprite = "assets/chars/herbalist.png",
     class = "hunter",

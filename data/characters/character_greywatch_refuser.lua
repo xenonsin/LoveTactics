@@ -17,7 +17,7 @@
 -- premise this quest used to have. They are armed, they are desperate, and they will not be taken.
 return {
     name = "Road-Knight",
-    kind = "humanoid",
+    race = "human",
     tier = 2,
     sprite = "assets/chars/greywatch_refuser.png",
     class = "knight",

@@ -89,7 +89,16 @@ Arena.BIOME_TERRAIN = {
     desert   = { fill = "dune",   rise = "hill", block = "mountain" },
     tundra   = { fill = "drift",  rise = "hill", block = "mountain" },
     volcanic = { fill = "rough",  rise = "hill", block = "lava" },
-    swamp    = { fill = "mire",   rise = "forest", block = "mountain" },
+    -- THE FEN, AND ITS WALLS ARE WATER. The blocker was `mountain` -- a rock face in a bog, which
+    -- nobody ever looked at twice because it produced a playable board. It is `deep` now: the thing a
+    -- swamp is walled by is the part of the swamp that is too deep to wade.
+    --
+    -- IT MOVES NOT ONE TILE OF TOPOLOGY. The generator makes the same three draws in the same order and
+    -- lays a blocker in the same places; `deep` is unwalkable exactly as `mountain` was, so the walkable
+    -- print of every seeded board is bit-for-bit what it was. What changed is what the walls are MADE
+    -- of -- which is the only thing this table has ever decided (see the parity pass above), and
+    -- `volcanic` has shipped a non-mountain blocker since long before this.
+    swamp    = { fill = "mire",   rise = "forest", block = "deep" },
     -- THE SWAMP KEEPS ITS HOSTILE FLOOR, and it is the deliberate exception to the paragraph above. A
     -- mire that stopped punishing the body standing in it would stop being a swamp; the cover here is
     -- the `rise` instead (a stand of trees out of the water), which is thinner than elsewhere on
@@ -103,7 +112,11 @@ Arena.BIOME_TERRAIN = {
     castle   = { fill = "fort", rise = "hill", block = "mountain" },
     -- Under the city: a broken stone floor with scree across it. `rough` is thin cover (+10) and is
     -- meant to be -- there is nothing growing down here to hide behind, only the floor's own wreckage.
-    underworld = { fill = "rough", rise = "hill", block = "mountain" },
+    -- ...AND ITS BLOCKER IS THE FLOODED VAULT. A cavern under a city is under its water table too, so
+    -- the walls of an underworld board are channels of black water rather than rock faces -- the same
+    -- one-word substitution the swamp takes below, for the same reason: it costs the generator nothing
+    -- and it gives the tile a second circle to live in.
+    underworld = { fill = "rough", rise = "hill", block = "deep" },
     -- The bowl. Sand underfoot like the desert, but the rise is a blocker rather than a hill, and so
     -- is the blocker: there is no high ground in an arena and no landform anyone climbs -- everything
     -- standing on this floor was carried in and set down for the card.
@@ -136,9 +149,21 @@ Arena.BIOME_TERRAIN = {
 -- existed, already reads as hostile to the planner, and already has a tested path for a body that
 -- started its turn standing in it -- so this is the mire admitting what it always was rather than a
 -- new rule.
+--
+-- THE THIRD AND FOURTH ENTRIES ARE WATER, and between them they are the whole of what the naga pass
+-- added to the board. The shallows SOAK whoever wades them (Wet lingers, so you come out of the water
+-- still wet and dry on the status's own clock), and the deep DROWNS whoever is put into it. Both are
+-- the same seam the fort and the mire already use, which is the point: ground that does something to
+-- you is a hazard here, and there was never a reason for ground that kills to be the exception.
+--
+-- hazard_deep_water sits on a tile nothing can STAND on, which is the one thing Hazard.place refuses --
+-- so it has an exception for exactly this (`drowns`), argued there. A drowning zone on walkable ground
+-- would be a different and much worse feature.
 Arena.TERRAIN_ZONES = {
     fort    = { id = "hazard_renewal", duration = 9999 },
     mire    = { id = "hazard_quicksand", duration = 9999 },
+    water   = { id = "hazard_shallows", duration = 9999 },
+    deep    = { id = "hazard_deep_water", duration = 9999 },
 }
 
 -- Every tile on `tiles` that stands a zone on itself, as hazard specs to be appended to a layout's own
@@ -1134,8 +1159,13 @@ local function hydrateTiles(layout)
         for x = 1, layout.cols do
             local t = (layout.tiles[y] and layout.tiles[y][x]) or "ground"
             local p = Arena.TILE_PROPS[t] or Arena.TILE_PROPS.ground
+            -- `swim` and `drowns` ride onto the cell beside `walkable`, for the same reason every other
+            -- property does: the movement graph and the shove primitive ask the CELL what it is, and a
+            -- terrain lookup per tile inside a Dijkstra is the one place in this codebase where that
+            -- costs something measurable. See models/terrain.lua for what each of them promises.
             tiles[y][x] = { type = t, moveCost = p.moveCost, walkable = p.walkable,
-                            sightCost = p.sightCost or 0, bonus = p.bonus, tags = p.tags }
+                            sightCost = p.sightCost or 0, bonus = p.bonus, tags = p.tags,
+                            swim = p.swim, drowns = p.drowns }
         end
     end
     return tiles

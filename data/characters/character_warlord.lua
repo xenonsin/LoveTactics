@@ -1,7 +1,7 @@
 -- Enemy boss blueprint (quest objective). See data/characters/bandit.lua.
 return {
     name = "Warlord",
-    kind = "humanoid",
+    race = "human",
     tier = 4,
     class = "fighter",
     discipline = "warlord",

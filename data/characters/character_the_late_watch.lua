@@ -16,7 +16,7 @@
 -- line body and its general (Balance.HEALTH_BANDS floors the boss rung at 155).
 return {
     name = "The Late Watch",
-    kind = "humanoid",
+    race = "human",
     tier = 4,
     sprite = "assets/chars/the_late_watch.png",
     referenceLevel = 13,

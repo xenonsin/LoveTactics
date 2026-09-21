@@ -15,7 +15,7 @@
 -- of a bar to shed them from.
 return {
     name = "The Unwanted",
-    kind = "construct",
+    race = "construct",
     tier = 3,
     boss = true, -- the fight is it: off the execute and Charm tables (tests/charm_balance_spec.lua)
     sprite = "assets/chars/the_unwanted.png",

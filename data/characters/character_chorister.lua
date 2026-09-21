@@ -8,7 +8,7 @@
 -- rather than a lock: there are turns in which to close the gap it opened.
 return {
     name = "Chorister",
-    kind = "demon",
+    race = "demon",
     tier = 2,
     sprite = "assets/chars/chorister.png",
     stats = {

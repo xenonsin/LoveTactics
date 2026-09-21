@@ -37,7 +37,7 @@
 -- carries no such flag: it is meant to be killable, cheaply and early, because that is the offer.
 return {
     name = "The Sow",
-    kind = "beast",
+    race = "beast",
     tier = 3,
     boss = true, -- the fight is her: off the execute and Charm tables (tests/charm_balance_spec.lua)
     sprite = "assets/chars/the_sow.png",

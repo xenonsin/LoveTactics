@@ -41,7 +41,7 @@
 -- `boss = true` as every centrepiece is.
 return {
     name = "Vengeful Spirit",
-    kind = "beast", -- the same animal. See the header on the resist line: nothing under it changed.
+    race = "beast", -- the same animal. See the header on the resist line: nothing under it changed.
     tier = 3,
     boss = true, -- off the execute and Charm tables (tests/charm_balance_spec.lua)
     sprite = "assets/chars/vengeful_spirit.png",

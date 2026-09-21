@@ -4,7 +4,7 @@
 -- See data/characters/fire_elemental.lua for the blueprint shape.
 return {
     name = "Ice Elemental",
-    kind = "elemental",
+    race = "elemental",
     tier = 1,
     sprite = "assets/chars/ice_elemental.png",
     stats = {

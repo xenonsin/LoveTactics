@@ -25,7 +25,7 @@
 -- shop for until the Bastion opens that shelf.
 return {
     name = "Forsworn Captain",
-    kind = "humanoid",
+    race = "human",
     tier = 3,
     sprite = "assets/chars/forsworn_captain.png",
     class = "knight",

@@ -68,7 +68,11 @@ local TILE_INFO = {
     mountain = { name = "Mountain",    desc = "Sheer rock. Blocks movement and line of sight -- only a flier crosses it." },
     grass    = { name = "Scrub",       desc = "Growth too dense to push through. Blocks movement and line of sight." },
     river    = { name = "River",       desc = "Impassable except at a bridge -- but you can see the far bank perfectly well." },
-    water    = { name = "Shallow Water", desc = "Wadeable but slow. Conducts lightning: a bolt striking beside it arcs in." },
+    water    = { name = "Shallow Water", desc = "Wadeable but slow, and it leaves you Wet. Conducts lightning: a bolt striking beside it arcs in." },
+    -- THE ONE DESCRIPTION IN THIS TABLE THAT IS NOT FLAVOUR. A lethal tile that does not say so where
+    -- the player dwells on it is the unforgivable version of this feature, so the sentence leads with
+    -- the killing and leaves the rest to the two after it.
+    deep     = { name = "Deep Water",  desc = "Drowns anything that cannot swim. Nobody walks in -- but a shove, a pull or a throw will put you there. It conducts." },
     lava     = { name = "Lava Flow",   desc = "Impassable. Like a river it blocks the feet and not the eye." },
     mire     = { name = "Mire",        desc = "Sucking bog. The heaviest ground to cross, and it leaves a body easier to hit. It conducts." },
     sand     = { name = "Loose Sand",  desc = "Heavy going, with nothing to hide behind." },
@@ -96,6 +100,9 @@ local TILE_COLOR = {
     grass    = { 0.60, 0.76, 0.50 },
     river    = { 0.45, 0.68, 0.95 },
     water    = { 0.45, 0.68, 0.95 },
+    -- Deeper and colder than the ford it sits beside, and the two are the only headings on the board
+    -- that have to be told apart at a glance: the same material, and one of them kills.
+    deep     = { 0.30, 0.48, 0.78 },
     lava     = { 0.95, 0.55, 0.30 },
     mire     = { 0.62, 0.72, 0.44 },
     sand     = { 0.90, 0.80, 0.54 },

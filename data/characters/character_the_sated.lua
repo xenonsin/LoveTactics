@@ -17,7 +17,7 @@
 -- Tier 3's band is 81-154 health. It sits at the ceiling, which is the whole conceit.
 return {
     name = "The Sated",
-    kind = "beast",
+    race = "beast",
     tier = 3,
     boss = true, -- the fight is it: off the execute and Charm tables (tests/charm_balance_spec.lua)
     sprite = "assets/chars/the_sated.png",

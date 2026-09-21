@@ -7,7 +7,7 @@
 -- Which is the decision the stratum keeps asking in different words: is this worth the tempo.
 return {
     name = "Coffer-Crawler",
-    kind = "construct",
+    race = "construct",
     tier = 2,
     sprite = "assets/chars/coffer_crawler.png",
     stats = {

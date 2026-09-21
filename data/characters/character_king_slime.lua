@@ -32,7 +32,7 @@
 -- own, because that is the body the rung is declared on.
 return {
     name = "King Slime",
-    kind = "beast",
+    race = "beast",
     tier = 4,
     boss = true,
     sprite = "assets/chars/king_slime.png",

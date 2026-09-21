@@ -3,7 +3,7 @@
 -- data/classes/saboteur.lua.
 return {
     name = "Saboteur",
-    kind = "humanoid",
+    race = "human",
     tier = 2,
     sprite = "assets/chars/saboteur.png",
     class = "rogue",

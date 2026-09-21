@@ -6,7 +6,7 @@
 -- to its composed token.
 return {
     name = "Beastmaster",
-    kind = "humanoid",
+    race = "human",
     tier = 2,
     sprite = "assets/chars/beastmaster.png",
     class = "hunter",

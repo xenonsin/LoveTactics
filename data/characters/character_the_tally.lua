@@ -18,7 +18,7 @@
 -- the execute and Charm tables.
 return {
     name = "The Tally",
-    kind = "demon",
+    race = "demon",
     tier = 4,
     sprite = "assets/chars/the_tally.png",
     referenceLevel = 13,

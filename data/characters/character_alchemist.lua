@@ -1,6 +1,6 @@
 return {
     name = "Alchemist",
-    kind = "humanoid",
+    race = "human",
     tier = 2,
     sprite = "assets/chars/alchemist.png",
     -- No portrait: the GENERIC alchemist template, not a companion. Ren (the alchemist companion) is the

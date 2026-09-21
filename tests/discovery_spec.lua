@@ -47,6 +47,11 @@ local TROPHIES = {
     -- either would be selling the boss fight's answer over the counter that the fight exists to
     -- teach, which is exactly what this list is for.
     "utility_unbroken_surface", "armor_quicksilver_mantle",
+    -- The Mimic's one (data/characters/character_mimic.lua, models/mimic.lua's Mimic.TROPHY), and it
+    -- is the first trophy that is not paid by the rank draw at all: a flat percent on top of the win,
+    -- outside the roll. That makes the refusal below load-bearing in a way it is not for the others --
+    -- a counter dealing one would not merely shortcut a chase, it would sell the ONLY thing in the game
+    -- that widens the carry ceiling to a company that never opened a wrong lid.
 }
 
 local function vendorFor(class)
@@ -64,10 +69,17 @@ end
 --
 -- `unstocked` is excluded by asking Vendor.foundPrice rather than by reading the flag, so this helper
 -- and the shelf agree on what "a counter could deal this" means by construction.
+-- `dropOnly` IS OUT, and it is out because these cases are about a ware the shelf eventually DEALS --
+-- shut under its rung, open at it, priced at what its depth implies. A dropOnly piece is refused at
+-- every counter forever (models/vendor.lua): it is on the rack to be read, it sells back like any other
+-- found ware, and no rung ever opens it. That is a different contract and it is held one file over, in
+-- tests/naga_spec.lua. Without this clause the first one authored simply won the alphabetical lottery
+-- this picker runs and failed both cases below for a reason that had nothing to do with either.
 local function anyFound(want)
     local best
     for id, def in pairs(Item.defs) do
         if def.dropTier and def.class and Class.isRoot(def.class) and not def.bound
+            and not def.dropOnly
             and vendorFor(def.class) and Vendor.foundPrice(def) ~= nil
             and (not want or want(def)) and (not best or id < best) then
             best = id

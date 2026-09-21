@@ -15,7 +15,7 @@
 -- it: a wyrmling should die to a committed turn, because the answer to a brood is to thin it.
 return {
     name = "Wyrmling",
-    kind = "beast",
+    race = "beast",
     tier = 2,
     sprite = "assets/chars/wyrmling.png",
     stats = {

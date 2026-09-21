@@ -14,7 +14,7 @@
 -- the hide, and the feet, and those it brings in full.
 return {
     name = "Dire Bear",
-    kind = "beast",
+    race = "beast",
     tier = 0,
     sprite = "assets/chars/dire_bear.png",
     stats = {

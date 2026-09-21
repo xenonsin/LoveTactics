@@ -2,7 +2,7 @@
 -- as a wild shapeshifter, a mentor. Kit from data/classes/druid.lua.
 return {
     name = "Druid",
-    kind = "humanoid",
+    race = "human",
     tier = 3,
     sprite = "assets/chars/druid.png",
     class = "hunter",

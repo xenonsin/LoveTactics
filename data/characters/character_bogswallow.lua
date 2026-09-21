@@ -13,7 +13,7 @@
 -- a party that keeps its distance never finds out what it does.
 return {
     name = "Bogswallow",
-    kind = "beast",
+    race = "beast",
     tier = 2,
     sprite = "assets/chars/bogswallow.png",
     stats = {

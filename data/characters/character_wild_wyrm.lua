@@ -17,7 +17,7 @@
 -- has to survive arriving. See data/characters/character_wild_raven.lua for the shape this follows.
 return {
     name = "Wyrm",
-    kind = "beast",
+    race = "beast",
     tier = 3,
     sprite = "assets/chars/wyrm.png",
     -- Tier 3's band is 81-154 health (docs/bestiary.md, pinned by tests/bestiary_spec.lua). It sits at

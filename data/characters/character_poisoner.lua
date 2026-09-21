@@ -2,7 +2,7 @@
 -- Met as a vat-master, a boss. Kit from data/classes/poisoner.lua.
 return {
     name = "Poisoner",
-    kind = "humanoid",
+    race = "human",
     tier = 3,
     sprite = "assets/chars/poisoner.png",
     boss = true,

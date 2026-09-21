@@ -5,7 +5,7 @@
 -- paid for it. See data/characters/bandit.lua for the blueprint shape.
 return {
     name = "Fire Elemental",
-    kind = "elemental",
+    race = "elemental",
     tier = 1,
     sprite = "assets/chars/fire_elemental.png",
     stats = {

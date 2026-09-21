@@ -28,7 +28,7 @@
 -- Her reliquary carries her rule for whoever lifts it (data/items/utility/utility_reliquary_unbidden.lua).
 return {
     name = "Luxuria, the Unbidden",
-    kind = "humanoid",
+    race = "human",
     tier = 4,
     -- WHAT LEVEL THESE NUMBERS WERE WRITTEN FOR. This body is authored as the fight it is at the end
     -- of its line, and models/growth.lua scales it DOWN toward the shallows rather than growing it up

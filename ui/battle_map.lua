@@ -127,6 +127,12 @@ end
 BattleMap.ART = {
     ground = "path", forest = "thicket", hill = "grass",
     rough = "grass", mountain = "rock", water = "river",
+    -- Deep water takes the `river` role like every other water, and explicitly NOT `rock`. The grey is
+    -- reserved for ground you cannot enter and this tile IS ground you cannot enter -- but it is the
+    -- one impassable floor whose whole identity is the material, and a grey channel in a fen would read
+    -- as a wall rather than as the water it is. The mark carries the "you cannot go there"; the role
+    -- only picks a plausible photograph once a real tileset sheet is loaded.
+    deep = "river",
     sand = "thicket", ice = "thicket", mire = "river", lava = "river",
     path = "path", bridge = "bridge", thicket = "thicket",
     grass = "grass", rock = "rock", river = "river",

@@ -3,7 +3,7 @@
 -- and it grows both parents. Kit from data/classes/duelist.lua.
 return {
     name = "Duelist",
-    kind = "humanoid",
+    race = "human",
     tier = 2,
     sprite = "assets/chars/duelist.png",
     class = "rogue",

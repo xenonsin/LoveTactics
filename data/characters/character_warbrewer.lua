@@ -3,7 +3,7 @@
 -- data/classes/warbrewer.lua.
 return {
     name = "Warbrewer",
-    kind = "humanoid",
+    race = "human",
     tier = 3,
     sprite = "assets/chars/warbrewer.png",
     boss = true,

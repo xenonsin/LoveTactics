@@ -40,7 +40,7 @@
 -- a number here and becomes a re-tier, and a re-tier obliges a rebalance of everything it carries.
 return {
     name = "Demon Champion",
-    kind = "demon",
+    race = "demon",
     tier = 3,
     boss = true,
     archetype = "aggressive", -- a slow menace that hunts; explicit for readability

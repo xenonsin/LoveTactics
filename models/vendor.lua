@@ -218,8 +218,31 @@ function Vendor.lockReason(item, rung, unlocked, levels)
     -- Vendor.sellValue still answers 0 and the piece has no market price in EITHER direction. There is
     -- nobody to buy one from and nobody who would know what to pay. Visible is not the same as
     -- merchandise.
+    -- `dropOnly` IS THE SECOND WAY A PIECE COMES OFF A BODY AND ONLY OFF A BODY, and the pair of them
+    -- say two different things that were easy to confuse until both existed:
+    --
+    --   unstocked   there is no MARKET for this. Vendor.foundPrice answers nil, so Vendor.sellValue
+    --               answers 0 as well: no counter deals one and no counter buys one back. A boar's hide
+    --               is worth nothing to anybody in the city because nobody there knows what it is.
+    --   dropOnly    the city does not STOCK it, but yours is worth something. It carries no `price`
+    --               either -- it does not need one, and the shelf recut's law is that only abilities,
+    --               consumables and a house's opening weapon do. Vendor.foundPrice derives its worth
+    --               from its `dropTier` exactly as it does for every other found ware, so it sells back
+    --               at the usual half. What the flag changes is one thing only: no counter will ever
+    --               deal you one.
+    --
+    -- The Mere's kit is the second (docs/nagas.md): no smith in the city works in scale and silt, and a
+    -- naga's spear is still a spear that a fence will take off your hands. Making it `unstocked`
+    -- instead would have meant widening a rule argued for twenty-odd beast trophies -- and pinned by
+    -- tests/discovery_spec.lua, which asserts a trophy sells for exactly 0 -- to fit seven items that
+    -- want the opposite half of it.
+    --
+    -- Both lead, and both produce the SAME refusal on the rack, which is correct: the player's question
+    -- at a counter is "can I buy this", the answer is no for the same reason in both cases, and the
+    -- reason names somewhere to go -- kill the thing that carries it. The difference between them is
+    -- felt at the sell desk, not here.
     local lockReason = nil
-    if item.unstocked then lockReason = "monster drop"
+    if item.unstocked or item.dropOnly then lockReason = "monster drop"
     elseif classLocked then lockReason = "class"
     elseif (rung or 0) < gateRung then lockReason = "rung" end
     return lockReason, earned, unlockLevel, gateRung

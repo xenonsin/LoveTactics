@@ -3,7 +3,7 @@
 -- data/classes/vanguard.lua.
 return {
     name = "Vanguard",
-    kind = "humanoid",
+    race = "human",
     tier = 3,
     sprite = "assets/chars/vanguard.png",
     boss = true,
