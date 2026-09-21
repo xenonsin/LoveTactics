@@ -365,8 +365,20 @@ return {
             --
             -- Fights are the exemption and the only one: combat and elite are what the fallbacks at the
             -- bottom of markerColor and MarkerIcon are FOR.
+            --
+            -- WALKED OVER `Encounter.MARKER_KINDS`, NOT OVER THE BLUEPRINTS, and that is the second
+            -- half of the same lesson rather than a tidy-up. This read `Encounter.defs`, so its
+            -- coverage was "every kind somebody wrote a file for" -- and half the kinds a player meets
+            -- are minted by a generator and have no file: the ways down and up, the hole, the day's
+            -- ends, the pack, and Act 0's road. So the road shipped with neither a colour nor a mark
+            -- and this case stayed green over it, which is the Weeping Stone's own bug a second time,
+            -- on the one tile the prologue's last fight is FOR. MARKER_KINDS is declared for exactly
+            -- this reason (see its header); asking it is what makes the guard cover the board.
             local src = readFile("ui/overworld_map.lua")
             local kinds = {}
+            for _, kind in ipairs(Encounter.MARKER_KINDS) do
+                if not Encounter.opensBattle({ kind = kind, composition = {} }) then kinds[kind] = true end
+            end
             for _, def in pairs(Encounter.defs) do
                 if def.kind and not Encounter.opensBattle({ kind = def.kind, composition = {} }) then
                     kinds[def.kind] = true

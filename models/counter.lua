@@ -85,27 +85,37 @@ end
 --                              sequence. `room.vendor` is the counter behind the room, which is not
 --                              always the house's own: see models/offer.lua's note on folded rooms.
 --   onLeave()                  optional, fired once when the player walks out.
---   opts.afterIntro(go)        optional, fired ONCE -- on the single visit the house's `intro` scene
---                              plays -- after that scene and before the desk. The host does whatever
---                              it wants over the city and calls `go()` to hand back; not passing it,
---                              or not calling back, is what would leave the player standing on a
---                              closed scene, so a host that takes the seam owes the call.
 --
--- WHY THE SEAM EXISTS AT ALL, since this file spent its first draft with no hooks in it: the
--- Cathedral's intro is the scene Xin joins out of (`grants`), and what the player is holding the
--- moment it ends is a wound and no idea that a wound is a thing you go and answer. That is a FEATURE
--- lesson -- a tutorial window, not a bubble (ui/panels/tutorial_note.lua draws the line) -- and a
--- window is a panel, which this module deliberately knows nothing about. So the host is handed the
--- beat instead of this module learning what a modal is.
---
--- Keyed on the intro rather than on a flag of its own, which is the whole reason it is offered HERE
--- and not from the desk: `flags.intro_<id>` already fires exactly once, ever, and a second ledger for
--- "has the window been seen" would be a second thing that can disagree with the first.
+-- THERE WAS AN `opts.afterIntro(go)` SEAM HERE and it is gone with the beat it was cut for. It fired
+-- once, after a house's `intro` scene and before its desk, and its one user was the wound window the
+-- Cathedral's doorway owes a player who has never seen one (states/hub.lua's teachWounds). That window
+-- teaches the rule the ROOM is about, so it moved to the room's own door when the scene it was riding
+-- moved to the far side of the press (see `introAfter` below) -- and a seam with no user is a seam
+-- that goes stale unread. The host hangs the window off opening the room now, which is a moment the
+-- host already owns and this module still knows nothing about.
 --
 -- `startAt` is nil on the way in -- the first visit of a session plays the scene whole -- and the desk's
 -- own id on every return from a room.
 function Counter.open(player, building, openPanel, onLeave, opts)
     assert(Counter.has(building), "no counter scene for " .. tostring(building and building.id))
+
+    local introFlag = "intro_" .. tostring(building.id)
+    player.flags = player.flags or {}
+
+    local function introPending()
+        return building.intro ~= nil
+            and not player.flags[introFlag]
+            and Conversation.defs[building.intro] ~= nil
+    end
+
+    -- Spend it: the flag, the companion, the save, the scene. The recruit fires BEFORE the scene
+    -- wherever the scene is played from, because the banner folds onto the next one to run.
+    local function playIntro(done)
+        player.flags[introFlag] = true
+        if building.grants then Player.recruit(player, building.grants) end
+        Player.save()
+        Conversation.play(building.intro, done)
+    end
 
     local function leave()
         Player.save()
@@ -123,7 +133,17 @@ function Counter.open(player, building, openPanel, onLeave, opts)
             local room = Offer.roomFor(player, building, answer)
             if not room then return leave() end
 
-            openPanel(room, function() desk(Counter.DESK) end)
+            openPanel(room, function()
+                -- ...and a room named by `introAfter` plays the house's one-time scene as it shuts,
+                -- once. Hung on the room CLOSING rather than on what was done inside it, because a
+                -- panel is the host's and this module never learns what happened in one -- which is
+                -- honest for the case it was built for: the coached morning holds the mending open
+                -- until the bone is set (ui/panels/ward.lua's rail), so the close IS the deed.
+                if building.introAfter == answer and introPending() then
+                    return playIntro(function() desk(Counter.DESK) end)
+                end
+                desk(Counter.DESK)
+            end)
         end, Counter.context(player, building), { startAt = startAt })
     end
 
@@ -147,8 +167,8 @@ function Counter.open(player, building, openPanel, onLeave, opts)
         end)
     end
 
-    -- A ROOM WITH ITS OWN ONE-TIME SCENE, ahead of the shopkeeper's greeting. `intro` is a scene the
-    -- blueprint names and `grants` is the companion it hands over as it opens -- which is how the
+    -- A HOUSE WITH ITS OWN ONE-TIME SCENE, played instead of the shopkeeper's greeting. `intro` is a
+    -- scene the blueprint names and `grants` is the companion it hands over -- which is how the
     -- Cathedral introduces Xin, the one companion in the game met above ground.
     --
     -- KEYED ON ITS OWN FLAG, and the first version of this lived in states/hub.lua and was BROKEN BY
@@ -162,28 +182,33 @@ function Counter.open(player, building, openPanel, onLeave, opts)
     -- it, which is the route every other companion's join takes (models/conversation.lua's noteJoin).
     --
     -- IT PLAYS INSTEAD OF THE GREETING, not in front of it, on the one visit it fires. The Cathedral is
-    -- why: its room's scene hands over Xin, its house has a shopkeeper's greeting of its own, and its
-    -- desk speaks too -- so a player walking through that door on the first morning of the game sat
-    -- through three scenes back to back, at the single most sensitive moment there is.
+    -- why: its scene hands over Xin, its house has a shopkeeper's greeting of its own, and its desk
+    -- speaks too -- so a player walking through that door on the first morning of the game sat through
+    -- three scenes back to back, at the single most sensitive moment there is.
     --
     -- The greeting is DEFERRED rather than dropped: nothing marks the vendor visited here, so it plays
     -- on the next visit, which is also the visit where the player might have a reason to look at the
     -- shelf it is about. One scene per trip through the door.
-    local introFlag = "intro_" .. tostring(building.id)
-    player.flags = player.flags or {}
-    if building.intro and not player.flags[introFlag] and Conversation.defs[building.intro] then
-        player.flags[introFlag] = true
-        if building.grants then Player.recruit(player, building.grants) end
-        Player.save()
-        local afterIntro = opts and opts.afterIntro
+
+    -- A SCENE THAT WAITS FOR A DEED INSTEAD OF A DOOR. `introAfter` names one of this house's own
+    -- answers, and a blueprint that carries it is saying its intro belongs on the way OUT of that
+    -- room rather than on the way in.
+    --
+    -- The Cathedral is why, and it is the difference between a healer who is announced and one who
+    -- does something: her scene played in the doorway, so a player met Xin, was told a bone could be
+    -- set, and then went and set it themselves off a menu. It plays on the press now -- she is the one
+    -- who mends Rowan, and she asks to come off the back of having done it.
+    --
+    -- THE GREETING STAYS DEFERRED EITHER WAY. One scene per trip through the door is the rule this
+    -- branch was written for, and moving the scene later does not buy the shopkeeper's preamble a slot
+    -- -- least of all here, where that preamble is six lines about a shelf that is still shut. Nothing
+    -- marks the vendor visited, so the greeting plays on the next visit exactly as it did before.
+    if introPending() then
+        if building.introAfter then return desk(Counter.DESK) end
         -- Straight to the desk afterwards, for the reason the paragraph above this one gives twice over:
         -- the house has just spoken at length, and its keeper's preamble on the back of that is the
         -- third scene this branch exists to avoid.
-        Conversation.play(building.intro, function()
-            if afterIntro then return afterIntro(function() desk(Counter.DESK) end) end
-            desk(Counter.DESK)
-        end)
-        return
+        return playIntro(function() desk(Counter.DESK) end)
     end
     greet()
 end

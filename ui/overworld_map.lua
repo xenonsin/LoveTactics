@@ -629,6 +629,12 @@ local function markerColor(kind, enc)
     if kind == "weeping_stone" then return 0.62, 0.38, 0.72 end
     if kind == "crossroads" then return 0.70, 0.72, 0.80 end     -- a branching dilemma: a gamble
     if kind == "ascent" then return 0.72, 0.78, 0.86 end -- the way back up: cold daylight, and the only one
+    -- ...and Act 0's road to the city takes the same daylight, for the reason MarkerIcon.road gives in
+    -- full: it is the ascent's sentence on a leg that has no ascent, so it may wear the ascent's plate
+    -- without either ever being mistaken for the other. Without an entry here it fell through to the
+    -- combat red at the bottom of this function, and the tile the Champion had been holding turned into
+    -- what looked like a second fight the moment the Champion stopped standing on it.
+    if kind == "road" then return 0.72, 0.78, 0.86 end
     -- The way DOWN, opened by putting the floor's guard off it. Deliberately the same family as the way
     -- up rather than its own hue: they are one pair, and what tells them apart is which direction the
     -- mark goes -- see MarkerIcon.stair. Banked warmer and darker, so the pair reads as daylight above
@@ -945,6 +951,25 @@ function MarkerIcon.stair(x, y, w, h, r, g, b, a)
         x + w * 0.5, y + h,
         x + w * 0.74, y + h * 0.78,
         x + w * 0.26, y + h * 0.78)
+end
+
+-- ACT 0's WAY OUT, and it is the ASCENT's mark because it is the ascent's sentence: the leg ends here
+-- and what you are carrying comes with you (Encounter.GLOSS's `road`). The Champion stands ON it
+-- (states/prologue.lua's FLIGHT_QUEST), so the tile is the boss's gold pennant until the boss falls and
+-- this the instant it does -- the same turn a circle's guardian gives the stair it was holding
+-- (models/descent.lua's Descent.openStair).
+--
+-- IT HAD NO MARK AND NO COLOUR AT ALL, which is the defect this exists to close rather than a
+-- refinement of one. `road` fell through markerColor to the combat red at the bottom and through
+-- drawMarkerIcon to the crossed swords, so the prologue's reward for putting the Champion down was its
+-- tile turning into what reads at a glance as another fight standing where the boss had been. See the
+-- header of Encounter.opensBattle: a marker that promises a fight the state then does not run is a lie.
+--
+-- Drawn as the ascent rather than given a silhouette of its own because the two can never share a
+-- board -- a prologue leg has no ascent and a descent floor has no road -- so a second way of drawing
+-- "out" would be a shape to learn that nothing is ever told apart by. The hover line says which.
+function MarkerIcon.road(x, y, w, h, r, g, b, a)
+    MarkerIcon.ascent(x, y, w, h, r, g, b, a)
 end
 
 -- A house: a roof over a doored body. A friendly town.

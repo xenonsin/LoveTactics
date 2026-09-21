@@ -716,6 +716,46 @@ return {
         end,
     },
     {
+        name = "the debug Win pays the felling the stage it skipped would have",
+        fn = function()
+            -- A stage fires on a health threshold, so a fight ENDED rather than fought crosses none --
+            -- correct for a killing blow (data/traits/trait_boss_phases.lua says bursting past a stage
+            -- skips it) and wrong for the debug button in states/battle.lua, which is not a player
+            -- dodging the beat but a developer skipping the fight. Debug-winning the Champion left
+            -- Rowan untouched, so no wound was written, so the city opened with no Ward and no healer:
+            -- the "broken city rather than a skipped prologue" states/prologue.lua's `skip` refuses to
+            -- hand over, reached from the other direction.
+            local c = Combat.new(arena(8, 8),
+                { unit("character_avatar", 1, 1), unit("character_rowan", 2, 1) },
+                { unit("character_demon_champion", 5, 5) })
+            local rowan = c.units[2]
+            assert(rowan.char.id == "character_rowan" and rowan.alive, "she walks in standing")
+            -- AT FULL HEALTH, which is the whole point: there is no armed `scriptedFell` to spend
+            -- here, because what the button skipped is the threshold that would have written one. So
+            -- this has to be read off the phase script itself.
+            assert(not c.units[3].scriptedFell, "the stage has not turned; nothing is armed")
+            assert(Combat.payScriptedFells(c) == 1, "the debug win pays the one felling this fight owes")
+            assert(not rowan.alive, "and she is down, exactly as the stage would have left her")
+
+            -- NO STAGING. Combat.spendScriptedFell hands the view a crossing to play out over several
+            -- seconds; there is no board left to play it on when the fight ends on this frame, and a
+            -- beat left queued would sit under the victory panel.
+            assert(c.scriptedStrike == nil, "the show is skipped -- only the consequence is paid")
+
+            -- ...and the consequence is the one the ledger reads (states/game.lua's inflictWounds).
+            local carried = Combat.reviveFallenParty(c)
+            local sawRowan = false
+            for _, char in ipairs(carried) do sawRowan = sawRowan or char.id == "character_rowan" end
+            assert(sawRowan, "she is carried off the won board, which is what becomes the wound")
+
+            -- AN ORDINARY FIGHT OWES NOTHING, so the button stays a plain win everywhere else.
+            local plain = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) },
+                { unit("character_demon_grunt", 5, 5) })
+            assert(Combat.payScriptedFells(plain) == 0, "no relic here scripts a felling")
+            assert(plain.units[1].alive, "so nobody is put down on the way out")
+        end,
+    },
+    {
         name = "the caravan defense now introduces the self-destruct Bomblet as a wave",
         fn = function()
             local defend = require("models.encounter").get("encounter_survivors_defend")

@@ -379,6 +379,79 @@ return {
         end,
     },
     {
+        -- A SCENE THAT WAITS FOR A DEED INSTEAD OF A DOOR (`introAfter`). The Cathedral is the only
+        -- house that carries one and it is the reason the field exists: its scene hands over Xin, and
+        -- played in the doorway it introduced the healer one beat BEFORE she was any use -- she said a
+        -- bone could be set, then stood there while the player set it off a menu. It plays on the way
+        -- out of the mending now, so she is the hands on the press.
+        --
+        -- THREE THINGS, and the order is the feature: nothing but the desk at the door, the room, then
+        -- the scene. The greeting stays deferred exactly as it was when the scene played at the door --
+        -- one scene per trip through, and on this trip it is hers.
+        name = "a house whose scene waits for a deed plays it on the way OUT of that room",
+        fn = function()
+            local Conversation = require("models.conversation")
+            local cathedralId, def = houseHolding("mend")
+            assert(def.introAfter == "mend",
+                "the Cathedral's scene no longer waits for the mending -- retarget this case")
+            assert(def.intro and def.grants, "...and it is still the scene that hands over its companion")
+
+            local player = Player.new()
+            Wound.inflict(player, { { id = "character_rowan" } })
+            local cathedral = cardFor(player, cathedralId)
+
+            -- The desk answers `mend` once and then walks out, and every room hands straight back --
+            -- which is what the coached morning's rail does for real (ui/panels/ward.lua).
+            local played, opened, answers = {}, {}, { "mend" }
+            local real = Conversation.play
+            Conversation.play = function(id, onDone, _, _)
+                played[#played + 1] = id
+                if id == cathedral.counter then return onDone(table.remove(answers, 1) or Counter.LEAVE) end
+                onDone()
+            end
+            local ok, err = pcall(Counter.open, player, cathedral, function(room, onClosed)
+                opened[#opened + 1] = room.panel
+                onClosed()
+            end, nil)
+            Conversation.play = real
+            assert(ok, tostring(err))
+
+            assert(played[1] == cathedral.counter,
+                "the door opens on the desk, got " .. tostring(played[1]))
+            assert(opened[1] == "ward", "the mending is what opened, got " .. tostring(opened[1]))
+            assert(played[2] == def.intro,
+                "the house's scene plays as the room shuts, got " .. tostring(played[2]))
+            for _, id in ipairs(played) do
+                assert(id ~= "conversation_" .. cathedral.vendor .. "_vendor_intro",
+                    "the shopkeeper's greeting must stay deferred on the visit the scene fires")
+            end
+
+            -- ...and it spends its flag and hands over its companion, exactly as it did at the door.
+            assert(player.flags["intro_" .. cathedralId], "the scene is spent once, ever")
+            local joined = false
+            for _, char in ipairs(player.roster) do
+                if char.id == def.grants then joined = true end
+            end
+            assert(joined, def.grants .. " did not join out of the scene she is granted by")
+
+            -- A SECOND TRIP THROUGH THE SAME ROOM SAYS NOTHING. The flag is the only ledger, so this
+            -- is the case that fails the day the scene starts keying off the room instead.
+            local again = {}
+            answers = { "mend" }
+            Conversation.play = function(id, onDone, _, _)
+                again[#again + 1] = id
+                if id == cathedral.counter then return onDone(table.remove(answers, 1) or Counter.LEAVE) end
+                onDone()
+            end
+            local ok2, err2 = pcall(Counter.open, player, cathedral, function(_, onClosed) onClosed() end, nil)
+            Conversation.play = real
+            assert(ok2, tostring(err2))
+            for _, id in ipairs(again) do
+                assert(id ~= def.intro, "the house's one-time scene played twice")
+            end
+        end,
+    },
+    {
         -- A GATE SAYS THE ROOM IS THERE; THE MARK SAYS IT WANTS YOU TODAY. The Cathedral's mending
         -- stands on the desk forever once anybody has been carried up broken -- that is the gate doing
         -- its job, and the spec above pins it -- so without a second question a desk of four identical

@@ -7302,6 +7302,59 @@ function Combat.spendScriptedFell(combat, unit)
     return true
 end
 
+-- EVERY SCRIPTED FELLING THIS FIGHT STILL OWES, PAID AT ONCE AND WITHOUT THE SHOW. The debug "Win"
+-- button's half of Combat.spendScriptedFell (states/battle.lua), and nothing else calls it.
+--
+-- A scripted beat is armed by a boss phase and fires on a health threshold (the `mark` response in
+-- data/traits/trait_boss_phases.lua), so a fight ENDED rather than fought crosses no threshold and the
+-- beat never happens. That is correct for a killing blow -- the trait's own header says bursting past a
+-- stage skips it -- and wrong for the debug button, because the beat is not a threat the player dodged:
+-- it is a CONSEQUENCE the rest of the game is written from. The Champion fells Rowan at 33%
+-- (data/items/utility/utility_demon_sigil.lua), the win writes that to the wound ledger
+-- (states/game.lua's inflictWounds), and the Ward's card in the city is hung on the mark it leaves
+-- (models/building.lua's `unlockWound`). Debug-winning the prologue's last fight therefore opened a
+-- city with no ward and no healer -- the exact "broken city" states/prologue.lua's `skip` spends a
+-- paragraph refusing to hand over, arrived at from the other direction.
+--
+-- READ OFF THE PHASE SCRIPT rather than off the armed field, because at full health there is no armed
+-- field: what the debug win skipped is the threshold, so the mark this is paying was never written. An
+-- armed one is taken too and spent, so the two cannot both fire.
+--
+-- NO STAGING. Combat.spendScriptedFell hands the view a crossing to play out over several seconds and
+-- this deliberately does not: the fight is over on this frame, there is nothing left to watch it on,
+-- and a `scriptedStrike` left behind would be a beat the victory panel is standing on top of. What is
+-- wanted is the felling itself -- the body down, carried out by Combat.reviveFallenParty, and the wound.
+function Combat.payScriptedFells(combat)
+    local paid = 0
+    for _, unit in ipairs((combat and combat.units) or {}) do
+        if unit.alive and unit.side == "enemy" and unit.char then
+            local victims = {}
+            if unit.scriptedFell then
+                victims[#victims + 1] = unit.scriptedFell.victim
+                unit.scriptedFell = nil
+            end
+            for _, item in pairs(unit.char.inventory or {}) do
+                for _, phase in ipairs(item.phases or {}) do
+                    for _, response in ipairs(phase.responses or {}) do
+                        if response.kind == "mark" and response.victim then
+                            victims[#victims + 1] = response.victim
+                        end
+                    end
+                end
+            end
+            for _, id in ipairs(victims) do
+                for _, victim in ipairs(combat.units) do
+                    if victim.alive and victim.side == "party" and victim.char
+                        and victim.char.id == id and Combat.fell(combat, victim) then
+                        paid = paid + 1
+                    end
+                end
+            end
+        end
+    end
+    return paid
+end
+
 -- An adjacent ally may throw itself in front of a blow aimed at `target`, taking it instead. Returns
 -- the guardian to strike (and spends its intercept) or nil for no redirect. Two guard kinds, both set
 -- by an onCombatStart trait onto `unit.guard`:

@@ -411,8 +411,8 @@ return {
     ["line.conversation_tutorial_city.2"] = { en = "{select} the Rift. The stair down is inside.", ja = "" },  -- TODO
     ["line.conversation_tutorial_city.3"] = { en = "{select} {door}", ja = "" },  -- TODO
     ["line.conversation_tutorial_city.4"] = { en = "{select} the Bounty Board. The houses post their work there.", ja = "" },  -- TODO
-    ["line.conversation_tutorial_city.5"] = { en = "{select} the Inn. They will see to that arm, and it costs nothing to wait.", ja = "" },  -- TODO
-    ["line.conversation_tutorial_city.6"] = { en = "{select} to set {who}'s bone now. Resting mends it too, and costs the trips she is in bed for.", ja = "" },  -- TODO
+    ["line.conversation_tutorial_city.5"] = { en = "{select} the Cathedral to mend Rowan's wounds.", ja = "" },  -- TODO
+    ["line.conversation_tutorial_city.6"] = { en = "{select} to mend {who}'s wounds.", ja = "" },  -- TODO
     ["line.conversation_tutorial_city.7"] = { en = "{select} to rest {who}. The purse will not cover setting the bone today.", ja = "" },  -- TODO
     ["line.conversation_tutorial_flight.1"] = { en = "Walk to the chest ahead. Use WASD, the arrow keys, or click a tile.", ja = "" },  -- TODO
     ["line.conversation_tutorial_flight.2"] = { en = "Open your loadout to see what you found.", ja = "" },  -- TODO
@@ -425,7 +425,7 @@ return {
     ["line.conversation_tutorial_notes.10"] = { en = "Relics", ja = "" },  -- TODO
     ["line.conversation_tutorial_notes.11"] = { en = "Relics are bonuses that affect the whole party that only last until you leave the rift.", ja = "" },  -- TODO
     ["line.conversation_tutorial_notes.12"] = { en = "Wounds", ja = "" },  -- TODO
-    ["line.conversation_tutorial_notes.13"] = { en = "A body carried out of a fight comes back wounded. Part of its health is set aside and cannot be healed back into, and a body carrying more than one wound fights worse for them.\n\nA wound does not close on its own, and coming home does not close it either. The Inn is the only room that ends one, and it ends one two ways: rest the body, which costs nothing but keeps it out of the company for a few descents, or set the bone, which costs gold and is done before you leave the room.\n\nGold buys speed here and never recovery. Resting is free, always.", ja = "" },  -- TODO
+    ["line.conversation_tutorial_notes.13"] = { en = "When a character becomes incapacitated in battle and isn't revived before they bleed out, they obtain a wound. Each wound reduces the max health that the character can heal.\n\nThe Cathedral can mend wounds instantly for a price, or you can choose to have the character rest for a few days for free, but they won't be able to descend with you until they recover.", ja = "" },  -- TODO
     ["line.conversation_tutorial_notes.2"] = { en = "This meter measures the energy of the rift and tells us if a breach is imminent. It will increase every day, but clearing the champion on each floor reduces the meter.\n\nThe merchants lobby heavily to keep the rift active, but many lives are spent keeping the balance.", ja = "" },  -- TODO
     ["line.conversation_tutorial_notes.3"] = { en = "Tactics", ja = "" },  -- TODO
     ["line.conversation_tutorial_notes.4"] = { en = "Characters can be taught to fight on their own using tactics.\n\nTactics are prioritized and evaluated from top to bottom and are used when the character is set to auto mode.", ja = "" },  -- TODO
@@ -480,7 +480,7 @@ return {
     ["line.conversation_undercroft_vendor_intro.5"] = { en = "Buy from him and pay him in coin, {name}. Owe this house nothing.", ja = "" },  -- TODO
     ["line.conversation_undercroft_vendor_intro.6"] = { en = "The floor is open. Everything is for sale, and everything is owed.", ja = "" },  -- TODO
     ["line.conversation_ward_first_visit.1"] = { en = "PLACEHOLDER -- she takes Rowan's weight without being asked.", ja = "" },  -- TODO
-    ["line.conversation_ward_first_visit.2"] = { en = "PLACEHOLDER -- time sets a bone; she can set it sooner.", ja = "" },  -- TODO
+    ["line.conversation_ward_first_visit.2"] = { en = "PLACEHOLDER -- the bone goes back, under her hands, now.", ja = "" },  -- TODO
     ["line.conversation_ward_first_visit.3"] = { en = "PLACEHOLDER -- she minds being carried more than she minds the wound.", ja = "" },  -- TODO
     ["line.conversation_ward_first_visit.4"] = { en = "PLACEHOLDER -- she asks to come, and says what she is for.", ja = "" },  -- TODO
     ["name.alchemist"] = { en = "The Crucible", ja = "" },  -- TODO

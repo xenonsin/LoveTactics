@@ -45,7 +45,7 @@ return {
         { "character_rowan", "Relics", tag = 10, id = "relics_title" },
         { "character_rowan", "Relics are bonuses that affect the whole party that only last until you leave the rift.", tag = 11, id = "relics_body" },
         { "character_rowan", "Wounds", tag = 12, id = "wound_title" },
-        { "character_rowan", "A body carried out of a fight comes back wounded. Part of its health is set aside and cannot be healed back into, and a body carrying more than one wound fights worse for them.\n\nA wound does not close on its own, and coming home does not close it either. The Inn is the only room that ends one, and it ends one two ways: rest the body, which costs nothing but keeps it out of the company for a few descents, or set the bone, which costs gold and is done before you leave the room.\n\nGold buys speed here and never recovery. Resting is free, always.", tag = 13, id = "wound_body" },
+        { "character_rowan", "When a character becomes incapacitated in battle and isn't revived before they bleed out, they obtain a wound. Each wound reduces the max health that the character can heal.\n\nThe Cathedral can mend wounds instantly for a price, or you can choose to have the character rest for a few days for free, but they won't be able to descend with you until they recover.", tag = 13, id = "wound_body" },
         { "character_rowan", "A to continue", tag = 7, id = "dismiss_pad" },
         { "character_rowan", "Tap to continue", tag = 8, id = "dismiss_touch" },
         { "character_rowan", "Click, or press Enter to continue", tag = 9, id = "dismiss_key" },

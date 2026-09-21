@@ -16,8 +16,9 @@
 -- AND THE SECOND HALF OF THE SAME LESSON IS TAUGHT IN TOWN, on the morning the city grows the room
 -- that answers a wound. The map's bubble says what the mark on the bar IS; it cannot say what to do
 -- about it, because down there the answer is a camp stop and not a door. The city's beat is where the
--- rule lands -- a window at the end of the Cathedral's first-visit scene, the one Xin joins out of
--- (states/hub.lua's teachWounds) -- and then a bubble on the Inn's own rows (ui/panels/ward.lua).
+-- rule lands -- a window in the doorway of the mending itself (states/hub.lua's teachWounds) -- and
+-- then a bubble on the one row the room offers that morning (ui/panels/ward.lua's rail). What the
+-- press hands to is the scene the healer sets the bone in and asks to come out of.
 --
 -- WHAT HOLDS THE TWO SURFACES TOGETHER is one predicate, Wound.unattended: the city's coaching stage
 -- is spent when it empties and the panel rings the rows of whoever is first in it, so "seen to" cannot
@@ -211,21 +212,29 @@ return {
             assert(src:find("Wound.unattended", 1, true),
                 "states/hub.lua no longer reads the predicate the Inn's own rows are rung from")
 
-            -- The window rides the intro scene's own once-ever flag rather than a ledger of its own,
-            -- which is the whole reason models/counter.lua grew the seam (its afterIntro).
-            assert(src:find("afterIntro", 1, true), "the hub no longer takes the beat after a first visit")
-            local counter = assert(love.filesystem.read("models/counter.lua"), "should read the counter")
-            assert(counter:find("opts.afterIntro", 1, true) or counter:find("opts and opts.afterIntro", 1, true),
-                "models/counter.lua no longer offers the beat between a first-visit scene and its desk")
+            -- THE WINDOW IS HUNG ON THE ROOM, not on a scene. It rode the Cathedral's first-visit
+            -- scene until that scene moved to the far side of the mending press (the blueprint's
+            -- `introAfter`), where a window teaching the decision would arrive after it was taken.
+            -- It still keeps no ledger: the stage it is fired on is spent by the deed.
+            assert(src:find("teachWounds(show)", 1, true),
+                "the hub no longer teaches the wound in the doorway of the room that answers it")
+            assert(src:find("coachingMend()", 1, true), "...and it is no longer gated on the coached morning")
+            assert(not src:find("afterIntro", 1, true),
+                "the hub still reaches for a seam that is gone -- the window hangs off the room now")
         end,
     },
     {
-        -- THE RING GOES ROUND THE PAID ROW, and that is the half a source grep cannot see. The window
-        -- one beat earlier taught both ways out and ranked neither; the bubble ranks them, because on
-        -- THIS morning resting benches Rowan for the descent the city is about to ask four bodies for.
-        -- The rect is built from the menu's own laid-out rows, so a layout change moves the bubble with
-        -- them rather than leaving it pointing at old coordinates.
-        name = "the Inn rings the instant mend, puts the cursor on it, and only while it is coached",
+        -- THE COACHED MORNING IS A RAIL, and every half of it is here. The window one beat earlier
+        -- taught both ways out and ranked neither; this room ranks them by offering ONE -- because on
+        -- THIS morning resting benches Rowan for the descent the city is about to ask four bodies for,
+        -- and a player who rests here walks down three against a board that expects four.
+        --
+        -- IT WAS A RECOMMENDATION FOR A PASS: both rows drawn, the ring on the paid one, the plaza's
+        -- own deed satisfied by either. The rows are one row now, the panel refuses to close over an
+        -- unset bone, and the press hands back to the desk -- which is where the scene that mends it
+        -- is waiting (data/buildings/cathedral.lua's introAfter). A rail that any of the three escapes
+        -- reopens is not one, so all three are pinned.
+        name = "the coached Inn offers one row, holds the room until it is pressed, and lets go after",
         fn = function() stubFonts(function()
             local Ward = require("ui.panels.ward")
             local player = roster("character_rowan", "character_kaen")
@@ -233,25 +242,20 @@ return {
             player.wounds = { character_rowan = 1 }
             Wound.stamp(player)
 
-            local panel = Ward.new({ player = player, coach = true, onClose = function() end })
+            local closed = 0
+            local panel = Ward.new({ player = player, coach = true,
+                onClose = function() closed = closed + 1 end })
             panel:update(0)  -- the rows are laid out on the tick, not in the constructor
 
-            local rows = 0
-            for _, item in ipairs(panel.items) do
-                assert(item.charId and item.kind, "every row names the body and the way out it is")
-                if item.charId == "character_rowan" then rows = rows + 1 end
-            end
-            assert(rows == 2, "a purse that covers the treatment offers both ways out, got " .. rows)
-
+            assert(#panel.items == 1, "the coached morning offers one row, got " .. #panel.items)
             local i, _, kind = panel:coachIndex()
-            assert(kind == "treat",
-                "the coach names the row that sets the bone today, got " .. tostring(kind))
-            assert(panel.items[i].charId == "character_rowan", "...on the body that is actually hurt")
+            assert(i == 1 and kind == "treat",
+                "...and it is the row that sets the bone today, got " .. tostring(kind))
+            assert(panel.items[i].charId == "character_rowan", "on the body that is actually hurt")
 
             -- THE CURSOR IS ON THE ROW THE BUBBLE NAMES. The bubble wears a key cap, and the cap is a
             -- promise about what that key does -- the same rule states/hub.lua's focusCoachedCard keeps
-            -- on the plaza. A ring on one row and a highlight on another is two controls each claiming
-            -- to be the live one.
+            -- on the plaza.
             assert(panel.menu.selected == i, "the selection sits on the coached row")
 
             local rect, who, drawnKind = panel:coachRect()
@@ -260,24 +264,41 @@ return {
             local item = panel.items[i]
             assert(rect.x == item.x and rect.y == item.y and rect.w == item.w and rect.h == item.h,
                 "the ring is that row and not the block")
-            for j, other in ipairs(panel.items) do
-                if j ~= i then assert(other.y ~= rect.y, "no other row shares the ring") end
-            end
 
-            -- An ordinary visit is not coached at all: no flag, no bubble, whoever is hurt.
-            local plain = Ward.new({ player = player, onClose = function() end })
+            -- HELD. Esc, the X and the click-outside are the three ways out of every other panel in
+            -- the city, and none of them answers a wound.
+            assert(panel:railed(), "the room is held while the bone is unset")
+            panel:keypressed("escape")
+            panel:mousepressed(panel.boxX - 40, panel.boxY - 40, 1)
+            panel:gamepadpressed(nil, "b")
+            assert(closed == 0, "a held room cannot be walked out of, got " .. closed .. " close(s)")
+
+            -- THE PRESS SPENDS IT: the bone is set, the rail goes with it, and the room hands back on
+            -- its own -- which is the seam the house's scene plays on (models/counter.lua's introAfter).
+            panel.items[i].action()
+            assert(#Wound.unattended(player) == 0, "the press set the bone")
+            assert(not panel:railed(), "the rail is spent with the deed")
+            assert(closed == 1, "the room hands back to the desk on the press, got " .. closed)
+            assert(panel:coachRect() == nil, "a body that has been seen to is no longer rung")
+
+            -- An ordinary visit is not coached at all: no flag, no bubble, both ways out on the desk,
+            -- and the door open -- which is the room every trip after this one.
+            local later = roster("character_rowan")
+            later.gold, later.wounds = Wound.TREAT_COST, { character_rowan = 1 }
+            Wound.stamp(later)
+            local plainClosed = 0
+            local plain = Ward.new({ player = later, onClose = function() plainClosed = plainClosed + 1 end })
             plain:update(0)
             assert(plain:coachRect() == nil, "an uncoached Inn draws no bubble")
-
-            -- ...and the coached one goes quiet the instant the wound is answered, on the same
-            -- predicate the city spends its stage on -- so the ring and the plaza cannot disagree.
-            -- REST answers it, though rest is not the row that was pointed at: the deed the city spends
-            -- its stage on is wider than the instruction (states/hub.lua's mendingDone), which is what
-            -- keeps this a recommendation rather than a rail.
-            assert(Wound.rest(player, "character_rowan") > 0, "rest is the free way out")
-            panel:rebuild()
-            panel:update(0)
-            assert(panel:coachRect() == nil, "a body that has been seen to is no longer rung")
+            assert(not plain:railed(), "...and holds nobody")
+            local rows = 0
+            for _, row in ipairs(plain.items) do
+                assert(row.charId and row.kind, "every row names the body and the way out it is")
+                if row.charId == "character_rowan" then rows = rows + 1 end
+            end
+            assert(rows == 2, "a purse that covers the treatment offers both ways out, got " .. rows)
+            plain:keypressed("escape")
+            assert(plainClosed == 1, "and an uncoached room closes when it is asked to")
         end) end,
     },
     {

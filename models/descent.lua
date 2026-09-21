@@ -3910,8 +3910,9 @@ end
 --
 -- SPENT BY THE DEED, not by the screen being seen -- it is set in `descend`, so a company that walks in
 -- and back out is coached again. A flag on the player rather than a hub stage, for the same reason as
--- the tally above: the hub spends `hubIntro` when the door OPENS, so it is gone by the time this state
--- enters, and a flag passed through the switch would not survive a quit.
+-- the tally above: `hubIntro` is spent in town -- on the mending, before the stair is ever pressed
+-- (states/hub.lua's INTRO_STAGES; the Rift's own stage there is parked) -- so it is long gone by the
+-- time this state enters, and a flag passed through the switch would not survive a quit.
 function Descent.gateCoached(player)
     return (player and player.gateCoached) or false
 end

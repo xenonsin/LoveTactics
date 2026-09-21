@@ -183,15 +183,21 @@ for _, row in ipairs(STAT_ROWS) do SHEET_KEYS[#SHEET_KEYS + 1] = row.key end
 -- as long as the gesture that caused it. The forecast states a TRANSITION instead, "16 → 17", which
 -- cannot describe a bonus already in effect, and it appears only while the growth clause is engaged.
 --
--- SLOWED is the stacked-Move caution under the stats, and it is a QUIETER LOSS rather than a hue of its
--- own: it is the same red an item card spends on a warning (ui/item_tooltip.lua's WARN), so a line here
--- reads as the same class of thing a player has already met on a tooltip. Amber was the other candidate
--- and is wrong twice over -- on this sheet it is the spotlight gold that means "focused", and the
--- technique figures wear it three lines below, so a caution in it would read as a heading for them.
+-- SLOWED is the stacked-Move caution under the stats, and it is ORANGE rather than a quieter red. It
+-- used to be the tooltip's warning red (ui/item_tooltip.lua's WARN) on the argument that a caution
+-- should read as the same class of thing a player has met on an item card -- but on this sheet the two
+-- Move lines sit one above the other, and a dim red over a bright red is a difference a player has to
+-- measure rather than see. RED IS RESERVED FOR THE FAULT: a body at 0 Move cannot walk, and that is the
+-- only state on this line worth the loss hue. A stack that still walks has merely bought armor, and
+-- orange is the standard word for that everywhere else -- a caution, not a failure.
+--
+-- Distinct from the spotlight gold (Theme.accentAmber, which means "focused" here and tints the
+-- technique figures three lines below): this is pushed hot and down into the ember/bronze border, so it
+-- cannot be misread as a heading for the ledger under it.
 local ANNOT_GAIN    = { 0.55, 0.90, 0.58 }
 local ANNOT_LOSS    = { 0.95, 0.45, 0.42 }
 local ANNOT_PENDING = { 0.48, 0.74, 0.51 }
-local ANNOT_SLOWED  = { 0.789, 0.361, 0.354 }
+local ANNOT_SLOWED  = { 0.878, 0.573, 0.310 }
 local ARROW = "→"
 
 local function pointIn(r, x, y)
@@ -2109,8 +2115,10 @@ function Party:drawFocus()
     if slow then
         love.graphics.setFont(self.smallFont)
         -- Immobile takes the bright loss red the sheet already spends on a stat going the wrong way; a
-        -- stack that still walks takes the quieter one, because it is a caution and not a fault -- the
-        -- player may well have meant it, and the line is here so that they meant it knowingly.
+        -- stack that still walks takes ORANGE, because it is a caution and not a fault -- the player
+        -- may well have meant it, and the line is here so that they meant it knowingly. Red only ever
+        -- means the walk is gone (slow.immobile == total <= 0), so the hue alone answers which of the
+        -- two sentences a glance has landed on.
         Theme.set(slow.immobile and ANNOT_LOSS or ANNOT_SLOWED)
         for _, line in ipairs({ slow.text, slow.note }) do
             love.graphics.printf(line, x, sy, self.focusW, "center")
@@ -2145,20 +2153,31 @@ function Party:drawTechnique(char, x, y)
     self.techniqueRect = Theme.caption("Technique", x, y, self.focusW)
     y = y + 20
 
-    -- Two empty states, because they are different facts. Nothing earned yet names the VERB that earns
+    -- Two empty states, because they are different facts. Nothing earned yet states the RULE that earns
     -- it -- a blank section would read as a broken panel, and this is every member until their first
     -- fight, so it is where the loop gets explained. A ledger that exists but is billed flat is not that
     -- member: telling a veteran who has forged everything to go and learn some technique would read as
     -- the panel having forgotten them.
+    --
+    -- The rule in the arithmetic it is made of, and in the SAME sentence the class editor says it in
+    -- (ClassEditor:drawTechniqueRule) -- one gloss for one mechanic, on both surfaces that teach it.
+    -- "Fight, and every house you carry teaches this body" was true and unplannable: it named the verb
+    -- and left the player to discover on their own that the badge they are standing in is paid too.
+    -- Read off the constants rather than typed, so a retune moves the sentence with the rule.
     if #rows == 0 then
         local earned = false
         for _, amount in pairs(char.technique or {}) do
             if (amount or 0) > 0 then earned = true end
         end
+        local per, share = Class.TECHNIQUE_PER_ACTION, Class.TECHNIQUE_DECLARED_SHARE
+        local none = share > 0
+            and string.format("None yet -- each action earns %d technique: %d for their class, %d for "
+                .. "the class of the item used.", per, share, per - share)
+            or string.format("None yet -- each action earns %d technique for the class of the item used.", per)
         Theme.set(Theme.muted, 0.8)
         love.graphics.printf(earned
             and "Spent out -- every house here is already forged into something."
-            or "None yet -- fight, and every house you carry teaches this body.",
+            or none,
             x, y + 2, self.focusW, "center")
         return
     end

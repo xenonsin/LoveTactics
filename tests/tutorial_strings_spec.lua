@@ -29,7 +29,9 @@ local NOTES = "conversation_tutorial_notes"
 -- that renames one, shows up as a named failure rather than as a bubble that quietly stops drawing.
 local FIELDED = {
     { conv = CITY,  id = "gate_stair",    coach = true },
-    { conv = CITY,  id = "rift_card",     coach = true },
+    -- `rift_card` is NOT here, and neither is `board_card`: both are retired lines kept in the bag
+    -- because they are stamped and translated (the bag's own header argues each). This list is what a
+    -- surface asks for, so a retired line staying in it would pin a bubble nobody draws.
     { conv = CITY,  id = "new_door",      coach = true },
     -- The two bubbles in this bag pinned inside a PANEL rather than to a card (ui/panels/ward.lua):
     -- the row it names when the purse covers the bone, and the row it falls back to when it does not.
@@ -189,10 +191,11 @@ return {
             end
 
             local hub = source("states/hub.lua")
-            assert(hub:find("\"rift_card\"", 1, true), "the first morning's bubble lost its line id")
+            assert(hub:find("\"ward_card\"", 1, true), "the first morning's bubble lost its line id")
             assert(hub:find("\"new_door\"", 1, true), "a grown door's bubble lost its line id")
-            -- ...and the window the Cathedral's first visit opens with, which is the beat Xin joins on
-            -- (states/hub.lua's teachWounds, handed the seam by models/counter.lua's afterIntro).
+            -- ...and the window the mending opens with, one beat before its rows (states/hub.lua's
+            -- teachWounds). It rode the Cathedral's first-visit scene until that scene moved to the
+            -- far side of the press, which is where Xin joins now.
             for _, id in ipairs({ "wound_title", "wound_body" }) do
                 assert(hub:find(id, 1, true), "states/hub.lua stopped asking for `" .. id .. "`")
             end

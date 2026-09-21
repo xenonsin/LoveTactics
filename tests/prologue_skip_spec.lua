@@ -184,6 +184,49 @@ return {
     },
 
     {
+        -- XIN JOINS ON THE LEVEL ACT 0 ENDS ON, by both doors, and this is a pin rather than a
+        -- description: nothing in the game says so directly. It falls out of two rules that are each
+        -- true for their own reasons -- Player.recruit seats a newcomer on the roster's MEDIAN
+        -- experience, and the company standing there has just been topped up to prologue.EXIT_LEVEL --
+        -- and it holds only while the two happen in that order.
+        --
+        -- WHICH IS AN ORDER ONE EDIT COULD LOSE. `prologue.skip` pays the exit and then walks the Inn's
+        -- door (the recruit is the last thing it does); move the door up, above `payExit`, and the
+        -- median she inherits is a pair of level-1 bodies and the healer arrives a level down on the
+        -- company she is meant to walk out of the gate with -- silently, with every other assertion in
+        -- this file still green. The played road has the same shape: the Champion's death pays the exit
+        -- (states/game.lua's openExitRoad), and the Inn is two clicks later in the city.
+        name = "the healer joins on Act 0's exit level, by the skip and by the played road alike",
+        fn = function()
+            local Building = require("models.building")
+            local Character = require("models.character")
+
+            local xin = Building.defs["cathedral"].grants
+            assert(xin, "the Inn is the door she is handed over at")
+
+            -- THE SKIP, exactly as the debug button leaves it.
+            local skippedXin
+            for _, char in ipairs(skipped().roster) do
+                if char.id == xin then skippedXin = char end
+            end
+            assert(skippedXin, "the skip walks the Inn's door, so she is on the roster")
+            assert(skippedXin.level == prologue.EXIT_LEVEL, string.format(
+                "the skip seats her at level %d against a company on %d",
+                skippedXin.level, prologue.EXIT_LEVEL))
+
+            -- THE PLAYED ROAD: a company off the Champion, meeting her in the city.
+            local played = Player.new()
+            played.roster = { Character.instantiate("character_avatar") }
+            Player.recruit(played, "character_rowan")
+            prologue.payExit(played)
+            local joined = Player.recruit(played, xin)
+            assert(joined and joined.level == prologue.EXIT_LEVEL, string.format(
+                "walking into the Inn seats her at level %s, not %d",
+                tostring(joined and joined.level), prologue.EXIT_LEVEL))
+        end,
+    },
+
+    {
         name = "every scene gift is an item a branch of the scene it names really grants",
         fn = function()
             assert(#prologue.SCENE_GIFTS == 2, "the flight has two Choose... stops, listed "

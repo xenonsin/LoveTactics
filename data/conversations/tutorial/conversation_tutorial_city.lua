@@ -13,13 +13,19 @@
 --
 -- WHO FIELDS THEM:
 --   gate_stair  states/gate.lua  -- the descend row, until the company has actually gone down
---   ward_card   states/hub.lua   -- the first morning's FIRST door (INTRO_STAGES). The company walks
+--   ward_card   states/hub.lua   -- the first morning's ONE coached door (INTRO_STAGES). The company walks
 --                                 out of Act 0 with Rowan hurt, so the city's opening instruction is
 --                                 where that gets seen to -- and Xin is standing in the room.
---   rift_card   states/hub.lua   -- the first morning's second door (INTRO_STAGES), again. It was retired
---                                 for a pass when the Bounty Board held the plaza, and kept rather
---                                 than cut precisely because a translated line is dear to lose and
---                                 the door might come back. It did.
+--   rift_card   nobody           -- RETIRED AGAIN (2026-09-21). It was the first morning's second door,
+--                                 and what retired it this time is not a deleted card: the Rift is
+--                                 still there and still the door the whole mode is behind. The arrival
+--                                 scene (conversation_prologue_arrival) has Rowan name it and point at
+--                                 it one beat earlier, in her own words, on a plaza standing open on
+--                                 two cards -- so the bubble was the same instruction said twice, by a
+--                                 hint bag, to somebody who had just been told. Kept for the same
+--                                 reason it was kept the LAST time it was retired: a translated line
+--                                 is dear to lose, and the stage is three lines to put back
+--                                 (states/hub.lua's INTRO_STAGES).
 --   board_card  states/hub.lua   -- RETIRED with the board's card (the campaign is a distance run).
 --                                 Kept on the same reasoning that kept rift_card: it is translated,
 --                                 and models/bounty.lua is parked rather than deleted.
@@ -28,17 +34,25 @@
 --                                 only line in this bag pinned to a control INSIDE a panel rather
 --                                 than to a card on the plaza; the bubble is the same widget.
 --
---                                 IT NAMES THE PAID ROW, and the ring goes round that row alone. The
---                                 window one beat earlier taught BOTH ways out and did not rank them,
---                                 which is right -- the choice is the room. This instruction is not
---                                 the room, it is the first morning, and on the first morning the two
---                                 are not equal: resting benches Rowan for Wound.REST_DESCENTS trips
---                                 and the very next thing the city asks for is an expedition of four
+--                                 IT NAMES THE PAID ROW, and on this one morning that is the only row
+--                                 in the room (ui/panels/ward.lua's rail). The window one beat earlier
+--                                 taught BOTH ways out and did not rank them, which is right -- the
+--                                 choice is the room. This instruction is not the room, it is the
+--                                 first morning, and on the first morning the two are not equal:
+--                                 resting benches Rowan for Wound.REST_DESCENTS trips and the very
+--                                 next thing the city asks for is an expedition of four
 --                                 (models/descent.lua's PARTY_MAX) out of a company of three. A coach
 --                                 that shrugged here would be teaching the player to walk down a body
 --                                 short on the one descent where they cannot yet know that costs
 --                                 anything. The purse is 250 at this point and the bone is 40, so the
---                                 recommendation is one the player can always take.
+--                                 press is one the player can always make.
+--
+--                                 AND IT IS DOWN TO THE PRESS. It carried a second clause -- "resting
+--                                 mends it too" -- which was the bubble holding the comparison open
+--                                 beside a row the player could still take. The rail took that row
+--                                 away for one morning, so the clause described a control that is not
+--                                 on screen; the rule it was making sure of is the window's, one beat
+--                                 earlier, where it always belonged.
 --   mend_rest   ui/panels/ward.lua -- ...and the same bubble on the FREE row, for a purse that cannot
 --                                 cover the other one. The campaign cannot reach it today (see above)
 --                                 and it is authored anyway, because the alternative is a coached room
@@ -57,11 +71,11 @@ return {
 
     script = {
         { "character_rowan", "{select} to take the stair down.", tag = 1, id = "gate_stair" },
-        { "character_rowan", "{select} the Inn. They will see to that arm, and it costs nothing to wait.", tag = 5, id = "ward_card" },
+        { "character_rowan", "{select} the Cathedral to mend Rowan's wounds.", tag = 5, id = "ward_card" },
         { "character_rowan", "{select} the Rift. The stair down is inside.", tag = 2, id = "rift_card" },
         { "character_rowan", "{select} the Bounty Board. The houses post their work there.", tag = 4, id = "board_card" },
         { "character_rowan", "{select} {door}", tag = 3, id = "new_door" },
-        { "character_rowan", "{select} to set {who}'s bone now. Resting mends it too, and costs the trips she is in bed for.", tag = 6, id = "mend_row" },
+        { "character_rowan", "{select} to mend {who}'s wounds.", tag = 6, id = "mend_row" },
         { "character_rowan", "{select} to rest {who}. The purse will not cover setting the bone today.", tag = 7, id = "mend_rest" },
     },
 }

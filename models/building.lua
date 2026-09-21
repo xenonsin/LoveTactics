@@ -249,6 +249,9 @@ function Building.list(playerOrPrestige, opts)
                 -- which rooms have been walked into, so the flag this needs exists.
                 intro = def.intro,
                 grants = def.grants,
+                -- ...and the room whose CLOSE plays it, for a house whose scene belongs on the far
+                -- side of a press rather than in the doorway (models/counter.lua's introAfter).
+                introAfter = def.introAfter,
                 unlockPrestige = def.unlockPrestige or 1,
                 unlockQuest = def.unlockQuest, -- quest id that opens this door, or nil
                 unlockDepth = def.unlockDepth, -- floor this company must have stood on, or nil

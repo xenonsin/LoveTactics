@@ -25,10 +25,11 @@
 -- Cutting the houses out into a column of their own puts the whole game on screen in seven rows and
 -- leaves the second column holding one house at a time, which fits without scrolling at all.
 --
--- A HOUSE ROW COUNTS WHAT IS BEHIND IT, and that is not the same concession the header below refuses.
--- "2 open, 6 ahead" is a count standing IN FRONT OF the rows it counts, one keypress away and still
--- drawn one at a time in the next column -- where the count this file rejected was offered INSTEAD of
--- those rows, as the only thing the player would ever be told.
+-- A HOUSE ROW SAYS THE LEVEL AND NOTHING ELSE. It carried a count of what stands open behind it for a
+-- while ("2 open, 6 ahead"), which was defensible -- a count in front of rows that are one keypress
+-- away is not the count this file's header refuses, the one offered INSTEAD of the rows -- but it was
+-- a second line of small grey figures on every row of the column you read first, answering a question
+-- the next column answers better, by name. The rows are the answer; the house is just the door.
 --
 -- IT IS A LIST, NOT A LATTICE, and that is a decision rather than a shortcut. Forty-five classes across
 -- seven parents with twenty-one crossings between them is a real graph, and drawn as one at 1280x720
@@ -75,7 +76,9 @@ local ClassEditor = {}
 ClassEditor.__index = ClassEditor
 
 local ROW_H = 30
-local HOUSE_ROW_H = 40 -- two lines: the name and its level, then what the house has open
+-- One line -- the name and its level -- and deliberately NOT the shelf's ROW_H: the two columns share
+-- a top edge, so equal rows would line house i up with class i and draw a pairing that does not exist.
+local HOUSE_ROW_H = 34
 local COL_GAP = 20
 -- The shelf's left gutter, holding the level in THIS house that opens each row. Every row on the shelf
 -- shares it -- open ones included -- because a column of integers is only readable as a ladder if the
@@ -205,18 +208,17 @@ end
 -- ---------------------------------------------------------------------------
 
 -- THE SEVEN HOUSES, which is the whole game in seven rows. Every figure on one is about the ROOT
--- rather than about what hangs off it -- the level this body holds in it, and how much of its shelf is
--- open -- because the choice this column is for is which house to read, not which class to take.
+-- rather than about what hangs off it -- the level this body holds in it -- because the choice this
+-- column is for is which house to read, not which class to take. What the house has open is the next
+-- column's answer, drawn row by row with the classes' own names on (see drawHouses).
 function ClassEditor:buildHouses()
     self.houses = {}
     for _, id in ipairs(classOrder()) do
         local held, needed, level = 0, 0, 0
         if self.char then held, needed, level = Class.classProgress(self.char, id) end
-        local open, shut = childrenOf(id, self.char)
         self.houses[#self.houses + 1] = {
             id = id, name = Item.classDisplayName(id),
             level = level, held = held, needed = needed,
-            open = #open, shut = #shut,
         }
     end
 end
@@ -677,13 +679,13 @@ local function levelColor(level)
     return Theme.muted
 end
 
--- THE SEVEN HOUSES. Two lines to a row, because a house answers two different questions and they are
--- not the same kind of fact: the level this body holds in it, which is a number it has earned, and how
--- much of its shelf stands open, which is a number about the game.
+-- THE SEVEN HOUSES. ONE LINE TO A ROW: the house's name, and the level this body holds in it.
 --
--- THE COUNT SAYS ITS OWN NOUNS. "2 · 6" is a pair of figures that needs a legend somewhere else on the
--- screen to be read at all, and a legend is a thing the player has to go and find; "2 open · 6 ahead"
--- is the same width in practice and needs nothing.
+-- The row used to carry a second line -- "2 open · 6 ahead", how much of the house's shelf stands
+-- unlocked -- and it is gone. It was a count standing in front of rows that are one keypress away and
+-- drawn one at a time in the next column, where they say the same thing with their own names on: a
+-- player who wants to know what a house has open opens it. What the column is FOR is choosing which
+-- house to read, and the level is the only figure that question is decided on.
 function ClassEditor:drawHouses(focused)
     local x, y, w = self.houseX, self.listY, self.houseW
     local small = self.fonts.small
@@ -709,26 +711,24 @@ function ClassEditor:drawHouses(focused)
             love.graphics.rectangle("line", x, ry, w, HOUSE_ROW_H - 4, 3, 3)
         end
 
+        local plateH = HOUSE_ROW_H - 4
+
         -- The mark the shelf uses for the class being applied, put on the house that teaches it.
         if self:standsIn(house.id) then
             Theme.set(Theme.accentAmber)
-            love.graphics.circle("fill", x + 8, ry + 12, 3)
+            love.graphics.circle("fill", x + 8, ry + plateH / 2, 3)
         end
 
+        -- One line, centred in the plate: the name and the level are the whole row now, so they sit on
+        -- the row's own middle rather than on the top line of a pair.
         Theme.set(levelColor(house.level))
         local font, name = Theme.fitText(Theme.display, house.name, w - 60, 16, 12)
         love.graphics.setFont(font)
-        love.graphics.print(name, x + 16, ry + 3)
+        love.graphics.print(name, x + 16, ry + (plateH - font:getHeight()) / 2)
 
         love.graphics.setFont(small)
         Theme.set(levelColor(house.level))
-        love.graphics.printf(tostring(house.level), x, ry + 5, w - 8, "right")
-
-        Theme.set(Theme.muted, 0.8)
-        love.graphics.print(string.format("%d open", house.open), x + 16, ry + 21)
-        if house.shut > 0 then
-            love.graphics.printf(string.format("%d ahead", house.shut), x, ry + 21, w - 8, "right")
-        end
+        love.graphics.printf(tostring(house.level), x, ry + (plateH - small:getHeight()) / 2, w - 8, "right")
     end
 end
 
@@ -1014,9 +1014,13 @@ end
 -- says what a class IS; a level in the wrong house is the only thing here the player cannot take back,
 -- and until this was drawn it was the one figure the screen did not print.
 --
--- WRITTEN AS A TRANSITION, never as "+6". The sheet next door learned that the hard way: a signed
--- figure parked beside a value is the universal "this is buffed right now" idiom, and a permanent one
--- reads as a bonus already in effect. "70 → 76" can only mean what it says.
+-- THE GAIN LEADS AND THE TRANSITION FOLLOWS IT, in parentheses: "+6 (70 → 76)". The sheet next door
+-- writes a forecast as a bare transition because a signed figure parked beside a value is the
+-- universal "this is buffed right now" idiom, and a permanent gain must not read as a bonus already
+-- in effect -- but the figure a player COMPARES BETWEEN CLASSES is the gain itself, and making them
+-- subtract two numbers on every row to get it is work the screen can do for them. The parenthesis is
+-- what keeps the old reading away: a signed number followed by the two values it is the difference of
+-- cannot be mistaken for a live modifier, because it shows its own arithmetic.
 --
 -- STATS THAT DO NOT GROW ARE NOT DRAWN. A growth table lists only what it buys -- a mage's `damage` is
 -- absent and that is correct rather than a gap -- so a full nine rows would be four fifths zeroes on
@@ -1054,10 +1058,10 @@ function ClassEditor:drawGrowth(id, x, y, w)
             Theme.set(Theme.muted)
             love.graphics.print(row.label, cx, y)
 
-            -- Right-aligned as one unit, exactly as the sheet's forecast is: the two figures and the
-            -- arrow between them are one reading, and splitting the alignment would let the eye take
-            -- the target for a column of its own.
-            local text = from .. " " .. ARROW .. " " .. (from + gain)
+            -- Right-aligned as one unit, exactly as the sheet's forecast is: the gain and the
+            -- transition it is the difference of are one reading, and splitting the alignment would
+            -- let the eye take either half for a column of its own.
+            local text = "+" .. gain .. " (" .. from .. " " .. ARROW .. " " .. (from + gain) .. ")"
             love.graphics.setColor(ANNOT_PENDING)
             love.graphics.printf(text, cx, y, colW - 12, "right")
 

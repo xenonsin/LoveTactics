@@ -59,10 +59,20 @@ return {
         -- player has just been made to ask, which is the one event Offer.any exists to let through.
         { answer = "lift", panel = "rite", gate = { cursed = true } },
     },
-    -- WHAT THIS ROOM SAYS THE FIRST TIME IT IS WALKED INTO, and who is standing in it. `grants` recruits
-    -- as the scene opens so her join banner folds onto the end of it, exactly as every other companion's
-    -- does (models/counter.lua). She is the only companion in the game met above ground.
+    -- WHAT THIS HOUSE SAYS THE FIRST TIME IT IS WALKED INTO, and who is standing in it. `grants`
+    -- recruits as the scene opens so her join banner folds onto the end of it, exactly as every other
+    -- companion's does (models/counter.lua). She is the only companion in the game met above ground.
     intro = "conversation_ward_first_visit",
     grants = "character_xin",
+    -- ...AND IT WAITS FOR THE BONE TO BE SET. `introAfter` names one of the answers above, and the
+    -- scene plays as that room shuts instead of in the doorway (models/counter.lua).
+    --
+    -- It is the difference between a healer who is announced and one who does something. Played at the
+    -- door, Xin introduced herself, said a bone could be set, and then the player went and set it off a
+    -- menu while she stood there -- so the one companion in the game with a reason to come that is not
+    -- a dice roll was introduced by a scene that happened BEFORE the reason. She mends Rowan now, and
+    -- asks to come off the back of having done it. The coached morning holds the room open until that
+    -- press lands (ui/panels/ward.lua's rail), so on the visit this fires the two are one moment.
+    introAfter = "mend",
     description = "Relics and rites, and the only bed in the city that will set a bone.",
 }

@@ -13,15 +13,22 @@
 -- than greying, because a control appears only where it is legal -- and the purse is on the header, so
 -- the player is never left guessing which of the two facts stopped them.
 --
--- AND ON ONE MORNING ONE ROW IS COACHED. The first wound in the game is Rowan's, taken by script at
+-- AND ON ONE MORNING THE ROOM IS A RAIL. The first wound in the game is Rowan's, taken by script at
 -- the end of Act 0, and the city holds the plaza on this room until it is answered (states/hub.lua's
 -- INTRO_STAGES.ward). The window that opened the door said what a wound IS and why there are two ways
 -- out of one; what is left is the press, which is a bubble's job and not a window's -- so the host
 -- hands this panel a `coach` flag and the bubble goes on a row.
 --
--- IT NAMES THE PAID ROW, and the ring goes round that row alone. The window one beat earlier taught
--- both ways out and deliberately did not rank them, which is right -- the choice IS the room, and it
--- is the decision this whole building exists to put in front of the player every trip afterwards.
+-- IT NAMES THE PAID ROW AND IT IS THE ONLY ROW THERE. A coached room that still offered the other way
+-- out was a recommendation, and the first morning is the one morning the two are not equal (see the
+-- paragraph below) -- so on this one visit the rail is real: the coached row is the only row built,
+-- the panel cannot be closed until it is pressed, and what the press hands to is the scene the healer
+-- who sets the bone walks out of (data/buildings/cathedral.lua's `introAfter`).
+--
+-- THE FREE PATH IS STILL TAUGHT, one beat earlier and by the surface that can carry a rule: the window
+-- in the doorway states both ways out and ranks neither (states/hub.lua's teachWounds). What this room
+-- withholds for one morning is the PRESS, not the fact -- the rest row is back on the next trip, and
+-- every trip after that is the shrug the paragraph below argues for.
 --
 -- THE FIRST MORNING IS THE ONE MORNING THE TWO ARE NOT EQUAL, which is why the instruction is allowed
 -- to pick. Resting benches Rowan for Wound.REST_DESCENTS trips, and the very next thing the city asks
@@ -131,6 +138,29 @@ function Ward:rebuild()
         }
     end
     self.items = items
+
+    -- THE RAIL, BUILT RATHER THAN ENFORCED. On the coached morning the row the coach names is the only
+    -- row in the room: a rest row drawn beside it and refused on press would be a dead control, and a
+    -- control appears only where it is legal. Narrowed AFTER the full list is built, because
+    -- coachIndex is what picks the row and it reads the whole list to pick it.
+    --
+    -- AND THE PRESS CLOSES THE ROOM. The deed is the whole of what this visit is for, and what is
+    -- waiting on the far side of it is the scene the healer sets the bone in (models/counter.lua's
+    -- introAfter) -- so the room hands back to the desk on its own rather than leaving the player
+    -- looking at a panel with nothing left in it. Asked through coachIndex again rather than off the
+    -- press's own return, so the one predicate the city, the ring and the rail all read stays one.
+    local railed = self.coach and self:coachIndex()
+    if railed then
+        local row = items[railed]
+        local press = row.action
+        row.action = function()
+            press()
+            if not self:coachIndex() then self:close() end
+        end
+        items = { row }
+        self.items = items
+    end
+
     self.menu = #items > 0 and Menu.new(items, {
         buttonWidth = ROW_W,
         buttonHeight = ROW_H,
@@ -188,7 +218,16 @@ function Ward:coachRect()
     return { x = item.x, y = item.y, w = item.w, h = item.h }, entry.char.name or entry.char.id, kind
 end
 
+-- IS THE ROOM HELD? True only while the coached morning still has a row owed -- so it goes false on the
+-- press that spends it, and the close that press asks for is allowed through. Every refusal below is
+-- written against this rather than against `coach`, which is what keeps a wound that somehow cannot be
+-- answered from locking a player inside a panel: no coached row, no rail.
+function Ward:railed()
+    return self.coach ~= nil and self:coachIndex() ~= nil
+end
+
 function Ward:close()
+    if self:railed() then return end
     if self.onClose then self.onClose() end
 end
 
@@ -247,12 +286,17 @@ function Ward:draw()
         end
     end
 
-    Theme.set(Theme.muted)
-    love.graphics.setFont(self.bodyFont)
-    love.graphics.printf(InputMode.pick("B to close", "Tap X to close", "Click X, or Esc to close"),
-        self.colX, self.boxY + BOX_H - 34, self.colW, "center")
+    -- THE WAY OUT IS NOT DRAWN WHILE THERE IS NOT ONE. A held room keeps neither the X nor the line
+    -- under the rows that names it: a control appears only where it is legal, and an X that answers
+    -- nothing reads as a panel that has stopped listening rather than as one that is waiting.
+    if not self:railed() then
+        Theme.set(Theme.muted)
+        love.graphics.setFont(self.bodyFont)
+        love.graphics.printf(InputMode.pick("B to close", "Tap X to close", "Click X, or Esc to close"),
+            self.colX, self.boxY + BOX_H - 34, self.colW, "center")
 
-    self.closeButton:draw()
+        self.closeButton:draw()
+    end
 
     -- The coach, over everything the panel drew.
     --
@@ -298,13 +342,20 @@ function Ward:mousemoved(x, y)
 end
 
 function Ward:cursorKind(x, y)
-    if self.closeButton:contains(x, y) then return "hand" end
+    if not self:railed() and self.closeButton:contains(x, y) then return "hand" end
     if self.menu and self.menu.cursorKind then return self.menu:cursorKind(x, y) end
     return "arrow"
 end
 
 function Ward:mousepressed(x, y, button)
     if button ~= 1 then return end
+    -- A held room has one live control in it. The X is not drawn and the click-outside that closes
+    -- every other panel in the city does nothing either -- both of them would be a way out of a
+    -- lesson the plaza is going to send the player straight back into (states/hub.lua's introAdvance).
+    if self:railed() then
+        if self.menu then self.menu:mousepressed(x, y, button) end
+        return
+    end
     if self.closeButton:mousepressed(x, y, button) or not isInsideBox(self, x, y) then
         self:close()
         return

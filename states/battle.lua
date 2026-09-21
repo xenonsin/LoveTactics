@@ -7864,7 +7864,11 @@ function battle.mousepressed(x, y, button)
             return
         end
         if Debug.enabled and pointIn(winButton, x, y) then
-            if not battle.over then win() end
+            -- ...paying whatever the fight's script still owes on the way past it. A stage fires on a
+            -- health threshold and this button crosses none, so the Champion's felling of Rowan -- and
+            -- the wound the city's Ward is hung on -- simply never happened. See
+            -- Combat.payScriptedFells: a debug shortcut may skip the SHOW, never the consequence.
+            if not battle.over then Combat.payScriptedFells(battle.combat); win() end
             return
         end
     end

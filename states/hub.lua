@@ -113,14 +113,20 @@ end
 -- the eye goes for buildings, so the left corner is the one piece of chrome nothing else wants.
 local BURGER_X, BURGER_Y = 18, 18
 
--- THE FIRST-VISIT TUTORIAL, WHICH IS ONE DOOR AND IT GOES DOWN.
+-- THE FIRST-VISIT TUTORIAL, WHICH IS ONE DOOR AND IT ANSWERS A WOUND.
 --
--- `player.hubIntro` runs "arrival" -> "coach" -> nil. The arrival is the guard's scene played over the
--- city; the coach is a bubble on the Rift with every other card refused until it has been walked into.
+-- `player.hubIntro` runs "arrival" -> "ward" -> nil. The arrival is the guard's scene played over the
+-- city; the ward is a bubble on the Cathedral with every other card refused until the company's one
+-- hurt body has been seen to.
 --
---   coach   the Rift, where Rowan has just sent them (conversation_prologue_arrival). The stair
---           itself is coached on the far side of that door, by a bubble on the descend row
---           (states/gate.lua) -- this stage only gets them through it.
+--   ward    the Cathedral, because the company walks out of Act 0 carrying Rowan's wound. Spent by the
+--           DEED and not by the door (see INTRO_STAGES below), and the last thing the first morning
+--           asks for -- the Rift had a stage of its own after this one and it is parked.
+--
+-- THE STAIR IS NO LONGER COACHED FROM HERE. Rowan sends them to the Rift by name in the arrival scene,
+-- and the plaza is standing open on two cards; a bubble on the second of them was the same instruction
+-- said twice. The stair's OWN coaching is untouched -- it is a bubble on the descend row on the far
+-- side of that door (states/gate.lua), which is where there is actually something to learn.
 --
 -- ONE DOOR, AND THE CITY IS ARRANGED TO AGREE WITH IT. A tutorial that coaches one card while eight
 -- others stand open is a tutorial arguing with the board it is drawn on, so the plaza opens on TWO cards
@@ -129,48 +135,36 @@ local BURGER_X, BURGER_Y = 18, 18
 -- standing open on the first morning, and both now wait for the first descent, so the one screen a new
 -- player is looking at has the hole in the ground and nothing else worth pressing.
 --
--- IT WAS THE BOUNTY BOARD FOR A PASS, and the round trip is the thing to read rather than either end of
--- it. The board took this stage when the campaign became posted work, then lost it when the campaign
--- became a distance run and the board's card was deleted outright.
---
--- THE CAMPAIGN IS NEITHER OF THOSE NOW. It is one rift the company MAPS and re-enters at the stair it
--- opened (models/descent.lua's Descent.keepFloor and Descent.entryFloor) -- so the stair keeps this
--- stage for a third reason, and a better one than "it is the only door": it is the door you will keep
--- coming back through.
---
--- AND THE BOARD IS PARKED AGAIN (2026-09-18), so the stair is the only door in fact and not just in
--- emphasis. It came back for a pass as side work on the houses' square and went for a reason the round
--- trip above never reached: its seven postings are the seven quests models/errand.lua already seats on
--- floors of the rift, and taking one up here handed over that house's companion without a floor being
--- walked. See docs/bounties.md.
---
--- AND IT PUTS A THREE-TIME-STALE SEAM BACK IN AGREEMENT. `conversation_prologue_arrival` is Rowan
--- sending the player to the RIFT, by name, in her own words, and it is the last thing said before this
--- bubble appears. For one pass the scene pointed at a stair and the bubble pointed at a board. They
--- point at the same door again, and the STALE banner on that scene is gone rather than re-aimed.
+-- WHAT THE SECOND CARD WAS, WHILE IT HAD A STAGE. It was the Quest Board, then the Bounty Board, then
+-- the Rift, and each move was made because the card before it had been deleted out from under the
+-- coach -- which is the one failure this seam keeps producing and the reason its history is kept here
+-- rather than thrown away with the stage. (The Bounty Board is parked again as of 2026-09-18: its seven
+-- postings are the seven quests models/errand.lua already seats on floors of the rift, so taking one up
+-- in town handed over that house's companion without a floor being walked. See docs/bounties.md.) The
+-- Rift inherited it last and lost it to a quieter objection than a deleted card: nothing was wrong with
+-- the bubble except that `conversation_prologue_arrival` had just said the same thing better.
 --
 -- THERE WAS A `hire` STAGE BEFORE THIS ONE, and it coached the Crossing: the sponsor's staked voucher,
 -- a rigged first pull that dealt Saber, and a lesson in what a pull looked like. The Crossing is retired
--- and there is no pull to teach, so the arrival hands straight to the Rift -- and the companion who
+-- and there is no pull to teach, so the arrival hands straight to the Ward -- and the companion who
 -- fills the expedition is met where she belongs, standing on floor one (models/descent.lua's
 -- Descent.SCRIPTED_COMPANION, which is Gyeom; the company already holds three walking out of Act 0, and
 -- Saber is dealt by the roll like the rest). The old stage is why
 -- `stage.hire` is still read below: a stage that names a hire is spent by the body JOINING rather than
 -- by the door being opened, and the rule is kept for whatever is coached that way next.
 --
--- (The Gate stage was the Quest Board before that, which is cut outright. Coaching a door the city no
--- longer has would leave the arrival pointing at nothing and the bubble anchored to a rect that is not
--- there -- which is the failure both retirements had to be walked through.)
+--
 -- The words are a hint bag (data/conversations/tutorial/conversation_tutorial_city.lua) rather than a
 -- string here, so the one instruction the first morning gives is stamped and translated like every
 -- other line the tutorial speaks. A stage names the LINE; hub.draw resolves it at draw time, which is
 -- also what lets its {select} re-read the device in the player's hands mid-visit.
 local INTRO_STAGES = {
-    -- THE MENDING FIRST, AND THE STAIR SECOND. The player arrives carrying Rowan's wound off the Champion
+    -- THE MENDING, AND THAT IS THE WHOLE OF IT. The player arrives carrying Rowan's wound off the Champion
     -- (models/combat.lua's Combat.spendScriptedFell), so the first thing the city can usefully say is where
     -- that gets dealt with -- and the room is where Xin is, so the coached door hands over a companion
-    -- as well as a lesson. Sending them down the hole first would coach the stair to a company that is
-    -- short a body and does not yet know there was anything to do about it.
+    -- as well as a lesson. The stair was coached second for a pass and is not any more; a company that
+    -- is short a body and does not know there was anything to do about it is the failure this stage
+    -- exists to prevent, and it prevents it whether or not anything points at the hole afterwards.
     --
     -- IT IS THE CATHEDRAL'S CARD NOW, and that is the fold rather than a change of mind: the Inn stood on
     -- the plaza as a door of its own, and it is a line on that house's desk (data/buildings/cathedral.lua).
@@ -206,10 +200,12 @@ local INTRO_STAGES = {
         line = "ward_card",
         mend = true,
     },
-    coach = {
-        building = "the_gate",
-        line = "rift_card",
-    },
+    -- THE RIFT'S OWN STAGE IS PARKED (2026-09-21). It was `coach`, and it held the plaza on the stair
+    -- after the mending landed. What it coached, the arrival scene has already said in Rowan's own
+    -- words one beat earlier -- she names the Rift and points at it -- so the bubble was a second
+    -- telling of the same instruction, over a board whose only other open card is the Armory. The line
+    -- is kept in the bag (`rift_card`) rather than cut, on the reasoning that kept it the last time it
+    -- was retired: it is stamped and translated, and the stage costs three lines to put back.
 }
 
 -- The stage the intro is on, or nil in free play -- which is every visit after the first, and every
@@ -505,13 +501,15 @@ end
 
 -- A WOUND EXPLAINS ITSELF, ONCE, IN THE DOORWAY OF THE ROOM THAT ANSWERS IT.
 --
--- The beat it lands on is the end of the Cathedral's `intro` -- the scene Xin joins out of
--- (models/counter.lua's afterIntro, which exists for this). That is the exact moment the player has
--- everything the lesson needs and nothing that explains it: a healer who just walked into the company
--- because somebody is hurt, a wound on a body they watched go down at the end of Act 0, and a desk one
--- press away with a line on it about mending. What is missing is the rule -- that the band on the bar
--- is held back, that coming home does not lift it, and that there are two ways out priced against
+-- The beat it lands on is the mending opening: the player has chosen that line off the Cathedral's
+-- desk, the rows are one frame away, and what is missing is the rule -- that the band on the bar is
+-- held back, that coming home does not lift it, and that there are two ways out priced against
 -- different things.
+--
+-- IT RODE THE CATHEDRAL'S `intro` UNTIL THAT SCENE MOVED. Xin's scene is what the mending press hands
+-- to now (data/buildings/cathedral.lua's introAfter) -- she sets the bone in it and asks to come off
+-- the back of having done it -- so a window riding the end of it would be explaining the decision
+-- after it had been taken. The lesson is taught where its answer lives, and the answer is the room.
 --
 -- A WINDOW, NOT A BUBBLE. "Rest is free and costs trips; gold costs gold and costs nothing else" is a
 -- rule with a consequence, and a tail on a row cannot carry one (ui/panels/tutorial_note.lua draws that
@@ -528,9 +526,10 @@ end
 -- the same question -- but the honest one is the one about the lesson's subject, and it is the one that
 -- stays true when the second house grows a scene.
 --
--- NO LEDGER OF ITS OWN. The intro scene fires exactly once, ever, off `flags.intro_<id>`, and this
--- rides it -- which is the whole reason the seam was put there rather than on the desk. A second flag
--- for "has the window been read" would be a second thing that can disagree with the first.
+-- NO LEDGER OF ITS OWN, and it still needs none. It is fired only while the first morning's stage is
+-- unspent (coachingMend), and that stage is spent by the deed -- which the room now HOLDS the player
+-- until they do (ui/panels/ward.lua's rail). So the window is reachable on exactly one opening of one
+-- room, and a flag for "has it been read" would be a second thing that can disagree with the stage.
 local function teachWounds(go)
     if mendingDone() then return go() end
     activePanel = TutorialNote.new({
@@ -553,19 +552,23 @@ function hub.openCounter(building)
         -- Closing a room rings the same cancel cue every panel in the city does (dismissPanel), but it
         -- does NOT go through dismissPanel: that is the way out to the plaza, and this is the way back
         -- to the desk. Same sound, different destination.
-        activePanel = newPanel(room.panel, room.vendor, nil, function()
-            Sound.play("ui.cancel")
-            activePanel = nil
-            onClosed()
-        end)
+        local function show()
+            activePanel = newPanel(room.panel, room.vendor, nil, function()
+                Sound.play("ui.cancel")
+                activePanel = nil
+                onClosed()
+            end)
+        end
+        -- ONE BEAT IN THE DOORWAY OF THE MENDING, on the one morning it is coached: the rule, before
+        -- the rows it is about (see teachWounds, which no-ops the moment nobody is owed one). Asked of
+        -- the ROOM rather than of the house, because the lesson is about the wound and not about the
+        -- Cathedral -- the day a second door sets a bone this still fires in the right place.
+        if room.panel == "ward" and coachingMend() then return teachWounds(show) end
+        show()
     end, function()
         -- Walked out. The city is already underneath; nothing to switch back to.
         activePanel = nil
-    end, {
-        -- One beat between a house's first-visit scene and its desk, and the only house that has one
-        -- is the Cathedral (see teachWounds). `go` is the hand-back this owes the counter.
-        afterIntro = teachWounds,
-    })
+    end)
 end
 
 -- WALK THROUGH A DOOR, whichever kind it is.
@@ -621,15 +624,14 @@ local function openPanel(building)
             launchVendor(building)
             return
         end
-        -- SPENT BY THE DEED, NOT BY THE DOOR -- and only the Gate's stage can be spent on the door,
-        -- because opening the Gate IS leaving the city. A stage that names a deed (`hire`, `mend`) is
-        -- spent by introAdvance when the deed lands, so a player who walks in, looks around and walks
-        -- out is coached back to the room rather than left in a city that thinks the lesson landed.
+        -- SPENT BY THE DEED, NOT BY THE DOOR. A stage that names a deed (`hire`, `mend`) is spent by
+        -- introAdvance when the deed lands, so a player who walks in, looks around and walks out is
+        -- coached back to the room rather than left in a city that thinks the lesson landed.
         --
-        -- THE CATHEDRAL HANDS ON TO THE STAIR rather than ending the intro, and it does that from
-        -- introAdvance for the reason above: two doors are coached on the first morning now (see
-        -- INTRO_STAGES), and a stage that cleared here would leave the Rift -- the door the whole mode
-        -- is behind -- uncoached on the one visit that teaches the city.
+        -- The branch below is what a stage with NO deed takes -- opening the door is the whole lesson,
+        -- which is how the Gate's own stage cleared while it had one. Nothing in the table names a deed-
+        -- less stage today (see INTRO_STAGES), and the rule is kept because a grown door is exactly
+        -- that shape and takes its own branch above only for the ledger it also writes.
         if not (stage.hire or stage.mend) then
             hub.player.hubIntro = nil
         end
@@ -673,12 +675,11 @@ local function introAdvance()
         done = mendingDone()
     end
     if not done then return end
-    hub.player.hubIntro = "coach"
+    -- ...and the intro ENDS here. It handed on to the stair's own stage for a pass; that stage is
+    -- parked (see INTRO_STAGES), so the deed that closes the Ward is the last thing the first morning
+    -- asks for and the city opens on free play the moment the wound is seen to.
+    hub.player.hubIntro = nil
     Player.save()
-    -- The bubble moves to the stair on this frame, so the cursor under it has to as well --
-    -- otherwise the coached card and the highlighted card are two different cards until the
-    -- player happens to touch something (see focusCoachedCard).
-    focusCoachedCard()
 end
 
 function hub.enter()
@@ -841,10 +842,11 @@ function hub.enter()
     -- nothing left to intercept.
     -- Iselle is at the top of the stair instead, and states/gate.lua plays her on the first visit there.
     --
-    -- On its close the intro moves to its first coaching stage -- the WARD, because the company walks
-    -- out of Act 0 carrying a wound and that is the door the city grew to answer it. The Ward hands on
-    -- to the stair when it is walked into (see openPanel). A loaded save never carries this flag, so its
-    -- hub opens straight to free play.
+    -- On its close the intro moves to its ONE coaching stage -- the WARD, because the company walks out
+    -- of Act 0 carrying a wound and that is the door the city grew to answer it. The Ward ends the intro
+    -- when the wound is seen to (introAdvance); the stair it used to hand on to is coached by this scene
+    -- itself, in Rowan's words. A loaded save never carries this flag, so its hub opens straight to free
+    -- play.
     if hub.player.hubIntro == "arrival" then
         Conversation.play("conversation_prologue_arrival", function()
             hub.player.hubIntro = "ward"
