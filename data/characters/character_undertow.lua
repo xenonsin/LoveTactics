@@ -33,15 +33,18 @@ return {
     class = "fighter",
     sprite = "assets/chars/undertow.png",
     stats = {
-        health = 96, mana = 18, stamina = 24,
+        health = 96, mana = 24, stamina = 24,
         damage = 18, magicDamage = 10,
         defense = 5, magicDefense = 5,
         movement = 5, -- 4 after the race, and most of it spent in water she pays 1 for
         speed = 5,
         skill = 8, luck = 6,
     },
+    -- BOTH LANE CASTS, which is what makes her plan work from either bank. Riptide drags a body toward
+    -- the channel she is standing in; Breaker drives one into the channel at its own back. With only
+    -- the pull she would be answered by a company that simply kept the water behind itself.
     startingItems = {
-        "weapon_undertow_pike", "ability_riptide",        false,
+        "weapon_undertow_pike", "ability_riptide",        "ability_breaker",
         false,                  "utility_gillscale_wrap", false,
         false,                  false,                    false,
     },
@@ -54,17 +57,32 @@ return {
     defaultAction = "weapon_undertow_pike",
     signatureWeapon = "weapon_undertow_pike",
     signatureAbility = "ability_riptide",
+    -- THE PLAN IS TO DROWN YOU, and the rule list is that sentence in order. Every rule above the
+    -- floor prefers a `drownable` target -- a body with a channel one step along the line between it
+    -- and her, which is where a push or a pull would put it (models/ai.lua's prefBonus). She does not
+    -- pick the weakest; she picks the one standing nearest the water, which is what makes her position
+    -- rather than race a health bar down.
+    --
+    -- A PREFERENCE AND NOT A FILTER, which is the seam doing the work. On a board with no water on it
+    -- every one of these rules still fires and she is an ordinary elite with a long spear -- which is
+    -- correct, and is why the faction reads as people who chose their ground rather than as a gimmick
+    -- that stops working when the ground changes.
     ai = {
-        -- 1. Riptide when there is a rank worth taking. The lane cast leads because it is the one verb
-        --    that can move three bodies at once, and a company that has just been dragged a step is a
-        --    company standing where it did not choose to.
-        { priority = "high", act = "attack", item = "ability_riptide", targetPref = "lowest_hp",
+        -- 1. Riptide into whoever can be dragged under. The lane cast leads because it is the one verb
+        --    that can move three bodies at once, and because the pull is the half that works when SHE
+        --    is the one standing in the channel.
+        { priority = "high", act = "attack", item = "ability_riptide", targetPref = "drownable",
           when = { subject = "any_foe", test = "in_reach" } },
-        -- 2. Otherwise the pike, which reaches past whoever stepped up to stop her and takes the body
-        --    behind them.
-        { priority = "normal", act = "attack", item = "weapon_undertow_pike", targetPref = "lowest_hp",
+        -- 2. ...and Breaker when the water is behind THEM rather than behind her. Same preference, the
+        --    other direction; between the two there is no bank she cannot work from.
+        { priority = "high", act = "attack", item = "ability_breaker", targetPref = "drownable",
           when = { subject = "any_foe", test = "in_reach" } },
-        -- 3. And failing both, whatever is nearest.
+        -- 3. The pike, which reaches past whoever stepped up to stop her and brings the body behind
+        --    them a step nearer the bank. It cannot drown anybody on its own (see the weapon's header)
+        --    -- it is the setup, and the two casts above are what spend it.
+        { priority = "normal", act = "attack", item = "weapon_undertow_pike", targetPref = "drownable",
+          when = { subject = "any_foe", test = "in_reach" } },
+        -- 4. And on dry ground, or when nobody is near the water, whatever is closest to falling.
         { priority = "normal", act = "attack", targetPref = "lowest_hp",
           when = { subject = "any_foe", test = "in_reach" } },
     },

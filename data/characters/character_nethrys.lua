@@ -52,8 +52,13 @@ return {
         --    time it takes.
         { priority = "high", act = "cast", item = "ability_rising_water",
           when = { subject = "self", test = "always" } },
-        -- 2. Then drag whoever is standing where the water is about to be.
-        { priority = "high", act = "attack", item = "ability_riptide", targetPref = "lowest_hp",
+        -- 2. Then drag whoever is standing where the water now is. `drownable` rather than the weakest,
+        --    because her cast just made more tiles qualify -- raising the channel and then pulling
+        --    somebody into it is the two-turn sentence her whole fight is.
+        { priority = "high", act = "attack", item = "ability_riptide", targetPref = "drownable",
+          when = { subject = "any_foe", test = "in_reach" } },
+        -- 3. ...and the push, for whoever has water at their back instead.
+        { priority = "high", act = "attack", item = "ability_breaker", targetPref = "drownable",
           when = { subject = "any_foe", test = "in_reach" } },
         { priority = "normal", act = "attack", targetPref = "lowest_hp",
           when = { subject = "any_foe", test = "in_reach" } },

@@ -233,6 +233,33 @@ the Pit, the Undercroft, the Lodge. **The Mere** is the water under the fen and 
 
 One sentence between the four of them: *the lancer soaks, the caller conducts, the undertow drags.*
 
+### The plan is to drown you
+
+Not a side effect of the kit — the thing the planner is actually trying to do. `targetPref =
+"drownable"` ([models/ai.lua](../models/ai.lua)) ranks a foe by whether a channel sits one step along
+the line between it and the caster, which is where a push or a pull would put it. Two tiles, both
+directions, no knowledge of which item the rule is about.
+
+It is a **preference and not a filter**, which is the seam doing the work. On a board with no water
+every one of these rules still fires and the Mere is an ordinary pack with long spears — so they read
+as people who chose their ground rather than as a gimmick that stops working when the ground changes.
+
+The Undertow carries **both** lane casts for the same reason: Riptide drags a body toward the channel
+she is standing in, Breaker drives one into the channel at its own back. With only the pull, a company
+answers her by keeping the water behind itself.
+
+### A naga is never Wet
+
+`utility_naga_coils` carries `statusImmunity = { "status_wet" }`, and it is a fix as much as flavour.
+Wet is `lightning +6` and the naga race is `lightning −4`, so a pack standing in its own channel would
+take **ten extra** from a bolt — and the Tidecaller's own Stormwake arcs through every conducting tile
+it touches, which on a fen board is all of them. Without the immunity the faction's whole plan is
+suicide.
+
+The player's counter is untouched: the race still takes lightning the harder, a fen board still
+conducts, and a bolt through a channel still finds every naga in it. What comes off is only the
+compounding, and only on the bodies that live there.
+
 | Rung | Body | Health | Class | What it is |
 |---|---|---:|---|---|
 | 1 · chaff | **Shoalkin** <br> `character_shoalkin` | 20 | `rogue` | A bone knife and a tail. Numbers in the channel. |

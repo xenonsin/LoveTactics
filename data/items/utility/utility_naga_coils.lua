@@ -28,4 +28,22 @@ return {
     class = "creature",
     noSteal = true,
     bound = true,
+    -- A NAGA IS NEVER WET, and this is a fix as much as it is flavour.
+    --
+    -- The flavour first: "soaked" is a thing that happens to a body that is not made for water. A naga
+    -- wading the ford is a naga at home, and the ford stands a hazard_shallows on every tile of itself.
+    --
+    -- The fix is the half worth reading twice. Wet carries `lightning = 6` (data/status/status_wet.lua)
+    -- and the naga race carries `lightning = -4` (data/races/naga.lua) -- so without this line, a pack
+    -- standing in its own channel would take TEN extra damage from a bolt, and the Tidecaller's own
+    -- Stormwake would kill its own side faster than the company's. The faction's whole plan is to fight
+    -- in water; a plan that is suicide is not a plan.
+    --
+    -- The player's counter is untouched, which is what keeps this from being a wall: the race's -4 is
+    -- still there, a fen board still conducts, and a bolt through a channel still finds every naga in
+    -- it. What the immunity removes is only the compounding, and only on the bodies that live there.
+    --
+    -- `statusImmunity` is the existing seam (Status.isImmune reads it off any grid item), so this needs
+    -- no engine change and it is named in the refusal line the player sees.
+    statusImmunity = { "status_wet" },
 }

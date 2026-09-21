@@ -41,8 +41,13 @@ return {
     defaultAction = "weapon_brackish_lance",
     signatureWeapon = "weapon_brackish_lance",
     ai = {
-        -- One rule, and it is the whole body: reach out of the water and hit whatever is on the bank.
-        -- The spear's own family rule puts the Wet where it belongs without the planner knowing.
+        -- 1. Work the body standing nearest the water first. The lance does not displace anybody, so
+        --    this is not a drowning blow -- it is the Mere keeping the pressure on the bank, which is
+        --    where the Undertow wants the company to be when she takes her turn.
+        { priority = "normal", act = "attack", item = "weapon_brackish_lance", targetPref = "drownable",
+          when = { subject = "any_foe", test = "in_reach" } },
+        -- 2. Otherwise reach out of the water and hit whatever is on it. The spear's own family rule
+        --    puts the Wet on the rank behind without the planner knowing anything about it.
         { priority = "normal", act = "attack", item = "weapon_brackish_lance", targetPref = "lowest_hp",
           when = { subject = "any_foe", test = "in_reach" } },
     },

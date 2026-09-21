@@ -46,16 +46,28 @@ return {
     },
     defaultAction = "ability_brine_bolt",
     signatureAbility = "ability_stormwake",
+    -- SOAK, THEN CONDUCT, and the order of these rules is the whole body. The bolt is worth almost
+    -- nothing on its own -- nothing in this game is hurt by water -- and everything as the first of two
+    -- turns, because a soaked body takes +6 from lightning AND its tile starts conducting.
+    --
+    -- She can afford to stand in her own storm: a naga is proof against Wet (utility_naga_coils), so
+    -- the charge she puts through the channel finds the company and not her own pack.
     ai = {
-        -- 1. Soak anything not already wet. The setup half, and `lacks_status` is what makes it work
+        -- 1. Soak anything not already wet. The setup half, and `lacks_status` is what makes her work
         --    down the party rather than drenching the same body twice.
         { priority = "high", act = "cast", item = "ability_brine_bolt",
           when = { subject = "any_foe", test = "lacks_status", value = "status_wet" } },
-        -- 2. Then put the charge through the water. Aimed at whoever is closest to falling, because the
-        --    arc will find the rest of them anyway.
+        -- 2. Then put the charge through the water, into a body that is already carrying it. `has_status`
+        --    rather than a plain aim: the whole point of rule 1 was to make this blow worth twice what
+        --    it costs, and a caster that fired it at a dry target would be spending the setup for
+        --    nothing. The arc finds everyone else standing in the same conductor.
         { priority = "high", act = "attack", item = "ability_stormwake", targetPref = "lowest_hp",
+          when = { subject = "any_foe", test = "has_status", value = "status_wet" } },
+        -- 3. ...and the storm anyway when nobody is soaked and nothing can be, rather than standing
+        --    there holding it.
+        { priority = "normal", act = "attack", item = "ability_stormwake", targetPref = "lowest_hp",
           when = { subject = "any_foe", test = "in_reach" } },
-        -- 3. And a bolt is better than standing there.
+        -- 4. And a bolt is better than nothing at all.
         { priority = "normal", act = "attack", targetPref = "lowest_hp",
           when = { subject = "any_foe", test = "in_reach" } },
     },

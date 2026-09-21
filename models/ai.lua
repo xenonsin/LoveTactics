@@ -282,7 +282,8 @@ AI.TEST_ORDER = {
     "count_at_least", "count_at_most", "has_status", "lacks_status", "always",
 }
 AI.ACTION_ORDER = { "attack", "support", "cast", "retreat", "wait" }
-AI.TARGET_PREF_ORDER = { "nearest", "lowest_hp", "most_wounded", "lethal", "self", "objective" }
+AI.TARGET_PREF_ORDER = { "nearest", "lowest_hp", "most_wounded", "lethal", "self", "objective",
+                         "drownable" }
 
 -- Which tests take a `value`, and what shape it is. A test that takes none must not show a value
 -- field at all -- an editor offering "exists 0.4" is offering nonsense.
@@ -1882,6 +1883,34 @@ local function prefBonus(ctx, rule, cand, w)
         return (t == ctx.unit) and w.TARGET_PREF or 0
     elseif pref == "objective" then
         return (t == AI.objectiveUnit(ctx.combat, ctx.unit)) and w.TARGET_PREF or 0
+    elseif pref == "drownable" then
+        -- CAN THIS BODY BE PUT IN THE WATER? The Mere's whole plan, expressed as a preference rather
+        -- than as a filter, because a preference is what the rest of this table is: a body that cannot
+        -- be drowned is still worth hitting, it is simply worth less than one that can.
+        --
+        -- TWO TILES, AND THEY COVER BOTH VERBS. A displacement moves a body one step along the line
+        -- between it and the caster -- toward, for a pull (Riptide, the pike), away for a push
+        -- (Breaker, a mace). So the question is whether EITHER of those two destinations is drowning
+        -- ground, which needs no knowledge of which item the rule is about and is exactly two lookups.
+        --
+        -- Deliberately not "is there deep water anywhere near it": that would rank a body standing
+        -- diagonally across a channel it can never be pushed into, and the planner would walk the
+        -- pack at a target it cannot actually take.
+        local arena = ctx.combat and ctx.combat.arena
+        local tiles = arena and arena.tiles
+        if not tiles then return 0 end
+        local dx = (t.x > ctx.unit.x and 1) or (t.x < ctx.unit.x and -1) or 0
+        local dy = (t.y > ctx.unit.y and 1) or (t.y < ctx.unit.y and -1) or 0
+        -- The shove primitive moves on the DOMINANT axis, so only one of the two is live; matching it
+        -- here keeps the preference honest about where a body would actually come to rest.
+        if math.abs(t.x - ctx.unit.x) >= math.abs(t.y - ctx.unit.y) then dy = 0 else dx = 0 end
+        if dx == 0 and dy == 0 then return 0 end
+        for _, step in ipairs({ 1, -1 }) do
+            local row = tiles[t.y + dy * step]
+            local cell = row and row[t.x + dx * step]
+            if cell and cell.drowns then return w.TARGET_PREF end
+        end
+        return 0
     end
     return 0
 end

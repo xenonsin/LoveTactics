@@ -236,6 +236,81 @@ tests[#tests + 1] = { name = "the Wrap turns the arena's walls into the wearer's
     assert(afloat["5,4"], "and crosses to the far bank")
 end }
 
+tests[#tests + 1] = { name = "a naga is never Wet, and that is what stops the pack killing itself", fn = function()
+    -- NOT ONLY FLAVOUR. Wet carries `lightning = 6` and the naga race carries `lightning = -4`, so a
+    -- pack standing in its own channel would take TEN extra from a bolt -- and the Tidecaller's own
+    -- Stormwake arcs through every conducting tile it touches, which on a fen board is all of them.
+    -- Without the immunity the faction's entire plan is suicide.
+    local c = Fixture.combat(Fixture.new(8, 8),
+        { Fixture.unit("character_bandit", 2, 4, { isolate = "bare" }) },
+        { Fixture.unit("character_shoalkin", 3, 4),
+          Fixture.unit("character_bandit", 4, 4, { isolate = "bare" }) })
+    local naga, man = c.units[2], c.units[3]
+
+    assert(Status.apply(c, man, "status_wet"), "an ordinary body soaks")
+    assert(Status.has(man, "status_wet"), "...and stays soaked")
+
+    assert(not Status.apply(c, naga, "status_wet"), "a naga refuses it")
+    assert(not Status.has(naga, "status_wet"), "and is not carrying it afterwards")
+
+    -- The player's counter is untouched: the race still takes lightning the harder. What the immunity
+    -- removes is the compounding, not the weakness.
+    local Race = require("models.race")
+    assert(Race.get("naga").resist.lightning < 0, "a naga still dies to lightning; it just is not soaked")
+end }
+
+tests[#tests + 1] = { name = "the ford soaks a company and leaves the nagas standing in it dry", fn = function()
+    -- The same rule where it actually bites: hazard_shallows stands on every water tile, so a naga
+    -- wading its own ford would otherwise soak itself on the way to the fight.
+    local ford = Terrain.get("water")
+    local map = Fixture.new(8, 8, { tiles = {
+        { x = 4, y = 4, type = "water", moveCost = ford.moveCost, walkable = ford.walkable,
+          sightCost = ford.sightCost, tags = ford.tags, swim = ford.swim },
+    } })
+    map.hazards = { { id = "hazard_shallows", x = 4, y = 4, duration = 9999 } }
+
+    for _, id in ipairs({ "character_bandit", "character_shoalkin" }) do
+        local c = Fixture.combat(map, { Fixture.unit(id, 3, 4) }, {})
+        local u = c.units[1]
+        Combat.enterTile(c, u, 4, 4, "walk", 3, 4)
+        if id == "character_shoalkin" then
+            assert(not Status.has(u, "status_wet"), "a naga wades its own ford and comes out dry")
+        else
+            assert(Status.has(u, "status_wet"), "and anybody else comes out soaked")
+        end
+    end
+end }
+
+tests[#tests + 1] = { name = "the Mere aims at whoever can be put in the water", fn = function()
+    -- THE PLAN, asserted as a planner decision rather than as a sentence in a header. Two foes, equal
+    -- in every way the other preferences would rank them by -- same health, same distance -- and one
+    -- of them has a channel one step along the line from the Undertow. That is the one she goes for.
+    local AI = require("models.ai")
+    local deep = Terrain.get("deep")
+    local map = Fixture.new(9, 9, { tiles = {
+        { x = 6, y = 3, type = "deep", moveCost = deep.moveCost, walkable = deep.walkable,
+          sightCost = deep.sightCost, tags = deep.tags, swim = deep.swim, drowns = deep.drowns },
+    } })
+    map.hazards = { { id = "hazard_deep_water", x = 6, y = 3, duration = 9999 } }
+
+    -- Her at (4,3); the drownable foe at (5,3) with the channel directly beyond it; the safe foe at
+    -- (4,5), the same distance away with nothing but open ground around it.
+    local c = Fixture.combat(map,
+        { Fixture.unit("character_bandit", 1, 1, { isolate = "bare" }) },
+        { Fixture.unit("character_undertow", 4, 3),
+          Fixture.unit("character_bandit", 5, 3, { isolate = "bare", stats = { health = 60 } }),
+          Fixture.unit("character_bandit", 4, 5, { isolate = "bare", stats = { health = 60 } }) })
+    local her, drownable, safe = c.units[2], c.units[3], c.units[4]
+    her.side, drownable.side, safe.side = "enemy", "party", "party"
+
+    local plan = AI.plan(c, her)
+    assert(plan and plan.target, "she picked something")
+    assert(plan.target == drownable, string.format(
+        "she aimed at the body at (%d,%d); the one with the channel behind it is at (%d,%d). "
+        .. "Drowning you is the plan, not a side effect.",
+        plan.target.x, plan.target.y, drownable.x, drownable.y))
+end }
+
 tests[#tests + 1] = { name = "the Scale Hauberk is dropped and never worn", fn = function()
     -- The race already carries `lightning = -4`; a naga in naga plate would sit at -8 and fold to one
     -- bolt with no file saying why. A `drops` entry is read separately from a grid (docs/drops.md), so
