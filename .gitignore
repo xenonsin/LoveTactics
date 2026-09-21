@@ -57,3 +57,8 @@ steam_appid.txt
 # Both are reproducible from the tree, and game.data alone is ~27 MB -- it is published to the
 # gh-pages branch by tools/web-publish.ps1, never committed to main.
 build/
+
+# The generated wiki (tools/wiki_gen.lua). Rendered out of data/ by `. wiki-gen` and published by
+# tools/wiki-sync.sh, so every page in it is reproducible and none of it is authored. Build output,
+# exactly like assets/.
+wiki/

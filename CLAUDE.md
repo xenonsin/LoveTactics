@@ -40,11 +40,20 @@ if any file is bad.
 
 ## Wiki
 
-The [GitHub wiki](https://github.com/xenonsin/LoveTactics/wiki) is a **generated mirror** of
-`docs/` — never edit wiki pages by hand, edit the source doc. `tools/wiki-sync.sh` copies each
-`docs/NAME.md` to a Title-Cased page, rewrites intra-doc links (preserving `#anchors`), and
-regenerates `Home.md` + `_Sidebar.md`. A `post-commit` hook publishes automatically whenever a
-commit touches `docs/*.md`; skip it once with `LOVETACTICS_WIKI_NOSYNC=1 git commit ...`.
+The [GitHub wiki](https://github.com/xenonsin/LoveTactics/wiki) is a **generated reference to the
+DATA** — never edit a wiki page by hand, edit the blueprint. It mirrored `docs/` until 2026-09-20 and
+does not any more: the design docs argue about why the game is shaped this way and belong beside the
+code that a change lands in, while a wiki is read by somebody who wants to know what a thing *does*.
+`docs/` is untouched and still the design source; it is simply no longer published.
+
+`& "E:\LOVE\lovec.exe" . wiki-gen` (`tools/wiki_gen.lua`) renders every item **by class, then by
+type** into the gitignored `wiki/` — 852 items over 46 class pages plus an index. Every number is
+read through the model (`Item.instantiate` / `Item.growth` at each forge level), so a page cannot
+disagree with the game; a column no item in a section filled is dropped from that table.
+`tools/wiki-sync.sh` builds and publishes it, and its prune step retires any page that is no longer
+generated — which is what took the 38 doc pages down. A `post-commit` hook publishes automatically
+whenever a commit touches `data/**.lua` or `tools/wiki_gen.lua`; skip it once with
+`LOVETACTICS_WIKI_NOSYNC=1 git commit ...`. `tests/wiki_spec.lua` holds the pages to their promises.
 
 After a fresh clone, two one-time steps (`.git/hooks` is not tracked, so the hook does not come
 with the repo):

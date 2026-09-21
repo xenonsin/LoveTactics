@@ -239,6 +239,17 @@ function love.load(args)
         return
     end
 
+    -- The WIKI: `& "E:\LOVE\lovec.exe" . wiki-gen [OUTDIR]`
+    -- Renders the public wiki out of the data layer -- every item, by class and then by type, with its
+    -- numbers read the way the game reads them. The wiki mirrored docs/ until this; it mirrors the
+    -- THINGS now, and docs/ stays in the repo beside the code it argues about. tools/wiki-sync.sh
+    -- publishes what this writes. See tools/wiki_gen.
+    if args and args[1] == "wiki-gen" then
+        require("tools.wiki_gen").run({ select(2, unpack(args)) })
+        love.event.quit(0)
+        return
+    end
+
     -- Icon pipeline: `. icon-map [unmatched]` proposes a game-icons.net icon for each icon-shaped
     -- asset; `. icon-build` renders the mapping into assets/. Run tools/icons/fetch.ps1 first.
     if args and args[1] == "icon-map" then
