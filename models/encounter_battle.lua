@@ -183,9 +183,15 @@ function EncounterBattle.build(opts)
         partyUnits[#partyUnits + 1] =
             { char = Growth.spawn(u.id, enemyLevel, opts.floorLevel), x = u.x, y = u.y, control = "ai" }
     end
+    -- WHAT THIS FIGHT PUT IN THEIR HANDS, keyed by body id: gear the encounter is holding rather than
+    -- gear the blueprint gave them (a mimic's swallowed chest -- models/mimic.lua). Read on the walked-
+    -- off path as well as the played one (states/battle.lua), or auto-resolving a mimic would settle a
+    -- fight against a body that had put the axe down.
+    local carried = (opts.encounter and opts.encounter.carried) or nil
     for _, u in ipairs(arena.enemies) do
         enemyUnits[#enemyUnits + 1] =
-            { char = Growth.spawn(u.id, enemyLevel, opts.floorLevel), x = u.x, y = u.y }
+            { char = Growth.spawn(u.id, enemyLevel, opts.floorLevel, carried and carried[u.id]),
+              x = u.x, y = u.y }
     end
 
     local combat = Combat.new(arena, partyUnits, enemyUnits, { deferOpen = true })
@@ -302,6 +308,52 @@ function EncounterBattle.spoils(opts)
             -- (Spoils.SEALED_PITY). Nil off a descent, where there is no floor to be dry.
             drought = opts.run and require("models.descent").sealedDrought(opts.run) or 0,
         })
+
+        -- WHAT THEY WERE HOLDING, HANDED OVER WHOLE (`encounter.carried` -- models/mimic.lua).
+        --
+        -- ON TOP OF THE ROLL, never instead of it, and that is the difference between this and
+        -- `rewardGold`/`loot`, which short-circuit because they are somebody's exact figure for the
+        -- whole payout. This is not a payout at all, it is an inventory: these ids were in a body's
+        -- grid ten seconds ago, the player was swung at with them, and a fight that let them evaporate
+        -- on the win would be the game taking a reward back in front of the player.
+        --
+        -- GUARANTEED, because the same list armed the body (Growth.spawn) -- one list read twice. A
+        -- chance to drop what the company just watched something fight with would make the two readings
+        -- disagree, which is the whole thing this field exists to prevent.
+        --
+        -- An unknown id is dropped rather than granted, the same guard the loot override keeps.
+        for _, id in ipairs(require("models.mimic").owed(encounter)) do
+            if Item.defs[id] then
+                spoils.loot = spoils.loot or {}
+                spoils.loot[#spoils.loot + 1] = id
+            end
+        end
+
+        -- ...AND THE BODY'S OWN TROPHY, on a flat percent, on top of all of it (`encounter.trophy`,
+        -- models/mimic.lua's Mimic.TROPHY).
+        --
+        -- OUTSIDE THE ROLL, which is the whole reason it is a field and not a `drops` entry: an authored
+        -- list feeds Step 2 of the rank draw, so it only ever pays when the floor happens to draw that
+        -- piece's rank and only ever in place of the fight's ordinary drop. This is additive and
+        -- rate-authored -- "and sometimes it gives you THE thing" -- which is the shape a chase piece
+        -- wants and the one neither existing route can say.
+        --
+        -- REFUSED IF THE COMPANY ALREADY HOLDS ONE, the rule Descent.dropFor keeps for a general's
+        -- queue. A duplicate trophy is dead weight (every one of them is best-not-sum), and dealing
+        -- dead weight would make the second of these fights pay less than an ordinary body does. The
+        -- roll is skipped entirely rather than re-drawn, so the spare chance is not quietly spent
+        -- somewhere else either.
+        local trophy = encounter.trophy
+        if trophy and trophy.id and Item.defs[trophy.id]
+            and not Spoils.companyOwns(opts.player, trophy.id)
+            -- Through love.math where there is one, exactly as models/spoils.lua's own `rnd` does: the
+            -- payout's other rolls are seeded from that generator, and a trophy drawn off the plain
+            -- Lua one would be the single figure in a fight's takings that a seeded replay could not
+            -- reproduce.
+            and ((love and love.math and love.math.random) or math.random)(100) <= (trophy.chance or 0) then
+            spoils.loot = spoils.loot or {}
+            spoils.loot[#spoils.loot + 1] = trophy.id
+        end
     elseif kind == "objective" then
         -- The general's JOB pays through Quest.complete, not through spoils -- but the SALVAGE floor is
         -- owed by every won fight, and the last fight of a run is not the one to make an exception

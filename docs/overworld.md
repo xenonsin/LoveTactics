@@ -202,6 +202,77 @@ the shape — the machinery is there and pinned the moment a floor asks for it.
   compounds exactly the wrong way. With `guardBoons` gone this survives as a placement rule rather than
   a pass: nothing ever stands in front of a camp.
 
+### What is in a chest, and what is in some of them instead
+
+**A chest is a haul, and a haul is two or three pieces at the floor's own rank** (`Spoils.cache`,
+`Spoils.CACHE_PIECES`). It used to be one authored healing potion at every depth, which made the rarest
+non-fighting stop on a floor pay less than the fight standing next to it — a player who walked four tiles
+off the road for a lid got a potion and a shrug. The contents are drawn through the same two-step draw a
+fight's drops use, so a floor-six chest deals floor-six goods and [shelf.md](shelf.md)'s law ("a floor
+hands over nothing ranked or gated deeper than it reaches") binds it for free rather than through a
+second rule that would have to be kept in step. What a chest does *not* draw against is a body: Step 2
+asks which corpse pays, and a cache's answer is "none of them", so it falls to the rank's general stock.
+**A cache pays what the FLOOR has; a fight pays what something was carrying.**
+
+The haul is **pinned onto the cell the first time anybody looks**. Unpinned it could be re-rolled by
+stepping off the tile and back onto it — and the contents are load-bearing twice over, which is the next
+paragraph.
+
+**Some of the lids are alive** (`models/mimic.lua`). A percentage of a floor's chests are mimics: the
+board says treasure, the marker says treasure, the gloss says *"an unguarded cache — nothing stands over
+it"*, and then the company puts a hand in and the cache stands up.
+
+- **It is decided at generation, not at the lid.** A floor is a place the company keeps a map of
+  (`Descent.keepFloor`), so the third chest on floor six is a monster for the life of the playthrough,
+  and the company that left it alone knows exactly where it is.
+- **It springs on *Open*, never on arrival.** A fight that begins because the token landed somewhere is
+  a toll — a bill for having walked, with nothing the player could have done differently. Pressing Open
+  is a decision, and it is *already* the decision this stop asks: the panel, the Cancel, and the
+  uncleared cell behind it are the same three affordances a **wired lid** uses, and the Trap Sense Charm
+  reads a living lid exactly as it reads a wired one. One rule: a company that can read a lid can read
+  this lid, and what the charm buys is the choice, never the disarm.
+- **A lid is either wired or alive, never both.** Not for balance — a trap springs on the *collect*, and
+  a mimic never reaches one, so a wired mimic would be a flag that silently did nothing.
+- **What it carries is what it drops, and that is one list read twice.** `encounter.carried` arms the
+  body — the swallowed axe goes in its grid and the AI swings it, the coat mitigates, the ability gets
+  cast — and the same field is paid out on the win. So "it was hitting me with the axe it was sitting
+  on" is a fact about the data rather than a coincidence of tuning, and it is why the haul had to become
+  plural first: a one-item chest stands up as a box with a bite and nothing else.
+- **It pays MORE than the chest would have.** The contents are handed over guaranteed, on top of what an
+  elite fight rolls of its own. Springing a mimic is a better outcome than opening the chest, not a tax
+  on having opened it — [the-count.md](the-count.md)'s law held, since the game prices decisions and
+  never prices failure.
+- **It does not re-arm.** `Descent.rearmFloor` wakes the floor's cleared fights — the monsters come back
+  and the places do not — and a mimic is both. It settles as the **place**, on what it pays: a chest
+  pays once, and a body that re-deals a chest's contents every trip down is a printing press.
+- **Nothing else in the game can deal this fight.** `encounter_mimic` carries `weight = 0`, so no pool at
+  any depth in any mode seats one. The only way to meet a mimic is to open the wrong chest, because a
+  monster that is *sometimes* disguised is not the monster — the disguise is.
+- **And it pays one thing the chest never could.** `Still Hungry` — the mimic's own gullet — drops on a
+  flat **40%**, on top of the chest and on top of the elite roll, and is skipped once the company holds
+  one. It is a **third drop route**, and deliberately: a body's `drops` list feeds Step 2 of the rank
+  draw, so it only ever pays when the floor happens to draw that piece's rank and only ever *instead of*
+  the fight's ordinary drop; `Descent.DROPS` is a general's queue, guaranteed and unrolled. Neither can
+  say *"and sometimes it gives you the thing"*, which is the shape a chase piece wants.
+
+  Forty is a deliberately high-sounding number for a low-frequency stop. Mimics **do not re-arm**, so
+  there are only about three in a whole playthrough — one chest a floor, fifteen floors, a fifth of them
+  alive — and nothing can farm them. At 40% four playthroughs in five see one; at a quarter it would be
+  a coin flip on whether the item exists in your game at all, which is not scarcity, it is absence.
+
+  The item is the mimic stated as gear: **it holds what you take, and the fuller it is the harder it
+  bites.** Out of a fight it is the only thing in the game that touches `Descent.CARRY_MAX` (+6 on a
+  ceiling of 20, best-not-sum across the packs) — it answers a refusal the player has certainly already
+  met, *"the chest stays shut"*. In a fight its blow is sized by `Descent.carried`, the same figure the
+  stair prices its toll against, so the item and the toll can never disagree about what "carrying"
+  means. It **reads** the haul and never spends it; eating the company's finds would be the game
+  destroying loot in front of the player, which is what the chest code refuses to do one file over.
+
+  What that buys is a decision the descent was already asking and could not price: **go deeper with a
+  full bag — dangerous, and no room for the next chest — or hand it over at the stair and have room to
+  loot, with the gullet gone quiet.** Nothing else makes the haul matter while you are standing on a
+  board.
+
 ### The fog
 
 **The floor plan is not a secret; what is standing in it is.**

@@ -17,6 +17,7 @@
 
 local Registry = require("models.registry")
 local Character = require("models.character")
+local Item = require("models.item") -- a spawned body may be handed gear the blueprint never named
 
 local Growth = {}
 
@@ -309,12 +310,31 @@ local function stampClassLevel(char, level)
     if earned > (char.technique[key] or 0) then char.technique[key] = earned end
 end
 
-function Growth.spawn(id, playerLevel, battleFloor)
+-- `carried` is an OPTIONAL list of item ids this particular body is holding ON TOP of its blueprint
+-- grid -- gear the fight put in its hands rather than gear the blueprint gave it. One caller today: a
+-- mimic, whose whole kit is the chest it swallowed (models/mimic.lua).
+--
+-- ADDED RATHER THAN REPLACING, which is the opposite call to Summon.spawn's `items` and the difference
+-- is what each is FOR: a summon's override says "this conjuration is not the blueprint", and this says
+-- "this body picked something up". A mimic keeps its bite.
+--
+-- Placed through Character.addItem, so a stackable merges and each loose piece takes the first free
+-- cell -- and so a grid with no room left simply stops taking them rather than overwriting the body's
+-- own weapon. What it is HOLDING is a question about the fight; what it OWES is a question about the
+-- chest, and the two are allowed to differ at the ninth item.
+--
+-- An id the catalogue does not know is dropped rather than instantiated, the same guard every other
+-- data-fed grant keeps: a typo in a drop list must not reach Item.instantiate.
+function Growth.spawn(id, playerLevel, battleFloor, carried)
     local def = Character.defs[id]
     local char = Character.instantiate(id)
     local level = Growth.combatantLevel(def, playerLevel, battleFloor)
     Growth.resolve(char, level)
     stampClassLevel(char, level)
+
+    for _, itemId in ipairs(carried or {}) do
+        if Item.defs[itemId] then Character.addItem(char, Item.instantiate(itemId)) end
+    end
 
     -- Applied AFTER the blend, so a boss still gains what its levels gave it and the curve is a scale
     -- over the result rather than a replacement for it.

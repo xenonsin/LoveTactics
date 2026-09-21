@@ -14,6 +14,7 @@
 --       sealed = { { id = "weapon_iron_axe", floor = 7 } }, -- unread finds, revealed as husks
 --       onCollect = function() ... end,              -- OPENED and taken: grant the loot + clear the cell
 --       onCancel  = function() ... end,              -- dismissed while still closed: grant nothing
+--       onOpen    = function() return true end,      -- the hand on the lid; true = the host takes over
 --   })
 --
 -- The panel only DISPLAYS the loot (throwaway Item.instantiate copies for icons/tooltips); the caller
@@ -76,6 +77,9 @@ function LootReveal.new(opts)
     local self = setmetatable({}, LootReveal)
     self.onCollect = opts.onCollect
     self.onCancel = opts.onCancel
+    -- Fired the instant Open is pressed, BEFORE the lid moves; return true and the panel hands the
+    -- moment over entirely (see LootReveal:open). Nil for an ordinary cache.
+    self.onOpen = opts.onOpen
     self.finished = false
     self.title = (opts.encounter and opts.encounter.name) or "Treasure"
     self.description = opts.description or DEFAULT_DESC
@@ -187,8 +191,21 @@ function LootReveal:close()
 end
 
 -- Begin the opening animation (the Open button / confirm while still closed).
+--
+-- ...UNLESS SOMETHING ELSE OWNS WHAT HAPPENS NEXT. `onOpen` is the hand on the lid, handed to the host
+-- before a single frame of the animation runs: it returns true to say "I have taken this from here",
+-- and the panel then does nothing at all -- no swing, no burst, no cards, and no `onCollect` when it
+-- is dismissed, because nothing was collected. One caller, and the reason the hook is a hook rather
+-- than a branch: a chest that is a monster (models/mimic.lua), where the whole beat is that the lid
+-- comes up and there is no loot under it.
+--
+-- Marked `finished` on the way out so the host's own close() cannot fire an outcome behind it.
 function LootReveal:open()
     if self.opened then return end
+    if self.onOpen and self.onOpen() then
+        self.finished = true
+        return
+    end
     self.opened = true
     self.elapsed = 0
     Sound.play("treasure.open") -- lid unlatches and begins to swing; the pop's flourish follows in burst()

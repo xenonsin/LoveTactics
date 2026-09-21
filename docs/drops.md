@@ -164,6 +164,30 @@ Four rules, none of them new:
    stock; applied to the prize it made the piece a body is known for the likeliest thing it pays on
    the one floor that can pay it — measured at 26% of fights, an errand rather than a chase.
 
+### A third route: a trophy on a percent, outside the roll
+
+`drops` and `Descent.DROPS` between them answer *what is this body known for* and *what does this
+general owe*. Neither can say **"and sometimes it gives you the thing"** — a list entry competes for
+the fight's one or two slots and only at its own rank, and a general's queue is guaranteed and unrolled.
+
+`encounter.trophy = { id, chance }` is the third: a named piece, a flat percent, **added** to whatever
+the fight rolled rather than drawn from it, paid at the one payout seam (`EncounterBattle.spoils`) so
+the played and the walked-off fight cannot differ. It is **skipped once the company holds one**, which
+is `Descent.dropFor`'s rule rather than the weighted list's — right here for the reason it is wrong
+there: these are best-not-sum pieces, so a second copy is dead weight, and dealing dead weight in place
+of an elite's ordinary roll would make the second of these fights pay *less* than an ordinary body.
+
+One body carries one today — the Mimic's `Still Hungry`
+([overworld.md](overworld.md#what-is-in-a-chest-and-what-is-in-some-of-them-instead)) — and the rate is
+set against how few of that body exist rather than against how good the piece is: mimics do not re-arm,
+so there are about three in a playthrough and nothing can farm them.
+
+> **`unstocked` is a rule about SHOPS, not about the pool**, and every trophy's header glosses over it.
+> A piece carrying a `dropTier` sits in the band's long tail like anything else — `anyAtRank` filters
+> `bound` and `noSteal` and not this — so an ordinary fight at that rank can pay one, and so can a
+> chest. That is one row out of a whole rank's catalogue and it is the same backstop all fifteen named
+> trophies have had all along. What `unstocked` buys is that **no counter deals or buys one, ever**.
+
 ## The bill
 
 ```

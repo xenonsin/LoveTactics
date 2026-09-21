@@ -5664,7 +5664,12 @@ function battle.enter(self, opts)
         battle.enemyUnits[#battle.enemyUnits + 1] = {
             -- `enemyChars` are handed over already levelled by their author (models/build.lua
             -- normalizes a duel team itself), so they are taken as-is; a blueprint id is grown here.
-            char = (enemyChars and enemyChars[i]) or Growth.spawn(u.id, battle.enemyLevel, battle.floorLevel),
+            -- ...and `carried` is what THIS FIGHT put in their hands, keyed by body id -- the chest a
+            -- mimic swallowed (models/mimic.lua). Read off the encounter rather than held in a local:
+            -- this function sits within a couple of declarations of Lua 5.1's 200-local ceiling (see
+            -- the ctx note above), and crossing it is a compile error naming an unrelated line.
+            char = (enemyChars and enemyChars[i]) or Growth.spawn(u.id, battle.enemyLevel, battle.floorLevel,
+                battle.encounter and battle.encounter.carried and battle.encounter.carried[u.id]),
             x = u.x, y = u.y,
         }
     end

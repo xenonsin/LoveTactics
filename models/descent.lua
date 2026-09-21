@@ -778,7 +778,7 @@ Descent.FLOOR_VAULTS = { min = 1, max = 1 }
 -- SO: one list, one copier, and tests/floor_features_spec.lua fails the day a sixth param is added to
 -- floorQuest's map without being named here.
 Descent.FLOOR_FEATURE_KEYS = {
-    "trapCount", "trappedChestChance", "sideGateCount", "dropCount", "vaultCount",
+    "trapCount", "trappedChestChance", "mimicChance", "sideGateCount", "dropCount", "vaultCount",
     -- Not a feature the generator PLACES but one it withholds: no ordinary fight is dealt onto a tile,
     -- because the floor rolls its combat on the walk instead (Descent.PROWL_STEPS). It rides this list
     -- for the reason the list exists -- so the instruments roll the same floor the game does.
@@ -803,6 +803,19 @@ end
 -- it anyway, or leave it standing and come back better -- and the map keeps the chest where it is
 -- (Descent.keepFloor), so coming back is a real option rather than a lost reward.
 Descent.TRAPPED_CHEST_CHANCE = 33
+
+-- HOW MANY LIDS ARE ALIVE, as a percent (Overworld:placeTraps' third half).
+--
+-- The number itself is argued where the thing lives -- models/mimic.lua's Mimic.CHANCE -- and this line
+-- is the floor SAYING it wants them, which is a separate statement: every floor of the rift does, at
+-- the same rate, top to bottom. A mimic is not a circle's specialist and not a depth gate; it is what
+-- the rift does to a chest, and the shallow end is where the lesson wants teaching.
+--
+-- ONE OWNER, READ THROUGH rather than copied: a rate written down in two files is a rate that gets
+-- tuned in one of them. This file takes every other require lazily, inside the function that wants it,
+-- because so much of the tree requires IT -- but models/mimic.lua requires nothing at all, so there is
+-- no cycle to walk into here and no reason to defer.
+Descent.MIMIC_CHEST_CHANCE = require("models.mimic").CHANCE
 
 -- WHAT A FLOOR IS MADE OF, which is not what a quest board's leg is made of.
 --
@@ -2061,6 +2074,13 @@ end
 --
 -- It is NOT counted as re-armed: a board that is all residue would otherwise report a floor full of
 -- woken monsters and there would be nothing standing on it.
+--
+-- A SPRUNG MIMIC IS NOT WOKEN EITHER, and it is the one body in the game that is not. The split this
+-- function is built on -- the monsters re-arm and the places do not -- has no answer for a thing that
+-- is both, so it is settled on WHAT IT PAYS: a mimic hands over a chest's contents (models/mimic.lua),
+-- a chest pays once, and a fight that re-dealt those contents every trip down would be a printing
+-- press standing on floor six. What the company walks back to is a spent cache, because that is what
+-- they emptied.
 function Descent.rearmFloor(grid)
     if not grid then return 0 end
     local n = 0
@@ -2070,7 +2090,7 @@ function Descent.rearmFloor(grid)
             local e = c.encounter
             if e and e.wandering then
                 c.encounter, c.cleared = nil, nil
-            elseif e and c.cleared and (e.kind == "combat" or e.kind == "elite") then
+            elseif e and c.cleared and not e.mimic and (e.kind == "combat" or e.kind == "elite") then
                 c.cleared = nil
                 n = n + 1
             end
@@ -2202,10 +2222,45 @@ function Descent.carried(player, run)
     return n
 end
 
+-- WHAT A PIECE OF GEAR MAY ADD TO THAT CEILING (`haulBonus` on an item, models/item.lua).
+--
+-- BEST RATHER THAN SUM, exactly as Trap.detectRadiusFor and Player.visionBonus are, and for the reason
+-- those two give: two bags are not twice the bag, and a company that has found a better one should feel
+-- the upgrade rather than the stack. It is also what stops the one item that carries this from being
+-- farmed into an unbounded pack.
+--
+-- WALKS THE WHOLE ROSTER AND THE STASH, the same reach those two take and right for the same reason:
+-- the ceiling is a fact about what the COMPANY can carry out, not about which body is wearing the
+-- thing, and which pocket it is in is not a decision anybody made.
+function Descent.haulBonus(player)
+    local Character = require("models.character")
+    local best = 0
+    local function consider(item)
+        local n = item and item.haulBonus or 0
+        if n > best then best = n end
+    end
+    for _, char in ipairs((player and player.roster) or {}) do
+        for _, item in ipairs(Character.eachItem(char)) do consider(item) end
+    end
+    for _, item in ipairs((player and player.stash) or {}) do consider(item) end
+    return best
+end
+
+-- THE CEILING THIS COMPANY ACTUALLY HAS: the constant plus whatever it is carrying that widens it.
+--
+-- A FUNCTION RATHER THAN THE CONSTANT, because two places read this and they must not disagree -- the
+-- refusal ("the chest stays shut") and the readout that warns about the refusal before it happens
+-- (states/game.lua's "Carrying n / max"). A limit the player cannot see is one they meet by having a
+-- chest refuse to open, and a limit the readout states WRONG is worse than either.
+function Descent.carryMax(player)
+    return Descent.CARRY_MAX + Descent.haulBonus(player)
+end
+
 -- How many more the company could pick up before the bag is full. Never negative: a company that is
--- somehow over the line (a cap lowered between saves) reads as full rather than as owing slots.
+-- somehow over the line (a cap lowered between saves, a bag put down) reads as full rather than as
+-- owing slots.
 function Descent.carryRoom(player, run)
-    return math.max(0, Descent.CARRY_MAX - Descent.carried(player, run))
+    return math.max(0, Descent.carryMax(player) - Descent.carried(player, run))
 end
 
 -- ---------------------------------------------------------------------------
@@ -3016,6 +3071,7 @@ function Descent.floorQuest(run, player)
                 dropCount = (not Descent.isGeneralFloor(floor) and not Descent.isBottom(floor))
                     and { min = Descent.FLOOR_DROPS.min, max = Descent.FLOOR_DROPS.max } or nil,
                 trappedChestChance = Descent.TRAPPED_CHEST_CHANCE,
+                mimicChance = Descent.MIMIC_CHEST_CHANCE,
                 keyCount = 0,
                 -- The way back up, standing on the tile the party walks in on. See EXIT below.
                 exitAtStart = true,
@@ -3096,6 +3152,7 @@ function Descent.floorQuest(run, player)
             dropCount = (not Descent.isGeneralFloor(floor) and not Descent.isBottom(floor))
                 and { min = Descent.FLOOR_DROPS.min, max = Descent.FLOOR_DROPS.max } or nil,
             trappedChestChance = Descent.TRAPPED_CHEST_CHANCE,
+            mimicChance = Descent.MIMIC_CHEST_CHANCE,
             -- keyCount 0 because a floor is not a lock puzzle: the stair is always reachable.
             keyCount = 0,
             -- The way back up, standing on the tile the party walks in on. See EXIT below.

@@ -59,6 +59,7 @@ local ItemHook = require("models.item_hook") -- the between-fight half of the pa
 local Meal = require("models.meal") -- the Cafe's supper: one platter, worn by the company all run
 local Wound = require("models.wound") -- what a body that went down carries out of the run
 local Trap = require("models.trap")   -- ...and the bad ground a floor is laid with (Overworld:placeTraps)
+local Mimic = require("models.mimic") -- ...and the lids on that floor which are not lids
 local CoachBubble = require("ui.coach_bubble")
 local TutorialNote = require("ui.panels.tutorial_note") -- the window the first relic opens with
 local Locale = require("models.locale")
@@ -1770,6 +1771,10 @@ function game:cellMuster(cell)
             enemyLevel = game.quest and game.quest.dangerLevel,
             quest = game.quest,
             floorLevel = game.quest and game.quest.floorLevel,
+            -- ...and what the fight is HOLDING, for the same reason the pack is rated off the cell: a
+            -- mimic's kit is the chest it swallowed and lives nowhere but here (models/mimic.lua), so a
+            -- rating off the blueprint alone would price it as a body with one bite and nothing else.
+            carried = enc and enc.carried or nil,
         }) or false
         game.encounterMuster[cell] = cached
     end
@@ -3331,7 +3336,41 @@ function game:openEncounter(cell, opts)
     if kind == "treasure" then
         local enc = cell.encounter
         local def = enc.id and EncounterModel.get(enc.id)
+
+        -- WHAT IS IN IT, AND IT IS A HAUL RATHER THAN AN ITEM (Spoils.cache, Spoils.CACHE_PIECES).
+        --
+        -- Three authorities in order, and each answers a different board. A PLACEMENT'S own list wins
+        -- outright -- the prologue's chests hand over an exact teaching kit and nothing may re-roll it.
+        -- Failing that, a descent floor deals two or three pieces AT ITS OWN RANK, because a cache four
+        -- tiles off the road has to be worth the detour the marker has been advertising. Failing THAT
+        -- -- a campaign road, a scripted leg, anything with no depth to draw against -- the blueprint's
+        -- authored floor stands, exactly as it always has.
+        --
+        -- PINNED ONTO THE CELL the first time anybody looks, which is the rule the sealed roll below
+        -- only wishes it kept: a chest that re-rolled its contents could be walked off and back onto
+        -- until the player liked what was under the lid -- and if the lid is ALIVE (models/mimic.lua)
+        -- those contents are also the body's kit, so an unpinned roll would be re-rolling the FIGHT.
+        -- Pinned, a chest is what everything else on a descent floor already is: a fact about the
+        -- place, and it rides out with the board (Descent.keepFloor).
+        --
+        -- NOT SAVED HERE, deliberately. Every resolution below writes the run (collected, emptied, or
+        -- handed to a fight), so the pin is on disk by the time anything has come of it; what is NOT
+        -- covered is looking in a chest, cancelling, and quitting, and buying that case would mean an
+        -- autosave with the token standing ON the stop -- which this function's own header refuses, and
+        -- for a better reason than this one is worth.
         local loot = enc.loot or (def and def.loot) or {}
+        if not enc.loot and game.quest and game.quest.floorLevel then
+            enc.loot = Spoils.cache({
+                floorLevel = game.quest.floorLevel,
+                day = game.day,
+                -- ...so a piece the company already holds steps aside for one it does not, the same
+                -- courtesy a body's authored list gets (docs/drops.md).
+                player = game.player,
+            })
+            -- A rank the catalogue is thin at can hand back nothing. The blueprint's floor is what
+            -- stops that being an empty chest standing on the board.
+            if #enc.loot > 0 then loot = enc.loot else enc.loot = nil end
+        end
         -- What this cache is hiding, rolled ONCE here rather than inside the panel, because the panel is
         -- opened, dismissed and opened again on an uncollected chest -- rolling it there would let a
         -- player reopen the lid until they liked what was under it. Empty off a descent floor (the roll
@@ -3366,14 +3405,50 @@ function game:openEncounter(cell, opts)
         -- "leave it for now" needs no new control at all.
         local wired = enc.trapped and Trap.defs[enc.trapped]
         local seen = wired and Trap.detectRadiusFor(game.player) > 0
+
+        -- A LID THAT IS NOT A LID (Overworld:placeTraps' third half, models/mimic.lua).
+        --
+        -- IT READS OFF THE SAME CHARM, deliberately, and the rule is one rule: a company that can read
+        -- a lid can read THIS lid. The charm's argument is written three paragraphs up and does not
+        -- change for having grown teeth -- bad road is walked around, a lid is a DECISION, and a
+        -- company carrying nothing to read it with is never offered the decision at all. What the
+        -- charm buys here is the same thing it buys over a wire: the choice, never the disarm.
+        --
+        -- AND IT SPRINGS ON *OPEN*, not on arrival. See models/mimic.lua -- pressing the button is the
+        -- decision this stop already asks, Cancel is already the way out of it, and the cell is already
+        -- left uncleared for a company that would rather come back better kitted.
+        local lurking = Mimic.lurks(enc)
         game.activePanel = LootReveal.new({
             encounter = enc,
             loot = loot,
             sealed = sealed,
-            description = seen
+            description = (lurking and seen)
+                    and "The lid is breathing. Open it anyway, or leave it and come back for it."
+                or seen
                 and ("The lid is wired -- " .. (wired.name or "a trap") ..
                      ". Open it anyway, or leave it and come back for it.")
                 or nil,
+            -- THE HAND ON THE LID. Rewrite the tile as the fight it always was and re-enter through the
+            -- one seam every other fight on this board comes through (game:openEncounter), rather than
+            -- launching a battle from in here: the combat branch above owns the deployment, the flee
+            -- offer, the walk-off, the wounds and every save between them, and a second launcher would
+            -- be a second copy of all of it quietly drifting.
+            --
+            -- The chest's contents ride across as `carried`, which is what arms the body AND what the
+            -- win hands over -- one list, read twice.
+            onOpen = lurking and function()
+                game.activePanel = nil
+                cell.encounter = Mimic.spring(enc, loot)
+                -- The tile is a different fight from the one that was memoised against it. Dropped
+                -- rather than recomputed: game:cellMuster rebuilds on the next read (and the sealed
+                -- roll taken for the chest above is dropped with it -- an elite's husk chance is the
+                -- same 0.50 a treasure's is, so the fight re-asks the identical question).
+                if game.encounterMuster then game.encounterMuster[cell] = nil end
+                require("models.sound").play("battle.hit")
+                game:pushToast("The chest stands up")
+                game:openEncounter(cell, opts)
+                return true
+            end or nil,
             onCollect = function()
                 cell.cleared = true
                 -- SPRUNG BEFORE THE HAUL LANDS, so the toast order reads the way the moment happens:
@@ -5067,7 +5142,11 @@ function game.drawHud()
     -- is not "you have a lot" but "the next find will not come with you".
     if game.descent then
         local carried = haulCount(game.descent)
-        local max = Descent.CARRY_MAX
+        -- ...AND THE CEILING IS THE COMPANY'S, not the constant. A piece of gear may widen it
+        -- (Descent.haulBonus), and this readout exists precisely to warn about the refusal one line
+        -- before it happens -- so a number here that disagreed with what carryRoom actually allows
+        -- would be worse than having no readout at all.
+        local max = Descent.carryMax(game.player)
         love.graphics.setColor(Theme.muted)
         love.graphics.printf("Carrying", x - 240, y, 240, "right")
         if carried >= max then

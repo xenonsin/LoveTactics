@@ -1115,12 +1115,37 @@ function Overworld:placeTraps(params)
     -- THIS IS THE HALF THE CHARM IS REALLY FOR. Bad road can be walked around once it is seen, which is
     -- useful; a wired lid is a DECISION -- open it anyway, or leave it and come back better -- and a
     -- company without the charm never knows it was offered one (states/game.lua's treasure branch).
+    -- ...AND SOME OF THE CHESTS ARE NOT CHESTS (params.mimicChance, a percent -- models/mimic.lua).
+    --
+    -- ROLLED BEFORE THE WIRING, AND A WIRED LID IS SKIPPED AFTERWARDS, so a lid is either wired or
+    -- alive and never both. Not a balance call: a mimic never reaches the collect the trap springs on
+    -- (it springs on Open and hands the tile to a fight), so a wired mimic would be a flag that
+    -- silently did nothing -- and the cheapest place to rule that out is here, by construction.
+    --
+    -- AT GENERATION RATHER THAN AT THE LID, which is the descent's own law rather than a convenience:
+    -- a floor is a PLACE dealt from the save's seed and the depth, and the boards a company has walked
+    -- are kept whole (Descent.keepFloor). A roll taken when the chest was opened would be a different
+    -- answer on the second trip down, and worse, could be re-asked by stepping off the tile and back
+    -- onto it. Rolled here, the third chest on floor six is a monster for the life of the playthrough,
+    -- and the company that left it alone knows exactly where it is.
+    local mimics = params.mimicChance or 0
+    if mimics > 0 then
+        for y = 1, self.rows do
+            for x = 1, self.cols do
+                local e = self.cells[y][x].encounter
+                if e and e.kind == "treasure" and self.rng:random(100) <= mimics then
+                    e.mimic = true
+                end
+            end
+        end
+    end
+
     local chance = params.trappedChestChance or 0
     if chance <= 0 then return end
     for y = 1, self.rows do
         for x = 1, self.cols do
             local e = self.cells[y][x].encounter
-            if e and e.kind == "treasure" and self.rng:random(100) <= chance then
+            if e and e.kind == "treasure" and not e.mimic and self.rng:random(100) <= chance then
                 e.trapped = ids[self.rng:random(#ids)]
             end
         end
@@ -2132,7 +2157,10 @@ local CELL_FIELDS = { "tile", "seen", "cleared", "picked", "encounter", "gate", 
 -- BUMP IT whenever a pass is added, removed or re-seated here. The cost of bumping is that players lose
 -- the maps they had drawn of floors laid under the old number, which is real and is the lesser loss --
 -- the alternative is a save where the newest half of the dungeon is invisible and nothing says why.
-Overworld.GEN_VERSION = 1
+-- 2: some of the chests are mimics (placeTraps' third half, models/mimic.lua). A floor laid under 1
+--    has the flag on nothing, so every lid on it is dead wood forever -- exactly the invisible-forever
+--    failure this number exists for.
+Overworld.GEN_VERSION = 2
 
 function Overworld:snapshot()
     local cells = {}

@@ -82,56 +82,78 @@ case("every character silhouette slug is a well-formed address", function()
     assert(#bad == 0, "malformed silhouette slug(s): " .. table.concat(bad, ", ", 1, math.min(#bad, 8)))
 end)
 
--- 1b. THE VOCABULARY --------------------------------------------------------------------------------
+-- 1b. ONE ITEM, ONE SILHOUETTE ----------------------------------------------------------------------
 --
--- The drawing set is a DECLARED list (tools/icon_compose.lua's BASE_VOCABULARY), not whatever 749
--- blueprints happen to resolve to. Before the gate the catalogue drew 262 silhouettes, 164 of them for
--- exactly one item, and every new ability added another without anybody deciding to. These three cases
--- are what keeps that from coming back.
+-- No two items may draw the same base shape. This replaced a VOCABULARY GATE that went the other way --
+-- it held the catalogue to 62 declared silhouettes and let 73 items share the claws -- so the case below
+-- is the exact inverse of the three it stands in for, and the reason it is worth having is the same: the
+-- drawing set must be a DECISION, not whatever 850-odd blueprints happen to resolve to.
+--
+-- The unit is the SPRITE PATH, not the blueprint. `. icon-compose assets` writes one file per distinct
+-- `def.sprite` and lets later blueprints ride along on it (the char composer's own rule), so two
+-- blueprints pointing at one path are one picture by construction and cannot be asked to differ --
+-- the fangs three beasts share, an ability granted from a charm and from a shelf.
+--
+-- WHAT REDDENS THIS, in practice: authoring a blueprint and not running `. icon-map`. A new item has no
+-- map entry, falls through to the structural channels (the family, the verb, the type), and lands on a
+-- shape some sibling already draws. The fix is the mapper, and -- where the mapper cannot reach a name
+-- that describes an idea rather than an object -- an entry in tools/icons/overrides.lua.
 
-case("every silhouette an item draws is in the vocabulary", function()
+-- THE ONE EXEMPTION, and it is a bucket boundary rather than a waiver. `weapon_talons` points its
+-- sprite at assets/chars/hawk.png: the hawk's talons ARE the hawk, and the item is meant to show the
+-- bird. Nothing here composes it -- `icon-compose assets` writes only into assets/items/ and skips a
+-- sprite pointing elsewhere, and `. icon-map` never indexes the chars bucket -- so asking it for a
+-- silhouette of its own would be asking it to stop being the picture it deliberately borrows.
+local function composedItem(def)
+    return type(def.sprite) == "string" and def.sprite:find("^assets/items/") ~= nil
+end
+
+case("no two items draw the same silhouette", function()
     local Registry = require("models.registry")
     local items = Registry.load("data/items", "data.items")
-    local outside = {}
-    for id, def in pairs(items) do
-        local slug = Icon.baseFor(def)
-        if not Icon.BASE_VOCABULARY[slug] then
-            outside[#outside + 1] = id .. " -> " .. tostring(slug)
+
+    local holder, clashes = {}, {}
+    -- Sorted, so the pair reported is the same pair on every run: pairs() over the registry would name
+    -- a different one of the colliding items each time and make the failure look like it moved.
+    local ids = {}
+    for id in pairs(items) do ids[#ids + 1] = id end
+    table.sort(ids)
+
+    for _, id in ipairs(ids) do
+        local def = items[id]
+        if composedItem(def) then
+            local slug, sprite = Icon.baseFor(def), def.sprite
+            local held = holder[slug]
+            if held and held ~= sprite then
+                clashes[#clashes + 1] = string.format("%s and %s both draw %s", held, sprite, tostring(slug))
+            elseif not held then
+                holder[slug] = sprite
+            end
         end
     end
-    assert(#outside == 0, "slug(s) outside the vocabulary: "
-        .. table.concat(outside, ", ", 1, math.min(#outside, 8)))
+
+    assert(#clashes == 0, string.format("%d silhouette clash(es); run `. icon-map`: %s",
+        #clashes, table.concat(clashes, "; ", 1, math.min(#clashes, 6))))
 end)
 
--- The other direction, and the one that actually costs money: an entry nobody draws is a drawing on the
--- commission that no item is waiting for. Structural fallbacks are exempt -- a type base for a type the
--- catalogue does not contain yet (no ability costs health) is a promise, not an order.
-case("no vocabulary entry is idle except a structural fallback", function()
+-- The other half of the claim, and the half a per-item walk cannot see: the map is what MAKES the set
+-- unique, so an asset it has no entry for is living on a fallback that happens not to have collided yet.
+case("every item blueprint has a mapped glyph of its own", function()
     local Registry = require("models.registry")
     local items = Registry.load("data/items", "data.items")
-    local used = {}
-    for _, def in pairs(items) do used[Icon.baseFor(def)] = true end
+    local ok, map = pcall(require, "tools.icons.map")
+    assert(ok and type(map) == "table", "tools/icons/map.lua must load")
 
-    local structural = {}
-    for _, slug in pairs(Icon.FAMILY_BASE) do structural[slug] = true end
-    for _, slug in pairs(Icon.TYPE_BASE) do structural[slug] = true end
-    for _, slug in pairs(Icon.ABILITY_BASE) do structural[slug] = true end
-    for _, slug in pairs(Icon.VERB_BASE) do structural[slug] = true end
-    for _, slug in pairs(Icon.HOOK_BASE) do structural[slug] = true end
-    for _, row in ipairs(Icon.FIELD_BASE) do structural[row[2]] = true end
-    structural[Icon.DEFAULT_BASE] = true
-
-    local idle = {}
-    for slug in pairs(Icon.BASE_VOCABULARY) do
-        if not used[slug] and not structural[slug] then idle[#idle + 1] = slug end
+    local unmapped = {}
+    for id, def in pairs(items) do
+        if composedItem(def) then
+            local entry = map[def.sprite:gsub("^assets/", "")]
+            if not (entry and entry.icon) then unmapped[#unmapped + 1] = id end
+        end
     end
-    assert(#idle == 0, "vocabulary entr(ies) nothing draws: "
-        .. table.concat(idle, ", ", 1, math.min(#idle, 8)))
-end)
-
-case("the bespoke list stays under its cap", function()
-    assert(#Icon.BESPOKE <= Icon.BESPOKE_CAP,
-        string.format("%d bespoke silhouettes, cap is %d", #Icon.BESPOKE, Icon.BESPOKE_CAP))
+    table.sort(unmapped)
+    assert(#unmapped == 0, string.format("%d item(s) with no silhouette of their own; run `. icon-map`: %s",
+        #unmapped, table.concat(unmapped, ", ", 1, math.min(#unmapped, 8))))
 end)
 
 -- 2. THE OVERLAY ------------------------------------------------------------------------------------

@@ -47,6 +47,13 @@ The single split that keeps the catalogue from becoming a class list with hit po
 - **Creature chaff — beasts, summons, constructs — carry natural weapons only.** Unpriced, `noSteal`,
   outside every family roster, and **never** a discipline item. A wolf is not a Beastmaster; a wolf is
   what a Beastmaster *has*.
+  - **The Mimic is the one body that looks like an exception and is not.** Its blueprint carries a
+    single natural weapon and claims no class and no discipline, which is the rule held; what arrives
+    in the other eight grid cells at runtime is the chest it swallowed
+    ([overworld.md](overworld.md#what-is-in-a-chest-and-what-is-in-some-of-them-instead)) — somebody
+    else's axe, in a box. The rule is about what a body *is*, and a box has not learned to be a Warlord
+    by swallowing one. `tests/bestiary_spec.lua` reads the blueprint, which is the right thing for it
+    to read.
 
 The engine enforces this, and **`noSteal` is the gate rather than a side effect of pricing.** 99
 items carry the flag; `models/spoils.lua`'s pool refuses them outright, and `tools/drop_tier.lua`

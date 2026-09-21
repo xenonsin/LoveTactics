@@ -52,6 +52,7 @@ local TROPHIES = {
     -- outside the roll. That makes the refusal below load-bearing in a way it is not for the others --
     -- a counter dealing one would not merely shortcut a chase, it would sell the ONLY thing in the game
     -- that widens the carry ceiling to a company that never opened a wrong lid.
+    "utility_still_hungry",
 }
 
 local function vendorFor(class)

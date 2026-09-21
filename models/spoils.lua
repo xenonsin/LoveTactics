@@ -337,9 +337,15 @@ end
 -- Does this company already hold `itemId`? The same question models/descent.lua's own `ownsItem` asks
 -- of a boss list, asked here for the same reason and answered the same way: "already got this" means
 -- held anywhere in the company, so a relic worn by the knight is not one they are missing, and selling
--- one makes it droppable again. Duplicated rather than exported because the two callers are on
--- opposite sides of a require cycle (descent -> spoils), and eight lines is cheaper than the seam.
-local function companyOwns(player, itemId)
+-- one makes it droppable again.
+--
+-- EXPORTED NOW, THOUGH THE DUPLICATE STAYS. It was a local, on the argument that its two callers sat on
+-- opposite sides of a require cycle (descent -> spoils) and eight lines was cheaper than the seam. That
+-- argument is untouched and descent keeps its copy. What changed is that a THIRD caller turned up on
+-- this side of the cycle -- models/encounter_battle.lua, deciding whether a body's authored trophy is
+-- worth dealing -- and asking it to write a fourth copy of the same eight lines would be the point at
+-- which "cheaper than the seam" stops being true.
+function Spoils.companyOwns(player, itemId)
     if not (player and itemId) then return false end
     for _, item in ipairs(player.stash or {}) do
         if (type(item) == "table" and item.id or item) == itemId then return true end
@@ -548,7 +554,7 @@ local function rankCandidates(enemyUnits, r, player)
         if Spoils.depthOf(def) ~= r then return end
         if seen[id] then return end
         seen[id] = true
-        if companyOwns(player, id) then return end
+        if Spoils.companyOwns(player, id) then return end
         into[#into + 1] = { id = id }
     end
 
@@ -620,7 +626,7 @@ local function anyAtRank(r, player)
     local pool = {}
     for id, def in pairs(Item.defs) do
         if not def.bound and not def.noSteal and def.type ~= "consumable" and def.dropTier
-            and Spoils.depthOf(def) == r and not companyOwns(player, id) then
+            and Spoils.depthOf(def) == r and not Spoils.companyOwns(player, id) then
             pool[#pool + 1] = { id = id, weight = 1 }
         end
     end
@@ -647,14 +653,14 @@ function Spoils.lootClassOf(def, unit)
     return nil
 end
 
-local function rollLoot(day, kind, override, enemyUnits, scale, floorLevel, player)
-    if override then
-        local out = {}
-        for _, id in ipairs(override) do
-            if Item.defs[id] then out[#out + 1] = id end
-        end
-        return out
-    end
+-- ONE SLOT OF A PAYOUT, as a closure: call it and get an id, or nil when the catalogue has nothing to
+-- offer at the rank the floor drew. Every slot in the game -- a fight's first drop, its second, a
+-- chest's two or three -- is this same draw, and pulling it out of rollLoot is what lets a cache be
+-- filled by the identical machinery rather than by a second one that would drift.
+--
+-- `kind` still decides the two things it always decided: the rank band's reach (an elite goes a rung
+-- deeper) and the supply track's price ceiling.
+local function slotDrawer(day, kind, enemyUnits, scale, floorLevel, player)
     local bump = math.sqrt(scale or 1)
     local elite = kind == "elite"
 
@@ -693,10 +699,23 @@ local function rollLoot(day, kind, override, enemyUnits, scale, floorLevel, play
 
     -- Each slot is either a find or supply. See Spoils.SUPPLY_SHARE for why it shares the budget
     -- rather than adding to it.
-    local function fill()
+    return function()
         if rnd() < Spoils.SUPPLY_SHARE then return supply() end
         return draw()
     end
+end
+
+local function rollLoot(day, kind, override, enemyUnits, scale, floorLevel, player)
+    if override then
+        local out = {}
+        for _, id in ipairs(override) do
+            if Item.defs[id] then out[#out + 1] = id end
+        end
+        return out
+    end
+    local bump = math.sqrt(scale or 1)
+    local elite = kind == "elite"
+    local fill = slotDrawer(day, kind, enemyUnits, scale, floorLevel, player)
 
     local out = {}
     if rnd() < math.min(0.95, (elite and 0.90 or 0.55) * bump) then
@@ -704,6 +723,56 @@ local function rollLoot(day, kind, override, enemyUnits, scale, floorLevel, play
     end
     if rnd() < math.min(0.80, (elite and 0.45 or 0.18) * bump) then
         local id = fill(); if id then out[#out + 1] = id end
+    end
+    return out
+end
+
+-- ---------------------------------------------------------------------------
+-- What is IN a chest
+-- ---------------------------------------------------------------------------
+
+-- HOW MANY PIECES A CACHE HOLDS, and the plural is the point.
+--
+-- A chest used to hand over one authored healing potion, forever, at every depth
+-- (data/encounters/encounter_treasure.lua) -- so the rarest non-fighting stop on a floor paid less
+-- than the fight next to it, and a player who walked four tiles off the road for a lid got a potion
+-- and a shrug. A CHEST IS A HAUL. Two or three pieces is what makes it read as one, and it is what
+-- makes the stop worth the detour that the marker has been promising all along.
+--
+-- ...AND IT IS WHAT MAKES A MIMIC A FIGHT (models/mimic.lua). The body swings what the chest was
+-- holding, so the contents ARE the encounter: a one-potion chest stands up as a box with a bite and
+-- nothing else, and two or three real pieces is a body with a weapon, a coat and something to cast.
+-- The two designs are the same number, which is why it is only written down once.
+--
+-- THREE IS THE CEILING BECAUSE THE BAG IS. states/game.lua refuses a whole chest the company has no
+-- room to carry, and a cache that regularly asked for more space than a party has would turn that
+-- refusal from an occasional decision into the normal outcome.
+Spoils.CACHE_PIECES = { min = 2, max = 3 }
+
+-- What a cache on this ground is holding, as a list of item ids.
+--
+-- THE SAME DRAW A FIGHT'S DROPS USE, at the same floor's rank, through the same closure -- so a chest
+-- on floor six deals floor-six goods and obeys docs/shelf.md's law ("a floor hands over nothing ranked
+-- or gated deeper than it reaches") for free, rather than through a second rule that would have to be
+-- kept in step with the first.
+--
+-- NO `enemyUnits`, and that is the whole difference between this and a fight's drops: there is nobody
+-- standing here. Step 2 of the draw asks which body pays, and a chest's answer is "none of them" --
+-- it falls to the rank's general stock, which is exactly the "long tail" docs/drops.md says the band
+-- is for. A cache is the stop that pays what the FLOOR has rather than what something was carrying.
+--
+-- `opts`: floorLevel, day, player (so a piece the company already holds steps aside for one it does
+-- not, the same courtesy a body's own list gets), count (override the roll).
+function Spoils.cache(opts)
+    opts = opts or {}
+    local lo, hi = Spoils.CACHE_PIECES.min, Spoils.CACHE_PIECES.max
+    local n = opts.count or (lo + math.floor(rnd() * (hi - lo + 1)))
+    local fill = slotDrawer(opts.day or 1, "treasure", nil, 1, opts.floorLevel, opts.player)
+
+    local out = {}
+    for _ = 1, math.max(0, n) do
+        local id = fill()
+        if id then out[#out + 1] = id end
     end
     return out
 end

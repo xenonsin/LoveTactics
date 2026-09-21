@@ -13,6 +13,17 @@
 -- HAND EDITS ARE PRESERVED. Re-running never clobbers a choice a person made: an entry is rewritten
 -- only when its `by` field is "auto". Change an icon and set `by = "hand"` and it is yours forever.
 -- That is what makes this safe to re-run as new items are added -- see docs/art-assets.md.
+--
+-- ONE ASSET, ONE SLUG. No two assets may draw the same silhouette (docs/art-assets.md, "One item, one
+-- silhouette"), so this is an ASSIGNMENT rather than 857 independent lookups: the tool ranks each
+-- asset's whole order of preference and hands out shapes in three passes -- the overrides first, then
+-- the confident guesses best-first, then a weak tier for whatever the confident round could not seat.
+-- Anything still unseated is written `icon = false` and REPORTED, because inventing a shape for it
+-- would put a bowling ball on a charm and call the set complete.
+--
+-- A quarter of the catalogue cannot be seated by string matching at all -- not because the icon set is
+-- small (3,947 usable slugs against 857 assets) but because its RELEVANT vocabulary is: 95 charms reach
+-- for a flask and game-icons holds ten. Those live in tools/icons/overrides.lua as decisions.
 
 local Report = require("tools.art_report")
 
@@ -345,7 +356,35 @@ local function spriteArchetypes()
     return out
 end
 
-local function bestMatch(path, index, archetypes)
+-- A MATCH IS A CLAIM, NOT A LOOKUP. Two assets may no longer draw the same silhouette, so the
+-- matcher cannot answer one asset at a time -- the best icon for a censer is only available if no
+-- other censer took it first. `rankedMatches` therefore answers with the whole ORDER OF PREFERENCE
+-- and the assignment below walks it, conceding a taken shape and moving down.
+--
+-- Ties are broken by slug so the order is total: two icons scoring identically must not swap places
+-- between runs, or a regeneration rewrites half the map for nothing (and a pairs() walk over the
+-- index would do exactly that).
+--
+-- THE TWO TIERS, and the reason the threshold could not simply be dropped. 0.5 is the line between
+-- an icon that names the asset and an icon that merely shares a word with it. Under the old regime
+-- everything below it was thrown away, because an asset with no match fell through to a structural
+-- shape -- the flask, the shield -- and a generic flask beats a bad guess. Uniqueness took that
+-- fallback away: the structural shapes are shared by construction (95 charms want the flask and the
+-- set holds ten), so an asset that draws nothing of its own has nothing left to draw.
+--
+-- So the weak tier is admitted, but only AFTER every confident match is settled. A weak match is
+-- still the asset's OWN name pointing at something -- "The Long Wait" reaching an hourglass on one
+-- shared word -- and a picture drawn from the name is worth more here than a category shape it
+-- would have had to share anyway.
+local MIN_SCORE = 0.5
+
+-- How far down an asset's own list it is willing to look. A popular shape -- the shield, the flask --
+-- is contested by dozens of assets, so a list that stopped at ten would strand the losers; a list
+-- that did not stop at all is 857 assets x 3947 icons, three million rows of table.
+local CANDIDATE_DEPTH = 64
+local WEAK_DEPTH = 512
+
+local function matchesAbove(path, index, archetypes, floor, depth)
     local tokens = assetTokens(path)
     local joined = table.concat(tokens, "")
 
@@ -353,12 +392,28 @@ local function bestMatch(path, index, archetypes)
     -- on the same mace icon when their names point somewhere more specific.
     local tags = archetypes and archetypes[path:gsub("^assets/", "")] or nil
 
-    local best, bestScore = nil, 0
+    local ranked = {}
     for _, icon in ipairs(index) do
         local s = score(tokens, joined, icon, tags)
-        if s > bestScore then best, bestScore = icon, s end
+        if s >= floor then ranked[#ranked + 1] = { slug = icon.slug, score = s } end
     end
-    return best, bestScore
+    table.sort(ranked, function(a, b)
+        if a.score ~= b.score then return a.score > b.score end
+        return a.slug < b.slug
+    end)
+    for i = #ranked, depth + 1, -1 do ranked[i] = nil end
+    return ranked
+end
+
+-- The confident tier: icons that name the asset.
+local function rankedMatches(path, index, archetypes)
+    return matchesAbove(path, index, archetypes, MIN_SCORE, CANDIDATE_DEPTH)
+end
+
+-- The weak tier: anything the name reaches at all. Only ever asked for an asset the confident round
+-- could not seat, and only after that round has taken what it wanted.
+local function weakMatches(path, index, archetypes)
+    return matchesAbove(path, index, archetypes, 0.000001, WEAK_DEPTH)
 end
 
 -- ---------------------------------------------------------------------------
@@ -464,55 +519,129 @@ function M.run(args)
     local existing = loadExisting()
     local overrides = loadOverrides()
     local map = {}
-    local kept, guessed, unmatched, badOverrides = 0, 0, {}, {}
+    local kept, guessed, stretched, unmatched, badOverrides = 0, 0, 0, {}, {}
 
+    -- THE CLAIM LEDGER. One slug, one asset -- the whole point of the pass below. `claimed` is
+    -- slug -> the path holding it, so a concession can name who it conceded to.
+    local claimed, contested, deferred = {}, {}, {}
+
+    -- Every icon-shaped asset in the project, in ONE sorted list rather than bucket by bucket.
+    -- Sorted because the assignment is order-dependent and pairs() over Report.scan's buckets is
+    -- not stable: a run that walked them in a different order would rewrite half the map.
+    local paths = {}
     for bucket, contents in pairs(Report.scan()) do
         if ICON_BUCKETS[bucket] then
             -- Everything the bucket names, present or not: a rendered icon is still mapped, so the
             -- map stays a complete record rather than emptying out as art lands.
-            local paths = {}
             for _, p in ipairs(contents.present) do paths[#paths + 1] = p end
             for _, p in ipairs(contents.missing) do paths[#paths + 1] = p end
+        end
+    end
+    table.sort(paths)
 
-            for _, path in ipairs(paths) do
-                local key = path:gsub("^assets/", "")
-                local prior = existing[key]
-                local override = overrides[key]
+    -- PASS 1 -- the human's decisions, which claim before any guess does.
+    --
+    -- An override is a person naming a picture, so it outranks every score in the index; the only
+    -- thing that can take a slug from one is ANOTHER override naming the same slug. That is a
+    -- collision between two human decisions and this tool will not pick a winner quietly: the
+    -- second one is reported by name and dropped through to the guesser below, so the build still
+    -- draws it something distinct while the report says a person owes it a choice.
+    local toGuess = {}
+    for _, path in ipairs(paths) do
+        local key = path:gsub("^assets/", "")
+        local prior = existing[key]
+        local override = overrides[key]
+        local named = override or (prior and prior.by == "hand" and prior.icon or nil)
 
-                if override then
-                    local slug = resolveSlug(override, index)
-                    if slug then
-                        map[key] = { icon = slug, by = "hand" }
-                        kept = kept + 1
-                    else
-                        -- Naming an icon that does not exist is a typo, not a decision to skip.
-                        badOverrides[#badOverrides + 1] = key .. " -> " .. tostring(override)
-                        map[key] = { icon = false, by = "auto" }
-                        unmatched[#unmatched + 1] = key
-                    end
-                elseif prior and prior.by == "hand" then
-                    map[key] = prior -- a person decided this; leave it alone
-                    kept = kept + 1
-                else
-                    local icon, s = bestMatch(path, index, archetypes)
-                    if icon and s >= 0.5 then
-                        map[key] = { icon = icon.slug, by = "auto" }
-                        guessed = guessed + 1
-                    else
-                        map[key] = { icon = false, by = "auto" }
-                        unmatched[#unmatched + 1] = key
-                    end
-                end
+        if named then
+            local slug = (override and resolveSlug(override, index)) or (not override and named) or nil
+            if not slug then
+                -- Naming an icon that does not exist is a typo, not a decision to skip.
+                badOverrides[#badOverrides + 1] = key .. " -> " .. tostring(override)
+                toGuess[#toGuess + 1] = key
+            elseif claimed[slug] then
+                contested[#contested + 1] = string.format("%s -> %s (held by %s)", key, slug, claimed[slug])
+                toGuess[#toGuess + 1] = key
+            else
+                claimed[slug] = key
+                map[key] = { icon = slug, by = "hand" }
+                kept = kept + 1
             end
+        else
+            toGuess[#toGuess + 1] = key
+        end
+    end
+
+    -- PASS 2 -- the guesses, CONFIDENT FIRST.
+    --
+    -- Order matters and it is the whole design: an asset whose name IS a picture ("Iron Axe") gets
+    -- first refusal on the axe, and an asset that merely brushes against it settles for its own
+    -- second-best. Going in path order instead would hand the axe to whatever sorted earliest,
+    -- which is a coin toss dressed as a rule.
+    local ranked = {}
+    for _, key in ipairs(toGuess) do
+        local list = rankedMatches("assets/" .. key, index, archetypes)
+        ranked[#ranked + 1] = { key = key, list = list, top = list[1] and list[1].score or 0 }
+    end
+    table.sort(ranked, function(a, b)
+        if a.top ~= b.top then return a.top > b.top end
+        return a.key < b.key
+    end)
+
+    for _, entry in ipairs(ranked) do
+        local taken = nil
+        for _, candidate in ipairs(entry.list) do
+            if not claimed[candidate.slug] then taken = candidate.slug; break end
+        end
+        if taken then
+            claimed[taken] = entry.key
+            map[entry.key] = { icon = taken, by = "auto" }
+            guessed = guessed + 1
+        else
+            deferred[#deferred + 1] = entry.key
+        end
+    end
+
+    -- PASS 3 -- the weak tier, for what the confident round could not seat.
+    --
+    -- Same shape as pass 2 and for the same reason: an asset with a half-decent reach gets it before
+    -- one that is scraping. Nothing here can take a slug off a confident match, because everything
+    -- confident has already claimed.
+    local weak = {}
+    for _, key in ipairs(deferred) do
+        local list = weakMatches("assets/" .. key, index, archetypes)
+        weak[#weak + 1] = { key = key, list = list, top = list[1] and list[1].score or 0 }
+    end
+    table.sort(weak, function(a, b)
+        if a.top ~= b.top then return a.top > b.top end
+        return a.key < b.key
+    end)
+
+    for _, entry in ipairs(weak) do
+        local taken = nil
+        for _, candidate in ipairs(entry.list) do
+            if not claimed[candidate.slug] then taken = candidate.slug; break end
+        end
+        if taken then
+            claimed[taken] = entry.key
+            map[entry.key] = { icon = taken, by = "auto" }
+            stretched = stretched + 1
+        else
+            -- Nothing in the index shares a word with this name, or nothing is left of what did.
+            -- The honest answer is a blank for a person to fill in overrides.lua -- reaching past
+            -- the name entirely would put a bowling ball on a charm and call the set complete.
+            map[entry.key] = { icon = false, by = "auto" }
+            unmatched[#unmatched + 1] = entry.key
         end
     end
 
     writeMap(map)
 
-    local total = kept + guessed + #unmatched
+    local total = kept + guessed + stretched + #unmatched
     print("")
     print(string.format("  %-22s %d", "hand-mapped (kept)", kept))
     print(string.format("  %-22s %d", "auto-matched", guessed))
+    print(string.format("  %-22s %d", "weak match", stretched))
     print(string.format("  %-22s %d", "no match", #unmatched))
     print(string.format("  %-22s %d", "total", total))
     print("")
@@ -522,6 +651,15 @@ function M.run(args)
         print("")
         print("overrides naming an icon that does not exist:")
         for _, b in ipairs(badOverrides) do print("  " .. b) end
+    end
+
+    -- Two people's decisions on one shape. Printed unconditionally and in full, because the loser
+    -- is drawing a guess under a hand-picked name and that is exactly the state nobody notices.
+    if #contested > 0 then
+        print("")
+        print(string.format("%d override(s) naming a slug another override already holds --", #contested))
+        print("pick a different icon for each in tools/icons/overrides.lua:")
+        for _, c in ipairs(contested) do print("  " .. c) end
     end
 
     if listUnmatched and #unmatched > 0 then

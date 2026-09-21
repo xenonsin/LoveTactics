@@ -867,6 +867,7 @@ function Item.instantiate(id, quantity, level)
         incense = deepCopy(def.incense),       -- { hazard, radius, amount }: ground that follows the bearer (a censer)
         visionBonus = def.visionBonus,         -- overworld: STEPS of fog this lifts while carried (a torch); nil for most
         detectRadius = def.detectRadius,       -- combat: reveals traps within this radius (detectors)
+        haulBonus = def.haulBonus,             -- descent: FINDS this adds to the company's carry ceiling (Descent.haulBonus)
         maxStack = def.maxStack,               -- stackable (consumable) items: per-slot cap override
         noSteal = def.noSteal,                 -- a pickpocket can never lift this (a beast's fangs)
         hitAndRun = def.hitAndRun,             -- weapons: tiles the bearer gives ground after an ANSWER (Combat.answerStrike)

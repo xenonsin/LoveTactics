@@ -141,9 +141,14 @@ function Muster.encounter(def, ctx)
     -- reading the day down a stair rated the first floor's stock at blueprint level 1 and turned every
     -- marker on it calm.
     local danger = ctx.enemyLevel or Calendar.dangerLevel(ctx.day or 1)
+    -- ...AND WHAT THE FIGHT PUT IN THEIR HANDS, keyed by body id (ctx.carried, off the cell). A mimic
+    -- swings the chest it swallowed (models/mimic.lua), and a rating that minted it bare would price a
+    -- body holding an axe as a body holding nothing -- which is the same failure the enemy-cap note
+    -- above names: a marker that prices one fight and hands the player another is worse than no marker.
+    local carried = ctx.carried
     local total = 0
     for _, id in ipairs(ids) do
-        local ok, char = pcall(Growth.spawn, id, danger, ctx.floorLevel)
+        local ok, char = pcall(Growth.spawn, id, danger, ctx.floorLevel, carried and carried[id])
         if ok and char then total = total + Muster.rate(char) end
     end
     return total
