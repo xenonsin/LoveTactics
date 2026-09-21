@@ -1145,6 +1145,20 @@ function ClassEditor:drawDetail()
 
     local ty = y + 50
 
+    -- WHERE THE BODY IS STANDING, said beside the name it is standing in. It used to sit at the foot of
+    -- this column, under the growth table and the technique rule -- a long way from the thing it is a
+    -- fact about, and on a row with a long blurb it was pushed off the pane entirely.
+    if char and Growth.classOf(char) == row.id then
+        local here = (char.name or "?") .. "'s Current Class"
+        Theme.set(Theme.accentAmber)
+        if small:getWidth(kindLabel) + 10 + small:getWidth(here) <= w then
+            love.graphics.print(here, x + small:getWidth(kindLabel) + 10, y + 26)
+        else
+            love.graphics.print(here, x, ty)
+            ty = ty + small:getHeight() + 4
+        end
+    end
+
     -- What the path IS. A class collapses to a name and a number everywhere else in the game; this is
     -- the one screen with room to say why anyone would want it.
     local blurb = row.kind ~= "class" and Class.description(row.id) or Item.classDescription(row.id)
@@ -1186,12 +1200,6 @@ function ClassEditor:drawDetail()
 
         ty = self:drawGrowth(row.id, x, ty, w)
         ty = self:drawTechniqueRule(row, x, ty, w)
-
-        if Growth.classOf(char) == row.id then
-            love.graphics.setFont(small)
-            Theme.set(Theme.accentAmber)
-            love.graphics.print("Standing here. This is what is being applied.", x, ty)
-        end
     end
 
     -- THE OTHER DOOR OUT OF THIS COLUMN: the house where this class is taught, sold and climbed. It
