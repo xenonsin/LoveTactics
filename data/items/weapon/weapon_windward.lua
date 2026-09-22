@@ -27,7 +27,7 @@ return {
     tags = { "bow", "pierce", "physical", "ranged" },
     hands = 2,
     class = "hunter",
-    unlockLevel = 2,
+    unlockLevel = 4,
     activeAbility = {
         target = "enemy",
         range = 3,
@@ -37,7 +37,7 @@ return {
         cost = { stat = "stamina", amount = 7 },
         -- Read as the CLOSE number: this is what it lands at two tiles, and it is well above an iron
         -- bow's. Every tile further gives a quarter of it back.
-        damage = Curve.ramp(5, 16),
+        damage = Curve.ramp(7, 18),
         effect = function(fx)
             local t = fx.target
             if not t then return end

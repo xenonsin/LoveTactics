@@ -7,13 +7,12 @@
 --
 -- IT IS ALSO WHAT REPLACED THE FORTIETH DAY. The campaign used to end on a date with every unfelled
 -- general standing beside him (models/calendar.lua); the same fight is now reached by letting the floors
--- you keep walking away from fill up. Calendar.generalsStanding sizes it either way, which is why that
+-- you keep walking away from fill up. Descent.generalsStanding sizes it either way, which is why that
 -- function survived a deadline it was written for.
 --
 -- Pure model plus a source scan. Nothing here draws.
 
 local Descent = require("models.descent")
-local Calendar = require("models.calendar")
 local Arena = require("models.arena")
 local Character = require("models.character")
 
@@ -93,8 +92,8 @@ return {
             assert(not fewer[sealed.guardian.lead],
                 "a general felled on her own floor does not come up the stair")
             assert(fewer.character_demon_lord == 1, "the Crown still does")
-            assert(Calendar.generalsStanding(player) == 6,
-                "and the campaign's own count agrees, got " .. Calendar.generalsStanding(player))
+            assert(Descent.generalsStanding(player) == 6,
+                "and the campaign's own count agrees, got " .. Descent.generalsStanding(player))
         end,
     },
     {

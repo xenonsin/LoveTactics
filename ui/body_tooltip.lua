@@ -120,10 +120,25 @@ function BodyTooltip.blocks(player, char)
             if ceiling < res.max then
                 block.reserved = res.max - ceiling
                 block.fullMax = res.max
-                -- Named, because the slice means something different here than it does in a fight: in
-                -- a battle a locked tail is a summon being sustained and reads "res.", and this one is
-                -- a bone that has not been set.
-                block.reservedLabel = "wounded"
+                -- THE FIGURES ARE QUOTED AGAINST THE POOL'S TRUE SIZE, and the slice is named in
+                -- WOUNDS rather than in the health they took.
+                --
+                -- Both halves of that were wrong, and wrong in the same direction -- the card quoted
+                -- a body against its own lowered ceiling, so a wounded member topped up at the Ward
+                -- read "56 / 56 (10 wounded)": full health, apparently, carrying ten of something
+                -- the row above had just called one. Against the true max the same body reads
+                -- "56 / 66 (1 wound)" -- what they have, out of what they would have whole, and the
+                -- one fact that explains the gap.
+                --
+                -- It is also what models/wound.lua says the mechanic IS ("the pool is the size it
+                -- always was, and part of it is not available to you"), it is what the party sheet
+                -- has always printed (ui/panels/party.lua reads Character.statTotal, which no wound
+                -- touches), and the bar under the numbers is unchanged: the locked tail is still
+                -- drawn from the health, because that is a width rather than a sentence.
+                if wounds > 0 then
+                    block.max = res.max
+                    block.reservedText = wounds .. (wounds == 1 and " wound" or " wounds")
+                end
             end
             blocks[#blocks + 1] = block
         end

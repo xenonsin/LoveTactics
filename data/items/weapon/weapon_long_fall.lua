@@ -25,7 +25,7 @@ return {
     tags = { "mace", "impact", "physical", "melee" },
     hands = 2, -- a two-handed sweep: four tiles of travel is a whole-body swing
     class = "knight",
-    unlockLevel = 11,
+    unlockLevel = 12,
     activeAbility = {
         target = "enemy",
         range = 1,

@@ -8,7 +8,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "hunter",
-    unlockLevel = 3,
+    unlockLevel = 0,
     traits = { "trait_executioners_eye" },
     -- an eye that decides the kill before the shot
     bonus = { skill = 2 },

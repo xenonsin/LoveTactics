@@ -26,7 +26,7 @@ return {
     sprite = "assets/items/decoy.png",
     type = "utility",
     class = "ninja",
-    unlockLevel = 14,
+    unlockLevel = 15,
     tags = { "trick", "illusion" },
     stealPriority = 10,
     noCopy = true,

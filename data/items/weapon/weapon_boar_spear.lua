@@ -21,7 +21,7 @@ return {
     tags = { "spear", "pierce", "physical", "melee" },
     hands = 2, -- a two-handed polearm, as every spear is
     class = "knight",
-    unlockLevel = 13,
+    unlockLevel = 14,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

@@ -85,38 +85,10 @@ return {
             end
             assert(open, "so the Inn stands on the plaza the skip lands in")
 
-            -- The visit is recorded on both of the room's ledgers, so walking in does not replay a
-            -- scene the button already spent -- and cannot hand Xin over twice.
+            -- The visit is recorded on the room's own ledger, so walking in does not replay a scene
+            -- the button already spent -- and cannot hand Xin over twice. (It used to be marked on the
+            -- city's shown-door ledger as well; that ledger went with the plaza's coach bubbles.)
             assert(p.flags["intro_cathedral"], "the first-visit scene is marked played")
-            assert(Building.seenDoor(p, "cathedral"), "and the card is marked walked into")
-        end,
-    },
-    {
-        -- THE ROOM'S SCENE IS NOT THE CARD'S ANNOUNCEMENT, and this pins the bug that conflating them
-        -- caused. hub.enter seeds `seenDoors` wholesale on the first visit -- every door already open is
-        -- recorded as announced, so nothing standing is ever coached as news (Building.seedSeen). The
-        -- Ward is open on that very first frame, because Rowan is hurt before the city exists. So a
-        -- first-visit scene keyed on seenDoor was consumed before anyone could walk through the door,
-        -- and Xin was never met by ANY player, skipped prologue or played one.
-        --
-        -- THE PLAYED ARRIVAL IS WHAT THIS STANDS ON NOW, built by hand rather than by skipped(): the
-        -- debug button walks the Inn's door itself and spends the scene deliberately (states/prologue.lua),
-        -- so it can no longer stand in for a company that has one still owed. The mark is all the
-        -- precondition needs -- it is what opens the card that gets seeded.
-        name = "seeding the city's doors does not spend the Cathedral's first-visit scene",
-        fn = function()
-            local Building = require("models.building")
-            local p = Player.new()
-            p.wounded = true
-            Building.seedSeen(p)
-            assert(Building.seenDoor(p, "cathedral"),
-                "precondition: the seed does mark it announced, which is what broke this")
-            assert(not (p.flags or {})["intro_cathedral"],
-                "but the scene is a separate ledger and is still owed")
-
-            local def = Building.defs["cathedral"]
-            assert(def.intro and def.grants == "character_xin",
-                "...and it is the scene that hands the companion over, so spending it early loses her")
         end,
     },
     {

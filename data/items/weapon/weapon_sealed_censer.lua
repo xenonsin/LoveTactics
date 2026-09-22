@@ -31,7 +31,7 @@ return {
     type = "weapon",
     tags = { "censer", "impact", "physical", "melee" },
     class = "priest",
-    unlockLevel = 5,
+    unlockLevel = 11,
     incense = {
         hazard = "hazard_gagging_storm",
         radius = 1,
@@ -44,7 +44,7 @@ return {
         -- Stamina, as every censer's strike is -- which is the joke and also the design: the one weapon
         -- that turns off magic is itself perfectly usable inside its own storm.
         cost = { stat = "stamina", amount = 6 },
-        damage = Curve.ramp(7, 17),
+        damage = Curve.ramp(11, 21),
         effect = function(fx)
             fx.damage(fx.target)
         end,

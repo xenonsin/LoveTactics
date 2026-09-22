@@ -11,7 +11,7 @@ return {
     name = "The Second Reading",
     kind = "elite",
     weight = 2,
-    minDay = 10,
+    depth = 5,
     composition = function(ctx)
         local list = {
             "character_spellbreaker", -- setup: Mana Sunder, and the whole company is priced on it
@@ -20,7 +20,7 @@ return {
             "character_knight",
             "character_knight",
         }
-        for _ = 1, math.floor((ctx.day or 1) / 20) do list[#list + 1] = "character_knight" end
+        for _ = 1, math.floor((ctx.depth or 1) / 8) do list[#list + 1] = "character_knight" end
         return list
     end,
 }

@@ -22,7 +22,7 @@ return {
     type = "utility",
     tags = { "charm", "guile" },
     class = "poacher",
-    unlockLevel = 5,
+    unlockLevel = 8,
     traits = { "trait_the_long_wait" },
     -- a blow that cannot be answered is a blow taken carefully
     bonus = { skill = 2 },

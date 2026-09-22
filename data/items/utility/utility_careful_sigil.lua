@@ -26,7 +26,7 @@ return {
     type = "utility",
     tags = { "arcane", "sigil" },
     class = "elementalist", -- deeper cut of the shelf: buyable only once the elementalist gate is cleared
-    unlockLevel = 4,
+    unlockLevel = 6,
     -- "The Arcanum grades third-years on it." The aura is care aimed at your own side; the Skill is the
     -- same care aimed at the target. Worth knowing that this reaches spells at all: a family-less
     -- ability answers Item.DEFAULT_HIT of 90, so magic rolls to hit like everything else and a mage's

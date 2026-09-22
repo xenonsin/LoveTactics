@@ -38,7 +38,7 @@ return {
     hands = 1, -- one-handed, like every sword: the free hand is half of what the family is
     traits = { "trait_parry" }, -- swords answer a melee blow (docs/weapons.md)
     class = "knight", -- a sword, so the Bastion's shelf -- the same rule that puts weapon_demon_bane there
-    unlockLevel = 14,
+    unlockLevel = 15,
     activeAbility = {
         target = "tile",      -- a direction, not a victim: the aimed tile sets the line the arc runs
         allowOccupied = true, -- the first tile may hold a foe; the crescent starts there and carries on

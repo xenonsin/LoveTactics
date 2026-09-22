@@ -30,8 +30,8 @@ return {
     type = "ability",
     tags = { "holy", "magical" },
     class = "priest",
-    price = 575,
-    unlockLevel = 11,
+    price = 610,
+    unlockLevel = 12,
     activeAbility = {
         target = "ally",
         range = 5,

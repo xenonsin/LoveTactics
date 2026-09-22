@@ -26,13 +26,13 @@ return {
     -- half that matters is the arc, and Combat.conductLightning is engine rather than an authored
     -- magnitude, so the grader sees a cheap bolt and none of what makes it the Tidecaller's fight.
     -- The same blindness the Wrap carries, for the same reason, written down in both files.
-    unlockLevel = 7,
+    unlockLevel = 3,
     activeAbility = {
         target = "enemy",
         range = 4,
         speed = 5,
         cost = { stat = "mana", amount = 10 },
-        damage = Curve.ramp(12, 24),
+        damage = Curve.ramp(8, 20),
         -- The arc is the engine's own: a `lightning` blow conducts out of the struck cell into every
         -- adjacent conducting tile (Combat.conductLightning), which is why nothing here has to know
         -- what the board is made of.

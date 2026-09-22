@@ -18,8 +18,8 @@ return {
     type = "ability",
     tags = { "holy" },
     class = "theurge",
-    price = 165,
-    unlockLevel = 1,
+    price = 475,
+    unlockLevel = 9,
     activeAbility = {
         target = "tile",
         range = 4,

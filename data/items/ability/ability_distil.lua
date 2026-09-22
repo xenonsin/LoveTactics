@@ -22,8 +22,8 @@ return {
     type = "ability",
     tags = { "utility" },
     class = "herbalist",
-    price = 410,
-    unlockLevel = 7,
+    price = 255,
+    unlockLevel = 4,
     activeAbility = {
         target = "tile",
         range = 2,

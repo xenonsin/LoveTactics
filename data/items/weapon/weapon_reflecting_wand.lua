@@ -41,7 +41,7 @@ return {
     type = "weapon",
     tags = { "wand", "magical", "arcane", "ranged" },
     class = "mage",
-    unlockLevel = 12,
+    unlockLevel = 15,
     activeAbility = {
         target = "enemy",
         range = 3,

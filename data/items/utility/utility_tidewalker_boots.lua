@@ -27,7 +27,7 @@ return {
     type = "utility",
     tags = { "boots", "water" },
     class = "elementalist", -- element as terrain; the water twin of the Cinderstride
-    unlockLevel = 4,
+    unlockLevel = 6,
     trail = { hazard = "hazard_rain", duration = 8 },
     -- footwear; the water is the wake
     bonus = { movement = 1 },

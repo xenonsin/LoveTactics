@@ -14,12 +14,12 @@
 return {
     name = "Phoenix",
     kind = "elite",
-    minDay = 2,
-    weight = function(ctx) return math.min(3, ctx.day or 1) end,
-    -- A champion backed by an escort that grows as the campaign runs on.
+    depth = 1,
+    weight = function(ctx) return math.min(3, ctx.depth or 1) end,
+    -- A champion backed by an escort that grows as the descent runs on.
     composition = function(ctx)
         local list = { "character_champion" }
-        for i = 1, math.floor((ctx.day or 1) / 2) do list[#list + 1] = "character_bandit" end
+        for i = 1, math.floor((ctx.depth or 1) / 1) do list[#list + 1] = "character_bandit" end
         return list
     end,
 }

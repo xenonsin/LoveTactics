@@ -23,9 +23,9 @@ return {
     name = "The Summoning",
     kind = "combat",
     weight = 3,
-    minDay = 7,
+    depth = 4,
     composition = function(ctx)
-        local day = ctx.day or 1
+        local day = ctx.depth or 1
         local element = ELEMENTS[(day % #ELEMENTS) + 1]
         local list = {
             "character_summoner", -- setup: the bodies, and the onSummonLost retaliation for each

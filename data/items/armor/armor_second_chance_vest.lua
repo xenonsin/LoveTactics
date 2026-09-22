@@ -23,7 +23,7 @@ return {
     type = "armor",
     tags = { "leather" },
     class = "rogue",
-    unlockLevel = 8,
+    unlockLevel = 9,
     traits = { "trait_dodge" },
     bonus = { defense = Curve.ramp(3, 13), movement = -1 },
     resist = { physical = 1 },

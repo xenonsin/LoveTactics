@@ -12,7 +12,7 @@ return {
     type = "ability",
     tags = { "holy", "magical" },
     class = "priest",
-    price = 660,
+    price = 650,
     unlockLevel = 13,
     activeAbility = {
         target = "tile",

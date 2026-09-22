@@ -27,15 +27,15 @@ return {
     type = "ability",
     tags = { "pierce", "physical" },
     class = "duelist",
-    price = 245,
-    unlockLevel = 3,
+    price = 390,
+    unlockLevel = 7,
     charge = { key = "tempo", from = { "repeatStrike" }, max = 3, resetOn = "targetSwitch" },
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 7 },
-        damage = Curve.ramp(8, 18),
+        damage = Curve.ramp(11, 21),
         -- A pure `when` read of the shared pool, exactly as Flurry does it: a counted `unlock.event`
         -- keeps a per-ITEM baseline, which would give this and Reading the Blade two different numbers
         -- both called Tempo.

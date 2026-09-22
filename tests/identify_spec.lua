@@ -417,8 +417,13 @@ return {
             -- band at the deepest reading. A case that walks a domain the game cannot produce is not a
             -- test of anything.
             for floor = 1, Descent.FLOORS do
-                local level = 1 + (floor - 1) * Descent.LEVEL_PER_FLOOR
-                local fee = Identify.fee({ unidentified = level })
+                -- TWO UNITS, AND THE CASE USED TO FEED ONE NUMBER TO BOTH. `unidentified` is
+                -- documented as THE FLOOR A PIECE WAS FOUND ON (Identify.sealed's contract) and the
+                -- end purse is priced off a LEVEL. They were the same number while a floor rose by
+                -- exactly one level; the ladder runs to the cap now and they differ by three and a
+                -- half, so each side is asked in its own unit and neither carries a copy of the ramp.
+                local level = Descent.floorLevel({ floor = floor })
+                local fee = Identify.fee({ unidentified = floor })
                 local end_ = Spoils.endPurse("elite", level)
                 assert(end_ > 0, "the fixture must actually pay an end purse on floor " .. floor)
                 local share = fee / end_

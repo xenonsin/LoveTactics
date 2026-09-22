@@ -128,8 +128,9 @@ once per objective cleared rather than once per run) and a vendor purchase.
 ## Combat: battle arenas
 
 Engaging a combat encounter on the overworld (`states/game.lua` → `game:openEncounter`, for
-the `combat` / `elite` / `objective` kinds) drops into an **8×8 battle arena**; the non-combat
-kinds (`town` / `treasure`) keep the simple `ui/panels/encounter.lua` modal. The arena follows
+the `combat` / `elite` / `objective` kinds) drops into an **8×8 battle arena**; every non-combat
+kind has a panel of its own (a chest, a camp, a bench, a market), and `ui/panels/encounter.lua`
+is the plain fallback for a kind with no branch of its own. The arena follows
 the same three-layer split as the overworld:
 
 - **`models/arena.lua`** — pure logic (only `love.math`, headless-safe). An arena is built from

@@ -25,7 +25,7 @@
 -- WOLVES AND BOARS, not the circle's own chaff. The Petal-Drifts and Choristers belong to Lust and
 -- would make this read as a demon's floor; this is an animal, met in a wood, and what comes with it is
 -- the rest of the wood. They are also both bodies the player has already learned to read
--- (encounter_wolf at weight 6 from day 1, encounter_boar beside it), which matters when the thing
+-- (encounter_wolf at weight 6 from floor 1, encounter_boar beside it), which matters when the thing
 -- BEHIND them is doing something no fight has done before.
 --
 -- A FOREST FIGHT, by condition rather than convention -- the wood the White Wolf belongs to
@@ -35,13 +35,20 @@
 -- also exactly the ground a running animal needs to be uncatchable on, and exactly the ground a
 -- company needs if it means to corner one.
 --
--- minDay 8, behind the White Wolf's 5 and the Sow's 6, because it is the last thing the wood has and
+-- depth 8, behind the White Wolf's 5 and the Sow's 6, because it is the last thing the wood has and
 -- because a company that has never had to corner anything has been asked a question nobody set up.
 return {
     name = "The Meandering Stag",
     kind = "elite",
     weight = 2, -- the road's apexes: met rarely
-    minDay = 8,
+    -- NO DEPTH GATE: ITS CIRCLE IS ITS PLACEMENT. The condition below locks this to one ground, and a
+    -- circle owns a fixed stratum -- so a depth on top of that is a second opinion about where it goes,
+    -- and it disagrees the moment the shuffle deals that circle at another depth (Descent.sinOrder).
+    -- It also gated Lust's own elites off Lust's own floors: converted from the retired calendar they
+    -- asked for floors three and four, and Lust owns one and two.
+    --
+    -- Which of a circle's floors a thing bills on is Descent.SINS' `elites` for the standing threat, and
+    -- `rung` for anything an author wants split across the approach and the seat.
     condition = function(ctx) return ctx.biome == "forest" end,
     composition = function(ctx)
         local list = { "character_meandering_stag" }
@@ -50,7 +57,7 @@ return {
         -- system cannot see properly -- so the escort is carrying the whole rating as well as the whole
         -- threat. Three is what makes the first exchange read as a fight rather than as a large animal
         -- walking away from you.
-        local day = ctx.day or 1
+        local day = ctx.depth or 1
         for _ = 1, 2 + math.floor(day / 14) do
             list[#list + 1] = "character_wolf_grunt"
         end

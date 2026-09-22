@@ -7,10 +7,6 @@
 --   icon = false  deliberately has no icon yet; left for an artist.
 --
 -- Correct a bad guess by editing `icon` and setting `by = "hand"`.
---
--- Two keys naming the SAME icon is normally a collision the mapper refuses. The exception is a declared
--- shared set (tools/icons/shared.lua) -- one object told apart by colour, e.g. the pool potions -- whose
--- members are written here as `by = "hand"` and keep their pairing across a regeneration.
 -- `. icon-build` renders every entry here into assets/.
 return {
     ["items/ability_aegis.png"] = { icon = "delapouite/attached-shield", by = "auto" },
@@ -257,6 +253,7 @@ return {
     ["items/anvils_face.png"] = { icon = "carl-olsen/spider-face", by = "auto" },
     ["items/apothecarys_lancet.png"] = { icon = "lorc/syringe", by = "auto" },
     ["items/armor_adrenal_harness.png"] = { icon = "delapouite/abdominal-armor", by = "auto" },
+    ["items/armor_bellowhide.png"] = { icon = "delapouite/bison", by = "hand" },
     ["items/armor_blindfold_cloak.png"] = { icon = "lorc/wing-cloak", by = "auto" },
     ["items/armor_blood_fever_mail.png"] = { icon = "delapouite/spiked-shoulder-armor", by = "auto" },
     ["items/armor_bogwalkers_coat.png"] = { icon = "delapouite/pirate-coat", by = "auto" },
@@ -476,6 +473,7 @@ return {
     ["items/held_breath.png"] = { icon = "lorc/dragon-breath", by = "auto" },
     ["items/held_ground.png"] = { icon = "delapouite/underground-cave", by = "auto" },
     ["items/held_line.png"] = { icon = "caro-asercion/test-tube-held", by = "auto" },
+    ["items/herd_warmth.png"] = { icon = "delapouite/deer-track", by = "hand" },
     ["items/hexbinders_cord.png"] = { icon = "caro-asercion/accordion", by = "auto" },
     ["items/hexbrand.png"] = { icon = "lorc/skull-signet", by = "hand" },
     ["items/hoarfrost_antlers.png"] = { icon = "lorc/stag-head", by = "hand" },
@@ -671,6 +669,7 @@ return {
     ["items/splitglass_saber.png"] = { icon = "lorc/bloody-sword", by = "auto" },
     ["items/splitting_maul.png"] = { icon = "caro-asercion/froe-and-mallet", by = "hand" },
     ["items/staff.png"] = { icon = "delapouite/skull-staff", by = "auto" },
+    ["items/stag_antlers.png"] = { icon = "lorc/horned-skull", by = "hand" },
     ["items/stamina_potion.png"] = { icon = "lorc/heart-bottle", by = "hand" },
     ["items/stillhunter.png"] = { icon = "lorc/dead-eye", by = "hand" },
     ["items/stone_fists.png"] = { icon = "delapouite/stone-stack", by = "auto" },
@@ -761,6 +760,7 @@ return {
     ["items/utility_hour_returned.png"] = { icon = "lorc/cycle", by = "hand" },
     ["items/utility_knapped_claw.png"] = { icon = "sbed/claw", by = "auto" },
     ["items/utility_lent_aegis.png"] = { icon = "delapouite/viking-shield", by = "auto" },
+    ["items/utility_lowered_crown.png"] = { icon = "delapouite/charging-bull", by = "hand" },
     ["items/utility_marchstone.png"] = { icon = "delapouite/menhir", by = "hand" },
     ["items/utility_miasma_flask.png"] = { icon = "lorc/fizzing-flask", by = "hand" },
     ["items/utility_miasmal_plate.png"] = { icon = "lorc/plate-claw", by = "hand" },
@@ -789,6 +789,7 @@ return {
     ["items/utility_stripped_plate.png"] = { icon = "lorc/slashed-shield", by = "hand" },
     ["items/utility_substitution.png"] = { icon = "lorc/body-swapping", by = "hand" },
     ["items/utility_swailing_brand.png"] = { icon = "delapouite/primitive-torch", by = "hand" },
+    ["items/utility_the_close_herd.png"] = { icon = "delapouite/meeple-group", by = "hand" },
     ["items/utility_the_iron_in_him.png"] = { icon = "skoll/iron-cross", by = "auto" },
     ["items/utility_the_last_sounder.png"] = { icon = "delapouite/foot-plaster", by = "auto" },
     ["items/utility_the_long_wait.png"] = { icon = "delapouite/pendulum-swing", by = "hand" },

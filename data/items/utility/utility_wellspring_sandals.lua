@@ -49,7 +49,7 @@ return {
     -- could ever lift, which is a shelf row that is shut forever and says the wrong reason why. Every
     -- other trophy in the game (utility_the_last_sounder, utility_treeline_horn) carries a class and a
     -- depth and no rung, for exactly this reason.
-    unlockLevel = 4,
+    unlockLevel = 0,
     -- OFF THE SHELF, AND ONTO AN ANIMAL. These are the Meandering Stag's now
     -- (data/characters/character_meandering_stag.lua) and nobody's to buy: `unstocked` is what makes a
     -- piece rift-only -- no counter deals one however many the company carries out, and none will buy
@@ -64,7 +64,7 @@ return {
     --
     -- WHAT IT COSTS, stated plainly because the file above says so out loud: this was an opening-shelf
     -- item, and its own header argues "a two-caster party should be able to buy this on day one". That
-    -- purchase is gone. A day-one caster option now sits behind a forest elite at minDay 8, with
+    -- purchase is gone. A day-one caster option now sits behind a forest elite at depth 8, with
     -- nothing put in its place -- which is the deliberate, heavier reading of docs/drops.md's rule that
     -- a drop is normally "a head start, not a source of record". Here it is the record.
     unstocked = true,

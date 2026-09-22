@@ -21,8 +21,8 @@ return {
     type = "ability",
     tags = { "fire", "magical" },
     class = "elementalist", -- deeper cut of the shelf: buyable only once the elementalist gate is cleared
-    price = 660,
-    unlockLevel = 13,
+    price = 565,
+    unlockLevel = 11,
     activeAbility = {
         target = "tile",
         allowOccupied = true,
@@ -30,7 +30,7 @@ return {
         speed = 7, -- the most punishing spell, and the slowest to come around again
         windup = 8, -- the longest wind-up: the widest blast telegraphs earliest
         cost = { stat = "mana", amount = 22 },
-        damage = Curve.ramp(14, 24), -- per-burst damage = power + the caster's MagicDamage, minus MagicDefense
+        damage = Curve.ramp(13, 23), -- per-burst damage = power + the caster's MagicDamage, minus MagicDefense
         aoe = { radius = 3, shape = "square" }, -- paints the 7x7 threatened zone (see note above)
         effect = function(fx)
             -- The 5x5 block of candidate impact points around the aim point.

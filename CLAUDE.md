@@ -148,7 +148,22 @@ The codebase is organized into layers loaded via `require()`. See
   carrying both and an off-by-one between them; `tools/ladder_fold.lua` folded them and records the
   measurement that made it safe. Re-cutting the cap restretches the drop band, the forge ceiling, the
   market's rotation, the salvage span and the mastery scalar on its own; what it does NOT restretch is
-  authored data, so a re-cut owes `. ladder-fold`, then `. balance-rescale apply 0`. There is no discovery gate -- a ware is not
+  authored data, so a re-cut owes `. ladder-fold`, then `. balance-rescale apply 0`.
+
+  **HOW MANY A RUNG DEALS IS A CURVE, AND `tools/shelf_curve.lua` OWNS IT.** Two passes write
+  `unlockLevel` -- `. grade-report` deals a class's PRICED stock, `. drop-tier` its FINDS -- and the
+  player meets the SUM at one counter, which neither could see. The shipped result was the Bastion
+  opening `5 2 5 1 3 3 9 4 ...`, nine wares at knight 6 and **fifteen of the city's 112 rungs opening
+  nothing at all**. One shape now governs both: a **ramp**, every rung handed one ware before the
+  surplus is spread, so the front deals two or three where the deep end deals five or six. **Rung 0 is
+  the re-arm floor** -- the graded spread starts at 1, and what sits below it is a house's opener plus
+  what an author has pinned as gated by nothing (the nine standing draughts: a rung is a gate, and a
+  gate on a healing potion prices a need). **And the finds are cut PER CLASS**, but only where a class
+  can fill a ladder: the seven roots carry 20-57 finds, every discipline ten or fewer, and a band
+  thinner than the ladder keeps the rift's GLOBAL grade order -- because a body's drop list spans many
+  classes and within one list the tier IS the rarity ([docs/drops.md](docs/drops.md)). Re-spreading
+  owes `. grade-report apply`, `. drop-tier apply`, `. balance-rescale apply 0`, iterated to a fixed
+  point; `tests/unlock_ladder_spec.lua` holds the curve. There is no discovery gate -- a ware is not
   shut until you have carried one out, and `player.found` feeds the BESTIARY now, not a counter
   (removed 2026-09-19; docs/shelf.md narrates why).
 
@@ -242,7 +257,16 @@ Trips pace the city; depth paces the shelves. The schedule: counter 1, supper 2,
 study 5, reading (first unread find, or 6), duel (Saber's posting, or 7) — plus the mending, which is
 Act 0's. The two backstops sit last on purpose, so inserting a room pushes them rather than colliding.
 `quiet = true` lets a room open without announcing its house (every shelf is quiet — a class rung is a
-reward the player cannot see). `gate = { any = {...} }` is the event-plus-backstop pattern.
+reward the player cannot see), and `announce = {...}` is the one condition under which a quiet room
+speaks up anyway. `gate = { any = {...} }` is the event-plus-backstop pattern.
+
+**BUT A HOUSE IS PACED ON ITS CLASS, NOT ON ITS OTHER ROOMS.** A flatly quiet shelf meant the seven
+class houses arrived in whatever order the rooms *behind* them were scheduled — fighter last because
+**PvP** is last, not because fighter gear is late. **Declaring a class in the Roll — or hiring a body
+born to one — opens the house that shelves it, on the spot** (`announce = { declared = true }`, asked
+through `Vendor.shelves`, so a crossing opens both its parents' doors). Every trips gate above is
+untouched underneath as the backstop: a company that declares nothing sees exactly that schedule. The
+mark is **one-way** (`Class.taken`, persisted) — changing class back must never shrink the city.
 
 **ONE BOARD, AND IT IS FULL AT NINE.** `Building.GRID.city` is three columns by three rows with the Rift
 taking the taller middle slot: eight ring slots, filled by the Armory and the seven houses. Dropping a

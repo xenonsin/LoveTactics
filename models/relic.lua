@@ -167,7 +167,7 @@ end
 -- Is `def` eligible to DROP in this context? Gated by minDay and an optional condition(ctx), the
 -- same contract encounters use (models/encounter.lua), so the two selection systems read alike.
 local function eligible(def, ctx)
-    if def.minDay and (ctx.day or 1) < def.minDay then return false end
+    if def.depth and (ctx.depth or 1) < def.depth then return false end
     if def.condition and not def.condition(ctx) then return false end
     return true
 end

@@ -28,7 +28,7 @@ return {
     tags = { "mace", "impact", "physical", "melee" },
     traits = { "trait_shield_shove" }, -- the whole extra; see armor_bulwark_shield for what it costs
     class = "knight",
-    unlockLevel = 11,
+    unlockLevel = 13,
     activeAbility = {
         target = "enemy",
         range = 1,

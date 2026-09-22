@@ -29,7 +29,7 @@ return {
     type = "utility",
     tags = { "arcane" },
     class = "mage", -- sealed weather is pride's craft; the Arcanum sells it, and anybody may carry one
-    unlockLevel = 8,
+    unlockLevel = 0,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

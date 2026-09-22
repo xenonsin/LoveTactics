@@ -26,7 +26,7 @@ return {
     type = "utility",
     tags = { "arcane" },
     class = "mage",
-    unlockLevel = 0,
+    unlockLevel = 2,
     traits = { "trait_gleaning" },
     activeAbility = {
         target = "tile",

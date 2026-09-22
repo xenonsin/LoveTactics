@@ -79,7 +79,7 @@ return {
             composition = function(ctx)
                 -- The Breachward is the mark; it never leaves the gate (`holdGround`).
                 local list = { "character_siege_breaker" }
-                for i = 1, 2 + math.floor((ctx.day or 1) / 2) do list[#list + 1] = "character_demon_grunt" end
+                for i = 1, 2 + math.floor((ctx.depth or 1) / 1) do list[#list + 1] = "character_demon_grunt" end
                 -- And a human knight, in a knightly order's forms, fighting on the demons' side of a
                 -- siege line. Nobody remarks on him, nobody explains him, and he is not named -- the
                 -- player is simply the only one in the room who has time to wonder about it.

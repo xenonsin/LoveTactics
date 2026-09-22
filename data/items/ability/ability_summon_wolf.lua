@@ -25,8 +25,8 @@ return {
     type = "ability",
     tags = { "summon", "beast" },
     class = "beastmaster", -- deeper cut of the shelf: buyable only once the beastmaster gate is cleared
-    price = 740,
-    unlockLevel = 15,
+    price = 565,
+    unlockLevel = 11,
     activeAbility = {
         target = "tile",
         range = 1,

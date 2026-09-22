@@ -387,7 +387,7 @@ function M.walkToughness()
         local statName = ex.probe.magical and "magicDefense" or "defense"
         -- Everything below is in GROWN space, matching what Balance measured; growthDelta converts
         -- back to blueprint literals at the end.
-        local level = Growth.levelForPrestige(site.prestige)
+        local level = Balance.levelForRung(site.prestige)
         local delta = growthDelta(site.id, level)
         local innate = ((def.stats and def.stats[statName]) or 0) + (delta[statName] or 0)
         -- What the GEAR contributes. Pass 1 owns this number; here it is a floor under the solve.

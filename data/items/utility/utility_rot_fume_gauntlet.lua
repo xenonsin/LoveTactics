@@ -21,7 +21,7 @@ return {
     type = "utility",
     tags = { "charm", "poison" },
     class = "plague_knight",
-    unlockLevel = 9,
+    unlockLevel = 11,
     traits = { "trait_rot_fume" },
     -- it banks Power per poisoned body; the gauntlet is still plate
     bonus = { defense = 2 },

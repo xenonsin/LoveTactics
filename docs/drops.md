@@ -131,6 +131,28 @@ so the order is the authored priority:
 drops = { "weapon_throughline", "armor_slipstep_leathers" },
 ```
 
+> ### The order is authored and nothing enforces it — measured, 2026-09-21
+>
+> A floor picks a rank before it looks at who died, so within one list the depth **is** the drop rate:
+> there is no per-entry weight, and the piece at the bottom of the list is the chase by sitting deepest
+> and by nothing else. That is the design. It is not what the data says.
+>
+> Walked across **all 51 drop lists in the game, 66 entries sit shallower than the entry above them.**
+> The promise is enforced on four bodies — the boar, the sow, the stag and the slime — because those
+> four have a spec, and the other forty-seven have none. Nobody had walked the rest.
+>
+> The four guarded lists are held by hand, at the depths they were authored against
+> (`Grade.SLOT_PINS`, "the chase pieces"). `tools/drop_tier.lua` cannot derive them: a chase is often a
+> **rule** rather than a number — the Yearling Pelt carries Bereft and grades 1.6, under the claw it is
+> supposed to be rarer than — and a grader that reached for a drop list would be reading the placement
+> it is there to decide.
+>
+> **What is undecided is the other forty-seven**, and it is one question: does a body's list own its
+> items' depths, and what happens when two bodies want different depths for the same piece? (The Yearling
+> Pelt is on two lists already — the sow's and the Undertow's.) Until that is answered, a new drop list
+> is authored in the knowledge that only its ORDER ON THE PAGE is authored; the depths come from the
+> grade.
+
 Four rules, none of them new:
 
 1. **A body part is never on one.** [bestiary.md](bestiary.md)'s split: bodied chaff carry priced,

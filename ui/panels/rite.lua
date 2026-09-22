@@ -26,10 +26,11 @@
 --   no special case here: Curse.commit takes the item off whatever grid it is in, because a bind holds
 --   against the player and not against the priests.
 --
--- NO COACH. The Ward's first morning is scripted -- Rowan is carried up broken by the end of Act 0 and
--- the city holds the plaza until somebody is seen to -- and nothing in this game hexes anything on a
--- schedule. The first curse arrives when the rift deals one, so the teaching is the door appearing on
--- the plaza the morning after it lands (models/offer.lua's GATES.cursed) plus the tooltip on the piece.
+-- NO COACH. The Ward's first morning is scripted -- Rowan is carried up broken by the end of Act 0, so
+-- the room knows it is teaching a first morning and holds the player until the bone is answered -- and
+-- nothing in this game hexes anything on a schedule. The first curse arrives when the rift deals one,
+-- so the teaching is the door appearing on the plaza the morning after it lands (models/offer.lua's
+-- GATES.cursed) plus the tooltip on the piece.
 
 local CloseButton = require("ui.close_button")
 local Curse = require("models.curse")

@@ -9,7 +9,7 @@ return {
     type = "utility",
     tags = { "holy" },
     class = "paladin", -- knight x priest; the Ward aura's thesis -- your body in place of the one beside you
-    unlockLevel = 2,
+    unlockLevel = 4,
     traits = { "trait_martyrs_vow" },
     -- standing in front of somebody is guard
     bonus = { defense = 2 },

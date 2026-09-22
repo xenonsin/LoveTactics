@@ -10,8 +10,8 @@ return {
     type = "ability",
     tags = { "holy" },
     class = "exorcist", -- deeper cut of the shelf: buyable only once the exorcist gate is cleared
-    price = 495,
-    unlockLevel = 9,
+    price = 390,
+    unlockLevel = 7,
     activeAbility = {
         target = "enemy",
         range = 3,

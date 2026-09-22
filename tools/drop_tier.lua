@@ -64,6 +64,7 @@
 local Item = require("models.item")
 local Grade = require("models.grade")
 local Class = require("models.class")
+local Curve = require("tools.shelf_curve") -- the ramp a rung deals on, shared with tools/grade_report
 
 local M = {}
 
@@ -92,29 +93,201 @@ function M.candidates()
     return out
 end
 
--- Rank them weakest-first and spread them evenly across 1..tiers().
+-- Rank them weakest-first, PER CLASS, and deal each house's finds up its own ladder on the shelf curve.
 --
--- EVENLY BY COUNT, exactly as the shelf spreads a house's stock, and for the same reason: the grades
--- are not evenly distributed and banding on grade THRESHOLDS would pile most of a small set onto one
--- tier and leave the rest of the rift with nothing to give up. What is being decided here is an order,
--- not a magnitude.
-function M.plan()
-    local ranked = {}
-    for _, id in ipairs(M.candidates()) do
-        local g = Grade.of(id)
-        ranked[#ranked + 1] = { id = id, grade = (type(g) == "table" and g.value) or g or 0 }
+-- BY COUNT RATHER THAN BY GRADE THRESHOLD, which has not changed and is the older half of this: the
+-- grades are not evenly distributed and banding on grade VALUE would pile most of a small set onto one
+-- tier and leave the rest of the rift with nothing to give up. What is being decided is an order.
+--
+-- WHAT DID CHANGE IS THE AXIS THE ORDER IS CUT ON. This pass used to rank every find in the game
+-- together and spread that ONE list over the depths, which reads as a claim -- that a tier is absolute
+-- power, the same number for everybody -- and is not the claim the ladder makes anywhere else.
+-- `unlockLevel` is a CLASS level (docs/shelf.md, "The slot"): the shelf gates a ware on its own class's
+-- rung, and the rift and the shelf are one ladder read from two ends. Under a global cut the two ends
+-- disagreed. A house with a thin catalogue had its finds bunched wherever its grades happened to land in
+-- the global ranking, so the Bastion opened nine wares at knight 6 and one at knight 3, and fifteen of
+-- the 112 rungs across the seven houses opened nothing at all.
+--
+-- Cut per class, a floor gives up the gear that floor was fought at, for every class, which is what the
+-- doc always said it did. The cost is that absolute power at a depth now varies by class -- a thin
+-- house's deepest find grades under a fat one's -- and that is the right cost: a class's ceiling is its
+-- own, and the alternative was houses whose ladder had holes in it.
+--
+-- THE SPREAD IS THE SHELF CURVE (tools/shelf_curve.lua), the same ramp tools/grade_report deals the
+-- priced half on. Two ramps over one ladder sum to a ramp; two spreads of different shapes sum to
+-- neither, which is how the shipped histogram happened.
+-- One band of one class, dealt up the ladder. Rows arrive ranked weakest-first; each comes out with a
+-- `tier`.
+--
+-- THE AUTHORED PINS ARE HONOURED HERE, which they were not. `Grade.SLOT_PINS` is the one place a human
+-- overrules the grader -- "a rock: the cheapest ware in the arena, and gated by nothing", "a rehomed
+-- general good: un-gated since the Cafe closed its shelf" -- and tools/grade_report has always read it.
+-- This pass never did, so one table governed a priced ware and was silently overwritten on an unpriced
+-- one: the torch kept its pinned rung because it has a price, while boots of speed, the stormglass rod
+-- and wellspring sandals were dealt 2, 10 and 7 against an authored `at = 0`. One contract, two writers,
+-- one of them not reading it.
+--
+-- Pins are seated BEFORE the spread and counted against their tier's share, the shape grade_report uses:
+-- laying a pin over a finished spread leaves a hole exactly where the pinned row used to sit.
+local function dealBand(rows, globalTier)
+    -- Tier 1 is the shallowest a find may sit at: rung 0 is the shelf's re-arm floor and no floor pays
+    -- it (models/spoils.lua's rankBand reaches down to it and never centres on it). A pin is the one
+    -- thing that may reach below it, because a pin is somebody saying so.
+    local top = tiers()
+    local spread, taken = {}, {}
+    for _, row in ipairs(rows) do
+        local pin = Grade.SLOT_PINS[row.id]
+        if pin and pin.at then
+            row.tier, row.pinned = pin.at, pin.why
+            taken[row.tier] = (taken[row.tier] or 0) + 1
+        else
+            spread[#spread + 1] = row
+        end
     end
-    -- Sorted by grade then id: `pairs` over the registry is unspecified, and a pass that dealt a
-    -- different tier on two machines is a pass nothing can be written against.
-    table.sort(ranked, function(a, b)
+
+    -- The share is of everything that lands IN the band, pins included, so a pinned row costs its own
+    -- tier a place rather than arriving on top of a full one. A pin seated below the band -- an
+    -- `at = 0` -- is not counted, or its share would be left unspent and the rows it displaced would
+    -- fall through to the deepest tier.
+    local inBand = #spread
+    for t, count in pairs(taken) do
+        if t >= 1 then inBand = inBand + count end
+    end
+    -- A BAND THINNER THAN THE LADDER KEEPS THE RIFT'S OWN ORDER, and this is the line the per-class cut
+    -- may not cross.
+    --
+    -- A body's drop list is not one class's. The boar hands over plague knight, beastmaster and
+    -- necromancer gear; the stag druid and vanguard gear -- and within one body's list, the TIER IS THE
+    -- RARITY and nothing else (docs/drops.md; tests/boar_drops_spec, sow, stag, slime all read it that
+    -- way). There is no per-entry weight to author: a floor picks a rank and then looks at who died, so
+    -- the chase piece is the chase piece purely by sitting deepest.
+    --
+    -- Cut per class, a tier stops being comparable ACROSS classes: a strong piece in a thin house comes
+    -- out shallower than a weak piece in a fat one, because each is a position on its own ladder rather
+    -- than a measure of worth. Applied to everything, that reordered five chases into common drops.
+    --
+    -- SO THE CUT IS PER CLASS ONLY WHERE A CLASS CAN ACTUALLY FILL A LADDER. Measured, exactly the seven
+    -- ROOT classes carry finds enough -- 20 to 57 against fifteen tiers -- and every one of the forty
+    -- disciplines carries ten or fewer. A band that thin cannot shape a shelf whatever it is dealt: at
+    -- one ware a rung at most, its curve is arbitrary. It CAN break a drop list, so it keeps the global
+    -- grade order and the shelf loses nothing. The threshold is the curve's own (`n >= rungs`, the point
+    -- at which every rung can be handed one), so the two cannot drift apart.
+    local i = 1
+    if globalTier and #spread < top then
+        for _, row in ipairs(spread) do row.tier = globalTier[row.id] or top end
+        i = #spread + 1
+    else
+        local shares = Curve.shares(inBand, top)
+        for t = 1, top do
+            local room = math.max(0, shares[t] - (taken[t] or 0))
+            for _ = 1, room do
+                if not spread[i] then break end
+                spread[i].tier = t
+                i = i + 1
+            end
+        end
+    end
+    -- Whatever the pins' displacement left over goes on the deepest tier, which is where the rarest
+    -- finds belong -- the same place tools/grade_report puts its own remainder.
+    for j = i, #spread do spread[j].tier = top end
+
+    -- Range pins clamp afterwards: unlike an `at`, a min/max moves a row WITHIN the band rather than
+    -- out of it, so it cannot leave a hole.
+    for _, row in ipairs(rows) do
+        local pin = Grade.SLOT_PINS[row.id]
+        if pin and not pin.at then
+            if pin.min and row.tier < pin.min then row.tier, row.pinned = pin.min, pin.why end
+            if pin.max and row.tier > pin.max then row.tier, row.pinned = pin.max, pin.why end
+        end
+    end
+end
+
+-- THE RIFT'S OWN ORDER: every find in the game ranked weakest-first and dealt up the depths together,
+-- which is what this pass did for everything before the per-class cut. Kept for the bands too thin to
+-- carry a ladder of their own (dealBand), so a tier stays a statement about WORTH wherever it is still
+-- being read as one.
+local function globalOrder(rows)
+    local all = {}
+    for _, row in ipairs(rows) do all[#all + 1] = row end
+    table.sort(all, function(a, b)
         if a.grade ~= b.grade then return a.grade < b.grade end
         return a.id < b.id
     end)
 
-    local n, top = #ranked, tiers()
-    for i, row in ipairs(ranked) do
-        row.tier = n > 1 and (1 + math.floor((i - 1) * (top - 1) / (n - 1) + 0.5)) or 1
-        row.was = Item.defs[row.id].unlockLevel
+    -- EVENLY, NOT ON THE SHELF CURVE, and the difference matters. The curve is a PACING device: it
+    -- thins a rung so a player is handed two or three choices rather than eight. This ranking is not
+    -- pacing anything -- it exists so a tier still reads as a statement about worth -- and the curve's
+    -- fat deep band destroys exactly that, because thirty-odd finds landing on tier 15 together are
+    -- thirty finds with no order left between them. Measured, it tied the boar's chase with the horn it
+    -- is supposed to be rarer than.
+    local top, n = tiers(), #all
+    local out = {}
+    for i, row in ipairs(all) do
+        out[row.id] = n > 1 and (1 + math.floor((i - 1) * (top - 1) / (n - 1) + 0.5)) or 1
+    end
+    return out
+end
+
+function M.plan()
+    local byClass = {}
+    for _, id in ipairs(M.candidates()) do
+        local def = Item.defs[id]
+        local g = Grade.of(id)
+        local cls = def.class
+        byClass[cls] = byClass[cls] or {}
+        table.insert(byClass[cls], {
+            id = id,
+            class = cls,
+            neverSold = (def.unstocked or def.dropOnly) and true or false,
+            grade = (type(g) == "table" and g.value) or g or 0,
+            was = def.unlockLevel,
+        })
+    end
+
+    local classes, every = {}, {}
+    for cls, list in pairs(byClass) do
+        classes[#classes + 1] = cls
+        for _, row in ipairs(list) do every[#every + 1] = row end
+    end
+    table.sort(classes)
+    local global = globalOrder(every)
+
+    local ranked = {}
+    for _, cls in ipairs(classes) do
+        local list = byClass[cls]
+        -- Sorted by grade then id: `pairs` over the registry is unspecified, and a pass that dealt a
+        -- different tier on two machines is a pass nothing can be written against.
+        table.sort(list, function(a, b)
+            if a.grade ~= b.grade then return a.grade < b.grade end
+            return a.id < b.id
+        end)
+
+        -- TWO BANDS, DEALT SEPARATELY, and the one that is never for sale is the reason.
+        --
+        -- A ware no counter will ever DEAL stands on the rack named and greyed (docs/shelf.md). It is
+        -- still a FIND, so it still needs a depth -- but it cannot pay for a rung of the shelf. Dealt in
+        -- one band with the rest, a class level whose whole intake happened to be trophies opened
+        -- nothing buyable at all, which is exactly the hole the curve's one-per-rung floor exists to
+        -- close. Measured, the Hunter's Lodge had one: hunter 5 held the bristlehide and the ravener's
+        -- hide and nothing else.
+        --
+        -- BOTH FLAGS, and reading only the first is a bug this already had. `unstocked` is a beast
+        -- trophy, worth 0 to anybody in the city; `dropOnly` is the Mere's kit, which a fence will buy
+        -- back but no counter will sell. They are different rules about SELLING BACK and the same rule
+        -- about buying -- Vendor.lockReason answers "monster drop" to both -- and it is the buying half
+        -- that decides whether a rung opened anything. Splitting on `unstocked` alone left the
+        -- Undercroft's rung 1 holding one gillscale wrap, which is `dropOnly`, and opening nothing.
+        --
+        -- Split, the floor applies to each band on its own, so every rung gets a buyable find AND the
+        -- trophies still span the rift instead of bunching where the sellable stock left room.
+        local stocked, trophies = {}, {}
+        for _, row in ipairs(list) do
+            if row.neverSold then trophies[#trophies + 1] = row else stocked[#stocked + 1] = row end
+        end
+        dealBand(stocked, global)
+        dealBand(trophies, global)
+
+        for _, row in ipairs(list) do ranked[#ranked + 1] = row end
     end
     return ranked
 end
@@ -320,10 +493,29 @@ function M.run(args)
     local ranked = M.plan()
     print(string.format("\n######## DROP TIERS: %d unpriced, unbound, non-signature items over %d tiers ########\n",
         #ranked, tiers()))
-    print(string.format("  %-42s %8s  %s", "item", "grade", "tier"))
+    print(string.format("  %-14s %-42s %8s  %s", "class", "item", "grade", "tier"))
+    local last
     for _, row in ipairs(ranked) do
+        if row.class ~= last then last = row.class; print("") end
         local move = row.was and row.was ~= row.tier and string.format("  (was %d)", row.was) or ""
-        print(string.format("  %-42s %8.1f  %4d%s", row.id, row.grade, row.tier, move))
+        print(string.format("  %-14s %-42s %8.1f  %4d%s", row.class, row.id, row.grade, row.tier, move))
+    end
+
+    -- The curve each house came out on, which is the whole point of the pass and cannot be read off a
+    -- list five hundred rows long. This is the FOUND half only: what a player meets at a counter is
+    -- this plus the priced spread (tools/grade_report), which rides the same ramp.
+    print(string.format("\n  finds dealt per tier, by class (1..%d):", tiers()))
+    local hist, classes = {}, {}
+    for _, row in ipairs(ranked) do
+        hist[row.class] = hist[row.class] or {}
+        hist[row.class][row.tier] = (hist[row.class][row.tier] or 0) + 1
+    end
+    for cls in pairs(hist) do classes[#classes + 1] = cls end
+    table.sort(classes)
+    for _, cls in ipairs(classes) do
+        local line = {}
+        for t = 1, tiers() do line[#line + 1] = string.format("%3d", hist[cls][t] or 0) end
+        print(string.format("      %-14s%s", cls, table.concat(line, "")))
     end
 
     if not apply then

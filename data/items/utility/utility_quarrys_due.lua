@@ -20,7 +20,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "poacher",
-    unlockLevel = 5,
+    unlockLevel = 8,
     traits = { "trait_quarrys_due" },
     -- a trap that also paints what it caught
     bonus = { skill = 2 },

@@ -103,6 +103,28 @@ function Vendor.priceFor(base, level)
     return base and math.floor(base * (1 + 0.5 * (level or 0)) + 0.5)
 end
 
+-- WHICH CLASSES A HOUSE'S SHELF CARRIES -- its own, and every cut of it. The taxonomy half of
+-- Vendor.sells, lifted out because a second reader needed the question asked of a CLASS rather than of
+-- an ITEM: the house a company training for a class opens (models/offer.lua's `declared` gate). One
+-- rule, so the shelf that stocks a Ninja's gear and the house a Ninja opens cannot come apart.
+--
+-- An EARNED class's stock lands on each of its parent shelves. That is how a crossing's item appears on
+-- both houses it is cut from -- shopping both shelves is literally how you build the thing -- and it is
+-- read off the class's own `requires`, never authored per-shelf. The parents loop is harmless for a
+-- root, which has none, so this needs no guard of its own.
+--
+-- DELIBERATELY NOT `sellsAll`. That flag is the Market answering the ware question with a shrug, and it
+-- is answered before this in Vendor.sells; a classless counter carries no class, and a house gate that
+-- read it would have every declaration open the one door that is not a house.
+function Vendor.shelves(def, class)
+    if not (def and class) then return false end
+    if class == def.class then return true end
+    for _, parent in ipairs(Class.parents(class)) do
+        if parent == def.class then return true end
+    end
+    return false
+end
+
 -- Whether `def` (a vendor blueprint) stocks `item`. A class vendor sells its own class; a vendor that
 -- declares `sells = false` (the Cafe, whose whole offer is the meal menu) stocks nothing at all. One
 -- rule, so the shop, the sell-back and the hub's new-stock dot all agree on what a shelf holds. Takes
@@ -117,18 +139,7 @@ function Vendor.sells(def, item)
     -- (models/market.lua).
     if def.sellsAll then return true end
 
-    local class = Item.classOf(item)
-    if class == def.class then return true end
-    -- An EARNED class's stock also lands on each of its parent shelves. That is how a crossing's item
-    -- appears on both houses it is cut from -- shopping both shelves is literally how you build the
-    -- thing. Read off the class's own `classes` list, never authored per-shelf. (Whether it is buyable
-    -- yet is Vendor.stock's `locked` job.)
-    --
-    -- The parents loop is harmless for a root, which has none, so this needs no guard of its own.
-    for _, parent in ipairs(Class.parents(class)) do
-        if parent == def.class then return true end
-    end
-    return false
+    return Vendor.shelves(def, Item.classOf(item))
 end
 
 -- WHY A WARE ON A SHELF IS SHUT -- "monster drop", "class" or "rung" -- or nil when it is out. Also hands back the

@@ -36,7 +36,7 @@ return {
     type = "utility",
     tags = { "boots" },
     class = "druid", -- deeper cut of the shelf: buyable only once the druid gate is cleared
-    unlockLevel = 2,
+    unlockLevel = 3,
     -- The cap, flat rather than a Curve: 1 is open field and there is nowhere below it to climb to.
     -- A magnitude that cannot move is authored as a plain number (docs/classes.md on the forge span).
     terrainEase = 1,

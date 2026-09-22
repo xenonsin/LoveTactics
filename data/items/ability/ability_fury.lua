@@ -11,8 +11,8 @@ return {
     type = "ability",
     tags = { "physical" },
     class = "barbarian", -- deeper cut of the shelf: buyable only once the barbarian gate is cleared
-    price = 495,
-    unlockLevel = 9,
+    price = 695,
+    unlockLevel = 14,
     activeAbility = {
         target = "self",
         range = 0,

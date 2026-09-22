@@ -519,36 +519,11 @@ function Quest.complete(player, quest, carried, opts)
     player.completedQuests = player.completedQuests or {}
     player.completedQuests[quest.id] = true
 
-    -- WHAT FINISHING A POSTING PUTS BACK ON THE PILE. A bounty is spent on the way out (Bounty.spend,
-    -- from the board), so without this the stock only ever falls and the deep work would be a thing a
-    -- company could run exactly as many times as it happened to find.
-    --
-    -- AFTER THE LEDGER LINE ABOVE, AND THAT ORDER IS THE WHOLE OF IT. The drop pool only deals postings
-    -- the ladder has OPENED, and finishing this one is what opens the rung above it -- so dealt a line
-    -- earlier, a house's opener paid nothing at all and the stock could never leave the ground. Caught
-    -- by tests/bounty_spec.lua, which is why that case builds the pool at the moment the ledger moves.
-    --
-    -- Guarded by the double-payout check at the top of this function, like every other grant here: a
-    -- re-cleared objective tile can no more mint a second posting than a second relic.
-    --
-    -- Lazily required: models/bounty.lua requires THIS file, so a top-level require would be a cycle.
-    local bountiesFound
-    if quest.bounty and quest.bounty.id then
-        local Bounty = require("models.bounty")
-        local def = Bounty.get(quest.bounty.id)
-        if def then
-            bountiesFound = Bounty.dealDrops(player, def)
-            -- ...AND WHAT THE STAKE BOUGHT. An augment that pays in postings pays here, on top of the
-            -- posting's own rate, so a staked run really does put more back on the pile than it took --
-            -- which is the half of the bet that makes staking anything worth doing.
-            for _ = 1, (quest.bounty.extraDrops or 0) do
-                for _, id in ipairs(Bounty.dealDrops(player, def)) do
-                    bountiesFound[#bountiesFound + 1] = id
-                end
-            end
-        end
-    end
-
+    -- (A POSTING'S OWN PAYOUT STOOD HERE AND IS DELETED WITH THE BOARD.) A bounty was spent on the way
+    -- out and put a replacement back on the pile here, so the stock did not only ever fall -- plus
+    -- whatever an augment had staked on top, which is what made staking worth doing. None of it has
+    -- anywhere to be now: models/bounty.lua is gone and `quest.bounty` is a field nothing writes. The
+    -- rift posts the deep work the board used to (models/errand.lua).
     -- Item rewards: a general's relic, granted into the stash. Guarded by the double-payout check at
     -- the top of this function, so a re-cleared objective tile can never mint a second one. Note the
     -- relic is a TROPHY, not a key -- what opens the Gate Below is the line above, the completed
@@ -558,28 +533,13 @@ function Quest.complete(player, quest, carried, opts)
         received[#received + 1] = Player.grantItem(player, itemId)
     end
 
-    -- THE PIECE THE BOARD PROMISED GOES FIRST, and this is what closes the bounty loop.
-    --
-    -- A bounty names ONE item before it is taken -- "The Breachward owes you a Relief Horn"
-    -- (models/bounty.lua) -- and that promise is the whole reason the day was spent. Without this it
-    -- arrived as one of three undifferentiated rows in "Items gained", in whatever order the blueprint
-    -- happened to list its rewards, and could be TRUNCATED OFF the panel entirely (the list caps at
-    -- four). A promise the game does not keep out loud is a promise the player stops reading.
-    --
-    -- Moved rather than reported separately, so it cannot fall off the end and needs no second section
-    -- competing for the same height. `piece` names the id so the panel can mark which row it is.
+    -- (THE PROMISED PIECE STOOD HERE.) A bounty named one item before it was taken -- "The Breachward
+    -- owes you a Relief Horn" -- and this moved that item to the head of `received` so the panel could
+    -- mark it and it could not be truncated off a list that caps at four. Nothing names a piece in
+    -- advance any more, so the field it set is always nil; ui/panels/advancement.lua still reads
+    -- `reward.piece` and simply never finds one, which is the correct behaviour for a promise nobody
+    -- makes rather than a branch to delete from the panel.
     local piece
-    local promised = quest.bounty and quest.bounty.piece
-    if promised then
-        for i, item in ipairs(received) do
-            if item and item.id == promised then
-                table.remove(received, i)
-                table.insert(received, 1, item)
-                piece = promised
-                break
-            end
-        end
-    end
 
     -- The companion, if this quest is the one that earns them. Player.recruit instantiates a fresh
     -- copy, levels them to the company's current prestige so a late recruit is not a liability, and

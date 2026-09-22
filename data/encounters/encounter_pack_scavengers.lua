@@ -22,7 +22,7 @@ return {
     name = "Scavengers",
     kind = "pack",
     weight = 0,
-    minDay = 1,
+    depth = 1,
     description = "Somebody found what you left. They have had time to sort it, try it on and decide " ..
         "which of them carries what, and they are not going to hand it back.",
 }

@@ -18,5 +18,5 @@ return {
     name = "The Dark",
     kind = "dark",
     weight = 0,
-    minDay = 1,
+    depth = 1,
 }

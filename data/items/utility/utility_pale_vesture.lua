@@ -28,7 +28,7 @@ return {
     type = "utility",
     tags = { "arcane" },
     class = "mage",
-    unlockLevel = 10,
+    unlockLevel = 8,
     activeAbility = {
         target = "self",
         range = 0,

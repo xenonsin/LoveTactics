@@ -14,8 +14,8 @@ return {
     type = "consumable",
     tags = { "restorative" },
     class = "warbrewer", -- fighter x alchemist; the Combat-draught mechanic's first stock
-    price = 295,
-    unlockLevel = 15,
+    price = 260,
+    unlockLevel = 13,
     activeAbility = {
         target = "self",
         range = 0,

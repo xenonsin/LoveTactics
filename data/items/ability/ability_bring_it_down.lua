@@ -26,8 +26,8 @@ return {
     type = "ability",
     tags = { "impact" },
     class = "saboteur",
-    price = 410,
-    unlockLevel = 7,
+    price = 255,
+    unlockLevel = 4,
     activeAbility = {
         target = "tile",
         range = 3,

@@ -10,7 +10,7 @@ return {
     sprite = "assets/items/padded_vest.png",
     type = "armor",
     class = "mage",
-    unlockLevel = 2,
+    unlockLevel = 4,
     tags = { "cloth" },
     -- Light tier: minimal protection, and a single square of pace.
     --

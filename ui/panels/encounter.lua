@@ -33,7 +33,6 @@ local BOX_W, BOX_H = 460, 240
 
 -- Verb shown on the resolve button for non-combat encounters.
 local RESOLVE_LABEL = {
-    town = "Enter",
     treasure = "Open",
     rest = "Rest",
 }

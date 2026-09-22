@@ -11,7 +11,7 @@ return {
     name = "The Wandering Chapter",
     kind = "elite",
     weight = 2,
-    minDay = 8,
+    depth = 4,
     composition = function(ctx)
         local list = {
             "character_necromancer",  -- payoff: every death on the board is its resource
@@ -20,7 +20,7 @@ return {
             "character_zombie",
             "character_zombie",
         }
-        for _ = 1, math.floor((ctx.day or 1) / 13) do list[#list + 1] = "character_zombie" end
+        for _ = 1, math.floor((ctx.depth or 1) / 5) do list[#list + 1] = "character_zombie" end
         return list
     end,
 }

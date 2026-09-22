@@ -26,8 +26,8 @@ return {
     type = "ability",
     tags = { "impact" },
     class = "barbarian", -- deeper cut of the shelf: buyable only once the barbarian gate is cleared
-    price = 575,
-    unlockLevel = 11,
+    price = 300,
+    unlockLevel = 5,
     activeAbility = {
         target = "self",
         range = 0,

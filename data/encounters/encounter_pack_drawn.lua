@@ -16,7 +16,7 @@ return {
     name = "Drawn to It",
     kind = "pack",
     weight = 0,
-    minDay = 1,
+    depth = 1,
     description = "Nothing down here has ever seen worked metal that was not swinging. The heap has " ..
         "been found, and the finders have settled into it.",
 }

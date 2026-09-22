@@ -30,7 +30,7 @@ return {
     type = "armor",
     tags = { "leather", "poison" },
     class = "alchemist",
-    unlockLevel = 5,
+    unlockLevel = 9,
     aura = {
         appliesTo = { "consumable" }, -- only what the wearer throws and drinks; never a weapon
         amountBonus = 3,

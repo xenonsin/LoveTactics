@@ -16,8 +16,8 @@ return {
     type = "ability",
     tags = { "utility" },
     class = "hunter",
-    price = 495,
-    unlockLevel = 9,
+    price = 170,
+    unlockLevel = 2,
     activeAbility = {
         target = "enemy",
         range = 3,

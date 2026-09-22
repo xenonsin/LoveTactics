@@ -16,15 +16,15 @@ return {
     type = "ability",
     tags = { "guile", "physical" },
     class = "rogue",
-    price = 575,
-    unlockLevel = 11,
+    price = 610,
+    unlockLevel = 12,
     activeAbility = {
         target = "enemy",
         range = 4,
         requiresSight = true,
         speed = 4,
         cost = { stat = "stamina", amount = 4 },
-        damage = Curve.ramp(12, 22),
+        damage = Curve.ramp(15, 25),
         effect = function(fx)
             local t = fx.target
             if not t then return end

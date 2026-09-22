@@ -25,7 +25,7 @@ return {
     type = "armor",
     tags = { "leather", "poison" },
     class = "alchemist",
-    unlockLevel = 9,
+    unlockLevel = 11,
     traits = { "trait_spiteful_ichor" },
     bonus = { defense = Curve.ramp(5, 15), movement = -1 },
     resist = { poison = 3 },

@@ -22,14 +22,14 @@ return {
     type = "ability",
     tags = { "dark", "magical" },
     class = "shaman",
-    price = 410,
-    unlockLevel = 7,
+    price = 520,
+    unlockLevel = 10,
     activeAbility = {
         target = "enemy",
         range = 3,
         speed = 5,
         cost = { stat = "mana", amount = 8 },
-        damage = Curve.ramp(11, 21),
+        damage = Curve.ramp(12, 22),
         counter = function(unit)
             local Curse = require("models.curse")
             local _, def = Curse.deepestOn(unit and unit.char)

@@ -9,7 +9,7 @@ return {
     type = "utility",
     tags = { "beast" },
     class = "beastmaster", -- deeper cut of the shelf: buyable only once the beastmaster gate is cleared
-    unlockLevel = 9,
+    unlockLevel = 11,
     traits = { "trait_wolf_companion" },
     -- a wolf from the first turn
     bonus = { damage = 1 },

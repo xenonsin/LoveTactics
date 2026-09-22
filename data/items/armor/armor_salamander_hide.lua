@@ -26,7 +26,7 @@ return {
     type = "armor",
     tags = { "hide", "fire" },
     class = "alchemist",
-    unlockLevel = 2,
+    unlockLevel = 1,
     bonus = { defense = Curve.ramp(3, 13), movement = -1 },
     resist = { fire = 6 },
 }

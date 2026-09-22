@@ -23,7 +23,7 @@ return {
     type = "armor",
     tags = { "cloth", "ice" },
     class = "alchemist",
-    unlockLevel = 2,
+    unlockLevel = 3,
     bonus = {
         magicDefense = Curve.ramp(3, 13),
         statusResist = 3,

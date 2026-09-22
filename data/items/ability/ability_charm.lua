@@ -16,8 +16,8 @@ return {
     type = "ability",
     tags = { "guile", "utility" },
     class = "thief", -- deeper cut of the shelf: buyable only once the thief gate is cleared
-    price = 660,
-    unlockLevel = 13,
+    price = 610,
+    unlockLevel = 12,
     activeAbility = {
         target = "enemy",
         range = 3,

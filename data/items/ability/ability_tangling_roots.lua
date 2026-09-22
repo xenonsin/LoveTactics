@@ -12,15 +12,15 @@ return {
     type = "ability",
     tags = { "nature", "magical" },
     class = "mage",
-    price = 410,
-    unlockLevel = 7,
+    price = 565,
+    unlockLevel = 11,
     activeAbility = {
         target = "enemy",
         range = 3,
         requiresSight = true, -- the roots have to reach a foe you can see
         speed = 4,
         cost = { stat = "mana", amount = 12 },
-        damage = Curve.ramp(10, 20), -- light: the root is the payload, not the hit
+        damage = Curve.ramp(14, 24), -- light: the root is the payload, not the hit
         effect = function(fx)
             fx.damage(fx.target, { inflicts = "status_root" })
         end,

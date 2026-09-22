@@ -63,7 +63,7 @@ function M.walkReference()
         local ref = Balance.unitFor(Balance.refChar(prestige))
         rows[#rows + 1] = {
             prestige = prestige,
-            level = Growth.levelForPrestige(prestige),
+            level = Balance.levelForRung(prestige),
             budget = budget,
             parts = parts,
             ceiling = Balance.forgeCeiling(Balance.REFERENCE.weapon, prestige),

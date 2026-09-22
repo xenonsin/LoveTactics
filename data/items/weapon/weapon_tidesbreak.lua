@@ -29,7 +29,7 @@ return {
     tags = { "spear", "pierce", "physical", "water", "melee" },
     hands = 2,
     class = "knight",
-    unlockLevel = 13,
+    unlockLevel = 14,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

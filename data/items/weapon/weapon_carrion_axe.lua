@@ -22,7 +22,7 @@ return {
     type = "weapon",
     tags = { "axe", "slash", "physical", "melee" },
     class = "fighter",
-    unlockLevel = 11,
+    unlockLevel = 12,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

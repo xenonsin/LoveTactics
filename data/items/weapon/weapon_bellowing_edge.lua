@@ -20,7 +20,7 @@ return {
     tags = { "greatsword", "slash", "physical", "melee" },
     hands = 2,
     class = "fighter",
-    unlockLevel = 12,
+    unlockLevel = 13,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

@@ -22,7 +22,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "battlemage",
-    unlockLevel = 3,
+    unlockLevel = 4,
     traits = { "trait_resonant_grip" },
     -- steel carrying a working is a magical weapon in the hand
     bonus = { magicDamage = 2 },

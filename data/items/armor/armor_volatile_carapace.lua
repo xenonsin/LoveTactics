@@ -30,7 +30,7 @@ return {
     type = "armor",
     tags = { "leather", "explosive" },
     class = "alchemist",
-    unlockLevel = 10,
+    unlockLevel = 14,
     traits = { "trait_volatile" },
     bonus = { defense = Curve.ramp(4, 14), movement = -1 },
     resist = { fire = 2 },

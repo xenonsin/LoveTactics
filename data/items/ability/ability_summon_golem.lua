@@ -31,8 +31,8 @@ return {
     type = "ability",
     tags = { "summon" },
     class = "alchemist",
-    price = 660,
-    unlockLevel = 14,
+    price = 650,
+    unlockLevel = 13,
     activeAbility = {
         target = "tile",
         range = 2,

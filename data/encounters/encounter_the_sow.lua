@@ -15,7 +15,7 @@
 -- What it is NOT is the rating being padded -- see the composition for why one cub and three cubs are
 -- the same single decision.
 --
--- minDay 6, behind encounter_bear's 2. The gate is real rather than aspirational: the road bear is what
+-- depth 6, behind encounter_bear's 2. The gate is real rather than aspirational: the road bear is what
 -- teaches Fury Swipes at a size that can be survived, and this is the first time the ramp arrives on a
 -- 2x2 body with a second one already working on your line. A company that meets her having never seen
 -- the wound deepen has been asked a question nobody set up.
@@ -28,7 +28,18 @@ return {
     name = "The Sow",
     kind = "elite",
     weight = 2, -- the Unseeing's weight: a road apex, met rarely
-    minDay = 6,
+    -- NO DEPTH GATE: ITS CIRCLE IS ITS PLACEMENT. The condition below locks this to one ground, and a
+    -- circle owns a fixed stratum -- so a depth on top of that is a second opinion about where it goes,
+    -- and it disagrees the moment the shuffle deals that circle at another depth (Descent.sinOrder).
+    -- It also gated Lust's own elites off Lust's own floors: converted from the retired calendar they
+    -- asked for floors three and four, and Lust owns one and two.
+    --
+    -- Which of a circle's floors a thing bills on is Descent.SINS' `elites` for the standing threat, and
+    -- `rung` for anything an author wants split across the approach and the seat.
+    -- LOCKED TO THE WOOD, which is the circle-lock rule arriving rather than a retune: humans
+    -- float to every floor and everything else belongs to exactly one circle. This was shared
+    -- road stock on all fifteen, and the beast band is Gluttony's identity now.
+    condition = function(ctx) return ctx.biome == "forest" end,
     composition = function(ctx)
         -- A LITTER, NOT A ROSTER. One cub early and up to three deep, because a fixed pair could not keep
         -- pace: a company grows floor on floor and Muster rates the OPENING roster, so the fight she was
@@ -42,7 +53,7 @@ return {
         -- would have to leave standing, which makes the merciful road cost more rather than cost
         -- differently. A sow raises one to three; this is the animal, not a budget.
         local list = { "character_sow" }
-        for _ = 1, 1 + math.floor((ctx.day or 1) / 14) do
+        for _ = 1, 1 + math.floor((ctx.depth or 1) / 5) do
             list[#list + 1] = "character_bear"
         end
         return list

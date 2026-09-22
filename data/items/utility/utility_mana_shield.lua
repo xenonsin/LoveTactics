@@ -39,7 +39,7 @@ return {
     type = "utility",
     tags = { "charm", "arcane" },
     class = "knight",
-    unlockLevel = 4,
+    unlockLevel = 5,
     -- Item-level, not an activeAbility keyword: it describes what carrying the thing does rather than
     -- what casting it does (compare `waitBehavior`, `statusImmunity`). Read by Combat.soakIntoMana.
     manaShield = { ratio = 1 },

@@ -18,14 +18,14 @@ return {
     type = "ability",
     tags = { "slash", "physical", "melee" },
     class = "fighter",
-    price = 165,
-    unlockLevel = 2,
+    price = 475,
+    unlockLevel = 9,
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 10 },
-        damage = Curve.ramp(6, 16),
+        damage = Curve.ramp(11, 21),
         effect = function(fx)
             -- The vulnerability rides the blow, so it is on the target the instant the wound is opened.
             fx.damage(fx.target, { inflicts = "status_vulnerable_slash" })

@@ -32,8 +32,8 @@ return {
     type = "ability",
     tags = { "arcane" },
     class = "knight",
-    price = 80,
-    unlockLevel = 0,
+    price = 210,
+    unlockLevel = 3,
     activeAbility = {
         target = "enemy",
         range = 6, -- long: the whole value is reaching the piece that just committed to a move

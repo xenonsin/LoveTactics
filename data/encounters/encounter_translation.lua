@@ -20,5 +20,5 @@ return {
     name = "The Translation",
     kind = "translation",
     weight = 0,
-    minDay = 1,
+    depth = 1,
 }

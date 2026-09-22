@@ -22,7 +22,7 @@ return {
     type = "utility",
     tags = { "charm", "holy" },
     class = "theurge",
-    unlockLevel = 2,
+    unlockLevel = 4,
     traits = { "trait_vigil_beads" },
     -- a channel nothing can break into
     bonus = { magicDefense = 2 },

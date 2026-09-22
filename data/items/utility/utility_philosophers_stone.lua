@@ -17,7 +17,7 @@ return {
     type = "utility",
     tags = { "arcane", "illusion" },
     class = "alchemist",
-    unlockLevel = 14,
+    unlockLevel = 15,
     noCopy = true,
     activeAbility = {
         target = "enemy",

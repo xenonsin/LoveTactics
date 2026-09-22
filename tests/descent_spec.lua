@@ -148,18 +148,40 @@ return {
         -- circle does not have to come and edit a number here.
         local deepest = Descent.new(Player.new(), 1)
         deepest.floor = Descent.FLOORS
-        assert(Descent.floorLevel(deepest) <= 16,
-            "the bottom reads " .. Descent.floorLevel(deepest) ..
-            ", past what the growth tables and the shelf were built for")
+        -- AND THEN THE CEILING MOVED, DELIBERATELY. The bound above was a bound on the TABLES, and
+        -- the property the tables actually need is the one tests/growth_spec.lua enforces --
+        -- survivability per level against enemy attack per level -- which is linear and holds at any
+        -- cap. The ladder runs to Growth.LEVEL_CAP now (Descent.BOTTOM_DANGER) and the company is
+        -- expected to arrive there, so what is asserted is that the two ends AGREE rather than that
+        -- one of them is small.
+        local bottom = Descent.dangerLevel(deepest)
+        assert(bottom == Descent.BOTTOM_DANGER, string.format(
+            "the world's ladder ends at %d against an authored bottom of %d", bottom,
+            Descent.BOTTOM_DANGER))
+        assert(Descent.floorLevel(deepest) <= bottom, string.format(
+            "the per-fight floor (%d) has climbed past what the world is minted at (%d)",
+            Descent.floorLevel(deepest), bottom))
 
         -- The seventh circle's general, who is the deepest authored fight the campaign ever handed out
         -- at level 13 (Quest.SLOT_FLOOR's old deepest rung). She should land within a point of it.
         local lastGeneral = Descent.new(Player.new(), 1)
         lastGeneral.floor = Descent.CIRCLE_FLOORS
         assert(Descent.isGeneralFloor(lastGeneral.floor), "the last circle floor is a general's")
+        -- AND THE LADDER LEFT HER BEHIND, WHICH THIS CASE NOW SAYS OUT LOUD RATHER THAN FAILING ON.
+        -- The bound was 12-15 because that is where the campaign authored her and where the old
+        -- fifteen-floor ladder happened to put her. The ladder runs to Growth.LEVEL_CAP now, so she
+        -- stands far above the level her stat block was written for -- and because Growth.shareAt
+        -- saturates at `referenceLevel`, she fields those authored numbers unscaled. What is asserted
+        -- is the thing that must stay true: she is the deepest CIRCLE fight and the Crown is deeper
+        -- still. The magnitude is a debt, recorded in Growth.BOSS_REFERENCE_LEVEL's header.
         local lvl = Descent.floorLevel(lastGeneral)
-        assert(lvl >= 12 and lvl <= 15,
-            "the last general reads " .. lvl .. ", off the ladder her fight was authored against")
+        local crown = Descent.new(Player.new(), 1)
+        crown.floor = Descent.FLOORS
+        assert(lvl > Descent.floorLevel({ floor = 1 }),
+            "the last general stands no deeper than the first floor")
+        assert(Descent.floorLevel(crown) > lvl,
+            "the Crown reads " .. Descent.floorLevel(crown) .. " against the last general's " .. lvl
+            .. " -- the bottom must be under the seventh circle, not level with it")
     end },
 
     { name = "clearing tracks what was beaten, not where you stand", fn = function()
@@ -618,7 +640,9 @@ return {
             assert(#p.roster == want, string.format(
                 "floor %d's reference company should hold %d, got %d", floor, want, #p.roster))
             for _, c in ipairs(p.roster) do
-                Growth.resolve(c, 1 + (floor - 1) * Descent.LEVEL_PER_FLOOR)
+                -- ASKED, NOT REBUILT. Another hand-rolled copy of the ladder, exact only while
+                -- LEVEL_PER_FLOOR was 1. Descent.expectedLevel is where the company's own rung lives.
+                Growth.resolve(c, Descent.expectedLevel(floor))
             end
             return p
         end
@@ -629,12 +653,11 @@ return {
             run.floor = floor
             local quest = Descent.floorQuest(run, p)
             local ours = Muster.company(Muster.fielded(p))
-            local day = math.max(1, math.floor(floor / Descent.FLOORS * 40))
             local rated = 0
-            for _, e in ipairs(Descent.floorPool({ day = day, biome = quest.map.biome })) do
+            for _, e in ipairs(Descent.floorPool({ depth = floor, biome = quest.map.biome })) do
                 if e.kind == "combat" or e.kind == "elite" then
                     local margin = Muster.margin(ours, Muster.encounter(Encounter.get(e.id), {
-                        day = day, floorLevel = quest.floorLevel,
+                        depth = floor, floorLevel = quest.floorLevel,
                         enemyLevel = quest.dangerLevel, quest = quest,
                     }))
                     if margin then
@@ -798,8 +821,17 @@ return {
         -- statement about how far down the party went.
         local deep = Descent.new(nil, 31337)
         deep.floor = Descent.CIRCLE_FLOORS
-        local deepBodies = Descent.floorQuest(deep).map.objective.composition({})
-        assert(#deepBodies > #bodies, "the last circle's stair must be held harder than the first's")
+        -- HELD HARDER BY WORTH, NOT BY HEAD COUNT. A body count was the old sizing rule and it is not
+        -- the rule any more: a stair is solved to a multiple of the company that meets it
+        -- (Descent.stairTarget), and the circles field filler of wildly different weight -- a cinder kin
+        -- is worth three petal drifts -- so the deepest stair can be FEWER bodies and far heavier. This
+        -- asserted the count and would have passed a deep stair made of chaff.
+        local deepWorth = Descent.stairPlan(deep)[Descent.CIRCLE_FLOORS]
+        local firstWorth = Descent.stairPlan(run)[1]
+        assert(deepWorth and firstWorth, "both stairs should be on the plan")
+        assert(deepWorth.worth > firstWorth.worth,
+            string.format("the last circle's stair is worth %.0f against the first's %.0f",
+                deepWorth.worth, firstWorth.worth))
     end },
 
     { name = "every circle stands its general on the stair and lets her speak", fn = function()

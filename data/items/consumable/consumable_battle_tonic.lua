@@ -26,8 +26,8 @@ return {
     type = "consumable",
     tags = { "draught", "restorative" },
     class = "warbrewer",
-    price = 265,
-    unlockLevel = 13,
+    price = 155,
+    unlockLevel = 7,
     maxStack = 3,
     activeAbility = {
         target = "self",

@@ -21,7 +21,7 @@ return {
     type = "utility",
     tags = { "charm", "illusion" },
     class = "ninja",
-    unlockLevel = 5,
+    unlockLevel = 8,
     traits = { "trait_substitution" },
     -- the blow lands on a clone, which from outside looks like luck
     bonus = { luck = 2 },

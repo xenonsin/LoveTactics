@@ -59,7 +59,7 @@ return {
     type = "weapon",
     tags = { "dagger", "pierce", "physical", "melee" },
     class = "rogue",
-    unlockLevel = 14,
+    unlockLevel = 15,
     -- RIFT-ONLY. It comes off the body and nowhere else: no counter deals one however many
     -- the company carries out, and none will buy one back (docs/drops.md, Vendor.foundPrice).
     unstocked = true,
@@ -69,7 +69,7 @@ return {
         range = 1,
         speed = 2, -- quick, like every dagger
         cost = { stat = "stamina", amount = 5 },
-        damage = Curve.ramp(14, 24), -- an iron dagger's exactly: the second strike is what you are buying
+        damage = Curve.ramp(15, 25), -- an iron dagger's exactly: the second strike is what you are buying
         effect = function(fx)
             local target = fx.target
             if not target then return end

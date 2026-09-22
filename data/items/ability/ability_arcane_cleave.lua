@@ -12,14 +12,14 @@ return {
     type = "ability",
     tags = { "magical", "fire" }, -- magical: routes through magicDefense; fire: the element it carries
     class = "battlemage", -- fighter x mage; the Spellstrike mechanic's first stock
-    price = 660,
-    unlockLevel = 13,
+    price = 565,
+    unlockLevel = 11,
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 8 },
-        damage = Curve.ramp(15, 25),
+        damage = Curve.ramp(13, 23),
         effect = function(fx)
             fx.damage(fx.target, { inflicts = "status_burn" })
         end,

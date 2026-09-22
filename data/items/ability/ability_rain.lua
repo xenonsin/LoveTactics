@@ -10,8 +10,8 @@ return {
     sprite = "assets/items/ability_rain.png",
     type = "ability",
     class = "mage",
-    price = 575,
-    unlockLevel = 11,
+    price = 345,
+    unlockLevel = 6,
     tags = { "water", "magical" },
     activeAbility = {
         target = "tile",

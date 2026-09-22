@@ -27,7 +27,7 @@ return {
     type = "armor",
     tags = { "plate" },
     class = "fighter",
-    unlockLevel = 9,
+    unlockLevel = 6,
     traits = { "trait_blood_fever" },
     bonus = { defense = Curve.ramp(5, 15), movement = -1 },
     resist = { slash = 2 },

@@ -28,8 +28,8 @@ return {
     type = "ability",
     tags = { "dark" },
     class = "mammonite", -- an earner: the half of the shelf that opens with the gate itself
-    price = 245,
-    unlockLevel = 3,
+    price = 170,
+    unlockLevel = 2,
     activeAbility = {
         target = "enemy",
         range = 6,

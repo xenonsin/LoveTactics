@@ -11,7 +11,7 @@ return {
     type = "armor",
     tags = { "plate" },
     class = "sentinel", -- the Intercept mechanic itself -- soak the blow aimed at the ally beside you
-    unlockLevel = 8,
+    unlockLevel = 4,
     traits = { "trait_oathward" },
     bonus = { defense = Curve.ramp(6, 16), movement = -1 },
     resist = { physical = 2 },

@@ -23,8 +23,8 @@ return {
     type = "consumable", -- a coating: the vial empties as the blade beside it is used
     tags = { "poison", "coating" },
     class = "poisoner", -- deeper cut of the shelf: buyable only once the poisoner gate is cleared
-    price = 130,
-    unlockLevel = 5,
+    price = 225,
+    unlockLevel = 11,
     aura = {
         appliesTo = { "weapon", "ability" }, -- which neighbor types the toxin coats
         exceptTags = { "restorative" },      -- a healing draught is not turned into a poison

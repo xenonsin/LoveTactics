@@ -32,8 +32,8 @@ return {
     type = "ability",
     tags = { "holy", "magical" },
     class = "exorcist", -- deeper cut of the shelf: buyable only once the exorcist gate is cleared
-    price = 660,
-    unlockLevel = 13,
+    price = 520,
+    unlockLevel = 10,
     activeAbility = {
         target = "tile",
         allowOccupied = true,
@@ -41,7 +41,7 @@ return {
         requiresSight = true,
         speed = 3,
         cost = { stat = "mana", amount = 11 },
-        damage = Curve.ramp(16, 26),
+        damage = Curve.ramp(13, 23),
         requiresAdjacent = { tag = "staff" },
         effect = function(fx)
             local body = fx.unitAt(fx.tx, fx.ty)

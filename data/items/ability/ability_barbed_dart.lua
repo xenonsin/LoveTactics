@@ -19,8 +19,8 @@ return {
     type = "ability",
     tags = { "pierce", "physical", "ranged" },
     class = "hunter",
-    price = 575,
-    unlockLevel = 11,
+    price = 520,
+    unlockLevel = 10,
     activeAbility = {
         target = "enemy",
         range = 4,

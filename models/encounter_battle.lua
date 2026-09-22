@@ -19,7 +19,6 @@
 local Arena = require("models.arena")
 local Combat = require("models.combat")
 local Growth = require("models.growth")
-local Calendar = require("models.calendar") -- the world fights at the day's level
 local Item = require("models.item")
 local Spoils = require("models.spoils")
 local EncounterModel = require("models.encounter")
@@ -165,17 +164,17 @@ function EncounterBattle.build(opts)
     -- `encounterKind` picks the fight TIER (Arena.enemyCap): an ordinary road stop is a small skirmish,
     -- a guardian or an objective a set-piece. It must be threaded here as well as in states/battle.lua
     -- or the walk-off would resolve a differently sized fight from the one it stands in for.
-    local ctx = { day = opts.day or 1, biome = opts.biome, quest = opts.quest,
+    local ctx = { depth = opts.depth or 1, rung = opts.rung, biome = opts.biome, quest = opts.quest,
         generalsStanding = opts.generalsStanding,
         encounterKind = opts.encounter and opts.encounter.kind }
     local arena = Arena.build(ctx, EncounterBattle.spec(opts, partyIds, seed))
 
-    -- The world fights at the level its own CLOCK sets, not at one derived from the company: that is
-    -- what makes a squandered day a day the world pulled ahead (models/calendar.lua). The campaign's
-    -- clock is the calendar; a descent's is depth, and it passes `enemyLevel` outright
-    -- (Descent.dangerLevel). This is the walk-off's own build, so it has to read the same number
-    -- states/battle.lua does or auto-resolving would settle a different fight from the one on the tile.
-    local enemyLevel = opts.enemyLevel or Calendar.dangerLevel(opts.day or 1)
+    -- The world fights at the level DEPTH sets, and that is the whole clock now: the campaign's
+    -- calendar is deleted and a floor's own danger is what a fight is minted at (Descent.dangerLevel).
+    -- This is the walk-off's own build, so it has to read the same number states/battle.lua does or
+    -- auto-resolving would settle a different fight from the one standing on the tile.
+    local enemyLevel = opts.enemyLevel
+        or require("models.descent").dangerLevel({ floor = opts.depth or 1 })
     local partyUnits, enemyUnits = {}, {}
     -- Escorted allies fight on the party's side but are not the player's characters, so they get
     -- fresh instances and run themselves -- scaled like the far side, not left at level 1.
@@ -288,7 +287,7 @@ function EncounterBattle.spoils(opts)
     if kind == "combat" or kind == "elite" then
         spoils = Spoils.roll({
             enemyUnits = opts.enemyUnits,
-            day = opts.day,
+            depth = opts.depth,
             -- How deep this stop is, on a descent. Nil in the campaign, where the day carries the
             -- same job -- see Spoils.roll, which takes the larger of the two.
             floorLevel = opts.floorLevel,
@@ -363,7 +362,7 @@ function EncounterBattle.spoils(opts)
         -- in Quest.complete: it is what the fight LEFT, not what the job paid. The general is the
         -- archetypal end, so refusing him one would exempt the richest stop in the run from the seam the
         -- campaign's income is weighted onto. It stood here as a valuable before the objects went.
-        spoils = { gold = Spoils.endPurse("general", opts.floorLevel or opts.day),
+        spoils = { gold = Spoils.endPurse("general", opts.floorLevel or opts.depth),
         loot = {}, materials = Spoils.materials({
             kind = kind, tier = encounter.tier, houseMaterial = opts.houseMaterial,
             -- A general's chamber has crates in it like anywhere else, and the fight you came for is

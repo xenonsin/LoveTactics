@@ -19,6 +19,7 @@ local Encounter = require("models.encounter")
 local EncounterBattle = require("models.encounter_battle")
 local Muster = require("models.muster")
 local Player = require("models.player")
+local Descent = require("models.descent")
 
 -- Every roadside blueprint that can actually be rolled onto a board, by kind.
 --
@@ -98,16 +99,16 @@ return {
         -- a nine-body fight the board then fielded as four, every marker on the map would be wrong in
         -- the same direction -- and the walk-off would refuse fights it should have offered.
         local def = Encounter.get("encounter_wolf")
-        local ctx = { day = 200 }
+        local ctx = { depth = Descent.FLOORS }
         local rated = Muster.encounter(def, ctx)
 
         local Growth = require("models.growth")
         local ids = Arena.clampComposition(
-            Arena.resolveComposition(def.composition, { day = 200, encounterKind = def.kind }),
+            Arena.resolveComposition(def.composition, { depth = Descent.FLOORS, encounterKind = def.kind }),
             Arena.SKIRMISH_CAP)
         local byHand = 0
         for _, id in ipairs(ids) do
-            byHand = byHand + Muster.rate(Growth.spawn(id, require("models.calendar").dangerLevel(200), nil))
+            byHand = byHand + Muster.rate(Growth.spawn(id, Descent.dangerLevel({ floor = Descent.FLOORS }), nil))
         end
         assert(rated == byHand, "the marker's rating is the skirmish's, not the raw composition's")
     end },
@@ -221,12 +222,18 @@ return {
         -- The budget is in UNIT-TURNS, which is what the model counts. models/autobattle.lua's own
         -- header puts an ordinary trail fight "inside forty".
         --
-        -- MEASURED at prestige 20 -- chosen because that is where the cap actually BITES; the
-        -- compositions are small enough at low prestige that both tiers look identical, and a case run
-        -- there would have passed while proving nothing. At the set-piece cap these fights average
-        -- ~20 unit-turns; at the skirmish cap, **~12**. The budget carries roughly 1.5x headroom over
-        -- the worst single fight. It is a guard against an ordinary stop growing back into a
-        -- set-piece, not a tuning target to be nudged whenever it fails.
+        -- MEASURED AT ONE DEPTH, and depth 11 is the pick: deep enough that every composition has
+        -- opened to its full body count (the shallow ones are two-and-three-body fights where both
+        -- tiers look identical, and a case run there would pass while proving nothing), shallow enough
+        -- to still be ordinary traffic rather than the floor under the Crown. Swept across depths 3, 11
+        -- and 15 while this was rebuilt, the SHAPE does not move -- the monster fights sit at six to
+        -- eight unit-turns at every depth and the human warbands run long at every depth -- so one
+        -- reference depth is honest here and a sweep would only cost minutes to say the same thing.
+        --
+        -- The budget carries roughly 1.5x headroom over the worst single monster fight. It is a guard
+        -- against an ordinary stop growing back into a set-piece, not a tuning target to be nudged
+        -- whenever it fails.
+        local DEPTH = 11
         local BUDGET = SKIRMISH_TURN_BUDGET
         -- The recorded debt, and the reason this case can be honest without being red. See that file's
         -- header for how twenty-four fights were over budget with nobody noticing.
@@ -236,12 +243,21 @@ return {
         -- A company that has actually reached this depth, not a fresh one. Levelled by BANKING the
         -- experience it would have earned getting here rather than by setting prestige -- prestige no
         -- longer moves anybody's level (models/experience.lua is the only ladder now).
+        --
+        -- FOUR BODIES, AND THE SAME FOUR THE FLOOR WAS PRICED AGAINST (Descent.COMPANY). This read
+        -- `Player.new()` and fielded ONE: the starting roster is Rowan alone, so every number this case
+        -- ever recorded was a single body against three-to-four, and what it timed was how long she took
+        -- to die rather than how long the fight ran. The prose two cases up already said "four fielded
+        -- against a skirmish cap of four" -- the assertion and the setup had drifted apart, and the
+        -- backlog underneath (tests/support/slow_road_fights.lua) was a list of losses.
         local Experience = require("models.experience")
-        local function companyAtDepth()
+        local Descent = require("models.descent")
+        local function companyAtDepth(depth)
             local player = Player.new()
-            player.day = 20
+            player.roster = {}
+            for _, id in ipairs(Descent.COMPANY) do Player.recruit(player, id) end
             for _, char in ipairs(player.roster) do
-                Experience.award(char, Experience.totalFor(11))
+                Experience.award(char, Experience.totalFor(Descent.expectedLevel(depth)))
             end
             Player.resolveLevels(player)
             return player
@@ -249,7 +265,7 @@ return {
 
         local worst, worstId = 0, nil
         for _, e in ipairs(weightedByKind("combat")) do
-            local player = companyAtDepth()
+            local player = companyAtDepth(DEPTH)
             if love and love.math and love.math.setRandomSeed then love.math.setRandomSeed(20260809)
             else math.randomseed(20260809) end
             -- The encounter is passed in CELL shape -- `{ id, kind }` -- because that is what the
@@ -258,7 +274,7 @@ return {
             -- and silently builds a one-bandit default fight, which is a measurement of nothing.
             local built = EncounterBattle.build({
                 encounter = { id = e.id, kind = e.def.kind },
-                biome = "forest", day = 20,
+                biome = "forest", depth = DEPTH,
                 party = player.roster, seed = 20260809,
             })
             -- Guard the harness itself: if the composition ever stops reaching the arena, every number

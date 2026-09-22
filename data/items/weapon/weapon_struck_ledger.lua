@@ -27,7 +27,7 @@ return {
     tags = { "bow", "pierce", "physical", "ranged" },
     hands = 2,
     class = "hunter",
-    unlockLevel = 10,
+    unlockLevel = 12,
     activeAbility = {
         target = "enemy",
         range = 3,

@@ -22,8 +22,8 @@ return {
     type = "ability",
     tags = { "holy" },
     class = "paladin",
-    price = 165,
-    unlockLevel = 1,
+    price = 255,
+    unlockLevel = 4,
     activeAbility = {
         target = "self",
         range = 0,

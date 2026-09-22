@@ -15,7 +15,7 @@ return {
     type = "utility",
     tags = { "arcane" },
     class = "spellbreaker", -- knight x mage; Counterspell -- the aimed spell is unravelled outright
-    unlockLevel = 7,
+    unlockLevel = 8,
     traits = { "trait_counter_magic" },
     -- unravelling a spell aimed at you
     bonus = { magicDefense = 2 },

@@ -10,7 +10,7 @@ return {
     name = "The Writ",
     kind = "combat",
     weight = 3,
-    minDay = 5, -- an execution company is not what the road opens with
+    depth = 3, -- an execution company is not what the road opens with
     composition = function(ctx)
         local list = {
             "character_inquisitor", -- setup: marks one of yours
@@ -18,7 +18,7 @@ return {
             "character_exorcist",   -- multiplier: takes the wards away from the answer
             "character_crusader",   -- the line, holding the ground between you and the blade
         }
-        for _ = 1, math.floor((ctx.day or 1) / 14) do list[#list + 1] = "character_crusader" end
+        for _ = 1, math.floor((ctx.depth or 1) / 5) do list[#list + 1] = "character_crusader" end
         return list
     end,
 }

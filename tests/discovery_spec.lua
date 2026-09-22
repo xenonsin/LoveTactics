@@ -53,6 +53,11 @@ local TROPHIES = {
     -- a counter dealing one would not merely shortcut a chase, it would sell the ONLY thing in the game
     -- that widens the carry ceiling to a company that never opened a wrong lid.
     "utility_still_hungry",
+    -- The Ancient Stag's three (data/characters/character_stag_beast.lua). The hide is the animal
+    -- tanned; the other two are its RULES learned rather than looted -- the same split Feral Instinct
+    -- and the Reprisal Quiver already are -- so what a counter would be dealing is the answer to the
+    -- fight rather than a piece of the body.
+    "armor_bellowhide", "utility_the_close_herd", "utility_lowered_crown",
 }
 
 local function vendorFor(class)

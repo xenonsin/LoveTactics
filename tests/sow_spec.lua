@@ -365,28 +365,37 @@ return {
 
             assert(exam.kind == "elite", "she is judged as an elite, not held to the road budget")
             assert(lesson.kind == "combat", "the road bear is an ordinary stop")
-            assert(exam.minDay > lesson.minDay, string.format(
-                "the ramp must be taught (day %s) before it is examined (day %s)",
-                tostring(lesson.minDay), tostring(exam.minDay)))
+            -- IN WEIGHT, because neither carries a gate any more. Both are Gluttony's and the circle
+            -- is their placement (models/encounter.lua's `rung` note) -- so "taught before examined"
+            -- cannot be a depth comparison; on the wood's two floors they are both always eligible.
+            --
+            -- What it IS is how often each turns up. The bear is ordinary traffic and the Sow is one of
+            -- the circle's spare elites, so a company meets the lesson many times before the exam --
+            -- and the elite band is weighted far under the billed threat besides
+            -- (Descent.ELITE_NAMED_WEIGHT). Asserted on the blueprints' own weights, which is where the
+            -- authored intent actually lives.
+            assert(lesson.weight > exam.weight, string.format(
+                "the ramp must be met more often (weight %s) than it is examined (weight %s)",
+                tostring(lesson.weight), tostring(exam.weight)))
 
             -- Every body either fight names is real, and hers is the pair the design is about.
             -- One sow, a litter of cubs, and no filler. The count of cubs climbs with depth so the
             -- fight stays rateable, but nothing else may join it: the decision is about the cubs.
-            for _, day in ipairs({ 6, 20, 40 }) do
+            for _, depth in ipairs({ 1, 4, 8, 15 }) do
                 local roster = exam.composition({ day = day })
                 local sows, cubs = 0, 0
                 for _, id in ipairs(roster) do
                     assert(Character.defs[id], id .. " is a real blueprint")
                     if id == "character_sow" then sows = sows + 1
                     elseif id == "character_bear" then cubs = cubs + 1
-                    else error("day " .. day .. " fields " .. id .. " -- she brings no filler") end
+                    else error("floor " .. depth .. " fields " .. id .. " -- she brings no filler") end
                 end
-                assert(sows == 1, "day " .. day .. " fields " .. sows .. " sows; there is one mother")
-                assert(cubs >= 1, "day " .. day .. " fields no cub -- the offer IS the cub")
+                assert(sows == 1, "floor " .. depth .. " fields " .. sows .. " sows; there is one mother")
+                assert(cubs >= 1, "floor " .. depth .. " fields no cub -- the offer IS the cub")
             end
-            assert(#exam.composition({ day = 40 }) > #exam.composition({ day = 1 }),
+            assert(#exam.composition({ depth = 15 }) > #exam.composition({ depth = 1 }),
                 "the litter has to grow, or a deep company can walk past her")
-            for _, id in ipairs(lesson.composition({ day = 1 })) do
+            for _, id in ipairs(lesson.composition({ depth = 1 })) do
                 assert(id == "character_bear", "the lesson fields bears and nothing else")
             end
         end,

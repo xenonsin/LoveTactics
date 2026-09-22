@@ -32,7 +32,7 @@ return {
             name = "The Vault Door",
             composition = function(ctx)
                 local list = { "character_bandit_chief" }
-                for i = 1, 1 + math.floor((ctx.day or 1) / 2) do list[#list + 1] = "character_champion" end
+                for i = 1, 1 + math.floor((ctx.depth or 1) / 1) do list[#list + 1] = "character_champion" end
                 return list
             end,
             win = { type = "assassinate", target = "character_bandit_chief",

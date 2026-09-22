@@ -21,8 +21,8 @@ return {
     type = "ability",
     tags = { "trap", "fire" },
     class = "bombardier", -- deeper cut of the shelf: buyable only once the bombardier gate is cleared
-    price = 245,
-    unlockLevel = 3,
+    price = 390,
+    unlockLevel = 7,
     activeAbility = {
         target = "tile",
         range = 3,

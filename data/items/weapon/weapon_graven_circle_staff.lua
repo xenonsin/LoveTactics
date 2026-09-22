@@ -27,7 +27,7 @@ return {
     type = "weapon",
     tags = { "staff", "magical", "arcane", "melee" },
     class = "mage",
-    unlockLevel = 6,
+    unlockLevel = 9,
     waitBehavior = {
         kind = "focus",
         mana = Curve.ramp(7, 17),
@@ -42,7 +42,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 6 },
-        damage = Curve.ramp(8, 18),
+        damage = Curve.ramp(10, 20),
         effect = function(fx)
             fx.damage(fx.target)
         end,

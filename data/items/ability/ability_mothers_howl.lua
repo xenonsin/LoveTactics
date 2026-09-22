@@ -32,7 +32,7 @@ return {
     type = "ability",
     tags = { "beast", "fear", "summon" },
     class = "hunter",
-    unlockLevel = 14,
+    unlockLevel = 15,
     -- RIFT-ONLY. It comes off the body and nowhere else: no counter deals one however many
     -- the company carries out, and none will buy one back (docs/drops.md, Vendor.foundPrice).
     unstocked = true,

@@ -28,7 +28,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "mammonite", -- an earner: the half of the shelf that opens with the gate itself
-    unlockLevel = 2,
+    unlockLevel = 3,
     traits = { "trait_skimmers_cut" },
     -- "The share the man who thins the coins keeps." A skim is a margin taken off the top of something
     -- that was going to happen anyway, which is exactly the shape of Luck: it is not power, it is the

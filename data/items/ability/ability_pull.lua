@@ -16,8 +16,8 @@ return {
     sprite = "assets/items/ability_pull.png",
     type = "ability",
     class = "bulwark",
-    price = 575,
-    unlockLevel = 11,
+    price = 255,
+    unlockLevel = 4,
     tags = { "impact", "physical" },
     activeAbility = {
         target = "tile",       -- a tile in reach, so what is hauled in may be a body or furniture

@@ -22,7 +22,7 @@ return {
     type = "armor",
     tags = { "leather" },
     class = "rogue",
-    unlockLevel = 5,
+    unlockLevel = 6,
     traits = { "trait_opportunist" },
     bonus = { defense = Curve.ramp(3, 13), movement = -1 },
 }

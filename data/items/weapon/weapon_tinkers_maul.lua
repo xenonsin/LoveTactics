@@ -20,7 +20,7 @@ return {
     tags = { "hammer", "impact", "physical", "melee" },
     hands = 2, -- a two-handed maul, as every hammer is
     class = "fighter",
-    unlockLevel = 12,
+    unlockLevel = 13,
     activeAbility = {
         target = "enemy",
         range = 1,

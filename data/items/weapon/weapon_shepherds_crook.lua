@@ -41,7 +41,7 @@ return {
     type = "weapon",
     tags = { "mace", "impact", "physical", "melee" },
     class = "knight",
-    unlockLevel = 10,
+    unlockLevel = 11,
     activeAbility = {
         target = "enemy",
         range = 1, -- the hook has to reach: the target starts adjacent, as Charge's pin does

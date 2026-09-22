@@ -10,8 +10,8 @@ return {
     type = "ability",
     tags = { "holy" },
     class = "paladin", -- knight x priest; the Ward-aura mechanic's first stock
-    price = 165,
-    unlockLevel = 1,
+    price = 565,
+    unlockLevel = 11,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

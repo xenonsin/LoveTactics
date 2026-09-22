@@ -452,6 +452,36 @@ end
 -- tools/balance_report.lua prints it beside the budget, so the headroom is visible as headroom.
 Balance.FORGE_BASELINE = 0
 
+-- ---------------------------------------------------------------------------
+-- WHAT LEVEL A BODY CARRYING RUNG-R GEAR IS
+-- ---------------------------------------------------------------------------
+--
+-- `prestige` in this file is a RUNG, not a character level. Everything here compares it against
+-- `unlockLevel` (Balance.progressedWeapon's `slot <= prestige`), which runs 0..Class.CLASS_LEVEL_CAP --
+-- one rung per floor of the rift. What the budget actually needs is the LEVEL of the body standing on
+-- that floor, and the two are different questions.
+--
+-- IT ASKED Growth.levelForPrestige, WHICH ANSWERS A THIRD ONE. That maps a campaign's accrued prestige
+-- to a level at two prestige per level, so the shelf's top rung came back as level EIGHT. The rift
+-- fields level fifty there. Every attack budget, every armour share and every time-to-kill band in this
+-- file was therefore priced for a body a third the size of the one that meets the fight -- which is the
+-- whole of why gear stopped keeping pace when the ladder was re-cut.
+--
+-- SO IT ASKS THE RIFT. Descent.expectedLevel is the company's own rung, derived from the experience
+-- curve rather than authored (see its header), so this moves whenever the ladder does and cannot drift
+-- from it.
+--
+-- DELIBERATELY NOT A CHANGE TO Growth.levelForPrestige ITSELF. That function still answers its own
+-- question honestly and models/grade.lua reads it at a FIXED standing (Grade.PRESTIGE) to grade the
+-- catalogue -- a ruler that must not move when the thing it measures does. Re-pointing it there would
+-- re-tier every item in the game, which is a different pass and not this one.
+--
+-- Required lazily: models/descent.lua pulls this file in through models/spoils.lua, so a top-level
+-- require would close a cycle.
+function Balance.levelForRung(rung)
+    return require("models.descent").expectedLevel(rung or 1)
+end
+
 -- The pre-mitigation power the reference loadout throws at prestige P: the wielder's attack stat plus
 -- the weapon's power AS BOUGHT (Balance.FORGE_BASELINE), not as forged.
 --
@@ -472,7 +502,7 @@ function Balance.attackBudget(prestige, opts)
     local magical = opts.magical
     if magical == nil then magical = (probe and probe.magical) or false end
 
-    local level = Growth.levelForPrestige(prestige)
+    local level = Balance.levelForRung(prestige)
     local char
     if charId == Balance.REFERENCE.charId then
         -- Grown into what it swings, and memoized, via the one owner of that rule.
@@ -820,7 +850,7 @@ function Balance.exchange(prestige, charOrId, probeOrTags, opts)
     local probe = Balance.probe(probeOrTags or "slash")
     local tags = probe.tags
 
-    local level = opts.level or Growth.levelForPrestige(prestige)
+    local level = opts.level or Balance.levelForRung(prestige)
     local unit = Balance.unitFor(charOrId, level)
     -- The same reference the budget was priced from, grown the same way -- a caster measured with a
     -- fighter-grown body's armour would be comparing two different people.
@@ -873,7 +903,7 @@ end
 -- character 108 x 4 times is not free.
 local refCache = {}
 function Balance.refChar(prestige, growthClass)
-    local level = Growth.levelForPrestige(prestige)
+    local level = Balance.levelForRung(prestige)
     local key = level .. "/" .. tostring(growthClass)
     if refCache[key] then return refCache[key] end
 

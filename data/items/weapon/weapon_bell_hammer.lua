@@ -19,7 +19,7 @@ return {
     type = "weapon",
     tags = { "mace", "impact", "physical", "melee" },
     class = "knight",
-    unlockLevel = 8,
+    unlockLevel = 6,
     activeAbility = {
         target = "enemy",
         range = 1,

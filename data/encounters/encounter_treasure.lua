@@ -20,6 +20,6 @@ return {
     name = "Treasure Chest",
     kind = "treasure",
     weight = 1,
-    minDay = 1,
+    depth = 1,
     loot = { "consumable_healing_potion" },
 }

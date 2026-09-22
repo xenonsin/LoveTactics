@@ -27,8 +27,8 @@ return {
     type = "ability",
     tags = { "impact", "physical" },
     class = "fighter",
-    price = 80,
-    unlockLevel = 0,
+    price = 345,
+    unlockLevel = 6,
     activeAbility = {
         target = "tile",
         allowOccupied = true, -- the lane may start on a body (pin and drive) or on open ground (run it)

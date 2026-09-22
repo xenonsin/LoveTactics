@@ -37,7 +37,7 @@ return {
     -- Its grade rank, which is what models/balance.lua measures the magnitude against. A found weapon
     -- keeps both its class and its rung; left at 0 this reads as a slot-0 item swinging a 15 and fails
     -- the ladder outright.
-    unlockLevel = 14,
+    unlockLevel = 15,
     -- THE BOAR'S OWN CHASE, and deep because the spear is worth it rather than to make it rare. Its
     -- list-mate (armor_bristlehide, rank 3) is the piece a company meets in its first week; this is the
     -- one they are still hoping for in their fifth. Reachable because a boar is ungated and keeps

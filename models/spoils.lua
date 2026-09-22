@@ -522,7 +522,11 @@ function Spoils.rankBand(opts)
 
     if opts.floorLevel then
         local Descent = require("models.descent")
-        local floor = (opts.floorLevel or 0) / math.max(1, Descent.LEVEL_PER_FLOOR)
+        -- ASKED, NOT DIVIDED. This was `floorLevel / Descent.LEVEL_PER_FLOOR`, exact only while that
+        -- constant was 1 and a floor rose by exactly one level. The ladder runs to the cap now and the
+        -- constant is a fractional average, so the division would have kept returning a plausible
+        -- number and been wrong at both ends. Descent.floorOf is the ramp walked backwards.
+        local floor = Descent.floorOf(opts.floorLevel)
         -- FROM THE FIRST FLOOR TO THE LAST, not from nothing to the last. It was `floor / FLOORS`,
         -- which starts a fifteenth of the way up and so can never reach the bottom rung -- and the
         -- bottom rung is where the fold put the opening rack (tools/ladder_fold pins band 0 to rung 0).
@@ -533,22 +537,16 @@ function Spoils.rankBand(opts)
         -- cap, so the ramp uses the whole ladder rather than a fifteen-sixteenths slice of it.
         progress = (floor - 1) / math.max(1, Descent.FLOORS - 1)
     else
-        -- THE ROAD'S CLOCK, RE-BASED THE SAME WAY THE STACK'S WAS, and it has to be or the two
-        -- disagree about where a body's own kit sits. This read `day / DAYS` straight, which on the
-        -- old eight-rung ladder put day 3 on rung 1 -- exactly where a bandit's opening-rack sword
-        -- sat, because a priced item's depth was `unlockQuests + 1`. The fold took that `+ 1` out
-        -- (tools/ladder_fold unified on the GATE reading), so the same sword is rung 0 now and a
-        -- mapping left alone pointed the first week of the road one rung ABOVE everything the bodies
-        -- walking it carry. Measured, loot off a beaten roster fell to 27% of drops against a design
-        -- that promises most of them.
+        -- (THE ROAD'S CLOCK STOOD HERE.) A caller outside the stack used to bucket on the campaign's
+        -- forty days. There is no campaign and no calendar, and every caller that pays loot is standing
+        -- on a floor -- so a caller that names no depth is a FIXTURE rather than a place, and the
+        -- honest answer for a fixture is the opening rack.
         --
-        -- So the road is bucketed on the ladder it was authored against and the bucket is restretched,
-        -- which is the same correction `progress` above makes for the stack: the opening stretch of
-        -- the campaign centres on the opening rack, and the last day reaches the cap.
-        local Calendar = require("models.calendar")
-        local days = math.max(1, Calendar.DAYS or 40)
-        local bucket = math.ceil(math.max(0, math.min(1, (opts.day or 1) / days)) * Spoils.LADDER_REF)
-        progress = math.max(0, bucket - 1) / math.max(1, Spoils.LADDER_REF - 1)
+        -- STATED RATHER THAN LEFT TO THE DECLARATION, which is the bug this comment replaced: `progress`
+        -- is declared without a value, so deleting the branch that set it left it nil and the clamp
+        -- below raised on the next unstamped caller. A branch that means "nothing to read here" has to
+        -- say what it answers instead of trailing off.
+        progress = 0
     end
 
     progress = math.max(0, math.min(1, progress))

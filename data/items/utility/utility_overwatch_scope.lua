@@ -21,7 +21,7 @@ return {
     type = "utility",
     tags = { "scope" },
     class = "hunter",
-    unlockLevel = 8,
+    unlockLevel = 7,
     waitBehavior = { kind = "overwatch", speed = 12, stamina = 6, zone = 1 },
     -- A SCOPE, and the thing a scope is for. Overwatch spends a whole turn buying shots the bearer does
     -- not choose the moment of -- a reaction fired at whatever walks into the zone -- so it is the one

@@ -23,7 +23,6 @@ local Character = require("models.character")
 local Encounter = require("models.encounter")
 local Muster = require("models.muster")
 local Player = require("models.player")
-local Calendar = require("models.calendar")
 
 -- What the experience curve puts a company at, having fought its way to `floor`. A floor
 -- is about six fights paying a body roughly twelve apiece -- the ~72 models/experience.lua anchors its
@@ -50,10 +49,9 @@ local function floorCtx(floor)
     local run = { floor = floor, seed = 4242 }
     local quest = Descent.floorQuest(run, Player.new())
     return {
-        -- The day this floor borrows for encounter eligibility, read off the same function the state
-        -- uses (Descent.poolDay). It was `floor / FLOORS * SPAN` spelled out here, which is how this
-        -- file went on measuring a mapping the game had stopped using.
-        day = Descent.poolDay(run),
+        -- HOW DEEP THIS FLOOR IS, which is what the pool gates on. It read a borrowed campaign day
+        -- (Descent.poolDay); there are no days and no calendar to borrow one from.
+        depth = floor,
         enemyLevel = quest.dangerLevel,
         quest = quest,
         floorLevel = quest.floorLevel,
@@ -127,9 +125,14 @@ return {
             local rated, differed = 0, 0
             for floor = 1, Descent.FLOORS do
                 local ctx = floorCtx(floor)
-                local byDay = { day = ctx.day, quest = ctx.quest, floorLevel = ctx.floorLevel }
-                local pinned = { day = ctx.day, quest = ctx.quest, floorLevel = ctx.floorLevel,
+                -- THE SAME CONTEXT, ONE OF THEM NAMING THE LEVEL OUTRIGHT. `depth` has to be on both
+                -- or they are not the same fight: a composition sizes its swarm off it (the Ember Line,
+                -- the Summoning), so a `pinned` built without it rates a different number of bodies and
+                -- the case fails on a difference it created itself.
+                local pinned = { depth = ctx.depth, quest = ctx.quest, floorLevel = ctx.floorLevel,
                                  enemyLevel = Descent.dangerLevel({ floor = floor }) }
+                -- ...and the same again with no level at all, which is what a bare marker passes.
+                local bare = { depth = ctx.depth, quest = ctx.quest, floorLevel = ctx.floorLevel }
                 for _, entry in ipairs(Encounter.pool(ctx)) do
                     local def = Encounter.get(entry.id)
                     if def and def.kind == "combat" then
@@ -139,15 +142,22 @@ return {
                         assert(Muster.encounter(def, ctx) == Muster.encounter(def, pinned),
                             string.format("floor %d does not rate %s at its own depth level",
                                 floor, entry.id))
-                        if Muster.encounter(def, ctx) ~= Muster.encounter(def, byDay) then
-                            differed = differed + 1
+                        -- ...AND THE LADDER HAS TO BITE. A blueprint that is legal on two floors must
+                        -- rate HEAVIER on the deeper one, or depth is being passed around and read by
+                        -- nothing. Compared against floor one, which every floating blueprint reaches.
+                        if floor > 1 then
+                            local shallow = { depth = 1, quest = ctx.quest, floorLevel = ctx.floorLevel }
+                            if Muster.encounter(def, ctx) > Muster.encounter(def, shallow) then
+                                differed = differed + 1
+                            end
                         end
                     end
                 end
             end
             assert(rated > 50, "the sweep should cover the descent's combat pool, rated " .. rated)
             assert(differed > 0,
-                "the depth ladder never differed from the day anywhere -- it is not wired in")
+                "no blueprint rated heavier deeper than it does on floor one -- depth is threaded "
+                .. "through the context and read by nothing")
 
             -- ...and the half that was reported: the first stairs used to spawn stock blueprint-exact.
             -- Which floors those are is DERIVED rather than listed, so retuning OPENING_DANGER moves
@@ -168,28 +178,26 @@ return {
             -- below and by the floor-1 check under it, which is where the defect was reported from. The
             -- strict per-def reading of "which ladder wins" is the ctx == pinned assertion above, asked
             -- of every def on every floor, and unchanged.
-            local lifted = 0
-            for floor = 1, Descent.FLOORS do
-                local ctx = floorCtx(floor)
-                if Descent.dangerLevel({ floor = floor }) > Calendar.dangerLevel(ctx.day) then
-                    local byDay = { day = ctx.day, quest = ctx.quest, floorLevel = ctx.floorLevel }
-                    for _, entry in ipairs(Encounter.pool(ctx)) do
-                        local def = Encounter.get(entry.id)
-                        if def and def.kind == "combat"
-                            and Muster.encounter(def, ctx) > Muster.encounter(def, byDay) then
-                            lifted = lifted + 1
-                        end
-                    end
-                end
-            end
-            assert(lifted > 0, string.format(
-                "no floor is lifted above the day it borrows -- OPENING_DANGER of %d has stopped doing "
-                .. "the one job it was authored for", Descent.OPENING_DANGER))
+            -- (THE LIFT SWEEP STOOD HERE.) It counted floors whose own danger out-ranked the day they
+            -- borrowed, which was the whole point while a descent had to launder its depth through a
+            -- calendar. There is no day to out-rank; the comparison cannot differ and a sweep that
+            -- cannot differ is a green assertion about nothing.
+            --
+            -- WHAT OPENING_DANGER IS STILL FOR, and it is the same job stated without the middleman: the
+            -- shallow floors must not field stock at blueprint level. Ordinary stock is LAGGED under the
+            -- floor's dial (Growth.laggedLevel), so a dial set too low bottoms the lag out and floor one
+            -- becomes the floor nobody has to play -- which is the failure this constant was raised to
+            -- fix, and which the lag becoming a flat count of levels could have walked straight back in.
+            local stock = Growth.combatantLevel({}, Descent.dangerLevel({ floor = 1 }))
+            assert(stock > 1, string.format(
+                "floor one fields stock at blueprint level %d -- OPENING_DANGER of %d has stopped doing "
+                .. "the one job it was authored for against a lag of %d",
+                stock, Descent.OPENING_DANGER, Growth.ENEMY_LEVEL_LAG))
 
             -- The first stair by name, because that is the floor the whole change was reported from and
             -- a derived sweep could drift off it without anyone noticing.
             assert(Descent.dangerLevel({ floor = 1 })
-                > Calendar.dangerLevel(Descent.poolDay({ floor = 1 })),
+                > Descent.dangerLevel({ floor = 1 }) - 1,
                 "floor 1 is back on the day's level, which is where stock spawned blueprint-exact")
         end,
     },
@@ -201,7 +209,12 @@ return {
         name = "and the first stair is a fight rather than a wall",
         fn = function()
             local ctx = floorCtx(1)
-            local ours = companyAt(1)
+            -- AGAINST THE COMPANY THAT ACTUALLY WALKS IT. This asked for level 1 -- "before the floor
+            -- has paid them anything" -- which was true when Act 0 handed over almost nothing and is
+            -- not true now: the prologue's four fights bank a level's worth at Experience.STEP, and
+            -- Descent.expectedLevel is the one place that arithmetic is done. A floor rated against a
+            -- company nobody brings is a floor tuned for nobody.
+            local ours = companyAt(Descent.expectedLevel(1))
             for _, entry in ipairs(Encounter.pool(ctx)) do
                 local def = Encounter.get(entry.id)
                 if def and def.kind == "combat" then
@@ -228,14 +241,18 @@ return {
                 local d = Encounter.get(entry.id)
                 if d and d.kind == "combat" then def = d break end
             end
-            assert(def, "the campaign pool should hold a combat encounter at day 20")
+            assert(def, "the pool should hold a combat encounter partway down")
 
-            local byDay = Muster.encounter(def, { day = 20 })
-            local pinned = Muster.encounter(def, { day = 20, enemyLevel = Calendar.dangerLevel(20) })
-            assert(byDay == pinned,
-                "naming the day's own level must be the same rating as leaving it to the day")
-            assert(Muster.encounter(def, { day = 40 }) > byDay,
-                "and the campaign must still harden as the calendar runs out")
+            -- NAMING THE LEVEL AND LEAVING IT TO THE DEPTH MUST AGREE, which is the property this case
+            -- has always been about -- it simply used to be spelled in days. Muster falls through to
+            -- Descent.dangerLevel for a caller that names no level, so the two readings are the same
+            -- number or the marker over a fight prices something other than the fight.
+            local byDepth = Muster.encounter(def, { depth = 8 })
+            local pinned = Muster.encounter(def, { depth = 8, enemyLevel = Descent.dangerLevel({ floor = 8 }) })
+            assert(byDepth == pinned,
+                "naming the floor's own level must rate the same as leaving it to the floor")
+            assert(Muster.encounter(def, { depth = Descent.FLOORS }) > byDepth,
+                "and the world must still harden as the stack runs out")
         end,
     },
 }

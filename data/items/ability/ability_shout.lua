@@ -11,8 +11,8 @@ return {
     type = "ability",
     tags = { "impact" },
     class = "bulwark", -- deeper cut of the shelf: buyable only once the bulwark gate is cleared
-    price = 660,
-    unlockLevel = 13,
+    price = 740,
+    unlockLevel = 15,
     activeAbility = {
         target = "tile",       -- aim a nearby tile; the diamond around it is the shout's reach
         allowOccupied = true,

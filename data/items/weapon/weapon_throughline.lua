@@ -29,7 +29,7 @@ return {
     type = "weapon",
     tags = { "dagger", "pierce", "physical", "melee" },
     class = "rogue",
-    unlockLevel = 14,
+    unlockLevel = 15,
     -- Quest-only: `class` with no `price` tallies toward rogue growth but sits on no shelf, and the
     -- missing `price` also keeps it out of the random spoils pool (models/spoils.lua reads `price` as
     -- the "is this ordinary stock?" marker). Granted by data/quests/undercroft/quest_undercroft_slot_09.lua.

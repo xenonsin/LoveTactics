@@ -15,7 +15,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "champion", -- fighter x knight; the Riposte-wall mechanic's first stock
-    unlockLevel = 9,
+    unlockLevel = 11,
     traits = { "trait_whirl_answer" },
     -- answering every adjacent foe means surviving to answer
     bonus = { defense = 2 },

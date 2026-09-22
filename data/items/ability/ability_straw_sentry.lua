@@ -29,8 +29,8 @@ return {
     type = "ability",
     tags = { "decoy", "taunt" },
     class = "sentinel", -- deeper cut of the shelf: buyable only once the sentinel gate is cleared
-    price = 740,
-    unlockLevel = 15,
+    price = 610,
+    unlockLevel = 12,
     activeAbility = {
         target = "tile", -- aim an empty tile; the dummy is stood up there
         range = 3,

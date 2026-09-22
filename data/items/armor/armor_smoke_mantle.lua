@@ -21,7 +21,7 @@ return {
     type = "armor",
     tags = { "leather", "illusion" },
     class = "ninja",
-    unlockLevel = 3,
+    unlockLevel = 4,
     bonus = { defense = Curve.ramp(3, 13), movement = -1 },
     traits = { "trait_smoke_mantle" },
 }

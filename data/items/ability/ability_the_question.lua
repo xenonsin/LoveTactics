@@ -19,8 +19,8 @@ return {
     type = "ability",
     tags = { "guile" },
     class = "inquisitor",
-    price = 165,
-    unlockLevel = 1,
+    price = 255,
+    unlockLevel = 4,
     activeAbility = {
         target = "enemy",
         range = 1,

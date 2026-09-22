@@ -1,38 +1,57 @@
 -- Conversation authored inline (English); localization ids (`tag`) are stamped by
 -- tools/extract_strings.lua and must not be hand-edited. See models/conversation.lua.
 --
--- THE BUBBLES ABOVE GROUND: the two instructions the city and the Gate give, and the one they give
--- over and over. A hint bag like the flight leg's -- fetched by id (Locale.coach), never played in
--- order, never spoken by anybody. The windows' longer words are next door in
--- conversation_tutorial_notes.lua.
+-- THE BUBBLES ABOVE GROUND: the instructions the Gate and the Ward give, and the four the city used
+-- to. A hint bag like the flight leg's -- fetched by id (Locale.coach), never played in order, never
+-- spoken by anybody. The windows' longer words are next door in conversation_tutorial_notes.lua.
 --
 -- EVERY LINE OPENS WITH {select}, because every one of them is asking for a press. The token is what
 -- keeps that device-honest: a key cap for pad and keyboard, "Click" for a mouse, "Tap" for a finger
 -- (models/locale.lua's coachLine). A line here that wrote "Click" itself would be lying to two of the
 -- three inputs this project supports, and tests/tutorial_spec.lua fails the build over it.
 --
+-- NOTHING ON THE PLAZA SPEAKS ANY MORE (2026-09-21). Four of the seven lines below were the city's
+-- own, and the city's whole coach went with the same cut: a bubble on a card, with every other card
+-- refused until that one had been walked into, on the one screen whose job is to be a place you choose
+-- in. What is left fielded is the Gate's descend row and the Ward's two rows -- both INSIDE a screen,
+-- pointing at the control that answers the thing being taught. See states/hub.lua's header.
+--
+-- The four are kept rather than cut, on the reasoning that kept rift_card twice before: a stamped,
+-- translated line is dear to lose, and a bag is not a cost -- Locale.coach fetches by id, so a line
+-- nobody asks for is never read.
+--
 -- WHO FIELDS THEM:
 --   gate_stair  states/gate.lua  -- the descend row, until the company has actually gone down
---   ward_card   states/hub.lua   -- the first morning's ONE coached door (INTRO_STAGES). The company walks
---                                 out of Act 0 with Rowan hurt, so the city's opening instruction is
---                                 where that gets seen to -- and Xin is standing in the room.
---   rift_card   nobody           -- RETIRED AGAIN (2026-09-21). It was the first morning's second door,
---                                 and what retired it this time is not a deleted card: the Rift is
---                                 still there and still the door the whole mode is behind. The arrival
---                                 scene (conversation_prologue_arrival) has Rowan name it and point at
---                                 it one beat earlier, in her own words, on a plaza standing open on
---                                 two cards -- so the bubble was the same instruction said twice, by a
---                                 hint bag, to somebody who had just been told. Kept for the same
---                                 reason it was kept the LAST time it was retired: a translated line
---                                 is dear to lose, and the stage is three lines to put back
---                                 (states/hub.lua's INTRO_STAGES).
---   board_card  states/hub.lua   -- RETIRED with the board's card (the campaign is a distance run).
---                                 Kept on the same reasoning that kept rift_card: it is translated,
---                                 and models/bounty.lua is parked rather than deleted.
+--   mend_row    ui/panels/ward.lua -- see below
+--   mend_rest   ui/panels/ward.lua -- see below
+--   ward_card   nobody           -- RETIRED (2026-09-21) with the plaza's coach. It was the first
+--                                 morning's ONE coached door: the company walks out of Act 0 with
+--                                 Rowan hurt, so the city's opening instruction was where that gets
+--                                 seen to. The lesson survives where its answer lives -- the window
+--                                 and the row bubble inside the Ward -- and the card outside it says
+--                                 nothing.
+--   rift_card   nobody           -- RETIRED TWICE OVER. It was the first morning's second door, and
+--                                 what retired it the first time was not a deleted card: the arrival
+--                                 scene (conversation_prologue_arrival) has Rowan name the Rift and
+--                                 point at it one beat earlier, in her own words, so the bubble was
+--                                 the same instruction said twice by a hint bag to somebody who had
+--                                 just been told.
+--   board_card  DELETED          -- it went with the Bounty Board itself, which is deleted rather than
+--                                 parked now: its card, its model, its blueprints, its panel and its
+--                                 augments. The rift posts the deep work it posted (models/errand.lua).
+--   new_door    nobody           -- RETIRED (2026-09-21) with the plaza's coach. It announced every
+--                                 room the city grew afterwards, one per morning, wearing the
+--                                 blueprint's own sentence as its {door} token. A card that quietly
+--                                 stops being locked IS a feature delivered by not being mentioned --
+--                                 which is the argument this line was written for, and it lost to the
+--                                 plainer one: a plaza that points at a plate and refuses the other
+--                                 eight is a corridor with nine doors painted on it.
+--
+-- AND THE TWO THAT STILL SPEAK INSIDE THE WARD:
 --   mend_row    ui/panels/ward.lua -- the Inn's ONE row, on the one morning somebody is standing in
 --                                 front of it not knowing a wound is a thing you go and answer. The
---                                 only line in this bag pinned to a control INSIDE a panel rather
---                                 than to a card on the plaza; the bubble is the same widget.
+--                                 bubble is the same widget the plaza's cards used to wear, pinned
+--                                 to a control inside a panel instead.
 --
 --                                 IT NAMES THE PAID ROW, and on this one morning that is the only row
 --                                 in the room (ui/panels/ward.lua's rail). The window one beat earlier
@@ -57,14 +76,8 @@
 --                                 cover the other one. The campaign cannot reach it today (see above)
 --                                 and it is authored anyway, because the alternative is a coached room
 --                                 whose bubble points at nothing the day that figure moves -- and the
---                                 lesson would then be unfinishable, since the city holds the plaza
+--                                 lesson would then be unfinishable, since the room holds the player
 --                                 until somebody is seen to.
---   new_door    states/hub.lua   -- every door the city grows afterwards, one per morning
---
--- new_door CARRIES A {door} TOKEN rather than a sentence, and that is the whole of what this file can
--- honestly own: the room's name and what it is for belong to the building blueprint
--- (data/buildings/*.lua, composed by hub.lua's doorText), which is content this pipeline does not
--- reach yet. What is translatable here is the FRAME -- the press, and where the name sits in it.
 return {
     title = "The City's Instructions",
     cast  = { "character_rowan" },
@@ -73,7 +86,6 @@ return {
         { "character_rowan", "{select} to take the stair down.", tag = 1, id = "gate_stair" },
         { "character_rowan", "{select} the Cathedral to mend Rowan's wounds.", tag = 5, id = "ward_card" },
         { "character_rowan", "{select} the Rift. The stair down is inside.", tag = 2, id = "rift_card" },
-        { "character_rowan", "{select} the Bounty Board. The houses post their work there.", tag = 4, id = "board_card" },
         { "character_rowan", "{select} {door}", tag = 3, id = "new_door" },
         { "character_rowan", "{select} to mend {who}'s wounds.", tag = 6, id = "mend_row" },
         { "character_rowan", "{select} to rest {who}. The purse will not cover setting the bone today.", tag = 7, id = "mend_rest" },

@@ -11,8 +11,8 @@ return {
     type = "ability",
     tags = { "restorative" },
     class = "herbalist", -- hunter x alchemist; the Field-brewing mechanic's first stock
-    price = 245,
-    unlockLevel = 3,
+    price = 475,
+    unlockLevel = 9,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

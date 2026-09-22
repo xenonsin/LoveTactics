@@ -24,8 +24,8 @@ return {
     type = "ability",
     tags = { "control", "physical" },
     class = "warden",
-    price = 245,
-    unlockLevel = 3,
+    price = 475,
+    unlockLevel = 9,
     activeAbility = {
         target = "self",
         range = 0,
@@ -35,7 +35,7 @@ return {
         support = false,
         speed = 5,
         cost = { stat = "stamina", amount = 9 },
-        damage = Curve.ramp(8, 18),
+        damage = Curve.ramp(13, 23),
         description = "Inflicts Root on every enemy standing in a hazard, whoever laid it.",
         effect = function(fx)
             local Hazard = require("models.hazard")

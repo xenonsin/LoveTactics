@@ -26,8 +26,8 @@ return {
     type = "ability",
     tags = { "physical" },
     class = "trapper", -- deeper cut of the shelf: buyable only once the trapper gate is cleared
-    price = 245,
-    unlockLevel = 3,
+    price = 610,
+    unlockLevel = 12,
     activeAbility = {
         target = "tile",
         range = 3,

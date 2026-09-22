@@ -49,11 +49,15 @@ local Gate = {}
 -- the surface, not when it sleeps -- so what is left is the day itself.
 --
 -- KEPT AS A NAMED BEAT rather than folded back into its one caller, because "a night passes" is a fact
--- about the loop and the calendar is not the only thing that will ever want to hear it. models/calendar
--- names this function as its one caller and that stays true.
+-- about the loop and more than one thing will want to hear it.
+--
+-- IT NO LONGER SPENDS A DAY, because there are no days. The calendar is deleted: what a night advanced
+-- was a counter whose only readers were the pool gate (which reads depth now) and the market's rotation
+-- (which reads trips). And a trip is ALREADY counted at this exact moment -- Descent.new advances
+-- `runsStarted` on the same beat, which is what Player.tripsHome reads -- so spending a second counter
+-- here would have been two names for one event, drifting the first time one of them was missed.
 function Gate.night(player)
     if not player then return end
-    require("models.calendar").spend(player)
     -- ...AND THE CATHEDRAL SERVES ITS TERMS, both of them, on this one beat.
     --
     -- A rest is priced in DESCENTS rather than in calendar days (models/wound.lua's ward block argues

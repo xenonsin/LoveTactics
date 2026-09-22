@@ -14,10 +14,11 @@
 -- the player is never left guessing which of the two facts stopped them.
 --
 -- AND ON ONE MORNING THE ROOM IS A RAIL. The first wound in the game is Rowan's, taken by script at
--- the end of Act 0, and the city holds the plaza on this room until it is answered (states/hub.lua's
--- INTRO_STAGES.ward). The window that opened the door said what a wound IS and why there are two ways
--- out of one; what is left is the press, which is a bubble's job and not a window's -- so the host
--- hands this panel a `coach` flag and the bubble goes on a row.
+-- the end of Act 0, and the host flags that morning off `player.hubIntro` (states/hub.lua's
+-- coachingMend). The city outside says nothing about it -- the plaza's coach bubbles are cut -- so
+-- this room is the whole of the lesson: the window that opened the door said what a wound IS and why
+-- there are two ways out of one, and what is left is the press, which is a bubble's job and not a
+-- window's -- so the host hands this panel a `coach` flag and the bubble goes on a row.
 --
 -- IT NAMES THE PAID ROW AND IT IS THE ONLY ROW THERE. A coached room that still offered the other way
 -- out was a recommendation, and the first morning is the one morning the two are not equal (see the
@@ -45,8 +46,8 @@
 -- A PURSE THAT CANNOT COVER IT falls back to the free row, bubble and cursor together, and says so in
 -- its own words rather than pointing at a row it is not describing. Unreachable in the campaign as it
 -- stands -- the company walks out of Act 0 with 250g against a 40g bone -- and written anyway, because
--- the city holds the plaza until somebody is seen to, so a bubble that pointed at nothing the day that
--- figure moved would leave the lesson unfinishable rather than merely unhelpful.
+-- this room holds the player until somebody is seen to, so a bubble that pointed at nothing the day
+-- that figure moved would leave the lesson unfinishable rather than merely unhelpful.
 --
 -- THE RESTING ARE LISTED AND NOT ACTIONABLE. They are the cost of the free path made visible: four
 -- bodies go down, and a name sitting in this list is a name that is not among them. Without the list

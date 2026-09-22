@@ -25,6 +25,6 @@ return {
     type = "utility",
     tags = { "charm", "holy" },
     class = "priest",
-    unlockLevel = 9,
+    unlockLevel = 2,
     curseWard = true,
 }

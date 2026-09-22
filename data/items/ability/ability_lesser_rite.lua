@@ -27,8 +27,8 @@ return {
     type = "ability",
     tags = { "holy", "magical" },
     class = "exorcist",
-    price = 660,
-    unlockLevel = 13,
+    price = 565,
+    unlockLevel = 11,
     activeAbility = {
         target = "ally",
         range = 2,

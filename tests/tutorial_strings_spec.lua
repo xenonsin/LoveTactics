@@ -29,12 +29,14 @@ local NOTES = "conversation_tutorial_notes"
 -- that renames one, shows up as a named failure rather than as a bubble that quietly stops drawing.
 local FIELDED = {
     { conv = CITY,  id = "gate_stair",    coach = true },
-    -- `rift_card` is NOT here, and neither is `board_card`: both are retired lines kept in the bag
-    -- because they are stamped and translated (the bag's own header argues each). This list is what a
-    -- surface asks for, so a retired line staying in it would pin a bubble nobody draws.
-    { conv = CITY,  id = "new_door",      coach = true },
-    -- The two bubbles in this bag pinned inside a PANEL rather than to a card (ui/panels/ward.lua):
-    -- the row it names when the purse covers the bone, and the row it falls back to when it does not.
+    -- FOUR OF THIS BAG'S LINES ARE NOT HERE -- `ward_card`, `rift_card`, `board_card` and `new_door`
+    -- -- and they are the four the PLAZA used to speak. The city's coach is cut (states/hub.lua's
+    -- header); the lines stay in the bag because they are stamped and translated, and the bag's own
+    -- header argues each. This list is what a surface asks for, so a retired line staying in it would
+    -- pin a bubble nobody draws.
+    --
+    -- What is left is a bubble on a ROW inside a screen, both of them: the row the Ward names when
+    -- the purse covers the bone, and the row it falls back to when it does not (ui/panels/ward.lua).
     { conv = CITY,  id = "mend_row",      coach = true },
     { conv = CITY,  id = "mend_rest",     coach = true },
     { conv = NOTES, id = "tally_title" },
@@ -119,15 +121,8 @@ return {
                 assert(text:find("Tap", 1, true), "a finger does not click")
             end)
 
-            -- A grown door's own name is the caller's token, filled after localization so a translator
-            -- can put it wherever their grammar wants it.
-            withMode("mouse", false, function()
-                local text = Locale.coach(CITY, "new_door", { door = "the Forge. Steel is answered here." })
-                assert(text:find("the Forge.", 1, true), "the door's name reaches the bubble")
-                assert(not text:find("{door}", 1, true), "...and no raw token is ever printed")
-            end)
-
-            -- ...and the Inn's rows name the body they are ringing the same way, filled by the panel
+            -- A CALLER'S TOKEN IS FILLED AFTER LOCALIZATION, so a translator can put it wherever
+            -- their grammar wants it. The Ward's rows name the body they are ringing that way, filled
             -- from whoever is still owed a mending (ui/panels/ward.lua's coachRect).
             withMode("mouse", false, function()
                 for _, id in ipairs({ "mend_row", "mend_rest" }) do
@@ -190,12 +185,12 @@ return {
                 assert(floor:find(id, 1, true), "states/game.lua stopped asking for `" .. id .. "`")
             end
 
-            local hub = source("states/hub.lua")
-            assert(hub:find("\"ward_card\"", 1, true), "the first morning's bubble lost its line id")
-            assert(hub:find("\"new_door\"", 1, true), "a grown door's bubble lost its line id")
-            -- ...and the window the mending opens with, one beat before its rows (states/hub.lua's
+            -- THE CITY ASKS FOR NO BUBBLE AT ALL any more -- the plaza's coach is cut, and this file
+            -- used to pin `ward_card` and `new_door` to it by name. What it still owes is the window
+            -- the mending opens with, one beat before its rows (states/hub.lua's
             -- teachWounds). It rode the Cathedral's first-visit scene until that scene moved to the
             -- far side of the press, which is where Xin joins now.
+            local hub = source("states/hub.lua")
             for _, id in ipairs({ "wound_title", "wound_body" }) do
                 assert(hub:find(id, 1, true), "states/hub.lua stopped asking for `" .. id .. "`")
             end

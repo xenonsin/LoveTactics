@@ -403,7 +403,8 @@ something the player walks into is to hang it off a house's desk:
 -- in data/buildings/<house>.lua
 counter = "conversation_<vendor>_counter",
 offers = {
-    { answer = "shelf", panel = "shop", quiet = true },  -- the house's own shop: never gated
+    -- the house's own shop: never gated, quiet, and announcing only to a company training for it
+    { answer = "shelf", panel = "shop", quiet = true, announce = { declared = true } },
     { answer = "mend",  panel = "ward", gate = { wound = true } },
     -- a room may keep its OWN vendor, so a folded counter is not merged into the house's shelf:
     { answer = "supper", panel = "cafe", vendor = "cafe", gate = { expeditions = 2 } },
@@ -431,9 +432,9 @@ to it (`Conversation.play`'s `opts.startAt`), and a desk resolved out of its own
 greeting forever. Every desk needs an ungated `leave` option. `tests/conversation_spec.lua` pins both.
 
 A room's `gate` uses the same vocabulary as a door's unlocks, minus the `unlock` prefix:
-`trips`, `expeditions`, `wound`, `unidentified`, `quest`. Every key in a gate must hold.
-**A door is drawn when ANY non-quiet room behind it is open** (`models/offer.lua`), so the city grows
-one room at a time and a house's plate arrives on the morning its first room does.
+`trips`, `expeditions`, `wound`, `unidentified`, `cursed`, `quest`, `declared`. Every key in a gate must
+hold. **A door is drawn when ANY room behind it announces** (`models/offer.lua`), so the city grows one
+room at a time and a house's plate arrives on the morning its first room does.
 
 **A ROOM ALSO SAYS WHETHER IT HAS ANYTHING IN IT TODAY, and that is a different question from its
 gate.** The gate decides whether the mending line is on the desk at all -- once somebody has been
@@ -507,6 +508,23 @@ are not counters.
 room you find behind a door something else opened. Every shelf is quiet, and that is the rule the field
 exists for: a class rung is a reward the player cannot *see*, so hanging a door on it put shopfronts in
 the city that nobody chose to earn. What the plaza reacts to is a deed the player can feel.
+
+**`announce = { ... }`** is the one condition under which a quiet room speaks up. It is a gate in the
+same vocabulary, asked only of a room that is already open, and it decides the **card alone** -- never
+whether the room is there. A quiet shelf has to answer those two questions differently: it is open
+always (a shopfront that offers no shop is not a shopfront) and it announces only on `declared`.
+
+> **A house is paced on its CLASS, not on its other rooms.** Every shelf being flatly quiet meant the
+> seven class houses arrived in whatever order the rooms *behind* them happened to be scheduled -- the
+> Colosseum on the duel at trip 7, the Alchemist on the reading at 6, the Arcanum on the bestiary at 4.
+> Fighter was not last because fighter gear is late content; it was last because PvP is. Meanwhile no
+> root class has a `requires` at all, so a player could declare Fighter on the first morning and walk
+> five trips with nowhere to buy a fighter ability. **Declaring a class in the Roll -- or hiring a body
+> born to one -- opens the house that shelves it, at once** (`declared`, asked through the vendor by
+> `Vendor.shelves`, so a crossing opens both its parents' doors). The trips gate on each house's other
+> room is untouched underneath and is still the backstop, so a player who declares nothing sees exactly
+> the schedule above, and the duel is still the seventh trip either way. The mark is **one-way**
+> (`Class.taken`, persisted): changing class back must never take a card off the square.
 
 **The event-plus-backstop pattern.** The best gates are events -- the card arrives holding exactly the
 problem it solves -- but an event that may never fire can strand a player outside a room for a whole

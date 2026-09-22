@@ -28,7 +28,7 @@ return {
     type = "utility",
     tags = { "fire" },
     class = "crusader", -- fighter x priest; the armed faithful's ring -- it asks a priest to stand in the line
-    unlockLevel = 6,
+    unlockLevel = 7,
     incense = { hazard = "hazard_burning_halo", radius = 1,
                 amount = Curve.ramp(4, 14) },
     -- a halo that burns whoever stands in it

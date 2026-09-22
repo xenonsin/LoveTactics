@@ -9,8 +9,8 @@ return {
     type = "ability",
     tags = { "summon", "water" },
     class = "summoner", -- deeper cut of the shelf: buyable only once the summoner gate is cleared
-    price = 740,
-    unlockLevel = 15,
+    price = 610,
+    unlockLevel = 12,
     activeAbility = {
         target = "tile",
         range = 2,

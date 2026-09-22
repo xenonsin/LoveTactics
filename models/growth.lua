@@ -58,7 +58,36 @@ Growth.ENEMY_DAMAGE_GROWTH = 3
 --
 -- 0.9 is a felt edge without free fights. Real growth within a run comes from gear, abilities,
 -- disciplines and roster -- the things stat curves cannot flatten.
-Growth.ENEMY_LEVEL_LAG = 0.9
+--
+-- ---------------------------------------------------------------------------
+-- AND THEN IT BECAME A COUNT OF LEVELS, BECAUSE A PROPORTION GROWS WITH THE LADDER.
+-- ---------------------------------------------------------------------------
+--
+-- Everything above is kept: the case for lagging at all, and the measurement that says every setting
+-- picks a constant rather than a slope. What changed is the UNIT, and the reason is that a multiplier
+-- does not hold still when the ladder under it moves.
+--
+-- At a bottom floor of 17 a tenth is a level and a half, which is the felt edge the paragraph above
+-- describes. The descent's ladder now runs to Growth.LEVEL_CAP (Descent.BOTTOM_DANGER), and at a
+-- bottom of 50 the same tenth is FIVE levels -- and the world is itself capped at 50, so ordinary
+-- stock would top out at 45 and never reach the company at all. Measured, that is not merely a wider
+-- gap: Experience.rewardScale reads a five-level lead and pays 18%, so the deepest ground in the game
+-- would pay the least experience in it, and the climb saturates below the cap however cheap levels
+-- are made. A proportional lag re-prices itself every time the stack is re-cut, silently, in the
+-- direction nobody wants.
+--
+-- TWO, IN LEVELS. Flat is stable at any cap: the trash is two rungs under the world on floor one and
+-- two rungs under it on the Crown, which is the "felt edge" the original number was reaching for,
+-- stated in a unit that cannot drift. Read through Growth.laggedLevel so the model and the specs that
+-- assert on it cannot hold two copies of the arithmetic.
+Growth.ENEMY_LEVEL_LAG = 2
+
+-- What ordinary stock spawns at, against a world minted at `level`. The one owner of the lag's
+-- arithmetic -- tests/enemy_scaling_spec.lua kept a second copy of the old expression, which is how a
+-- unit change becomes a green suite that is lying.
+function Growth.laggedLevel(level)
+    return math.max(1, (level or 1) - Growth.ENEMY_LEVEL_LAG)
+end
 
 -- The survivability a growth table buys per level: pool plus armour, on one damage channel.
 -- `magical` reads the magic side (health + magicDefense) instead of the physical one.
@@ -170,11 +199,20 @@ Growth.PRESTIGE_PER_LEVEL = 2
 -- where the content tops out -- Descent.dangerLevel on the bottom floor, which is the Hollow Crown's.
 --
 -- DECLARED HERE RATHER THAN READ OFF Descent, and the reason is the require graph: models/descent.lua
--- pulls this file in, so reading back would close a cycle. tests/growth_spec.lua asserts this against
--- Descent.dangerLevel at Descent.FLOORS, so re-cutting the stack reddens a spec instead of quietly
--- re-scaling every enemy in the game -- the rule models/descent.lua's own LEVEL_PER_FLOOR records
--- ("re-derive this from the ceiling rather than from this comment").
-Growth.MASTERY_REACH = 17
+-- pulls this file in, so reading back would close a cycle.
+--
+-- AND THE SPEC THIS COMMENT PROMISED DID NOT EXIST. It said tests/growth_spec.lua asserted this
+-- against Descent.dangerLevel at Descent.FLOORS so that re-cutting the stack would redden a case
+-- rather than quietly re-scale every enemy in the game; `grep -rn MASTERY_REACH tests/` returned
+-- nothing. The number was 17 against a bottom of 17 by hand and by luck. The case is written now
+-- (tests/growth_spec.lua, "the mastery ceiling is the bottom of the stack"), which is what makes
+-- this safe to move.
+--
+-- FIFTY, WITH THE LADDER. The descent runs to Growth.LEVEL_CAP now (Descent.BOTTOM_DANGER), so the
+-- deepest thing the rift fields stands at the cap. Left at 17 the class-mastery stamp would spread
+-- fifteen rungs over a span three times too short and land near zero across the whole rift -- which
+-- is the failure stampClassLevel already shipped once, dividing by LEVEL_CAP - 1.
+Growth.MASTERY_REACH = 50
 
 -- The level a character sits at for a given global prestige. The single owner of that mapping: the
 -- roster, enemy scaling (states/battle.lua), and the advancement bar all read levels through here, so
@@ -226,7 +264,7 @@ function Growth.combatantLevel(def, playerLevel, battleFloor)
     -- lag is safe to have: the trash becomes a victory lap and the named fight is still a fight.
     local tracked = playerLevel or 1
     if not (def and def.floorLevel) then
-        tracked = 1 + math.floor(Growth.ENEMY_LEVEL_LAG * (tracked - 1))
+        tracked = Growth.laggedLevel(tracked)
     end
 
     local level = math.max((def and def.floorLevel) or 1, battleFloor or 1, tracked)
@@ -261,6 +299,25 @@ end
 -- balance_spec's threat and time-to-kill bands on bodies that were never set-pieces. A field that says
 -- WHAT LEVEL THE NUMBERS WERE WRITTEN FOR is also the more honest thing to write down than a boolean:
 -- a body authored for a different depth can simply say so.
+-- ---------------------------------------------------------------------------
+-- THIRTEEN IS STILL WHAT THE BLUEPRINTS SAY, AND THAT IS NOW A DEBT RATHER THAN A FACT.
+-- ---------------------------------------------------------------------------
+--
+-- Thirteen was where the campaign's capstone fights sat and, while the descent's ladder ran 1..17, it
+-- was also roughly the bottom of the rift -- so "authored for 13" and "authored for the deepest floor
+-- a general stands on" were the same sentence and nobody had to choose between them. The ladder runs
+-- to Growth.LEVEL_CAP now (Descent.BOTTOM_DANGER) and they are thirty levels apart.
+--
+-- IT IS LEFT AT 13 ON PURPOSE. Fifteen blueprints declare `referenceLevel = 13` and mean it -- Gula's
+-- 240 health IS her level thirteen -- and tests/growth_spec.lua holds them to this constant, so moving
+-- the number here without re-authoring those blocks would not rebalance anything, it would only make
+-- the two disagree.
+--
+-- WHAT IS OWED, said plainly because it is the largest thing this ladder change did not pay for:
+-- shareAt saturates at the reference, so from the Greed circle down every general fields her authored
+-- numbers unscaled against a company three times the size she was written against. The generals are a
+-- fair fight in SHAPE and a soft one in MAGNITUDE until those fifteen stat blocks are re-authored
+-- against the new ladder, and that is a data pass rather than a constant.
 Growth.BOSS_REFERENCE_LEVEL = 13 -- what a body means by `referenceLevel = true`-ish authoring; the default
 
 -- What a boss keeps at level 1, as a share of its authored self -- and it is TWO shares, because

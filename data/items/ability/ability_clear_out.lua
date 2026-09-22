@@ -31,7 +31,7 @@ return {
     type = "ability",
     tags = { "slash", "physical" },
     class = "fighter",
-    price = 575,
+    price = 565,
     -- Rank 1, not 3: the player is handed this mid-prologue (see above), so a shelf that withheld it
     -- until the third quest would be gating an ability they already own and have already been taught.
     unlockLevel = 11,

@@ -15,8 +15,8 @@ return {
     type = "ability",
     tags = { "utility", "holy" },
     class = "inquisitor", -- rogue x priest; Judgment -- the naming that holds a body open for the execute
-    price = 165,
-    unlockLevel = 1,
+    price = 430,
+    unlockLevel = 8,
     activeAbility = {
         target = "enemy",
         range = 5,

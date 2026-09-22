@@ -12,8 +12,8 @@ return {
     type = "ability",
     tags = { "holy", "impact" },
     class = "crusader", -- fighter x priest; the Smite mechanic's first stock
-    price = 660,
-    unlockLevel = 13,
+    price = 695,
+    unlockLevel = 14,
     activeAbility = {
         target = "enemy",
         range = 1,

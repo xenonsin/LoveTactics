@@ -485,6 +485,202 @@ local function indexPage(byClass, classIds)
     return table.concat(out, "\n")
 end
 
+-- ---------------------------------------------------------------------------
+-- The Rift: one page, fifteen floors
+-- ---------------------------------------------------------------------------
+
+-- WHAT THE LEVEL COLUMN IS, and why it is simulated rather than read off a constant.
+--
+-- There is no constant for "the level the company is expected to be on floor N". There are three that
+-- look like one and none of them is it: `Descent.floorLevel` is the minimum a set-piece may be grown
+-- to, `Descent.dangerLevel` is what the world is minted at, and the lagged reading under that is what
+-- a trash body actually spawns at. The company's own ladder is a property of the experience curve, so
+-- it is walked here the way the curve walks it -- a floor's worth of fights at the award
+-- `Experience.rewardScale` pays against that floor's stock, which throttles once the company pulls
+-- ahead and is the whole reason the two ladders track.
+--
+-- Simulated at the units tests/reward_scale_spec uses, so a re-cut of STEP, the award or the stack
+-- moves this column without anybody editing it. That is the point of the page being generated: the
+-- moment the curve changes, the design document is already right.
+local FIGHTS_PER_FLOOR = 8
+
+local function expectedLevels()
+    local Descent = require("models.descent")
+    local Experience = require("models.experience")
+    local Growth = require("models.growth")
+    local income = 7 * Experience.PER_ACTION + 1.25 * Experience.PER_FELLING
+    local xp, out = Experience.totalFor(2), {}
+    for floor = 1, Descent.FLOORS do
+        local entry = Experience.levelFor(xp)
+        local stock = Growth.combatantLevel({}, Descent.dangerLevel({ floor = floor }))
+        for _ = 1, FIGHTS_PER_FLOOR do
+            xp = xp + income * Experience.rewardScale(Experience.levelFor(xp), stock)
+        end
+        out[floor] = { entry, Experience.levelFor(xp) }
+    end
+    return out
+end
+
+-- "character_petal_drift" x6 -> "Petal Drift x6", in authored order and counted. The composition is
+-- resolved through the same call the arena builds a fight from, so a blueprint that sizes its swarm
+-- off the depth is printed at the size this floor will really field.
+local function compositionOf(def, ctx)
+    local Arena = require("models.arena")
+    local Character = require("models.character")
+    local ok, ids = pcall(Arena.resolveComposition, def and def.composition, ctx)
+    if not ok or type(ids) ~= "table" or #ids == 0 then return "—" end
+    local order, count = {}, {}
+    for _, id in ipairs(ids) do
+        if not count[id] then order[#order + 1] = id; count[id] = 0 end
+        count[id] = count[id] + 1
+    end
+    local parts = {}
+    for _, id in ipairs(order) do
+        local name = (Character.defs[id] and Character.defs[id].name) or id
+        parts[#parts + 1] = name .. (count[id] > 1 and (" ×" .. count[id]) or "")
+    end
+    return table.concat(parts, ", ")
+end
+
+local function floorsPage()
+    local Descent = require("models.descent")
+    local Encounter = require("models.encounter")
+    local Biome = require("models.biome")
+
+    local out = {}
+    local function line(s) out[#out + 1] = s or "" end
+
+    local levels = expectedLevels()
+    local run = Descent.new(nil, 1)
+
+    -- Everything each floor needs, gathered once so the summary and the sections cannot disagree.
+    local floors = {}
+    for floor = 1, Descent.FLOORS do
+        run.floor = floor
+        local quest = Descent.floorQuest(run)
+        local sin = Descent.sinAt(run, floor)
+        -- The pool this floor draws from, asked in the unit it gates on: how deep the floor is, and
+        -- which of its circle's two floors it is (models/encounter.lua's `depth` and `rung`).
+        local ctx = { depth = floor, rung = Descent.floorWithinCircle(floor),
+            biome = quest.map.biome, quest = quest }
+        local combat, elite = {}, {}
+        for _, entry in ipairs(Descent.floorPool(ctx)) do
+            local def = Encounter.get(entry.id)
+            if def and (entry.kind == "combat" or entry.kind == "elite") then
+                local row = {
+                    name = def.name or entry.id,
+                    bodies = compositionOf(def, ctx),
+                    weight = entry.weight,
+                }
+                if entry.kind == "combat" then combat[#combat + 1] = row else elite[#elite + 1] = row end
+            end
+        end
+        local function heavyFirst(a, b)
+            if a.weight ~= b.weight then return a.weight > b.weight end
+            return a.name < b.name
+        end
+        table.sort(combat, heavyFirst)
+        table.sort(elite, heavyFirst)
+
+        local gate = sin and Descent.gateFor(sin)
+        local ward
+        for _, spec in ipairs(quest.map.objectives or {}) do
+            if spec.wardFor then
+                ward = { name = spec.name or "The ward", bodies = compositionOf(spec, ctx) }
+            end
+        end
+
+        floors[floor] = {
+            circle = sin and sin.name or "The Hollow Crown",
+            general = sin ~= nil and Descent.isGeneralFloor(floor),
+            biome = quest.map.biome,
+            place = Biome.get(quest.map.biome).name,
+            levels = levels[floor],
+            boss = quest.map.objective and quest.map.objective.name or "—",
+            bossBodies = compositionOf(quest.map.objective, ctx),
+            -- SLOTH'S OPEN STAIR AND THE CROWN'S ABSENCE ARE NOT THE SAME ANSWER. Acedia authors
+            -- `none` -- she is asleep and the way down stands open, which is a reading of her sin and
+            -- the one gate worth protecting in review. The bottom is not a circle and bars nothing
+            -- because there is nothing below it to bar. Printing one word for both would retire a
+            -- design decision into a formatting accident.
+            gate = (function()
+                if not sin then return "—" end
+                -- A circle with no gate authored, and Acedia's `none`, are the same answer in the
+                -- model and both arrive here with a nil label: Descent.GATES.none names none on
+                -- purpose, because there is nothing for a plate to draw. The word is this page's
+                -- business rather than the model's.
+                local label = gate and (Descent.GATES[gate.kind] or {}).label
+                return label or "the stair stands open"
+            end)(),
+            ward = ward,
+            combat = combat,
+            elite = elite,
+        }
+    end
+
+    line(banner("The descent: models/descent.lua + data/encounters/."))
+    line()
+    line("# The Rift")
+    line()
+    line("One rift of **" .. Descent.FLOORS .. " floors** under the city — seven circles of "
+        .. Descent.FLOORS_PER_CIRCLE .. " and the Hollow Crown beneath them. A circle owns a stratum: "
+        .. "every floor it holds is fought on its ground and pays into its house, and the **last** of "
+        .. "them is where its general is standing. The floors above it are held by her honour guard, "
+        .. "promoted.")
+    line()
+    line("Laid out in the order a **first descent** walks (`Descent.INFERNO`). Once the Crown is "
+        .. "broken the circles are shuffled, so the grounds and the generals below move with them — "
+        .. "the depths do not.")
+    line()
+    line("## The stack")
+    line()
+    line("| Floor | Circle | Ground | Company | On the stair | The gate |")
+    line("| :--: | --- | --- | :--: | --- | --- |")
+    for floor = 1, Descent.FLOORS do
+        local f = floors[floor]
+        line("| **" .. floor .. "** | " .. cell(f.circle) .. (f.general and " — her floor" or "")
+            .. " | " .. cell(f.place) .. " | " .. f.levels[1] .. "–" .. f.levels[2]
+            .. " | " .. cell(f.boss) .. " | " .. cell(f.gate) .. " |")
+    end
+    line()
+
+    local function fightTable(title, rows)
+        line("**" .. title .. "**")
+        line()
+        if #rows == 0 then
+            line("_Nothing is eligible here._")
+            line()
+            return
+        end
+        line("| Encounter | Who stands in it | Weight |")
+        line("| --- | --- | :--: |")
+        for _, row in ipairs(rows) do
+            line("| " .. cell(row.name) .. " | " .. cell(row.bodies) .. " | " .. row.weight .. " |")
+        end
+        line()
+    end
+
+    for floor = 1, Descent.FLOORS do
+        local f = floors[floor]
+        line("## Floor " .. floor .. " — " .. f.circle)
+        line()
+        line("> **" .. f.place .. "** (`" .. f.biome .. "`) · company level **"
+            .. f.levels[1] .. "–" .. f.levels[2] .. "** · gate: " .. f.gate)
+        line()
+        line("**Boss** — " .. cell(f.boss) .. ": " .. cell(f.bossBodies))
+        line()
+        if f.ward then
+            line("**Ward** — " .. cell(f.ward.name) .. ": " .. cell(f.ward.bodies)
+                .. ". The stair holds until it falls.")
+            line()
+        end
+        fightTable("Ordinary", f.combat)
+        fightTable("Elite", f.elite)
+    end
+
+    return table.concat(out, "\n")
+end
+
 local function homePage(byClass, classIds)
     local out = {}
     local function line(s) out[#out + 1] = s or "" end
@@ -509,6 +705,8 @@ local function homePage(byClass, classIds)
     line()
     line("## Pages")
     line()
+    line("- **[The Rift](The-Rift)** — the fifteen floors: ground, the level the company is expected "
+        .. "to be, what walks there, and what is standing on each stair.")
     line("- **[Items](Items)** — all " .. total .. " items, by class and type.")
     for _, id in ipairs(classIds) do
         line("  - [" .. (Class.displayName(id) or id) .. "](" .. pageOf(id) .. ") — " .. byClass[id].count)
@@ -523,6 +721,7 @@ local function sidebarPage(byClass, classIds)
     line("### Project Tactics")
     line()
     line("- [Home](Home)")
+    line("- [The Rift](The-Rift)")
     line("- [Items](Items)")
     for _, id in ipairs(classIds) do
         line("  - [" .. (Class.displayName(id) or id) .. "](" .. pageOf(id) .. ")")
@@ -553,6 +752,7 @@ function M.render()
         { name = "Home", body = homePage(byClass, classIds) },
         { name = "_Sidebar", body = sidebarPage(byClass, classIds) },
         { name = "Items", body = indexPage(byClass, classIds) },
+        { name = "The-Rift", body = floorsPage() },
     }
     for _, id in ipairs(classIds) do
         pages[#pages + 1] = { name = pageOf(id), body = classPage(id, byClass[id]) }

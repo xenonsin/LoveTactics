@@ -67,6 +67,23 @@ local Grade = {}
 -- item's own gate would be reading the slot through the back door, and the whole point is a ruler that
 -- does not move when the thing it measures does. Mid-campaign, so neither the opening shelf nor the
 -- capstone is measured at the far end of a curve it never really fights at.
+-- ---------------------------------------------------------------------------
+-- AND THE RULER MOVED WITH THE LADDER (2026-09-22), DELIBERATELY.
+-- ---------------------------------------------------------------------------
+--
+-- Everything above is why this is FIXED -- a measure that followed each item's own gate would be
+-- reading the slot through the back door -- and that argument is untouched. What changed is what a
+-- standing of 6 CONVERTS TO. It went through Growth.levelForPrestige, a campaign mapping at two
+-- prestige per level, and came back level 3; Balance asks Descent.expectedLevel now and the same rung
+-- is level 19, because that is the body the rift actually fields there.
+--
+-- SO THE RULER IS STILL FIXED, AND IT IS FINALLY FIXED ON SOMEBODY WHO EXISTS. The alternative was to
+-- pin this file to the old conversion and keep grading against a level-3 reference the game stopped
+-- fielding when the ladder was re-cut -- a stable ruler measuring in a unit nothing uses.
+--
+-- IT RE-TIERS THE CATALOGUE, and that is the accepted cost rather than a surprise: a grade decides
+-- `unlockLevel` (tools/grade_report.lua), which decides the shelf and the drop bands, so this owes
+-- `. grade-report apply`, `. drop-tier apply` and `. balance-rescale apply` iterated to a fixed point.
 Grade.PRESTIGE = 6
 
 -- A reference fight, in turns. What a persistent thing gets to do before the fight is over -- a
@@ -462,6 +479,14 @@ Grade.TRAIT_GRADE = {
     -- defense, measured live off the same board reading, so it is worth about the same -- a shade more,
     -- since offence compounds with the rest of a rank's output and armour does not.
     trait_close_ranks =                 1.5,  -- Close Ranks
+    -- HERD WARMTH sits beside Close Ranks, in the adjacency family its own header places it in --
+    -- defense per neighbour (Formation Fighter, 1.0), damage per neighbour (Close Ranks, 1.5), and
+    -- health while ANY neighbour stands. One health a tick (Combat.HERD_WARMTH_HEAL), and FLAT rather
+    -- than per-ally on purpose, so a body in the middle of four does not mend three times over -- which
+    -- is what keeps it under the Unspent Heart's 3.0, a far larger recovery on a harder condition.
+    -- Healing is worth more per point than armour and this does not scale, so it lands level with the
+    -- damage half rather than above it.
+    trait_herd_warmth =                 1.5,  -- Herd Warmth
     -- THE PACK AURA, WEIGHED AS THE PAIR IT IS. trait_pack_lead executes nothing at all -- it is a
     -- marker other bodies look for -- so the shape estimator has no hook to read and would file it at
     -- zero, which is wrong in the other direction: what it is worth is every wolf in reach hitting
@@ -529,6 +554,12 @@ Grade.TRAIT_GRADE = {
     trait_salvage_rig =                 3.0,  -- Salvage Rig
     trait_shield_bash =                 3.0,  -- Shield Bash
     trait_shield_shove =                3.0,  -- Shield Shove
+    -- ANTLER TOSS, weighed against the shove it is explicitly the cheaper version of. Its own header
+    -- draws the comparison: one tile where the shield has two, an ATTACK only where the shield answers
+    -- an answer as readily, and no slot of its own -- "a guard drives you off; a stag only makes room".
+    -- Two-thirds of the shove is what those three cuts come to, and like the shove it deals nothing
+    -- itself: the wall, the fire and the next body in the rank do the talking.
+    trait_antler_toss =                 2.0,  -- Antler Toss
     trait_slipstep =                    3.0,  -- Slipstep
     trait_spiteful_ichor =              3.0,  -- Spiteful Ichor
     trait_splitglass_parry =            3.0,  -- Splitglass Parry
@@ -746,6 +777,32 @@ Grade.HASTEN_PER_TICK = 0.2
 -- price, however hard each cast hits.
 Grade.REFERENCE_SPEED = 4   -- an iron sword's swing, the thing every other tempo is read against
 Grade.TICK_VALUE = 0.06     -- a tick of initiative, in turns
+
+-- ---------------------------------------------------------------------------
+-- REACH, WHICH THIS FILE PRICED AT NOTHING UNTIL 2026-09-22
+-- ---------------------------------------------------------------------------
+--
+-- `ab.range` did not appear anywhere in this file. A bow and a sword that dealt the same damage at the
+-- same speed graded IDENTICALLY, which is a statement nobody would sign: reach is the single property
+-- that most separates one weapon from another, and the whole ranged half of the catalogue was being
+-- graded as though standing three tiles back were free.
+--
+-- It surfaced on an anchor pair, which is what anchor pairs are for. `weapon_iron_longbow` is pinned to
+-- beat `weapon_iron_bow` because "the longbow outranges and outhits the bow" -- and the grader priced
+-- the outhitting (+5 on 68) and the outranging at zero, so the bow's tempo bonus for a faster draw won
+-- and the pair inverted. The anchor was not wrong; the ruler was missing an axis.
+--
+-- SQUARE ROOT, BECAUSE THE FIRST TILE IS THE ONE THAT MATTERS. Going from one tile to three changes
+-- what the weapon IS -- it stops trading blows. Going from five to seven is a convenience. A flat
+-- per-tile value would pay a range-8 staff four times what it pays a bow, which is the wrong shape;
+-- sqrt pays the bow most of what it pays the staff and pays the sword nothing at all.
+--
+-- NOT NETTED AGAINST `minRange`. A bow's dead point-blank band is a real cost and is also unpriced --
+-- but every ranged weapon in the catalogue carries the same minRange of 2, so a term for it would
+-- subtract one constant from one set of items and separate nothing. It is a gap, recorded rather than
+-- guessed at.
+Grade.REFERENCE_RANGE = 1   -- a sword's reach: the tile in front of you
+Grade.REACH_VALUE = 0.10    -- turns, per root-tile of reach past the sword
 Grade.REFERENCE_COST = 10   -- a middling outlay; dearer than this discounts, cheaper credits
 Grade.COST_SWING = 0.25     -- how much of the total the full spread of costs is allowed to move
 
@@ -753,6 +810,15 @@ Grade.COST_SWING = 0.25     -- how much of the total the full spread of costs is
 -- dry run never sees it -- and it is the whole difference between the Crimson Greataxe and the iron
 -- axe it is supposed to tower over.
 Grade.LIFESTEAL_VALUE = 1.0 -- health returned is worth damage dealt, point for point
+
+-- WHAT A MOVEMENT RULE IS WORTH, PER FIGHT, by which rule it is. Compare Grade.TAG_TURNS' `flying` at
+-- 2.6: the ground stops mattering. `phase` is the same argument made against the other side's BODIES
+-- rather than against the map, and it is held just under flight because the wearer passes through a
+-- body and may not come to rest on one -- it declines the wall without taking the tile.
+--
+-- Two items in the catalogue carry the field, which is why this is a small table and not a system.
+Grade.MOVE_BEHAVIOR_TURNS = { phase = 2.2, teleport = 1.4 }
+Grade.MOVE_BEHAVIOR_DEFAULT = 1.4
 
 -- Discounts, as multipliers on the whole. A wind-up is paid in tempo before anything lands; a
 -- two-handed weapon costs the grid cell a second item would have used.
@@ -1152,6 +1218,13 @@ local function activeValue(def, item, rows)
         rows[#rows + 1] = { "lifesteal", v }; total = total + v
     end
 
+    -- Reach: how far this swing sits from an ordinary one on the board. See Grade.REACH_VALUE.
+    local range = tonumber(ab.range)
+    if range and range > Grade.REFERENCE_RANGE then
+        local v = Grade.REACH_VALUE * math.sqrt(range - Grade.REFERENCE_RANGE) * turn
+        rows[#rows + 1] = { "reach", v }; total = total + v
+    end
+
     -- Tempo: how far this swing sits from an ordinary one on the clock.
     local speed = tonumber(ab.speed)
     if speed and speed ~= Grade.REFERENCE_SPEED then
@@ -1205,6 +1278,11 @@ end
 -- Reads the INSTANTIATED item, not the blueprint. A blueprint's `bonus` and `resist` hold unresolved
 -- Curve tables (`defense = Curve.ramp(4, 14)`); Item.instantiate is what collapses those to the number
 -- for a level, and grading the raw table is both meaningless and a crash.
+local function moveTurns(behavior)
+    if type(behavior) ~= "table" then return Grade.MOVE_BEHAVIOR_DEFAULT end
+    return Grade.MOVE_BEHAVIOR_TURNS[behavior.mode] or Grade.MOVE_BEHAVIOR_DEFAULT
+end
+
 local function passiveValue(def, rows, item)
     local src = item or def
     local turn = Grade.turnValue()
@@ -1273,8 +1351,13 @@ local function passiveValue(def, rows, item)
     end
 
     -- The remaining passive fields, each quoted per fight and spent per turn, like a trait.
+    --
+    -- A MOVEMENT RULE IS WEIGHED BY WHICH RULE IT IS (Grade.MOVE_BEHAVIOR_TURNS). One weight for the
+    -- field covered two different promises: walking THROUGH enemy bodies and blinking to a tile. The
+    -- first declines the opposing formation the way `flying` declines the terrain -- every wall of
+    -- bodies in the game is a wall this wearer does not meet -- and it was graded at half of flight.
     local perFight = {
-        { def.moveBehavior, 1.4, "move behavior" },   -- phasing, blinking: a movement rule of its own
+        { def.moveBehavior, moveTurns(def.moveBehavior), "move behavior" },
         { def.terrainEase, 0.6, "terrain ease" },
         { def.statusImmunity, 1.6, "status immunity" },
         { def.manaShield, 1.4, "mana shield" },
@@ -1394,6 +1477,36 @@ end
 --   min  the earliest it may unlock from
 --   max  the latest
 Grade.SLOT_PINS = {
+    -- ---------------------------------------------------------------------------
+    -- RE-PINNED AFTER THE RULER MOVED (2026-09-22)
+    -- ---------------------------------------------------------------------------
+    --
+    -- Grade.PRESTIGE converts to level 19 now rather than level 3 (see its header), so the whole
+    -- catalogue re-graded and 120 wares moved slot. Most of that is the point. What it also did was
+    -- knock over five pieces of authored intent that had been RIDING the grader rather than stated --
+    -- they sat where they needed to sit because the old ruler happened to put them there, and nothing
+    -- said so. A pin is how a human overrules the grader, and these five are now said out loud.
+    --
+    -- THE SIX REMAINING STANDING DRAUGHTS. Three of the nine were already pinned here; the other six
+    -- were at rung 0 by grade alone and the re-cut lifted them off the rack. The rule is CLAUDE.md's
+    -- and it is not a grading question at all: "a rung is a gate, and a gate on a healing potion prices
+    -- a need". All nine stand from the first visit.
+    consumable_ball_bearings = { at = 0, why = "a standing draught: a gate on it would price a need" },
+    consumable_clearwater_vial = { at = 0, why = "a standing draught: a gate on it would price a need" },
+    consumable_mana_potion = { at = 0, why = "a standing draught: a gate on it would price a need" },
+    consumable_net = { at = 0, why = "a standing draught: a gate on it would price a need" },
+    consumable_panacea = { at = 0, why = "a standing draught: a gate on it would price a need" },
+    consumable_stamina_potion = { at = 0, why = "a standing draught: a gate on it would price a need" },
+
+    -- THE CHASE IS THE DEEPEST THING ON ITS OWN LIST, which is the whole of the drop-rate design: a
+    -- floor picks a rank before it looks at who died, so within one body's list the TIER IS THE RARITY
+    -- (docs/drops.md) and there is no per-entry weight to tune. The re-grade collided the boar's horn
+    -- with his chase at the same rung and dropped the Sow's pelt to rung 3, under her own claw --
+    -- which would have made the rarest thing she carries the commonest thing she pays.
+    utility_treeline_horn = { at = 12, why = "under the Last Sounder: the chase is the deepest on the list" },
+    utility_the_yearling_pelt = { at = 13, why = "the Sow's chase, and it must outrank her knapped claw" },
+    armor_quicksilver_mantle = { at = 9, why = "the King Slime pays SOMETHING in the band of the floors he is met on" },
+
     -- The five wares that were classless while the Cafe was a general store. Each went home to the
     -- house that wanted it, and each kept its opening-shelf place, because being there from the first
     -- visit was the one thing the general store was really providing (tests/progression_spec.lua).
@@ -1531,10 +1644,16 @@ Grade.SLOT_PINS = {
     -- sixth job -- so a `min` of 4 that used to sit two tiers ahead of it now sits two behind.
     -- The claim is unchanged and is an ORDERING: the earners are on sale by the time you can
     -- walk in, and the spenders are Aurea's own art, still ahead of you when you do.
-    ability_blood_money = { min = 7, why = "spends the purse: Aurea's art, and it waits past her gate" },
-    ability_gilded_wound = { min = 7, why = "spends the purse" },
-    ability_grease_palms = { min = 7, why = "spends the purse" },
-    ability_open_account = { min = 7, why = "spends the purse" },
+    -- EIGHT, NOT SEVEN, AND THE OFF-BY-ONE WAS ALWAYS HERE. The rogue rung that opens the Mammonite
+    -- is 7 and the claim above is that these four wait PAST it -- which is strictly after, while
+    -- `min = 7` admits 7 itself. It never showed because the grade put all four well clear of the
+    -- floor; when the ruler moved (Grade.PRESTIGE's header) the Gilded Wound landed exactly on 7 and
+    -- the constraint waved it through, selling the purse-spender at the same rung as the purse.
+    -- A bound that only holds while nothing reaches it is not holding anything.
+    ability_blood_money = { min = 8, why = "spends the purse: Aurea's art, and it waits past her gate" },
+    ability_gilded_wound = { min = 8, why = "spends the purse" },
+    ability_grease_palms = { min = 8, why = "spends the purse" },
+    ability_open_account = { min = 8, why = "spends the purse" },
 
     -- THE WARD LINE IS PLACED, NOT RANKED -- both halves, at 3 and at 9, across all seven houses.
     --

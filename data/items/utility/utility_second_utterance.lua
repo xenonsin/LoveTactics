@@ -21,7 +21,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "theurge", -- mage x priest; the Channelled miracle's other half, beside Vigil Beads
-    unlockLevel = 2,
+    unlockLevel = 3,
     traits = { "trait_second_utterance" },
     -- the next channel comes faster and lands the same
     bonus = { speed = 1, magicDamage = 1 },

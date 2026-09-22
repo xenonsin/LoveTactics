@@ -13,8 +13,8 @@ return {
     sprite = "assets/items/ability_haste.png",
     type = "ability",
     class = "mage",
-    price = 575,
-    unlockLevel = 11,
+    price = 475,
+    unlockLevel = 9,
     tags = { "support", "magical" },
     activeAbility = {
         target = "ally", -- includes the caster

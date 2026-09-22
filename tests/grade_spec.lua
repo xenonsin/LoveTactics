@@ -22,7 +22,21 @@ local ANCHORS = {
     { "utility_zephyr_striders", "utility_torch", "flight beats a torch" },
     { "ability_revive", "ability_heal", "raising the dead beats a heal" },
     { "ability_fireball", "ability_ice_bolt", "an area spell beats a single-target bolt" },
-    { "weapon_iron_longbow", "weapon_iron_bow", "the longbow outranges and outhits the bow" },
+    -- RETIRED 2026-09-22: { longbow, bow, "the longbow outranges and outhits the bow" }.
+    --
+    -- The pair asserted a LADDER between two items the data prices as SIBLINGS. Both bows are `price =
+    -- 80` at `unlockLevel = 0`, the Lodge's opener alongside the knight's iron sword and the fighter's
+    -- iron axe at the same 80 -- so neither is meant to beat the other; the choice is reach and a
+    -- heavier arrow against twice the rate of fire (speed 2 against 4, plus a two-tick draw that hard
+    -- control breaks). A grader asked to rank a sidegrade will answer, and the answer means nothing.
+    --
+    -- It is retired rather than satisfied because chasing it was pushing at the ruler to make a design
+    -- claim come true. What it DID surface is real and is fixed: `ab.range` was not priced anywhere in
+    -- models/grade.lua, so the whole ranged catalogue graded as though reach were free. The pair below
+    -- guards that term instead -- which is the half of the old anchor that was a fact about the game
+    -- rather than a wish about two blueprints. It is a synthetic pair rather than an item one on
+    -- purpose: no two shipped weapons differ in range ALONE, so an item pair would be asserting the
+    -- reach term while actually measuring a bleed rider or a stat block.
     { "ability_cleave", "ability_rend", "hitting three beats debuffing one" },
     { "ability_holy_light", "ability_magical_barrier", "an area strike beats a single barrier" },
 
@@ -144,6 +158,47 @@ return {
                     id .. "'s grade moved with its own damage: " .. before .. " -> " .. after
                         .. " -- the slot is feeding the grade again")
             end
+        end,
+    },
+    {
+        -- REACH IS AN AXIS, and this is the case that says so. Two abilities identical in every field
+        -- but `range`: the longer one must grade higher, or models/grade.lua has gone back to pricing
+        -- the whole ranged catalogue as though standing off were free (Grade.REACH_VALUE's header
+        -- records the day it did). Synthetic because no two shipped weapons differ in range alone.
+        name = "grade: reach is worth something, and more of it is worth more",
+        fn = function()
+            -- Registered as real defs rather than passed as tables: Grade.of only grades an ACTIVE
+            -- ability when it can instantiate the item, and it instantiates by id.
+            local function bow(range)
+                local id = "weapon_grade_probe_" .. range
+                Item.defs[id] = {
+                    name = "probe", type = "weapon", class = "hunter", price = 80, unlockLevel = 0,
+                    tags = { "pierce", "physical", "ranged" },
+                    activeAbility = {
+                        target = "enemy", range = range, speed = Grade.REFERENCE_SPEED,
+                        cost = { stat = "stamina", amount = 6 },
+                        damage = 10,
+                        effect = function(fx) fx.damage(fx.target) end,
+                    },
+                }
+                Grade.reset()
+                local v = Grade.of(id)
+                Item.defs[id] = nil
+                Grade.reset()
+                return v
+            end
+            local near, mid, far = bow(1), bow(3), bow(6)
+            assert(mid > near, string.format(
+                "a three-tile swing (%.1f) graded no better than a one-tile one (%.1f) -- reach is " ..
+                "unpriced again", mid, near))
+            assert(far > mid, string.format(
+                "a six-tile swing (%.1f) graded no better than a three-tile one (%.1f)", far, mid))
+            -- ...and the SHAPE: the first two tiles are worth more than the next three. A flat
+            -- per-tile term would pay a siege staff four times what it pays a bow, which is not what
+            -- reach does.
+            assert((mid - near) > (far - mid), string.format(
+                "reach graded flat or accelerating (1->3 worth %.1f, 3->6 worth %.1f) -- the step off " ..
+                "melee is the one that changes what the weapon IS", mid - near, far - mid))
         end,
     },
     {

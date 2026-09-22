@@ -25,7 +25,7 @@ return {
     type = "weapon",
     tags = { "mace", "impact", "physical", "ice", "melee" },
     class = "knight",
-    unlockLevel = 12,
+    unlockLevel = 13,
     activeAbility = {
         target = "enemy",
         range = 1,

@@ -176,4 +176,44 @@ return {
             assert(roots == 7, "seven playable roots own items, counted " .. roots)
         end,
     },
+    {
+        -- THE RIFT PAGE IS A DESIGN DOCUMENT THAT CANNOT GO STALE, which is only true while every
+        -- figure on it is still read out of the model. These are the claims it makes that a change
+        -- elsewhere could quietly falsify: a row per floor in order, a section per floor, a boss named
+        -- on each, and a company level band that never goes backwards.
+        name = "the rift page carries every floor, its boss and a climbing level band",
+        fn = function()
+            local Descent = require("models.descent")
+            local page = byName["The-Rift"]
+            assert(page, "the rift page exists")
+
+            local rows, last = 0, 0
+            for line in (page .. "\n"):gmatch("([^\n]*)\n") do
+                local floor, lo, hi = line:match("^| %*%*(%d+)%*%* |.* | (%d+)–(%d+) |")
+                if floor then
+                    rows = rows + 1
+                    assert(tonumber(floor) == rows, "the stack is out of order at row " .. rows)
+                    assert(tonumber(lo) >= last,
+                        "the company level band goes backwards on floor " .. floor)
+                    assert(tonumber(hi) >= tonumber(lo),
+                        "floor " .. floor .. " ends below where it starts")
+                    last = tonumber(lo)
+                end
+            end
+            assert(rows == Descent.FLOORS,
+                "the stack lists " .. rows .. " floors against " .. Descent.FLOORS)
+
+            for floor = 1, Descent.FLOORS do
+                assert(page:find("## Floor " .. floor .. " —", 1, true),
+                    "floor " .. floor .. " has no section")
+            end
+            local _, bosses = page:gsub("%*%*Boss%*%* —", "")
+            assert(bosses == Descent.FLOORS,
+                "every floor names what is on its stair; found " .. bosses)
+
+            -- The bottom is not a circle and bars nothing; Acedia's stair is open on purpose. Two
+            -- different facts, and the page must not print one word for both.
+            assert(page:find("the stair stands open", 1, true), "Sloth's open stair is named as one")
+        end,
+    },
 }

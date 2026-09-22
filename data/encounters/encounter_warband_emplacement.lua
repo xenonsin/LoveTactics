@@ -11,7 +11,7 @@ return {
     name = "The Emplacement",
     kind = "elite",
     weight = 2,
-    minDay = 9,
+    depth = 5,
     composition = function(ctx)
         local list = {
             "character_artificer",      -- setup: the sentries, which claim the ground
@@ -20,7 +20,7 @@ return {
             "character_saboteur",       -- the charges, on the route you were going to take
             "character_ordnance_sentry",
         }
-        for _ = 1, math.floor((ctx.day or 1) / 18) do list[#list + 1] = "character_ordnance_sentry" end
+        for _ = 1, math.floor((ctx.depth or 1) / 7) do list[#list + 1] = "character_ordnance_sentry" end
         return list
     end,
 }

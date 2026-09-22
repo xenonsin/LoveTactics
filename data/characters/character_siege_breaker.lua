@@ -17,7 +17,7 @@ return {
     archetype = "holdGround",
     sprite = "assets/chars/siege_breaker.png",
     stats = {
-        health = 84, mana = 0, stamina = 13,
+        health = 97, mana = 0, stamina = 13,
         staminaRegen = 2,
         damage = 16, magicDamage = 0,
         defense = 9, magicDefense = 6,

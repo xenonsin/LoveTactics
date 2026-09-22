@@ -12,8 +12,8 @@ return {
     type = "ability",
     tags = { "guile", "utility" },
     class = "rogue",
-    price = 80,
-    unlockLevel = 0,
+    price = 345,
+    unlockLevel = 6,
     activeAbility = {
         target = "enemy",
         range = 3,

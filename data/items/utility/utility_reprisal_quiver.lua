@@ -11,7 +11,7 @@ return {
     type = "utility",
     tags = { "quiver" },
     class = "hunter",
-    unlockLevel = 8,
+    unlockLevel = 7,
     traits = { "trait_ranged_counter" },
     -- an arrow back is an arrow
     bonus = { damage = 2 },

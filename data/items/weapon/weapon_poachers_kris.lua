@@ -15,7 +15,7 @@ return {
     type = "weapon",
     tags = { "dagger", "pierce", "physical", "melee" },
     class = "poacher", -- rogue x hunter; the Snare-execute mechanic's first stock
-    unlockLevel = 12,
+    unlockLevel = 13,
     activeAbility = {
         target = "enemy",
         range = 1,

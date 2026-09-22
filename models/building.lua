@@ -73,23 +73,6 @@ Building.GRID = {
 -- same thing -- and nine cards fit the lattice exactly: the Rift in the middle, the Armory, and the
 -- seven houses around them. One board, so nothing has to say which.
 
--- THE CLASS LEVEL A HOUSE'S SHELF WAITS FOR, or nil for a card that keeps no shelf.
---
--- It used to be `unlockClassLevel` on the blueprint and it used to gate the DOOR. It gates the shelf
--- alone now: a house is a shopkeeper with a desk, and the shelf is one line on it (models/offer.lua).
--- The Cathedral is the case that forced the move -- Rowan is carried up broken at the end of Act 0, so a
--- player needs that door on the first morning, and there is no priest in the world yet. A door gated on
--- its shelf would have put the only bone-setting in the game behind a class nobody has.
---
--- Read off the shelf offer's own gate rather than a second field, so the number the card quotes and the
--- number the desk enforces cannot drift apart.
-local function shelfNeed(def)
-    for _, offer in ipairs(def.offers or {}) do
-        if offer.gate and offer.gate.classLevel then return offer.gate.classLevel end
-    end
-    return nil
-end
-
 -- THE HOUSE THAT TEACHES A CLASS -- its card in the square, whether its door is open for this player,
 -- and the class level it is waiting for. The Roll sends a body to its trainer from the class it is
 -- reading (ui/class_editor.lua), and that button needs all three: where to go, whether it may, and what
@@ -100,25 +83,32 @@ end
 -- Nil when the class has no house, which is every subclass and crossing -- ask this about the ROOT the
 -- class hangs off, not about the class itself.
 --
--- `open` IS ABOUT THE SHELF, NOT THE DOOR, and since the fold those are two questions. The door is open
--- as soon as ANY room behind it is (models/offer.lua's Offer.any) -- the Cathedral stands open on the
--- first morning for its mending -- while the shelf waits for the class. What the trainer button needs is
--- the shelf's answer: it is offering to walk a body to the counter that teaches its class, and that
--- counter is the line the class level buys.
+-- `open` IS ABOUT THE DOOR, and it had drifted onto a gate that no longer exists. It used to ask the
+-- SHELF -- "is this house's rack open to you yet" -- off a `classLevel` gate the shelf carried; that
+-- gate was deleted when the shelf was ungated (models/offer.lua), so the lookup answered nil, the
+-- question answered `Offer.open(nil)`, and every house in the city reported itself open forever. The
+-- Roll drew a live button on a shut Colosseum, the player pressed it, and states/hub.lua's
+-- onVisitTrainer found the card locked and did nothing at all. A control that is drawn, hovered, hit
+-- and then silently ignored is worse than one drawn refused.
+--
+-- So it asks the one question the walk actually depends on: is this card ON THE PLAZA -- literally
+-- Building.locked, the gate stack Building.list decides its own flag with, and what states/hub.lua's
+-- onVisitTrainer checks before it opens anything. One reader, so the offer and the act cannot disagree.
+--
+-- `need` IS GONE WITH THE GATE IT NAMED. What opens a house now is taking up a class it shelves
+-- (models/offer.lua's `declared`), and that is not a number to quote -- it is the button one plate
+-- BELOW this one on the same panel. ui/class_editor.lua says so in words instead.
 function Building.houseForClass(class, player)
     if not class then return nil end
     local vendorId = require("models.vendor").forClass(class)
     if not vendorId then return nil end
     for id, def in pairs(Building.defs) do
         if def.vendor == vendorId then
-            local need = shelfNeed(def)
             return {
                 id = id,
                 name = def.name,
                 class = class,
-                need = need,
-                open = require("models.offer").open(player, need and { classLevel = need } or nil,
-                                                   def.vendor),
+                open = not Building.locked(player, def),
             }
         end
     end
@@ -129,6 +119,53 @@ end
 -- not cut": its blueprint stayed on disk and one table hid its door, so bringing the board back was
 -- deleting a line. It is cut now, blueprint and panel and Quest.available with it, so there is nothing
 -- left to park and no door to hide. A building the city does not have is a file that is not there.)
+
+-- IS THIS DOOR SHUT FOR THIS PLAYER -- the whole gate stack for one card, ANDed.
+--
+-- Lifted out of Building.list because it grew a SECOND reader and the two had drifted. The Roll offers
+-- to walk a body to the house that teaches its class (Building.houseForClass), and that offer was
+-- deciding for itself whether the house was open -- off a shelf gate that had since been deleted -- so
+-- it drew a live button onto a card the city was not showing. A door's openness is one question; asking
+-- it twice is how a control ends up promising a room that is not there.
+--
+-- Each gate is a different kind of deed, and the reason there are several is that the city grows on what
+-- the company has DONE rather than on a currency. The keys are catalogued over Building.list.
+--
+-- A DOOR IS OPEN WHEN ANY ROOM BEHIND IT IS (models/offer.lua). This is the gate the fold turned every
+-- house's `unlockClassLevel` into, and the reason it had to change is the Cathedral: Rowan is carried up
+-- broken at the end of Act 0, the only bone-setting in the game is a line on that desk, and on the first
+-- morning there is no priest in the world. A door gated on its shelf would have hidden the room the
+-- player was holding the problem for.
+--
+-- SO THE CITY STILL GROWS ON THE SAME SCHEDULE, it just grows INSIDE doors. Each room kept the gate its
+-- card had -- the mending on the first body carried up broken, the supper on the second trip, the bench
+-- on the third, the reading on the first thing nobody can read -- and a house's plate appears the
+-- morning the first of its rooms does. What arrives is a line on a desk rather than a plate on a board.
+--
+-- A building with no offers answers open, so the Armory and the Rift are unaffected: they are doors onto
+-- one thing each and keep their own gates below.
+function Building.locked(player, def, prestige)
+    prestige = prestige or (player and require("models.player").standing(player)) or 1
+    if prestige < (def.unlockPrestige or 1) then return true end
+    if not require("models.offer").any(player, def) then return true end
+    if def.unlockQuest and not (player and Player.hasCompleted(player, def.unlockQuest)) then
+        return true
+    end
+    -- ...and the two gates the city itself grew on.
+    if def.unlockExpeditions and Player.expeditionsOut(player) < def.unlockExpeditions then
+        return true
+    end
+    if def.unlockUnidentified and not require("models.identify").everFound(player) then
+        return true
+    end
+    -- ...and the door that opens the first time somebody is carried up broken. The mark is one-way and
+    -- never cleared -- not by setting the bone, not by walking home -- so the Ward stays on the plaza
+    -- once it has arrived (models/wound.lua's Wound.everWounded).
+    if def.unlockWound and not require("models.wound").everWounded(player) then
+        return true
+    end
+    return false
+end
 
 -- Ordered list of buildings for a player. Each entry is a fresh copy of the def (blueprints stay
 -- untouched) plus `id` and `locked`.
@@ -184,104 +221,68 @@ function Building.list(playerOrPrestige, opts)
 
     local list = {}
     for id, def in pairs(Building.defs) do
-        local locked = prestige < (def.unlockPrestige or 1)
+        local locked = Building.locked(player, def, prestige)
         -- The Quest Board was the campaign's front door -- seven houses' work over forty days -- and the
         -- city has one door now, and it goes down (data/buildings/the_gate.lua). It was hidden by a
         -- RETIRED table for a while and is deleted outright now, and the district filter that stood here
         -- after it went with the second board. Nothing filters; every card in the registry is on the one
         -- plaza.
-        do
-            -- A DOOR IS OPEN WHEN ANY ROOM BEHIND IT IS (models/offer.lua).
-            --
-            -- This is the gate the fold turned every house's `unlockClassLevel` into, and the reason it
-            -- had to change is the Cathedral: Rowan is carried up broken at the end of Act 0, the only
-            -- bone-setting in the game is a line on that desk, and on the first morning there is no
-            -- priest in the world. A door gated on its shelf would have hidden the room the player was
-            -- holding the problem for.
-            --
-            -- SO THE CITY STILL GROWS ON EXACTLY THE SAME SCHEDULE, it just grows INSIDE doors. Each
-            -- room kept the gate its card had -- the mending on the first body carried up broken, the
-            -- supper on the second floor, the bench on the fourth, the reading on the first thing
-            -- nobody can read -- and a house's plate appears the morning the first of its rooms does.
-            -- What arrives is a line on a desk rather than a plate on the board.
-            --
-            -- A building with no offers answers open, so the Armory and the Rift are unaffected: they
-            -- are doors onto one thing each and keep their own gates below.
-            locked = locked or not require("models.offer").any(player, def)
-            if def.unlockQuest then
-                locked = locked or not (player and Player.hasCompleted(player, def.unlockQuest))
-            end
-            -- ...and the two gates the city itself grew on (see the header).
-            if def.unlockExpeditions then
-                locked = locked or Player.expeditionsOut(player) < def.unlockExpeditions
-            end
-            if def.unlockUnidentified then
-                locked = locked or not require("models.identify").everFound(player)
-            end
-            -- ...and the door that opens the first time somebody is carried up broken. The mark is
-            -- one-way and never cleared -- not by setting the bone, not by walking home -- so the Ward
-            -- stays on the plaza once it has arrived (models/wound.lua's Wound.everWounded).
-            if def.unlockWound then
-                locked = locked or not require("models.wound").everWounded(player)
-            end
-            -- The ONLY place a hand-authored 1280x720 rect crosses into the live space. Every
-            -- building in data/buildings positions its door by eye against the city art, and on a
-            -- handheld that space is shorter and wider (scale.lua) -- so the rect has to travel with
-            -- it. Both axes scale independently, matching how states/hub.lua stretches the city
-            -- picture itself: a hotspot must distort exactly as much as the door it names.
-            local bx, by, bw, bh = Scale.fromAuthored(def.x, def.y, def.w, def.h)
-            list[#list + 1] = {
-                id = id,
-                name = def.name,
-                order = def.order or 0,
-                x = bx,
-                y = by,
-                w = bw,
-                h = bh,
-                panel = def.panel,
-                state = def.state, -- a whole screen this door opens instead of a pop-up, or nil
-                vendor = def.vendor, -- vendor id for shop buildings; nil otherwise
-                -- A ONE-TIME SCENE THIS ROOM PLAYS THE FIRST TIME IT IS WALKED INTO, and optionally the
-                -- companion it hands over -- which is how the Ward introduces Xin. A shop does this
-                -- through models/vendor_visit.lua, keyed on its vendor id; a room with no shelf has no
-                -- vendor to key on, and inventing one so a door can say a sentence would put an empty
-                -- counter in the data to carry a scene. `Building.seenDoor` is already the ledger of
-                -- which rooms have been walked into, so the flag this needs exists.
-                intro = def.intro,
-                grants = def.grants,
-                -- ...and the room whose CLOSE plays it, for a house whose scene belongs on the far
-                -- side of a press rather than in the doorway (models/counter.lua's introAfter).
-                introAfter = def.introAfter,
-                unlockPrestige = def.unlockPrestige or 1,
-                unlockQuest = def.unlockQuest, -- quest id that opens this door, or nil
-                unlockDepth = def.unlockDepth, -- floor this company must have stood on, or nil
-                -- THE DESK AND THE ROOMS BEHIND IT (models/counter.lua, models/offer.lua). `counter` is
-                -- the scene this house plays on the way in, ending on the desk that names its rooms;
-                -- `offers` is what those rooms are and what each one waits for. Carried onto the entry
-                -- so the city can ask a card what it holds without re-reading the blueprint.
-                counter = def.counter,
-                offers = def.offers,
-                -- The class level this house's SHELF waits for, or nil -- so a board can say what a card
-                -- is still holding back without re-reading the offer list. Not a door gate any more:
-                -- see the gate block above and shelfNeed.
-                unlockClassLevel = shelfNeed(def),
-                -- WHAT THIS DOOR IS FOR, in ONE short sentence. It is the second half of the coach
-                -- bubble the city puts on a card it has just grown (states/hub.lua's doorText) -- so it
-                -- is not flavour, it is the whole of what the player is told about a building before
-                -- they walk into it, and it has to fit in a 240px bubble beside the card's name.
-                -- Every city card carries one; tests/hub_doors_spec.lua fails one that does not, and
-                -- one too long to fit.
-                description = def.description,
-                -- A SHUT DOOR SAYS NOTHING, and that is a decision rather than an omission. The card
-                -- carried a sentence for an afternoon -- "Beat the circle of Lust", composed off
-                -- whichever gate was really being asked -- and it was the right fix for a card quoting
-                -- prestige, a currency the city stopped counting. It is the wrong one now. Every shut
-                -- door in the square has the SAME answer (climb the class, and its shelf is here), so
-                -- seven cards each naming it is seven copies of one sentence -- and the square's own
-                -- subtitle says it once, where it is read before any of the plates are.
-                locked = locked,
-            }
-        end
+
+        -- The ONLY place a hand-authored 1280x720 rect crosses into the live space. Every
+        -- building in data/buildings positions its door by eye against the city art, and on a
+        -- handheld that space is shorter and wider (scale.lua) -- so the rect has to travel with
+        -- it. Both axes scale independently, matching how states/hub.lua stretches the city
+        -- picture itself: a hotspot must distort exactly as much as the door it names.
+        local bx, by, bw, bh = Scale.fromAuthored(def.x, def.y, def.w, def.h)
+        list[#list + 1] = {
+            id = id,
+            name = def.name,
+            order = def.order or 0,
+            x = bx,
+            y = by,
+            w = bw,
+            h = bh,
+            panel = def.panel,
+            state = def.state, -- a whole screen this door opens instead of a pop-up, or nil
+            vendor = def.vendor, -- vendor id for shop buildings; nil otherwise
+            -- A ONE-TIME SCENE THIS ROOM PLAYS THE FIRST TIME IT IS WALKED INTO, and optionally the
+            -- companion it hands over -- which is how the Ward introduces Xin. A shop does this
+            -- through models/vendor_visit.lua, keyed on its vendor id; a room with no shelf has no
+            -- vendor to key on, and inventing one so a door can say a sentence would put an empty
+            -- counter in the data to carry a scene. The flag is the room's own
+            -- (`player.flags["intro_<id>"]`, models/counter.lua) -- which is a different fact from
+            -- "has this card been seen", and conflating the two once ate a companion.
+            intro = def.intro,
+            grants = def.grants,
+            -- ...and the room whose CLOSE plays it, for a house whose scene belongs on the far
+            -- side of a press rather than in the doorway (models/counter.lua's introAfter).
+            introAfter = def.introAfter,
+            unlockPrestige = def.unlockPrestige or 1,
+            unlockQuest = def.unlockQuest, -- quest id that opens this door, or nil
+            unlockDepth = def.unlockDepth, -- floor this company must have stood on, or nil
+            -- THE DESK AND THE ROOMS BEHIND IT (models/counter.lua, models/offer.lua). `counter` is
+            -- the scene this house plays on the way in, ending on the desk that names its rooms;
+            -- `offers` is what those rooms are and what each one waits for. Carried onto the entry
+            -- so the city can ask a card what it holds without re-reading the blueprint.
+            counter = def.counter,
+            offers = def.offers,
+            -- WHAT THIS DOOR IS FOR, in ONE short sentence. IT HAS NO READER TODAY, and that is
+            -- worth knowing before trusting it: it was the second half of the coach bubble the city
+            -- put on a card it had just grown, and the plaza's coach is cut (states/hub.lua's
+            -- header). The field and its sentences are kept -- they are the one line of authored
+            -- prose saying what a room is for, and the next surface that wants to say that (a card
+            -- tooltip, a desk header) should read this rather than write a second one -- but nothing
+            -- holds them to a length or to existing any more.
+            description = def.description,
+            -- A SHUT DOOR SAYS NOTHING, and that is a decision rather than an omission. The card
+            -- carried a sentence for an afternoon -- "Beat the circle of Lust", composed off
+            -- whichever gate was really being asked -- and it was the right fix for a card quoting
+            -- prestige, a currency the city stopped counting. It is the wrong one now. Every shut
+            -- door in the square has the SAME answer (climb the class, and its shelf is here), so
+            -- seven cards each naming it is seven copies of one sentence -- and the square's own
+            -- subtitle says it once, where it is read before any of the plates are.
+            locked = locked,
+        }
     end
 
     table.sort(list, function(a, b) return a.order < b.order end)
@@ -301,95 +302,6 @@ function Building.vendorUnlockPrestige(vendorId)
         end
     end
     return 1
-end
-
--- ---------------------------------------------------------------------------
--- Doors the city has grown: the ledger, and what is owed an announcement
--- ---------------------------------------------------------------------------
---
--- THE PROBLEM A GROWING CITY HAS. Six of the nine cards on the plaza are shut on a fresh save and each
--- opens on a deed done underground (see the gate table above) -- so the player comes up from a floor,
--- and a building that was three question marks is suddenly a name. Nothing says it happened, nothing
--- says what the room is for, and the one moment the door is interesting is the moment it appears. A
--- card that quietly stops being locked is a feature delivered by not being mentioned.
---
--- So the city COACHES a door it has just grown, in exactly the way it coaches the hall and the stair on
--- the first visit (states/hub.lua's INTRO_STAGES): a bubble pinned to the card, carrying the card's name
--- and the blueprint's own `description` of what the room is for, and while it is up that card is the
--- only one that opens. A room explained and then walked into is learned; a room explained is read.
---
--- A POP-UP DID THIS FOR AN AFTERNOON and was cut. The city already has a grammar for "press this, and
--- here is why", and a modal in front of it covers the plate it is naming, has to be dismissed before the
--- thing it is pointing at can be reached, and makes a new counter a bigger event than the stair the
--- whole game is about. The sentence it carried is in the bubble now.
---
--- `player.seenDoors` is the whole of the memory: building id -> true, for every door the player has
--- been shown. It is NIL rather than empty until the city is first looked at, and that distinction is
--- load-bearing -- an empty table would be indistinguishable from a save written before this existed,
--- and every such save would come back to a city announcing all three of its opening doors as news.
--- Building.seedSeen is what flips nil to a real ledger, and it can never leave it empty (the plaza
--- always has the stair, the hall and the Armory open).
-
--- Has the player looked at the city at all? False only before Building.seedSeen has ever run, which is
--- the first hub entry of a new game -- and every save written before the ledger existed.
-function Building.seeded(player)
-    return type(player and player.seenDoors) == "table"
-end
-
--- Has this door already been announced (or been open since before the ledger started)?
-function Building.seenDoor(player, id)
-    return ((player and player.seenDoors) or {})[id] == true
-end
-
--- Record that the player has been shown this door, so it is never announced again. Called when the
--- coached card is actually walked into -- by the deed, not by the bubble being read, for the reason the
--- first visit's hire stage is: a lesson satisfied by reading a card teaches reading cards.
---
--- Returns true only when it actually flipped, so a caller persists on the transition rather than on
--- every door it opens (Player.seeNew draws the same line for the item dots).
-function Building.markSeen(player, id)
-    if not (player and id) then return false end
-    player.seenDoors = player.seenDoors or {}
-    if player.seenDoors[id] then return false end
-    player.seenDoors[id] = true
-    return true
-end
-
--- Record every door the city currently has open, announcing none of them. The first look at the city,
--- and the only way the ledger is created.
---
--- What it buys is that nothing already standing is ever news. On a new game that is the three cards the
--- plaza opens with -- the stair, the hall and the Armory -- which are the first visit's own business
--- (states/hub.lua's INTRO_STAGES coaches two of them, and a forced tour of the third on top of the
--- sponsor's scene would be a fourth thing happening before the player has pressed anything). On a save
--- written before any of this existed it is however much of the city that company had already earned,
--- which is exactly right: they have been using those rooms for hours.
---
--- BOTH BOARDS, because both draw off this ledger now. The plaza spends it on the coach bubble; the
--- square spends it on the red dot on a shelf that opened while nobody was standing there
--- (states/houses.lua). One ledger and not two: building ids are unique across the registry, and a
--- second copy of "which doors has this player been shown" is the copy that goes stale.
-function Building.seedSeen(player)
-    if not player then return end
-    player.seenDoors = player.seenDoors or {}
-    for _, b in ipairs(Building.list(player)) do
-        if not b.locked then player.seenDoors[b.id] = true end
-    end
-end
-
--- The doors the city has grown that the player has not been shown yet, in board order (the Gate first,
--- the Touchstone last) so a morning that opened two of them announces them in the order they are read.
---
--- EMPTY WHILE UNSEEDED, deliberately. An unseeded ledger means the player has not looked at the city,
--- and nothing that was already there when they arrived is news -- so the safe answer to "what is new"
--- for somebody who has seen nothing is "nothing", and the caller seeds first (states/hub.lua).
-function Building.unannounced(player)
-    if not Building.seeded(player) then return {} end
-    local new = {}
-    for _, b in ipairs(Building.list(player)) do
-        if not b.locked and not Building.seenDoor(player, b.id) then new[#new + 1] = b end
-    end
-    return new
 end
 
 return Building

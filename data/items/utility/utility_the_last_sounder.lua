@@ -55,7 +55,7 @@ return {
     -- has to land ABOVE the horn or the list inverts: depth is rarity here, so the chase being graded
     -- under the common piece would make the common piece the rare one.
     grade = 12.00,
-    unlockLevel = 14,
+    unlockLevel = 15,
     -- RIFT-ONLY. It comes off the body and nowhere else: no counter deals one however many
     -- the company carries out, and none will buy one back (docs/drops.md, Vendor.foundPrice).
     unstocked = true,

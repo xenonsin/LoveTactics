@@ -27,7 +27,7 @@ return {
     type = "armor",
     tags = { "cloth", "light" },
     class = "mage",
-    unlockLevel = 8,
+    unlockLevel = 7,
     incense = { hazard = "hazard_witchlight", radius = 1 },
     bonus = { magicDefense = Curve.ramp(4, 14), movement = -1 },
 }

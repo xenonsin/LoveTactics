@@ -21,7 +21,12 @@ return {
     -- Heavy, because this is meant to be the human fight the road is MADE of rather than a rare event.
     -- The named warbands beside it are the set-pieces; this is the traffic.
     weight = 8,
-    minDay = 2,
+    -- OPEN FROM THE FIRST FLOOR. The human band is the one thing that appears at every depth --
+    -- everything else is locked to its circle -- so it is what keeps a shallow floor from being
+    -- empty, and it cannot do that job from behind a gate. Every body in this one is human, so
+    -- nothing here is a circle's content arriving early. What scales the band with depth is WHO
+    -- is in it (models/warband.lua reads Class.gateLevel), not whether it may appear at all.
+    depth = 1,
     composition = function(ctx)
         return Warband.compose(ctx)
     end,

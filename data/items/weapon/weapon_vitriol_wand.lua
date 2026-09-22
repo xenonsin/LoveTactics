@@ -20,7 +20,7 @@ return {
     type = "weapon",
     tags = { "wand", "magical", "acid", "ranged" },
     class = "alchemist",
-    unlockLevel = 12,
+    unlockLevel = 13,
     activeAbility = {
         target = "enemy",
         range = 3,

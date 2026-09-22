@@ -15,7 +15,7 @@ return {
     type = "utility",
     tags = { "charm", "fire" },
     class = "battlemage", -- fighter x mage; the Spellstrike mechanic's first stock
-    unlockLevel = 6,
+    unlockLevel = 7,
     aura = {
         appliesTo = { "weapon" },   -- re-forges the neighbouring blades, not consumables
         grantTags = { "magical" },  -- their hits route through magicDefense

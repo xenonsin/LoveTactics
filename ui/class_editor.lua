@@ -499,6 +499,9 @@ end
 -- Nil when this panel was not opened somewhere a player can walk out of, which is the same condition
 -- the button draws on -- one reader, so the offer and the act can never disagree about whether there
 -- is a town.
+--
+-- `open` is the CARD's own gate now, not a shelf's (models/building.lua), so this offer and the walk it
+-- ends in are asking the one question: is the house on the plaza.
 function ClassEditor:trainer()
     if not self.onVisitTrainer then return nil end
     local row = self:currentRow()
@@ -1211,10 +1214,20 @@ function ClassEditor:drawDetail()
     -- next.
     --
     -- AND IT IS DRAWN SHUT, which is the one greyed plate on this tab and deliberately the exception to
-    -- the rule under it. A house that has not opened is not refusing the press, it is naming the level
-    -- that opens it -- "Unlock trainer at Knight lvl 1" is the only place in the game that sentence is
-    -- said on the class's own screen, and it is said to the player who is standing there deciding
-    -- whether to climb. Take the plate away and the gate is invisible until the door appears.
+    -- the rule under it. A house that has not opened is not refusing the press, it is naming what opens
+    -- it -- said on the class's own screen, to the player standing there deciding whether to climb.
+    -- Take the plate away and the gate is invisible until the door appears.
+    --
+    -- AND WHAT IT NAMES IS THE PLATE DIRECTLY BELOW IT. It used to read "Unlock trainer at Knight lvl 1",
+    -- quoting a `classLevel` gate on the shelf -- a gate deleted when the shelf was ungated, which left
+    -- this branch unreachable and the plate above it permanently live, so the Roll offered a walk to a
+    -- house the city was not showing and the press did nothing (models/building.lua's houseForClass).
+    -- What opens a house now is the company taking up a class it shelves (models/offer.lua's `declared`
+    -- gate), and the act that does it is the Change button one plate down. So the shut plate names THAT,
+    -- which is the difference between a wall and a direction: a number to grind became a press to make.
+    --
+    -- The house is named rather than the class, because the class is already on the row and the house
+    -- may not be -- a subclass is taught at its parent's door.
     local house = self:trainer()
     if house then
         local by = self:buttonsTop()
@@ -1227,11 +1240,9 @@ function ClassEditor:drawDetail()
             Theme.set(Theme.ink)
             love.graphics.printf("Go to Class Trainer", x, by + 9, w, "center")
         else
-            -- The class is named because it is not the class on the row: a subclass is taught at its
-            -- parent's house, so "lvl 1" alone would read as a level in the thing being looked at.
             Theme.set(Theme.muted, 0.55)
-            love.graphics.printf(string.format("Unlock trainer at %s lvl %d",
-                Item.classDisplayName(house.class) or house.class, house.need or 1), x, by + 9, w, "center")
+            love.graphics.printf("Take up the class to open " .. (house.name or "its house"),
+                x, by + 9, w, "center")
         end
     end
 

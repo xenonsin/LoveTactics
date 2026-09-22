@@ -65,7 +65,11 @@ return {
         -- QUIET all the same: a shelf never puts a card on the plaza. A class rung is a reward the
         -- player cannot see, and hanging a door on it put shopfronts in the city that nobody chose to
         -- earn (models/offer.lua's Offer.any).
-        { answer = "shelf", panel = "shop", quiet = true },
+        { answer = "shelf", panel = "shop", quiet = true,
+          -- ...except to the company training for it (models/offer.lua's `declared` gate).
+          -- A shelf is not a deed the player can feel, so it stays quiet; taking up the class
+          -- it sells IS one, and it is the only thing that puts this card on the plaza early.
+          announce = { declared = true } },
         { answer = "bestiary", panel = "bestiary", gate = { trips = 4 } },
         { answer = "study", panel = "study", gate = { trips = 5 } }, -- see the header
     },

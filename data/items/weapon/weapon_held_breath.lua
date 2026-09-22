@@ -28,7 +28,7 @@ return {
     tags = { "longbow", "pierce", "physical", "ranged" },
     hands = 2,
     class = "hunter",
-    unlockLevel = 6,
+    unlockLevel = 2,
     activeAbility = {
         target = "enemy",
         range = 5,
@@ -37,7 +37,7 @@ return {
         speed = 4,
         windup = 2,
         cost = { stat = "stamina", amount = 10 },
-        damage = Curve.ramp(15, 27),
+        damage = Curve.ramp(12, 24),
         -- The whole weapon, in one field. `channelStatus` lands on the caster the moment the draw is
         -- COMMITTED rather than when it resolves (Combat.useItem's channel branch), which is the half an
         -- `effect` cannot reach -- an effect runs when the arrow arrives, and by then the turn this was

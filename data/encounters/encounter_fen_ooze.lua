@@ -12,7 +12,7 @@
 -- hound and call it a win; a board with nothing on it but slimes has exactly one question on it.
 --
 -- IT SHIPPED AS `combat` AND THE MEASUREMENT SAID NO. tests/skirmish_spec.lua autobattles every
--- ordinary stop with a real company at day 20 and holds it to 22 unit-turns; this one took 56. That is
+-- ordinary stop with a real company at floor 11 and holds it to 22 unit-turns; this one took 56. That is
 -- not a tuning miss, it is the body working as designed -- three things a melee line cannot hurt is a
 -- long fight by construction, and no count or health figure fixes that without deleting the puzzle.
 --
@@ -36,7 +36,7 @@
 -- answers it with no fight. The outs are real -- a rolled fight arrives on the deploy screen with a
 -- Run Away plate over it, and a wipe underground costs the haul rather than the save (docs/the-count.md)
 -- -- but a Run Away roll can fail, so the body must not be met before a company has plausibly acquired
--- an element. `minDay` is the whole of that guarantee: on a descent the day is depth (Descent.poolDay),
+-- an element. `depth` is the whole of that guarantee: on a descent the day is depth (Descent.poolDay),
 -- so 6 is several floors and several homecomings of shelves and drops rather than the mouth of the rift.
 return {
     name = "The Fen Ooze",
@@ -45,14 +45,21 @@ return {
     -- sit at. Level with it, so the fen deals the lesson about as often as the thing that charges for
     -- it, and the ELITE_SHARE cap keeps either from crowding the board.
     weight = 2,
-    minDay = 6,
+    -- NO DEPTH GATE: ITS CIRCLE IS ITS PLACEMENT. The condition below locks this to one ground, and a
+    -- circle owns a fixed stratum -- so a depth on top of that is a second opinion about where it goes,
+    -- and it disagrees the moment the shuffle deals that circle at another depth (Descent.sinOrder).
+    -- It also gated Lust's own elites off Lust's own floors: converted from the retired calendar they
+    -- asked for floors three and four, and Lust owns one and two.
+    --
+    -- Which of a circle's floors a thing bills on is Descent.SINS' `elites` for the standing threat, and
+    -- `rung` for anything an author wants split across the approach and the seat.
     condition = function(ctx) return ctx.biome == "swamp" end,
     composition = function(ctx)
         local list = {}
         -- Two at the mouth of the fen, three deeper in. It climbs slowly and stops well inside
         -- Arena.ELITE_CAP (6): this is a puzzle about what you brought, and a fourth body only makes
         -- the same answer take longer.
-        for _ = 1, math.min(3, 2 + math.floor((ctx.day or 1) / 10)) do
+        for _ = 1, math.min(3, 2 + math.floor((ctx.depth or 1) / 4)) do
             list[#list + 1] = "character_slime"
         end
         return list

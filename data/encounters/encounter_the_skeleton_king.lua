@@ -12,9 +12,9 @@
 -- version of the rule they have already met once. The archer is in there so that clearing the court is
 -- not simply a matter of walking forward.
 --
--- `minDay = 22` and the underworld: a full ten days behind the Lord
--- (data/encounters/encounter_the_barrow_lord.lua, minDay 12) and nineteen behind the common dead
--- (encounter_the_bone_orchard.lua, minDay 3), so the ladder is walked in order -- which weapon, then
+-- `depth = 12` (it read `minDay = 22` against the retired calendar) and the underworld: a full ten days behind the Lord
+-- (data/encounters/encounter_the_barrow_lord.lua, depth 12) and nineteen behind the common dead
+-- (encounter_the_bone_orchard.lua, depth 3), so the ladder is walked in order -- which weapon, then
 -- which bar, then which body -- and each rung has been taught somewhere cheaper before it is charged
 -- for.
 --
@@ -26,7 +26,14 @@ return {
     kind = "elite",
     -- Rare. It is the bottom of the barrows, not the traffic in them.
     weight = 2,
-    minDay = 22,
+    -- NO DEPTH GATE: ITS CIRCLE IS ITS PLACEMENT. The condition below locks this to one ground, and a
+    -- circle owns a fixed stratum -- so a depth on top of that is a second opinion about where it goes,
+    -- and it disagrees the moment the shuffle deals that circle at another depth (Descent.sinOrder).
+    -- It also gated Lust's own elites off Lust's own floors: converted from the retired calendar they
+    -- asked for floors three and four, and Lust owns one and two.
+    --
+    -- Which of a circle's floors a thing bills on is Descent.SINS' `elites` for the standing threat, and
+    -- `rung` for anything an author wants split across the approach and the seat.
     condition = function(ctx) return ctx.biome == "underworld" end,
     composition = function(ctx)
         return {

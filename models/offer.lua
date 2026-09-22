@@ -107,8 +107,42 @@ GATES.quest = function(player, questId)
     return player ~= nil and require("models.player").hasCompleted(player, questId) == true
 end
 
+-- SOMEBODY IN THIS COMPANY IS TRAINING FOR WHAT THIS HOUSE SELLS.
+--
+-- The gate the block above said any successor would take: it hops through the vendor, because what it
+-- has to know is the house's CLASS and a house does not write one on itself (data/vendors/<id>.lua).
+--
+-- WHY IT EXISTS. Every house's shelf is quiet -- it may not put a card on the plaza (Offer.any) -- so
+-- the seven class houses arrived in the order their OTHER rooms happened to be scheduled: the Colosseum
+-- on the duel, the Arcanum on the bestiary, the Alchemist on the reading. Fighter was not last because
+-- fighter gear is late content. It was last because PvP is last. Meanwhile no root class has a
+-- `requires` at all (data/classes/), so a player can declare Fighter on the first morning and then walk
+-- five trips with nowhere to buy a fighter ability. The clock was pacing rooms and accidentally pacing
+-- CLASSES, which is not a thing rooms know how to pace.
+--
+-- So intent opens the house. Declare a class in the Roll -- or hire a body born to one -- and the house
+-- that shelves it is on the square before the panel has finished closing. The trips gate on each
+-- house's other room is untouched and is still the backstop: a player who declares nothing sees exactly
+-- today's schedule, and the duel is still the seventh trip either way.
+--
+-- ASKED OF THE SHELF, not of the root, so a body declared Ninja opens both the houses that sell a
+-- Ninja's gear (Vendor.shelves) -- the same rule the rack itself already runs on.
+--
+-- One-way, via Class.taken: changing class back must never take a card off the plaza.
+GATES.declared = function(player, want, vendorId)
+    local Vendor = require("models.vendor")
+    local def = vendorId and Vendor.defs[vendorId]
+    local held = false
+    if def and player then
+        for class in pairs(require("models.class").takenSet(player)) do
+            if Vendor.shelves(def, class) then held = true; break end
+        end
+    end
+    return is(held, want)
+end
+
 -- Is one offer open for this player? `vendorId` is the house the offer stands in, handed to any gate
--- that has to hop through the vendor to read its class (see the block above -- no gate does today).
+-- that has to hop through the vendor to read its class -- `declared` above is the one that does.
 -- A nil gate is open; an unknown gate key is a typo in a blueprint and asserts rather than
 -- silently reading as open -- a gate that quietly stops gating is a room delivered by accident.
 -- EVENT, OR A BACKSTOP. `any = { ... }` holds when ANY of its sub-gates does, which is what lets a room
@@ -161,7 +195,8 @@ function Offer.list(player, building)
             panel = offer.panel,
             vendor = offer.vendor or building.vendor,
             gate = offer.gate,
-            quiet = offer.quiet, -- open without announcing its house; see Offer.any
+            quiet = offer.quiet,       -- open without announcing its house; see Offer.any
+            announce = offer.announce, -- ...except on this gate. Also Offer.any
             -- The GATE is always asked of the house, never of the offer's own vendor: a gate on a desk
             -- line is about THIS house, and the room the line opens may well belong to somebody else
             -- (the town counter behind the fence's door).
@@ -201,11 +236,29 @@ end
 -- Undercroft at all and the contradiction never showed. The fold put the door on the plaza for the
 -- market's sake and left the shop behind it shut -- so the gate came off the room and `quiet` kept the
 -- card where it belonged.
+--
+-- ...AND `announce` IS THE ONE CONDITION UNDER WHICH A QUIET ROOM SPEAKS UP. It is a gate in the same
+-- vocabulary as `gate`, asked only of a room that is already open, and it decides the CARD alone --
+-- never whether the room is there. The two fields are two questions and a quiet shelf has to answer
+-- them differently: it is open always (a shopfront offers a shop), and it announces only when the
+-- company is actually training for what it sells (`declared`, above).
+--
+-- That is what took the class houses off the room queue. Browsing is still not a deed the player can
+-- feel, which is why the shelf is still quiet by default -- but DECLARING A CLASS is, and it is the
+-- loudest one the Roll has. See GATES.declared for the whole argument.
+function Offer.announces(player, offer, vendorId)
+    if not offer.quiet then return true end
+    return offer.announce ~= nil and Offer.open(player, offer.announce, vendorId)
+end
+
 function Offer.any(player, building)
     local offers = (building and building.offers) or {}
     if #offers == 0 then return true end
     for _, offer in ipairs(offers) do
-        if not offer.quiet and Offer.open(player, offer.gate, building.vendor) then return true end
+        if Offer.open(player, offer.gate, building.vendor)
+            and Offer.announces(player, offer, building.vendor) then
+            return true
+        end
     end
     return false
 end

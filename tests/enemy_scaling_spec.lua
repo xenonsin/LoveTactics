@@ -53,7 +53,10 @@ return {
     {
         name = "a combatant's level is the highest of its own floor, the fight's floor, and its tracking",
         fn = function()
-            local lagged = function(level) return 1 + math.floor(Growth.ENEMY_LEVEL_LAG * (level - 1)) end
+            -- THE MODEL'S OWN ARITHMETIC, not a copy of it. This held a second copy of the lag
+            -- expression, which is exactly how a change of unit -- a multiplier becoming a count of
+            -- levels -- produces a green suite that is lying about what it checked.
+            local lagged = Growth.laggedLevel
 
             local plain = {}
             assert(Growth.combatantLevel(plain, 12, nil) == lagged(12),

@@ -20,7 +20,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "vanguard",
-    unlockLevel = 4,
+    unlockLevel = 5,
     traits = { "trait_stripped_plate" },
     -- you wear what you Sundered off somebody else
     bonus = { defense = 2 },

@@ -22,11 +22,16 @@
 -- stops make the road a little richer in depth than the single Cold Forge did, which is the price of
 -- the split and is paid on purpose -- each one is now half as likely to be the stop you wanted.
 --
--- `minDay = 2` for the Cold Forge's reason: on floor one every ability is at +0 and the rungs all look
+-- `depth = 2` for the Cold Forge's reason: on floor one every ability is at +0 and the rungs all look
 -- alike, and by floor two the company has a favourite.
 return {
     name = "The Cold Lectern",
     kind = "lectern",
     weight = 1,
-    minDay = 2,
+    -- TWO, AND THE CONVERSION FROM DAYS GOT IT WRONG ONCE. The old gate was `minDay = 2`, and the
+    -- mechanical reading of that is floor one -- floor one borrowed day two, so a day-two gate admitted
+    -- it there. What the paragraph above actually asks for is the floor AFTER the one where every piece
+    -- is still at +0, which is floor two. Where a blueprint states its intent in words, the words are the
+    -- authority and the arithmetic is not.
+    depth = 2,
 }

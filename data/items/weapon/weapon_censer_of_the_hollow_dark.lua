@@ -29,7 +29,7 @@ return {
     type = "weapon",
     tags = { "censer", "impact", "physical", "dark", "melee" },
     class = "priest",
-    unlockLevel = 5,
+    unlockLevel = 8,
     incense = {
         hazard = "hazard_darkness",
         radius = 1,
@@ -40,7 +40,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 6 },
-        damage = Curve.ramp(7, 17),
+        damage = Curve.ramp(9, 19),
         effect = function(fx)
             fx.damage(fx.target) -- carries `dark`, which some flesh resists and some does not
         end,

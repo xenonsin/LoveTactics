@@ -27,7 +27,7 @@ return {
     type = "utility",
     tags = { "boots", "flying" },
     class = "rogue",
-    unlockLevel = 4,
+    unlockLevel = 7,
     -- footwear, and the flattest ground-cost item there is
     bonus = { movement = 1 },
 }

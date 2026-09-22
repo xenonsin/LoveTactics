@@ -45,7 +45,7 @@ return {
     -- SIX IS THE TOOL'S OWN ANSWER, not a number typed here: `. drop-tier` grades the mantle at 10.7
     -- turns of advantage and spreads it to 6. Left agreeing with the pass on purpose -- what a thing
     -- is worth sets where it sits (docs/shelf.md), and a boss relic is not exempt from its own grade.
-    unlockLevel = 10,
+    unlockLevel = 9,
     unstocked = true,
     traits = { "trait_adaptive" },
     -- ONE TURN AND A BREATH. Status.TICKS_PER_TURN is 5, so 8 ticks is the blow you just took plus the

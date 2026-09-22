@@ -23,7 +23,6 @@
 
 local Character = require("models.character")
 local Growth = require("models.growth")
-local Calendar = require("models.calendar") -- the far side is minted at the DAY's level, not the party's
 local Arena = require("models.arena")
 local Player = require("models.player")
 
@@ -140,7 +139,11 @@ function Muster.encounter(def, ctx)
     -- gates the walk-off (Muster.WALK_OVER), so it must be the level the fight will really spawn at --
     -- reading the day down a stair rated the first floor's stock at blueprint level 1 and turned every
     -- marker on it calm.
-    local danger = ctx.enemyLevel or Calendar.dangerLevel(ctx.day or 1)
+    -- ...and with the calendar deleted the fallback is the rift's own ladder. A caller that names no
+    -- enemy level is rating a fight at a DEPTH, which Descent.dangerLevel answers directly -- the day
+    -- was only ever that number laundered through a forty-day span and back.
+    local danger = ctx.enemyLevel
+        or require("models.descent").dangerLevel({ floor = ctx.depth or 1 })
     -- ...AND WHAT THE FIGHT PUT IN THEIR HANDS, keyed by body id (ctx.carried, off the cell). A mimic
     -- swings the chest it swallowed (models/mimic.lua), and a rating that minted it bare would price a
     -- body holding an axe as a body holding nothing -- which is the same failure the enemy-cap note

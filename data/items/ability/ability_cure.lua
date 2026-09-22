@@ -11,8 +11,8 @@ return {
     type = "ability",
     tags = { "holy", "restorative" },
     class = "priest",
-    price = 80,
-    unlockLevel = 0,
+    price = 300,
+    unlockLevel = 5,
     activeAbility = {
         target = "ally", -- includes the caster (a unit is its own ally)
         range = 3,

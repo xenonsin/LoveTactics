@@ -11,5 +11,5 @@ return {
     kind = "shrine",
     parked = true,
     weight = 1,
-    minDay = 1,
+    depth = 1,
 }

@@ -852,7 +852,7 @@ local function finishBattle(result)
         spoils = EncounterBattle.spoils({
             encounter = battle.encounter,
             enemyUnits = battle.enemyUnits,
-            day = battle.day,
+            depth = battle.depth,
             floorLevel = battle.floorLevel, -- a descent floor pays by depth (models/spoils.lua)
             houseMaterial = battle.houseMaterial,
             combat = battle.combat,
@@ -5489,7 +5489,7 @@ function battle.enter(self, opts)
     -- behind it (a road stop, a mock battle, a draft, a duel).
     battle.objectiveReward = opts.objectiveReward
     battle.generalsStanding = opts.generalsStanding
-    battle.day = opts.day or 1 -- the campaign day, which sets the far side's level and the spoils band
+    battle.depth = opts.depth or 1 -- how deep this board is: the far side's level and the spoils band
     -- The campaign player, kept so a won fight can pay the bench its share of the experience
     -- (finishBattle -> Experience.payBench). Nil for a mock battle, a draft and a netplay duel, all of
     -- which have no roster behind the four on the board and nobody to pay.
@@ -5511,7 +5511,10 @@ function battle.enter(self, opts)
     -- used to borrow the campaign's by mapping depth onto forty days, which quietly made the day the
     -- level dial for a mode that has none -- and put ordinary stock on the first stair at blueprint
     -- level 1, where the whole floor read as beneath the company and offered to resolve itself.
-    battle.enemyLevel = opts.enemyLevel or require("models.calendar").dangerLevel(battle.day)
+    -- THE FLOOR'S OWN LADDER, and it is the only one there is. A campaign day used to set this and the
+    -- descent borrowed one; both are deleted. A caller that names no level is standing at a depth.
+    battle.enemyLevel = opts.enemyLevel
+        or require("models.descent").dangerLevel({ floor = battle.depth or 1 })
     battle.floorLevel = opts.floorLevel
     battle.fallen = nil                  -- who went down in THIS fight, for the launcher's wounds
     battle.routed = nil                  -- ...and whether the loss left anybody standing (see lose)
@@ -5604,7 +5607,7 @@ function battle.enter(self, opts)
     -- `encounterKind` picks the fight TIER -- skirmish or set-piece (Arena.enemyCap). A field on the
     -- existing ctx table rather than a new local: this file sits within a couple of declarations of
     -- Lua 5.1's 200-local ceiling, and crossing it is a compile error naming an unrelated line.
-    local ctx = { day = opts.day or 1, biome = opts.biome, quest = opts.quest,
+    local ctx = { depth = opts.depth or 1, rung = opts.rung, biome = opts.biome, quest = opts.quest,
         generalsStanding = opts.generalsStanding,
         encounterKind = opts.encounter and opts.encounter.kind }
     battle.arena = Arena.build(ctx, specFor(opts, partyIds, seed))
@@ -5706,7 +5709,7 @@ function battle.enter(self, opts)
         objective = CombatTrace.describeObjective(battle.combat.objective),
         layout = battle.arena and (battle.arena.cols .. "x" .. battle.arena.rows) or nil,
         biome = opts.biome,
-        day = battle.day,
+        depth = battle.depth,
         prestige = opts.prestige,
         enemyLevel = battle.enemyLevel,
     })

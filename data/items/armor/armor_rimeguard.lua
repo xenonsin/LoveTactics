@@ -28,7 +28,7 @@ return {
     type = "armor",
     tags = { "heavy", "ice" },
     class = "knight",
-    unlockLevel = 5,
+    unlockLevel = 7,
     incense = { hazard = "hazard_rimeguard", radius = 1 },
     bonus = { defense = Curve.ramp(3, 13), movement = -2 },
     resist = { ice = 4 }, -- the wearer, at least, is used to it

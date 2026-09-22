@@ -12,8 +12,8 @@ return {
     type = "ability",
     tags = { "restorative" },
     class = "apothecary", -- priest x alchemist; the Lent-vitality mechanic's first stock
-    price = 575,
-    unlockLevel = 11,
+    price = 695,
+    unlockLevel = 14,
     activeAbility = {
         target = "ally", -- an ally other than yourself is the point; self-targeting is a wash
         range = 2,

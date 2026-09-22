@@ -30,8 +30,8 @@ return {
     type = "ability",
     tags = { "physical" },
     class = "sentinel", -- deeper cut of the shelf: buyable only once the sentinel gate is cleared
-    price = 575,
-    unlockLevel = 11,
+    price = 475,
+    unlockLevel = 9,
     activeAbility = {
         target = "enemy",
         range = 3,

@@ -11,7 +11,7 @@ return {
     name = "The Long Note",
     kind = "elite",
     weight = 2,
-    minDay = 6,
+    depth = 3,
     composition = function(ctx)
         local list = {
             "character_warlord",   -- multiplier: the banner, and the whole reason the rest arrive early
@@ -20,7 +20,7 @@ return {
             "character_paladin",   -- keeps the banner standing
             "character_barbarian",
         }
-        for _ = 1, math.floor((ctx.day or 1) / 16) do list[#list + 1] = "character_barbarian" end
+        for _ = 1, math.floor((ctx.depth or 1) / 6) do list[#list + 1] = "character_barbarian" end
         return list
     end,
 }

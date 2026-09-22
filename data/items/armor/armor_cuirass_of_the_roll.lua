@@ -24,7 +24,7 @@ return {
     type = "armor",
     tags = { "plate" },
     class = "knight",
-    unlockLevel = 10,
+    unlockLevel = 7,
     traits = { "trait_muster_roll" },
     bonus = { defense = Curve.ramp(6, 16), movement = -1 },
     resist = { physical = 2 },

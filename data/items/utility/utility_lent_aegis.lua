@@ -25,7 +25,7 @@ return {
     type = "utility",
     tags = { "structure" },
     class = "sentinel", -- deeper cut of the shelf: buyable only once the sentinel gate is cleared
-    unlockLevel = 0,
+    unlockLevel = 1,
     activeAbility = {
         target = "ally",
         range = 4,

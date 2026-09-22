@@ -19,9 +19,14 @@ return {
     name = "The Vat-Work",
     kind = "combat",
     weight = 3,
-    minDay = 3, -- Detonate is a real spike; the opening days meet the simpler gangs instead
+    -- OPEN FROM THE FIRST FLOOR. The human band is the one thing that appears at every depth --
+    -- everything else is locked to its circle -- so it is what keeps a shallow floor from being
+    -- empty, and it cannot do that job from behind a gate. Every body in this one is human, so
+    -- nothing here is a circle's content arriving early. What scales the band with depth is WHO
+    -- is in it (models/warband.lua reads Class.gateLevel), not whether it may appear at all.
+    depth = 1, -- Detonate is a real spike; the opening days meet the simpler gangs instead
     composition = function(ctx)
-        local day = ctx.day or 1
+        local day = ctx.depth or 1
         -- Order is load-bearing: the clamp keeps these four, in this order, before any filler.
         local list = {
             "character_poisoner",   -- setup: coatings, and the Poison everything else is priced against

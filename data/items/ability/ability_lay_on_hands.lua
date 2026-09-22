@@ -23,8 +23,8 @@ return {
     type = "ability",
     tags = { "holy" },
     class = "paladin",
-    price = 660,
-    unlockLevel = 13,
+    price = 430,
+    unlockLevel = 8,
     activeAbility = {
         target = "ally",
         range = 1,

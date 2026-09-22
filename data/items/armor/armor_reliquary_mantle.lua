@@ -26,7 +26,7 @@ return {
     type = "armor",
     tags = { "cloth", "holy" },
     class = "priest",
-    unlockLevel = 8,
+    unlockLevel = 6,
     traits = { "trait_cleansing_ward" },
     bonus = { magicDefense = Curve.ramp(4, 14), defense = Curve.ramp(2, 12), movement = -1 },
     resist = { magical = 2 },

@@ -14,8 +14,8 @@ return {
     type = "consumable",
     tags = { "ice" }, -- no "magical": the cold is chemistry
     class = "bombardier", -- deeper cut of the shelf: buyable only once the bombardier gate is cleared
-    price = 265,
-    unlockLevel = 14,
+    price = 295,
+    unlockLevel = 15,
     activeAbility = {
         target = "tile", -- thrown at a foe and bursts around it, like Fire Bomb / Flash Bomb
         allowOccupied = true,

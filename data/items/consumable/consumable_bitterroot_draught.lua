@@ -20,8 +20,8 @@ return {
     type = "consumable",
     tags = { "draught", "restorative" },
     class = "herbalist",
-    price = 230,
-    unlockLevel = 11,
+    price = 245,
+    unlockLevel = 12,
     maxStack = 3,
     activeAbility = {
         target = "self",

@@ -10,7 +10,7 @@ return {
     type = "utility",
     tags = { "boots", "ignore traps" },
     class = "rogue",
-    unlockLevel = 2,
+    unlockLevel = 0,
     -- footwear; the traps that do not spring are the wake
     bonus = { movement = 1 },
 }

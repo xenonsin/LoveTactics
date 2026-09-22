@@ -15,8 +15,8 @@ return {
     type = "consumable",
     tags = { "restorative" },
     class = "herbalist", -- hunter x alchemist; the Field-brewing mechanic's first stock
-    price = 230,
-    unlockLevel = 11,
+    price = 120,
+    unlockLevel = 5,
     activeAbility = {
         target = "ally", -- includes the user (a unit is its own ally)
         range = 1,

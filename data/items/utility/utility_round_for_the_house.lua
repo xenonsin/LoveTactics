@@ -23,7 +23,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "warbrewer",
-    unlockLevel = 4,
+    unlockLevel = 5,
     traits = { "trait_round_for_the_house" },
     -- what you drink, the line beside you drinks
     bonus = { magicDefense = 1 },

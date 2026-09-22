@@ -304,9 +304,72 @@ and it is preview-safe by construction.
 
 ## The slot
 
-Each class's stock is ranked weakest-first and spread across `0 .. rungs - 1`, where **a rung is a level
-of the class ladder** — `Discipline.CLASS_LEVEL_CAP`, nine rungs at every class. `tools/grade_report.lua`
+Each class's stock is ranked weakest-first and dealt across `0 .. rungs - 1`, where **a rung is a level
+of the class ladder** — `Class.CLASS_LEVEL_CAP`, sixteen rungs at every class. `tools/grade_report.lua`
 reads the count off `models/class.lua`, so the shelf cannot disagree with the thing that opens it.
+
+### How many a rung deals, and why it is not the same number every rung
+
+**`tools/shelf_curve.lua` owns the curve, and before it nothing did.** Two passes write `unlockLevel` —
+`grade_report` deals a class's *priced* stock, `drop_tier` its *finds* — and a player meets the SUM of
+the two at one counter. Neither could see the sum. Measured through `Vendor.stock` at the Bastion, the
+rungs opened `5 2 5 1 3 3 9 4 3 5 7 5 7 2 6 0`: nine wares at knight 6, one at knight 3, and nothing at
+all for fifteen floors of committed play. Across the seven houses **fifteen of the 112 rungs opened
+nothing**.
+
+Three things fixed it, and they are one change:
+
+| | |
+|---|---|
+| **A ramp, shallow first** | A rung deals about a third at the bottom of the ladder what it deals at the top. A company's first morning holds a few hundred gold and can act on two or three choices; eight is a wall to read rather than a decision to make. Every rung is handed one ware before the ramp distributes the surplus, so a rung can never deal none. |
+| **Rung 0 is the re-arm floor** | The graded spread starts at rung 1 (`SHELF_FLOOR`). Rung 0 holds a house's opener weapons and the wares an author has pinned as gated by nothing — the standing draughts, a torch, a rock, the prologue's teaching spell. It was the **fattest band in the game**, 56 wares against a mean of 41, because the spread dealt its bottom share there *on top of* the openers. It holds 28, and all but thirteen of those are supply. |
+| **The finds are cut per class** | `drop_tier` used to rank every find in the game together and spread that one list over the depths. A tier is a CLASS level, so a house with a thin catalogue had its finds bunched wherever its grades fell in the global ranking. Cut per class, a floor gives up the gear that floor was fought at, for every class. |
+
+The result, measured the same way — what each counter newly opens at rungs 0 to 15:
+
+```
+alchemist        7  2  2  2  2  2  3  2  2  2  2  3  2  2  3  2      (40)
+arcanum          5  2  3  3  3  3  3  4  4  4  3  4  4  6  4  5      (60)
+bastion          3  2  2  4  4  2  4  4  3  6  4  6  4  5  6  5      (64)
+cathedral        1  2  2  3  2  3  3  2  3  4  2  3  4  3  4  3      (44)
+colosseum        4  2  3  4  2  3  3  4  3  3  4  4  4  4  4  3      (54)
+hunters_lodge    4  1  3  3  2  2  3  2  2  4  3  4  3  3  3  2      (44)
+undercroft       3  1  2  3  3  1  2  2  2  3  2  4  2  3  1  2      (36)
+```
+
+The Crucible's seven on the opening rung are six standing draughts and its lancet; every other house's
+is its opener weapons. Its *gear* at rung 0 is one piece, which is what the spec counts.
+
+`tests/unlock_ladder_spec.lua` holds all three: every house-rung opens something **buyable**, the opening
+rung stays a floor rather than a rack, and the city's top quarter deals more than its bottom quarter.
+
+### Where the per-class cut stops
+
+**A band thinner than the ladder keeps the rift's own global order.** A body's drop list is not one
+class's — the boar hands over plague knight, beastmaster and necromancer gear — and within one list the
+**tier is the rarity and nothing else** ([drops.md](drops.md)). Cut per class, a tier stops being
+comparable across classes: a strong piece in a thin house comes out shallower than a weak piece in a fat
+one. Applied to everything, that turned five chase pieces into common drops.
+
+So the cut is per class only where a class can fill a ladder. Exactly the **seven root classes** carry
+enough finds — 20 to 57 against fifteen tiers — and all forty disciplines carry ten or fewer. A band that
+thin cannot shape a shelf whatever it is dealt, so it keeps the global grade order and the shelf loses
+nothing. The threshold is the curve's own (`n >= rungs`), so the two cannot drift apart.
+
+**An `unstocked` trophy is dealt in its own band** for the same kind of reason: it stands on the rack
+named and greyed and is never for sale, so it cannot pay for a rung. Dealt together with the sellable
+stock, a class level whose whole intake happened to be trophies opened nothing buyable — the Lodge had
+one, where hunter 5 held the bristlehide and the ravener's hide and nothing else.
+
+### And supply is not progression
+
+The nine draughts on the town counter sit at rung 0 and are pinned there (`Grade.SLOT_PINS`, "standing
+supply"). A rung is a **gate**, and a gate on a healing potion prices a need, which is the one thing
+[economy.md](economy.md) says this game will not do. Three of the nine were already pinned and six were
+not — not a decision, but rung 0 being fat enough that nobody had to say why. Thinning it took the six up
+the ladder and `Market.isStaple`, which reads rung 0 to mean *what a body starts with*, came out selling
+three draughts of nine with a mana potion behind alchemist 3. The proxy had expired; the pins say it
+outright now.
 
 > **This is the second re-cut, and the first one is worth keeping in view.** A rung used to be *a job the
 > house asked for* — its opener plus every quest a discipline hung off, six per house — and before that
@@ -386,13 +449,14 @@ tell them apart.
 | kind | what | why |
 |---|---|---|
 | **ladder anchors** | the twelve `Balance.FAMILY_BASE` weapons and `Balance.ABILITY_BASE` | they *are* the ruler |
-| **opening shelf** | five rehomed general goods, the healing potion, the prologue's teaching spell | contracts other specs assert |
+| **opening shelf** | the rehomed general goods, the prologue's teaching spell | contracts other specs assert |
+| **standing supply** | the nine draughts on the town counter | a rung is a gate, and a gate on a healing potion prices a need |
 | **ordering** | the Mammonite earners and spenders | its gate sits between the halves |
-| **legality** | `armor_iron_plate` | its resist bag only fits the cap from slot 7 up |
+| **legality** | `armor_iron_plate` | its resist bag only fits the cap from slot 3 up |
 | **hand-placed** | items the dry run cannot see | a human supplying the missing information |
 | **reach** | `ability_polymorph` | what the verb *is*, not what it is worth |
 | **family shape** | the eleven wards at 3, the eleven seals at 9 | a house teaches you to take the blow before it teaches you to refuse it |
-| **cadence** | nine pieces backfilling slots 0–2 at five houses | the rungs the ward line vacated, and a gate that opens nothing is a reward nobody sees |
+| **the chase** | seven entries on four bodies' drop lists | a chase is often a rule rather than a number, and the grader reads a rule low |
 
 Read the anchors off `Balance` rather than typing them, so the pin list and the magnitude ladder can
 never name different items.
@@ -411,14 +475,23 @@ family, which does not exist for the average turn. A ward is bought for the one 
 fight turns on, and a dry run against a reference body has no telegraph in it. Left to the ranking the
 line pooled at slot 0, which prices refusing a dragon's breath as opening-rack stock.
 
-The **cadence** pins are what that placement cost. Eleven wards moving to slot 3 took eleven rows off
-slots 0–2, and five houses came out with an early quest that opened one plain row or none — the
-Colosseum and the Hunter's Lodge opened nothing whatever at quest 1. Handing the hole back to the
-ranking does not close it: every candidate the grade offers drags its own magnitude rescale along and
-vacates the rung it came from, so the hole walks a gate down per round. Which stock rises into 0–2 is
-an authoring decision, so it is authored. Each backfill is taken from a rung that still opens two plain
-rows without it, and eight of the nine carry no graded magnitude, so the move costs a slot and a price
-and nothing else; the ninth is retuned to the rung it lands on.
+> **Both numbers read 1 and 4 for a year while every word of that argument said 3 and 9.** That is how
+> to tell which of the two was the decision: 3 and 9 are what the family's shape means, what this table
+> says, and what `models/grade.lua`'s own comment above the pins says. 1 and 4 are simply where a
+> **six-rung** shelf could fit them (`31de4b73`, *A house sells six rungs now*) — a six-rung shelf has no
+> 9 to put a seal on. The ladder is sixteen rungs and the numbers the design asks for exist again, so
+> they are restored. It is also two wares off the **second rung of every house in the city**: a ward at 1
+> made rung 1 a second opening rack, and the seals at 4 were a six-ware bulge in the middle of the
+> Bastion's shallow end.
+
+There **was** a ninth kind of pin here, and it is gone: a **cadence** block of nine pieces hand-placed
+into slots 0–2 to backfill the rungs the ward line vacated, because *a gate that opens nothing is a
+reward nobody sees*. The argument was good and the disease is cured upstream — nothing decided how many
+wares a rung dealt, so holes fell where they fell and had to be filled one at a time.
+[`tools/shelf_curve.lua`](../tools/shelf_curve.lua) decides it now and no rung in the city opens nothing.
+Six of the nine also pinned to **rung 0**, which was cheap when rung 0 was the fattest band in the game
+and is re-digging the hole now that it is the re-arm floor. Their own `why` lines dated them: every one
+named a *quest* of a house that has posted none since the board was retired.
 
 ### Pin the anchors before the first apply
 

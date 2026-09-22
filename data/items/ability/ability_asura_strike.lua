@@ -25,7 +25,7 @@ return {
     type = "ability",
     tags = { "fist", "physical" },
     class = "monk", -- deeper cut of the shelf: buyable only once the monk gate is cleared
-    price = 330,
+    price = 300,
     unlockLevel = 5,
     activeAbility = {
         target = "enemy",

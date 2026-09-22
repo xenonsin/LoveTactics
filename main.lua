@@ -166,16 +166,6 @@ function love.load(args)
         return
     end
 
-    -- Day migration: `& "E:\LOVE\lovec.exe" . day-migrate [apply]`
-    -- Rewrites the difficulty half of prestige onto the calendar across the data layer -- `ctx.prestige`
-    -- in composition functions and `minPrestige` gates. Dry run by default. See tools/day_migrate and
-    -- models/calendar.lua on the two jobs prestige was doing.
-    if args and args[1] == "day-migrate" then
-        require("tools.day_migrate").run({ select(2, unpack(args)) })
-        love.event.quit(0)
-        return
-    end
-
     -- One board, drawn: `& "E:\LOVE\lovec.exe" . board-render [biome] [seed]`
     -- Dumps a single rolled board as ground and again as fightability, because the layout work is six
     -- carve algorithms that will be wrong in a SHAPE, and a mean cannot show you a shape. See

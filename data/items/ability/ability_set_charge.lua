@@ -10,8 +10,8 @@ return {
     type = "ability",
     tags = { "utility" },
     class = "saboteur", -- rogue x alchemist; the Planted-charges mechanic's first stock
-    price = 245,
-    unlockLevel = 3,
+    price = 565,
+    unlockLevel = 11,
     activeAbility = {
         target = "tile",
         range = 2,

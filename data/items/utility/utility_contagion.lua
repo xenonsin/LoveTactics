@@ -23,7 +23,7 @@ return {
     type = "utility",
     tags = { "charm", "poison" },
     class = "plague_knight",
-    unlockLevel = 2,
+    unlockLevel = 3,
     traits = { "trait_contagion" },
     -- the spread is the weapon
     bonus = { magicDamage = 2 },

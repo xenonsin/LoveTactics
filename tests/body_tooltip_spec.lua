@@ -90,10 +90,23 @@ return {
             local hp = find(blocks, "bar", "HP")
             assert(hp.reserved and hp.reserved > 0, "a wound takes nothing off the pool")
             assert(hp.fullMax == char.stats.health.max, "the bar lost its true ceiling")
-            assert(hp.max == char.stats.health.max - hp.reserved, "the ceiling and the reserve disagree")
-            -- Said in the word the player is being charged in, not the battle's "res." (a sustained
-            -- summon), which is the other thing that locks a tail of a pool.
-            assert(hp.reservedLabel == "wounded", "the locked slice does not say what took it")
+            -- QUOTED AGAINST THE POOL'S TRUE SIZE, not against the ceiling the wound left. A wounded
+            -- body topped up at the Ward sits AT its ceiling, so a card that divides by the ceiling
+            -- prints "56 / 56" over a member the row above has just called wounded -- full health,
+            -- apparently. The gap between the two numbers is the whole point of drawing them.
+            assert(hp.max == char.stats.health.max, "the card quotes the body against its own wound")
+            -- Topped up at the Ward and STILL not whole, which is the reading the card exists for.
+            assert(hp.cur == hp.max - hp.reserved, "the fixture is not sitting at its wounded ceiling")
+            -- ...and the slice is named in WOUNDS, the unit the player was charged in -- not in the
+            -- health they came to (a second, larger figure for the one thing the Wounds row counts),
+            -- and not in the battle's "res.", which is the other thing that locks a tail of a pool.
+            assert(hp.reservedText == "2 wounds", "the locked slice does not say what took it")
+
+            -- ...and it counts in English. One is a wound, not "1 wounds".
+            local p1, char1 = company(1)
+            local one = find(BodyTooltip.blocks(p1, char1), "bar", "HP")
+            assert(one.reservedText == "1 wound", "one wound reads as " .. tostring(one.reservedText))
+            assert(one.max == char1.stats.health.max, "the single-wound card quotes the lowered pool")
 
             -- Whatever models/wound.lua says a wounded body fights under, said here -- read off the
             -- model so the card cannot promise a rung the ladder no longer has.

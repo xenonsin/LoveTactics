@@ -25,8 +25,8 @@ return {
     type = "ability",
     tags = { "magical", "arcane" },
     class = "elementalist", -- the sigils are Elementalist's own (docs/classes.md); this is the circle they are cut in
-    price = 165,
-    unlockLevel = 1,
+    price = 255,
+    unlockLevel = 4,
     activeAbility = {
         target = "self", -- centred on the caster; there is nothing to aim
         range = 0,

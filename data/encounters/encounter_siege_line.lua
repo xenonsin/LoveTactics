@@ -8,11 +8,11 @@
 return {
     name = "The Investment Line",
     kind = "combat",
-    minDay = 1,
+    depth = 1,
     weight = 0,
     composition = function(ctx)
         local list = { "character_demon_grunt" }
-        for i = 1, 1 + math.floor((ctx.day or 1) / 3) do
+        for i = 1, 1 + math.floor((ctx.depth or 1) / 1) do
             list[#list + 1] = "character_demon_grunt"
         end
         for i = 1, 2 do list[#list + 1] = "character_demon_imp" end

@@ -171,11 +171,12 @@ function Counter.open(player, building, openPanel, onLeave, opts)
     -- scene the blueprint names and `grants` is the companion it hands over -- which is how the
     -- Cathedral introduces Xin, the one companion in the game met above ground.
     --
-    -- KEYED ON ITS OWN FLAG, and the first version of this lived in states/hub.lua and was BROKEN BY
-    -- Building.seenDoor. Those are two different questions: seenDoor asks "has this card been
-    -- ANNOUNCED", and the city seeds it wholesale on a first visit for every door already open -- so a
-    -- room standing open from the start was seeded seen on the very first frame and its scene never
-    -- fired for anybody. A scene played once is not the same fact as a card announced once, and
+    -- KEYED ON ITS OWN FLAG, and the first version of this lived in states/hub.lua and was broken by
+    -- being keyed on the city's announcement ledger instead (`player.seenDoors`, deleted with the
+    -- plaza's coach bubbles). Those were two different questions: that ledger asked "has this card
+    -- been ANNOUNCED", and the city seeded it wholesale on a first visit for every door already open
+    -- -- so a room standing open from the start was seeded seen on the very first frame and its scene
+    -- never fired for anybody. A scene played once is not the same fact as a card announced once, and
     -- conflating them silently ate a companion. It moved here with the rooms.
     --
     -- The recruit fires BEFORE the scene so the "[X has joined your Party]" banner folds onto the end of

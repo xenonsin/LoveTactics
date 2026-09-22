@@ -33,7 +33,7 @@ return {
     -- HAND-PLACED, and `. drop-tier` says 1. A coat whose resist table carries a large NEGATIVE
     -- grades near nothing -- correctly, as a sum -- but what it is worth to a player is the two
     -- positive lines plus a decision about lightning, and a decision does not grade at all.
-    unlockLevel = 7,
+    unlockLevel = 2,
     bonus = { defense = 2, movement = -1 },
     resist = { water = 3, ice = 2, lightning = -4 },
     upgrade = { defense = Curve.ramp(2, 12) },

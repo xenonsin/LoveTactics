@@ -21,7 +21,7 @@ return {
     type = "utility",
     tags = { "charm", "magical" },
     class = "battlemage",
-    unlockLevel = 3,
+    unlockLevel = 4,
     charge = { key = "arcane", from = { "cast" }, max = 5 },
     traits = { "trait_arcane_conduit" },
     -- the grid casts harder around it

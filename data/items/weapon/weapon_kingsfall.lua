@@ -26,7 +26,7 @@ return {
     tags = { "greatsword", "slash", "physical", "melee" },
     hands = 2,
     class = "fighter",
-    unlockLevel = 10,
+    unlockLevel = 4,
     activeAbility = {
         target = "tile",
         allowOccupied = true,
@@ -40,7 +40,7 @@ return {
         cost = { stat = "stamina", amount = 16 },
         -- Under the iron greatsword's. Certainty is what it sells, and certainty is worth more than the
         -- four points of Power it gives up for it.
-        damage = Curve.ramp(41, 64),
+        damage = Curve.ramp(31, 54),
         effect = function(fx)
             if fx.target then fx.damage(fx.target) end
         end,

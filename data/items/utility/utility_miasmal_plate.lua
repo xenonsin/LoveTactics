@@ -13,7 +13,7 @@ return {
     type = "utility", -- a charm, not armour: the walking cloud IS the item (cf. utility_coveted_blood)
     tags = { "charm", "poison" },
     class = "plague_knight", -- knight x alchemist; the Contagion mechanic's first stock
-    unlockLevel = 6,
+    unlockLevel = 7,
     incense = { hazard = "hazard_choking", radius = 1, amount = Curve.ramp(3, 13) },
     -- plate first, poison second
     bonus = { defense = 2 },

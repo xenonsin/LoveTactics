@@ -13,7 +13,7 @@ return {
     kind = "relic_cache",
     parked = true,
     weight = 2,
-    minDay = 1,
+    depth = 1,
     -- The reveal rolls from Relic.pool with this bias; nil `alignment` means either a Virtue or a Vice
     -- can surface, which is the greed gamble of opening one at all.
     tier = nil,

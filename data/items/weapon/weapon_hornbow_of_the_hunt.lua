@@ -25,7 +25,7 @@ return {
     tags = { "bow", "pierce", "physical", "ranged" },
     hands = 2, -- two-handed, like every bow
     class = "hunter",
-    unlockLevel = 2,
+    unlockLevel = 1,
     activeAbility = {
         target = "enemy",
         range = 5, -- two tiles further than a plain bow

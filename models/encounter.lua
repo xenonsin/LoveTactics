@@ -54,10 +54,42 @@ local function eligible(def, ctx)
     -- Checked FIRST and before the day gate so the answer does not depend on the context: a parked
     -- encounter is ineligible everywhere, including in a spec that hands this an empty ctx.
     if def.parked then return false end
-    -- Gated on the DAY rather than on the company's standing: an encounter that "only turns up once the
-    -- player has some renown" is really about how deep into the campaign the road is, and under the
-    -- calendar that is what the day measures (models/calendar.lua).
-    if def.minDay and (ctx.day or 1) < def.minDay then return false end
+    -- ---------------------------------------------------------------------------
+    -- GATED ON DEPTH, WHICH IS WHAT THE DAY WAS STANDING IN FOR
+    -- ---------------------------------------------------------------------------
+    --
+    -- This read `minDay` against the campaign calendar, on the reading that "only turns up once the
+    -- player has some renown" is really a statement about how far in the road is. The campaign and its
+    -- calendar are deleted; the rift is the game, and how far in is a FLOOR.
+    --
+    -- The day never carried anything the floor did not already know. A descent has no calendar, so
+    -- Descent.poolDay invented one: it took the floor's own danger level, read the calendar backwards to
+    -- find the day that rated the same, and handed that back here. Measured at every depth, the round
+    -- trip came back to the floor's own number minus one -- and it LOST resolution on the way, because
+    -- fifteen floors landed on fifteen of forty days at uneven gaps. Where an authored gate took effect
+    -- was an artifact of rounding inside a clock nothing else still read.
+    --
+    -- TWO FIELDS, AND WHICH ONE A BLUEPRINT USES SAYS WHAT KIND OF CONTENT IT IS.
+    --
+    --   depth   the FLOATING band -- adventurers, bandits, a rival company. It appears on any floor, so
+    --           it has to say which ones. A number is the shallowest floor it may appear on; a table
+    --           { from, to } is a band, and the `to` is the half `minDay` never had. Without a ceiling
+    --           nothing ever leaves the pool, which is how the bottom of the rift came to be half
+    --           woodland animals: every floor's draw was the last floor's draw plus whatever had just
+    --           opened.
+    --
+    --   rung    a CIRCLE-LOCKED blueprint, which its biome condition has already placed. A circle owns a
+    --           stratum, so the only thing left to say is which floor OF that circle -- 1 for the
+    --           approach, 2 for the seat. A depth on top of a biome lock is a second opinion, and it
+    --           disagrees the moment the shuffle deals that circle at another depth.
+    if def.depth then
+        local from, to = def.depth, nil
+        if type(def.depth) == "table" then from, to = def.depth.from, def.depth.to end
+        local depth = ctx.depth or 1
+        if from and depth < from then return false end
+        if to and depth > to then return false end
+    end
+    if def.rung and (ctx.rung or 1) ~= def.rung then return false end
     if def.condition and not def.condition(ctx) then return false end
     return true
 end
@@ -134,7 +166,7 @@ end
 -- `Encounter.defs` and fails on a kind that reached disk without a sentence.
 Encounter.MARKER_KINDS = {
     "combat", "elite", "pack", "objective", "quest", "ward",
-    "treasure", "rest", "town", "merchant", "crossroads", "event",
+    "treasure", "rest", "merchant", "crossroads", "event",
     "relic_cache", "shrine", "weeping_stone", "anvil", "lectern", "translation",
     "spinner", "dark", "drop", "stair", "ascent", "road",
 }
@@ -160,7 +192,6 @@ Encounter.GLOSS = {
     ward          = "A lieutenant set in front of the stair. The gate holds until she falls.",
     treasure      = "An unguarded cache. Nothing stands over it; it is simply picked up.",
     rest          = "A safe camp. Rest here and the company takes some of the road back.",
-    town          = "A waystation. Rest, resupply, and move on.",
     merchant      = "A market on the road. Goods off this floor's shelf, for gold.",
     crossroads    = "A dilemma with real stakes. It is rolled fresh, and it is a gamble.",
     event         = "Something happens here. No fight, and no way to know it in advance.",

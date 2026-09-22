@@ -28,8 +28,8 @@ return {
     type = "ability",
     tags = { "earth" },
     class = "druid", -- deeper cut of the shelf: buyable only once the druid gate is cleared
-    price = 575,
-    unlockLevel = 11,
+    price = 300,
+    unlockLevel = 5,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

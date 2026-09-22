@@ -31,7 +31,7 @@ return {
     type = "ability",
     tags = { "magical", "arcane" },
     class = "mage",
-    price = 165,
+    price = 125,
     unlockLevel = 1,
     activeAbility = {
         target = "self",   -- the fold is centred on the caster; there is nothing to aim

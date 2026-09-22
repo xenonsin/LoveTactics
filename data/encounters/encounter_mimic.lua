@@ -17,6 +17,6 @@ return {
     name = "Mimic",
     kind = "elite",
     weight = 0,
-    minDay = 1,
+    depth = 1,
     composition = { "character_mimic" },
 }

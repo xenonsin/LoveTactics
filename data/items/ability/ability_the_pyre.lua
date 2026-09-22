@@ -23,8 +23,8 @@ return {
     type = "ability",
     tags = { "holy", "fire" },
     class = "inquisitor",
-    price = 330,
-    unlockLevel = 5,
+    price = 650,
+    unlockLevel = 13,
     activeAbility = {
         target = "self",
         range = 0,
@@ -33,7 +33,7 @@ return {
         support = false,
         speed = 6,
         cost = { stat = "mana", amount = 18 },
-        damage = Curve.ramp(10, 20),
+        damage = Curve.ramp(13, 23),
         description = "Burns every Marked enemy, wherever it stands.",
         effect = function(fx)
             local burned = 0

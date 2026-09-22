@@ -11,8 +11,8 @@ return {
     type = "ability",
     tags = { "holy", "summon", "restorative" },
     class = "totemist", -- hunter x priest; the Ward-totems mechanic's first stock
-    price = 740,
-    unlockLevel = 15,
+    price = 610,
+    unlockLevel = 12,
     activeAbility = {
         target = "tile",
         range = 3,

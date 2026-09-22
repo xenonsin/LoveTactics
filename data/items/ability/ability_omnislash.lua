@@ -12,8 +12,8 @@ return {
     sprite = "assets/items/ability_omnislash.png",
     type = "ability",
     class = "fighter",
-    price = 660,
-    unlockLevel = 13,
+    price = 390,
+    unlockLevel = 7,
     tags = { "slash", "physical" },
     activeAbility = {
         target = "enemy",

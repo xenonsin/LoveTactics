@@ -15,7 +15,7 @@ return {
     -- than late. Pricing it also puts it in the spoils pool (models/spoils.lua), which is where an
     -- ordinary field staff should be findable.
     class = "mage",
-    unlockLevel = 8,
+    unlockLevel = 11,
     -- Every staff swaps Wait into Focus (docs/weapons.md). This one is the family taken further: it
     -- also siphons mana on the HIT below, so it can refill while still attacking -- Focus is its floor,
     -- not its only recourse. It focuses deeper than a plain staff, befitting the rarer weapon.
@@ -25,7 +25,7 @@ return {
         range = 1, -- adjacent only (Manhattan distance)
         speed = 4, -- time cost: feeds initiative + pushes the actor back
         cost = { stat = "stamina", amount = 6 }, -- spends the renewable resource...
-        damage = Curve.ramp(10, 20), -- damage = power + the wielder's Magic Damage, minus Magic Defense
+        damage = Curve.ramp(12, 22), -- damage = power + the wielder's Magic Damage, minus Magic Defense
         effect = function(fx)
             fx.damage(fx.target)          -- magicDamage-scaled hit
             fx.restore(fx.user, "mana", 5) -- ...to refill the scarce one

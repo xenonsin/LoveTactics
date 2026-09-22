@@ -114,7 +114,7 @@ return {
         -- Spoils.roll, which knows only combat and elite and would happily roll a purse for either.
         local EB = require("models.encounter_battle")
         local paid = EB.spoils({
-            encounter = { kind = "objective", tier = 1 }, enemyUnits = {}, day = 4,
+            encounter = { kind = "objective", tier = 1 }, enemyUnits = {}, depth = 4,
         })
         assert(paid, "an objective fight still pays")
         assert(#(paid.loot or {}) == 0, "an objective rolls no loot of its own")

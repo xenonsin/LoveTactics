@@ -12,8 +12,8 @@ return {
     type = "ability",
     tags = { "ice", "magical" },
     class = "elementalist", -- deeper cut of the shelf: buyable only once the elementalist gate is cleared
-    price = 660,
-    unlockLevel = 14,
+    price = 740,
+    unlockLevel = 15,
     activeAbility = {
         target = "tile",
         allowOccupied = true, -- an area cast may center on an occupied tile

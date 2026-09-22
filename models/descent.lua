@@ -41,13 +41,32 @@ local Descent = {}
 -- (Listed here in the order a first descent meets them -- Descent.INFERNO -- which is not the order
 -- the table below is written in.)
 --
---   lust      forest      overgrown, fertile, and hard to see out of
---   gluttony  swamp       a place that swallows what walks into it
---   greed     underworld  the vault below the vault
+--   lust      castle      a court, and its cast has always belonged in one
+--   gluttony  forest      a beast hunt: the circle that eats is the circle you hunt
+--   greed     swamp       a drowned vault, silted up, and the things that live in it
 --   wrath     volcanic    the obvious one, and it has earned it
 --   sloth     tundra      the post nobody came back to
 --   envy      desert      barren ground with a view of somewhere green
---   pride     castle      a library that outlived every scholar who could read it
+--   pride     spire       she will not fight beneath herself, written as terrain
+--
+-- FOUR OF THEM MOVED, AND THE ARITHMETIC IS WHAT DECIDED IT RATHER THAN TASTE. Eight circles need a
+-- ground each and the game had seven usable biomes, so the map owed exactly ONE new biome and could
+-- leave none of the seven without an owner. That is a tighter constraint than it looks:
+--
+--   * GLUTTONY TOOK THE FOREST and the beast band with it. Stag, wolf, boar, bear, the herd, the
+--     sounder, the carrion pair and their elites were SHARED road stock on all fifteen floors, which
+--     is why the bottom of the rift was half woodland animals -- 47% of floor fourteen's combat
+--     weight, against 15% for Pride's own cast. They are one circle's identity now and appear nowhere
+--     else, which is the rule this whole table is read under: humans float, everything else is locked.
+--   * LUST TOOK THE CASTLE, because its house is the Cathedral and its cast is choristers, a suppliant
+--     and a bride. A hall is where they have always belonged.
+--   * PRIDE WAS PUSHED OUT by that and took the one ground that had to be built (data/biomes/spire.lua).
+--   * GREED TOOK THE SWAMP, which had to keep an owner once Gluttony left it. A drowned vault reads:
+--     the coffer crawler and the coin chitter are vermin, the Gilt Wyrm is a wyrm, and a hoard under
+--     silt is a hoard nobody has counted. The naga set stays on the water and becomes Greed's.
+--   * ...WHICH LEAVES THE CROWN THE UNDERWORLD ALONE, and the undead Greed left behind in it. The
+--     bottom floor used to borrow Greed's pool wholesale -- you re-fought floors five and six under the
+--     last stair -- and now it has the Bone Orchard, the Barrow Lord and the Skeleton King to itself.
 --
 -- THE SIN ITSELF STANDS ON THE STAIR. Not a strong body of that house's cast -- the general who IS
 -- that circle, by name, every time you walk it. Megaera is at the end of Tartarus on your first run
@@ -87,8 +106,24 @@ local Descent = {}
 -- standing behind her when you finally reach her, and a player reads their own progress off it without
 -- being told. It also means a fifteen-floor descent needed no new blueprints: every body here was
 -- already authored and already belongs to this house.
+-- WHICH ELITE STANDS ON WHICH OF A CIRCLE'S FLOORS, named rather than drawn.
+--
+-- An elite is a floor's one standing threat -- the thing a short-handed company routes around and comes
+-- back for -- and it was picked out of the shared pool by a weight that Descent.ELITE_WEIGHT had already
+-- flattened to the same number for every entry. So the blueprints' authored rarity was discarded and the
+-- Skeleton King, a floor-twelve set piece, was exactly as likely as the shallowest thing in the pool.
+-- With one or two seated per floor and a wide spread in worth, a floor's standing threat was a coin flip
+-- between an inconvenience and a wall.
+--
+-- "The floor with the Hartwood Bride on it" is a thing a player says; "the floor with an elite on it" is
+-- not. Etrian Odyssey's FOEs are fixed for the same reason, and the guardian band below is already this
+-- shape -- there is exactly one per floor and the circle chooses it, never a weight.
+--
+-- APPROACH THEN SEAT. `spares` is what a circle holds back: Gluttony and Greed carry the beasts and the
+-- water they inherited when the grounds moved, which is more than two floors can stand. Everything not
+-- named here is still eligible -- this decides what a floor SEATS, not what may appear at all.
 Descent.SINS = {
-    { id = "gluttony", name = "Gluttony", vendor = "hunters_lodge", biome = "swamp",
+    { id = "gluttony", name = "Gluttony", vendor = "hunters_lodge", biome = "forest",
         scene = "conversation_descent_gluttony",
         -- THE MINOR LEAD WAS character_dire_bear, AND THAT WAS A BUG. The bear is a Wild Shape a hunter
         -- WEARS -- its pools are placeholders the hunter's own body carries across, so its blueprint
@@ -105,8 +140,12 @@ Descent.SINS = {
         guardian = { lead = "character_general_gluttony", filler = "character_the_gralloch" },
         -- SHE WILL NOT RISE WHILE THERE IS ANYTHING LEFT TO EAT: the floor must be picked clean.
         gate = { kind = "clear" },
-        minor = { lead = "character_the_gralloch", filler = "character_gorge_fly" } },
-    { id = "lust", name = "Lust", vendor = "cathedral", biome = "forest",
+        minor = { lead = "character_the_gralloch", filler = "character_gorge_fly" },
+        elites = { approach = "encounter_gluttony_fen_mouth",
+            seat = "encounter_gluttony_the_sated",
+            spares = { "encounter_white_wolf", "encounter_meandering_stag",
+            "encounter_the_sow", "encounter_the_unseeing" } } },
+    { id = "lust", name = "Lust", vendor = "cathedral", biome = "castle",
         scene = "conversation_descent_lust",
         guardian = { lead = "character_general_lust", filler = "character_the_suppliant" },
         -- THE UNBIDDEN COMES WHEN SHE IS CALLED, and the Suppliant is who calls her -- so the ward is
@@ -114,15 +153,20 @@ Descent.SINS = {
         -- Dante's order, so it is the one a new company meets, and every other circle's is read
         -- against it. Beat her, the ward breaks, the stair opens.
         gate = { kind = "ward" },
-        minor = { lead = "character_the_suppliant", filler = "character_petal_drift" } },
-    { id = "greed", name = "Greed", vendor = "undercroft", biome = "underworld",
+        minor = { lead = "character_the_suppliant", filler = "character_petal_drift" },
+        elites = { approach = "encounter_lust_hartwood_bride",
+            seat = "encounter_lust_the_beloved" } },
+    { id = "greed", name = "Greed", vendor = "undercroft", biome = "swamp",
         scene = "conversation_descent_greed",
         guardian = { lead = "character_general_greed", filler = "character_the_tally" },
         -- PAY AT THE STAIR. Priced as a SHARE of what is on the mule rather than as a flat purse, so
         -- greed taxes exactly what the company came down for and a fat bag costs more to walk past --
         -- which couples the two systems this mode is built on instead of standing beside them.
         gate = { kind = "toll", share = 0.25 },
-        minor = { lead = "character_the_tally", filler = "character_coin_chitter" } },
+        minor = { lead = "character_the_tally", filler = "character_coin_chitter" },
+        elites = { approach = "encounter_greed_gilt_wyrm",
+            seat = "encounter_greed_the_hoard",
+            spares = { "encounter_fen_ooze", "encounter_the_undertow", "encounter_the_king_slime" } } },
     { id = "envy", name = "Envy", vendor = "alchemist", biome = "desert",
         scene = "conversation_descent_envy",
         -- THE SECOND OF THE TWO BROKEN LEADS. character_homunculus is the alchemist's SUMMON -- its own
@@ -136,7 +180,9 @@ Descent.SINS = {
         -- carrying something worth wanting -- which makes it the one gate a player can fail by having
         -- been sensible, and the one that rewards walking onto her floor rich.
         gate = { kind = "carry", n = 3 },
-        minor = { lead = "character_second_water", filler = "character_glass_mote" } },
+        minor = { lead = "character_second_water", filler = "character_glass_mote" },
+        elites = { approach = "encounter_envy_the_unwanted",
+            seat = "encounter_envy_second_self" } },
     { id = "wrath", name = "Wrath", vendor = "colosseum", biome = "volcanic",
         scene = "conversation_descent_wrath",
         -- The Champion held this slot and held it CORRECTLY -- a real body carrying a Demon Sigil with
@@ -148,7 +194,9 @@ Descent.SINS = {
         -- gate a company clears by doing the thing it came to do -- so Wrath is the circle that asks
         -- for no detour, only for commitment.
         gate = { kind = "kills", n = 3 },
-        minor = { lead = "character_the_anvil", filler = "character_cinder_kin" } },
+        minor = { lead = "character_the_anvil", filler = "character_cinder_kin" },
+        elites = { approach = "encounter_wrath_the_unquenched",
+            seat = "encounter_wrath_rift_born" } },
     { id = "sloth", name = "Sloth", vendor = "bastion", biome = "tundra",
         scene = "conversation_descent_sloth",
         guardian = { lead = "character_general_sloth", filler = "character_the_late_watch" },
@@ -160,8 +208,10 @@ Descent.SINS = {
         -- could have spent elsewhere -- which under an extraction descent is a real decision rather
         -- than a formality. Every other circle asks something; this one asks whether you want to.
         gate = { kind = "none" },
-        minor = { lead = "character_the_late_watch", filler = "character_drift_thing" } },
-    { id = "pride", name = "Pride", vendor = "arcanum", biome = "castle",
+        minor = { lead = "character_the_late_watch", filler = "character_drift_thing" },
+        elites = { approach = "encounter_sloth_winter_hart",
+            seat = "encounter_sloth_long_winter" } },
+    { id = "pride", name = "Pride", vendor = "arcanum", biome = "spire",
         scene = "conversation_descent_pride",
         guardian = { lead = "character_general_pride", filler = "character_marginalia" },
         -- SHE WILL NOT FIGHT BENEATH HERSELF. A count of circles already sealed, so Pride refuses a
@@ -169,7 +219,9 @@ Descent.SINS = {
         -- rather than by the floor, and the reason her circle reads as the end of a road even when the
         -- shuffle deals it early.
         gate = { kind = "worth", n = 3 },
-        minor = { lead = "character_marginalia", filler = "character_gilded_sworn" } },
+        minor = { lead = "character_marginalia", filler = "character_gilded_sworn" },
+        elites = { approach = "encounter_pride_the_gallery",
+            seat = "encounter_pride_the_peerless" } },
 }
 
 -- WHAT COMES OFF THE BODY: the unique piece a rank pays for being put down, per sin, in the order it is
@@ -864,12 +916,17 @@ Descent.MIMIC_CHEST_CHANCE = require("models.mimic").CHANCE
 --   stop" is a set-piece again. One or two elites a floor is the punctuation; more is the old problem;
 --
 --   texture is scaled DOWN hard, because a floor already gets its rests and its reliquary from the
---   generator's own guarantees. Every free draw spent on a town is a skirmish the floor does not have.
+--   generator's own guarantees. Every free draw spent on a shop is a skirmish the floor does not have.
 --
 -- Deliberately a transform over Encounter.pool rather than a second pool: eligibility, biome filtering
 -- and the ctx-driven weights are all decisions that table already makes correctly, and restating them
 -- here would be a second copy to drift.
 Descent.ELITE_WEIGHT = 1.5
+
+-- WHAT THE FLOOR'S OWN BILLED ELITE IS WEIGHTED AT, against ELITE_WEIGHT for everything else its circle
+-- could field. Ten to one and a half: the named one is what a floor is ABOUT, and a share rather than a
+-- lock so a circle's spares still turn up now and then. See Descent.floorPool's elite branch.
+Descent.ELITE_NAMED_WEIGHT = 10
 Descent.TEXTURE_SCALE = 0.2
 
 -- HOW MANY CAMPS A FLOOR HOLDS, and the reason it is a flat number where a campaign ground uses a density.
@@ -1056,6 +1113,14 @@ function Descent.floorPool(ctx)
     local Encounter = require("models.encounter")
     local Muster = require("models.muster")
     local pool = Encounter.pool(ctx)
+    -- WHICH CIRCLE AND WHICH OF ITS FLOORS, for the elite billing below. Read off the descriptor rather
+    -- than re-derived: a floor's own quest already carries its sin, and a second derivation here could
+    -- disagree with it the moment the shuffle deals the circles in another order.
+    local sin
+    for _, s in ipairs(Descent.SINS) do
+        if s.id == (ctx.quest and ctx.quest.sin) then sin = s break end
+    end
+    local rung = ctx.rung or Descent.floorWithinCircle(ctx.depth or 1)
 
     -- What each fight on this floor is WORTH, rated exactly as the marker and the walk-off gate will
     -- rate it (Muster.encounter). The levels come off the floor descriptor when the caller has one --
@@ -1065,7 +1130,7 @@ function Descent.floorPool(ctx)
     for _, e in ipairs(pool) do
         if e.kind == "combat" or e.kind == "elite" then
             local ok, worth = pcall(Muster.encounter, Encounter.get(e.id), {
-                day = ctx.day,
+                depth = ctx.depth,
                 quest = ctx.quest,
                 floorLevel = ctx.quest and ctx.quest.floorLevel,
                 enemyLevel = ctx.quest and ctx.quest.dangerLevel,
@@ -1081,13 +1146,67 @@ function Descent.floorPool(ctx)
         end
     end
     table.sort(worths)
-    local median = #worths >= Descent.SHARE_FLOOR_N and worths[math.ceil(#worths / 2)] or nil
+
+    -- THE MEDIAN HAS TO SURVIVE ITS OWN FILTER, which is a fixed point rather than one pass.
+    --
+    -- Dropping the light fights RAISES the median of what is left, so a fight that cleared the bar
+    -- against the original pool can sit under it against the pool the filter produced -- and the floor
+    -- then keeps a fight at a share it would have refused had it been asked in the right order.
+    -- Invisible while every circle drew from one shared road pool and every median was much the same;
+    -- the moment the beast band became Gluttony's alone (Descent.SINS), the wood's median rose past a
+    -- fight the first pass had already waved through, and tests/descent_spec.lua said so.
+    --
+    -- Iterated to stability and bounded, because each pass can only remove entries: the loop is finite
+    -- by construction and the bound is a guard against a rating that is not a number, not a real limit.
+    -- Below SHARE_FLOOR_N rateable fights there is no median worth trusting and the share stands down
+    -- entirely -- the body floor underneath it does not.
+    -- THE STAND-DOWN IS ASKED ONCE, OF THE POOL AS IT ARRIVED. Asking it again on each pass is a trap
+    -- worth naming: filtering SHRINKS the set, so a pool of seven that drops two would fall under the
+    -- floor mid-loop, stand the share down, and keep everything -- including the fight that had already
+    -- been judged too light. The first answer is the honest one; after that the loop is only refining a
+    -- median it has already earned the right to use.
+    local median
+    if #worths >= Descent.SHARE_FLOOR_N then
+        for _ = 1, 8 do
+            local m = worths[math.ceil(#worths / 2)]
+            local kept = {}
+            for _, w in ipairs(worths) do
+                if w >= m * Descent.MIN_SHARE then kept[#kept + 1] = w end
+            end
+            median = m
+            if #kept == #worths or #kept == 0 then break end
+            worths = kept
+        end
+    end
 
     local out = {}
     for _, e in ipairs(pool) do
         local weight = e.weight
         if e.kind == "elite" then
+            -- ---------------------------------------------------------------------------
+            -- THE CIRCLE NAMES ITS OWN STANDING THREAT, AND THE RUNG SAYS WHICH ONE
+            -- ---------------------------------------------------------------------------
+            --
+            -- A floor seats one or two elites (Descent.FLOOR_SEEN). Drawn from a pool whose weights had
+            -- all been flattened to ELITE_WEIGHT, which one it got was a coin flip across a 2.6-fold
+            -- spread in worth -- so "the floor's standing threat" meant nothing in particular and the
+            -- authored rarity on every elite blueprint was thrown away.
+            --
+            -- Named per circle instead (Descent.SINS' `elites`), approach floor and seat floor, which is
+            -- also the one thing that makes the two floors of a circle DIFFERENT: they share a ground, a
+            -- house and a pool, and until now the only thing that told them apart was who stood on the
+            -- stair. The elite is the second.
+            --
+            -- A SHARE RATHER THAN A LOCK. The named one is weighted far above the rest instead of being
+            -- the only one legal, so a circle's spares still turn up -- Gluttony and Greed inherited more
+            -- beasts and water than two floors can stand, and a wood where the White Wolf never appears
+            -- because it is not this floor's billing is a wood that is poorer for the rule.
+            local named = sin and sin.elites
+            local mine = named and (rung == 2 and named.seat or named.approach)
             weight = Descent.ELITE_WEIGHT
+            if mine then
+                weight = (e.id == mine) and Descent.ELITE_NAMED_WEIGHT or Descent.ELITE_WEIGHT
+            end
         elseif e.kind ~= "combat" then
             weight = weight * Descent.TEXTURE_SCALE
         end
@@ -1405,7 +1524,57 @@ end
 -- 1 + (FLOORS - 1) * LEVEL_PER_FLOOR and it must land at or under 16, which is what the growth tables
 -- and the shelf were balanced against. tests/descent_spec.lua asserts exactly that bound, which is why
 -- this could not have been forgotten -- and was not.
-Descent.LEVEL_PER_FLOOR = 1
+-- ---------------------------------------------------------------------------
+-- AND THE LADDER RUNS TO THE CAP NOW. Everything above is the reasoning that held it to one, and it
+-- is kept because the question it answered -- does the bottom walk off the end of the growth tables --
+-- is still the one that matters. What changed is the answer to it.
+-- ---------------------------------------------------------------------------
+--
+-- The paragraphs above cut this to 1 to keep the bottom floor at or under 16, "which is what the
+-- growth tables and the shelf were balanced against". That bound was real but it was a bound on the
+-- TABLES, and tests/growth_spec.lua enforces the property those tables actually need -- survivability
+-- per level against enemy attack per level -- which is a linear invariant and holds at any cap. The
+-- ceiling was never 16; 16 was where the ladder happened to stop.
+--
+-- So the ladder runs to Growth.LEVEL_CAP and the company is expected to arrive there. See
+-- Descent.BOTTOM_DANGER below for the endpoint and Descent.expectedLevel for the company's own rung.
+--
+-- THIS IS NO LONGER A STEP, AND IT MUST NOT BE READ AS ONE. It is the average rise per floor, derived
+-- from the two endpoints and the floor count at the bottom of this file, and it is fractional. Every
+-- ladder question is answered by the ramps below rather than by multiplying this -- Spoils.rankBand
+-- used to divide by it to recover a floor number and now asks Descent.floorOf, which is the same
+-- question asked of something that knows the answer.
+-- (Assigned after Descent.FLOORS is known; see the bottom of this file.)
+Descent.LEVEL_PER_FLOOR = nil
+
+-- WHAT THE WORLD FIGHTS AT ON THE LAST STAIR -- the other end of the ladder OPENING_DANGER starts.
+--
+-- Growth.LEVEL_CAP, and the two must stay equal: the cap exists to bound a level, and a descent that
+-- stopped short of it would leave a stretch of the tables nothing in the game ever stands on, while
+-- one that ran past it would be clamped mid-fight by Growth.combatantLevel without saying so.
+-- Authored here rather than read off Growth so this file does not have to require it at module scope;
+-- tests/descent_level_spec.lua asserts the equality, which is what keeps it honest.
+--
+-- FIFTY MEANS THE CAP IS THE FINISH LINE RATHER THAN HEADROOM, and that is a real consequence rather
+-- than a side effect. Growth.LEVEL_CAP's own header describes 50 as room a second playthrough grows
+-- into -- that reading is retired with the prestige ladder it was written for (Player.syncLevels is
+-- deleted). A company that breaks the Crown has nowhere left to climb, which is the shape a run-again
+-- loop built on DEPTH rather than on levels wants.
+Descent.BOTTOM_DANGER = 50
+
+-- WHAT ACT 0 LEAVES THE COMPANY AT, and the bottom of Descent.expectedLevel's ramp. Two, because the
+-- experience curve puts the avatar and Rowan five sixths of the way to their second level as they
+-- walk out of the prologue (models/experience.lua's own note), so the first fight of floor one is a
+-- level-up.
+-- FOUR, MEASURED OFF THE PROLOGUE rather than assumed. Act 0 is four fights and pays about 48 a head
+-- simulated, nearer 84 in real play (tests/experience_spec.lua holds both ends of that band); at a
+-- flat 24 a level, the played road lands four. It moved with Experience.STEP: on the old curve the
+-- same experience bought level two, which is what this said.
+--
+-- states/prologue.lua reads it rather than declaring its own. The prologue tops the company UP to its
+-- exit (prologue.payExit) and the rift opens expecting them there, so the two are one number and the
+-- state is the side that should be asking -- a model must not require a state.
+Descent.OPENING_LEVEL = 4
 
 -- WHAT THE WORLD FIGHTS AT ON THE FIRST STAIR, and the number that fixes a floor nobody had to play.
 --
@@ -1427,7 +1596,16 @@ Descent.LEVEL_PER_FLOOR = 1
 -- So the descent gets its own dial, keyed on the only clock it has, and the day goes back to the one job
 -- it was brought in for. THREE is where a company that has fought its way onto the stair actually
 -- stands, so floor 1 opens as a fight rather than a formality.
-Descent.OPENING_DANGER = 3
+-- FIVE NOW, AND THE LAG IS WHY. Everything above holds -- this is the dial that stops the first floor
+-- being a formality -- but it was sized against a PROPORTIONAL lag, where a tenth off a danger of 3
+-- left stock at level 2. Growth.ENEMY_LEVEL_LAG is a count of levels now (see its header), so a 3 here
+-- would put the trash on the opening floor at level ONE: the floor nobody had to play, walked back in
+-- through the other end of the same arithmetic.
+--
+-- Five puts stock at three, which is where a company leaving Act 0 actually stands -- the prologue's
+-- four fights bank 48 to 84 experience and a level costs 24 (Experience.STEP), so the pair walk in at
+-- three or four. An even opening, which is what this constant has always been for.
+Descent.OPENING_DANGER = 5
 
 -- HOW MANY BODIES THE OPENING FLOOR FIELDS, and the number that fixes a floor priced for a company
 -- nobody has yet.
@@ -1517,42 +1695,123 @@ function Descent.isOpeningFloor(floor)
     return (floor or 1) <= 1
 end
 
+-- ONE RAMP, READ BY EVERY LADDER IN THE MODE. `floor` maps onto `lo..hi` across the whole stack and
+-- rounds, so the three ladders that have to move together -- what the world is minted at, what a
+-- set-piece tracks, and where the company is expected to stand -- cannot drift apart or be re-cut
+-- independently. Derived from Descent.FLOORS rather than from a per-floor step, which is the rule
+-- Descent.FLOOR_FIGHTS_DEEP records: an endpoint keeps its meaning when the stack's length moves.
+function Descent.rung(floor, lo, hi)
+    local span = math.max(1, Descent.FLOORS - 1)
+    local t = math.min(1, math.max(0, ((floor or 1) - 1) / span))
+    return math.floor(lo + t * (hi - lo) + 0.5)
+end
+
+-- WHICH FLOOR A `floorLevel` BELONGS TO -- the inverse of Descent.floorLevel, for the readers that
+-- hold a level and need the depth back.
+--
+-- It exists because Spoils.rankBand used to recover a floor by DIVIDING by LEVEL_PER_FLOOR, which was
+-- exact only while that constant was 1 and a floor rose by exactly one level. It is an average now and
+-- fractional, so the division would have gone on returning a plausible number and been wrong at both
+-- ends -- floor one reading 0.3 of a floor. A ladder that can be walked forwards should be asked to
+-- walk backwards rather than approximated.
+function Descent.floorOf(floorLevel)
+    local top = Descent.BOTTOM_DANGER - Descent.OPENING_DANGER + 1
+    local span = math.max(1, top - 1)
+    local t = math.min(1, math.max(0, ((floorLevel or 1) - 1) / span))
+    return math.floor(1 + t * (Descent.FLOORS - 1) + 0.5)
+end
+
+-- WHERE THE COMPANY IS EXPECTED TO STAND ON THIS FLOOR, and the number every balance question in the
+-- mode is asked against.
+--
+-- IT DID NOT EXIST, WHICH IS WHY IT IS WORTH A PARAGRAPH. Three constants looked like this one and
+-- none of them was it: Descent.floorLevel is the MINIMUM a set-piece may be grown to, dangerLevel is
+-- what the world is MINTED at, and Growth.laggedLevel of that is what a trash body actually spawns at.
+-- The company's own rung is a property of the experience curve and was readable nowhere -- so a fight
+-- was priced against whichever of the three its author reached for, and the three differ by up to four
+-- levels.
+--
+-- DERIVED, NOT AUTHORED, and pinned against the curve rather than against a literal:
+-- tests/experience_spec.lua walks the stack through Experience.rewardScale at the units
+-- tests/reward_scale_spec uses and asserts the simulation lands within a level of this ramp. So a
+-- re-cut of Experience.STEP, of the award, or of the stack reddens a case instead of leaving a
+-- constant quietly describing a company nobody has.
+--
+-- A RANGE IS THE HONEST READING and this is its floor: the company ENTERS at this rung and leaves the
+-- floor a rung or two above it. Callers that want the band ask for this floor and the next.
+--
+-- A STRAIGHT LINE WAS TRIED FIRST AND IS WRONG AT THE TOP OF THE STACK, by two levels on floor three.
+-- The climb is throttled rather than linear -- Experience.rewardScale pays less the further the
+-- company stands above the ground it is fighting -- so it is concave early, where the company starts a
+-- rung under the world and earns full. A ramp would have been cheaper to read and would have priced
+-- the first circle for a company two levels stronger than the one that walks it.
+--
+-- SO IT IS THE SIMULATION, memoized. Eight fights a floor at the units tests/reward_scale_spec uses,
+-- which is the measured cost of a floor (Descent.FLOOR_FIGHTS' header carries the tours). Pure: it
+-- reads constants and nothing else, so the same stack answers the same way on every machine.
+--
+-- KEYED ON WHAT IT DEPENDS ON rather than cached once, because a spec that retunes STEP or the stack
+-- and then asks this must not be handed the previous ladder's answer.
+local expectedCache, expectedKey = nil, nil
+
+function Descent.expectedLevel(floor)
+    local Experience = require("models.experience")
+    local Growth = require("models.growth")
+    local key = table.concat({ Experience.STEP, Descent.FLOORS, Descent.BOTTOM_DANGER,
+        Descent.OPENING_DANGER, Descent.OPENING_LEVEL, Growth.ENEMY_LEVEL_LAG }, ":")
+    if expectedKey ~= key then
+        local perFight = 7 * Experience.PER_ACTION + 1.25 * Experience.PER_FELLING
+        local xp = Experience.totalFor(Descent.OPENING_LEVEL)
+        local out = {}
+        for f = 1, Descent.FLOORS do
+            out[f] = Experience.levelFor(xp)
+            local stock = Growth.combatantLevel({}, Descent.dangerLevel({ floor = f }))
+            for _ = 1, 8 do
+                xp = xp + perFight * Experience.rewardScale(Experience.levelFor(xp), stock)
+            end
+        end
+        -- What the company leaves the bottom floor holding, so a caller can quote the last band.
+        out[Descent.FLOORS + 1] = Experience.levelFor(xp)
+        expectedCache, expectedKey = out, key
+    end
+    return expectedCache[math.max(1, math.min(Descent.FLOORS + 1, floor or 1))]
+end
+
 -- The level the world fights at on this floor -- the descent's Calendar.dangerLevel, and the number
 -- states/battle.lua takes as `enemyLevel`. Fed in as the TRACKED level rather than as a battleFloor,
 -- which is what keeps Growth's two tiers apart: ordinary stock lags it and anything naming a
 -- `floorLevel` of its own tracks it exactly, so the trash thins out and the guardian does not.
 function Descent.dangerLevel(run)
-    return Descent.OPENING_DANGER + (Descent.depth(run) - 1) * Descent.LEVEL_PER_FLOOR
+    return Descent.rung(Descent.depth(run), Descent.OPENING_DANGER, Descent.BOTTOM_DANGER)
 end
 
--- WHICH DAY A FLOOR BORROWS, purely to decide which encounter blueprints may appear on it (`minDay`).
--- The enemy LEVEL is Descent.dangerLevel's and this must never become a second answer to it.
+-- HOW THE LAST FIGHT IS COMPOSED: one general fewer beside him for each of the seven felled.
 --
--- WHICH IS EXACTLY WHAT IT HAD BECOME, TWICE, AND THE SECOND TIME IS WHY THIS FUNCTION EXISTS. The
--- mapping was `depth / FLOORS * SPAN` -- depth spread evenly across the campaign's forty days -- and
--- states/battle.lua reads its level off Calendar.dangerLevel(day) while Growth.combatantLevel takes the
--- HIGHER of that and the floor's own. So whenever the borrowed day out-ranks the floor, the day silently
--- becomes the ladder and OPENING_DANGER stops meaning anything. At fifteen floors it did that from floor
--- three down. Re-cutting the stack to eight made it worse rather than better: five days a floor instead
--- of under three, so the day overtook the ladder on floor ONE.
+-- IT LIVED IN models/calendar.lua and had nothing to do with a calendar. It reads Descent.SINS and the
+-- run's own `standing` ledger, which is this file's data -- it was filed under the clock only because
+-- the day-forty finale it was written to size was the campaign's. The breach is what it sizes now: at
+-- the count's ceiling the stair stops being an exit, and what comes up it brings everyone still
+-- standing (Descent.breachComposition).
 --
--- SO THE DAY IS DERIVED FROM THE LADDER RATHER THAN FROM THE DEPTH. Read Calendar.dangerLevel backwards
--- -- find the day whose danger matches this floor's -- and floor it, so the borrowed day always rates a
--- shade BELOW the floor it is standing on and the descent's dial wins every comparison by construction.
--- Re-cutting the stack, the ladder or the calendar cannot re-break this, because it no longer contains
--- an opinion about any of their lengths.
-function Descent.poolDay(run)
-    local Calendar = require("models.calendar")
-    local span, final = Calendar.SPAN or 1, Calendar.FINAL_DANGER or 1
-    if span <= 1 or final <= 1 then return 1 end
-    -- ONE RUNG BELOW THE FLOOR'S OWN DANGER, not level with it. Aiming at parity lands the borrowed day
-    -- on exactly the floor's level once the calendar's rounding is applied, and a day that TIES with the
-    -- ladder is a day that has quietly become the ladder again -- Growth.combatantLevel takes the higher
-    -- of the two and cannot tell which one it took. A rung of margin costs a sliver of pool breadth and
-    -- makes the ownership unambiguous at every depth.
-    local t = (Descent.dangerLevel(run) - 2) / (final - 1)
-    return math.max(1, math.min(span, math.floor(1 + t * (span - 1))))
+-- Returns the number still standing (0..7). A GENERAL IS DOWN BY ONE ROUTE and it is this one: her
+-- circle is sealed by felling her on her own floor, credited to `run.standing` keyed by the house's
+-- VENDOR (Descent.clearFloor). The circles are the authority because that is the shorter statement of
+-- the same fact -- there are seven of them because there are seven sins, and Descent.SINS says it once.
+function Descent.generalsStanding(player)
+    local sealed = (player and player.descentRun and player.descentRun.standing) or {}
+    local standing = 0
+    for _, sin in ipairs(Descent.SINS) do
+        if (sealed[sin.vendor] or 0) <= 0 then standing = standing + 1 end
+    end
+    return standing
 end
+
+-- (Descent.poolDay STOOD HERE.) It borrowed a campaign day for a floor so `minDay` could gate the pool,
+-- by reading Calendar.dangerLevel backwards until it found the day that rated the same as this floor's
+-- own danger. Measured at every depth the round trip came back to the floor's number minus one, and it
+-- lost resolution doing it. The pool gates on depth now (models/encounter.lua) and the calendar is
+-- deleted, so there is nothing left to borrow from.
+
 
 -- Ids are `descent_f<N>`. Nothing in the engine ever looks a floor up in Quest.defs -- models/save.lua
 -- branches on the presence of a stored descent BEFORE it tries Quest.get -- but the prefix keeps a floor
@@ -2510,7 +2769,7 @@ function Descent.depth(run)
 end
 
 function Descent.floorLevel(run)
-    return 1 + (Descent.depth(run) - 1) * Descent.LEVEL_PER_FLOOR
+    return Descent.rung(Descent.depth(run), 1, Descent.BOTTOM_DANGER - Descent.OPENING_DANGER + 1)
 end
 
 -- THE ORDER THE CIRCLES ARE MET IN, FIRST TIME THROUGH: Dante's, top to bottom.
@@ -2592,6 +2851,12 @@ end
 -- bottom under them. Fifteen at two floors per circle.
 Descent.CIRCLE_FLOORS = #Descent.SINS * Descent.FLOORS_PER_CIRCLE
 Descent.FLOORS = Descent.CIRCLE_FLOORS + 1
+
+-- The average rise per floor, derived from the ladder's endpoints rather than authored. NOT a step:
+-- see the note beside its declaration above. Kept because it is the unit several readers quote when
+-- they explain themselves, and because a reader that wants a floor back now asks Descent.floorOf.
+Descent.LEVEL_PER_FLOOR =
+    (Descent.BOTTOM_DANGER - Descent.OPENING_DANGER) / math.max(1, Descent.FLOORS - 1)
 
 -- Is this the floor the Hollow Crown is standing on? Everything that behaves differently at the end of
 -- a run asks this rather than comparing against a number -- the floor count is one constant and this is
@@ -2960,6 +3225,253 @@ end
 -- (Overworld:placeObjectiveAndGates), so the stair is the end of the road rather than a tile you might
 -- stumble over on the way to somewhere else.
 --
+-- ---------------------------------------------------------------------------
+-- WHAT A STAIR IS WORTH, AND WHAT IT IS WORTH AGAINST
+-- ---------------------------------------------------------------------------
+
+-- THE COMPANY THIS FLOOR IS BUILT FOR, rated the way every marker on it is rated (Muster).
+--
+-- Four bodies at Descent.expectedLevel, which is the ladder the experience curve actually lands a
+-- company on. Four because Player.MAX_FIELD is four and a stair is met by a full company; the four are
+-- a knight, a priest, an archer and a mage because that is the shape a roster tends toward rather than
+-- an authored party -- what matters is that the same four are used at every depth, so the number moves
+-- only with the ladder.
+--
+-- MEMOIZED ON THE LADDER'S OWN CONSTANTS, for the reason Descent.expectedLevel is: a spec that retunes
+-- the stack and then asks this must not be handed the previous ladder's answer.
+--
+-- EXPORTED, because it is not only the stair's reference. tests/skirmish_spec.lua measures how long an
+-- ordinary road fight runs, and the fight it measures has to be met by the same company the floor was
+-- built for -- a harness that fields a different party is measuring a different game. It fielded ONE
+-- body (a fresh Player.new() roster is Rowan alone) against a hardcoded level and floor-one stock, and
+-- every number it recorded was a one-on-three loss timed out rather than a fight.
+local companyCache, companyKey
+Descent.COMPANY = { "character_knight", "character_priest", "character_archer", "character_mage" }
+local COMPANY = Descent.COMPANY
+
+function Descent.companyWorth(floor)
+    local Muster = require("models.muster")
+    local Growth = require("models.growth")
+    local Experience = require("models.experience")
+    local key = table.concat({ Experience.STEP, Descent.FLOORS, Descent.BOTTOM_DANGER,
+        Descent.OPENING_DANGER, Descent.OPENING_LEVEL }, ":")
+    if companyKey ~= key then companyCache, companyKey = {}, key end
+    floor = math.max(1, math.min(Descent.FLOORS, floor or 1))
+    if not companyCache[floor] then
+        local level, total = Descent.expectedLevel(floor), 0
+        for _, id in ipairs(COMPANY) do
+            local ok, char = pcall(Growth.spawn, id, level)
+            if ok and char then total = total + Muster.rate(char) end
+        end
+        companyCache[floor] = math.max(1, total)
+    end
+    return companyCache[floor]
+end
+
+-- WHAT A STAIR COSTS, as a multiple of that company.
+--
+-- IT HAD NO RULE AT ALL. Measured before this landed, an approach stair ran from 0.56x its company to
+-- 1.54x and a general's from 0.88x to 2.58x -- the Gralloch was easier than the ordinary traffic on his
+-- own floor while Invidia was nearly three companies, and nothing connected one to the next. The body
+-- count was `2 + floor/3`, which is a statement about DEPTH and says nothing about what the fight is
+-- worth against the party meeting it.
+--
+-- A RAMP, AND MONOTONE BY CONSTRUCTION. Both terms climb -- the multiple from the top of the stack to
+-- the bottom, and the company under it -- so stair worth strictly increases with depth and no stair is
+-- ever lighter than the one above it. That is the whole of `no sawtooth`, and it falls out of the shape
+-- rather than being asserted on top of it.
+--
+-- AND THE GENERAL IS STILL HEAVIER THAN HER OWN LIEUTENANT, for free: she stands on the DEEPER floor of
+-- her circle, so she draws a higher multiple over a bigger company. The old arrangement said this by
+-- subtracting a body from the lieutenant; the ramp says it by where the two of them are standing, which
+-- is the truer statement and needs no special case.
+--
+-- THE CROWN IS THE TOP OF THE RAMP, so it is the heaviest fight in the game by construction. It used to
+-- be the third-heaviest -- 2.12x against Superbia's 2.42x and Invidia's 2.58x -- which is a run whose
+-- one win condition is not its hardest fight.
+-- THE TWO ENDS ARE MEASURED, NOT WISHED FOR. 1.5 and 2.8 were tried first -- read off the OLD ladder,
+-- where a company was worth a third of what it is worth now -- and the casts cannot carry them. A stair
+-- is a lead plus at most eight filler (Descent.GUARD_MAX) and the seven circles field filler of wildly
+-- different weight, so what each floor CAN reach is a fact about its cast:
+--
+--     floor  1  3  5  7  9 11 13   (approach: a lieutenant over swarm stock)
+--     max x  1.1 1.8 2.1 2.5 2.4 2.1 2.4
+--
+-- Floor one is the binding constraint and it is not close: the Suppliant over petal drifts tops out at
+-- 1.11x, because a drift is authored to be worth almost nothing to kill (its whole threat is a Charm on
+-- contact, which the muster ruler cannot see). A ramp whose shallow end no cast can reach is a ramp
+-- that reports a shortfall on every floor of the first circle and means nothing.
+--
+-- So the ends are cut to the envelope: every floor's target is inside what its own circle can field,
+-- and the ramp still climbs the whole way down. Widening it again is a CONTENT decision -- heavier
+-- filler, or a third body in the band -- rather than a number to raise here.
+Descent.STAIR_MULTIPLE = 1.1      -- the first stair, against the company that walks onto it
+Descent.STAIR_MULTIPLE_DEEP = 2.1 -- the Crown's
+
+-- A WARD IS A GATE, so it is priced under the stair it bars and over the floor's traffic.
+--
+-- Lust's read 0.37x its company -- lighter than the lightest rolled fight on the floor, and past
+-- Muster.WALK_OVER, so the game offered to resolve the circle's whole spine without a board. It is the
+-- gate every other circle's is read against (Descent.GATES), and a gate the game offers to skip is not
+-- a gate.
+--
+-- A SHARE OF THE STAIR, NOT A MULTIPLE OF THE COMPANY, and the difference is not cosmetic. Written as
+-- 1.2x the company it came out at 947 against a stair of 915 on the same floor -- a ward HEAVIER than
+-- the general it is standing in front of, which inverts the whole shape: the gate becomes the fight and
+-- the fight becomes the formality. Priced off the stair it bars, it cannot do that at any depth.
+Descent.WARD_SHARE = 0.75
+
+-- HOW FAR CLEAR OF THE LAST GENERAL THE CROWN STANDS, and why it is a step rather than a point on the
+-- ramp.
+--
+-- On the ramp alone it cleared Superbia by three per cent -- monotone, so `no sawtooth` held, and
+-- indistinguishable, so "the heaviest fight in the game" was true by a rounding. The bottom of the
+-- stack should read as the bottom.
+--
+-- 1.3 AND NOT 1.4, AND THE CAST IS WHY. The Hollow Crown fields champions and at most eight of them
+-- (Descent.GUARD_MAX, which is Arena.DEFAULT_ENEMY_CAP less the lead), which tops out at 9014 against
+-- the seventh circle's 6870 -- 1.31x. Asking for 1.4 would have planned a fight the board then
+-- truncated, and a marker that prices nine bodies for a player who meets eight is the one failure
+-- Muster exists to prevent. Set to what the cast can carry, and raising it is a content decision.
+Descent.CROWN_STEP = 1.3
+
+-- What this floor's stair should be worth, and what its ward should be.
+function Descent.stairTarget(floor)
+    return Descent.companyWorth(floor)
+        * (Descent.rung(floor, Descent.STAIR_MULTIPLE * 100, Descent.STAIR_MULTIPLE_DEEP * 100) / 100)
+end
+
+function Descent.wardTarget(floor)
+    return Descent.stairTarget(floor) * Descent.WARD_SHARE
+end
+
+-- HOW MANY FILLER BODIES BRING `lead` UP TO `target`.
+--
+-- Solved rather than authored, which is the point: the seven circles do not field comparable filler --
+-- a cinder kin is worth three petal drifts -- so one body count means seven different fights. Asking
+-- for a WORTH and letting each circle spend as many of its own bodies as that takes is what makes the
+-- stairs comparable at all.
+--
+-- Bounded at both ends. The floor is one: a stair is a lead plus SOMETHING, and a circle whose filler
+-- is heavy enough to overshoot alone still puts one of them there.
+--
+-- THE CEILING IS THE ARENA'S, AND IT IS NOT NEGOTIABLE FROM HERE. `enemyCap = false` on a stair's spec
+-- opts it out of the FLOOR's ceiling (Descent.OPENING_CAP), not out of the tier's: an objective falls
+-- through to Arena.DEFAULT_ENEMY_CAP, nine bodies, and Arena.clampComposition drops the rest. Set
+-- higher, this solver cheerfully planned a lead and twelve filler and the board fielded a lead and
+-- eight -- so the marker priced a fight the player never met, which is the one failure Muster exists to
+-- prevent. Derived rather than authored, so a re-cut of that cap moves this with it.
+--
+-- A TARGET THE CAST CANNOT REACH IS LEFT SHORT, visibly. A circle whose filler is too light to carry
+-- its floor's ramp inside nine bodies is making a statement about its own cast, and the honest place
+-- for that is a measured spec rather than a body this fight was not built from.
+Descent.GUARD_MAX = require("models.arena").DEFAULT_ENEMY_CAP - 1
+
+-- THE BODIES A STAIR FIELDS, for a given filler count. ONE BUILDER, read by the composition the arena
+-- actually gets and by the solver that sizes it -- which is the whole reason it exists as a function.
+--
+-- It did not, and the two disagreed exactly where it mattered. The solver modelled `lead + n x filler`
+-- while the composition puts the LIEUTENANT in the first filler slot and swarm stock in the rest (see
+-- the note on named filler below), and swarm stock is a third of her weight -- so every general's stair
+-- came out under the plan that sized it and the ramp dipped on four floors. A solver that models a
+-- different fight from the one built is not a solver.
+function Descent.guardList(sin, isGeneral, floor, n)
+    local band = isGeneral and sin.guardian or sin.minor
+    local list = { band.lead }
+    local named = isGeneral and sin.minor and sin.minor.filler or nil
+    if named and named ~= band.filler then
+        list[#list + 1] = band.filler
+        for _ = 2, n do list[#list + 1] = named end
+    else
+        for _ = 1, n do list[#list + 1] = band.filler end
+    end
+    return list
+end
+
+-- What that guard is worth, rated the way the marker over it will rate it.
+function Descent.guardWorthOf(sin, isGeneral, floor, n)
+    local Muster = require("models.muster")
+    local Growth = require("models.growth")
+    local level = Descent.dangerLevel({ floor = floor })
+    local total = 0
+    for _, id in ipairs(Descent.guardList(sin, isGeneral, floor, n)) do
+        local ok, char = pcall(Growth.spawn, id, level, Descent.floorLevel({ floor = floor }))
+        if ok and char then total = total + Muster.rate(char) end
+    end
+    return total
+end
+
+-- The two-body form, still used by the Crown (which has no circle and so no lieutenant to seat).
+function Descent.guardWorth(leadId, fillerId, floor, n)
+    local Muster = require("models.muster")
+    local Growth = require("models.growth")
+    local level = Descent.dangerLevel({ floor = floor })
+    local function worth(id)
+        if not id then return 0 end
+        local ok, char = pcall(Growth.spawn, id, level, Descent.floorLevel({ floor = floor }))
+        return (ok and char) and Muster.rate(char) or 0
+    end
+    return worth(leadId) + math.max(0, n or 0) * worth(fillerId)
+end
+
+-- How many filler bodies bring `lead` closest to `target`, bounded at both ends.
+function Descent.guardSize(leadId, fillerId, floor, target)
+    local one = Descent.guardWorth(leadId, fillerId, floor, 1)
+    local lead = Descent.guardWorth(leadId, nil, floor, 0)
+    local filler = one - lead
+    if filler <= 0 then return 1 end
+    local n = math.floor(((target or 0) - lead) / filler + 0.5)
+    return math.max(1, math.min(Descent.GUARD_MAX, n))
+end
+
+-- THE WHOLE STACK'S STAIRS AT ONCE, because "no stair is lighter than the one above it" is a statement
+-- about a SEQUENCE and cannot be answered one floor at a time.
+--
+-- A monotone target is not enough on its own, which is the thing this pass exists to fix and which
+-- measuring caught: the target is continuous, a guard is a whole number of bodies, and the seven
+-- circles field leads and filler of wildly different worth. Solved floor by floor the realised worths
+-- came out 1567, 1504, 2558, 2227 -- four dips, every one a rounding artifact rather than a decision.
+-- So the plan walks the stack in order and raises any guard that would land under the one above it,
+-- which is the only place the sequence is visible.
+--
+-- BOUNDED BY GUARD_MAX, so a circle whose filler cannot get there fields as much of it as it may and
+-- the dip is left VISIBLE rather than papered over with a body the fight was not built from. A stair
+-- that cannot reach its own floor's ramp is a statement about that circle's cast, and
+-- tests/descent_spec.lua is where it should be argued, not hidden here.
+--
+-- Memoized per run, keyed on what the order depends on: the circles are dealt by seed once the Crown
+-- has been broken (Descent.sinOrder), so two runs do not share a plan.
+local planCache = {}
+
+function Descent.stairPlan(run)
+    local key = tostring((run and run.seed) or 0) .. ":" .. tostring((run and run.shuffle) or false)
+    if planCache[key] then return planCache[key] end
+    local plan, prev = {}, 0
+    for floor = 1, Descent.FLOORS do
+        local sin = Descent.sinAt(run, floor)
+        local band = sin and (Descent.isGeneralFloor(floor) and sin.guardian or sin.minor)
+        if band then
+            -- Walked rather than solved, because the list is not linear in `n`: the first filler slot on
+            -- a general's stair is her lieutenant and the rest are swarm, so the first body added is
+            -- worth three of the next. A closed form over an average would land on the wrong count.
+            local isGeneral = Descent.isGeneralFloor(floor)
+            local target = math.max(Descent.stairTarget(floor), prev)
+            local n, worth = 1, Descent.guardWorthOf(sin, isGeneral, floor, 1)
+            while n < Descent.GUARD_MAX do
+                local nextWorth = Descent.guardWorthOf(sin, isGeneral, floor, n + 1)
+                -- Stop at the count that lands CLOSEST to the target rather than the first one over it,
+                -- so a stair is not routinely a whole swarm body heavier than it was priced at.
+                if worth >= target and math.abs(worth - target) <= math.abs(nextWorth - target) then break end
+                n, worth = n + 1, nextWorth
+            end
+            plan[floor] = { n = n, worth = worth }
+            prev = math.max(prev, worth)
+        end
+    end
+    planCache[key] = plan
+    return plan
+end
+
 -- WHAT STANDS ON THE STAIR. A set-piece drawn from the circle's own house: one lead body, and filler
 -- that thickens with depth so a deep floor's guardian is a wall where a shallow one's is a warning.
 --
@@ -2979,26 +3491,29 @@ end
 -- an objective, so the cap falls through to the quest's difficulty (Arena.DEFAULT_ENEMY_CAP, nine) and
 -- the skirmish tier never touches it. That fall-through was written for the campaign's objectives and
 -- is doing the same job here for free.
-local function guardianComposition(sin, floorLevel, isGeneral, floor)
+local function guardianComposition(sin, floorLevel, isGeneral, floor, target, run)
     -- Both halves resolved HERE, outside the closure, so the returned function reads no upvalue that
     -- could have moved by the time the fight is built.
     local band = isGeneral and sin.guardian or sin.minor
     local opening = not isGeneral and Descent.isOpeningFloor(floor)
     return function()
-        local list = { band.lead }
-        -- Two at the top of the descent, climbing to a full set-piece at the bottom. Read off the floor
-        -- rather than off prestige: this fight is a statement about how deep the party has gone, not
-        -- about how decorated they are (see models/spoils.lua's GOLD_DEPTH_SLOPE for the same argument
-        -- about the gold).
-        local n = 2 + math.floor((floorLevel or 1) / 3)
-        -- A lieutenant's stair is a smaller thing than his general's, and it has to read that way from
-        -- outside: same house, same ground, one body fewer behind it.
-        if not isGeneral then n = math.max(1, n - 1) end
-        -- ...except on the stair a descent OPENS on, where that subtraction left one swarm body holding
-        -- the end of the road and made it the lightest fight on the board. See Descent.OPENING_GUARD.
+        local n
+        if target then
+            -- A WARD names its own worth and is not on the stack's ramp, so it solves against that
+            -- directly. See Descent.WARD_MULTIPLE.
+            n = 1
+            while n < Descent.GUARD_MAX
+                and Descent.guardWorthOf(sin, isGeneral, floor, n) < target do
+                n = n + 1
+            end
+        else
+            local planned = Descent.stairPlan(run)[floor]
+            n = planned and planned.n or 1
+        end
+        -- ...except on the stair a descent OPENS on, where a lieutenant over swarm stock is the lightest
+        -- thing on the board unless it is told otherwise. See Descent.OPENING_GUARD.
         if opening then n = math.max(n, Descent.OPENING_GUARD) end
-        for _ = 1, n do list[#list + 1] = band.filler end
-        return list
+        return Descent.guardList(sin, isGeneral, floor, n)
     end
 end
 
@@ -3009,10 +3524,26 @@ end
 -- of seven generals' keys.
 --
 -- The guard thickens with the FLOOR rather than with prestige, like every other stair on the way down.
-local function crownComposition(floorLevel)
+-- ON THE SAME RAMP AS EVERY OTHER STAIR, which is what makes the Crown the heaviest fight in the game
+-- rather than the third-heaviest. It sized its guard off a body count and came out at 2.12x its company
+-- while Superbia on the floor above read 2.42x and Invidia 2.58x -- a run whose one win condition was
+-- not its hardest fight. Descent.stairTarget is the top of the ramp here because the Crown is the
+-- bottom of the stack, so it is the largest target by construction.
+local function crownComposition(floor, run)
     return function()
+        -- A STEP ABOVE THE LAST GENERAL rather than the next point on the ramp -- see
+        -- Descent.CROWN_STEP. Read off the plan so the two cannot drift: whatever the seventh circle
+        -- turns out to field, this clears it by the same margin.
+        local plan = Descent.stairPlan(run)
+        local last = (plan[Descent.CIRCLE_FLOORS] or {}).worth or 0
+        local target = math.max(Descent.stairTarget(floor), last * Descent.CROWN_STEP)
+        local n = 1
+        while n < Descent.GUARD_MAX
+            and Descent.guardWorth("character_demon_lord", "character_champion", floor, n) < target do
+            n = n + 1
+        end
         local list = { "character_demon_lord" }
-        for _ = 1, 2 + math.floor((floorLevel or 1) / 4) do list[#list + 1] = "character_champion" end
+        for _ = 1, n do list[#list + 1] = "character_champion" end
         return list
     end
 end
@@ -3123,7 +3654,7 @@ function Descent.floorQuest(run, player)
                     -- seven; a descent has neither, so it played an avatar's lines with no avatar in
                     -- the room and skipped everything else. See the scene's own header.
                     opening = "conversation_descent_crown",
-                    composition = crownComposition(floorLevel),
+                    composition = crownComposition(floor, run),
                     win = { type = "assassinate", target = "character_demon_lord" },
                 },
             },
@@ -3216,7 +3747,7 @@ function Descent.floorQuest(run, player)
                 -- would have the general talking through a body she is standing two floors below. A
                 -- minor floor opens in silence, which is also what makes hers land.
                 opening = general and sin.scene or nil,
-                composition = guardianComposition(sin, floorLevel, general, floor),
+                composition = guardianComposition(sin, floorLevel, general, floor, nil, run),
                 -- The stair opts out of the floor's own body ceiling (Descent.OPENING_CAP). What the
                 -- circle put on it is what stands there.
                 enemyCap = false,
@@ -3247,7 +3778,7 @@ function Descent.floorObjectives(player, floor, sin, floorLevel, general, run)
         -- `objective` above for why, and Descent.openStair for when the name changes.
         name = Descent.guardianName(sin, general) or "The Guard",
         opening = general and sin and sin.scene or nil,
-        composition = guardianComposition(sin, floorLevel, general, floor),
+        composition = guardianComposition(sin, floorLevel, general, floor, nil, run),
         -- Exempt from the opening floor's ceiling, exactly as the descriptor's own `objective` is: a
         -- floor cut to the size of the company that walks in still ends on the fight the circle put
         -- there. See Descent.OPENING_CAP.
@@ -3268,7 +3799,12 @@ function Descent.floorObjectives(player, floor, sin, floorLevel, general, run)
         if gate and gate.kind == "ward" then
             ward = {
                 name = Descent.guardianName(sin, false) or "The Ward",
-                composition = guardianComposition(sin, floorLevel, false, floor),
+                -- SIZED AS A GATE rather than as a stair: Descent.WARD_MULTIPLE, which sits under the
+                -- stair it bars and over the floor's ordinary traffic. Passed explicitly because the
+                -- default is the stair's own target, and a ward built to that would be a second
+                -- general standing in front of the first.
+                composition = guardianComposition(sin, floorLevel, false, floor,
+                    Descent.wardTarget(floor)),
                 enemyCap = false,
                 win = { type = "killAll" },
                 floorLevel = floorLevel,
@@ -3911,7 +4447,7 @@ end
 -- SPENT BY THE DEED, not by the screen being seen -- it is set in `descend`, so a company that walks in
 -- and back out is coached again. A flag on the player rather than a hub stage, for the same reason as
 -- the tally above: `hubIntro` is spent in town -- on the mending, before the stair is ever pressed
--- (states/hub.lua's INTRO_STAGES; the Rift's own stage there is parked) -- so it is long gone by the
+-- (states/hub.lua's introAdvance; the plaza coaches nothing at all) -- so it is long gone by the
 -- time this state enters, and a flag passed through the switch would not survive a quit.
 function Descent.gateCoached(player)
     return (player and player.gateCoached) or false

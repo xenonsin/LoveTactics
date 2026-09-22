@@ -25,8 +25,8 @@ return {
     type = "ability",
     tags = { "summon", "dark" },
     class = "shaman",
-    price = 575,
-    unlockLevel = 11,
+    price = 390,
+    unlockLevel = 7,
     activeAbility = {
         target = "tile",
         range = 2,

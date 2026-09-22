@@ -20,6 +20,6 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "knight",
-    unlockLevel = 2,
+    unlockLevel = 3,
     bonus = { damage = Curve.ramp(2, 12) },
 }

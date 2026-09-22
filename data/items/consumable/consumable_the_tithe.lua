@@ -22,8 +22,8 @@ return {
     -- No `potion` tag -- see Borrowed Hands: the Cafe resells that tag and ignores standing.
     tags = { "elixir" },
     class = "apothecary",
-    price = 65,
-    unlockLevel = 1,
+    price = 225,
+    unlockLevel = 11,
     maxStack = 3,
     activeAbility = {
         target = "self",

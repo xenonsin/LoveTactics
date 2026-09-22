@@ -10,8 +10,8 @@ return {
     type = "ability",
     tags = { "holy", "restorative" },
     class = "priest",
-    price = 660,
-    unlockLevel = 13,
+    price = 475,
+    unlockLevel = 9,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

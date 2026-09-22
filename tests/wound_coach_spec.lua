@@ -193,24 +193,32 @@ return {
         end,
     },
     {
-        -- THE CITY'S STAGE IS SPENT BY THE DEED. It was spent by the DOOR for a pass, and what that
-        -- bought was a player who walked into the Cathedral, met Xin, said "nothing today" at the desk
-        -- and walked back out into a city that thought the lesson had landed -- still carrying the
+        -- THE FIRST MORNING'S FLAG IS SPENT BY THE DEED. It was spent by the DOOR for a pass, and what
+        -- that bought was a player who walked into the Cathedral, met Xin, said "nothing today" at the
+        -- desk and walked back out into a city that thought the lesson had landed -- still carrying the
         -- wound, with the one room that answers it now just another card among nine. Read against the
-        -- source because the stage table is a local in a state that cannot be loaded headless.
-        name = "the first morning holds the plaza on the mending until somebody is seen to",
+        -- source because the flag is read by locals in a state that cannot be loaded headless.
+        --
+        -- IT NO LONGER HOLDS THE PLAZA, and nothing does: the city's coach bubbles and the door refusal
+        -- that came with them are cut (states/hub.lua's header). `hubIntro` survives as the ledger that
+        -- tells the mending room it is teaching a first morning, and the rail that holds the player is
+        -- the ROOM's (ui/panels/ward.lua) -- which is the half of this that was ever load-bearing.
+        name = "the first morning's flag is spent by the mending, not by the door",
         fn = function()
             local src = assert(love.filesystem.read("states/hub.lua"), "should be able to read the state")
 
-            local from = src:find("local INTRO_STAGES", 1, true)
-            assert(from, "the first-visit stages are gone -- retarget this case")
-            local stages = src:sub(from, src:find("\nlocal function introStage", from, true) or #src)
-            assert(stages:find("mend = true", 1, true),
-                "the Ward stage no longer names a deed, so it is spent by opening the door again")
+            assert(src:find('hub.player.hubIntro == "ward"', 1, true),
+                "the first morning's flag is gone -- retarget this case")
+            -- SPENT BY THE DEED: introAdvance clears it on the predicate, not on a door being opened.
+            local from = assert(src:find("local function introAdvance", 1, true),
+                "introAdvance is still what spends the flag")
+            local body = src:sub(from, src:find("\nfunction hub.", from, true) or #src)
+            assert(body:find("mendingDone()", 1, true),
+                "the flag no longer clears on the mending, so it is spent by opening the door again")
 
             -- ...and the deed is the shared predicate, not a second opinion about what mending means.
             assert(src:find("Wound.unattended", 1, true),
-                "states/hub.lua no longer reads the predicate the Inn's own rows are rung from")
+                "states/hub.lua no longer reads the predicate the Ward's own rows are rung from")
 
             -- THE WINDOW IS HUNG ON THE ROOM, not on a scene. It rode the Cathedral's first-visit
             -- scene until that scene moved to the far side of the mending press (the blueprint's

@@ -12,7 +12,7 @@ return {
     sprite = "assets/items/leaden_ward.png",
     type = "armor",
     class = "alchemist",
-    unlockLevel = 7,
+    unlockLevel = 5,
     bonus = { magicDefense = Curve.ramp(4, 14), defense = Curve.ramp(2, 12), movement = -1 },
     resist = { fire = 5, lightning = 5, magical = 2 },
 }

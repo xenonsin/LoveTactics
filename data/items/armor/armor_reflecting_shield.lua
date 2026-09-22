@@ -26,7 +26,7 @@ return {
     type = "armor",
     tags = { "shield" },
     class = "knight",
-    unlockLevel = 9,
+    unlockLevel = 11,
     bonus = { defense = Curve.ramp(3, 13), movement = -1 },
     resist = { physical = 1 },
     waitBehavior = {

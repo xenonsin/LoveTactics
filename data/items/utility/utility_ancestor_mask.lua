@@ -22,7 +22,7 @@ return {
     type = "utility",
     tags = { "charm", "spirit" },
     class = "shaman",
-    unlockLevel = 4,
+    unlockLevel = 5,
     traits = { "trait_ancestor_mask" },
     -- a mask that keeps the field's own workings off what you field
     bonus = { magicDefense = 2 },

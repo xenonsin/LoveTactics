@@ -484,14 +484,9 @@ function Player.new()
         lastDeployed = {}, -- char ids fielded last battle; the deployment phase's opening pick (Player.noteDeployed)
         stash = {}, -- unequipped items; unbounded (see Player.addToStash)
         completedQuests = {}, -- quest id -> true; keeps finished quests off the board AND is a vendor's standing (Quest.sponsorProgress)
-        -- THE POSTINGS IN HAND, as { [bountyId] = count } (models/bounty.lua). Spent on taking one, win
-        -- or lose, and refilled by finishing them -- so it is the one resource that decides how much
-        -- deeper work the company may attempt before it has to fall back on a house's standing offer.
-        --
-        -- Deliberately NOT the same ledger as `completedQuests`. That one records what has ever been
-        -- finished and is what opens the next rung; this one records what may be attempted today. A
-        -- company that runs out of tier-3 postings has not lost its tier-3 standing.
-        bounties = {},
+        -- (THE POSTINGS IN HAND STOOD HERE.) Spent on taking one and put back on finishing it;
+        -- deleted with the Bounty Board. A save written while it existed carries a `bounties`
+        -- table nothing reads.
         -- Standing with each house, as { [vendorId] = circles cleared }: what a descent banks at
         -- extraction, added to the completed-quest count by Quest.sponsorProgress. The shelf, the
         -- forge's ceiling and the ability bench all open on the sum.
@@ -568,11 +563,6 @@ function Player.new()
         -- blades appear, so there is no moment standing in the shop to wrap.
         marketRacks = {},
         visitedVendors = {},  -- vendor id -> true; a shop plays its intro scene the first time only (states/hub.lua)
-        -- WHICH CITY DOORS THE PLAYER HAS BEEN SHOWN (models/building.lua's seenDoors block) is
-        -- deliberately ABSENT here rather than an empty table. Nil means "has not looked at the city
-        -- yet", which is the state the first hub entry seeds the ledger off; an empty table is
-        -- indistinguishable from it and would have the plaza announce its three opening cards as news.
-        -- seenDoors = nil,
         announcedDisciplines = {}, -- discipline id -> true; a vendor announces a newly unlocked discipline once (states/hub.lua)
         -- Story flags, as a plain set of id -> true. Written by a conversation choice's
         -- `effect = { flag = ... }` (models/story_effect.lua) and read back by a scene's
@@ -666,8 +656,11 @@ end
 -- and takes the larger, which is what makes it survive the rift being parked without stranding a save
 -- that was made while the rift was the game:
 --
---   bounties finished   the board's count (models/bounty.lua's Bounty.finished)
 --   deepest floor       the rift's high-water mark (models/descent.lua's Descent.deepest)
+--
+-- IT READ TWO DOORS AND TOOK THE LARGER -- the Bounty Board's finished count beside the rift's depth --
+-- because a company could once leave the city either way, and a gate that read only one of them would
+-- have stranded a save made through the other. The board is deleted; there is one door.
 --
 -- IT USED TO BE DEPTH ALONE, under the name `unlockDepth`, and the rename is the point rather than
 -- tidiness: the noun drifted the moment the stair stopped being the only way out of the city. A gate
@@ -688,9 +681,7 @@ function Player.tripsHome(player)
 end
 
 function Player.expeditionsOut(player)
-    local bounties = require("models.bounty").finished(player)
-    local depth = require("models.descent").deepest(player)
-    return math.max(bounties, depth)
+    return require("models.descent").deepest(player)
 end
 
 function Player.questsCompleted(player)

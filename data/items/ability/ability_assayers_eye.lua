@@ -17,8 +17,8 @@ return {
     type = "ability",
     tags = { "arcane" },
     class = "alchemist",
-    price = 80,
-    unlockLevel = 0,
+    price = 170,
+    unlockLevel = 2,
     activeAbility = {
         target = "enemy",
         -- Aimed at a foe, but it is not a blow: `harmless` is the third valence beside support and

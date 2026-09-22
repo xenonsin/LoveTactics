@@ -23,7 +23,7 @@ return {
     type = "utility",
     tags = { "belt" },
     class = "barbarian", -- deeper cut of the shelf: buyable only once the barbarian gate is cleared
-    unlockLevel = 4,
+    unlockLevel = 8,
     traits = { "trait_adrenal_surge" },
     -- the item is tempo, bought with being hit
     bonus = { speed = 2 },

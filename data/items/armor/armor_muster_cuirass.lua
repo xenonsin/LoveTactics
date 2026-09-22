@@ -25,7 +25,7 @@ return {
     type = "armor",
     tags = { "heavy" },
     class = "knight",
-    unlockLevel = 5,
+    unlockLevel = 6,
     incense = { hazard = "hazard_muster", radius = 1 },
     bonus = { defense = Curve.ramp(3, 13), movement = -2 },
 }

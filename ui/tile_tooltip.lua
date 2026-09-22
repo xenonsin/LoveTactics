@@ -1084,14 +1084,20 @@ function TileTooltip.draw(info, mx, my, maxRight, opts)
         end
         -- Value text stays "cur / max" no matter what is aimed: the projection is quoted by the
         -- floating callout instead, so the numbers under the cursor hold still while the aim
-        -- moves. `b.max` is the ceiling (max less anything reserved); a reservation appends its
-        -- size.
+        -- moves. `b.max` is whatever the caller wants the figure quoted against -- the ceiling for a
+        -- battle's own reservation (max less what is committed), the TRUE max where the pool has not
+        -- actually shrunk (a wound, ui/body_tooltip.lua) -- and a reservation appends its size.
         local curN = math.floor(b.cur + 0.5)
         local valueText = curN .. " / " .. b.max
         -- A reservation names ITSELF where it is not the battle's own: what holds a summon back is
-        -- "res.", what a wound has taken off the top says so in the word the player is being
-        -- charged in (ui/body_tooltip.lua). Same slice of bar, two different debts.
-        if b.reserved then
+        -- "res." and is read in the pool's own unit, while what a wound has taken off the top hands
+        -- over the whole parenthetical (`reservedText`) and is read in WOUNDS -- because the health
+        -- they came to is a number the player was never charged in, and a card that has just counted
+        -- the wounds a row above must not restate them as a different figure. Same slice of bar, two
+        -- different debts.
+        if b.reservedText then
+            valueText = valueText .. " (" .. b.reservedText .. ")"
+        elseif b.reserved then
             valueText = valueText .. " (" .. b.reserved .. " " .. (b.reservedLabel or "res.") .. ")"
         end
         love.graphics.setColor(VALUE[1], VALUE[2], VALUE[3], 1)

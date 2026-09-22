@@ -21,13 +21,13 @@ return {
     hands = 1,
     traits = { "trait_unclosing_parry" },
     class = "knight",
-    unlockLevel = 6,
+    unlockLevel = 9,
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 3,
         cost = { stat = "stamina", amount = 8 },
-        damage = Curve.ramp(10, 20),
+        damage = Curve.ramp(12, 22),
         effect = function(fx)
             fx.damage(fx.target)
         end,

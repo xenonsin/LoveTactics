@@ -41,7 +41,7 @@ return {
     hands = 2,
     class = "knight",
     dropOnly = true,
-    unlockLevel = 12,
+    unlockLevel = 13,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

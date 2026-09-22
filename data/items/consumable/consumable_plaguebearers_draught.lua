@@ -25,8 +25,8 @@ return {
     -- which unlocks the gated item without the gate.
     tags = { "draught", "poison" },
     class = "plague_knight",
-    price = 100,
-    unlockLevel = 3,
+    price = 225,
+    unlockLevel = 11,
     maxStack = 3,
     activeAbility = {
         target = "self",

@@ -12,7 +12,7 @@ return {
     type = "armor",
     tags = { "plate" },
     class = "fighter",
-    unlockLevel = 10,
+    unlockLevel = 8,
     bonus = { defense = Curve.ramp(6, 16), movement = -1 },
     resist = { physical = 2 },
     traits = { "trait_thorns" },

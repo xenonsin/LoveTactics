@@ -60,8 +60,8 @@ return {
     type = "ability",
     tags = { "guile", "physical" },
     class = "assassin", -- deeper cut of the shelf: buyable only once the assassin gate is cleared
-    price = 330,
-    unlockLevel = 5,
+    price = 210,
+    unlockLevel = 3,
     activeAbility = {
         target = "enemy",
         range = 1,

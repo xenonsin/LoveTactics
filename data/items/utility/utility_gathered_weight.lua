@@ -17,6 +17,6 @@ return {
     type = "utility",
     tags = { "charm", "dark" },
     class = "shaman",
-    unlockLevel = 7,
+    unlockLevel = 10,
     traits = { "trait_gathered_weight" },
 }

@@ -110,6 +110,16 @@ Arena.BIOME_TERRAIN = {
     -- which is the one biome a built work belongs to and the reason the tile has somewhere to live;
     -- its rampart is already set masonry in that tileset, so the two agree about who built the place.
     castle   = { fill = "fort", rise = "hill", block = "mountain" },
+    -- PRIDE'S OWN GROUND, once Lust took the castle off her (Descent.SINS). It shares the castle's
+    -- built `fill`, because a tower is masonry either way and the fort tile is where a built work
+    -- lives -- but the two must not roll the same board or they are one stratum with two names.
+    --
+    -- SO THE BLOCKER IS THE DROP. A keep's solid is a rampart you go around; up here the thing you
+    -- cannot cross is open air between spans, which `deep` already models exactly -- unwalkable,
+    -- sight-clear, and lethal to be put into (data/hazards/hazard_deep_water.lua stands on it). You see
+    -- the whole board and can be pushed off it, which is the difference between climbing and being
+    -- indoors, and it is the one substitution that costs the generator nothing.
+    spire    = { fill = "fort", rise = "rough", block = "deep" },
     -- Under the city: a broken stone floor with scree across it. `rough` is thin cover (+10) and is
     -- meant to be -- there is nothing growing down here to hide behind, only the floor's own wreckage.
     -- ...AND ITS BLOCKER IS THE FLOODED VAULT. A cavern under a city is under its water table too, so

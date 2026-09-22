@@ -21,5 +21,5 @@ return {
     name = "The Turning Floor",
     kind = "spinner",
     weight = 0,
-    minDay = 1,
+    depth = 1,
 }

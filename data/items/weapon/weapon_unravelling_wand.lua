@@ -29,7 +29,7 @@ return {
     -- `physical` in place of the family's usual magical: the deviation, and the whole item.
     tags = { "wand", "physical", "ranged" },
     class = "mage",
-    unlockLevel = 10,
+    unlockLevel = 8,
     activeAbility = {
         target = "enemy",
         range = 3,
@@ -40,7 +40,7 @@ return {
         cost = { stat = "mana", amount = 6 },
         -- Poor, and it must be: it is measured against Defense, which is the stat a mage's target usually
         -- has plenty of, and a caster with a good physical attack would not need the rest of its shelf.
-        damage = Curve.ramp(12, 22),
+        damage = Curve.ramp(9, 19),
         effect = function(fx)
             -- tags default to the item's, so the bolt is physical; the unravelling rides it, landing on
             -- whoever the bolt hits and only if they survive (the .alive guard, enforced by the carried path).

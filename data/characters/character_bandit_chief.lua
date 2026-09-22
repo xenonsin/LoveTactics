@@ -26,7 +26,7 @@ return {
     boss = true, -- a quest objective: immune to execute (Coup de Grace) and to Charm
     sprite = "assets/chars/bandit_chief.png",
     stats = {
-        health = 105, mana = 0, stamina = 20,
+        health = 109, mana = 0, stamina = 20,
         damage = 22, magicDamage = 0,
         defense = 2, magicDefense = 6,
         movement = 4,

@@ -44,8 +44,8 @@ return {
     type = "consumable", -- a coating: it burns down as the things beside it are used
     tags = { "fire", "coating" },
     class = "alchemist",
-    price = 130,
-    unlockLevel = 5,
+    price = 175,
+    unlockLevel = 8,
     aura = {
         appliesTo = { "weapon", "ability" }, -- which neighbor types the heat infuses
         exceptTags = { "water" },            -- water-aligned kit resists the infusion

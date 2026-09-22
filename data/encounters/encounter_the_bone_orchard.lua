@@ -3,7 +3,7 @@
 --
 -- Deliberately the fen ooze's lesson (data/encounters/encounter_fen_ooze.lua) asked one aisle over and
 -- far more gently. The ooze is a LOADOUT problem with no out -- bring no element and there is no fight
--- -- and it is gated at minDay 6 for exactly that reason. This is the same question about DAMAGE TYPE,
+-- -- and it is gated at depth 6 for exactly that reason. This is the same question about DAMAGE TYPE,
 -- with three differences that make it the shallow version:
 --
 --   * the answer is on a shelf every company has walked past. A mace is knight stock at rung 0.
@@ -40,8 +40,15 @@ return {
     weight = 5,
     -- Shallow on purpose, and the whole difference from the ooze. There is no board here a company can
     -- be unable to win, so it needs no safety margin -- it only needs to arrive before the deep
-    -- version of itself (data/encounters/encounter_the_barrow_knight.lua, minDay 12).
-    minDay = 3,
+    -- version of itself (data/encounters/encounter_the_barrow_knight.lua, depth 12).
+    -- NO DEPTH GATE: ITS CIRCLE IS ITS PLACEMENT. The condition below locks this to one ground, and a
+    -- circle owns a fixed stratum -- so a depth on top of that is a second opinion about where it goes,
+    -- and it disagrees the moment the shuffle deals that circle at another depth (Descent.sinOrder).
+    -- It also gated Lust's own elites off Lust's own floors: converted from the retired calendar they
+    -- asked for floors three and four, and Lust owns one and two.
+    --
+    -- Which of a circle's floors a thing bills on is Descent.SINS' `elites` for the standing threat, and
+    -- `rung` for anything an author wants split across the approach and the seat.
     condition = function(ctx) return ctx.biome == "underworld" end,
     -- THREE BODIES, AND IT IS A CEILING RATHER THAN A BUDGET. Written first as four-plus-two and
     -- measured at 54 unit-turns against tests/skirmish_spec.lua's budget of 22 -- two and a half times
@@ -54,7 +61,7 @@ return {
     -- ranks -- and what grows with depth is the ratio of shooters to walkers rather than the total. A
     -- deeper orchard is a nastier shape, not a longer one.
     composition = function(ctx)
-        local day = ctx.day or 1
+        local day = ctx.depth or 1
         local list = { "character_skeleton_knight", "character_skeleton_knight" }
         -- A third body once the road has gone on -- and deeper still, that third body is the rank behind.
         -- Never a fourth of anything: see above for what the count is measured against.

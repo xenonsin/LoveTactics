@@ -21,8 +21,8 @@ return {
     type = "ability",
     tags = { "illusion", "utility" },
     class = "ninja",
-    price = 740,
-    unlockLevel = 15,
+    price = 610,
+    unlockLevel = 12,
     activeAbility = {
         target = "self",
         range = 0,

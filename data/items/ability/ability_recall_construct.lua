@@ -21,8 +21,8 @@ return {
     type = "ability",
     tags = { "utility" },
     class = "artificer",
-    price = 165,
-    unlockLevel = 1,
+    price = 300,
+    unlockLevel = 5,
     activeAbility = {
         target = "tile",
         range = 3,

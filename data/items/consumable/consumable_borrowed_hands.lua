@@ -25,8 +25,8 @@ return {
     -- gated elixir tagged `potion` would be on the grocer's shelf turn one (docs/classes.md).
     tags = { "elixir" },
     class = "apothecary",
-    price = 65,
-    unlockLevel = 1,
+    price = 140,
+    unlockLevel = 6,
     maxStack = 3,
     activeAbility = {
         target = "self",

@@ -11,7 +11,7 @@ return {
     type = "armor",
     tags = { "shield" }, -- a Shield Bash item beside it in the grid can bash with it
     class = "knight",
-    unlockLevel = 9,
+    unlockLevel = 10,
     bonus = { defense = Curve.ramp(3, 13), movement = -1 },
     resist = { physical = 1 },
     -- Defend brace: the temporary +defense while braced, tuned here and climbing with the forge.

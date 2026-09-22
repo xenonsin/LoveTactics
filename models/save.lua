@@ -353,21 +353,15 @@ function Save.snapshotRun(run, player)
         end
     end
 
-    -- WHAT WAS STAKED ON THIS POSTING (models/augment.lua). It rides in the snapshot because a resume
-    -- REBUILDS the descriptor from the id alone -- so without it, quitting and reloading a run would
-    -- hand back the same expedition with the dangers removed and the materials already spent, which
-    -- is a way to un-take a bet after seeing the board.
-    local staked
-    local bounty = run.quest and run.quest.bounty
-    if bounty and bounty.staked then
-        staked = {}
-        for i, id in ipairs(bounty.staked) do staked[i] = id end
-    end
+    -- (THE STAKE STOOD HERE.) An augment was a bet laid on a posting before taking it, and it rode in
+    -- the snapshot because a resume rebuilt that posting from its id alone -- so without it, quitting
+    -- and reloading was a way to un-take the bet after seeing the board. There is no board, no posting
+    -- and nothing to stake, so the field is gone with them. A save written while they existed simply
+    -- carries a `staked` nothing reads.
 
     return {
         questId = run.questId,
         day = run.day,
-        staked = staked,
         trip = trip,
         tripDone = tripDone,
         -- A DESCENT run: the floor stack and its seed, from which the whole board re-derives. Present
@@ -407,19 +401,9 @@ function Save.restoreRun(snap)
         -- discard a perfectly good expedition as "content removed since the run was saved".
         quest = require("models.quest").tripFromIds(snap.trip.groundId, snap.trip.questIds)
         if not quest then return nil end -- every quest on it is gone: nothing left to resume onto
-    elseif require("models.bounty").isBountyId(snap.questId) then
-        -- A POSTING the company was out on. Like the two branches around it, its descriptor is
-        -- synthesized and is not in Quest.defs, so the lookup below would discard a perfectly good
-        -- expedition as "content removed since the run was saved".
-        --
-        -- Rebuilt from the id alone, which is exactly what Bounty.questFor promises and why nothing in
-        -- it may close over a player or a run: this runs inside Save.load, where there is no player to
-        -- hand it yet.
-        local Bounty = require("models.bounty")
-        -- Rebuilt WITH ITS STAKE, or a reload would quietly undo the bet: the materials are already
-        -- spent and the dangers would come back off. See snapshotRun for why `staked` is stored.
-        quest = Bounty.stakedQuestFor(snap.questId:sub(#Bounty.ID_PREFIX + 1), nil, snap.staked)
-        if not quest then return nil end -- the posting has left the data: drop the run, keep the player
+    -- (A POSTING WAS RESTORED HERE.) The Bounty Board is deleted, so a saved run cannot be out on one
+    -- -- and a save written while it existed no longer resolves its quest id, which drops that run and
+    -- keeps the player exactly as the branch below drops a descent whose content has left the data.
     elseif snap.descent then
         descent = Descent.restore(snap.descent)
         -- The rollback point is stored once, at the run level, and handed back to the descent here --
@@ -571,18 +555,15 @@ function Save.snapshot(player)
         if seen then announcedDisciplines[classId] = true end
     end
 
-    -- WHICH CITY DOORS HAVE BEEN SHOWN (models/building.lua's seenDoors block). A door the city grows is
-    -- coached once -- a bubble on its card, every other card refused -- and this is what keeps it to
-    -- once across a save. Same additive rule as the two above: Save.VERSION does NOT move.
-    --
-    -- NIL AND EMPTY ARE DIFFERENT HERE, which is why this is not written unconditionally. Nil means the
-    -- ledger has never been seeded, and an older save has exactly that -- so it loads with nil, the hub
-    -- seeds it off whatever that company has already earned, and a player who has been using the Forge
-    -- for hours is not marched back through an announcement for it. A seeded ledger is never empty (the
-    -- plaza always has three open cards), so nothing legitimate is lost by dropping an empty one.
-    local seenDoors
-    for id, seen in pairs(player.seenDoors or {}) do
-        if seen then seenDoors = seenDoors or {}; seenDoors[id] = true end
+    -- EVERY CLASS THIS COMPANY HAS EVER STOOD IN (models/class.lua's Class.taken). It is what puts a
+    -- class's HOUSE on the plaza, and it has to be sticky for exactly the reason Wound.everWounded is:
+    -- changing class is free and reversible, so a live reading would take the Colosseum off the square
+    -- the moment the last fighter was moved to knight, and the city would be the only thing in this game
+    -- that shrinks. Additive, so Save.VERSION does NOT move -- an older save loads with nothing marked
+    -- and re-raises every mark on its first look at the roster.
+    local classesTaken = {}
+    for classId, taken in pairs(player.classesTaken or {}) do
+        if taken then classesTaken[classId] = true end
     end
 
     -- Story flags (models/story_effect.lua's `effect = { flag = ... }`, read back by a scene's
@@ -847,7 +828,7 @@ function Save.snapshot(player)
         found = found,
         met = met,
         announcedDisciplines = announcedDisciplines,
-        seenDoors = seenDoors,
+        classesTaken = classesTaken,
         flags = flags,
         newItems = newItems,
         -- THE COUNTER WATERMARK: which classes' racks the market has already announced
@@ -1191,18 +1172,9 @@ function Save.restore(snap)
         if seen then announcedDisciplines[classId] = true end
     end
 
-    -- Shown-door flags (models/building.lua's seenDoors block). NOT forgiving in the same way as the two
-    -- above, and it is the one set here where nil must stay nil: an empty ledger and an unseeded one are
-    -- different states, and rebuilding this as `{}` would tell the hub the player has looked at a city
-    -- and seen no doors in it -- which would announce every card they already own. Left absent, the hub
-    -- seeds it off what that company has already earned. Filtered against the registry like every other
-    -- id set: a building deleted from data/ is dropped rather than sat in the ledger forever.
-    local seenDoors
-    for id, seen in pairs(snap.seenDoors or {}) do
-        if seen and known(require("models.building").defs, id) then
-            seenDoors = seenDoors or {}
-            seenDoors[id] = true
-        end
+    local classesTaken = {}
+    for classId, taken in pairs(snap.classesTaken or {}) do
+        if taken then classesTaken[classId] = true end
     end
 
     -- Story flags. Deliberately NOT filtered against any registry, unlike the id sets around it: a flag
@@ -1349,7 +1321,7 @@ function Save.restore(snap)
         found = found,
         met = met,
         announcedDisciplines = announcedDisciplines,
-        seenDoors = seenDoors,     -- nil on an older save, which is what the hub seeds off (see above)
+        classesTaken = classesTaken,
         flags = flags,             -- absent on a save from before this existed; empty reads as unanswered
         newItems = newItems,
         -- The counter watermark, restored as written. A class that has since been renamed away

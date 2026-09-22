@@ -27,7 +27,7 @@ return {
     tags = { "greatsword", "slash", "magical", "melee" },
     hands = 2,
     class = "fighter",
-    unlockLevel = 10,
+    unlockLevel = 2,
     activeAbility = {
         target = "tile",
         allowOccupied = true,
@@ -40,7 +40,7 @@ return {
         cost = { stat = "stamina", amount = 16 },
         -- Under the iron greatsword's, because it is measured against Magic Defense, which almost nobody
         -- in plate has bought any of. The number is smaller and the number that ARRIVES is larger.
-        damage = Curve.ramp(41, 63),
+        damage = Curve.ramp(27, 49),
         effect = function(fx)
             if fx.target then fx.damage(fx.target) end -- tags default to the item's, so the hit is magical
         end,

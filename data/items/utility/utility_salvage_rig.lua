@@ -19,7 +19,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "artificer",
-    unlockLevel = 6,
+    unlockLevel = 8,
     traits = { "trait_salvage_rig" },
     -- a construct's death, harvested
     bonus = { magicDamage = 1 },

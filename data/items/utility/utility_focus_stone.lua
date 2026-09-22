@@ -8,7 +8,7 @@ return {
     sprite = "assets/items/focus_stone.png",
     type = "utility",
     class = "mage",
-    unlockLevel = 7,
+    unlockLevel = 11,
     -- A heavy time cost: meditating to recover mana means giving up a big slice of the timeline.
     waitBehavior = { kind = "focus", mana = 12, speed = 10 },
 }

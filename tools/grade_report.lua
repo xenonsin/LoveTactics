@@ -22,6 +22,7 @@ local Vendor = require("models.vendor")
 local Quest = require("models.quest")
 local Trait = require("models.trait")
 local Class = require("models.class") -- CLASS_LEVEL_CAP: the rung count the shelf is cut into
+local Curve = require("tools.shelf_curve") -- how many wares a rung deals, shared with tools/drop_tier
 
 local M = {}
 
@@ -243,11 +244,31 @@ local function planFor(class, maxGate, pinned)
     -- The share is of the WHOLE shelf, pins included, and each rung's room is its share less what was
     -- pinned into it. Sizing the share off the un-pinned rows alone leaves every rung short by its own
     -- pins and the slack falls through to the last one -- which came out at 124 wares against 70.
-    local rungs, n = maxGate + 1, #spread
-    for _, count in pairs(taken) do n = n + count end
-    local room, slot = {}, 0
+    --
+    -- ...AND IT IS A RAMP NOW, NOT AN EVEN CUT (tools/shelf_curve.lua). An even cut over sixteen rungs
+    -- deals a house's whole catalogue at four a rung from the first morning, which is the opening this
+    -- was changed to fix. The spread starts SHALLOW and grows.
+    --
+    -- THE SPREAD DOES NOT REACH RUNG 0, and that is the second half of the same change. Rung 0 is the
+    -- RE-ARM FLOOR -- the stock a company holding nothing can walk in and buy -- and what it needs to
+    -- hold is a weapon, which is what anchorItems() already pins there (tests/class_spec.lua). Letting
+    -- the graded spread also deal its bottom share onto that rung is what made the opening rack the
+    -- fattest band in the game: 56 wares against a mean of 41, because the rung that is defined by
+    -- being un-gated was ALSO taking a full rung's worth of graded stock on top.
+    --
+    -- The authored `at = 0` pins stay -- a torch, a rock, the prologue's teaching spell. Those are a
+    -- human saying "this one is gated by nothing", which is exactly what an opening rung is for; the
+    -- floor here only stops the SPREAD from filling in around them.
+    local SHELF_FLOOR = math.min(1, maxGate)
+    local n = #spread
+    for s, count in pairs(taken) do
+        if s >= SHELF_FLOOR then n = n + count end
+    end
+    local shares = Curve.shares(n, maxGate + 1 - SHELF_FLOOR)
+    local room = {}
     for s = 0, maxGate do
-        room[s] = math.max(0, math.floor(n / rungs) + ((s < n % rungs) and 1 or 0) - (taken[s] or 0))
+        room[s] = (s < SHELF_FLOOR) and 0
+            or math.max(0, shares[s - SHELF_FLOOR + 1] - (taken[s] or 0))
     end
     local floor = math.min(DISCIPLINE_FLOOR, maxGate)
 

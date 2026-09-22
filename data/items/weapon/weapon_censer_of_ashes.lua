@@ -25,7 +25,7 @@ return {
     type = "weapon",
     tags = { "censer", "impact", "physical", "poison", "melee" },
     class = "priest",
-    unlockLevel = 5,
+    unlockLevel = 6,
     incense = {
         hazard = "hazard_choking",
         radius = 1,

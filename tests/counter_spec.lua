@@ -165,6 +165,11 @@ return {
         -- A QUIET ROOM DOES NOT ANNOUNCE ITS HOUSE. Every shelf is quiet, and it is the only thing
         -- holding the seven shopfronts off the first morning now that the shelves are ungated: browsing
         -- is not a deed, and a plate arriving for one is the city reacting to nothing the player did.
+        --
+        -- ...UNLESS THE COMPANY IS TRAINING FOR IT (`announce = { declared = true }`), which is the one
+        -- exception and is why this case cannot use the Bastion any more: the starting company is a
+        -- knight, so the Bastion's card is now on the plaza on the first morning and is SUPPOSED to be
+        -- (tests/class_house_spec.lua holds that half). The Colosseum is the house nobody starts in.
         name = "a quiet room opens without putting its card on the plaza",
         fn = function()
             local quiet = 0
@@ -178,13 +183,13 @@ return {
             end
             assert(quiet == 7, "all seven shelves are quiet, got " .. quiet)
 
-            -- A fresh company: the Bastion's SHELF is behind its door and nothing is on the board.
+            -- A fresh company: the Colosseum's SHELF is behind its door and nothing is on the board.
             local p = Player.new()
             p.roster = { Character.instantiate("character_rowan") }
-            assert(Offer.openSet(p, Building.defs.bastion).shelf, "the shelf is the house, and is open")
-            assert(not Offer.any(p, Building.defs.bastion), "...and leaves the card off the plaza")
+            assert(Offer.openSet(p, Building.defs.colosseum).shelf, "the shelf is the house, and is open")
+            assert(not Offer.any(p, Building.defs.colosseum), "...and leaves the card off the plaza")
             for _, b in ipairs(Building.list(p)) do
-                if b.id == "bastion" then assert(b.locked, "the Bastion is still shut") end
+                if b.id == "colosseum" then assert(b.locked, "the Colosseum is still shut") end
             end
         end,
     },

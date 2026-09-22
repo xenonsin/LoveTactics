@@ -3,11 +3,11 @@
 -- the flight leg it sits right before the Demon Champion (states/prologue.lua), so the mini-boss is
 -- fought fresh rather than on whatever was left after the road.
 --
--- `kind = "rest"`: a non-combat modal like treasure/town (ui/panels/encounter.lua). `weight = 0`:
+-- `kind = "rest"`: a non-combat stop with a panel of its own (ui/panels/rest.lua). `weight = 0`:
 -- authored-only, placed via `map.encounters.always`.
 return {
     name = "A Moment's Rest",
     kind = "rest",
     weight = 0,
-    minDay = 1,
+    depth = 1,
 }

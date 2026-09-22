@@ -10,6 +10,7 @@ local Item = require("models.item")
 local Player = require("models.player")
 local Encounter = require("models.encounter")
 local Arena = require("models.arena")
+local Descent = require("models.descent")
 
 local function bare(id)
     local char = Character.instantiate(id)
@@ -163,10 +164,10 @@ return {
             local def = Encounter.get("encounter_wolf")
             assert(def, "the wolf pack is still an encounter")
 
-            local small = Muster.encounter(def, { day = 1 })
-            local large = Muster.encounter(def, { day = 8 })
+            local small = Muster.encounter(def, { depth = 1 })
+            local large = Muster.encounter(def, { depth = 8 })
             assert(small > 0, "a pack of wolves is worth something")
-            assert(large > small, "the pack grows with prestige and the rating grows with it")
+            assert(large > small, "the pack grows with depth and the rating grows with it")
         end,
     },
     {
@@ -177,7 +178,7 @@ return {
             -- at seventy wolves the board will only ever field nine of, and every late-game marker
             -- would read as hopeless.
             local def = Encounter.get("encounter_wolf")
-            local ctx = { day = 200 }
+            local ctx = { depth = Descent.FLOORS }
             local raw = Arena.resolveComposition(def.composition, ctx)
             -- The cap is derived exactly as the real fight derives it, KIND INCLUDED. Reading it any
             -- other way here would let this case pass while the marker and the board disagreed, which
@@ -186,7 +187,7 @@ return {
             local cap = Arena.enemyCap({ quest = ctx.quest, encounterKind = def.kind })
             local clamped = Arena.clampComposition(raw, cap)
             assert(cap == Arena.SKIRMISH_CAP, "an ordinary road fight is a skirmish, not a set-piece")
-            assert(#raw > #clamped, "at prestige 200 the pack is bigger than the board will field")
+            assert(#raw > #clamped, "at the bottom of the stack the pack is bigger than the board will field")
             assert(#clamped <= cap, "and it clamps to the cap")
 
             -- Rate the clamped list by hand and demand the same answer: what the pip prices is the
@@ -194,7 +195,7 @@ return {
             local Growth = require("models.growth")
             local byHand = 0
             for _, id in ipairs(clamped) do
-                byHand = byHand + Muster.rate(Growth.spawn(id, require("models.calendar").dangerLevel(200), nil))
+                byHand = byHand + Muster.rate(Growth.spawn(id, Descent.dangerLevel({ floor = Descent.FLOORS }), nil))
             end
             assert(Muster.encounter(def, ctx) == byHand,
                 "the rating is the clamped list's, not the raw composition's")
@@ -203,8 +204,8 @@ return {
     {
         name = "a missing encounter rates nothing rather than raising",
         fn = function()
-            assert(Muster.encounter(nil, { day = 1 }) == 0)
-            assert(Muster.encounter({ composition = {} }, { day = 1 }) == 0,
+            assert(Muster.encounter(nil, { depth = 1 }) == 0)
+            assert(Muster.encounter({ composition = {} }, { depth = 1 }) == 0,
                 "an empty composition is worth zero")
         end,
     },

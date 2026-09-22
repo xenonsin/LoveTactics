@@ -12,15 +12,15 @@ return {
     type = "ability",
     tags = { "impact", "physical" }, -- `impact` is the blunt tag the game actually reads (see status_freeze)
     class = "fighter",
-    price = 165,
-    unlockLevel = 2,
+    price = 430,
+    unlockLevel = 8,
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 5,
         cost = { stat = "stamina", amount = 8 },
         requiresAdjacent = { type = "weapon", tag = "melee" },
-        damage = Curve.ramp(6, 17),
+        damage = Curve.ramp(10, 21),
         effect = function(fx)
             local t = fx.target
             if not t then return end

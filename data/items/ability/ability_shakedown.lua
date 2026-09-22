@@ -33,8 +33,8 @@ return {
     type = "ability",
     tags = { "guile", "physical" }, -- `guile`, the rogue's own word for a conditional multiplier
     class = "thief", -- deeper cut of the shelf: buyable only once the thief gate is cleared
-    price = 575,
-    unlockLevel = 11,
+    price = 475,
+    unlockLevel = 9,
     activeAbility = {
         target = "enemy",
         range = 1,

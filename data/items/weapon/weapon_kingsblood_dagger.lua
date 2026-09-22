@@ -23,7 +23,7 @@ return {
     type = "weapon",
     tags = { "dagger", "pierce", "physical", "melee" },
     class = "rogue",
-    unlockLevel = 12,
+    unlockLevel = 13,
     -- The Undercroft's rank-4, and priced like the other six lines' (800 / rank 4: the Crimson Greataxe,
     -- the Oathkeeper Shield, the Dawn Chrism, the Hornbow of the Hunt, the Philosopher's Stone, the
     -- Codex of Hubris). That symmetry is load-bearing: for every vendor, the standing that finally puts

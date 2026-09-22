@@ -12,6 +12,32 @@
 -- nobody left to fight it. Instrumented, the list read: 20, 23, 1, 1, 1, 1, ... The budget was being
 -- met by a corpse.
 --
+--
+-- ---------------------------------------------------------------------------
+-- ONE NUMBER WAS RAISED, WHICH THE RATCHET FORBIDS, AND HERE IS THE WARRANT.
+-- ---------------------------------------------------------------------------
+--
+-- The rule above is that a listed fight may get faster and never slower, and it exists so nobody pays
+-- off a regression by editing a literal. It assumes the two sides of the fight are being measured
+-- against constants that have not moved. On 2026-09-22 they moved: the descent's ladder was re-cut to
+-- run to Growth.LEVEL_CAP, Experience.STEP fell 96 -> 24, and Growth.ENEMY_LEVEL_LAG stopped being a
+-- proportion and became a count of levels. Every number in this file was recorded under the old three.
+--
+-- Four rows moved. `encounter_envy_second_draught` went 36 -> 57 and is re-recorded rather than treated as a
+-- regression, because it is not one: Envy sits on floors eleven and twelve, which under the old ladder
+-- fielded stock at level eleven and now field it at thirty-five, and the fight is TWO HEALERS. What
+-- the number is reporting is that sustain scales faster than damage does across a ladder three and a
+-- half times longer -- a real finding, and the one this file is the right place to record.
+--
+-- IT IS A SIGNAL, NOT A SETTLED DEBT, and the other three movements say which signal. The
+-- Overstayed (56 -> 65) is a druid, a herbalist and a shaman -- healers again. The Undercut
+-- (28 -> 34) is a duelist and a rogue, two evasive bodies, which is the same story told by
+-- mitigation rather than by healing. And the Choir came DOWN, 24 -> 17, so this is not a general
+-- slowdown: it is sustain and avoidance outscaling damage across a ladder three and a half times
+-- longer. The fix belongs with the re-authoring
+-- of the set-piece stat blocks the ladder change also owes (Growth.BOSS_REFERENCE_LEVEL's header), not
+-- with a turn budget.
+
 -- Two things fell out of that, and the second is what surfaced it. Every number past the second fight
 -- was noise; and the FIRST fight in id order was the only one measured honestly -- so authoring a new
 -- encounter that sorted ahead of an old one silently moved the old one's result. Adding
@@ -47,32 +73,134 @@
 -- one of its bodies half switched off. The fight is still too long for the label it wears, and it was
 -- already on this list for that reason -- see the header's note about warband content wearing the
 -- `combat` tag.
-return {
-    -- Did not resolve inside Autobattle.run's 400-turn cap. Look here first.
-    encounter_warband_beast_line    = 400,
-    encounter_pride_the_colours     = 400,
-    encounter_pride_the_rank        = 400,
+--
+-- AND A SECOND RAISE, 2026-09-21, on the same terms and with the same obligation to show the working.
+-- The shelf was re-cut so a class deals two or three wares a rung instead of five to ten
+-- (tools/shelf_curve.lua), which moved 400-odd blueprints' `unlockLevel` and, through
+-- Balance.slotTarget, their magnitudes. Enemy kit is drawn from the same catalogue, so every fight in
+-- this file was re-measured rather than the one that failed:
+--
+--     broken column  143 -> 126     the writ        50 -> 37
+--     standing watch 110 ->  91     undercut        38 -> 28
+--     rival company   77 ->  68     grudge          31 -> 25
+--     overstayed      57 ->  56     THE ASSAY       64 -> 68
+--
+-- Seven shorter by 75 unit-turns between them, one longer by four, and nothing that was inside the
+-- budget fell out of it. A re-tier that shortens seven set-pieces and lengthens one is the catalogue
+-- moving, not a fight decaying -- which is the distinction this file exists to make, and it can only
+-- be made by measuring all of them. The seven are written DOWN here as well as the one up: a ratchet
+-- that is only ever loosened is a ratchet that drifts.
+--
+-- ---------------------------------------------------------------------------
+-- AND A THIRD RE-MEASURE, 2026-09-22, ON THE LADDER RE-CUT. Every row moved, so every row was rolled.
+-- ---------------------------------------------------------------------------
+--
+-- The descent's level ladder was re-cut to run to Growth.LEVEL_CAP: a floor climbs three and a half
+-- levels instead of one, Experience.STEP fell 96 -> 24 so the company can cover it, and
+-- Growth.ENEMY_LEVEL_LAG stopped being a proportion and became a count of levels (its own header
+-- carries why). Every number in this file was recorded under the old three, so not one of them was
+-- still a measurement of anything -- which is why the whole table is rolled again rather than the two
+-- rows that happened to fail first.
+--
+-- WHAT THE ROLL SAYS, and it is a finding rather than a tidy-up:
+--
+--     rival company    68 ->  99     wyrmling brood   29 ->  41
+--     broken column   126 -> 169     undercut         28 ->  34
+--     press-gang       41 ->  79     forge pit        26 ->  29
+--     overstayed       56 ->  65     grudge           25 ->  29
+--     second draught   36 ->  57     standing watch   91 -> 400
+--
+--     ...and shorter: ogre 33 -> 26, the writ 37 -> 30, ember line 29 -> 25, sleepers 24 -> 23.
+--
+-- SUSTAIN AND AVOIDANCE OUTSCALE DAMAGE ACROSS A LONGER LADDER, which is what every one of those rises
+-- has in common. The Second Draught is two healers, the Overstayed is a druid, a herbalist and a
+-- shaman, the Undercut is a duelist and a rogue -- healing and evasion respectively, and both are
+-- multiplicative against a damage curve that is additive. The Standing Watch crossing into the
+-- 400-turn cap is the same thing at its limit: four knight-table bodies with armour that now climbs
+-- thirty-five rungs instead of ten, against blows that climb three a level. It is the fourth row that
+-- does not resolve at all.
+--
+-- FOUR ROWS ARE NEW rather than raised -- carrion flight, the shoal, wolf and wolf pack were inside the
+-- budget before and are outside it now, which is the same story reaching ordinary road stock. And the
+-- Choir's row is DELETED: 24 -> 17, inside the budget, so the backlog is one shorter for a real reason.
+--
+-- THIS IS A DEBT THE LADDER OPENED AND DID NOT PAY. It belongs with the re-authoring of the set-piece
+-- stat blocks (Growth.BOSS_REFERENCE_LEVEL's header records the other half), not with a turn budget:
+-- the answer is almost certainly that mitigation and healing need a term that scales with the ladder,
+-- and that is a combat-model decision rather than a number in this file.
 
-    -- Resolves, but nowhere near an ordinary stop.
-    encounter_warband_broken_column = 143,
-    encounter_sloth_standing_watch  = 110,
-    encounter_rival_company         = 77,
-    encounter_gluttony_overstayed   = 57,
-    encounter_warband_the_assay     = 64, -- was 54; see the header -- the mammonite's coffer ward started working
-    encounter_pride_cited           = 53,
-    encounter_warband_the_writ      = 50,
-    encounter_warband_press_gang    = 41,
-    encounter_greed_undercut        = 38,
-    encounter_the_herd              = 37,
-    encounter_envy_second_draught   = 36,
-    encounter_ogre                  = 33,
-    encounter_wrath_grudge          = 31,
-    encounter_wyrmling_brood        = 29,
-    encounter_wrath_ember_line      = 29,
-    encounter_warband_the_summoning = 27,
-    encounter_greed_the_assay       = 27,
-    encounter_wrath_forge_pit       = 26,
-    encounter_greed_the_chitters    = 24,
-    encounter_lust_the_choir        = 24,
-    encounter_sloth_the_sleepers    = 24,
+-- ---------------------------------------------------------------------------
+-- AND A FOURTH ROLL, 2026-09-22. THIS ONE IS NOT A RE-MEASURE -- THE HARNESS WAS WRONG.
+-- ---------------------------------------------------------------------------
+--
+-- Every number above this line was taken by a ONE-BODY party. tests/skirmish_spec.lua built its
+-- company with `Player.new()`, and a fresh roster is Rowan alone -- so each fight was one body against
+-- three or four, and what the case timed was how long she took to die. It is the same failure the
+-- header opens with (the budget met by a corpse) wearing different clothes: the first version marched
+-- one company through every fight, this one built a fresh company per fight and then fielded a quarter
+-- of it. The case's own prose two screens up says "four fielded against a skirmish cap of four" -- the
+-- setup and the assertion had drifted apart and nothing was asking them to agree.
+--
+-- It was wrong in two more directions at the same time. The company was pinned at level 11 whatever
+-- the ladder did, and the fight was built with `day = 20` -- a field the calendar purge removed -- so
+-- `opts.depth` defaulted to 1 and the enemies were minted as FLOOR-ONE stock. A level-11 body against
+-- floor-one stock cannot lose quickly and one body cannot win, which is the whole of why the Sleepers
+-- read 98 unit-turns against a recorded 23: a lone Rowan losing slowly to three bodies too weak to
+-- finish her. Met by the company the floor is priced against, that fight is SEVEN.
+--
+-- The harness now fields Descent.COMPANY -- the same four the stair is rated against -- at
+-- Descent.expectedLevel(DEPTH), against stock minted at DEPTH. One definition of "a company", shared
+-- by the thing that prices floors and the thing that measures them.
+--
+-- WHAT THE HONEST MEASUREMENT SAYS. The backlog halves, 28 rows to 13, and fifteen rows leave it
+-- outright -- wyrmling brood, wolf, wolf pack, the sleepers, the herd, forge pit, grudge, the
+-- summoning, ember line, second draught, pride cited, the undercut, the shoal among them. Every one is
+-- a monster fight, and a real company ends all of them in five to eight unit-turns. Three of the four
+-- fights that did not resolve inside Autobattle's 400-turn cap now resolve comfortably:
+--
+--     pride, the colours  400 ->   6     warband beast line  400 ->  34
+--     pride, the rank     400 ->   7     standing watch      400 ->  76
+--
+-- ONE ROW WENT THE OTHER WAY, AND IT IS THE FINDING. The Broken Column went 169 -> 400: it is the only
+-- fight in the game a full company cannot end. Under the old harness it "resolved" at 169 because
+-- Rowan died at 169. Four bodies against a full warband is a MIRROR MATCH, and a mirror match is where
+-- this combat model runs out -- both sides mitigate, both sides heal, and neither closes.
+--
+-- WHICH IS WHAT EVERY SURVIVING ROW HAS IN COMMON: they are companies of PEOPLE. Not one monster fight
+-- is left on the list. Swept at depths 3, 11 and 15 while this was rebuilt, the shape does not move
+-- with depth -- monster fights sit at five to eight at every depth and human companies run long at
+-- every depth. So the previous section's finding survives its own numbers being thrown out, and lands
+-- harder for being isolated: sustain and mitigation outscale damage, this is visible only where BOTH
+-- sides have them, and the symmetric fight is the failure case. Still a combat-model decision, still
+-- not a number in this file.
+--
+-- AND FOUR OF THE THIRTEEN ARE LOSSES at depth 11 -- the reclaimers, standing watch, the rival company
+-- and the free company beat a company standing on their own floor. Ordinary stock is minted two levels
+-- over the company and then lagged two back (Growth.ENEMY_LEVEL_LAG), so an ordinary human stop is an
+-- even match by construction. Whether roadside traffic should be a coin flip is a design question and
+-- is recorded here rather than answered.
+--
+-- Measured 2026-09-22 at DEPTH 11, forest, four bodies at Descent.expectedLevel(11) = 35, one freshly
+-- built company per fight and the RNG pinned per fight -- so re-running reproduces these exactly.
+-- Regenerate by printing `turns` in the spec's loop; do not hand-edit a number upward to make a build
+-- pass.
+
+return {
+    -- Did not resolve inside Autobattle.run's 400-turn cap. The mirror match, and the row to look at
+    -- first: a full warband met by a full company, where neither side can close.
+    encounter_warband_broken_column  = 400,
+
+    -- Resolves, but nowhere near an ordinary stop. Every one of them a company of people.
+    encounter_the_reclaimers         = 85,
+    encounter_sloth_standing_watch   = 76,
+    encounter_the_sworn_company      = 66,
+    encounter_rival_company          = 65,
+    encounter_gluttony_overstayed    = 64,
+    encounter_the_cutpurses          = 38,
+    encounter_free_company           = 36,
+    encounter_warband_beast_line     = 34,
+    encounter_warband_the_writ       = 32,
+    encounter_warband_the_assay      = 32,
+    encounter_the_hedge_chapel       = 28,
+    encounter_road_bandits           = 24,
 }

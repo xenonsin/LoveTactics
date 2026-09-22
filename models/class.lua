@@ -501,6 +501,71 @@ function Class.level(player, id)
 end
 
 -- ---------------------------------------------------------------------------
+-- What a body IS, and what this company has ever taken up
+-- ---------------------------------------------------------------------------
+
+-- THE CLASS THIS BODY IS STANDING IN -- what it was declared as in the Roll, or failing that the class
+-- its blueprint was written as -- or NIL when it is neither.
+--
+-- NO NEUTRAL FALLBACK, and that is the whole reason this is not Growth.classOf. That function answers
+-- the same question for the LEVEL-UP table and must always name something, so an undeclared body with
+-- no innate class comes back `fighter` (Growth.NEUTRAL_CLASS) -- a default about how to grow, not a
+-- statement that the company has a fighter in it. Read as one, it would open the Colosseum on the first
+-- morning of every save in the game, on the strength of the recruit who was trained in nothing at all
+-- (data/characters/character_avatar.lua). A question about identity gets to answer "none".
+function Class.declaredOf(char)
+    if not char then return nil end
+    local id = char.declaredClass or char.class
+    return (id and Class.defs[id]) and id or nil
+end
+
+-- HAS THIS COMPANY EVER TAKEN UP `class` -- declared it in the Roll, or hired a body born to it.
+--
+-- ONE-WAY, AND MARKED AS IT IS READ, which is exactly the shape models/curse.lua's `noticed` has: the
+-- live roster is what raises the mark, and the mark is what is answered from then on.
+--
+-- IT CANNOT READ LIVE, and the reason is a rule one screen away. This is what puts a class's HOUSE on
+-- the plaza (models/offer.lua's `declared` gate), and changing class is free and reversible by design
+-- (ui/class_editor.lua) -- so a live reading would take the Colosseum off the square the moment a
+-- player moved their one fighter across to knight, and the city would become the first thing in this
+-- game that shrinks. Every other door gate in the city is monotonic (a trip taken, a wound carried, a
+-- find nobody can read); this one is only monotonic because of the ledger, so the ledger is not
+-- optional.
+--
+-- The mark is the CLASS and never the house, because a house shelves several (Vendor.shelves) and the
+-- deed the player did was taking up a class.
+function Class.markTaken(player, class)
+    if not (player and class and Class.defs[class]) then return end
+    player.classesTaken = player.classesTaken or {}
+    player.classesTaken[class] = true
+end
+
+-- Raise the mark for everything the roster is standing in right now. Both readers below go through it,
+-- so neither can answer off a ledger the other would have updated first.
+local function sweepTaken(player)
+    for _, char in ipairs((player and player.roster) or {}) do
+        Class.markTaken(player, Class.declaredOf(char))
+    end
+    return (player and player.classesTaken) or {}
+end
+
+function Class.taken(player, class)
+    if not (player and class) then return false end
+    return sweepTaken(player)[class] == true
+end
+
+-- The set of every class this company has ever stood in, for a caller that has to ask about all of them
+-- at once -- a house, which shelves a root and every cut of it (models/offer.lua).
+function Class.takenSet(player)
+    if not player then return {} end
+    local set = {}
+    for id, held in pairs(sweepTaken(player)) do
+        if held then set[id] = true end
+    end
+    return set
+end
+
+-- ---------------------------------------------------------------------------
 -- Technique: the earmarked currency a discipline is forged with
 -- ---------------------------------------------------------------------------
 

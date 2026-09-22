@@ -30,7 +30,7 @@ return {
     -- (data/status/status_freeze.lua) -- so a mage's own Ice Bolt sets up its own staff.
     tags = { "staff", "impact", "physical", "melee" },
     class = "mage",
-    unlockLevel = 8,
+    unlockLevel = 12,
     waitBehavior = {
         kind = "focus",
         mana = Curve.ramp(8, 18), -- a plain staff's: nothing traded here
@@ -43,7 +43,7 @@ return {
         cost = { stat = "stamina", amount = 7 },
         -- Roughly double the family's usual afterthought. It has to be a real club, or the deviation buys
         -- nothing: a physical strike for four damage is as useless against a warded foe as a magical one.
-        damage = Curve.ramp(9, 19),
+        damage = Curve.ramp(11, 21),
         effect = function(fx)
             fx.damage(fx.target) -- tags default to the item's, so the blow is physical
         end,

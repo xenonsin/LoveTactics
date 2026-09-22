@@ -18,14 +18,25 @@
 -- The rating still cannot see the Call, and nothing here can make it: three more arrive during the
 -- fight. This is the closest an authored composition can get to what the player actually stands in.
 --
--- minDay 4 rather than 1, unlike the ordinary boar. The lanes are the lesson and the lord is the exam:
+-- depth 4 rather than 1, unlike the ordinary boar. The lanes are the lesson and the lord is the exam:
 -- a company that meets him having never seen a Gore telegraph has been asked a question nobody set up.
--- encounter_boar (weight 6, minDay 1) and encounter_the_sounder (weight 4) are what teach it.
+-- encounter_boar (weight 6, depth 1) and encounter_the_sounder (weight 4) are what teach it.
 return {
     name = "The Unseeing",
     kind = "elite",
     weight = 2,
-    minDay = 4,
+    -- NO DEPTH GATE: ITS CIRCLE IS ITS PLACEMENT. The condition below locks this to one ground, and a
+    -- circle owns a fixed stratum -- so a depth on top of that is a second opinion about where it goes,
+    -- and it disagrees the moment the shuffle deals that circle at another depth (Descent.sinOrder).
+    -- It also gated Lust's own elites off Lust's own floors: converted from the retired calendar they
+    -- asked for floors three and four, and Lust owns one and two.
+    --
+    -- Which of a circle's floors a thing bills on is Descent.SINS' `elites` for the standing threat, and
+    -- `rung` for anything an author wants split across the approach and the seat.
+    -- LOCKED TO THE WOOD, which is the circle-lock rule arriving rather than a retune: humans
+    -- float to every floor and everything else belongs to exactly one circle. This was shared
+    -- road stock on all fifteen, and the beast band is Gluttony's identity now.
+    condition = function(ctx) return ctx.biome == "forest" end,
     composition = function()
         return { "character_the_unseeing", "character_boar", "character_boar", "character_boar" }
     end,

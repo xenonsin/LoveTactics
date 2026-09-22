@@ -23,8 +23,8 @@ return {
     type = "ability",
     tags = { "summon" },
     class = "artificer",
-    price = 330,
-    unlockLevel = 5,
+    price = 210,
+    unlockLevel = 3,
     activeAbility = {
         target = "tile",
         range = 2,

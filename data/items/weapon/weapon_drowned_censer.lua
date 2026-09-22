@@ -26,7 +26,7 @@ return {
     type = "weapon",
     tags = { "censer", "impact", "physical", "water", "melee" },
     class = "priest",
-    unlockLevel = 5,
+    unlockLevel = 11,
     incense = {
         hazard = "hazard_rain",
         radius = 1,
@@ -37,7 +37,7 @@ return {
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 6 },
-        damage = Curve.ramp(7, 17),
+        damage = Curve.ramp(10, 20),
         effect = function(fx)
             fx.damage(fx.target)
         end,

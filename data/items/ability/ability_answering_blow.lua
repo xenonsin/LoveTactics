@@ -24,8 +24,8 @@ return {
     type = "ability",
     tags = { "impact", "physical" },
     class = "champion",
-    price = 660,
-    unlockLevel = 13,
+    price = 695,
+    unlockLevel = 14,
     -- Shallower than Defiant Stand's 6 and Crowd's Favour's 8: the spender opens the pool, the rest of
     -- the Champion shelf deepens and widens it (Combat.chargeDef merges).
     charge = { key = "defiance", from = { "hitTaken" }, max = 4 },

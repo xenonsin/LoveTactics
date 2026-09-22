@@ -28,7 +28,7 @@ return {
     -- SHELVED WITH THE DISCIPLINE ITS EFFECT FEEDS, and with its own sibling: Bristlehide is the
     -- hunter's too. `class` is the vendor shelf and never an equip gate -- anyone may carry it.
     class = "hunter",
-    unlockLevel = 6,
+    unlockLevel = 3,
     -- RIFT-ONLY. It comes off the body and nowhere else: no counter deals one however many
     -- the company carries out, and none will buy one back (docs/drops.md, Vendor.foundPrice).
     unstocked = true,

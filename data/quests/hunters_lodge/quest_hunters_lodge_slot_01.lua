@@ -41,8 +41,8 @@ return {
             name = "The White Stag",
             composition = function(ctx)
                 local list = { "character_stag_beast" }
-                for i = 1, 1 + math.floor((ctx.day or 1) / 2) do list[#list + 1] = "character_boar" end
-                if (ctx.day or 1) >= 3 then list[#list + 1] = "character_wolf_alpha" end
+                for i = 1, 1 + math.floor((ctx.depth or 1) / 1) do list[#list + 1] = "character_boar" end
+                if (ctx.depth or 1) >= 3 then list[#list + 1] = "character_wolf_alpha" end
                 return list
             end,
             win = { type = "assassinate", target = "character_stag_beast", enemy = "the white stag" },

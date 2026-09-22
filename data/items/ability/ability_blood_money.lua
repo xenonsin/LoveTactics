@@ -30,17 +30,17 @@ return {
     type = "ability",
     tags = { "physical", "guile" }, -- guile: the rogue's own word, so the shelf reads correct; the coin is the header's business
     class = "mammonite", -- the purse is one earned shelf, not eight loose wares (data/classes/mammonite.lua)
-    price = 660,
+    price = 430,
     -- Gated to the END of the greed line: on sale only once all ten Undercroft quests are cleared -- i.e.
     -- Aurea is beaten (slot 10). The money kit is the general of Greed's own art; you earn it by taking it
     -- off her. `Vendor.stock` unlocks at questsDone >= 10.
-    unlockLevel = 13,
+    unlockLevel = 8,
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 4,
         cost = { stat = "stamina", amount = 5 }, -- the swing still tires you; the purse is the OTHER cost
-        damage = Curve.ramp(15, 25), -- fx.amount: the floor, before a single coin is spent
+        damage = Curve.ramp(12, 22), -- fx.amount: the floor, before a single coin is spent
         description = "Consume gold up to the cap you can afford. Increase damage by 1 per 5 gold spent.",
         effect = function(fx)
             local t = fx.target

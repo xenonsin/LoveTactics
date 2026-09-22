@@ -251,9 +251,8 @@ local cases = {
     end },
 
     { name = "a circle sealed underground takes its general out of the finale", fn = function()
-        local Calendar = require("models.calendar")
-        local p = Player.new()
-        local all = Calendar.generalsStanding(p)
+                local p = Player.new()
+        local all = Descent.generalsStanding(p)
         assert(all == #Descent.SINS,
             "a company that has felled nobody faces all seven")
         -- Seal one circle the way a descent does: stand on her floor and beat her.
@@ -261,7 +260,7 @@ local cases = {
         p.descentRun = run
         run.floor = Descent.FLOORS_PER_CIRCLE
         Descent.clearFloor(run, p)
-        assert(Calendar.generalsStanding(p) == all - 1,
+        assert(Descent.generalsStanding(p) == all - 1,
             "felling a general on her own floor must count, even though no quest was completed")
     end },
 

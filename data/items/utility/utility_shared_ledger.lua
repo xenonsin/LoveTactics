@@ -22,7 +22,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "apothecary",
-    unlockLevel = 4,
+    unlockLevel = 5,
     traits = { "trait_shared_ledger" },
     -- your guard, lent to whoever you mend
     bonus = { magicDefense = 2 },

@@ -26,7 +26,7 @@ local DEFAULT_DAY = 20
 -- is read beside the fightability panel, so the eye needs to match positions between two grids.
 local MARK = {
     combat = "c", elite = "E", objective = "X", treasure = "t", relic_cache = "R",
-    rest = "r", merchant = "m", crossroads = "+", shrine = "s", town = "T",
+    rest = "r", merchant = "m", crossroads = "+", shrine = "s",
     -- The hazards and the hole. `drop` is the one stop on a floor that moves the company off it.
     dark = "d", spinner = "@", translation = "w", drop = "v",
 }

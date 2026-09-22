@@ -19,7 +19,7 @@
 return {
     name = "Survivors Beset",
     kind = "combat",
-    minDay = 1,
+    depth = 1,
     weight = 0,
 
     allies = { "character_survivor", "character_survivor" },
@@ -28,7 +28,7 @@ return {
     -- grunt already in reach of a survivor before anyone can screen. The grunt walks on as an early wave
     -- (below). Prestige still stacks extra imps for a later-game bite.
     composition = function(ctx)
-        local p = ctx.day or 1
+        local p = ctx.depth or 1
         local list = { "character_demon_imp", "character_demon_imp" }
         for i = 1, math.floor((p - 1) / 3) do list[#list + 1] = "character_demon_imp" end
         return list
@@ -90,7 +90,7 @@ return {
             -- name is on that walk. Re-cut this wave and the gift together or not at all.
             { at = 14, from = "surround", composition = function(ctx)
                 local list = { "character_demon_bomblet", "character_demon_bomblet" }
-                if (ctx.day or 1) >= 2 then list[#list + 1] = "character_demon_bomblet" end
+                if (ctx.depth or 1) >= 2 then list[#list + 1] = "character_demon_bomblet" end
                 return list
             end },
             -- The encirclement closes: the late wave fans in from every open side at once. Three, not
@@ -98,7 +98,7 @@ return {
             -- still answer while the bomblets before it are being cleaned up, not a second fight.
             { at = 20, from = "surround", composition = function(ctx)
                 local list = { "character_demon_imp", "character_demon_imp", "character_demon_imp" }
-                if (ctx.day or 1) >= 2 then list[#list + 1] = "character_demon_grunt" end
+                if (ctx.depth or 1) >= 2 then list[#list + 1] = "character_demon_grunt" end
                 return list
             end },
         },

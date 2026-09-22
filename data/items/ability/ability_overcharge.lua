@@ -11,8 +11,8 @@ return {
     type = "ability",
     tags = { "utility" },
     class = "artificer", -- mage x alchemist; the Constructs mechanic's first stock
-    price = 575,
-    unlockLevel = 11,
+    price = 475,
+    unlockLevel = 9,
     activeAbility = {
         target = "ally",
         range = 2,

@@ -42,7 +42,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "barbarian", -- deeper cut of the shelf: buyable only once the barbarian gate is cleared
-    unlockLevel = 5,
+    unlockLevel = 3,
     -- The armor the locked blood buys, forged deeper level by level. Defense and Magic Defense move
     -- together: the brace is whole-body, not a shield turned to one school.
     bonus = {

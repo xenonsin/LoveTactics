@@ -810,4 +810,23 @@ return {
                 "an ordinary body is spawned exactly as the blend leaves it")
         end,
     },
+    {
+        -- THE CASE MASTERY_REACH'S OWN HEADER CLAIMED EXISTED AND DID NOT. It said this was asserted
+        -- against Descent.dangerLevel at Descent.FLOORS "so re-cutting the stack reddens a spec
+        -- instead of quietly re-scaling every enemy in the game"; `grep -rn MASTERY_REACH tests/`
+        -- returned nothing, and the number was right by hand and by luck. Every enemy's class-mastery
+        -- stamp is spread over this ceiling, so a stack re-cut without it lands the stamp near zero
+        -- across the whole rift -- which is the failure stampClassLevel already shipped once.
+        name = "the mastery ceiling is the bottom of the stack",
+        fn = function()
+            local Descent = require("models.descent")
+            local bottom = Descent.dangerLevel({ floor = Descent.FLOORS })
+            assert(Growth.MASTERY_REACH == bottom, string.format(
+                "MASTERY_REACH is %d against a bottom floor of %d -- the class-mastery stamp is "
+                .. "spread over the wrong span", Growth.MASTERY_REACH, bottom))
+            assert(bottom == Growth.LEVEL_CAP, string.format(
+                "the ladder ends at %d and the cap is %d -- one of them is describing a level "
+                .. "nothing in the game ever stands on", bottom, Growth.LEVEL_CAP))
+        end,
+    },
 }

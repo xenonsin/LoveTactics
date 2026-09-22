@@ -31,8 +31,8 @@ return {
     type = "ability",
     tags = { "summon" },
     class = "artificer", -- mage + alchemist; the Constructs mechanic's first stock
-    price = 740,
-    unlockLevel = 15,
+    price = 610,
+    unlockLevel = 12,
     activeAbility = {
         target = "tile",
         range = 2, -- set down beside you: you carried it here

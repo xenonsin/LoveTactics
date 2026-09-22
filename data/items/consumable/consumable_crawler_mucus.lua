@@ -24,8 +24,8 @@ return {
     type = "consumable", -- a coating: it is used up by the weapon it is smeared beside
     tags = { "poison", "coating" },
     class = "poisoner", -- deeper cut of the shelf: buyable only once the poisoner gate is cleared
-    price = 130,
-    unlockLevel = 5,
+    price = 140,
+    unlockLevel = 6,
     aura = {
         appliesTo = { "weapon", "ability" },
         exceptTags = { "restorative" }, -- a draught that rooted its drinker is not a coating, it is a mistake

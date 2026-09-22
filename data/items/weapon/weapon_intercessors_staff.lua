@@ -28,7 +28,7 @@ return {
     type = "weapon",
     tags = { "staff", "magical", "melee" }, -- magical: routes through magicDamage / magicDefense
     class = "priest",
-    unlockLevel = 9,
+    unlockLevel = 15,
     traits = { "trait_intercession" }, -- an item's `traits` reach whoever carries it (models/trait.lua)
     -- The family's obligation, and shallower than the Crozier's on purpose: this staff wants to be swung,
     -- so the turn it offers you for NOT swinging has to be the worse of the two.
@@ -40,7 +40,7 @@ return {
         cost = { stat = "stamina", amount = 6 }, -- stamina, so a cornered priest can always swing it
         -- The shelf's heaviest focus damage, because here the damage IS the healing: a curve tuned as
         -- feebly as the Crozier's would make the intercession itself worthless.
-        damage = Curve.ramp(10, 20),
+        damage = Curve.ramp(13, 23),
         effect = function(fx)
             local dealt = fx.damage(fx.target)
             -- The redirect. `intercession` is set once, at combat start, by the trait above; it is nil

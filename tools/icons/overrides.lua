@@ -517,4 +517,19 @@ return {
     ["items/silt_knife.png"]       = "lorc/bone-knife",         -- something's jawbone, ground down
     ["items/utility_the_wake.png"] = "lorc/splashy-stream",     -- what a body leaves behind it
     ["items/armor_cutpurse_coat.png"] = "delapouite/hoodie",      -- a thief wears the hood
+
+    -- ------------------------------- the Ancient Stag, 2026-09-21
+    -- Five pieces off data/characters/character_stag_beast.lua. The matcher had four of them on
+    -- clashes or on word-matches that mean the wrong thing -- "The Lowered Crown" drew a jewelled
+    -- crown and "The Close Herd" drew a closed door -- which is exactly the case this file exists for.
+    ["items/stag_antlers.png"]            = "lorc/horned-skull",      -- grown from the skull, as the blueprint says
+    ["items/herd_warmth.png"]             = "delapouite/deer-track",  -- the herd, read off the ground it stood on
+    ["items/utility_the_close_herd.png"]  = "delapouite/meeple-group", -- bodies standing shoulder to shoulder
+    ["items/utility_lowered_crown.png"]   = "delapouite/charging-bull", -- head down, points forward: the lift
+    -- The hide is the weak one of the five and is worth revisiting. Every literal hide glyph in the
+    -- vendored set is already spoken for (animal-hide on the Ravener's, dorsal-scales on the boar's,
+    -- leather-vest on the Quarryhide), and this family already picks for CHARACTER rather than
+    -- material -- the Runner's Hide draws a travel dress. A heavy-shouldered ungulate is the nearest
+    -- free thing to "cut from the shoulders, where every autumn is stacked up in layers".
+    ["items/armor_bellowhide.png"]        = "delapouite/bison",
 }

@@ -14,7 +14,8 @@
 --
 -- XIN IS BEHIND THIS DOOR, and the room she is in is the mending -- so on the first morning of a fresh
 -- save this counter opens with exactly one room on the desk and the shelf still shut. That is the
--- arrival the city's opening coach points at (states/hub.lua's INTRO_STAGES).
+-- arrival the first morning is about, and the city outside it says nothing -- the plaza coaches
+-- nothing at all (states/hub.lua's header), so this desk is where the lesson is.
 return {
     title = "The Cathedral",
     cast  = { "cathedral" },

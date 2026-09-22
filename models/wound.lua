@@ -421,7 +421,7 @@ end
 -- is the only honest way to ask "is there anything left to do about this", which is a question two
 -- surfaces ask and must not answer differently:
 --
---   states/hub.lua        the first morning's coaching holds the plaza until it is empty
+--   states/hub.lua        the first morning's flag is spent when it is empty (introAdvance)
 --   ui/panels/ward.lua    ...and rings the rows of whoever is first in it while it is not
 --
 -- Written once here rather than twice there, because a city that thinks the lesson landed and a panel

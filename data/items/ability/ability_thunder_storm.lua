@@ -12,8 +12,8 @@ return {
     type = "ability",
     tags = { "lightning", "magical" },
     class = "elementalist", -- deeper cut of the shelf: buyable only once the elementalist gate is cleared
-    price = 660,
-    unlockLevel = 14,
+    price = 650,
+    unlockLevel = 13,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

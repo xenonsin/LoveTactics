@@ -32,8 +32,8 @@ return {
     type = "ability",
     tags = { "earth" },
     class = "bulwark", -- deeper cut of the shelf: buyable only once the bulwark gate is cleared
-    price = 330,
-    unlockLevel = 6,
+    price = 565,
+    unlockLevel = 11,
     activeAbility = {
         target = "tile",
         allowOccupied = true,

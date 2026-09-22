@@ -25,7 +25,7 @@ return {
     type = "utility",
     tags = { "boots" },
     class = "trapper", -- deeper cut of the shelf: buyable only once the trapper gate is cleared
-    unlockLevel = 4,
+    unlockLevel = 6,
     -- No `duration`: a trap is an object left lying there, not ground that ages out. It waits.
     trail = { trap = "caltrops" },
     -- greaves: the ground behind you is what they leave, not what they are

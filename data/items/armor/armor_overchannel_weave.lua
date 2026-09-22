@@ -25,7 +25,7 @@ return {
     type = "armor",
     tags = { "cloth", "arcane" },
     class = "mage",
-    unlockLevel = 10,
+    unlockLevel = 13,
     traits = { "trait_overchannel" },
     bonus = { magicDefense = Curve.ramp(4, 14), movement = -1 },
     resist = { magical = 2 },

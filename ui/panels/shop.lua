@@ -80,7 +80,6 @@ local Quest = require("models.quest") -- shelfRung: how far up this house's clas
 local Item = require("models.item")
 local Class = require("models.class") -- unlockedSet: gates a shelf's locked discipline cut
 local Market = require("models.market") -- the one counter: what it has out today, and off which rack
-local Calendar = require("models.calendar") -- the day today's rotation is dealt against
 local Combat = require("models.combat")
 local Sound = require("models.sound") -- shop.buy: the coin cue a committed purchase makes
 local Keeper = require("ui.keeper") -- the pane this file used to own; see drawKeeper
@@ -518,7 +517,7 @@ end
 -- fold into nothing worth pressing, and a header that swallows the cursor to collapse eight lines is a
 -- control that costs more than it saves.
 function Shop:buildMarketRows()
-    local stock = Market.stock(self.player, Calendar.day(self.player))
+    local stock = Market.stock(self.player, Player.tripsHome(self.player))
 
     -- Kept in the order Market.stock returned them -- the racks are already in their own order and the
     -- rows already sorted within each -- so this only has to notice where one ends and the next begins.
@@ -1398,7 +1397,7 @@ function Shop:commitBuy(entry)
     -- stands greyed rather than vanishing. The standing rack is untouched -- it sells the same draught
     -- all day, which is the whole of what a standing rack is for.
     if entry.rack == Market.TODAY then
-        Market.recordSold(self.player, Calendar.day(self.player), entry.id)
+        Market.recordSold(self.player, Player.tripsHome(self.player), entry.id)
     end
     -- Unseen in the stash until looked at, exactly like a granted reward: the message below says it is
     -- in the stash, and the dot is what makes that findable once the stash is sixty rows long. (An

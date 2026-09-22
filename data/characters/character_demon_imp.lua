@@ -45,7 +45,7 @@ return {
         -- every level of the game.
         health = 14, mana = 30, stamina = 8,
         staminaRegen = 2,
-        damage = 4, magicDamage = 7, -- it spits hellfire; the claws are for show
+        damage = 4, magicDamage = 10, -- it spits hellfire; the claws are for show
         defense = 2, magicDefense = 2,
         movement = 4,
         speed = 2, -- slower than the avatar and Rowan both: the party always opens

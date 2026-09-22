@@ -11,8 +11,8 @@ return {
     type = "ability",
     tags = { "summon" },
     class = "shaman", -- hunter x mage; the Spirit-totems mechanic's first stock
-    price = 660,
-    unlockLevel = 14,
+    price = 650,
+    unlockLevel = 13,
     activeAbility = {
         target = "tile",
         range = 2,

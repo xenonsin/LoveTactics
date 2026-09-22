@@ -16,8 +16,8 @@ return {
     type = "ability",
     tags = { "banner", "rally" },
     class = "warlord", -- deeper cut of the shelf: buyable only once the warlord gate is cleared
-    price = 740,
-    unlockLevel = 15,
+    price = 565,
+    unlockLevel = 11,
     activeAbility = {
         target = "tile", -- aim an empty tile; the standard rises there
         range = 3,

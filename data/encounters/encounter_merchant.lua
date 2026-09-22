@@ -4,7 +4,7 @@
 -- an economy worth spending -- and uncommon. See encounter_relic_cache.lua for the shape.
 -- RELIABLE FROM THE FIRST FLOOR, and that is a deliberate reversal of "uncommon".
 --
--- It was `weight = 1, minDay = 2` -- rare, and absent from floor one -- on the reasoning that a market
+-- It was `weight = 1, depth = 2` -- rare, and absent from floor one -- on the reasoning that a market
 -- should turn up once a company has an economy worth spending. The city has since become a place where
 -- every shelf is a HOUSE that opens only on work you find underground (models/errand.lua), so a fresh
 -- save's purse had one counter to spend at (the General Store's consumables) and the road had almost
@@ -18,5 +18,5 @@ return {
     name = "Merchant",
     kind = "merchant",
     weight = 4,
-    minDay = 1,
+    depth = 1,
 }

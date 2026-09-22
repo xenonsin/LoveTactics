@@ -14,7 +14,7 @@ return {
     type = "utility",
     tags = { "arcane" },
     class = "alchemist",
-    unlockLevel = 4,
+    unlockLevel = 7,
     aura = {
         appliesTo = { "consumable" }, -- only the throwables and potions it sits beside
         preserve = true,              -- the neighbor consumable's stack is not decremented on use

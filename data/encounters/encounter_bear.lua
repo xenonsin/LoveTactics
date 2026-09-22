@@ -14,7 +14,7 @@
 -- is deliberately slow to hand out -- see the composition for how slow it turned out it could afford
 -- to be.
 --
--- minDay 2 rather than 1. The boar owns the first morning (weight 6, minDay 1) and should: it teaches
+-- depth 2 rather than 1. The boar owns the first morning (weight 6, depth 1) and should: it teaches
 -- the lane, which is the other spatial question on the road. A company meeting a ramp before it has met
 -- a charge has been handed the harder of the two lessons first for no reason.
 --
@@ -28,7 +28,18 @@ return {
     -- reachable, and not one the road is made of -- the boar is the animal you meet, this is the animal
     -- you remember. Measured against the pool with `. board-report` after any change here.
     weight = 3,
-    minDay = 2,
+    -- NO DEPTH GATE: ITS CIRCLE IS ITS PLACEMENT. The condition below locks this to one ground, and a
+    -- circle owns a fixed stratum -- so a depth on top of that is a second opinion about where it goes,
+    -- and it disagrees the moment the shuffle deals that circle at another depth (Descent.sinOrder).
+    -- It also gated Lust's own elites off Lust's own floors: converted from the retired calendar they
+    -- asked for floors three and four, and Lust owns one and two.
+    --
+    -- Which of a circle's floors a thing bills on is Descent.SINS' `elites` for the standing threat, and
+    -- `rung` for anything an author wants split across the approach and the seat.
+    -- LOCKED TO THE WOOD, which is the circle-lock rule arriving rather than a retune: humans
+    -- float to every floor and everything else belongs to exactly one circle. This was shared
+    -- road stock on all fifteen, and the beast band is Gluttony's identity now.
+    condition = function(ctx) return ctx.biome == "forest" end,
     composition = function(ctx)
         -- IT HAS TO KEEP PACE, AND IT HAS TO STOP. Both halves were learned the hard way and the two
         -- pull against each other, which is why the expression has a floor AND a ceiling.
@@ -52,7 +63,7 @@ return {
         -- bear, which Growth.spawn already does by minting the body at the fight's own level (which is
         -- also why a capped count still rates: Muster prices the far side at the level it will really
         -- spawn at, not at the blueprint). More bears would be the wrong answer to depth twice over.
-        local n = math.min(4, 2 + math.floor((ctx.day or 1) / 6))
+        local n = math.min(4, 2 + math.floor((ctx.depth or 1) / 2))
         local list = {}
         for i = 1, n do list[i] = "character_bear" end
         return list

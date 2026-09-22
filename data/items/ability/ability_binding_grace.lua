@@ -28,8 +28,8 @@ return {
     type = "ability",
     tags = { "holy", "magical" },
     class = "monk", -- the Cathedral's own subclass is the one body that pays nothing for the second clause
-    price = 660,
-    unlockLevel = 13,
+    price = 610,
+    unlockLevel = 12,
     activeAbility = {
         target = "ally",
         range = 4,

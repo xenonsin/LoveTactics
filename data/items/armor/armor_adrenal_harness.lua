@@ -26,7 +26,7 @@ return {
     type = "armor",
     tags = { "leather" },
     class = "fighter",
-    unlockLevel = 9,
+    unlockLevel = 7,
     traits = { "trait_adrenal_surge" },
     bonus = { defense = Curve.ramp(4, 14), movement = -1 },
     resist = { physical = 1 },

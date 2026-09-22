@@ -22,7 +22,7 @@ return {
     type = "armor",
     tags = { "cloth" },
     class = "rogue",
-    unlockLevel = 7,
+    unlockLevel = 9,
     traits = { "trait_vanishing_act" },
     bonus = { defense = Curve.ramp(2, 12), movement = -1 },
 }

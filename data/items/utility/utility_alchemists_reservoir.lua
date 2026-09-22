@@ -13,7 +13,7 @@ return {
     type = "utility",
     tags = { "satchel", "arcane" },
     class = "alchemist",
-    unlockLevel = 8,
+    unlockLevel = 12,
     traits = { "trait_alchemists_reservoir" },
     -- a caster's harness: it exists to keep a spell going out
     bonus = { magicDamage = 1 },

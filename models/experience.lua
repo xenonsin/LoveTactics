@@ -135,7 +135,24 @@ Experience.PER_FELLING = 4
 -- stock on the board within a level or two the whole way down, and arrives at the Crown around 16 or
 -- 17 against a bottom that fights at 17. tests/reward_scale_spec runs that simulation at three
 -- different rates rather than restating any of it.
-Experience.STEP = 96
+-- ---------------------------------------------------------------------------
+-- TWENTY-FOUR, WITH THE LADDER. The reasoning above is unchanged; the distance it has to cover is.
+-- ---------------------------------------------------------------------------
+--
+-- At 96 a level costs eight fights, which is a floor, and "one floor is one level" was the whole shape
+-- while the descent's ladder ran 1..17. It runs to Growth.LEVEL_CAP now (Descent.BOTTOM_DANGER), so a
+-- company is expected to cover forty-eight levels over fifteen floors rather than fifteen.
+--
+-- MEASURED RATHER THAN DIVIDED, and the difference matters because rewardScale throttles the climb as
+-- the company pulls ahead: simulated down the stack at the units tests/reward_scale_spec uses, 96
+-- lands the company at 17, 48 at 31, 30 at 48, and 24 is the first value that reaches the cap. It
+-- SATURATES below that rather than overshooting -- 20 and 16 also land 50 -- so this is the cheapest
+-- setting that arrives, not a number picked off a ratio.
+--
+-- A level every two fights at parity, against every eight before. That is a real change in feel and it
+-- is the point: the ladder is three and a half times longer, so a rung has to be three and a half
+-- times cheaper or the bottom is unreachable.
+Experience.STEP = 24
 
 -- Total experience needed to have REACHED `level`. Level 1 costs nothing -- everybody starts there.
 function Experience.totalFor(level)

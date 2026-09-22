@@ -9,7 +9,7 @@ return {
     type = "utility",
     tags = { "arcane" },
     class = "mage",
-    unlockLevel = 9,
+    unlockLevel = 12,
     traits = { "trait_overchannel" },
     -- spells paid for in life: the focus is the bargain
     bonus = { magicDamage = 3, defense = -1 },

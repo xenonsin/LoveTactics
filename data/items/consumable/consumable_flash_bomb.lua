@@ -10,8 +10,8 @@ return {
     type = "consumable",
     tags = { "flash" },
     class = "rogue",
-    price = 130,
-    unlockLevel = 5,
+    price = 225,
+    unlockLevel = 11,
     activeAbility = {
         target = "tile", -- thrown at a foe and bursts around it, like Acid Bomb / Fireball
         allowOccupied = true,

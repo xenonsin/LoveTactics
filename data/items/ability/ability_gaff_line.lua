@@ -30,8 +30,8 @@ return {
     type = "ability",
     tags = { "pierce", "physical" },
     class = "alchemist",
-    price = 410,
-    unlockLevel = 7,
+    price = 520,
+    unlockLevel = 10,
     activeAbility = {
         target = "enemy",
         range = 5,
@@ -39,7 +39,7 @@ return {
         requiresSight = true,
         speed = 3,
         cost = { stat = "stamina", amount = 9 },
-        damage = Curve.ramp(12, 22),
+        damage = Curve.ramp(13, 23),
         requiresAdjacent = { type = "weapon" },
         effect = function(fx)
             -- Bite first, haul second. The order matters for a reason the pure Pull never has to think

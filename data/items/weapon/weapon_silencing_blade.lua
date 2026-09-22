@@ -22,7 +22,7 @@ return {
     type = "weapon",
     tags = { "sword", "slash", "physical", "melee" },
     class = "spellbreaker",
-    unlockLevel = 12,
+    unlockLevel = 14,
     traits = { "trait_parry" },
     activeAbility = {
         target = "enemy",

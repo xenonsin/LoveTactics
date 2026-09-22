@@ -30,7 +30,7 @@ return {
     type = "weapon",
     tags = { "bow", "pierce", "physical", "ranged" },
     class = "skirmisher",
-    unlockLevel = 12,
+    unlockLevel = 14,
     hands = 2, -- the family contract: every bow is two-handed (docs/weapons.md)
     activeAbility = {
         target = "enemy",

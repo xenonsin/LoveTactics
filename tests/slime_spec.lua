@@ -24,6 +24,7 @@ local Combat = require("models.combat")
 local Status = require("models.status")
 local Item = require("models.item")
 local Encounter = require("models.encounter")
+local Descent = require("models.descent")
 
 local SWORD = { "sword", "slash", "physical", "melee" }
 local MACE = { "mace", "impact", "physical", "melee" }
@@ -302,7 +303,10 @@ return {
             -- met on, so it asks the floors and lets Spoils.rankBand say which rungs those are.
             local slime = depths("character_slime")
             local function paysOn(set, floor, who)
-                local lo, hi = Spoils.rankBand({ floorLevel = floor })
+                -- A FLOOR NUMBER IS NOT A FLOOR LEVEL, and this passed one as the other. It was
+                -- invisible while the two were equal; the ladder runs to the cap now and floor six
+                -- carries level eighteen, so the case was reading the band of floor two.
+                                local lo, hi = Spoils.rankBand({ floorLevel = Descent.floorLevel({ floor = floor }) })
                 for r = lo, hi do if set[r] then return end end
                 assert(false, string.format(
                     "%s has nothing to pay on floor %d, whose band is %d-%d", who, floor, lo, hi))
@@ -344,7 +348,7 @@ return {
             -- where the combat band (4-5) overlaps the list, so the pool has something of its own.
             local seen, mine = 0, 0
             for _ = 1, 400 do
-                local paid = Spoils.roll({ day = 24, kind = "combat", enemyUnits = board })
+                local paid = Spoils.roll({ floorLevel = Descent.floorLevel({ floor = 10 }), kind = "combat", enemyUnits = board })
                 for _, id in ipairs((paid or {}).loot or {}) do
                     seen = seen + 1
                     if wanted[id] then mine = mine + 1 end

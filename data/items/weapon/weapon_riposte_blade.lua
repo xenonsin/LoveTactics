@@ -34,14 +34,14 @@ return {
     tags = { "sword", "slash", "physical", "melee" },
     hands = 1,
     class = "knight",
-    unlockLevel = 6,
+    unlockLevel = 9,
     traits = { "trait_riposte" },
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 3,
         cost = { stat = "stamina", amount = 8 },
-        damage = Curve.ramp(9, 19),
+        damage = Curve.ramp(11, 21),
         effect = function(fx)
             fx.damage(fx.target)
         end,

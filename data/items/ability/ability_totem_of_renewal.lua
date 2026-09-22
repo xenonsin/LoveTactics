@@ -24,8 +24,8 @@ return {
     type = "ability",
     tags = { "holy", "summon" },
     class = "totemist",
-    price = 740,
-    unlockLevel = 15,
+    price = 695,
+    unlockLevel = 14,
     activeAbility = {
         target = "tile",
         range = 3,

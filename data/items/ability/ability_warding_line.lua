@@ -10,8 +10,8 @@ return {
     type = "ability",
     tags = { "utility" },
     class = "warden", -- knight x hunter; the Lockdown-zone mechanic's first stock
-    price = 165,
-    unlockLevel = 1,
+    price = 300,
+    unlockLevel = 5,
     activeAbility = {
         target = "tile",
         range = 4,

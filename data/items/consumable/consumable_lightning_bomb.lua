@@ -15,8 +15,8 @@ return {
     type = "consumable",
     tags = { "lightning" },
     class = "bombardier", -- deeper cut of the shelf: buyable only once the bombardier gate is cleared
-    price = 265,
-    unlockLevel = 13,
+    price = 225,
+    unlockLevel = 11,
     activeAbility = {
         target = "tile", -- thrown at a foe and bursts around it, like Fire Bomb / Ice Bomb
         allowOccupied = true,

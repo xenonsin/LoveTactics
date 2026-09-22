@@ -27,7 +27,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "warlord", -- deeper cut of the shelf: buyable only once the warlord gate is cleared
-    unlockLevel = 9,
+    unlockLevel = 11,
     traits = { "trait_battleborn" },
     -- A floor for the fights where every kill is a mercy blow on something already bleeding. Damage,
     -- matching the Poacher's charm: what this bearer is short of on a quiet turn is the killing swing.

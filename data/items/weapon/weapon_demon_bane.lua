@@ -19,7 +19,7 @@ return {
     hands = 1,
     traits = { "trait_parry" }, -- a sword, so it parries (docs/weapons.md) -- and the counter carries `holy` too
     class = "knight",
-    unlockLevel = 6,
+    unlockLevel = 8,
     activeAbility = {
         target = "enemy",
         range = 1,

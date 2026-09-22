@@ -18,7 +18,7 @@ return {
     type = "utility",
     tags = { "beast" },
     class = "beastmaster", -- deeper cut of the shelf: buyable only once the beastmaster gate is cleared
-    unlockLevel = 8,
+    unlockLevel = 11,
     traits = { "trait_falconers_hawk" },
     -- the hawk marks; the hand that flies it aims
     bonus = { skill = 2 },

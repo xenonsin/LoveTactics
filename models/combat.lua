@@ -2471,6 +2471,27 @@ Combat.SANCTIFY_HEAL = 1
 -- priest's rate, and that gap is the item: this is the only recovery in the game that can be switched
 -- off by hitting somebody, so it is allowed to be worth switching off.
 Combat.UNSPENT_HEART_REGEN = 4
+-- Health Herd Warmth restores per tick to a bearer with an ally beside it. The priest's rate, on
+-- purpose: a Sanctified Presence is a body spending its whole existence being a font, and this is a
+-- herd animal standing where it was already standing. The two should not be worth different amounts
+-- per tick -- what separates them is that the priest wards the LINE and this wards only itself, so a
+-- company gets one body's worth out of it and a priest gets four.
+Combat.HERD_WARMTH_HEAL = 1
+
+-- Is `u` standing with its herd this tick? Deliberately NOT nearSanctifier's shape, and the difference
+-- is the whole of the rule: a priest's ward radiates OUTWARD to allies who carry nothing, so that
+-- function asks whether anybody nearby is a font. This one pays only its own bearer, and only for
+-- company -- so it asks whether the bearer carries it and whether anyone at all is standing beside it.
+-- Any living ally counts, herd or not; it is the standing together that does it, not the species.
+local function standingWithHerd(combat, u)
+    if not Trait.has(u, "trait_herd_warmth") then return false end
+    for _, o in ipairs(combat.units) do
+        if o.alive and o ~= u and o.side == u.side and Combat.unitGap(o, u) == 1 then
+            return true
+        end
+    end
+    return false
+end
 
 -- Is `u` warded by a Sanctified Presence this tick? True if it bears the trait itself (the priest is
 -- its own font) or stands orthogonally adjacent to a living ally that does.
@@ -2507,6 +2528,14 @@ function Combat.regenerate(combat, elapsed)
             end
             if nearSanctifier(combat, u) then
                 Combat.restoreResource(u.char, "health", Combat.SANCTIFY_HEAL * elapsed)
+            end
+            -- HERD WARMTH: a body that carries it mends while anyone is standing beside it, and
+            -- mends not at all alone (data/traits/trait_herd_warmth.lua). Sits here with the other
+            -- recoveries for the reason stated two branches down -- a trait has no per-tick hook, and
+            -- models/trait.lua argues it should not grow one. Flat rather than per-ally: see the
+            -- trait's header on why a herd of four must not heal its middle body three times over.
+            if standingWithHerd(combat, u) then
+                Combat.restoreResource(u.char, "health", Combat.HERD_WARMTH_HEAL * elapsed)
             end
             -- The Unspent Heart: a much larger recovery that is only paid while its wearer has been
             -- left alone. The trait's own onDamaged puts its id on cooldown for every wound

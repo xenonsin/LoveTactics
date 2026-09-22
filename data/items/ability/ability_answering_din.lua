@@ -30,14 +30,14 @@ return {
     type = "ability",
     tags = { "earth", "impact", "magical" },
     class = "elementalist", -- the earth storm, beside Blizzard / Meteor Storm / Thunder Storm
-    price = 660,
-    unlockLevel = 14,
+    price = 430,
+    unlockLevel = 8,
     activeAbility = {
         target = "self", -- it runs out from the caster's own feet: no aiming, only placement
         range = 0,
         speed = 4,
         cost = { stat = "mana", amount = 16 },
-        damage = Curve.ramp(16, 26), -- the base, before the crowd is counted
+        damage = Curve.ramp(11, 21), -- the base, before the crowd is counted
         aoe = { radius = 2, shape = "square" },
         -- Centred on the caster's feet, and a blow all the same: without this a self-target reads as a
         -- kindness (Combat.isSupportAbility) and the storm previewed green.

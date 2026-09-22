@@ -12,7 +12,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "fighter",
-    unlockLevel = 7,
+    unlockLevel = 0,
     traits = { "trait_dodge" },
     -- a deflection is guard, arriving late
     bonus = { defense = 2 },

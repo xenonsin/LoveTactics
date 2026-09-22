@@ -24,8 +24,8 @@ return {
     type = "ability",
     tags = { "earth", "magical" },
     class = "mage",
-    price = 410,
-    unlockLevel = 7,
+    price = 565,
+    unlockLevel = 11,
     activeAbility = {
         target = "tile",
         allowOccupied = true, -- aim past a body; the occupied tiles are skipped by Wall.place

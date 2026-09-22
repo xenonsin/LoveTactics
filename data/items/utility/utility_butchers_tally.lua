@@ -24,7 +24,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "barbarian", -- deeper cut of the shelf: buyable only once the barbarian gate is cleared
-    unlockLevel = 4,
+    unlockLevel = 5,
     traits = { "trait_blood_fever" },
     -- the tally banks its own Power per corpse; this is only the apron
     bonus = { defense = 1 },

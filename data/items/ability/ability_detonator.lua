@@ -21,8 +21,8 @@ return {
     type = "ability",
     tags = { "utility" },
     class = "saboteur",
-    price = 165,
-    unlockLevel = 1,
+    price = 430,
+    unlockLevel = 8,
     activeAbility = {
         target = "self",
         range = 0,

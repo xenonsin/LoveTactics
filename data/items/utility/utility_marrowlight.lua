@@ -64,7 +64,7 @@ return {
     -- survives the recut): models/balance.lua reads it as the power level, and this sits at the top of
     -- the ladder because that is what it is. The depth is the derived half -- `. drop-tier` puts it at
     -- 6 off a grade of 11.5, and that is the number here rather than a guess.
-    unlockLevel = 10,
+    unlockLevel = 13,
     traits = { "trait_grave_cold", "trait_bone_knit" },
     -- AND IT IS DRAWN. The bearer's own board token, composed again in bone with a skull struck over it
     -- (Character.spriteOf resolves `<sprite>_bone.png`; tools/char_compose.lua writes one beside every

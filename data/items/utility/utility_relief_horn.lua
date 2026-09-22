@@ -18,7 +18,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "knight",
-    unlockLevel = 4,
+    unlockLevel = 5,
     activeAbility = {
         target = "ally",
         range = 1,

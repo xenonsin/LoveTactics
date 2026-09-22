@@ -31,8 +31,8 @@ return {
     -- the catalogue's own highest rung, so one item three rungs above everything else stretched the
     -- line every other item's target sits on and quietly re-scaled all of them downward. A deep
     -- ability belongs at the deep end of the ladder that exists, not past it. Price is slot 8's band.
-    price = 740,
-    unlockLevel = 15,
+    price = 255,
+    unlockLevel = 4,
     activeAbility = {
         target = "enemy",
         range = 2,

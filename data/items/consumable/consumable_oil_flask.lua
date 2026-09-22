@@ -14,8 +14,8 @@ return {
     type = "consumable",
     tags = { "oil" },
     class = "alchemist",
-    price = 230,
-    unlockLevel = 11,
+    price = 85,
+    unlockLevel = 3,
     activeAbility = {
         target = "tile", -- thrown and bursts around the point, like the Acid Bomb
         allowOccupied = true,

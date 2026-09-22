@@ -29,7 +29,7 @@ return {
     tags = { "longbow", "pierce", "physical", "ranged" },
     hands = 2,
     class = "hunter",
-    unlockLevel = 14,
+    unlockLevel = 15,
     activeAbility = {
         target = "enemy",
         range = 5,

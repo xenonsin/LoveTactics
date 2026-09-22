@@ -15,8 +15,8 @@ return {
     type = "consumable",
     tags = { "acid" },
     class = "bombardier", -- deeper cut of the shelf: buyable only once the bombardier gate is cleared
-    price = 295,
-    unlockLevel = 15,
+    price = 260,
+    unlockLevel = 13,
     activeAbility = {
         target = "tile", -- thrown at a foe and bursts around it, like Fireball
         allowOccupied = true,

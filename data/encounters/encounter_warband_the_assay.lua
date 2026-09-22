@@ -11,7 +11,7 @@ return {
     name = "The Assay",
     kind = "combat",
     weight = 3,
-    minDay = 4,
+    depth = 2,
     composition = function(ctx)
         local list = {
             "character_mammonite",   -- payoff: output priced in coin, and it is holding yours
@@ -23,7 +23,7 @@ return {
         -- Arena.clampComposition keeps one of every DISTINCT id before it trims anything, so a fifth
         -- distinct body is not filler at all -- it walks straight past Arena.SKIRMISH_CAP and opens a
         -- five-body skirmish (tests/skirmish_spec.lua catches exactly this).
-        for _ = 1, math.floor((ctx.day or 1) / 15) do list[#list + 1] = "character_bandit_chief" end
+        for _ = 1, math.floor((ctx.depth or 1) / 6) do list[#list + 1] = "character_bandit_chief" end
         return list
     end,
 }

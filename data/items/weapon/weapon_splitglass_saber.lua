@@ -25,7 +25,7 @@ return {
     hands = 1,
     traits = { "trait_splitglass_parry" },
     class = "knight",
-    unlockLevel = 6,
+    unlockLevel = 9,
     activeAbility = {
         target = "enemy",
         range = 1,
@@ -33,7 +33,7 @@ return {
         cost = { stat = "stamina", amount = 8 },
         -- Under an iron sword's: this one answers with a cut AND a ward, so it gives up Power for the
         -- half of the reflex the others do not get.
-        damage = Curve.ramp(10, 20),
+        damage = Curve.ramp(12, 22),
         effect = function(fx)
             fx.damage(fx.target)
         end,

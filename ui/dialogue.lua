@@ -11,7 +11,7 @@
 --   local dlg = Dialogue.new(conversationDef, function() ...scene over... end)
 --   dlg:update(dt); dlg:draw()
 --   dlg:mousemoved(x, y); dlg:mousepressed(x, y, button); dlg:mousereleased(x, y, button)
---   dlg:keypressed(key); dlg:gamepadpressed(joystick, button)
+--   dlg:keypressed(key, scancode, isrepeat); dlg:gamepadpressed(joystick, button)
 --
 -- Lazy fonts (newed in :new, never at require-time) keep it load-safe under tests/ui_load_spec.
 
@@ -593,7 +593,23 @@ end
 -- Input
 -- ---------------------------------------------------------------------------
 
-function Dialogue:keypressed(key)
+-- A HELD KEY IS ONE PRESS, NOT A BURST OF THEM.
+--
+-- LOVE repeats `keypressed` at the OS rate for as long as a key is down, and main.lua forwards those
+-- repeats here with everything else. Nothing told them apart from real presses, so the key that OPENS a
+-- scene ran straight on into it: Enter walks into the card the coach bubble is pointing at -- wearing an
+-- "Enter" cap that promises exactly that -- the house opens its one-time greeting, and the repeats of
+-- that same physical press confirm their way through it. Measured on the Undercroft: twelve repeats
+-- spend the greeting, four more spend the counter scene, and the next one answers the desk. Half a
+-- second of holding costs a scene that never plays again -- models/vendor_visit.lua records the visit
+-- BEFORE the greeting plays, by design, so there is nothing left to replay.
+--
+-- Dropped for every key rather than only the confirming ones. A choice list is four options tall and a
+-- line is one keypress long; there is nothing in a scene a held key should be walking.
+--
+-- The pad needs no such guard: a gamepad button fires once and LOVE repeats nothing.
+function Dialogue:keypressed(key, _, isrepeat)
+    if isrepeat then return end
     if key == "escape" then
         self:finish()
     elseif key == "up" or key == "w" then

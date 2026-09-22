@@ -10,7 +10,7 @@ return {
     sprite = "assets/items/leather.png",
     type = "armor",
     class = "rogue",
-    unlockLevel = 6,
+    unlockLevel = 1,
     -- Medium tier: modest bulk, one square slower. Defense is the per-level table (levels 0..10) the forge
     -- steps up; the resists and the movement penalty are flat single numbers, which never scale -- what
     -- boiled hide turns aside is what it is, and the forge sells the bulk (models/curve.lua).

@@ -28,8 +28,8 @@ return {
     type = "ability",
     tags = { "holy", "magical" },
     class = "exorcist",
-    price = 740,
-    unlockLevel = 15,
+    price = 650,
+    unlockLevel = 13,
     activeAbility = {
         target = "self",
         range = 0,      -- a self-cast offers no reach to choose

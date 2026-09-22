@@ -14,7 +14,14 @@ return {
     name = "The Second Draught",
     kind = "combat",
     weight = 4,
-    minDay = 2,
+    -- NO DEPTH GATE: ITS CIRCLE IS ITS PLACEMENT. The condition below locks this to one ground, and a
+    -- circle owns a fixed stratum -- so a depth on top of that is a second opinion about where it goes,
+    -- and it disagrees the moment the shuffle deals that circle at another depth (Descent.sinOrder).
+    -- It also gated Lust's own elites off Lust's own floors: converted from the retired calendar they
+    -- asked for floors three and four, and Lust owns one and two.
+    --
+    -- Which of a circle's floors a thing bills on is Descent.SINS' `elites` for the standing threat, and
+    -- `rung` for anything an author wants split across the approach and the seat.
     condition = function(ctx) return ctx.biome == "desert" end,
     -- SMALLER THAN ITS SEVEN SIBLINGS, AND MEASURED RATHER THAN GUESSED. At a lead plus two-to-three
     -- beaters this stop ran 54 unit-turns against tests/skirmish_spec.lua's budget of 22 -- the worst
@@ -28,8 +35,13 @@ return {
     -- So the pack is three at its widest and the healer is the one you have to reach. That is also the
     -- better reading of the stop: what makes this dangerous is the thing keeping the others standing.
     composition = function(ctx)
-        local list = { "character_apothecary" }
-        for _ = 1, 1 + math.floor((ctx.day or 1) / 20) do
+        -- TWO CHEMISTS AND A LINE THAT GROWS WITH THE STACK. An apothecary and one alchemist rated
+        -- 201% of the company on floor eleven -- past Muster.WALK_OVER, so the game offered to resolve
+        -- Envy's own ordinary traffic without a board, which tests/descent_spec.lua forbids a floor to
+        -- offer. The old `depth / 8` was `day / 20` converted, and twenty days of a forty-day campaign
+        -- is half of it; a fifth of fifteen floors is three, so the ramp had lost most of its climb.
+        local list = { "character_apothecary", "character_apothecary" }
+        for _ = 1, 1 + math.floor((ctx.depth or 1) / 3) do
             list[#list + 1] = "character_alchemist"
         end
         return list

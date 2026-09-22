@@ -13,7 +13,7 @@ return {
     type = "ability",
     tags = { "slash", "physical" },
     class = "fighter",
-    price = 495,
+    price = 520,
     unlockLevel = 10,
     activeAbility = {
         target = "tile",       -- aim an adjacent tile: it sets the facing the arc sweeps

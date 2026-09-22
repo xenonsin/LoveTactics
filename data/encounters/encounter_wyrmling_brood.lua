@@ -12,10 +12,14 @@ return {
     name = "Wyrmling Brood",
     kind = "combat",
     weight = 3,
-    minDay = 6, -- a brood is not roadside texture; it wants a party that can spread out
+    depth = 3, -- a brood is not roadside texture; it wants a party that can spread out
+    -- LOCKED TO THE WOOD, which is the circle-lock rule arriving rather than a retune: humans
+    -- float to every floor and everything else belongs to exactly one circle. This was shared
+    -- road stock on all fifteen, and the beast band is Gluttony's identity now.
+    condition = function(ctx) return ctx.biome == "forest" end,
     composition = function(ctx)
         local list = {}
-        for _ = 1, 3 + math.floor((ctx.day or 1) / 16) do
+        for _ = 1, 3 + math.floor((ctx.depth or 1) / 6) do
             list[#list + 1] = "character_wyrmling"
         end
         return list

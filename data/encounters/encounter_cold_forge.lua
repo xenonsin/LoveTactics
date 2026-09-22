@@ -21,7 +21,7 @@
 -- somebody walked in wearing, so the boon is aimed at a kit the player has already committed to rather
 -- than at the pile back home.
 --
--- `minDay = 2` for the Weeping Stone's reason (models/descent.lua's guaranteeKinds): on floor one every
+-- `depth = 2` for the Weeping Stone's reason (models/descent.lua's guaranteeKinds): on floor one every
 -- piece is at +0 and the rungs all look alike, and by floor two the company has a favourite. Weighted
 -- like the Reliquary -- an uncommon find, cut further on a descent floor by Descent.TEXTURE_SCALE, so a
 -- run meets one or two of these and never counts on it.
@@ -29,5 +29,10 @@ return {
     name = "The Cold Forge",
     kind = "anvil",
     weight = 2,
-    minDay = 2,
+    -- TWO, AND THE CONVERSION FROM DAYS GOT IT WRONG ONCE. The old gate was `minDay = 2`, and the
+    -- mechanical reading of that is floor one -- floor one borrowed day two, so a day-two gate admitted
+    -- it there. What the paragraph above actually asks for is the floor AFTER the one where every piece
+    -- is still at +0, which is floor two. Where a blueprint states its intent in words, the words are the
+    -- authority and the arithmetic is not.
+    depth = 2,
 }

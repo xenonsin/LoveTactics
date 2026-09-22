@@ -41,8 +41,8 @@ return {
     type = "ability",
     tags = { "impact" },
     class = "fighter",
-    price = 740,
-    unlockLevel = 15,
+    price = 650,
+    unlockLevel = 13,
     activeAbility = {
         target = "self",
         range = 0,

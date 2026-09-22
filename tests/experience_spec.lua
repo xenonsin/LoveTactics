@@ -103,7 +103,11 @@ return {
         -- desyncing the two ladders -- which is exactly what lengthening a circle into a stratum did.
         local run = Descent.new(nil, 1)
         run.floor = Descent.FLOORS
-        local wanted = Descent.floorLevel(run)
+        -- AGAINST THE WORLD, NOT AGAINST `floorLevel`. This read the per-fight minimum a set-piece is
+        -- grown from, which sits a couple of rungs under what the floor is actually minted at -- so the
+        -- case was asking a company to land short of the ground by exactly that much and calling the
+        -- difference a gap. Descent.dangerLevel is the ladder the company is racing.
+        local wanted = Descent.dangerLevel(run)
 
         -- What a body actually earns getting there: every floor of the descent at roughly six fights, in
         -- which it acts about seven times and takes a little over one kill. Deliberately spelled out in
@@ -339,4 +343,43 @@ return {
         assert(Experience.medianOf({ { xp = 90 }, { xp = 10 } }) == 10,
             "an even company takes the lower middle rather than failing to pick")
     end },
+    {
+        -- DESCENT.EXPECTEDLEVEL IS DERIVED, AND THIS IS WHAT MAKES IT DERIVED RATHER THAN AUTHORED.
+        --
+        -- The ramp is a straight line from Descent.OPENING_LEVEL to Descent.BOTTOM_DANGER because a
+        -- straight line is cheap to read and cheap to reason about. What it CLAIMS is that the
+        -- experience curve actually puts the company there -- and the curve is a throttled climb
+        -- (Experience.rewardScale), not a line. Those two agree today and there is no mechanism
+        -- keeping them in step, so the agreement is asserted here: re-cut STEP, the award, the fight
+        -- count or the stack and this reddens instead of leaving a constant quietly describing a
+        -- company nobody has.
+        name = "the expected-level ramp is where the curve actually lands the company",
+        fn = function()
+            local Descent = require("models.descent")
+            local Growth = require("models.growth")
+
+            -- The same units tests/reward_scale_spec simulates at, and the same eight fights a floor
+            -- the measured tours of real rolled floors give (see Descent.FLOOR_FIGHTS).
+            local perFight = 7 * Experience.PER_ACTION + 1.25 * Experience.PER_FELLING
+            local xp = Experience.totalFor(Descent.OPENING_LEVEL)
+
+            for floor = 1, Descent.FLOORS do
+                local reached = Experience.levelFor(xp)
+                local claimed = Descent.expectedLevel(floor)
+                assert(math.abs(reached - claimed) <= 1, string.format(
+                    "floor %d: the curve lands the company at %d and Descent.expectedLevel claims %d",
+                    floor, reached, claimed))
+                local stock = Growth.combatantLevel({}, Descent.dangerLevel({ floor = floor }))
+                for _ = 1, 8 do
+                    xp = xp + perFight * Experience.rewardScale(Experience.levelFor(xp), stock)
+                end
+            end
+
+            -- ...and it arrives. A ladder the company cannot finish is a ladder whose bottom floor is
+            -- priced for somebody who does not exist.
+            assert(Experience.levelFor(xp) >= Descent.BOTTOM_DANGER, string.format(
+                "one pass down the stack reaches level %d against a bottom of %d",
+                Experience.levelFor(xp), Descent.BOTTOM_DANGER))
+        end,
+    },
 }

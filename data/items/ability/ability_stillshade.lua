@@ -27,8 +27,8 @@ return {
     type = "ability",
     tags = { "dark" },
     class = "assassin", -- deeper cut of the shelf: buyable only once the assassin gate is cleared
-    price = 740,
-    unlockLevel = 15,
+    price = 610,
+    unlockLevel = 12,
     -- The exit price rides on the item, because a trait only ever attaches from a grid item (see
     -- Trait.attach). The spell leaves a promise on its caster; this is the thing that collects it a
     -- turn later, when the rogue finally steps out.

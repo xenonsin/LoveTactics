@@ -30,8 +30,8 @@ return {
     type = "ability",
     tags = { "fire", "explosive" },
     class = "bombardier", -- deeper cut of the shelf: buyable only once the bombardier gate is cleared
-    price = 660,
-    unlockLevel = 13,
+    price = 520,
+    unlockLevel = 10,
     activeAbility = {
         description = "Increase damage the longer it is held; past the safe window it bursts on the alchemist.",
         target = "tile",
@@ -46,7 +46,7 @@ return {
         -- `windup = { min = 0, max = 4 }` before the two fields folded into one -- same tell, said once.)
         windup = { min = 2, max = 6 },
         cost = { stat = "mana", amount = 12 },
-        damage = Curve.ramp(14, 24),
+        damage = Curve.ramp(12, 22),
         aoe = { radius = 1, shape = "square" },
         adjacencyScaling = { type = "consumable" },
         effect = function(fx)

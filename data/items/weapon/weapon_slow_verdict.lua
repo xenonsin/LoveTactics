@@ -23,7 +23,7 @@ return {
     tags = { "hammer", "impact", "physical", "melee" },
     hands = 2,
     class = "fighter",
-    unlockLevel = 12,
+    unlockLevel = 11,
     activeAbility = {
         target = "enemy",
         range = 1,

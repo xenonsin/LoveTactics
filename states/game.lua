@@ -14,7 +14,6 @@ local Overworld = require("models.overworld")
 local OverworldMap = require("ui.overworld_map")
 local Player = require("models.player")
 local Save = require("models.save")
-local Calendar = require("models.calendar") -- the campaign clock; a fresh expedition spends a day
 local Market = require("models.market") -- markOpened: what a class level crossing a rung put on the counter
 local Request = require("models.request") -- a day foraging for a house, with no story attached
 local Quest = require("models.quest")
@@ -397,7 +396,7 @@ local function fireRelics(event, extra)
         party = game.player and game.player.roster,
         grid = game.grid,
         state = game.relicState,
-        day = game.day,
+        depth = game.depth,
         notify = function(text) game:pushToast(text) end,
     }
     if extra then for k, v in pairs(extra) do ctx[k] = v end end
@@ -417,7 +416,7 @@ local function fireItems(event, extra)
         player = game.player,
         party = game.player and game.player.roster,
         grid = game.grid,
-        day = game.day,
+        depth = game.depth,
         notify = function(text) game:pushToast(text) end,
     }
     if extra then for k, v in pairs(extra) do ctx[k] = v end end
@@ -1236,7 +1235,9 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
     -- wrong the moment anything else can move it, and the failure would be a board that quietly
     -- re-scales halfway through itself -- the enemy level, the encounter pool and the loot band all
     -- hang off this one number.
-    game.day = (resume and resume.day) or Calendar.day(player)
+    -- HOW DEEP THIS BOARD IS, and it is the only clock there is. A campaign day used to stand here and
+    -- the rift borrowed one; both are deleted. A leg with no descent under it (Act 0) is depth one.
+    game.depth = (resume and resume.depth) or 1
     game.player = player -- kept so combat encounters can deploy the active party
     game.onComplete = onComplete
     -- Cleared with the rest of the leg's state: an `opensExit` end sets it and nothing else does, so a
@@ -1268,7 +1269,7 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
     if game.descent then
         -- Derived from the floor's own danger rather than from its depth (Descent.poolDay), so the
         -- borrowed day can never out-rank the ladder it is standing beside. See that function.
-        game.day = (resume and resume.day) or Descent.poolDay(game.descent)
+        game.depth = (resume and resume.depth) or Descent.depth(game.descent)
         -- THE COMPANY'S HIGH-WATER MARK, written here because this is the line where a floor descriptor
         -- stops being a plan and becomes a board somebody is standing on. Every way down arrives here --
         -- the Gate's stair, the landing's "go down", a floor that gives way -- so a fourth one cannot
@@ -1298,8 +1299,9 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
     -- `generalsStanding` rides on the ctx every composition function reads, so the finale can size
     -- itself by who is left alive without the state learning which quest is the finale
     -- (models/calendar.lua). Nil-safe everywhere else: no other blueprint asks for it.
-    local ctx = { day = game.day, biome = mp.biome, quest = quest,
-        generalsStanding = Calendar.generalsStanding(player) }
+    local ctx = { depth = game.depth, rung = Descent.floorWithinCircle(game.depth),
+        biome = mp.biome, quest = quest,
+        generalsStanding = Descent.generalsStanding(player) }
     -- A guaranteed encounter is either a bare id string or a table carrying a per-placement payload:
     -- `loot` for a treasure (the exact kit a chest hands over) or `conversation` for an `event` (which
     -- "Choose..." scene this stop plays). The payload rides onto the placed cell in
@@ -1425,7 +1427,7 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
             -- from being the same ground twice.
             seed = game.descent
                 and Seed.mix(game.descent.seed, Descent.depth(game.descent))
-                or Seed.mix(Seed.lap(player), game.day or 1, Seed.text(quest and quest.id or "")),
+                or Seed.mix(Seed.lap(player), game.depth or 1, Seed.text(quest and quest.id or "")),
         }
         -- ...AND EVERYTHING THE FLOOR ASKS FOR THAT IS NOT A STOP (Descent.FLOOR_FEATURE_KEYS).
         --
@@ -1691,7 +1693,7 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
         end
         game.player.activeRun = {
             questId = quest.id,
-            day = game.day,
+            depth = game.depth,
             trip = trip,
             tripDone = game.tripDone,
             -- Serialized by Save.snapshotRun and taken by Save.restoreRun BEFORE it tries Quest.get,
@@ -1852,7 +1854,7 @@ function game:cellMuster(cell)
             def = { kind = "pack", composition = enc.composition }
         end
         cached = def and Muster.encounter(def, {
-            day = game.day,
+            depth = game.depth,
             enemyLevel = game.quest and game.quest.dangerLevel,
             quest = game.quest,
             floorLevel = game.quest and game.quest.floorLevel,
@@ -2005,7 +2007,8 @@ end
 
 
 -- Engaging an encounter. Combat kinds (combat / elite / objective) drop into the
--- battle arena; the non-combat kinds (town / treasure) keep the simple modal.
+-- battle arena; every non-combat kind below has a panel of its own, and the plain modal at the
+-- bottom is the fallback for a kind that has grown no branch yet.
 --
 -- `opts.errandAnswered` is set by the second call askErrand makes below, once a house's work has been
 -- said yes to. Nothing else passes it, and a re-entered tile asks again.
@@ -2466,10 +2469,10 @@ function game:openEncounter(cell, opts)
             -- the end" is a fact about the stop, and objectiveAt's fallback is allowed to come back empty.
             objectiveReward = kind == "objective"
                 and function() return game:previewObjectiveReward(objSpec) end or nil,
-            day = game.day,
+            depth = game.depth,
             -- Who is still standing when the last door opens; read only by the finale's composition
             -- (data/quests/quest_the_gate_below.lua) and nil-safe everywhere else.
-            generalsStanding = Calendar.generalsStanding(game.player),
+            generalsStanding = Descent.generalsStanding(game.player),
             -- What the defeat panel's button is called, and it has to name what the button DOES. It said
             -- "End the Run", which was accurate when a wipe ended everything and is now the one thing a
             -- wipe does not do: onLoss below drops the pack and wakes the company in the CITY with their
@@ -2887,7 +2890,7 @@ function game:openEncounter(cell, opts)
                             -- it, and the debut is alone on its ground; a quest that ever shares a
                             -- ground with others and wants a follow-up would be giving up the rest of
                             -- the day to have it, which is at least a decision the author can see.
-                            State.switch(require("states.game"), followUp, game.day, game.player,
+                            State.switch(require("states.game"), followUp, nil, game.player,
                                 function() State.switch(require("states.hub")) end)
                         elseif staying then
                             -- BACK TO THE GROUND. The day is not over -- the other ends are still out
@@ -3253,11 +3256,11 @@ function game:openEncounter(cell, opts)
                 encounter = cell.encounter,
                 biome = mp.biome,
                 quest = game.quest,
-                day = game.day,
+                depth = game.depth,
                 -- Who is still standing when the last door opens; read only by the finale's
                 -- composition and nil-safe everywhere else. Threaded onto the walk-off path as well as
                 -- the played one, or the two would build different fights from the same tile.
-                generalsStanding = Calendar.generalsStanding(game.player),
+                generalsStanding = Descent.generalsStanding(game.player),
                 floorLevel = game.quest and game.quest.floorLevel or nil,
                 -- Threaded here as well as onto the played path, for the reason `generalsStanding`
                 -- above is: the walk-off must settle the fight that was standing on the tile.
@@ -3325,7 +3328,7 @@ function game:openEncounter(cell, opts)
             local spoils = EncounterBattle.spoils({
                 encounter = cell.encounter,
                 enemyUnits = built.enemyUnits,
-                day = game.day,
+                depth = game.depth,
                 -- The same depth the played fight is paid by, or a walked-off stop would be worth a
                 -- different amount from the one the player could have stood in.
                 floorLevel = game.quest and game.quest.floorLevel or nil,
@@ -3453,7 +3456,7 @@ function game:openEncounter(cell, opts)
         if not enc.loot and game.quest and game.quest.floorLevel then
             enc.loot = Spoils.cache({
                 floorLevel = game.quest.floorLevel,
-                day = game.day,
+                depth = game.depth,
                 -- ...so a piece the company already holds steps aside for one it does not, the same
                 -- courtesy a body's authored list gets (docs/drops.md).
                 player = game.player,
@@ -3596,7 +3599,7 @@ function game:openEncounter(cell, opts)
         local def = enc.id and EncounterModel.get(enc.id)
         if not enc.offer then
             enc.offer = Relic.slate({
-                day = game.day,
+                depth = game.depth,
                 sin = game.quest and game.quest.sin, -- this circle's shelf leans toward its own
                 tier = enc.tier or (def and def.tier) or nil,
             }, 3)
@@ -3645,11 +3648,11 @@ function game:openEncounter(cell, opts)
         -- cannot reroll the gamble. That is the whole of what makes it a wager.
         local enc = cell.encounter
         enc.gamble = enc.gamble or Relic.roll(Relic.pool({
-            day = game.day,
+            depth = game.depth,
             sin = game.quest and game.quest.sin,
         }))
         local id = enc.gamble
-        local price = 20 + game.day * 8
+        local price = 20 + game.depth * 8
         local held = Relic.held(game.relicState)
 
         -- THE GAMBLE: pay, and take a relic you did not get to see. Cheaper than the Merchant's named
@@ -3706,7 +3709,7 @@ function game:openEncounter(cell, opts)
                 local t = (Relic.get(gid) or {}).tier or "common"
                 if t == "rare" or (t == "uncommon" and best ~= "rare") then best = t end
             end
-            local slate = Relic.slate({ day = game.day, tier = up[best],
+            local slate = Relic.slate({ depth = game.depth, tier = up[best],
                 sin = game.quest and game.quest.sin }, 3)
             local offer = {}
             for _, sid in ipairs(slate) do
@@ -3791,7 +3794,7 @@ function game:openEncounter(cell, opts)
     -- an edit in both places.
     if kind == "weeping_stone" then
         local enc = cell.encounter
-        enc.offer = enc.offer or Relic.slate({ day = game.day, tier = "rare",
+        enc.offer = enc.offer or Relic.slate({ depth = game.depth, tier = "rare",
             sin = game.quest and game.quest.sin }, 1)
         local id = enc.offer[1]
         if not id then cell.cleared = true; saveRun(); return end
@@ -3895,7 +3898,7 @@ function game:openEncounter(cell, opts)
             -- down it was met. Both numbers are derived from the floor now rather than named twice:
             -- the band off the day that floor borrows, the depth off the level it fights at.
             local deep = { floor = math.max(1, Descent.deepest(game.player)) }
-            for _, id in ipairs(Spoils.shelf({ day = Descent.poolDay(deep),
+            for _, id in ipairs(Spoils.shelf({ depth = Descent.depth(deep),
                 floorLevel = Descent.floorLevel(deep), count = 3 })) do
                 -- CLAMPED TO WHAT THE RIFT MAY ASK (Spoils.askingPrice). One purse now, so an
                 -- unclamped shelf price down here would be weighed against a permanent upgrade --
@@ -4229,7 +4232,7 @@ function game:openEncounter(cell, opts)
         -- (`cell.encounter.breach` in the battle's onWin). Beating what came up the stair is beating
         -- the Crown, wherever it was met.
         if Descent.isBreached(game.player) then
-            local standing = Calendar.generalsStanding(game.player)
+            local standing = Descent.generalsStanding(game.player)
             game.activePanel = Choice.new({
                 title = "The Stair",
                 prompt = "The way up is full of them. " ..
@@ -4301,7 +4304,7 @@ function game:openEncounter(cell, opts)
                     Descent.retreat(run, game.player)
                     Player.save()
                     State.switch(require("states.game"),
-                        Descent.floorQuest(run, game.player), game.day, game.player)
+                        Descent.floorQuest(run, game.player), nil, game.player)
                 end,
             }
         end
@@ -4484,7 +4487,7 @@ function game:openEncounter(cell, opts)
                         Descent.keepFloor(game.player, depth, game.grid:snapshot())
                         Descent.advance(run, game.player)
                         State.switch(require("states.game"), Descent.floorQuest(run, game.player),
-                            game.day, game.player)
+                            nil, game.player)
                     end,
                 },
                 {
@@ -4619,7 +4622,7 @@ function game:openEncounter(cell, opts)
                       Descent.fall(game.descent, game.player)
                       Player.save()
                       State.switch(require("states.game"),
-                          Descent.floorQuest(game.descent, game.player), game.day, game.player)
+                          Descent.floorQuest(game.descent, game.player), nil, game.player)
                   end },
                 { label = "Step around it", desc = "Finish the floor and take the stair.",
                   accent = { 0.62, 0.72, 0.86 },
@@ -4661,7 +4664,7 @@ function game:openEncounter(cell, opts)
             cell.cleared = true
             game.activePanel = nil
             game:resolveNonCombat(cell)
-            saveRun() -- persist the cleared stop (a town) so a resume doesn't re-offer it
+            saveRun() -- persist the cleared stop so a resume doesn't re-offer it
         end,
         onClose = function() game.activePanel = nil end,
     })
@@ -4801,9 +4804,10 @@ function game:restStudy()
     end
 end
 
--- Apply the outcome of a generic non-combat modal (a town) once the player confirms it. Treasure, rest
--- and relic caches all have their own panels now (see openEncounter); this is the fallback for the plain
--- "Enter/Resolve" stops that hand over nothing mechanical.
+-- Apply the outcome of the generic non-combat modal once the player confirms it. Every stop the board
+-- can deal has a panel of its own now (see openEncounter) -- the waystation was the last one routed
+-- here and it is gone -- so this is reached only by a kind that has grown no branch yet, and it hands
+-- over nothing mechanical.
 function game:resolveNonCombat(cell)
     local enc = cell.encounter
     if enc.kind == "rest" then game:restHeal() end -- back-compat: any path still routing rest here heals
@@ -5103,7 +5107,7 @@ end
 function game:runTitle()
     local name = (game.quest and game.quest.name) or "Quest"
     if not (game.quest and game.quest.trip) then return name end
-    return name .. "  ·  day " .. tostring(game.day or 1)
+    return name .. "  ·  floor " .. tostring(game.depth or 1)
 end
 
 -- THE CHECKLIST: what the houses have posted on this ground, and what is still standing.

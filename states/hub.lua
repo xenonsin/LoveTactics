@@ -18,13 +18,24 @@
 -- same mark, and mending is a door you walk into rather than a doorstep you cross -- free if you rest
 -- it off, paid if you want it today. See models/wound.lua's ward block for why that is not the Inn.)
 --
--- SO A FRESH SAVE ARRIVES AT TWO DOORS -- the Armory and the stair -- and the first visit is coached
--- through one of them: go down (INTRO_STAGES below).
+-- THE PLAZA COACHES NOTHING, and that is the whole of the rule (2026-09-21). There were bubbles on
+-- this board -- one on the first morning's door, and one on every room the city grew afterwards,
+-- each with every other card refused until it had been walked into -- and they are cut. A card on a
+-- plaza of nine is a plate with its name on it and a sentence inside it; pointing at one and turning
+-- the other eight down teaches the player that the city is a corridor, on the one screen whose whole
+-- job is to be a place you choose in. The stair is named in Rowan's own words on the way in
+-- (conversation_prologue_arrival), the rooms say what they are for once you are in them, and nothing
+-- out here presses anything on anybody.
 --
--- ...AND EVERY DOOR AFTER THOSE THREE IS COACHED THE SAME WAY, on the morning it appears -- the same
--- bubble on the card, wearing the blueprint's own sentence about what the room is for, and every other
--- card refused until it has been walked into. A card that quietly stops being locked is a feature
--- delivered by not being mentioned. See `coachNextDoor` and models/building.lua's seenDoors block.
+-- WHAT SURVIVES IS INSIDE THE ROOMS. `player.hubIntro` still runs "arrival" -> "ward" -> nil, and the
+-- Ward stage is now purely a ledger: it draws nothing on the plaza and refuses no door, it just tells
+-- the mending room that this is the first morning (see coachingMend, teachWounds and
+-- ui/panels/ward.lua). A lesson taught where its answer lives is a different thing from a rail across
+-- the board that gets you there.
+--
+-- THE LEDGER WENT WITH THE BUBBLES. `player.seenDoors` -- which doors had been announced -- existed
+-- only to stop a grown door being coached twice, and models/building.lua's block is gone with the
+-- coach. An old save may still carry the field; nothing reads it.
 
 local State = require("states")
 local Player = require("models.player")
@@ -32,8 +43,7 @@ local Building = require("models.building")
 local Sprite = require("models.sprite")
 local BuildingMap = require("ui.building_map")
 local BurgerButton = require("ui.burger_button")
-local CoachBubble = require("ui.coach_bubble")
-local TutorialNote = require("ui.panels.tutorial_note") -- ...and the window that says what a wound IS
+local TutorialNote = require("ui.panels.tutorial_note") -- the window that says what a wound IS
 local Conversation = require("models.conversation")
 local Class = require("models.class")
 local Item = require("models.item")
@@ -50,11 +60,8 @@ local Theme = require("ui.theme")
 local CountMeter = require("ui.count_meter") -- Iselle's tally; parked, kept wired -- see the draw
 local Descent = require("models.descent")    -- ...and what it reads, plus the mark that reveals it
 
--- The plaza's coaching words, as a hint bag rather than strings in this file
--- (data/conversations/tutorial/conversation_tutorial_city.lua; models/locale.lua's Locale.coach).
-local CITY = "conversation_tutorial_city"
--- ...and the WINDOWS' words, which are a different bag because they are a different kind of teaching:
--- a bubble points at a control, a window explains a feature (ui/panels/tutorial_note.lua).
+-- The WINDOWS' words. (The plaza's own hint bag is no longer read from here -- nothing out here
+-- speaks; see the header. The Ward panel still fetches its two row bubbles from it itself.)
 local NOTES = "conversation_tutorial_notes"
 
 local hub = {}
@@ -78,6 +85,7 @@ local countMeter = CountMeter.new()
 
 local map           -- BuildingMap widget
 local mapOpts       -- ...and the options it was built with, so the debug mint can rebuild it
+local openDoors = {} -- the plaza as that map was laid out: id -> true per unlocked card. See refreshCity
 local background    -- love Image, or a path string if the asset is missing
 local activePanel   -- the open pop-up panel, or nil
 local burger        -- BurgerButton widget: the mouse's way into the system menu
@@ -104,114 +112,54 @@ local notice
 -- system menu, so backing out sounds the same on mouse, keyboard and pad. Silent until the file
 -- exists (models/sound.lua). The post-quest Advancement overlay does NOT use this: its dismissal is a
 -- "continue" past a reward, not a cancel, and it rings its own cue as it opens.
+-- Assigned below, once the door queue it feeds exists. Forward-declared because the way out of a panel
+-- is written before it: see refreshCity.
+local refreshCity
+
 local function dismissPanel()
     Sound.play("ui.cancel")
     activePanel = nil
+    -- STEPPING BACK ONTO THE SQUARE RE-READS THE SQUARE. A room can open a door from the inside now --
+    -- declaring a class in the Roll puts the house that teaches it on the plaza (models/offer.lua's
+    -- `declared` gate) -- and the Roll is a tab of the Armory, a panel drawn over this very city. The
+    -- map's locked flags are decided when it is built, so without this the card the player just earned
+    -- would not be there when they closed the panel they earned it in.
+    refreshCity()
 end
 
 -- Where the burger sits. Top-LEFT: the title is centered and the right-hand side of the city is where
 -- the eye goes for buildings, so the left corner is the one piece of chrome nothing else wants.
 local BURGER_X, BURGER_Y = 18, 18
 
--- THE FIRST-VISIT TUTORIAL, WHICH IS ONE DOOR AND IT ANSWERS A WOUND.
+-- THE FIRST MORNING, WHICH IS A LEDGER AND NOT A LESSON ANY MORE.
 --
--- `player.hubIntro` runs "arrival" -> "ward" -> nil. The arrival is the guard's scene played over the
--- city; the ward is a bubble on the Cathedral with every other card refused until the company's one
--- hurt body has been seen to.
+-- `player.hubIntro` runs "arrival" -> "ward" -> nil. The arrival is Rowan's scene, played over the city
+-- the player is now looking at. The "ward" stage after it used to be a bubble on the Cathedral with
+-- every other card refused until the company's one hurt body had been seen to, and it is neither of
+-- those things now (see the header). What is left of it is the FACT: the company walks out of Act 0
+-- carrying Rowan's wound, and while that wound is unattended this is still the first morning -- which
+-- is the one thing the mending room needs in order to teach itself (teachWounds, and the row bubble in
+-- ui/panels/ward.lua).
 --
---   ward    the Cathedral, because the company walks out of Act 0 carrying Rowan's wound. Spent by the
---           DEED and not by the door (see INTRO_STAGES below), and the last thing the first morning
---           asks for -- the Rift had a stage of its own after this one and it is parked.
+-- IT IS SPENT BY THE DEED, NOT BY A DOOR, and that rule outlived the bubble it was written for: a flag
+-- cleared by opening a card would mark the lesson landed for somebody who walked in, looked around and
+-- walked out again. The deed is "nobody is carrying a wound nobody has seen to" (mendingDone), which
+-- either row of the Ward satisfies -- the bone set for gold, or the body laid up for nothing -- and
+-- resting has no purse test and no gate (models/wound.lua), so this can never strand a save.
 --
--- THE STAIR IS NO LONGER COACHED FROM HERE. Rowan sends them to the Rift by name in the arrival scene,
--- and the plaza is standing open on two cards; a bubble on the second of them was the same instruction
--- said twice. The stair's OWN coaching is untouched -- it is a bubble on the descend row on the far
--- side of that door (states/gate.lua), which is where there is actually something to learn.
---
--- ONE DOOR, AND THE CITY IS ARRANGED TO AGREE WITH IT. A tutorial that coaches one card while eight
--- others stand open is a tutorial arguing with the board it is drawn on, so the plaza opens on TWO cards
--- -- the Armory and the stair -- and every other room arrives on the deed that gives it a job
--- (models/building.lua's gate block). The Market and the Houses were the last two to move: both were
--- standing open on the first morning, and both now wait for the first descent, so the one screen a new
--- player is looking at has the hole in the ground and nothing else worth pressing.
---
--- WHAT THE SECOND CARD WAS, WHILE IT HAD A STAGE. It was the Quest Board, then the Bounty Board, then
--- the Rift, and each move was made because the card before it had been deleted out from under the
--- coach -- which is the one failure this seam keeps producing and the reason its history is kept here
--- rather than thrown away with the stage. (The Bounty Board is parked again as of 2026-09-18: its seven
--- postings are the seven quests models/errand.lua already seats on floors of the rift, so taking one up
--- in town handed over that house's companion without a floor being walked. See docs/bounties.md.) The
--- Rift inherited it last and lost it to a quieter objection than a deleted card: nothing was wrong with
--- the bubble except that `conversation_prologue_arrival` had just said the same thing better.
---
--- THERE WAS A `hire` STAGE BEFORE THIS ONE, and it coached the Crossing: the sponsor's staked voucher,
--- a rigged first pull that dealt Saber, and a lesson in what a pull looked like. The Crossing is retired
--- and there is no pull to teach, so the arrival hands straight to the Ward -- and the companion who
--- fills the expedition is met where she belongs, standing on floor one (models/descent.lua's
--- Descent.SCRIPTED_COMPANION, which is Gyeom; the company already holds three walking out of Act 0, and
--- Saber is dealt by the roll like the rest). The old stage is why
--- `stage.hire` is still read below: a stage that names a hire is spent by the body JOINING rather than
--- by the door being opened, and the rule is kept for whatever is coached that way next.
---
---
--- The words are a hint bag (data/conversations/tutorial/conversation_tutorial_city.lua) rather than a
--- string here, so the one instruction the first morning gives is stamped and translated like every
--- other line the tutorial speaks. A stage names the LINE; hub.draw resolves it at draw time, which is
--- also what lets its {select} re-read the device in the player's hands mid-visit.
-local INTRO_STAGES = {
-    -- THE MENDING, AND THAT IS THE WHOLE OF IT. The player arrives carrying Rowan's wound off the Champion
-    -- (models/combat.lua's Combat.spendScriptedFell), so the first thing the city can usefully say is where
-    -- that gets dealt with -- and the room is where Xin is, so the coached door hands over a companion
-    -- as well as a lesson. The stair was coached second for a pass and is not any more; a company that
-    -- is short a body and does not know there was anything to do about it is the failure this stage
-    -- exists to prevent, and it prevents it whether or not anything points at the hole afterwards.
-    --
-    -- IT IS THE CATHEDRAL'S CARD NOW, and that is the fold rather than a change of mind: the Inn stood on
-    -- the plaza as a door of its own, and it is a line on that house's desk (data/buildings/cathedral.lua).
-    -- The house is standing open on this one morning for exactly that room and nothing else -- its shelf
-    -- waits on a priest level nobody has -- so the card the coach points at still opens onto the mending
-    -- and only the mending, which is what the bubble promises.
-    --
-    -- It is also the only order the wound ITSELF allows. That room exists because somebody is hurt
-    -- (`wound`), and the wound now survives the walk into town -- so on this one morning the city has a
-    -- door that is both new and urgent, which is exactly what the coach grammar is for.
-    --
-    -- AND IT IS SPENT BY THE DEED, NOT BY THE DOOR. `mend` says so, and it is the same field shape the
-    -- retired hall stage used (`hire`, still read below) for the same reason: opening a door is not
-    -- learning what is behind it. This stage held for one pass on the press alone, and what that
-    -- bought was a player who walked into the Cathedral, met Xin, said "nothing today" at the desk and
-    -- walked back out into a city that thought the lesson had landed -- carrying the wound, with the
-    -- one room that answers it now just another card among nine.
-    --
-    -- The deed is "nobody is carrying a wound nobody has seen to" (mendingDone), which either row of
-    -- the Inn satisfies: the bone set for gold, or the body laid up for nothing. It is always
-    -- reachable -- resting has no purse test and no gate (models/wound.lua) -- so this can hold the
-    -- stair without ever being a lock, which is the only condition under which a stage may be spent
-    -- on a deed at all.
-    --
-    -- THE DEED IS WIDER THAN THE INSTRUCTION, ON PURPOSE. The bubble inside the room names ONE row --
-    -- the paid one, because resting benches Rowan for the descent the city is about to ask four bodies
-    -- for (ui/panels/ward.lua's header argues it) -- and this clears on either. That gap is the whole
-    -- difference between a recommendation and a rail: a player who reads the window, disagrees, and
-    -- rests has understood the room better than one who pressed the ringed row, and a stage that held
-    -- the plaza against them would be punishing the only evidence that the lesson landed.
-    ward = {
-        building = "cathedral",
-        line = "ward_card",
-        mend = true,
-    },
-    -- THE RIFT'S OWN STAGE IS PARKED (2026-09-21). It was `coach`, and it held the plaza on the stair
-    -- after the mending landed. What it coached, the arrival scene has already said in Rowan's own
-    -- words one beat earlier -- she names the Rift and points at it -- so the bubble was a second
-    -- telling of the same instruction, over a board whose only other open card is the Armory. The line
-    -- is kept in the bag (`rift_card`) rather than cut, on the reasoning that kept it the last time it
-    -- was retired: it is stamped and translated, and the stage costs three lines to put back.
-}
+-- WHAT WAS HERE AND IS GONE. `INTRO_STAGES` was a table of coached cards, and three stages passed
+-- through it: `hire` (the Crossing's staked pull, retired with the Crossing), the stair (retired
+-- because the arrival scene names the Rift one beat earlier, in Rowan's own words) and the Cathedral
+-- (cut with every other plaza bubble). Their lines are still in the hint bag, stamped and translated,
+-- against the day something out here earns the right to speak again
+-- (data/conversations/tutorial/conversation_tutorial_city.lua).
 
--- The stage the intro is on, or nil in free play -- which is every visit after the first, and every
--- visit at all on a loaded save.
-local function introStage()
-    return hub.player and INTRO_STAGES[hub.player.hubIntro] or nil
+-- IS THE WARD'S OWN COACHING IN FORCE? True only while the first morning's stage is unspent, which is
+-- exactly while somebody is still owed a mending. Handed to the room rather than drawn from here,
+-- because the thing being pointed at is a ROW inside a modal and only the modal knows where its rows
+-- landed.
+local function coachingMend()
+    return hub.player ~= nil and hub.player.hubIntro == "ward"
 end
 
 -- Is there still a wound nobody has seen to? The Ward stage's deed, read off the one predicate the
@@ -226,116 +174,41 @@ local function mendingDone()
     return #Wound.unattended(hub.player) == 0
 end
 
--- THE DOORS THE CITY HAS GROWN SINCE THE PLAYER LAST STOOD IN IT, and the one currently being coached.
---
--- `doorQueue` is filled once per hub entry from models/building.lua (board order, so a morning that
--- opened two of them coaches them in the order they are read); `coachedDoor` is the stage synthesized
--- for the one in hand. Both are rebuilt on every enter, so nothing here survives a visit it did not
--- belong to.
---
--- A GROWN DOOR IS COACHED EXACTLY AS THE FIRST VISIT'S TWO ARE, and nothing more. There was a pop-up
--- here for an afternoon -- a card naming the room, saying what it was for, with one button that armed
--- the bubble -- and it was wrong for a reason worth keeping written down: the city already HAS a grammar
--- for "press this and here is why", and it is a bubble pinned to the card. A modal in front of it is a
--- second thing to dismiss before reaching the first, it covers the very plate it is talking about, and
--- it made a new door a bigger event than the stair the whole game is about. So the sentence the pop-up
--- carried moved into the bubble, where the Crossing's has always been.
-local doorQueue = {}
-local coachedDoor  -- an INTRO_STAGES-shaped stage for a new door, or nil
-
--- A grown door's whole bubble, in the shape INTRO_STAGES writes by hand: the card's name with its
--- article normalized ("The Forge" -> "the Forge", "Cafe" -> "the Cafe", so a name already carrying one
--- does not get two), then the blueprint's own sentence saying what the room is for.
---
--- It is the {door} token of the `new_door` line, which is what puts the press in front of it -- which
--- is why it opens lowercase and carries no verb of its own.
---
--- THE NAME AND THE SENTENCE ARE STILL ENGLISH, and this is the one place in the tutorial where that is
--- true: both come off the building blueprint (data/buildings/*.lua), which the extraction pipeline does
--- not reach yet. The frame around them translates; the room's own words wait on blueprint extraction.
-local function doorText(b)
-    local bare = (b.name or "door"):gsub("^[Tt]he%s+", "")
-    local text = "the " .. bare .. "."
-    if b.description and b.description ~= "" then text = text .. " " .. b.description end
-    return text
-end
-
--- Whichever card the city is refusing every other door on behalf of: the first visit's stage, or a
--- newly grown door. One reader, so openPanel and hub.draw cannot disagree about which is in force.
---
--- The intro WINS while it is running, and it has to: it is coaching the hall and the stair, which are
--- two of the three doors a fresh save opens with -- and those three are seeded as already-shown
--- precisely so this queue is empty until the company comes back up from a floor (Building.seedSeen).
-local function coachedStage()
-    return introStage() or coachedDoor
-end
-
--- Put the keyboard/pad cursor on the card being coached. The bubble wears a key cap ("Enter", "A"), and
--- that cap is a promise about what the key does -- but the map's own selection starts wherever the board
--- put it, so the promised key activated some other card, the gate refused it, and the one instruction on
--- the screen did nothing. Called wherever a stage comes into force, and it is why hub.mousemoved stops
--- letting the pointer drag the selection while one is: the highlighted card and the coached card must be
--- the same card for as long as the bubble is up.
-local function focusCoachedCard()
-    local stage = coachedStage()
-    if stage and map then map:selectById(stage.building) end
-end
-
--- Take the next grown door off the queue and coach it: a bubble on its card, every other card refused
--- until it has been walked into.
---
--- Does nothing while the first visit is running, so the sponsor's two coached doors are never competing
--- with a third. The guard reads `hubIntro` itself rather than introStage(), because the intro has a
--- stage the table does not name: "arrival" is the two scenes playing over the city, and it would
--- otherwise read as free play.
---
--- Deliberately NOT guarded on `activePanel`. A bubble is drawn by hub.draw only when nothing is open
--- over the city, so a door coached while the post-quest summary is still up simply waits behind it --
--- which is the right order without needing a callback to sequence it.
-local function coachNextDoor()
-    if coachedDoor or (hub.player and hub.player.hubIntro) then return end
-    local b = table.remove(doorQueue, 1)
-    if not b then return end
-    coachedDoor = { building = b.id, line = "new_door", door = true, doorText = doorText(b) }
-    focusCoachedCard()
-end
-
--- The hotspot rect of the building this stage coaches, read off the live map, or nil. The coach bubble
--- anchors to this (ui/coach_bubble.lua).
-local function introBuildingRect(stage)
-    for _, b in ipairs(map and map.buildings or {}) do
-        if b.id == stage.building then
-            return { x = b.x, y = b.y, w = b.w, h = b.h }
-        end
+-- BUILD THE BOARD, and remember what stood on it. `openDoors` is the plaza as the live map was laid
+-- out -- id -> true for every card not locked -- and it is the only thing refreshCity can compare
+-- against: BuildingMap keeps the cards it was handed, not the gates behind them.
+local function buildMap()
+    local list = Building.list(hub.player)
+    openDoors = {}
+    for _, b in ipairs(list) do
+        if not b.locked then openDoors[b.id] = true end
     end
-    return nil
+    map = BuildingMap.new(list, mapOpts)
 end
 
--- Every OTHER card on the board, for the bubble to keep off (ui/coach_bubble.lua's `avoid`). The plaza
--- is nine plates with narrow gutters, so a bubble placed by preference alone lands on a neighbour and
--- covers a name -- and on this screen the names are the whole content. Handing it the cards lets it pick
--- the side that hides the least, which on a top-row card is the empty band above the ring.
-local function otherCardRects(stage)
-    local rects = {}
-    for _, b in ipairs(map and map.buildings or {}) do
-        if b.id ~= stage.building then
-            rects[#rects + 1] = { x = b.x, y = b.y, w = b.w, h = b.h }
-        end
+-- HAS THE CITY GROWN SINCE THE BOARD WAS LAID OUT, and if so lay it out again.
+--
+-- Every other door in the city opens on a deed done somewhere else -- underground, or on the walk home
+-- -- so a board built on entering the hub was built after everything that could change it. The Roll
+-- broke that: it is a tab of a panel drawn over this city, and the class declared in it opens that
+-- class's house (models/offer.lua's `declared` gate). A door earned inside a panel has to be able to
+-- appear on the board behind it.
+--
+-- REBUILT ONLY WHEN SOMETHING ACTUALLY OPENED, because BuildingMap.new starts a fresh selection and a
+-- board that re-seated the cursor every time a panel closed would be a control moving under the player's
+-- hand for no reason.
+refreshCity = function()
+    if not (map and hub.player) then return end
+    local grown = false
+    for _, b in ipairs(Building.list(hub.player)) do
+        if not b.locked and not openDoors[b.id] then grown = true; break end
     end
-    return rects
+    if not grown then return end
+
+    buildMap()
 end
 
 local function titleCase(s) return (s:gsub("^%l", string.upper)) end
-
--- IS THE INN'S OWN COACHING IN FORCE? True only while the first morning's Ward stage is unspent, which
--- (see INTRO_STAGES.ward) is exactly while somebody is still owed a mending. Handed to the room rather
--- than drawn from here, because the thing being pointed at is a ROW inside a modal and only the modal
--- knows where its rows landed -- the same division of labour the plaza's own bubble keeps with the
--- building map.
-local function coachingMend()
-    local stage = introStage()
-    return stage ~= nil and stage.mend == true
-end
 
 -- The stash filters the Armory (Loadout) panel offers: one chip per item type, weapon type and
 -- discipline PRESENT in the stash, so the strip only ever offers a cut that returns something rather
@@ -425,8 +298,8 @@ local function newPanel(moduleName, vendorId, title, onClose)
         -- tab to be read (Descent.autoUnlocked). The panel's own default is on, so this is the only place
         -- the city says otherwise.
         tactics = (moduleName ~= "party") or Descent.tacticsUnlocked(hub.player),
-        -- The Inn's rows wear the coach bubble on the one morning the city is holding the plaza until
-        -- one of them is pressed (INTRO_STAGES.ward). Every other panel ignores the field.
+        -- The Ward's rows wear a coach bubble on the one morning somebody is standing in front of them
+        -- not knowing a wound is a thing you go and answer. Every other panel ignores the field.
         coach = (moduleName == "ward") and coachingMend() or nil,
         -- THE HIRING HALL HANDS THE SCREEN OVER MID-VISIT. A pull opens a reveal
         -- (ui/panels/hire_reveal.lua) that owns the whole screen, and the hall goes back UNDER it
@@ -449,9 +322,6 @@ local function newPanel(moduleName, vendorId, title, onClose)
             end
             return nil
         end,
-        -- The tutorial's staked pull plays its beats in full. It is the only pull in the game that
-        -- cannot be skipped, and it is the one teaching what a pull looks like (INTRO_STAGES.hire).
-        hold = hub.player and hub.player.hubIntro == "hire",
         -- THE ROLL SENDS A BODY TO ITS TRAINER (ui/class_editor.lua): the house that teaches the class
         -- being read, with its desk already open.
         --
@@ -600,84 +470,24 @@ local function openSystemMenu()
     })
 end
 
--- Activation seam handed to the building map. In free play it opens the clicked building's panel,
--- playing a vendor's one-time greeting first (see launchVendor). While the first-visit tutorial is
--- running it refuses every door but the one the current stage coaches (INTRO_STAGES).
+-- Activation seam handed to the building map: it opens the clicked building's panel, playing a
+-- vendor's one-time greeting first (see launchVendor). EVERY card, every morning -- the first visit
+-- used to refuse all but the one the coach was pointing at, and that refusal went with the bubble
+-- (see the header).
 local function openPanel(building)
-    local stage = coachedStage()
-    if stage then
-        if building.id ~= stage.building then return end
-        -- A NEWLY GROWN DOOR IS SPENT BY BEING WALKED INTO, which is the same rule the hire stage below
-        -- keeps and for the same reason: the ledger records a door as SHOWN, and a lesson satisfied by
-        -- reading the bubble over it would mark the room learned by somebody who never saw inside it.
-        --
-        -- Recorded and saved here rather than on the panel's close, because two of these doors open a
-        -- whole SCREEN (the Markets) and never close a panel at all -- there is no later moment that
-        -- every door passes through.
-        if stage.door then
-            Building.markSeen(hub.player, building.id)
-            Player.save()
-            coachedDoor = nil
-            -- ...and through launchVendor, not launchPanel: every grown door but the Armory is a house
-            -- with a shopkeeper behind it, and their greeting and desk are the first thing that should
-            -- happen inside the room the player was just sent to (models/counter.lua).
-            launchVendor(building)
-            return
-        end
-        -- SPENT BY THE DEED, NOT BY THE DOOR. A stage that names a deed (`hire`, `mend`) is spent by
-        -- introAdvance when the deed lands, so a player who walks in, looks around and walks out is
-        -- coached back to the room rather than left in a city that thinks the lesson landed.
-        --
-        -- The branch below is what a stage with NO deed takes -- opening the door is the whole lesson,
-        -- which is how the Gate's own stage cleared while it had one. Nothing in the table names a deed-
-        -- less stage today (see INTRO_STAGES), and the rule is kept because a grown door is exactly
-        -- that shape and takes its own branch above only for the ledger it also writes.
-        if not (stage.hire or stage.mend) then
-            hub.player.hubIntro = nil
-        end
-        -- No scene between the COACH and the door. The flier was Rowan spotting the Colosseum's contract
-        -- ON the Quest Board -- a beat about a board that is retired (models/building.lua's RETIRED), so
-        -- playing it here would have her read a notice off a wall the city does not have. The guard said
-        -- everything this moment needs to say, and the sponsor is waiting on the other side of the door.
-        --
-        -- BUT THE ROOM'S OWN SCENE STILL PLAYS, so this goes through launchVendor like every other door
-        -- on the board. It called launchPanel directly while the only stage here was the hall's -- a
-        -- room with nothing to say on the way in -- and the Ward inheriting that path swallowed its
-        -- `intro` and the companion the scene `grants`: the one coached door that hands over a body
-        -- was the one door that skipped the code which hands one over. Xin simply never appeared.
-        -- The Gate is unaffected: it keeps neither `intro` nor `vendor`, so launchVendor is its
-        -- launchPanel.
-        launchVendor(building)
-        return
-    end
     launchVendor(building)
 end
 
--- Has the coached deed been done? Asked every frame while the intro is on a stage that names one --
--- `hire` (a body joining) or `mend` (a wound seen to). Cheap -- a walk of at most four bodies -- and
--- it is the only way this state can hear about either: both happen inside a panel, and a panel
--- reporting back up into whatever launched it would be a seam built for one lesson.
+-- HAS THE MENDING BEEN SEEN TO? Asked every frame while the first morning's flag is still up, because
+-- that is the only way this state can hear about it: the deed happens inside a panel, and a panel
+-- reporting back up into whatever launched it would be a seam built for one lesson. Cheap -- a walk of
+-- at most four bodies.
 --
--- A stage whose deed is ALREADY done when it comes into force clears on the first frame, and that is
--- the backstop rather than an accident: the Ward stage is handed on by the arrival scene, and a save
--- that somehow reaches the city with nobody hurt would otherwise be held at a card whose room has
--- nothing in it -- a coached door onto a desk with no line on it.
+-- A save that somehow reaches the city with nobody hurt clears the flag on its first frame, which is
+-- the backstop rather than an accident.
 local function introAdvance()
-    local stage = introStage()
-    if not stage then return end
-    local done
-    if stage.hire then
-        done = false
-        for _, char in ipairs((hub.player and hub.player.roster) or {}) do
-            if char.id == stage.hire then done = true break end
-        end
-    elseif stage.mend then
-        done = mendingDone()
-    end
-    if not done then return end
-    -- ...and the intro ENDS here. It handed on to the stair's own stage for a pass; that stage is
-    -- parked (see INTRO_STAGES), so the deed that closes the Ward is the last thing the first morning
-    -- asks for and the city opens on free play the moment the wound is seen to.
+    if not (hub.player and hub.player.hubIntro == "ward") then return end
+    if not mendingDone() then return end
     hub.player.hubIntro = nil
     Player.save()
 end
@@ -805,27 +615,8 @@ function hub.enter()
             return Offer.anyNews(hub.player, b)
         end,
     }
-    map = BuildingMap.new(Building.list(hub.player), mapOpts)
+    buildMap()
     burger = BurgerButton.new(BURGER_X, BURGER_Y)
-
-    -- WHAT THE CITY GREW WHILE THE COMPANY WAS BELOW (models/building.lua's seenDoors block). The ledger
-    -- is created on the first look at the city and records everything already open, so this comes back
-    -- empty on the first visit -- and empty on the first visit of a save written before any of this
-    -- existed, whose company has been using those rooms for hours.
-    --
-    -- ABOVE THE ARRIVAL BRANCH, which returns early: a stale queue or a stale coached door left over
-    -- from a previous visit would otherwise still be in force behind the sponsor's scene. Seeding here
-    -- is also the honest place for it -- the first look at the city is this line, not the one after the
-    -- conversation that plays over it.
-    if not Building.seeded(hub.player) then
-        Building.seedSeen(hub.player)
-        Player.save()
-    end
-    doorQueue = Building.unannounced(hub.player)
-    coachedDoor = nil
-    -- The first visit's own stages are already in force at this point (they live on the save, not on
-    -- the queue), so the cursor is lined up with the hall or the stair the same way a grown door's is.
-    focusCoachedCard()
 
     -- The first visit to the hub (New Game only; the prologue set this flag -- states/prologue.lua).
     -- ONE SCENE: Rowan's, played over the city the player is now looking at.
@@ -842,11 +633,9 @@ function hub.enter()
     -- nothing left to intercept.
     -- Iselle is at the top of the stair instead, and states/gate.lua plays her on the first visit there.
     --
-    -- On its close the intro moves to its ONE coaching stage -- the WARD, because the company walks out
-    -- of Act 0 carrying a wound and that is the door the city grew to answer it. The Ward ends the intro
-    -- when the wound is seen to (introAdvance); the stair it used to hand on to is coached by this scene
-    -- itself, in Rowan's words. A loaded save never carries this flag, so its hub opens straight to free
-    -- play.
+    -- On its close the flag moves to "ward" -- the company walks out of Act 0 carrying a wound, and
+    -- that is what the mending room reads to know it is teaching a first morning. It clears when the
+    -- wound is seen to (introAdvance). A loaded save never carries this flag at all.
     if hub.player.hubIntro == "arrival" then
         Conversation.play("conversation_prologue_arrival", function()
             hub.player.hubIntro = "ward"
@@ -854,11 +643,6 @@ function hub.enter()
         end)
         return -- nothing else opens over the arrival; there is no pending summary on a first visit
     end
-
-    -- The door the city grew while the company was below, coached from here on. It needs no sequencing
-    -- against the summary below: a bubble is only drawn over a clear city, so it waits behind the
-    -- summary on its own and is standing there when the player closes it.
-    coachNextDoor()
 
     -- Just back from a won quest? Surface the reward + the company's level-ups, then clear the handoff
     -- so it shows once (states/game.lua stashed it on the player before switching here).
@@ -874,12 +658,6 @@ end
 
 function hub.update(dt)
     introAdvance()
-    -- The next door waiting behind the one just walked through, coached as soon as the last is spent.
-    -- Asked here rather than hooked onto the panel's close for the reason openPanel gives: a door that
-    -- opens a whole SCREEN never closes a panel, so there is no one seam every door passes through.
-    -- coachNextDoor refuses on its own while one is already in hand, so this is a cheap no-op on almost
-    -- every frame.
-    coachNextDoor()
     -- Ticked whatever is open: the tally's arrival is a beat the city plays on its own, and holding it
     -- behind a panel would mean a player who walked in and opened a shop came back to a mark already
     -- landed, which is the one thing the beat exists to stop.
@@ -992,47 +770,6 @@ function hub.draw()
     -- Drawn under any open panel (which dims the city), so the burger does not float over its own menu.
     if not activePanel then burger:draw() end
 
-    -- The coach: a bubble pinned to whichever card the current stage is about, while nothing is open
-    -- over the city. Same widget the battle tutorial uses (ui/coach_bubble), so "click" stays
-    -- device-honest -- a key cap for pad/keyboard, the plain verb for the mouse. Two things put a stage
-    -- in force -- the first visit's two doors, and a door the city has just grown -- and this draws
-    -- either without knowing which (coachedStage).
-    -- ...AND WHILE NOTHING IS BEING SAID OVER IT EITHER. A scene draws on top of the state rather than
-    -- instead of it (main.lua's love.draw), so the city keeps rendering underneath -- and the Ward hands
-    -- the intro on to the stair the moment its door is pressed, which is one scene BEFORE the player is
-    -- done with the room. Without this the stair's bubble sits behind Xin's first words, pointing at
-    -- the door after the one being walked into.
-    local stage = coachedStage()
-    if stage and not activePanel and not Conversation.active then
-        local rect = introBuildingRect(stage)
-        if rect then
-            -- Both stages carry a line id, not a sentence: coachLine resolves it for the device in
-            -- hand ("Enter" / "A" as a cap, or the plain verb on a pointer), and a grown door's own
-            -- name arrives as the {door} token (see doorText).
-            local text, key = Locale.coach(CITY, stage.line, { door = stage.doorText })
-            if text then
-                -- THE TITLE'S BAND IS NOT THE BUBBLE'S TO SIT IN, and it has to be said in `bounds`
-                -- rather than in `avoid`: avoid is a score the placement search trades off, so a
-                -- bubble that hides ten pixels of "The City" and nothing else still wins on points.
-                -- Bounds is a floor -- a side that would land above the line is not a candidate at
-                -- all -- and the search then takes the least-bad placement under the title instead.
-                --
-                -- It matters on exactly one card, which is why it was not needed until now: the Ward
-                -- sits in the plaza's top-middle slot, hard under this line, and a bubble pointing
-                -- down at it from above is the placement the scorer likes best (the cards to either
-                -- side are plates it would rather not cover). Every other coached door has a whole
-                -- row over it.
-                local band = 24 + titleFont:getHeight() + 6
-                CoachBubble.draw(text, rect, {
-                    prefer = "below",
-                    key = key,
-                    avoid = otherCardRects(stage),
-                    bounds = { x = 0, y = band, w = screenW, h = screenH - band },
-                })
-            end
-        end
-    end
-
     if activePanel then
         activePanel:draw()
     end
@@ -1043,13 +780,7 @@ function hub.mousemoved(x, y, dx, dy)
         activePanel:mousemoved(x, y)
     else
         burger:mousemoved(x, y)
-        -- The pointer does NOT drag the selection off a coached card. Hover-selects everywhere else so
-        -- all three inputs stay in sync (BuildingMap:mousemoved), but while a bubble is up the
-        -- highlighted card and the card its key cap promises must be the same one -- and every other
-        -- card is refused anyway, so highlighting one is a press the board is about to turn down.
-        -- The mouse can still CLICK any card: BuildingMap:mousepressed finds it by rect, not by
-        -- selection.
-        if not coachedStage() then map:mousemoved(x, y) end
+        map:mousemoved(x, y)
     end
 end
 
@@ -1070,11 +801,6 @@ function hub.mousepressed(x, y, button)
         openSystemMenu()
     else
         map:mousepressed(x, y, button)
-        -- A REFUSED PRESS GIVES THE HIGHLIGHT BACK. BuildingMap selects whatever was clicked before it
-        -- activates, so a click on a card the coach is refusing lit that card and left the bubble
-        -- pointing at another -- two cards claiming to be the live one. A no-op when the press landed on
-        -- the coached card, because spending the stage is what clears it.
-        focusCoachedCard()
     end
 end
 
@@ -1112,11 +838,7 @@ local function debugMintUnidentified(n)
     Player.save()
     -- The card is not on the plaza until the satchel says it should be, and the locked flags are decided
     -- when the map is built -- so the map has to be rebuilt for the new door to appear.
-    map = BuildingMap.new(Building.list(hub.player), mapOpts)
-    -- ...and re-asked, so the Touchstone this just opened announces itself here exactly as it would on
-    -- the walk up from the floor that found the piece. Without it the mint would open a card silently
-    -- and the one path that can reach this feature on demand would be the one path that skips it.
-    doorQueue = Building.unannounced(hub.player)
+    buildMap()
 end
 
 function hub.keypressed(key)
@@ -1131,7 +853,6 @@ function hub.keypressed(key)
         openSystemMenu()
     else
         map:keypressed(key)
-        focusCoachedCard() -- arrows may not walk the cursor off a coached card; see hub.mousemoved
     end
 end
 
@@ -1142,7 +863,6 @@ function hub.gamepadpressed(joystick, button)
         openSystemMenu()
     else
         map:gamepadpressed(joystick, button)
-        focusCoachedCard() -- the d-pad may not walk the cursor off a coached card either
     end
 end
 

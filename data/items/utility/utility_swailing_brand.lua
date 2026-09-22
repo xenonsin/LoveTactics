@@ -58,7 +58,7 @@ return {
     type = "utility",
     tags = { "charm", "nature", "zone" },
     class = "druid",
-    unlockLevel = 15,
+    unlockLevel = 14,
     -- RIFT-ONLY. It comes off the body and nowhere else: no counter deals one however many the company
     -- carries out, and none will buy one back (docs/drops.md, Vendor.foundPrice).
     unstocked = true,

@@ -24,15 +24,15 @@ return {
     type = "ability",
     tags = { "dark", "magical" },
     class = "necromancer",
-    price = 245,
-    unlockLevel = 3,
+    price = 520,
+    unlockLevel = 10,
     activeAbility = {
         target = "enemy",
         range = 6,
         requiresSight = true,
         speed = 6,
         cost = { stat = "mana", amount = 15 },
-        damage = Curve.ramp(9, 24), -- heavier than the wand's bolt: the deliberate cut
+        damage = Curve.ramp(12, 27), -- heavier than the wand's bolt: the deliberate cut
         effect = function(fx)
             -- Honoured only on the fatal path (Combat.dealFlatDamage): the kill severs the revive
             -- window; a wound leaves it open.

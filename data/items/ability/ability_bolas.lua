@@ -17,8 +17,8 @@ return {
     type = "ability",
     tags = { "pierce", "physical" },
     class = "poacher", -- rogue x hunter; the Snare-execute mechanic's first stock
-    price = 660,
-    unlockLevel = 13,
+    price = 695,
+    unlockLevel = 14,
     activeAbility = {
         target = "enemy",
         range = 3,

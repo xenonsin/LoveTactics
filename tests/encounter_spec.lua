@@ -19,18 +19,23 @@ return {
         end,
     },
     {
-        name = "prestige gates encounters below their minDay",
+        name = "a floor gates the encounters that are deeper than it",
         fn = function()
-            local p1 = Encounter.pool({ day = 1, biome = "forest" })
-            assert(not has(p1, "encounter_elite"), "elite (minDay 2) should be gated at prestige 1")
-            assert(has(p1, "encounter_boar"), "boar should be available at prestige 1")
+            -- THE GATE IS DEPTH, not a campaign day. The Phoenix opens on floor one now -- the day-two
+            -- gate it carried converted to depth one -- so what this case pins is the SHAPE of the gate
+            -- rather than that particular blueprint: something deep is refused up here and the wood's
+            -- own opener is not.
+            local p1 = Encounter.pool({ depth = 1, biome = "forest" })
+            assert(not has(p1, "encounter_the_skeleton_king"),
+                "a floor-twelve body should be gated on floor one")
+            assert(has(p1, "encounter_boar"), "the boar is the wood's own, from the first floor")
         end,
     },
     {
-        name = "dynamic weight scales with prestige, and then stops",
+        name = "dynamic weight scales with depth, and then stops",
         fn = function()
             local function eliteAt(p)
-                return has(Encounter.pool({ day = p, biome = "forest" }), "encounter_elite")
+                return has(Encounter.pool({ depth = p, biome = "forest" }), "encounter_elite")
             end
             local e2, e3 = eliteAt(2), eliteAt(3)
             assert(e2 and e2.weight == 2, "elite weight should track prestige while it climbs (2)")
@@ -63,10 +68,13 @@ return {
     {
         name = "conditional encounter respects biome",
         fn = function()
+            -- THE STAG WAS LOCKED TO THE CASTLE, WHICH WAS ALWAYS ODD, and the circle-lock rule has
+            -- since settled it: humans float to every floor and everything else belongs to exactly one
+            -- circle. A stag is a beast, the beasts are Gluttony's, and Gluttony holds the wood.
             local forest = Encounter.pool({ day = 3, biome = "forest" })
             local castle = Encounter.pool({ day = 3, biome = "castle" })
-            assert(has(forest, "encounter_stag"), "stag should roam the forest")
-            assert(not has(castle, "encounter_stag"), "stag should not appear in the castle")
+            assert(has(forest, "encounter_stag"), "stag should roam the wood")
+            assert(not has(castle, "encounter_stag"), "a beast has no business in Lust's hall")
         end,
     },
 
@@ -97,7 +105,7 @@ return {
             -- Nothing else on the board, and this list is the whole of the rest of markerColor's kinds.
             -- Asserted as a set rather than a sample, because the failure being guarded is a kind
             -- quietly joining the fights, and a sample cannot see one it does not name.
-            for _, kind in ipairs({ "town", "treasure", "event", "rest", "relic_cache", "shrine",
+            for _, kind in ipairs({ "treasure", "event", "rest", "relic_cache", "shrine",
                                     "merchant", "crossroads", "ascent", "stair", "anvil",
                                     "weeping_stone", "dark", "spinner", "translation" }) do
                 assert(not Encounter.opensBattle({ kind = kind }),

@@ -247,14 +247,14 @@ return {
                 for _, e in ipairs(pool) do if e.id == "encounter_cold_forge" then return e end end
                 return nil
             end
-            assert(not has(Encounter.pool({ day = 1, biome = "forest" })),
+            assert(not has(Encounter.pool({ depth = 1, biome = "forest" })),
                 "on the opening floor every piece is at +0 and the rungs all look alike")
-            local seated = has(Encounter.pool({ day = 2, biome = "forest" }))
-            assert(seated and seated.weight > 0, "it should be drawable from the second day down")
+            local seated = has(Encounter.pool({ depth = 2, biome = "forest" }))
+            assert(seated and seated.weight > 0, "it should be drawable from the second floor down")
 
             -- An uncommon FIND, not a fixture of the road: well under what an ordinary fight carries.
             local combat = 0
-            for _, e in ipairs(Encounter.pool({ day = 4, biome = "forest" })) do
+            for _, e in ipairs(Encounter.pool({ depth = 4, biome = "forest" })) do
                 if e.kind == "combat" and e.weight > combat then combat = e.weight end
             end
             assert(combat == 0 or seated.weight < combat,
@@ -336,16 +336,16 @@ return {
                 for _, e in ipairs(pool) do if e.id == "encounter_cold_lectern" then return e end end
                 return nil
             end
-            assert(not has(Encounter.pool({ day = 1, biome = "forest" })),
+            assert(not has(Encounter.pool({ depth = 1, biome = "forest" })),
                 "on the opening floor every ability is at +0 and the rungs all look alike")
-            local seated = has(Encounter.pool({ day = 2, biome = "forest" }))
-            assert(seated and seated.weight > 0, "it should be drawable from the second day down")
+            local seated = has(Encounter.pool({ depth = 2, biome = "forest" }))
+            assert(seated and seated.weight > 0, "it should be drawable from the second floor down")
 
             -- NEVER COMMONER THAN THE COALS, because the half of the kit it works is the smaller one.
             -- Asserted as an ordering rather than as the two numbers, so a re-weighting that keeps the
             -- shape does not have to come back here.
             local forge
-            for _, e in ipairs(Encounter.pool({ day = 4, biome = "forest" })) do
+            for _, e in ipairs(Encounter.pool({ depth = 4, biome = "forest" })) do
                 if e.id == "encounter_cold_forge" then forge = e end
             end
             assert(forge and seated.weight <= forge.weight,

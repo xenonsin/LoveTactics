@@ -11,7 +11,7 @@ return {
     name = "The Beast-Line",
     kind = "combat",
     weight = 3,
-    minDay = 4,
+    depth = 2,
     composition = function(ctx)
         local list = {
             "character_totemist",    -- multiplier: the totem, and the ground the pack is worth more on
@@ -19,7 +19,7 @@ return {
             "character_wolf_alpha",  -- payoff: the pack's own force multiplier, inside the aura
             "character_wolf_grunt",
         }
-        for _ = 1, 1 + math.floor((ctx.day or 1) / 11) do list[#list + 1] = "character_wolf_grunt" end
+        for _ = 1, 1 + math.floor((ctx.depth or 1) / 4) do list[#list + 1] = "character_wolf_grunt" end
         return list
     end,
 }

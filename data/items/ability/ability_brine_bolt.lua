@@ -23,13 +23,13 @@ return {
     tags = { "water", "magical" },
     class = "mage",
     dropOnly = true,
-    unlockLevel = 8,
+    unlockLevel = 7,
     activeAbility = {
         target = "enemy",
         range = 4,
         speed = 4,
         cost = { stat = "mana", amount = 6 },
-        damage = Curve.ramp(10, 20),
+        damage = Curve.ramp(11, 21),
         effect = function(fx)
             fx.damage(fx.target)
             if fx.target.alive then fx.applyStatus(fx.target, "status_wet") end

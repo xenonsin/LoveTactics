@@ -25,7 +25,7 @@ return {
     type = "armor",
     tags = { "cloth", "arcane" },
     class = "mage",
-    unlockLevel = 11,
+    unlockLevel = 13,
     traits = { "trait_sealed_reliquary" },
     bonus = { magicDefense = Curve.ramp(4, 14), movement = -1 },
     resist = { magical = 2 },

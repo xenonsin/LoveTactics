@@ -581,7 +581,12 @@ prologue.SKIP_XP = 80
 -- So the prologue states its exit instead. Topped UP to, never granted flat, so the played road and
 -- the skip land in the same place whatever the fighting happened to pay, and a company that somehow
 -- earned more keeps it.
-prologue.EXIT_LEVEL = 2
+-- ...AND IT IS THE RIFT'S NUMBER, NOT THE PROLOGUE'S OWN. Act 0 exists to put a company on the first
+-- stair, so where it leaves them is a fact about that stair rather than about the tutorial: it is
+-- Descent.OPENING_LEVEL, which is what Descent.expectedLevel starts its ramp from. Held as a literal
+-- here it drifted the moment Experience.STEP was re-cut -- the same experience that bought level two
+-- on the old curve buys four on this one, and nothing would have said so.
+prologue.EXIT_LEVEL = require("models.descent").OPENING_LEVEL
 
 -- Bring every body up to the level Act 0 ends on and resolve it, exactly as a won fight resolves
 -- experience (states/game.lua's post-fight seam). Idempotent: a body already there is untouched.
@@ -816,22 +821,21 @@ function prologue.skip(player)
     -- survives the mending. Skipping the inflict would shut the door on the room the company has just
     -- been through.
     --
-    -- Walked the way the door walks it: the scene's flag and the card's seen-mark recorded, the
-    -- companion read off the blueprint rather than named again here, and her join banner dropped on the
-    -- floor -- the scene it would have folded onto is one of the ones not being played, and left queued
-    -- it prints over whatever the city opens first.
+    -- Walked the way the door walks it: the scene's flag recorded, the companion read off the blueprint
+    -- rather than named again here, and her join banner dropped on the floor -- the scene it would have
+    -- folded onto is one of the ones not being played, and left queued it prints over whatever the city
+    -- opens first. (The card's seen-mark went with the plaza's coach, which is what it was for.)
     local ward = Building.defs["cathedral"]
     if ward then
         player.flags["intro_cathedral"] = true
-        Building.markSeen(player, "cathedral")
         if ward.grants then Player.recruit(player, ward.grants) end
         local wardJoins = Conversation.pendingJoins
         for i = #wardJoins, 1, -1 do wardJoins[i] = nil end
     end
     require("models.wound").mend(player, 1)
 
-    -- ...and the city opens in FREE PLAY. begin() sets `hubIntro = "arrival"`, which plays the guard and
-    -- the sponsor over the plaza and then shuts every door but the Gate until they have been read
+    -- ...and the city opens with nothing owed. begin() sets `hubIntro = "arrival"`, which plays Rowan's
+    -- scene over the plaza and leaves the mending flagged as this company's first morning
     -- (states/hub.lua). That staging is the tail of the first-time experience this button exists to get
     -- past, so it is not set: the skip lands in the city a played prologue leaves behind.
     player.hubIntro = nil

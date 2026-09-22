@@ -45,6 +45,7 @@
 -- Read-only, and it drives Overworld directly rather than a game state, so no save is touched. Seeds are
 -- sequential from a fixed base, so two runs of this tool agree exactly.
 
+local Descent = require("models.descent")
 local Overworld = require("models.overworld")
 local Encounter = require("models.encounter")
 
@@ -472,7 +473,17 @@ function M.run(args)
     local dq = Descent and Descent.floorQuest(drun) or nil
     if wantDescent then
         biome = dq.map.biome
-        pool = Descent.floorPool({ biome = biome, day = DEFAULT_DAY, prestige = 10 })
+        -- THE FLOOR'S OWN POOL, NOT DAY TWENTY'S. This built every descent floor's pool at
+        -- DEFAULT_DAY -- a mid-campaign constant chosen so the CAMPAIGN's pool would be full -- so the
+        -- shallow floors were measured carrying content that cannot appear on them and the deep ones
+        -- without content that can. Geometry was always sound; every composition figure this tool has
+        -- printed for a descent floor had the wrong pool under it.
+        --
+        -- `quest` goes in with it, because Descent.floorPool rates each fight to decide what is too
+        -- light to seat (Descent.MIN_SHARE) and reads the floor's levels off the descriptor.
+        pool = Descent.floorPool({
+            biome = biome, day = Descent.poolDay(drun), prestige = 10, quest = dq,
+        })
     end
 
     for i = 1, n do
@@ -563,10 +574,16 @@ function M.run(args)
     local stopSpec = wantDescent
         and (stopsOverride and { min = stopsOverride, max = stopsOverride } or dq.map.encounters)
         or DEFAULT_ENCOUNTERS
-    print(string.format("BOARD REPORT -- %d rolled %s, %s, %d-%d stops, day %d",
+    print(string.format("BOARD REPORT -- %d rolled %s, %s, %d-%d stops, %s",
         n, wantDescent and ("floor " .. descentFloor .. "s, " .. dq.map.cols .. "x" .. dq.map.rows)
             or "boards", biome,
-        stopSpec.min, stopSpec.max, DEFAULT_DAY))
+        stopSpec.min, stopSpec.max,
+        -- THE UNIT A FLOOR IS ACTUALLY READ IN. A descent floor is priced against the company that is
+        -- expected to be standing on it (Descent.expectedLevel), and this tool had no column for the
+        -- party at all -- so every figure it printed described a board with nobody on it.
+        wantDescent and string.format("company lvl %d, world lvl %d",
+            Descent.expectedLevel(descentFloor), dq.dangerLevel)
+            or ("day " .. DEFAULT_DAY)))
     print("")
     print(string.format("  %-22s %8s  %s", "", "per board", "note"))
     print(string.format("  %-22s %8.2f", "stops", per(tot.stops)))
@@ -688,8 +705,7 @@ function M.run(args)
         local Muster = require("models.muster")
         local Player = require("models.player")
         local Experience = require("models.experience")
-        local Calendar = require("models.calendar")
-
+        
         local Character = require("models.character")
         local Growth = require("models.growth")
 
@@ -711,7 +727,7 @@ function M.run(args)
                     player.roster[#player.roster + 1] = Character.instantiate(id)
                 end
             end
-            local target = Calendar.dangerLevel(day)
+            local target = Descent.dangerLevel({ floor = day })
             for _, char in ipairs(player.roster) do
                 Experience.award(char, Experience.totalFor(target))
                 Growth.resolve(char, target)
@@ -840,10 +856,10 @@ function M.run(args)
         print(string.format("  EXPERIENCE A DAY -- %d boards fought, %d fights resolved, %d refused",
             BOARDS, fought, refused))
         print(string.format("    %-24s %8.1f", "xp a body a day", perDay))
-        print(string.format("    %-24s %8d", "over the campaign", math.floor(perDay * Calendar.SPAN)))
+        print(string.format("    %-24s %8d", "over the stack", math.floor(perDay * Descent.FLOORS)))
         print(string.format("    %-24s %8d  %s", "which reaches level",
-            Experience.levelFor(perDay * Calendar.SPAN),
-            "against a world ending at " .. Calendar.FINAL_DANGER))
+            Experience.levelFor(perDay * Descent.FLOORS),
+            "against a world ending at " .. Descent.BOTTOM_DANGER))
         print(string.format("    %-24s %8d", "at Experience.STEP", Experience.STEP))
         end
     end

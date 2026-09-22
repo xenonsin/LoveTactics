@@ -16,8 +16,8 @@ return {
     sprite = "assets/items/ability_summon_fire_elemental.png",
     type = "ability",
     class = "summoner",
-    price = 740,
-    unlockLevel = 15,
+    price = 210,
+    unlockLevel = 3,
     tags = { "summon", "fire" },
     activeAbility = {
         target = "tile",

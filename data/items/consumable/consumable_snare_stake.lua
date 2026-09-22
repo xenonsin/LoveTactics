@@ -17,8 +17,8 @@ return {
     type = "consumable",
     tags = { "trap" },
     class = "trapper", -- deeper cut of the shelf: buyable only once the trapper gate is cleared
-    price = 100,
-    unlockLevel = 3,
+    price = 190,
+    unlockLevel = 9,
     activeAbility = {
         target = "tile", -- planted on open ground, not on a foe
         range = 2,

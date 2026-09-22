@@ -16,7 +16,6 @@ local Quest = require("models.quest")
 local Player = require("models.player")
 local Overworld = require("models.overworld")
 local Save = require("models.save")
-local Calendar = require("models.calendar")
 
 -- A board entry of the shape Quest.available hands out, without needing a real blueprint: the trip
 -- builder reads id / name / map / sponsor / floorLevel and nothing else.

@@ -30,7 +30,7 @@ return {
     type = "armor",
     tags = { "heavy" },
     class = "champion", -- fighter x knight; the Riposte-wall's plate -- answer every striker at once
-    unlockLevel = 9,
+    unlockLevel = 11,
     traits = { "trait_whirl_answer" },
     bonus = { defense = Curve.ramp(3, 13), movement = -2 },
 }

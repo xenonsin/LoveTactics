@@ -27,7 +27,7 @@ return {
     class = "skirmisher",
     -- The second of three by depth, which is this system's rarity (docs/drops.md): the sandals are the
     -- print you meet, this is the rule, and the Brand is the one you are still after.
-    unlockLevel = 9,
+    unlockLevel = 7,
     unstocked = true,
     traits = { "trait_the_second_hound" },
 }

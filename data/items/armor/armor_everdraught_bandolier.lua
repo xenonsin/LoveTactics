@@ -28,7 +28,7 @@ return {
     type = "armor",
     tags = { "leather" },
     class = "alchemist",
-    unlockLevel = 8,
+    unlockLevel = 11,
     traits = { "trait_survivors_reflex" },
     bonus = { defense = Curve.ramp(3, 13), movement = -1 },
 }

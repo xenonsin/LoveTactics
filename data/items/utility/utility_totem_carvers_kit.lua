@@ -23,7 +23,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "totemist",
-    unlockLevel = 4,
+    unlockLevel = 5,
     traits = { "trait_totem_carvers_kit" },
     -- everything you raise stands up sturdier
     bonus = { magicDefense = 1 },

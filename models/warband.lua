@@ -46,7 +46,14 @@ Warband.COMBO_SCALE = 5
 -- SETUPS, each tagged with the condition it puts on the board. The tag is the join key -- it is what
 -- PAYOFFS below is indexed by -- so a body is listed here for what its signature LEAVES BEHIND, never
 -- for how hard it hits.
+-- THE ROOT CLASSES ARE IN HERE NOW, AND THAT IS NOT DECORATION. Every body below this line is a
+-- DISCIPLINE, and a discipline asks for a rung (Class.gateLevel) -- the cheapest is 3. So once the draw
+-- reads that gate (Warband.legal), floors one and two could field four bodies between them, three of
+-- them anchors: no setup, no multiplier, and the combo machine with nothing to work with on the two
+-- boards it matters most. The seven roots ask for nothing and were simply never listed.
 Warband.SETUPS = {
+    { id = "character_rogue",        condition = "coin" },       -- Pickpocket, at rung 0
+    { id = "character_alchemist",    condition = "poison" },     -- a coating, at rung 0
     { id = "character_poisoner",     condition = "poison" },     -- Envenom: coatings that rot on
     { id = "character_plague_knight", condition = "poison" },    -- Contagion: the same, spread by contact
     { id = "character_inquisitor",   condition = "mark" },       -- Mark of Heresy: names one of yours
@@ -64,14 +71,14 @@ Warband.SETUPS = {
 -- PAYOFFS, indexed by the condition they are paid for. A body may appear under several: a barbarian's
 -- Fury is worth having against anything that cannot walk away, however it came to be stuck.
 Warband.PAYOFFS = {
-    poison     = { "character_battlemage", "character_necromancer", "character_elementalist", "character_battlemage" },
+    poison     = { "character_mage", "character_battlemage", "character_necromancer", "character_elementalist", "character_battlemage" },
     mark       = { "character_assassin", "character_poacher", "character_duelist" },
-    root       = { "character_barbarian", "character_monk", "character_duelist", "character_crusader" },
-    pull       = { "character_barbarian", "character_monk", "character_crusader" },
+    root       = { "character_fighter", "character_barbarian", "character_monk", "character_duelist", "character_crusader" },
+    pull       = { "character_fighter", "character_barbarian", "character_monk", "character_crusader" },
     guardbreak = { "character_barbarian", "character_assassin", "character_warbrewer" },
     manaburn   = { "character_battlemage", "character_battlemage", "character_summoner" },
-    ground     = { "character_poacher", "character_trapper_ambusher", "character_archer" },
-    coin       = { "character_mammonite", "character_mammonite" },
+    ground     = { "character_archer", "character_poacher", "character_trapper_ambusher" },
+    coin       = { "character_rogue", "character_mammonite", "character_mammonite" },
 }
 
 -- The loose pool, for the fifth company that is a coincidence rather than a sentence. Every payoff
@@ -94,6 +101,7 @@ end)()
 
 -- MULTIPLIERS: the body that hits nothing and is killed first by anyone paying attention.
 Warband.MULTIPLIERS = {
+    "character_priest",   -- the root: a heal, at rung 0, so a shallow company has one
     "character_warlord",  -- Rally Banner: the whole line, a turn early
     "character_paladin",  -- Lay on Hands: the setup survives to land twice
     "character_sentinel", -- Shared Burden: the fragile body stops being fragile
@@ -142,6 +150,49 @@ local function pick(list, seed, salt, exclude)
     return nil
 end
 
+-- ---------------------------------------------------------------------------
+-- WHAT THIS FLOOR COULD PLAUSIBLY HAVE PRODUCED
+-- ---------------------------------------------------------------------------
+
+-- A company is the one thing that appears on every floor, so what it is MADE of has to be what the
+-- depth can account for. Drawn flat, a level-four pair on the first board of the game meets an
+-- assassin, a necromancer or a warden -- bodies whose disciplines a player cannot reach for another
+-- five, nine and fifteen rungs.
+--
+-- THE GATE ALREADY EXISTED AND WAS ALREADY TRUSTED. Class.gateLevel answers the rung a discipline asks
+-- for, on the same 0..CLASS_LEVEL_CAP ladder the floor count runs on, and the drop pool has read it
+-- since a Warden charm fell out of floor one eight rungs early (Spoils.depthOf). This is that reading,
+-- one system over.
+--
+-- REQUIRES NOTHING AT MODULE SCOPE, which is the constraint this whole file is written under (see its
+-- header): data/encounters/*.lua load it at file scope, so models/class.lua and models/character.lua
+-- are pulled in lazily, inside the call.
+--
+-- A NIL FLOOR ADMITS EVERYTHING. Muster rates compositions long before a board exists and the campaign
+-- has no depth at all, so a caller that cannot say how deep it is gets the full roster rather than the
+-- opening floor's four -- a rating is not a placement.
+function Warband.legal(id, floor)
+    if not floor then return true end
+    local Class = require("models.class")
+    local Character = require("models.character")
+    local def = Character.defs[id]
+    -- The blueprint's `class` is its ROOT and answers 0 for everything; `discipline` is the thing that
+    -- asks for a rung. Reading the root here would gate nothing and look like it gated everything.
+    local key = def and (def.discipline or def.class)
+    return Class.gateLevel(key) <= floor
+end
+
+-- The same list, filtered. Returns the original when nothing is admitted, so a bucket that the gate
+-- empties cannot produce a nil body -- a company three roles short is worse than one body too deep.
+local function legalIn(list, floor)
+    if not floor then return list end
+    local out = {}
+    for _, id in ipairs(list) do
+        if Warband.legal(id, floor) then out[#out + 1] = id end
+    end
+    return #out > 0 and out or list
+end
+
 -- The number this company is drawn from. A DESCENT hands over its run seed, so the same floor of the
 -- same run always meets the same company across a save and reload; a campaign board has no seed of its
 -- own and falls back to the day, which is the only clock it keeps.
@@ -165,12 +216,28 @@ local function anchorCount(day)
     return math.max(0, math.min(3, math.floor((day or 1) / 10)))
 end
 
+-- How deep this company is standing, or nil where the caller cannot say. Read off the descent's run
+-- rather than off the day, because the rung ladder and the floor count are the same ladder.
+local function floorOf(ctx)
+    local quest = ctx and ctx.quest
+    local run = quest and quest.descent
+    return run and run.floor or nil
+end
+
 -- Compose one company. Returns a list of character ids, roles first.
 function Warband.compose(ctx)
     ctx = ctx or {}
     local seed = Warband.seedFor(ctx)
+    local floor = floorOf(ctx)
 
-    local setup = Warband.SETUPS[(hash(seed, 1) % #Warband.SETUPS) + 1]
+    -- The setup is filtered as a list of entries rather than of ids, because it carries the condition
+    -- the payoff is drawn against -- losing it would break the combo rather than narrow it.
+    local setups = {}
+    for _, entry in ipairs(Warband.SETUPS) do
+        if Warband.legal(entry.id, floor) then setups[#setups + 1] = entry end
+    end
+    if #setups == 0 then setups = Warband.SETUPS end
+    local setup = setups[(hash(seed, 1) % #setups) + 1]
 
     -- The combo roll. Four in five draw the payoff from the setup's own condition; the fifth draws at
     -- large, so reading the setup body is an inference rather than a guarantee.
@@ -180,18 +247,18 @@ function Warband.compose(ctx)
     -- a company with a setup, no payoff, and nothing for the combo to be about. Redrawn, it keeps four
     -- roles in every case.
     local payoff = combo
-        and pick(Warband.PAYOFFS[setup.condition] or Warband.ANY_PAYOFF, seed, 3, setup.id)
-        or pick(Warband.ANY_PAYOFF, seed, 3, setup.id)
+        and pick(legalIn(Warband.PAYOFFS[setup.condition] or Warband.ANY_PAYOFF, floor), seed, 3, setup.id)
+        or pick(legalIn(Warband.ANY_PAYOFF, floor), seed, 3, setup.id)
     -- A condition whose whole payoff list is the setup itself falls back to the open pool, so no
     -- authoring accident can produce a three-body company.
-    payoff = payoff or pick(Warband.ANY_PAYOFF, seed, 6, setup.id)
+    payoff = payoff or pick(legalIn(Warband.ANY_PAYOFF, floor), seed, 6, setup.id)
 
     local list = { setup.id }
     if payoff then list[#list + 1] = payoff end
-    local mult = pick(Warband.MULTIPLIERS, seed, 4)
+    local mult = pick(legalIn(Warband.MULTIPLIERS, floor), seed, 4)
     if mult then list[#list + 1] = mult end
 
-    local anchor = pick(Warband.ANCHORS, seed, 5)
+    local anchor = pick(legalIn(Warband.ANCHORS, floor), seed, 5)
     if anchor then
         for _ = 1, 1 + anchorCount(ctx.day) do list[#list + 1] = anchor end
     end

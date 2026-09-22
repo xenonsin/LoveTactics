@@ -31,8 +31,8 @@ return {
     type = "ability",
     tags = { "holy", "impact" },
     class = "crusader",
-    price = 410,
-    unlockLevel = 7,
+    price = 345,
+    unlockLevel = 6,
     -- Shallower than either crusader charm on purpose: the spender opens the pool, the charms deepen it
     -- (Combat.chargeDef merges -- highest max wins, `from` unions).
     charge = { key = "zeal", from = { "kill", "healDone" }, max = 5 },

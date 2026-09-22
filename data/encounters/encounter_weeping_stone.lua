@@ -25,5 +25,5 @@ return {
     kind = "weeping_stone",
     parked = true,
     weight = 2,
-    minDay = 2,
+    depth = 1,
 }

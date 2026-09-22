@@ -29,8 +29,8 @@ return {
     type = "ability",
     tags = { "holy", "magical" },
     class = "priest",
-    price = 80,
-    unlockLevel = 0,
+    price = 475,
+    unlockLevel = 9,
     activeAbility = {
         target = "ally", -- includes the caster: a priest may keep their own wound
         range = 4,

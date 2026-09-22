@@ -305,7 +305,7 @@ return {
             -- moves any more, so a fight is a fact about a place like any other -- and a floor a fifth
             -- full, read one step at a time, is mostly routing around exactly those marks.
             for _, kind in ipairs({ "treasure", "rest", "merchant", "shrine", "relic_cache",
-                "crossroads", "event", "town", "objective", "combat", "elite" }) do
+                "crossroads", "event", "objective", "combat", "elite" }) do
                 far.encounter, far.cleared = { kind = kind }, nil
                 assert(w:markedStop(far.x, far.y) == far,
                     kind .. " was found, so it is on the map from then on")

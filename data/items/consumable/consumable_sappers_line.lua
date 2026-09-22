@@ -22,8 +22,8 @@ return {
     type = "consumable",
     tags = { "explosive" },
     class = "saboteur",
-    price = 195,
-    unlockLevel = 9,
+    price = 120,
+    unlockLevel = 5,
     maxStack = 3,
     activeAbility = {
         target = "tile",

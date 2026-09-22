@@ -32,14 +32,14 @@ return {
     -- unforged to the same spell fully forged), so authoring the bolt low and the slot high is a purchase
     -- that is a downgrade. Four is where the everyday hex wants to be: cheap enough to cast most turns,
     -- which is what makes running a grid out of cursable pieces a real plan. Price is slot 4's band.
-    price = 410,
-    unlockLevel = 7,
+    price = 565,
+    unlockLevel = 11,
     activeAbility = {
         target = "enemy",
         range = 4,
         speed = 5,
         cost = { stat = "mana", amount = 7 },
-        damage = Curve.ramp(11, 21),
+        damage = Curve.ramp(13, 23),
         description = "Curses one piece of the target's kit, and deals dark damage.",
         effect = function(fx)
             fx.damage(fx.target)

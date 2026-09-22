@@ -599,7 +599,6 @@ local function markerColor(kind, enc)
     -- border neither of those ever does, so steel inside a red ring is only ever this.
     if kind == "ward" then return 0.42, 0.60, 0.82 end
     if kind == "elite" then return 0.95, 0.55, 0.15 end
-    if kind == "town" then return 0.85, 0.85, 0.90 end
     if kind == "treasure" then return 0.35, 0.80, 0.55 end
     if kind == "event" then return 0.60, 0.60, 0.95 end   -- a story stop, not a fight
     if kind == "rest" then return 0.45, 0.80, 0.80 end     -- a safe breather
@@ -970,15 +969,6 @@ end
 -- "out" would be a shape to learn that nothing is ever told apart by. The hover line says which.
 function MarkerIcon.road(x, y, w, h, r, g, b, a)
     MarkerIcon.ascent(x, y, w, h, r, g, b, a)
-end
-
--- A house: a roof over a doored body. A friendly town.
-function MarkerIcon.town(x, y, w, h, r, g, b, a)
-    love.graphics.setColor(r, g, b, a)
-    love.graphics.polygon("fill", x + w / 2, y, x, y + h * 0.45, x + w, y + h * 0.45)
-    love.graphics.rectangle("fill", x + w * 0.15, y + h * 0.45, w * 0.7, h * 0.55)
-    love.graphics.setColor(r * 0.35, g * 0.35, b * 0.35, a)
-    love.graphics.rectangle("fill", x + w * 0.4, y + h * 0.6, w * 0.2, h * 0.4)
 end
 
 -- ---------------------------------------------------------------------------
