@@ -1046,19 +1046,23 @@ end
 
 -- The body's own line, in the game's own words for these quantities (models/meal.lua's STAT_LABEL is
 -- the same vocabulary; lower-cased here because this is running prose and not a stat panel).
+-- `head` is the column this stat gets in a body's stat table; `label` is the same stat written out,
+-- and is what the legend under the table expands the heads into. Two spellings rather than one
+-- because a twelve-column table has room for "MDef" and none at all for "magic defense", and a reader
+-- who has not met the abbreviation needs it spelled somewhere on the page.
 local BODY_STATS = {
-    { key = "health",       label = "health" },
-    { key = "mana",         label = "mana" },
-    { key = "stamina",      label = "stamina" },
-    { key = "staminaRegen", label = "stamina regen" },
-    { key = "damage",       label = "damage" },
-    { key = "magicDamage",  label = "magic damage" },
-    { key = "defense",      label = "defense" },
-    { key = "magicDefense", label = "magic defense" },
-    { key = "movement",     label = "movement" },
-    { key = "speed",        label = "speed" },
-    { key = "skill",        label = "skill" },
-    { key = "luck",         label = "luck" },
+    { key = "health",       label = "health",        head = "HP" },
+    { key = "mana",         label = "mana",          head = "MP" },
+    { key = "stamina",      label = "stamina",       head = "Stam" },
+    { key = "staminaRegen", label = "stamina regen", head = "Regen" },
+    { key = "damage",       label = "damage",        head = "Dmg" },
+    { key = "magicDamage",  label = "magic damage",  head = "MDmg" },
+    { key = "defense",      label = "defense",       head = "Def" },
+    { key = "magicDefense", label = "magic defense", head = "MDef" },
+    { key = "movement",     label = "movement",      head = "Mov" },
+    { key = "speed",        label = "speed",         head = "Spd" },
+    { key = "skill",        label = "skill",         head = "Skl" },
+    { key = "luck",         label = "luck",          head = "Lck" },
 }
 
 -- READ THROUGH Character.instantiate, for the same reason a weapon's damage is read through
@@ -1066,17 +1070,54 @@ local BODY_STATS = {
 -- stat is handed the pair every combat formula will actually see (Character.ACCURACY_STATS), and a
 -- resource is split into a pool whose max is the number that matters -- so this prints what the game
 -- has, not what the file says.
-local function statsLine(charId)
+-- Memoized: liveStatCols asks every body on the page for every column, and bodySection then asks each
+-- one again to print it -- so an uncached read would mint 173 bodies thirteen times over.
+local STATS_CACHE = {}
+
+local function statsOf(charId)
+    local hit = STATS_CACHE[charId]
+    if hit ~= nil then return hit or nil end
     local ok, char = pcall(Character.instantiate, charId)
-    if not ok or type(char) ~= "table" or type(char.stats) ~= "table" then return nil end
-    local parts = {}
+    if not ok or type(char) ~= "table" or type(char.stats) ~= "table" then
+        STATS_CACHE[charId] = false
+        return nil
+    end
+    local out, any = {}, false
     for _, s in ipairs(BODY_STATS) do
         local v = char.stats[s.key]
         if type(v) == "table" then v = v.max end
-        if type(v) == "number" then parts[#parts + 1] = s.label .. " " .. tostring(v) end
+        if type(v) == "number" then out[s.key] = v; any = true end
     end
-    if #parts == 0 then return nil end
-    return table.concat(parts, " · ")
+    if not any then
+        STATS_CACHE[charId] = false
+        return nil
+    end
+    STATS_CACHE[charId] = out
+    return out
+end
+
+-- WHICH STAT COLUMNS THE PAGE ACTUALLY NEEDS, decided once for the whole page rather than per body.
+--
+-- This is renderTable's "a column nobody filled is dropped" rule applied to the bestiary, and the
+-- reason it is computed over the KIND rather than over each body is that the point of a table is
+-- comparing down a column: a stat table whose columns changed from one beast to the next would put
+-- the same number in a different place on every entry, which is worse than the bullets it replaces.
+--
+-- ZERO COUNTS AS UNFILLED here, not just absent. Every body instantiates with the full stat set, so
+-- "absent" never happens -- what the old bullet list actually printed was `mana 0 · magic damage 0`
+-- on all thirty-two beasts, twelve columns wide to carry about seven that say anything.
+local function liveStatCols(charIds)
+    local live = {}
+    for _, s in ipairs(BODY_STATS) do
+        for _, id in ipairs(charIds) do
+            local stats = statsOf(id)
+            if stats and type(stats[s.key]) == "number" and stats[s.key] ~= 0 then
+                live[#live + 1] = s
+                break
+            end
+        end
+    end
+    return live
 end
 
 -- A NEGATIVE IS A WEAKNESS, which is the one thing about this line a reader has to be told once. The
@@ -1277,11 +1318,21 @@ local function bossQueues()
     return out
 end
 
-local function bodySection(out, charId, queues)
+-- THE FACTS ARE A TABLE, AND THE HEADING STAYS A HEADING. Every row here used to be a `- **Label** —`
+-- bullet; a fact sheet is a two-column thing and reads as one. What did NOT change is the `##` above
+-- it: a markdown row cannot carry an anchor, and every "Dropped by" cell on the 46 item pages plus
+-- every composition row on The Rift links into these headings. Folding the bodies themselves into one
+-- table per page would have been the tidier-looking change and would have broken all of it.
+--
+-- The fact table is headerless (`| | |`). There is no honest pair of column names for "label" and
+-- "the thing" -- "Field | Value" is a database talking about itself rather than a page about a wolf --
+-- and GFM renders the empty head as a thin rule, which is what a fact sheet wants anyway.
+local function bodySection(out, charId, queues, statCols)
     local def = Character.defs[charId]
     local function line(s) out[#out + 1] = s or "" end
+    local facts = {}
     local function fact(label, value)
-        if value then line("- **" .. label .. "** — " .. value) end
+        if value then facts[#facts + 1] = "| **" .. label .. "** | " .. value .. " |" end
     end
 
     line("## " .. cell(HEADING[charId] or bodyName(charId)))
@@ -1304,7 +1355,24 @@ local function bodySection(out, charId, queues)
     line(table.concat(meta, " · "))
     line()
 
-    fact("Body", statsLine(charId))
+    -- The stat block, on the page's own columns. Printed ABOVE the fact table rather than as a row in
+    -- it because it is the one thing here that is numbers in a fixed order -- the only content on the
+    -- page a reader scans DOWN, from one body to the next, instead of reading across.
+    local stats = statsOf(charId)
+    if stats and statCols and #statCols > 0 then
+        local heads, seps, vals = {}, {}, {}
+        for i, s in ipairs(statCols) do
+            heads[i] = s.head
+            seps[i] = "---:"
+            local v = stats[s.key]
+            vals[i] = type(v) == "number" and tostring(v) or "—"
+        end
+        line("| " .. table.concat(heads, " | ") .. " |")
+        line("| " .. table.concat(seps, " | ") .. " |")
+        line("| " .. table.concat(vals, " | ") .. " |")
+        line()
+    end
+
     fact("Hide", hideLine(def))
     fact("Immune", immuneLine(def))
     fact("Carries", kitLine(def))
@@ -1333,10 +1401,16 @@ local function bodySection(out, charId, queues)
         -- floor's stair. A scripted scene can still seat a body outside both (the prologue's demons
         -- are hand-placed by data/tutorials/village.lua), so "nothing in the game fields it" would be
         -- a stronger claim than this page has any way to check.
-        line("- **Where** — *the rift never fields it.* Nothing a floor can roll seats this body and "
-            .. "no stair is held by it, so nothing it carries or is known for is reachable down there.")
+        fact("Where", "*the rift never fields it.* Nothing a floor can roll seats this body and no "
+            .. "stair is held by it, so nothing it carries or is known for is reachable down there.")
     end
     fact("Notes", bodyNotes(def))
+
+    if #facts > 0 then
+        line("| | |")
+        line("|---|---|")
+        for _, row in ipairs(facts) do line(row) end
+    end
     line()
 end
 
@@ -1369,6 +1443,18 @@ local function kindPage(kind)
         .. "shelf; see [The Rift](The-Rift) for the floors and [Items](Items) for the catalogue.")
     line()
 
+    local statCols = liveStatCols(list)
+
+    -- THE LEGEND IS BUILT FROM THE COLUMNS THAT WERE PRINTED, not from BODY_STATS. A legend naming a
+    -- column the page dropped is the same defect as a column no body filled, one level up.
+    if #statCols > 0 then
+        local key = {}
+        for i, s in ipairs(statCols) do key[i] = "**" .. s.head .. "** " .. s.label end
+        line("Stat columns: " .. table.concat(key, " · ") .. ". A stat no body on this page carries "
+            .. "is left off the table.")
+        line()
+    end
+
     local jump = {}
     for _, id in ipairs(list) do
         jump[#jump + 1] = "[" .. cell(HEADING[id] or bodyName(id)) .. "](#" .. ANCHOR[id] .. ")"
@@ -1376,7 +1462,7 @@ local function kindPage(kind)
     line(table.concat(jump, " · "))
     line()
 
-    for _, id in ipairs(list) do bodySection(out, id, queues) end
+    for _, id in ipairs(list) do bodySection(out, id, queues, statCols) end
 
     return table.concat(out, "\n")
 end
