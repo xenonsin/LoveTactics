@@ -477,22 +477,41 @@ end
 -- It stays a CATEGORY when the sweep finds nobody: a creature-class piece no blueprint holds is
 -- authored kit waiting for its body, and "Monster kit" is the honest thing to print about it.
 --
--- Capped at MAX_BODIES like the Dropped by column beside it, and for the same reason -- a shared
--- natural weapon is held by a dozen bodies and a cell that lists all twelve is a cell nobody reads.
-local MAX_BODIES = 4
+-- A LIST OF BODIES IN ONE TABLE CELL, one per line and each behind a bullet.
+--
+-- A markdown list cannot live inside a table cell, so a multi-body cell is <br>-separated lines and
+-- always has been. That is fine until a name WRAPS: these columns are narrow, "The White Wolf" breaks
+-- across two lines, and a stack of bare names gives the reader nothing to tell a second name from the
+-- second half of the first one. The bullet is the line's start marker -- a wrapped continuation is
+-- the one line in the cell that does not have one.
+--
+-- `•` rather than the ` · ` this tool separates things with everywhere else, because the two are
+-- doing different jobs: the middot joins things INLINE, the bullet opens a line. Using one glyph for
+-- both would be the ambiguity this is fixing, one level down.
+local function bulleted(names)
+    if #names == 0 then return "" end
+    if #names == 1 then return names[1] end
+    local out = {}
+    for i, n in ipairs(names) do out[i] = "• " .. n end
+    return table.concat(out, "<br>")
+end
 
+-- EVERY BODY, UNCAPPED. Both this and the Dropped by column beside it used to stop at four and print
+-- "+2 more", on the reasoning that a shared natural weapon is held by a dozen bodies and a cell
+-- listing all twelve is a cell nobody reads.
+--
+-- MEASURED, THE DOZEN DOES NOT EXIST. Across all 46 class pages exactly four cells ever truncated,
+-- three of them hiding two bodies and one hiding one -- so the widest cell in the whole catalogue is
+-- six names, and the cap was buying four short lists at the price of making them wrong. A truncated
+-- list is worse than a long one here because the hidden names are the POINT: the column exists to
+-- answer "who do I go and take this off", and "+2 more" is that question re-asked rather than
+-- answered, with no second page to follow it to.
 local function kitOwnersCell(id)
     local owners = KIT_OF[id]
     if not owners or #owners == 0 then return nil end
     local names = {}
     for _, charId in ipairs(owners) do names[#names + 1] = bodyLink(charId) end
-    if #names > MAX_BODIES then
-        local shown = {}
-        for i = 1, MAX_BODIES do shown[i] = names[i] end
-        shown[#shown + 1] = "*+" .. tostring(#names - MAX_BODIES) .. " more*"
-        names = shown
-    end
-    return table.concat(names, "<br>")
+    return bulleted(names)
 end
 
 local function sourceCell(def, id)
@@ -522,7 +541,8 @@ end
 -- A cell left empty is also a vote to drop the whole column (see renderTable), so a section where no
 -- item comes off a named body prints no "Dropped by" column at all rather than a stripe of dashes.
 --
--- MAX_BODIES is shared with the Source column's own body list and is declared above it.
+-- Every body that pays is named: see bulleted() above for why the list is neither capped nor run
+-- together.
 
 -- Whose list is it: the circle's general stands behind its guardian, the lieutenant two floors up.
 local function bossBody(sin, which)
@@ -550,24 +570,14 @@ local function dropCell(id)
 
     if row.route ~= "drops" and row.route ~= "carried" then return "" end
 
-    local names, carriedOnly = {}, 0
+    local names = {}
     for _, charId in ipairs(row.bodies) do
         local nm = bodyLink(charId)
-        if row.byRoute[charId] == "carried" then
-            nm = nm .. " *(carried)*"
-            carriedOnly = carriedOnly + 1
-        end
+        if row.byRoute[charId] == "carried" then nm = nm .. " *(carried)*" end
         names[#names + 1] = nm
     end
     if #names == 0 then return "" end
-
-    local shown = names
-    if #names > MAX_BODIES then
-        shown = {}
-        for i = 1, MAX_BODIES do shown[i] = names[i] end
-        shown[#shown + 1] = "*+" .. tostring(#names - MAX_BODIES) .. " more*"
-    end
-    return table.concat(shown, "<br>")
+    return bulleted(names)
 end
 
 -- Everything that changes what the piece IS rather than what its numbers are. Each of these is rare
