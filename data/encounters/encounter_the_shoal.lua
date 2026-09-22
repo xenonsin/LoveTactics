@@ -7,6 +7,8 @@
 --
 -- Gated on the SWAMP because that is where the channels are (Arena.BIOME_TERRAIN's blocker), and on a
 -- board with no water on it the Mere is simply a slow pack with a spear.
+local Band = require("models.band")
+
 return {
     name = "The Shoal",
     kind = "combat",
@@ -24,11 +26,15 @@ return {
     -- behind one lancer is a fight a levelled company walks over (tests/descent_spec.lua rates it on
     -- floor three); a shoal that kept growing is a fight that stops ending (tests/skirmish_spec.lua
     -- caps an ordinary road stop at 22 unit-turns). One more body early, none later.
+    --
+    -- SO IT DECLINES THE ROLL (`vary = 0`), and it is the stop that proves the escape hatch is needed.
+    -- Every other ordinary stop fields a band (models/band.lua); this one is pinned between two
+    -- measurements that face each other, with exactly one number between them. Banded at +/-1 it rolled
+    -- a shoal of two at depth eleven and the fight ran 33 unit-turns against the budget of 22 -- which
+    -- is the finding both this header and tests/support/slow_road_fights.lua already record from the
+    -- other side: where neither party can close, a LIGHTER fight is a longer one.
     composition = function(ctx)
         local list = { "character_fen_lancer" }
-        for _ = 1, 2 + math.min(1, math.floor((ctx.depth or 1) / 2)) do
-            list[#list + 1] = "character_shoalkin"
-        end
-        return list
+        return Band.fill(list, ctx, "character_shoalkin", { base = 2, per = 2, max = 3, vary = 0 })
     end,
 }

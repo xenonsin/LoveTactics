@@ -21,6 +21,8 @@
 -- No biome condition, which is the road stock's own convention (boar, wolf, ogre and stag all carry
 -- none) rather than a claim that bears live in lava. The circles gate their own fights; the road does
 -- not, and making this the one exception would be a rule nothing else follows.
+local Band = require("models.band")
+
 return {
     name = "Bear",
     kind = "combat",
@@ -63,9 +65,6 @@ return {
         -- bear, which Growth.spawn already does by minting the body at the fight's own level (which is
         -- also why a capped count still rates: Muster prices the far side at the level it will really
         -- spawn at, not at the blueprint). More bears would be the wrong answer to depth twice over.
-        local n = math.min(4, 2 + math.floor((ctx.depth or 1) / 2))
-        local list = {}
-        for i = 1, n do list[i] = "character_bear" end
-        return list
+        return Band.fill({}, ctx, "character_bear", { base = 2, per = 2, max = 4 })
     end,
 }

@@ -24,6 +24,8 @@
 -- which reads as thin until you notice what the cub IS: it is the fight's offer. Filler would give the
 -- player something else to kill, and the whole fight is about whether they kill the one thing standing
 -- in front of them.
+local Band = require("models.band")
+
 return {
     name = "The Sow",
     kind = "elite",
@@ -53,9 +55,6 @@ return {
         -- would have to leave standing, which makes the merciful road cost more rather than cost
         -- differently. A sow raises one to three; this is the animal, not a budget.
         local list = { "character_sow" }
-        for _ = 1, 1 + math.floor((ctx.depth or 1) / 5) do
-            list[#list + 1] = "character_bear"
-        end
-        return list
+        return Band.fill(list, ctx, "character_bear", { base = 1, per = 5, max = 3 })
     end,
 }

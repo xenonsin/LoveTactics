@@ -10,11 +10,14 @@
 -- STANDING, it heals only itself, and it leaves no ground at all. Nothing here is borrowed except the
 -- family's reason for existing.
 --
--- SO IT CHANGES ONE ENCOUNTER AND DELIBERATELY NOT THE OTHER. data/encounters/encounter_stag.lua puts
--- one animal on the road, sometimes two, and its own header defends that: walking a lone stag off is
--- the option working rather than failing. A rule that pays only in company leaves that fight exactly
--- as it was. data/encounters/encounter_the_herd.lua fields three or four, and gets the thing it never
--- had -- a shape. Break them apart, or put one down before the rest close on it.
+-- SO IT CHANGES THE ONE ENCOUNTER THIS BODY IS LEFT IN. data/encounters/encounter_the_herd.lua fields
+-- three or four, and gets the thing it never had -- a shape. Break them apart, or put one down before
+-- the rest close on it.
+--
+-- THERE WAS A SECOND STAG STOP AND IT IS DELETED. A lone animal on the road, fielding the same cast at
+-- a different count, which is one fight met twice rather than two fights. This rule is what made the
+-- cut free: paying only in company, it was worth exactly nothing there, so nothing on this file went
+-- with it.
 --
 -- NO `class`/`price`: it is not crafted or sold, only born with. It sits in the loadout of a herd
 -- animal the way a signature relic sits in a hero's -- innate, not bought (docs/bestiary.md).

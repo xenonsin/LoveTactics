@@ -1,11 +1,18 @@
--- THE HERD: what a stag looks like when it is not alone.
+-- THE HERD: what a stag looks like when it is not alone. Same body, brought in the numbers it lives
+-- in -- and now the ONLY stop in the game that fields Ancient Stags.
 --
--- encounter_stag.lua is the single worst offender in the pre-existing pool -- one body against a
--- company of four, rating 582% against Muster.WALK_OVER of 200, which is to say every marker it drew
--- went calm and the fight offered to resolve itself instead of opening a board. It stays, because a
--- lone beast IS correct texture and walking one off is the option working rather than failing.
+-- IT USED TO STAND BESIDE encounter_stag, a lone animal of the same body, and the pair was one cast at
+-- two counts: not two fights, one fight met twice under two names. That file's own header recorded why
+-- it was the half to go -- a single stag against a company of four rated 582% against
+-- Muster.WALK_OVER of 200, so every marker it drew went calm and the stop offered to resolve itself
+-- instead of opening a board. A fight nobody plays is not texture, it is a tile that says "not today".
 --
--- This is the version that is a fight. Same body, brought in the numbers it lives in.
+-- THIS IS THE HALF THE RULES WERE BUILT FOR. trait_herd_warmth pays a stag a little health every tick
+-- it has an ally beside it and nothing at all alone, so it is worth exactly nothing on a lone stop and
+-- is the whole shape of this one: break them apart, or put one down before the rest close. Deleting
+-- the other half costs the wood a walk-off and costs this rule nothing.
+local Band = require("models.band")
+
 return {
     name = "The Herd",
     kind = "combat",
@@ -22,11 +29,10 @@ return {
     -- float to every floor and everything else belongs to exactly one circle. This was shared
     -- road stock on all fifteen, and the beast band is Gluttony's identity now.
     condition = function(ctx) return ctx.biome == "forest" end,
+    -- Three or four, rolled off the fight's own seed, so a herd met twice is not the same herd twice
+    -- (models/band.lua). Three is the floor because three is what the other two files say -- a herd of
+    -- two is the stop that was deleted, wearing this one's name.
     composition = function(ctx)
-        local list = {}
-        for _ = 1, 3 + math.floor((ctx.depth or 1) / 6) do
-            list[#list + 1] = "character_stag_beast"
-        end
-        return list
+        return Band.fill({}, ctx, "character_stag_beast", { base = 3, min = 3, max = 4, per = 6 })
     end,
 }

@@ -27,6 +27,14 @@ return {
     -- Turn 1 opens against two imps only -- enough pressure to force the party forward without a melee
     -- grunt already in reach of a survivor before anyone can screen. The grunt walks on as an early wave
     -- (below). Prestige still stacks extra imps for a later-game bite.
+    --
+    -- AND IT DOES NOT ROLL, which is the one place in data/encounters that opts out of models/band.lua
+    -- rather than declining the band with `vary = 0`. Every count on this stop is measured against a
+    -- TWO-BODY party -- the avatar and Rowan -- tick by tick against the wave marks below, and the
+    -- header of its sibling (encounter_survivors_extract.lua) records the headless runs that settled
+    -- them. A lesson whose opening pressure varies is a lesson that sometimes teaches something else.
+    -- Its cast is still its own: the siege stops that used to share it are deleted, rather than this
+    -- one being moved off numbers nobody may move.
     composition = function(ctx)
         local p = ctx.depth or 1
         local list = { "character_demon_imp", "character_demon_imp" }

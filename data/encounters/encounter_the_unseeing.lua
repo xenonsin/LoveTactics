@@ -20,7 +20,10 @@
 --
 -- depth 4 rather than 1, unlike the ordinary boar. The lanes are the lesson and the lord is the exam:
 -- a company that meets him having never seen a Gore telegraph has been asked a question nobody set up.
--- encounter_boar (weight 6, depth 1) and encounter_the_sounder (weight 4) are what teach it.
+-- encounter_boar (weight 6, depth 1) is what teaches it -- the wood's one boar stop, since the second
+-- one fielded the same cast at a different count and was deleted.
+local Band = require("models.band")
+
 return {
     name = "The Unseeing",
     kind = "elite",
@@ -37,7 +40,16 @@ return {
     -- float to every floor and everything else belongs to exactly one circle. This was shared
     -- road stock on all fifteen, and the beast band is Gluttony's identity now.
     condition = function(ctx) return ctx.biome == "forest" end,
-    composition = function()
-        return { "character_the_unseeing", "character_boar", "character_boar", "character_boar" }
+    -- He is one body and the boars around him are a band -- which is the one number in this fight that
+    -- is allowed to move, since what he DOES is make more of them.
+    --
+    -- THREE IS A FLOOR, NOT A CENTRE (`min = 3`), and the header above is why: opening on two rated
+    -- this fight at 900 against a pool median near 1000, which dragged the median far enough to let
+    -- encounter_carrion_swarm out of the light-fight filter on floor five. A band that rolls DOWN
+    -- through three would put that back one seed in three, and the failure would be a floor away from
+    -- the file that caused it.
+    composition = function(ctx)
+        local list = { "character_the_unseeing" }
+        return Band.fill(list, ctx, "character_boar", { base = 3, min = 3, per = 8 })
     end,
 }

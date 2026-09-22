@@ -1338,6 +1338,25 @@ end
 -- itself, and are what a `protect` objective is usually pointed at.
 function Arena.build(ctx, spec)
     spec = spec or {}
+    -- THE FIGHT'S OWN SEED, HANDED TO THE COMPOSITION. A stop fields a BAND of bodies rather than a
+    -- number (models/band.lua), and the band is rolled off this -- the same number the board is built
+    -- from, so one seed still reproduces a fight body for body and tile for tile.
+    --
+    -- Stamped HERE, in the one place that holds both halves, rather than onto the ctx each caller
+    -- builds: there are four of those today (this file's own callers, states/battle.lua,
+    -- models/encounter_battle.lua, the draft) and a fifth that forgot would silently field the band's
+    -- centre forever, which looks like nothing being wrong.
+    --
+    -- A COPY, because the ctx belongs to the caller: every path that rates a fight rather than seating
+    -- one (models/muster.lua, Descent.floorPool, the balance report) must keep reading a seedless ctx
+    -- and getting the band's centre back. Writing the seed into the caller's table would leak the roll
+    -- into whatever it asked next.
+    if spec.seed and ctx and ctx.seed == nil then
+        local seeded = {}
+        for k, v in pairs(ctx) do seeded[k] = v end
+        seeded.seed = spec.seed
+        ctx = seeded
+    end
     local partyIds = spec.party or {}
     local allyIds = Arena.resolveComposition(spec.allies, ctx)
     if not spec.allies then allyIds = {} end -- resolveComposition defaults to a bandit; allies default to none

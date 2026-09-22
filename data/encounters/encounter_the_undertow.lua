@@ -11,6 +11,8 @@
 --
 -- The Tidecaller is named ONCE. Two of them would make a soaked front lethal before anybody had a turn
 -- to dry off, which is the same argument encounter_gluttony_fen_mouth makes about its one maw.
+local Band = require("models.band")
+
 return {
     name = "The Undertow",
     kind = "elite",
@@ -26,9 +28,6 @@ return {
     condition = function(ctx) return ctx.biome == "swamp" end,
     composition = function(ctx)
         local list = { "character_undertow", "character_tidecaller", "character_fen_lancer" }
-        for _ = 1, 1 + math.floor((ctx.depth or 1) / 6) do
-            list[#list + 1] = "character_fen_lancer"
-        end
-        return list
+        return Band.fill(list, ctx, "character_fen_lancer", { base = 1, per = 6 })
     end,
 }

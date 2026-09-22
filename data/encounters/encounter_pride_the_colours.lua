@@ -4,6 +4,8 @@
 -- because the rank rule is measured live off adjacency, the shape collapses and the survivors become
 -- ordinary. It is where the game teaches killing the body that is not hitting you -- a job the Long
 -- Note held until the human companies were deleted, and this fight now holds alone.
+local Band = require("models.band")
+
 return {
     name = "The Colours",
     kind = "combat",
@@ -19,9 +21,6 @@ return {
     condition = function(ctx) return ctx.biome == "spire" end,
     composition = function(ctx)
         local list = { "character_standard_bearer", "character_gilded_sworn" }
-        for _ = 1, 1 + math.floor((ctx.depth or 1) / 6) do
-            list[#list + 1] = "character_gilded_page"
-        end
-        return list
+        return Band.fill(list, ctx, "character_gilded_page", { base = 1, per = 6 })
     end,
 }

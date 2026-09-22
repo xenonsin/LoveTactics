@@ -21,6 +21,8 @@
 -- KILLALL, WHICH IS THE DEFAULT AND MUST STAY IT. The King is emphatically not an `assassinate` mark:
 -- that objective ends the fight the instant the named body falls, and this is the one fight in the game
 -- where the named body falling is not the end of anything.
+local Band = require("models.band")
+
 return {
     name = "The Skeleton King",
     kind = "elite",
@@ -35,11 +37,26 @@ return {
     -- Which of a circle's floors a thing bills on is Descent.SINS' `elites` for the standing threat, and
     -- `rung` for anything an author wants split across the approach and the seat.
     condition = function(ctx) return ctx.biome == "underworld" end,
+    -- THREE SUBJECTS, ALWAYS -- AND THE ROLL MOVES THEIR SHAPE INSTEAD OF THEIR NUMBER.
+    --
+    -- The count here is not free the way an escort's is: trait_court_of_bone pays the King thirty mana
+    -- a subject, so the opening court IS the ninety on his bar that the header calls the fight's first
+    -- sentence. A band on the total would make that number roll between sixty and a hundred and
+    -- twenty, and the boss the player is being shown would not be the same boss.
+    --
+    -- So the total is pinned and the COMPOSITION of it rolls: one bow behind two swords, or two behind
+    -- one. Same mana, same three bodies, a different problem to walk into -- which is the orchard's own
+    -- rule (a nastier shape, not a longer one) applied to the body that court grew up into.
+    --
+    -- The knights are listed before the archers because Arena.clampComposition tops a fight up from the
+    -- filler IN AUTHORED ORDER, so what a ceiling takes off this fight is a bow and never the line
+    -- shielding it.
     composition = function(ctx)
-        return {
-            "character_the_skeleton_king",
-            "character_skeleton_knight", "character_skeleton_knight",
-            "character_skeleton_archer",
-        }
+        local COURT = 3
+        local bows = Band.count(ctx, { base = 1, min = 1, max = 2, key = "character_skeleton_archer" })
+        local list = { "character_the_skeleton_king" }
+        for _ = 1, COURT - bows do list[#list + 1] = "character_skeleton_knight" end
+        for _ = 1, bows do list[#list + 1] = "character_skeleton_archer" end
+        return list
     end,
 }

@@ -6,6 +6,8 @@
 --
 -- The deliberate inverse of the Sated, one stratum over, which opens enormous and deflates. Two apexes,
 -- two opposite readings of what a big body does as you hurt it, each true to its own sin.
+local Band = require("models.band")
+
 return {
     name = "Rift-Born",
     kind = "elite",
@@ -21,9 +23,6 @@ return {
     condition = function(ctx) return ctx.biome == "volcanic" end,
     composition = function(ctx)
         local list = { "character_rift_born" }
-        for _ = 1, 1 + math.floor((ctx.depth or 1) / 6) do
-            list[#list + 1] = "character_cinder_kin"
-        end
-        return list
+        return Band.fill(list, ctx, "character_cinder_kin", { base = 1, per = 6 })
     end,
 }

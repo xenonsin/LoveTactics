@@ -37,6 +37,8 @@
 --
 -- depth 8, behind the White Wolf's 5 and the Sow's 6, because it is the last thing the wood has and
 -- because a company that has never had to corner anything has been asked a question nobody set up.
+local Band = require("models.band")
+
 return {
     name = "The Meandering Stag",
     kind = "elite",
@@ -57,13 +59,11 @@ return {
         -- system cannot see properly -- so the escort is carrying the whole rating as well as the whole
         -- threat. Three is what makes the first exchange read as a fight rather than as a large animal
         -- walking away from you.
-        local day = ctx.depth or 1
-        for _ = 1, 2 + math.floor(day / 14) do
-            list[#list + 1] = "character_wolf_grunt"
-        end
-        for _ = 1, 1 + math.floor(day / 20) do
-            list[#list + 1] = "character_boar"
-        end
-        return list
+        -- BOTH HALVES CARRY A FLOOR, because between them they are the whole of what Muster can see:
+        -- the apex contributes zero damage to the sum that rates this fight, so the escort is carrying
+        -- the rating as well as the threat. Three at the open is the argument above; `min` is that
+        -- argument surviving a band that would otherwise roll two.
+        Band.fill(list, ctx, "character_wolf_grunt", { base = 2, min = 2, per = 14 })
+        return Band.fill(list, ctx, "character_boar", { base = 1, min = 1, per = 20 })
     end,
 }

@@ -2,8 +2,10 @@
 --
 -- Enemy character blueprint. See data/characters/bandit.lua for the shape.
 --
--- It is the commonest animal in the game -- encounter_boar at weight 6 from day one, three at a time in
--- encounter_the_sounder, and the Lodge's first commission scales them by the day -- and for a long time
+-- It is the commonest animal in the game -- three or four of it at encounter_boar's weight 6 from the
+-- first floor, and three around the Unseeing (which is what he does). It used to be commoner still:
+-- encounter_the_sounder fielded the same cast at a different count, which is one fight met twice
+-- rather than two fights, and it was deleted rather than differentiated. For a long time
 -- it was the one with the least to say. It carried the wolves' `weapon_fangs` and the Ancient Stag's
 -- exact AI rule under a different comment, which made the two animals one unit with different numbers.
 --

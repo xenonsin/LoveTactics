@@ -15,13 +15,18 @@
 #
 # Usage:
 #   tools/wiki-sync.sh [WIKI_DIR] [--push] [--no-build]
+#   tools/wiki-sync.sh --build-only
 #   tools/wiki-sync.sh --install-hook
 #
 #   WIKI_DIR        path to the cloned wiki repo (default: ../LoveTactics.wiki)
 #   --push          git add/commit/push the wiki after syncing (otherwise leaves it dirty for you to
 #                   review and commit yourself)
 #   --no-build      publish whatever is already in wiki/ instead of regenerating it first
-#   --install-hook  (re)install the post-commit hook that auto-syncs when the data layer changes
+#   --build-only    regenerate wiki/ and stop -- no publish, and no wiki clone needed. This is the
+#                   half an editor wants while authoring: it keeps the local pages honest between
+#                   commits, and it is the one call that fails loudly if a blueprint edit broke the
+#                   renderer, instead of letting you find out at commit time.
+#   --install-hook  (re)install the post-commit hook that auto-syncs when the game's data changes
 #
 # FRESH CLONE? Two one-time steps — .git/hooks is not tracked, so the hook does not come with the repo:
 #   git clone https://github.com/xenonsin/LoveTactics.wiki.git ../LoveTactics.wiki
@@ -36,10 +41,12 @@ WIKI_DIR=""
 DO_PUSH=0
 DO_BUILD=1
 INSTALL_HOOK=0
+BUILD_ONLY=0
 for arg in "$@"; do
   case "$arg" in
     --push) DO_PUSH=1 ;;
     --no-build) DO_BUILD=0 ;;
+    --build-only) BUILD_ONLY=1 ;;
     --install-hook) INSTALL_HOOK=1 ;;
     *) WIKI_DIR="$arg" ;;
   esac
@@ -66,27 +73,42 @@ if [ "$INSTALL_HOOK" -eq 1 ]; then
 
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
 
-# Did this commit change anything the wiki is rendered from? If not, nothing to sync.
-if ! git diff-tree --no-commit-id --name-only -r HEAD \
-     | grep -qE '^(data/.+\.lua|tools/wiki_gen\.lua)$'; then
+# WHAT COUNTS AS A CHANGE TO THE WIKI IS WIDER THAN data/, and the narrow version of this test was a
+# stale public page waiting to happen. The pages are not a copy of the blueprints: every number on
+# them is COMPUTED, through Item.growth, Item.instantiate, Spoils.depthOf, Class and Trait. So a
+# commit touching only models/ can move every rank and every stat on all 46 class pages while this
+# hook, matching '^data/', sits it out -- and nothing downstream would ever notice, because the next
+# data commit republishes the corrected numbers under an unrelated message.
+#
+# The fix is NOT a list of the modules wiki_gen requires. Resolved transitively that list is 71 files
+# deep and it would be a hand-copy that goes stale the first time the renderer grows a require --
+# exactly the failure it is meant to prevent. So the trigger is any Lua at all, and THE GENERATED
+# DIFF IS THE REAL GATE: the errors are asymmetric, a false positive costs four seconds and publishes
+# nothing (wiki-sync finds no changes to commit), a false negative costs a wrong page on the internet.
+if ! git diff-tree --no-commit-id --name-only -r HEAD | grep -qE '\.lua$'; then
   exit 0
 fi
 
-echo "[wiki] the data layer changed - regenerating and syncing the wiki..."
-if bash "$REPO_ROOT/tools/wiki-sync.sh" --push; then
-  echo "[wiki] done."
+# Quiet unless the wiki actually moved -- most commits touch Lua that no page is rendered from, and a
+# hook that announces itself on every one of those teaches you to stop reading it.
+if out="$(bash "$REPO_ROOT/tools/wiki-sync.sh" --push 2>&1)"; then
+  case "$out" in
+    *"No changes to commit."*) : ;;
+    *) echo "[wiki] pages changed - regenerated and pushed." ;;
+  esac
 else
   echo "[wiki] sync/push failed (commit is unaffected). Run 'bash tools/wiki-sync.sh --push' manually." >&2
+  echo "$out" >&2
 fi
 exit 0
 HOOK
   chmod +x "$HOOK_PATH"
   echo "Installed post-commit hook: $HOOK_PATH"
-  echo "Commits touching data/ or tools/wiki_gen.lua will now regenerate and push the wiki."
+  echo "Commits touching any .lua will now rebuild the wiki, and push it if the pages changed."
   exit 0
 fi
 
-if [ ! -d "$WIKI_DIR/.git" ]; then
+if [ "$BUILD_ONLY" -eq 0 ] && [ ! -d "$WIKI_DIR/.git" ]; then
   echo "error: '$WIKI_DIR' is not a git repo." >&2
   echo "clone it first:  git clone https://github.com/xenonsin/LoveTactics.wiki.git \"$WIKI_DIR\"" >&2
   exit 1
@@ -104,6 +126,15 @@ find_love() {
   done
   return 1
 }
+
+if [ "$BUILD_ONLY" -eq 1 ]; then
+  if LOVE="$(find_love)"; then
+    (cd "$REPO_ROOT" && "$LOVE" . wiki-gen)
+    exit $?
+  fi
+  echo "error: LÖVE not found. Set LOVE_BIN or put love/lovec on PATH." >&2
+  exit 1
+fi
 
 if [ "$DO_BUILD" -eq 1 ]; then
   if LOVE="$(find_love)"; then

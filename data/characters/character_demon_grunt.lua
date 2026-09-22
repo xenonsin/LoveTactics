@@ -15,9 +15,11 @@
 -- authored blows plus the sliver the last one is meant to leave. Cut it to 0.7 with everything else
 -- and the choreography kills it on Rowan's second swing, a full beat before the player's own finishing
 -- stroke, which is the one thing the whole prologue is built to hand them. So it is deliberately the
--- sturdiest common enemy in the game. In the siege encounters that field it in packs
--- (data/encounters/encounter_siege_*.lua) that reads as the horde's heavy rather than as an oversight,
--- which is the one place the exemption is actually visible.
+-- sturdiest common enemy in the game. Where it is fielded in packs -- the prologue's extraction
+-- (data/encounters/encounter_survivors_extract.lua) -- that reads as the horde's heavy rather than as
+-- an oversight, which is the one place the exemption is actually visible. (The three siege stops that
+-- used to be the other place are deleted: their quest went with data/quests, so nothing could reach
+-- them, and two of them shared a cast with the prologue's own.)
 --
 -- IT WAS 66, and it moved for the reason the paragraph above gives for why it usually does not: one of
 -- the five blows changed. The avatar's magicDamage came up to meet its Damage (character_avatar.lua --

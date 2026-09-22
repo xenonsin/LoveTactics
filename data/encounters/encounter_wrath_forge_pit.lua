@@ -5,6 +5,8 @@
 -- wretch is priced against. Commit and it dies before it matters; spread your damage and you build it.
 --
 -- Two wretches on purpose at depth: the lesson lands harder when the second one is already sharp.
+local Band = require("models.band")
+
 return {
     name = "The Forge Pit",
     kind = "combat",
@@ -20,9 +22,6 @@ return {
     condition = function(ctx) return ctx.biome == "volcanic" end,
     composition = function(ctx)
         local list = { "character_forge_wretch", "character_cinder_kin" }
-        for _ = 1, 1 + math.floor((ctx.depth or 1) / 6) do
-            list[#list + 1] = "character_forge_wretch"
-        end
-        return list
+        return Band.fill(list, ctx, "character_forge_wretch", { base = 1, per = 6 })
     end,
 }

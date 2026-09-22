@@ -452,9 +452,11 @@ return {
         name = "herd warmth pays for company and pays nothing at all to a body standing alone",
         fn = function()
             -- THE WHOLE RULE, BEHAVIOURALLY. The apex heals by WALKING and heals whoever stands on what
-            -- it left; this heals by STANDING and heals only itself. A version that paid a lone animal
-            -- would turn encounter_stag -- deliberately a fight you may walk away from -- into an
-            -- attrition sink, and nothing else in the suite reads this branch.
+            -- it left; this heals by STANDING and heals only itself. Paying a lone animal would make
+            -- every solitary stag an attrition sink, and nothing else in the suite reads this branch.
+            -- (It used to name the lone-stag encounter as the case that would break; that blueprint is
+            -- deleted -- it fielded encounter_the_herd's cast at a smaller count -- and this rule is
+            -- exactly why deleting it cost nothing: warmth was worth zero there by construction.)
             local c = walkableCombat()
             local alone = { char = Character.instantiate(LESSER), side = "enemy", alive = true,
                             x = 2, y = 2, statuses = {} }

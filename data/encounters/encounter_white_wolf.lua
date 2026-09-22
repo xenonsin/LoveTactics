@@ -21,6 +21,8 @@
 -- meets her having never seen a wolf give ground, never been doubled by one, and never watched an alpha
 -- howl has been asked a question nobody set up. encounter_wolf (weight 6, depth 1) and
 -- encounter_wolf_pack (weight 5) are what teach it.
+local Band = require("models.band")
+
 return {
     name = "The White Wolf",
     kind = "elite",
@@ -39,9 +41,10 @@ return {
         -- Three at the open, and a fourth deep -- kept deliberately shallow, because she makes more of
         -- them and every one she makes is another bite. The growth here is a floor on the fight, not
         -- its ceiling.
-        for _ = 1, 3 + math.floor((ctx.depth or 1) / 5) do
-            list[#list + 1] = "character_wolf_grunt"
-        end
-        return list
+        --
+        -- WHICH IS ALSO WHY THREE IS `min` AND NOT MERELY `base`. The wolves she opens with ARE her
+        -- opening damage (see the header), so a band that rolled down through three would roll away
+        -- the thing that makes the first exchange read as a fight. It may only roll UP.
+        return Band.fill(list, ctx, "character_wolf_grunt", { base = 3, min = 3, per = 5 })
     end,
 }

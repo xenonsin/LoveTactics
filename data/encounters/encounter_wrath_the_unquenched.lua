@@ -7,6 +7,8 @@
 --
 -- `elite`, so it opens at Arena.ELITE_CAP: at the four-body skirmish ceiling this would be the drake and
 -- two spits, which is not enough fire for the trap to be real.
+local Band = require("models.band")
+
 return {
     name = "The Unquenched",
     kind = "elite",
@@ -22,9 +24,6 @@ return {
     condition = function(ctx) return ctx.biome == "volcanic" end,
     composition = function(ctx)
         local list = { "character_the_unquenched" }
-        for _ = 1, 3 + math.floor((ctx.depth or 1) / 6) do
-            list[#list + 1] = "character_ember_spit"
-        end
-        return list
+        return Band.fill(list, ctx, "character_ember_spit", { base = 3, per = 6 })
     end,
 }

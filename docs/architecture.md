@@ -164,8 +164,13 @@ Scripted, duel and draft fights pass `deploy = false` and keep their authored pl
 
 **Enemy composition** is authored per encounter as `composition = function(ctx)` (mirroring the
 existing dynamic `weight`), returning a list of `data/characters/` ids that **scales with
-`ctx.prestige`** — more foes, tougher rosters at higher renown. Enemies reuse the party-character
-schema (`Character.instantiate`). An objective tile reads its roster + win condition from **its own**
+`ctx.depth`** — the floor the fight is standing on is the only clock. *How many* of a body is a BAND
+rather than a number (`models/band.lua`): `Arena.build` stamps the fight's own seed onto the ctx and
+the filler count rolls off it, while every path that merely *rates* a fight (`Muster.encounter`,
+`Descent.floorPool`, the balance report) holds no seed and gets the band's centre — rated at the
+middle, played across the band. No two encounters may field the same cast; see
+[adding-content.md](adding-content.md) and `tests/encounter_spec.lua`. Enemies reuse the
+party-character schema (`Character.instantiate`). An objective tile reads its roster + win condition from **its own**
 quest's objective spec (`composition` + `win = { type, target }`) — a day's ground carries one per piece
 of work in `map.objectives`, and the tile stores only the quest id, so `states/game.lua` resolves which
 spec the fight belongs to and hands it to `EncounterBattle.spec` as `opts.objective`. (The tile holds an

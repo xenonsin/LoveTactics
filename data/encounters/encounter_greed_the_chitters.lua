@@ -3,6 +3,8 @@
 -- The chitters take coin and run; the crawler is slow, armoured and worth opening. So the fight is two
 -- questions at once -- is chasing the thieves worth the tempo, and is the treasury worth the turns --
 -- and both of them are the sin.
+local Band = require("models.band")
+
 return {
     name = "The Chitters",
     kind = "combat",
@@ -18,9 +20,6 @@ return {
     condition = function(ctx) return ctx.biome == "swamp" end,
     composition = function(ctx)
         local list = { "character_coffer_crawler" }
-        for _ = 1, 3 + math.floor((ctx.depth or 1) / 5) do
-            list[#list + 1] = "character_coin_chitter"
-        end
-        return list
+        return Band.fill(list, ctx, "character_coin_chitter", { base = 3, per = 5 })
     end,
 }

@@ -211,13 +211,16 @@ return {
     {
         name = "the encounters that carry a clock the model cannot read are refused by name",
         fn = function()
-            -- The five authored today (the prologue's siege and survivors legs). Named rather than
-            -- described, because this is the list that would silently grow: an author adding waves to
-            -- an ordinary `combat` encounter must not thereby make it un-walkable-off by accident and
+            -- The two authored today (the prologue's flight leg). Named rather than described,
+            -- because this is the list that would silently grow: an author adding waves to an ordinary
+            -- `combat` encounter must not thereby make it un-walkable-off by accident and
             -- un-noticeably.
+            --
+            -- IT WAS FIVE. The three Bastion siege stops are deleted -- their quest went with
+            -- data/quests, so nothing could place them, and two of the three fielded the exact cast of
+            -- the two below (tests/encounter_spec.lua's "one cast, one stop").
             local EncounterModel = require("models.encounter")
             for _, id in ipairs({
-                "encounter_siege_breach", "encounter_siege_line", "encounter_siege_pickets",
                 "encounter_survivors_defend", "encounter_survivors_extract",
             }) do
                 local def = EncounterModel.get(id)

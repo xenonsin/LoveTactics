@@ -1052,7 +1052,8 @@ end
 --
 -- MEASURED, AND THE CUT LANDS IN A GAP. Every fight in the mode was rated through Muster against the
 -- company that can really be standing on its floor, and the walk-over-able ones -- fourteen instances
--- across two blueprints, encounter_stag and encounter_carrion_swarm -- all sat between 45% and 53% of
+-- across two blueprints, the lone stag (since deleted: it fielded encounter_the_herd's cast at a
+-- smaller count) and encounter_carrion_swarm -- all sat between 45% and 53% of
 -- their own floor's MEDIAN fight. The next thing above them is 57%. So the threshold is not a dial
 -- somebody has to keep re-tuning; it is a line drawn through four points of empty space, and 360 rated
 -- fight-instances are on the far side of it.

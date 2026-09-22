@@ -6,6 +6,8 @@
 -- trades you take when you can no longer kite.
 --
 -- Locked to the volcanic stratum by ctx.biome, the same gate every circle uses.
+local Band = require("models.band")
+
 return {
     name = "The Ember Line",
     kind = "combat",
@@ -21,9 +23,6 @@ return {
     condition = function(ctx) return ctx.biome == "volcanic" end,
     composition = function(ctx)
         local list = { "character_cinder_kin" }
-        for _ = 1, 3 + math.floor((ctx.depth or 1) / 5) do
-            list[#list + 1] = "character_ember_spit"
-        end
-        return list
+        return Band.fill(list, ctx, "character_ember_spit", { base = 3, per = 5 })
     end,
 }

@@ -6,6 +6,8 @@
 --
 -- `elite`, so it opens at Arena.ELITE_CAP: at the four-body skirmish ceiling this would be the Second
 -- Self and two motes, which is not enough glass for the choice to be real.
+local Band = require("models.band")
+
 return {
     name = "The Second Self",
     kind = "elite",
@@ -21,9 +23,6 @@ return {
     condition = function(ctx) return ctx.biome == "desert" end,
     composition = function(ctx)
         local list = { "character_the_second_self", "character_mimic_of_ash" }
-        for _ = 1, 2 + math.floor((ctx.depth or 1) / 6) do
-            list[#list + 1] = "character_glass_mote"
-        end
-        return list
+        return Band.fill(list, ctx, "character_glass_mote", { base = 2, per = 6 })
     end,
 }

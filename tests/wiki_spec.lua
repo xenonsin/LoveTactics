@@ -11,13 +11,72 @@
 local Wiki = require("tools.wiki_gen")
 local Item = require("models.item")
 local Class = require("models.class")
+local Character = require("models.character")
 
 -- Render once: 852 items x 11 forge levels is the expensive half, and every case below asks the same
 -- pages a different question.
-local pages, byClass, classIds = Wiki.render()
+local pages, byClass, classIds, bodyKinds, bodies = Wiki.render()
 
 local byName = {}
 for _, p in ipairs(pages) do byName[p.name] = p.body end
+
+-- THE ANCHOR A HEADING GETS, implemented a SECOND time on purpose.
+--
+-- The generator derives every in-page link from the heading text it also titles the section with, so
+-- asking it whether its own links match its own headings would be asking a rule to grade itself. This
+-- is the same rule written out independently: lowercase, drop everything that is not alphanumeric, a
+-- space, a hyphen or an underscore, then spaces to hyphens. If the two ever disagree the link case
+-- below goes red, which is the only way this file can catch the generator's slug rule drifting.
+local function slug(heading)
+    local s = tostring(heading):lower()
+    s = s:gsub("[^%w%s%-_]", "")
+    s = s:gsub("%s", "-")
+    return s
+end
+
+-- Every anchor a page offers, from its own headings, with the renderer's duplicate rule applied.
+local function anchorsOf(body)
+    local out, seen = {}, {}
+    for line in (body .. "\n"):gmatch("([^\n]*)\n") do
+        local heading = line:match("^#+%s+(.-)%s*$")
+        if heading then
+            local base = slug(heading)
+            local n = seen[base]
+            seen[base] = (n or 0) + 1
+            out[n and (base .. "-" .. tostring(n)) or base] = true
+        end
+    end
+    return out
+end
+
+-- The bestiary's sections, split back out of the rendered pages: charId -> { page, heading, body }.
+-- Parsed rather than asked of the generator, for the same reason the drop column is parsed back out
+-- of its tables -- what a reader gets is the rendered page, not the table it was built from.
+local function bestiarySections()
+    local out = {}
+    for _, page in ipairs(pages) do
+        if page.name:match("^Bestiary%-") then
+            local heading, id, buf
+            local function flush()
+                if id then out[id] = { page = page.name, heading = heading, body = table.concat(buf, "\n") } end
+            end
+            for line in (page.body .. "\n"):gmatch("([^\n]*)\n") do
+                local h = line:match("^## (.-)%s*$")
+                if h then
+                    flush()
+                    heading, id, buf = h, nil, {}
+                elseif buf then
+                    if not id then id = line:match("^`(character_[a-z_0-9]+)`") end
+                    buf[#buf + 1] = line
+                end
+            end
+            flush()
+        end
+    end
+    return out
+end
+
+local sections = bestiarySections()
 
 -- Every `id` fenced in backticks, across every page. The item cell prints the blueprint id as the
 -- row's last line, which is what makes a row addressable at all.
@@ -214,6 +273,249 @@ return {
             -- The bottom is not a circle and bars nothing; Acedia's stair is open on purpose. Two
             -- different facts, and the page must not print one word for both.
             assert(page:find("the stair stands open", 1, true), "Sloth's open stair is named as one")
+        end,
+    },
+
+    {
+        -- WHAT THIS GUARDS IS THE COLUMN BEING TRUE, not the column existing. "Dropped by" is read by
+        -- a player deciding what to go and kill, so a name in it is a promise; and the failure mode of
+        -- a generated column is silence -- it renders a tidy dash and nobody can tell whether that
+        -- means "nothing drops it" or "the lookup broke". So the cells are PARSED back out of the
+        -- rendered tables and checked against the same measurement that filled them, in both
+        -- directions: every body-backed item names its body, and everything else names nobody.
+        name = "a found item names the body that hands it over, and only when one does",
+        fn = function()
+            local Drops = require("tools.drop_report")
+            local Character = require("models.character")
+            local Descent = require("models.descent")
+            local index = Drops.sources()
+
+            -- Split a rendered row into cells. `cell()` escapes an authored pipe as \| , so those are
+            -- parked before the split and restored after -- otherwise a name with a pipe in it would
+            -- silently shift every assertion one column left, which is the exact bug the sibling case
+            -- about unescaped pipes exists to catch.
+            local function cells(line)
+                local out = {}
+                for part in (line:gsub("\\|", "\1")):gmatch("[^|]+") do
+                    out[#out + 1] = (part:gsub("\1", "|"):gsub("^%s+", ""):gsub("%s+$", ""))
+                end
+                return out
+            end
+
+            -- Walk every table on every class page and hand back id -> the row's "Dropped by" cell.
+            -- The column set differs per table (an empty column is dropped), so the header is re-read
+            -- at the top of each one rather than assumed.
+            local found = {}
+            for _, page in ipairs(pages) do
+                if page.name:match("^Items%-") then
+                    local dropIdx = nil
+                    for line in (page.body .. "\n"):gmatch("([^\n]*)\n") do
+                        if line:match("^| Item |") then
+                            dropIdx = nil
+                            for i, head in ipairs(cells(line)) do
+                                if head == "Dropped by" then dropIdx = i end
+                            end
+                        elseif line:match("^| %-%-%-") then -- separator
+                        elseif line:match("^| ") then
+                            local row = cells(line)
+                            local id = row[1] and row[1]:match("`([a-z_]+)`")
+                            if id and Item.defs[id] then
+                                local c = dropIdx and row[dropIdx] or "—"
+                                found[id] = (c == "—") and "" or c
+                            end
+                        else
+                            dropIdx = nil
+                        end
+                    end
+                end
+            end
+
+            -- Which body the boss route is expected to name: the circle's general stands behind its
+            -- guardian, its lieutenant two floors up.
+            local function bossName(q)
+                for _, sin in ipairs(Descent.SINS) do
+                    if sin.id == q.sin then
+                        local slot = (q.which == "general") and sin.guardian or sin.minor
+                        local def = slot and slot.lead and Character.defs[slot.lead]
+                        return def and def.name or nil
+                    end
+                end
+                return nil
+            end
+
+            local named, blank = 0, 0
+            for id, row in pairs(index) do
+                local printed = found[id]
+                if printed then -- an item the pages actually carry
+                    local body = row.route == "drops" or row.route == "carried"
+                    if body or row.route == "boss" then
+                        named = named + 1
+                        assert(printed ~= "",
+                            id .. " is reached by route '" .. row.route
+                            .. "' but its Dropped by cell is empty")
+                        local want
+                        if body then
+                            local def = Character.defs[row.bodies[1]]
+                            want = def and def.name or row.bodies[1]
+                        else
+                            want = bossName(row.boss)
+                        end
+                        assert(want and printed:find(want, 1, true),
+                            id .. " should name " .. tostring(want)
+                            .. " but its cell reads '" .. printed .. "'")
+                        if row.route == "carried" then
+                            assert(printed:find("(carried)", 1, true),
+                                id .. " is only carried, never authored, and must say so")
+                        end
+                    else
+                        blank = blank + 1
+                        assert(printed == "",
+                            id .. " comes off no named body (route '" .. row.route
+                            .. "') yet its cell claims '" .. printed .. "'")
+                    end
+                end
+            end
+
+            -- The measurement is worth nothing if it graded an empty set -- the failure this whole case
+            -- is built against is the lookup returning nothing and every cell going quietly blank.
+            assert(named > 0, "no item on any page names a body; the drop index reached no rows")
+            assert(blank > 0, "nothing came off the band; the index is not being read")
+        end,
+    },
+
+    {
+        -- THE BESTIARY'S OWN COMPLETENESS, the sibling of the items case at the top of this file and
+        -- the same silent failure: a body whose race the registry does not know lands in no bucket
+        -- and simply is not on any page. Nothing raises, nothing looks wrong, and a name the rift
+        -- page links at points at a heading that was never written.
+        name = "every body in the game has exactly one bestiary entry",
+        fn = function()
+            local onDisk, entries = 0, 0
+            for id in pairs(Character.defs) do
+                onDisk = onDisk + 1
+                assert(sections[id], id .. " has no section on any bestiary page")
+            end
+            for _ in pairs(sections) do entries = entries + 1 end
+            assert(entries == onDisk,
+                entries .. " bestiary entries against " .. onDisk .. " blueprints")
+
+            -- And the pages agree with the catalogue that drove them: every kind has a page, every
+            -- page is reachable from the index, the sidebar and the front page.
+            local counted = 0
+            for _, kind in ipairs(bodyKinds) do
+                local page = "Bestiary-" .. kind:sub(1, 1):upper() .. kind:sub(2)
+                assert(byName[page], "no page for kind " .. kind .. " (expected " .. page .. ")")
+                for _, host in ipairs({ "Bestiary", "_Sidebar", "Home" }) do
+                    assert(byName[host]:find("(" .. page .. ")", 1, true),
+                        page .. " is not linked from " .. host)
+                end
+                counted = counted + #bodies[kind]
+            end
+            assert(counted == onDisk, "the kind buckets hold " .. counted .. " of " .. onDisk)
+        end,
+    },
+
+    {
+        -- EVERY LINK THIS WIKI WRITES, WALKED. The pages cross-reference in three directions now --
+        -- an item's drop cell into the bestiary, a body's kit back into the shelves, the rift's
+        -- compositions into both -- and all three are built from ids rather than typed, which means
+        -- the failure mode is not a typo but a RENAME: a body that moves kind, a class that stops
+        -- owning an item, a heading whose wording changes. A dead wiki link raises nothing and looks
+        -- like a link.
+        name = "no page links at a page or an anchor that does not exist",
+        fn = function()
+            local anchors = {}
+            for _, page in ipairs(pages) do anchors[page.name] = anchorsOf(page.body) end
+
+            local walked = 0
+            for _, page in ipairs(pages) do
+                for target in page.body:gmatch("%]%(([^%)]+)%)") do
+                    if not target:match("^https?:") then
+                        walked = walked + 1
+                        local where, anchor = target:match("^([^#]*)#?(.*)$")
+                        local host = (where ~= "" and where) or page.name
+                        assert(anchors[host], page.name .. " links at a page that does not exist: "
+                            .. target)
+                        if anchor ~= "" then
+                            assert(anchors[host][anchor], page.name .. " links at " .. target
+                                .. ", but " .. host .. " has no such heading")
+                        end
+                    end
+                end
+            end
+            -- A floor under a four-figure count, not a fence around the current one: what this
+            -- guards is the walk reaching the pages at all, and a spec that reddens because a class
+            -- was retired would be measuring the catalogue's size instead.
+            assert(walked > 1000, "expected to walk the wiki's cross-links, walked " .. walked)
+        end,
+    },
+
+    {
+        -- WHAT A BODY IS HOLDING AND WHAT IT LEAVES, round-tripped. The generator writes these as
+        -- links built off the item's own `class` and `type`, so the two ways they go wrong are a link
+        -- to the wrong shelf and an item quietly dropped out of the list -- and the second is the one
+        -- that looks fine. So each authored id is required to appear as a named link on the body's
+        -- section AND the page it points at is required to actually carry that id.
+        name = "a body's kit and drop list reach the pages those items are really on",
+        fn = function()
+            local checked = 0
+            for charId, def in pairs(Character.defs) do
+                local section = sections[charId]
+                local want = {}
+                for _, entry in ipairs(def.startingItems or {}) do
+                    local id = type(entry) == "table" and (entry.id or entry[1]) or entry
+                    if type(id) == "string" then want[id] = true end
+                end
+                for _, id in ipairs(def.drops or {}) do want[id] = true end
+
+                for id in pairs(want) do
+                    local itemDef = Item.defs[id]
+                    assert(itemDef, charId .. " names an item that does not exist: " .. id)
+                    local name = (itemDef.name or id):gsub("|", "\\|")
+                    local link = section.body:match("%[" .. name:gsub("%p", "%%%0")
+                        .. "%]%(([^%)#]+)")
+                    assert(link, charId .. "'s entry never names " .. id
+                        .. " (" .. tostring(itemDef.name) .. ")")
+                    assert(byName[link], charId .. " links " .. id .. " at " .. link
+                        .. ", which is not a page")
+                    assert(byName[link]:find("`" .. id .. "`", 1, true),
+                        charId .. " links " .. id .. " at " .. link .. ", which does not carry it")
+                    checked = checked + 1
+                end
+            end
+            assert(checked > 300, "expected to walk the bodies' kits and lists, walked " .. checked)
+        end,
+    },
+
+    {
+        -- THE RIFT IS THE WAY IN TO THE BESTIARY, which is the whole reason its compositions are
+        -- links: a reader asking what stands on floor nine asks what those things ARE in the same
+        -- breath. Every floor seats something, so a floor section with no link into the bestiary
+        -- means the composition resolver has started handing back bare names again.
+        name = "every floor of the rift links the bodies standing on it",
+        fn = function()
+            local Descent = require("models.descent")
+            local page = byName["The-Rift"]
+            local section, floors = nil, 0
+            local function close()
+                if section then
+                    floors = floors + 1
+                    assert(section.body:find("](Bestiary-", 1, true),
+                        "floor " .. section.floor .. " names no body the bestiary carries")
+                end
+            end
+            for line in (page .. "\n"):gmatch("([^\n]*)\n") do
+                local floor = line:match("^## Floor (%d+)")
+                if floor then
+                    close()
+                    section = { floor = floor, body = "" }
+                elseif section then
+                    section.body = section.body .. line .. "\n"
+                end
+            end
+            close()
+            assert(floors == Descent.FLOORS,
+                "walked " .. floors .. " floor sections against " .. Descent.FLOORS)
         end,
     },
 }

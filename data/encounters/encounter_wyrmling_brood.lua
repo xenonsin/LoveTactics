@@ -8,6 +8,8 @@
 -- NO ADULT, deliberately. Whatever laid them is deeper down and is not this encounter -- and reaching
 -- for character_wild_wyrm to play the parent would be fielding a druid's worn shape as an enemy, which
 -- is the mistake character_dire_bear already embodies on Gluttony's honour-guard floor.
+local Band = require("models.band")
+
 return {
     name = "Wyrmling Brood",
     kind = "combat",
@@ -18,10 +20,9 @@ return {
     -- road stock on all fifteen, and the beast band is Gluttony's identity now.
     condition = function(ctx) return ctx.biome == "forest" end,
     composition = function(ctx)
-        local list = {}
-        for _ = 1, 3 + math.floor((ctx.depth or 1) / 6) do
-            list[#list + 1] = "character_wyrmling"
-        end
-        return list
+        -- THREE IS THE LESSON AND SO IT IS THE FLOOR (`min = 3`). The whole fight is where the cones
+        -- cross, and a brood that rolled down to two is a brood with one crossing in it -- the geometry
+        -- still there and no longer the point. It may roll up.
+        return Band.fill({}, ctx, "character_wyrmling", { base = 3, min = 3, per = 6 })
     end,
 }

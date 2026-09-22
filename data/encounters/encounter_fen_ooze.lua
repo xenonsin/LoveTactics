@@ -38,6 +38,8 @@
 -- -- but a Run Away roll can fail, so the body must not be met before a company has plausibly acquired
 -- an element. `depth` is the whole of that guarantee: on a descent the day is depth (Descent.poolDay),
 -- so 6 is several floors and several homecomings of shelves and drops rather than the mouth of the rift.
+local Band = require("models.band")
+
 return {
     name = "The Fen Ooze",
     kind = "elite",
@@ -55,13 +57,9 @@ return {
     -- `rung` for anything an author wants split across the approach and the seat.
     condition = function(ctx) return ctx.biome == "swamp" end,
     composition = function(ctx)
-        local list = {}
         -- Two at the mouth of the fen, three deeper in. It climbs slowly and stops well inside
         -- Arena.ELITE_CAP (6): this is a puzzle about what you brought, and a fourth body only makes
-        -- the same answer take longer.
-        for _ = 1, math.min(3, 2 + math.floor((ctx.depth or 1) / 4)) do
-            list[#list + 1] = "character_slime"
-        end
-        return list
+        -- the same answer take longer -- which is why `max` is a hard 3 the band may not roll past.
+        return Band.fill({}, ctx, "character_slime", { base = 2, per = 4, max = 3 })
     end,
 }

@@ -32,6 +32,8 @@
 --
 -- Gated to the underworld, the same predicate every circle keeps its stock with, so the stratum means
 -- something and no engine work was needed to say so.
+local Band = require("models.band")
+
 return {
     name = "The Bone Orchard",
     kind = "combat",
@@ -61,12 +63,18 @@ return {
     -- ranks -- and what grows with depth is the ratio of shooters to walkers rather than the total. A
     -- deeper orchard is a nastier shape, not a longer one.
     composition = function(ctx)
-        local day = ctx.depth or 1
-        local list = { "character_skeleton_knight", "character_skeleton_knight" }
-        -- A third body once the road has gone on -- and deeper still, that third body is the rank behind.
-        -- Never a fourth of anything: see above for what the count is measured against.
-        if day >= 8 then
-            list[#list + 1] = (day >= 14) and "character_skeleton_archer" or "character_skeleton_knight"
+        -- A third body once the road has gone on -- and deeper still, that third body is the rank
+        -- behind. NEVER A FOURTH OF ANYTHING, which is the ceiling argued above, so the bow does not
+        -- join the knights: it REPLACES one, and the knights' own ceiling drops by exactly the bow.
+        -- That is "a nastier shape, not a longer one" written as arithmetic.
+        --
+        -- The band says how many knights; it does not say whether the archer is there, because that is
+        -- the depth telling the player the orchard has learned to shoot back (`vary = 0`).
+        local bows = ((ctx.depth or 1) >= 14) and 1 or 0
+        local list = Band.fill({}, ctx, "character_skeleton_knight",
+            { base = 2, per = 8, max = 3 - bows })
+        if bows > 0 then
+            Band.fill(list, ctx, "character_skeleton_archer", { base = bows, max = bows, vary = 0 })
         end
         return list
     end,

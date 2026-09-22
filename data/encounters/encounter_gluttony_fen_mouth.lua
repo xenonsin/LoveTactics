@@ -8,6 +8,8 @@
 --
 -- `elite`, so it opens at Arena.ELITE_CAP rather than the four-body skirmish ceiling. A set-piece that
 -- opened at four would be the maw and two swallows, which is not a screen.
+local Band = require("models.band")
+
 return {
     name = "The Fen Mouth",
     kind = "elite",
@@ -23,9 +25,6 @@ return {
     condition = function(ctx) return ctx.biome == "forest" end,
     composition = function(ctx)
         local list = { "character_grendlemaw", "character_bogswallow" }
-        for _ = 1, 2 + math.floor((ctx.depth or 1) / 6) do
-            list[#list + 1] = "character_bogswallow"
-        end
-        return list
+        return Band.fill(list, ctx, "character_bogswallow", { base = 2, per = 6 })
     end,
 }

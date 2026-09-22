@@ -46,14 +46,48 @@ does not any more: the design docs argue about why the game is shaped this way a
 code that a change lands in, while a wiki is read by somebody who wants to know what a thing *does*.
 `docs/` is untouched and still the design source; it is simply no longer published.
 
-`& "E:\LOVE\lovec.exe" . wiki-gen` (`tools/wiki_gen.lua`) renders every item **by class, then by
-type** into the gitignored `wiki/` — 852 items over 46 class pages plus an index. Every number is
-read through the model (`Item.instantiate` / `Item.growth` at each forge level), so a page cannot
-disagree with the game; a column no item in a section filled is dropped from that table.
-`tools/wiki-sync.sh` builds and publishes it, and its prune step retires any page that is no longer
-generated — which is what took the 38 doc pages down. A `post-commit` hook publishes automatically
-whenever a commit touches `data/**.lua` or `tools/wiki_gen.lua`; skip it once with
-`LOVETACTICS_WIKI_NOSYNC=1 git commit ...`. `tests/wiki_spec.lua` holds the pages to their promises.
+`& "E:\LOVE\lovec.exe" . wiki-gen` (`tools/wiki_gen.lua`) renders **58 pages**: every item by class
+then by type (857 over 46 class pages), every body by kind (**the Bestiary** — 173 over 8), the Rift's
+fifteen floors, and the indexes over all three, into the gitignored `wiki/`. Every number is read
+through the model (`Item.instantiate` / `Item.growth` at each forge level, `Character.instantiate` for
+a stat block), so a page cannot disagree with the game; a column no item in a section filled is
+dropped from that table. `tools/wiki-sync.sh` builds and publishes it, and its prune step retires any
+page that is no longer generated — which is what took the 38 doc pages down. `. wiki-gen` alone, or
+`tools/wiki-sync.sh --build-only`, rebuilds `wiki/` without publishing anything.
+
+**THE THREE KINDS OF PAGE CROSS-LINK, AND THAT IS WHAT THE BESTIARY IS FOR.** An item's *Dropped by*
+cell links to the body's entry; that entry's *Carries* and *Drops* link back to the shelves those
+pieces sit on; the Rift's composition rows link every name on every floor. A body is addressed by a
+`##` heading rather than a table row because **a markdown row cannot carry an anchor** — which is the
+one place these pages break the wiki's table idiom, and the reason they do. Each link is built from
+the same heading text the section is titled with (`anchorOf`), and `tests/wiki_spec.lua` walks every
+link on every page back to a heading that exists, with the slug rule written out a second time there
+so the generator cannot grade itself.
+
+**WHAT A BODY IS FIELDED BY IS MEASURED TWICE OVER, and both halves are needed.** The placement census
+in `tools/drop_report` sweeps `Encounter.pool`, which is every body a floor can *roll*; a guardian, her
+escort, a ward and the Crown are seated by `Descent` directly and are in no pool, so that sweep alone
+calls a circle's general unfielded. `riftFloors()` walks the fifteen floors once — the same walk the
+Rift page prints — and records who stands on each stair. 67 of the 173 blueprints are reachable by one
+route or the other; the rest say *the rift never fields it* on their own entry rather than being left
+off. That wording is the measurement and not a stronger claim: a scripted scene can still hand-place a
+body (the prologue's demons), which neither sweep can see.
+
+**TWO HOOKS KEEP IT HONEST, AND THEY TRIGGER ON DIFFERENT THINGS ON PURPOSE.** A `post-commit` hook
+publishes whenever a commit touches **any `.lua`** — not just `data/`, because the pages are not a
+copy of the blueprints: every number is computed through `Item.growth`, `Spoils.depthOf`, `Class` and
+`Trait`, so a models-only commit can move every rank on all 46 pages. Resolved transitively that
+dependency set is 71 files, so a hand-list would go stale the first time the renderer grows a
+`require`; instead the **generated diff is the gate** — when the pages come out identical the sync
+finds nothing to commit and the hook stays silent. Skip it once with `LOVETACTICS_WIKI_NOSYNC=1 git
+commit ...`. Note it builds from the **working tree**, so uncommitted edits publish too.
+
+The second is `tools/wiki-watch.sh`, a Claude Code `PostToolUse` hook wired in `.claude/settings.json`:
+editing a blueprint under `data/items/`, `data/characters/`, `data/races/` or `data/encounters/`
+rebuilds `wiki/` on the spot, and **fails the edit (exit 2) if the blueprint no longer loads** — so a
+broken blueprint is reported against the edit that broke it rather than at commit time. That list is
+deliberately short of the transitive truth; the post-commit hook above is the backstop for everything
+else. `tests/wiki_spec.lua` holds the pages to their promises.
 
 After a fresh clone, two one-time steps (`.git/hooks` is not tracked, so the hook does not come
 with the repo):
@@ -175,7 +209,12 @@ The codebase is organized into layers loaded via `require()`. See
   BOTH directions (`Vendor.sellValue` answers 0): visible is not the same as merchandise. See [docs/shelf.md](docs/shelf.md) (`models/grade.lua`, `. grade-report`,
   `. drop-tier recut`). *Which body* hands a found item over is [docs/drops.md](docs/drops.md) —
   `. drop-report` measures reachability by placement, and is the pass to run before authoring a
-  drop list. An item may also rewrite a **rule of the game** for its bearer (`rules`, `Item.RULE_NAMES`
+  drop list. **That measurement is exported (`drop_report.sources()`) and printed on the wiki as the
+  "Dropped by" column**, so the pages name the body a player can go and kill; it is ONE measurement
+  on purpose, because a page naming a body the report calls unreachable would be a disagreement with
+  nothing to show it. Today 85 of the 387 rift items come off a named body and the other 302 fall out
+  of the depth-banded draw, which is why a blank cell there is an answer and not a gap.
+  An item may also rewrite a **rule of the game** for its bearer (`rules`, `Item.RULE_NAMES`
   — health pinned at 1, no walking at all, mana paid in blood), open a fight wearing a status
   (`openingBoon`), or act *between* fights on an expedition (`encounterCleared`, `models/item_hook.lua`).
   All three arrived when the **relic shelf was parked** and its 25 surviving effects became items — see

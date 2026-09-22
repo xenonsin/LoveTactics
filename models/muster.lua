@@ -111,9 +111,13 @@ end
 -- `def` is the encounter blueprint (models/encounter.lua); `ctx` carries `prestige`, the `quest` the
 -- enemy cap is read off, and the fight's `floorLevel`. The composition is resolved and CLAMPED exactly
 -- as Arena.build will clamp it, then each id is minted through Growth.spawn at the level
--- Growth.combatantLevel puts it at -- the same call states/battle.lua makes at spawn. Compositions are
--- deterministic functions of ctx.prestige (no rng anywhere in data/encounters), so the bodies rated
--- here are the bodies that will stand on the board.
+-- Growth.combatantLevel puts it at -- the same call states/battle.lua makes at spawn.
+--
+-- AND IT IS RATED AT THE MIDDLE OF THE BAND. A stop fields a rolled count rather than a fixed one
+-- (models/band.lua), and the roll hangs off the fight's own seed -- which this ctx deliberately does
+-- not carry, so every composition resolved here answers its centre. The bodies rated are the bodies
+-- the board will seat give or take one piece of filler either way, which is inside the noise this
+-- reading already carries from gear and the level the far side mints at.
 function Muster.encounter(def, ctx)
     if not def then return 0 end
     ctx = ctx or {}

@@ -19,6 +19,8 @@
 -- KILLALL, WHICH IS THE DEFAULT AND MUST STAY IT. The Lord is emphatically not an `assassinate` mark:
 -- that objective ends the fight the instant the named body falls, and the instant this body falls is
 -- the instant the fight becomes about anything.
+local Band = require("models.band")
+
 return {
     name = "The Barrow Lord",
     kind = "elite",
@@ -32,7 +34,15 @@ return {
     -- Which of a circle's floors a thing bills on is Descent.SINS' `elites` for the standing threat, and
     -- `rung` for anything an author wants split across the approach and the seat.
     condition = function(ctx) return ctx.biome == "underworld" end,
+    -- The lord is one body and always will be; the rank behind him is a band, so the same barrow met
+    -- on two floors is not the same count twice (models/band.lua). An `elite` seats six
+    -- (Arena.ELITE_CAP), which is the room the guard is allowed to grow into.
+    --
+    -- TWO IS THE FLOOR (`min = 2`) because the header's argument needs both of them: three bodies take
+    -- the same blows and TWO of them stay down, which is what makes the Lord's third standing-up read
+    -- as a rule rather than as a bigger monster. One escort is a different lesson.
     composition = function(ctx)
-        return { "character_barrow_lord", "character_skeleton_knight", "character_skeleton_knight" }
+        local list = { "character_barrow_lord" }
+        return Band.fill(list, ctx, "character_skeleton_knight", { base = 2, min = 2, per = 7 })
     end,
 }

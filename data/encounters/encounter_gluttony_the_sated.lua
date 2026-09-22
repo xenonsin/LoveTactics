@@ -10,6 +10,8 @@
 -- party that commits everything into the first two turns is rewarded rather than punished. That is a
 -- true thing about an appetite that has already been satisfied, and it is the deliberate opposite of
 -- what Wrath's circle teaches one stratum over.
+local Band = require("models.band")
+
 return {
     name = "The Sated",
     kind = "elite",
@@ -25,9 +27,6 @@ return {
     condition = function(ctx) return ctx.biome == "forest" end,
     composition = function(ctx)
         local list = { "character_the_sated" }
-        for _ = 1, 2 + math.floor((ctx.depth or 1) / 4) do
-            list[#list + 1] = "character_gorge_fly"
-        end
-        return list
+        return Band.fill(list, ctx, "character_gorge_fly", { base = 2, per = 4 })
     end,
 }

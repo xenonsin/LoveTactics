@@ -3,6 +3,8 @@
 -- The assayer gains damage for the coin your company is carrying, read live -- so a hoarding run meets a
 -- harder fight than one that spent at the Forge. The chitters beside it lower that number as they rob
 -- you, which is the circle's joke: the thieves are helping.
+local Band = require("models.band")
+
 return {
     name = "The Assay",
     kind = "combat",
@@ -18,9 +20,6 @@ return {
     condition = function(ctx) return ctx.biome == "swamp" end,
     composition = function(ctx)
         local list = { "character_assayer", "character_coffer_crawler" }
-        for _ = 1, 1 + math.floor((ctx.depth or 1) / 6) do
-            list[#list + 1] = "character_coin_chitter"
-        end
-        return list
+        return Band.fill(list, ctx, "character_coin_chitter", { base = 1, per = 6 })
     end,
 }

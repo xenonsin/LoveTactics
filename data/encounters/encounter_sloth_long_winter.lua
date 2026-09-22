@@ -3,6 +3,8 @@
 -- It does not get stronger as it is cut; it sheds more drift-things, and a drift-thing takes turns. So
 -- the escalation is a tempo escalation and the longer the fight runs the less of it is yours -- which is
 -- the honest apex reading for a stratum that charges the clock rather than the body.
+local Band = require("models.band")
+
 return {
     name = "The Long Winter",
     kind = "elite",
@@ -18,9 +20,6 @@ return {
     condition = function(ctx) return ctx.biome == "tundra" end,
     composition = function(ctx)
         local list = { "character_the_long_winter" }
-        for _ = 1, 1 + math.floor((ctx.depth or 1) / 6) do
-            list[#list + 1] = "character_hollow_sleeper"
-        end
-        return list
+        return Band.fill(list, ctx, "character_hollow_sleeper", { base = 1, per = 6 })
     end,
 }

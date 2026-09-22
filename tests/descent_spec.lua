@@ -588,8 +588,9 @@ return {
 
     { name = "no fight on any floor of a descent can be walked over", fn = function()
         -- THE CASE THAT EARNS ITS KEEP. A player walked onto floor one and the first marker they met
-        -- offered to auto-resolve itself -- encounter_stag, a lone ancient stag, which is a perfectly
-        -- good ROADSIDE fight on a quest board and a formality with a marker on it in a dungeon.
+        -- offered to auto-resolve itself -- a lone ancient stag, which is a perfectly good ROADSIDE
+        -- fight on a quest board and a formality with a marker on it in a dungeon. (That blueprint is
+        -- deleted now, for an unrelated reason, but the gate it caused is the point of this case.)
         --
         -- Rated through Muster, which is the same ruler states/game.lua asks before it offers the walk-off
         -- (Muster.canWalkOver against game:musterMargin), against the company that really walks each
@@ -735,19 +736,32 @@ return {
             end
         end
 
-        -- ...and the BLUEPRINT is untouched. data/encounters/ is shared with the campaign, where a lone
-        -- stag on a forest road is the encounter it was written to be; what the descent refuses is
-        -- seating it, not its existence. A "fix" that edited the composition would pass everything above
-        -- and quietly change a campaign fight nobody asked about.
-        local stag = Encounter.get("encounter_stag")
-        assert(stag, "the stag blueprint still exists")
-        assert(#stag.composition({ day = 1 }) == 1,
-            "the stag is still the lone beast the campaign road wants")
-        local onRoad = false
-        for _, e in ipairs(Encounter.pool({ day = 1, biome = "forest" })) do
-            if e.id == "encounter_stag" then onRoad = true end
+        -- ...AND THE FILTER IS STILL A FILTER RATHER THAN AN EMPTY RULE.
+        --
+        -- This tail used to name the lone-stag blueprint and assert that the descent refused to SEAT
+        -- it without editing it -- the point being that data/encounters/ is shared and a "fix" that
+        -- rewrote a composition would pass every case above while quietly changing a fight nobody
+        -- asked about. That blueprint is deleted, for an unrelated reason (it fielded
+        -- encounter_the_herd's cast at a smaller count, and one cast is one stop --
+        -- tests/encounter_spec.lua), which leaves this case with no named example.
+        --
+        -- So it asserts the shape instead: the pool a floor draws from is a SUBSET of the biome's
+        -- own, and a strict one somewhere. A filter that dropped nothing would satisfy every
+        -- assertion above -- they all say "what is left is heavy enough", which is trivially true of
+        -- a filter that never cuts. This is the half that says it cuts at all, and it is deliberately
+        -- not pinned to any one blueprint, because the last one it was pinned to outlived it.
+        local cutSomewhere = false
+        for _, sin in ipairs(Descent.SINS) do
+            for _, day in ipairs({ 1, 2, 8, 20, 40 }) do
+                local ctx = { day = day, biome = sin.biome }
+                local all, kept = Encounter.pool(ctx), Descent.floorPool(ctx)
+                assert(#kept <= #all, sin.biome .. " at day " .. day .. " seats more than exists")
+                if #kept < #all then cutSomewhere = true end
+            end
         end
-        assert(onRoad, "and the campaign's own forest pool still offers it")
+        assert(cutSomewhere,
+            "the light-fight filter never dropped a single stop on any floor of any circle -- every "
+            .. "case above passes vacuously when nothing is cut")
     end },
 
     { name = "a floor is mostly fights, and its elites do not grow with the company", fn = function()

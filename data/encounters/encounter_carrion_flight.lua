@@ -7,6 +7,8 @@
 --
 -- Punishes a company with no reach, which is a real build question and one nothing on the road asks
 -- often enough.
+local Band = require("models.band")
+
 return {
     name = "Carrion Flight",
     kind = "combat",
@@ -25,9 +27,6 @@ return {
     condition = function(ctx) return ctx.biome == "forest" end,
     composition = function(ctx)
         local list = { "character_carrion_crawler" }
-        for _ = 1, 3 + math.floor((ctx.depth or 1) / 5) do
-            list[#list + 1] = "character_hawk"
-        end
-        return list
+        return Band.fill(list, ctx, "character_hawk", { base = 3, per = 5 })
     end,
 }

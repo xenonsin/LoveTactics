@@ -13,11 +13,13 @@
 -- fight). This does it by STANDING, which is the opposite verb, and it is worth nothing at all to an
 -- animal on its own.
 --
--- WHICH IS THE POINT ON THE ROAD. data/encounters/encounter_stag.lua fields one animal, sometimes two,
--- and its own header says walking a lone stag off is the option working rather than failing -- so a
--- rule that pays only in numbers leaves that encounter exactly as it was and gives
--- data/encounters/encounter_the_herd.lua the thing it never had: a reason the herd is not just four
--- copies of the road fight. Break them apart, or put one down before the others close.
+-- WHICH IS THE POINT ON THE ROAD, and it is now the only point. There were two stag encounters -- a
+-- lone animal and data/encounters/encounter_the_herd.lua -- and they fielded one CAST at two counts,
+-- which is a fight met twice rather than two fights. The lone stop is deleted. This rule is what made
+-- that free: it pays nothing at all to an animal on its own, so the deleted stop was the one place in
+-- the game where this trait was guaranteed to be worth zero, and the surviving one is the reason it
+-- exists -- a herd is not four copies of the road fight. Break them apart, or put one down before the
+-- others close.
 --
 -- FLAT, NOT PER-ALLY, and this is a tuning decision worth stating because the two traits above both
 -- scale. A stag in the middle of four would be healing three times over, which on a fight already

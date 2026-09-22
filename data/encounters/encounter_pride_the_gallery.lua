@@ -3,6 +3,8 @@
 -- Every threshold it is cut past adds a Gilded Sworn, which in a circle where power IS adjacency means
 -- the formation is being repaired while you dismantle it. Killing the Gallery is the only way to stop
 -- the hall refilling.
+local Band = require("models.band")
+
 return {
     name = "The Gallery",
     kind = "elite",
@@ -18,9 +20,6 @@ return {
     condition = function(ctx) return ctx.biome == "spire" end,
     composition = function(ctx)
         local list = { "character_the_gallery", "character_standard_bearer" }
-        for _ = 1, 2 + math.floor((ctx.depth or 1) / 6) do
-            list[#list + 1] = "character_gilded_page"
-        end
-        return list
+        return Band.fill(list, ctx, "character_gilded_page", { base = 2, per = 6 })
     end,
 }

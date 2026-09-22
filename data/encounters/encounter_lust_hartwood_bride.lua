@@ -2,6 +2,8 @@
 --
 -- A four-tile body standing in an open trail is that trail closed, which in a circle built on breaking
 -- formations means the ground you would have re-formed on has gone.
+local Band = require("models.band")
+
 return {
     name = "The Hartwood Bride",
     kind = "elite",
@@ -17,9 +19,6 @@ return {
     condition = function(ctx) return ctx.biome == "castle" end,
     composition = function(ctx)
         local list = { "character_the_hartwood_bride" }
-        for _ = 1, 3 + math.floor((ctx.depth or 1) / 6) do
-            list[#list + 1] = "character_petal_drift"
-        end
-        return list
+        return Band.fill(list, ctx, "character_petal_drift", { base = 3, per = 6 })
     end,
 }

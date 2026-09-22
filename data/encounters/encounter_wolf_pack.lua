@@ -7,6 +7,8 @@
 --
 -- Which is a lesson the human companies used to teach four ways over; they are deleted, so the animals
 -- teach it now, on every floor.
+local Band = require("models.band")
+
 return {
     name = "Wolf Pack",
     kind = "combat",
@@ -25,9 +27,6 @@ return {
     condition = function(ctx) return ctx.biome == "forest" end,
     composition = function(ctx)
         local list = { "character_wolf_alpha" }
-        for _ = 1, 3 + math.floor((ctx.depth or 1) / 4) do
-            list[#list + 1] = "character_wolf_grunt"
-        end
-        return list
+        return Band.fill(list, ctx, "character_wolf_grunt", { base = 3, per = 5 })
     end,
 }

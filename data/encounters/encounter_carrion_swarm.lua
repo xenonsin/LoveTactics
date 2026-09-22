@@ -7,6 +7,8 @@
 --
 -- The most interesting property of this fight is that it is easy right up until it isn't, and what
 -- flips it is a mistake you made two turns earlier.
+local Band = require("models.band")
+
 return {
     name = "Carrion Swarm",
     kind = "combat",
@@ -37,10 +39,6 @@ return {
     -- somebody to go down, so a deeper floor wanting more mouths is the same sentence read further in.
     -- Capped at seven, because past that it stops being a race to a fallen body and becomes a wall.
     composition = function(ctx)
-        local list = {}
-        for _ = 1, math.min(7, 3 + math.floor((ctx.depth or 1) / 2)) do
-            list[#list + 1] = "character_carrion_crawler"
-        end
-        return list
+        return Band.fill({}, ctx, "character_carrion_crawler", { base = 3, per = 2, max = 7 })
     end,
 }

@@ -2,6 +2,8 @@
 --
 -- The chorister Charms as it acts, so a body is pulled out of line and into cover where the wraiths are
 -- waiting. Every other circle's control costs you a turn; this one costs you the shape of your company.
+local Band = require("models.band")
+
 return {
     name = "The Choir",
     kind = "combat",
@@ -17,9 +19,6 @@ return {
     condition = function(ctx) return ctx.biome == "castle" end,
     composition = function(ctx)
         local list = { "character_chorister", "character_bloom_wraith" }
-        for _ = 1, 1 + math.floor((ctx.depth or 1) / 6) do
-            list[#list + 1] = "character_petal_drift"
-        end
-        return list
+        return Band.fill(list, ctx, "character_petal_drift", { base = 1, per = 6 })
     end,
 }

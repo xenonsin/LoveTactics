@@ -7,6 +7,8 @@
 -- The reason that is not merely annoying is what stands behind it on the deeper stops: Lesser Reflection
 -- copies the WEAKEST body it can see, and stripping is how a body becomes weakest. This fight decides
 -- who Second Water takes.
+local Band = require("models.band")
+
 return {
     name = "The Glass Field",
     kind = "combat",
@@ -22,9 +24,6 @@ return {
     condition = function(ctx) return ctx.biome == "desert" end,
     composition = function(ctx)
         local list = { "character_glass_eater" }
-        for _ = 1, 3 + math.floor((ctx.depth or 1) / 5) do
-            list[#list + 1] = "character_glass_mote"
-        end
-        return list
+        return Band.fill(list, ctx, "character_glass_mote", { base = 3, per = 5 })
     end,
 }

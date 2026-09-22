@@ -20,10 +20,15 @@
 -- AND IT HEALS WHILE THE HERD IS WITH IT. utility_herd_warmth pays a little health every tick the
 -- bearer has an ally beside it, and nothing at all alone. That is the apex's healing arriving by the
 -- OPPOSITE VERB: that one heals by walking and heals whoever is standing on what it left, this one
--- heals by standing still and heals only itself. It also means the two encounters this body appears in
--- stop being the same fight -- encounter_stag puts one animal on the road and is untouched, and
--- encounter_the_herd fields three or four and finally has a shape: break them apart, or put one down
--- before the rest close.
+-- heals by standing still and heals only itself, which gives encounter_the_herd its shape: break them
+-- apart, or put one down before the rest close.
+--
+-- IT APPEARS IN EXACTLY ONE ENCOUNTER NOW. There were two -- a lone animal on the road and the herd --
+-- and they were one CAST at two counts, which is a fight met twice rather than two fights. The lone
+-- stop was the half that went: it rated 582% against Muster.WALK_OVER of 200, so every marker it drew
+-- went calm and it offered to resolve itself instead of opening a board. The rule above is exactly why
+-- the deletion cost nothing -- warmth is worth zero to an animal on its own, so everything this body
+-- can do it can only do here.
 --
 -- IT DOES NOT BITE, AND IT NEVER DID. This was the last body in the game on weapon_fangs -- a
 -- blueprint authored for the wolves whose flavor line still says so -- which weapon_tusks.lua flagged
@@ -43,7 +48,8 @@
 --
 -- `boss = true` IS THE QUEST'S, not the rung's. The Lodge's opener marks this body as The White Stag
 -- and wins by assassinating it (quest_hunters_lodge_slot_01), so it stays off the execute and Charm
--- tables. Worth knowing that encounter_the_herd fields three or four of them and every one inherits
+-- tables. Worth knowing that encounter_the_herd fields three or four of them -- rolled, so it is not
+-- the same number twice (models/band.lua) -- and every one inherits
 -- that immunity -- a real consequence of a quest flag on a road body, and a design question rather
 -- than something to fix quietly here.
 return {

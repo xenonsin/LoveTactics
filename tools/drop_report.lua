@@ -163,20 +163,32 @@ end
 -- ---------------------------------------------------------------------------
 
 -- Every item any placed body is holding, and who holds it.
+--
+-- `byRoute` records HOW each individual body pays, which the flat `authored` flag cannot: an item on
+-- one body's authored list and incidentally carried by another is "drops" overall, but the wiki names
+-- both bodies and owes the reader the difference between the axe a body is known for and the axe it
+-- happens to be holding.
 local function carriedBy(placed)
     local out = {}
+    local function touch(itemId)
+        out[itemId] = out[itemId] or { byRoute = {} }
+        return out[itemId]
+    end
     for charId in pairs(placed) do
         local def = Character.defs[charId]
         for _, itemId in ipairs((def or {}).startingItems or {}) do
-            out[itemId] = out[itemId] or {}
-            out[itemId][#out[itemId] + 1] = charId
+            local row = touch(itemId)
+            row[#row + 1] = charId
+            row.byRoute[charId] = row.byRoute[charId] or "carried"
         end
         -- The route being built. No blueprint carries one yet; reading it now means the tool grades the
         -- authoring as it lands instead of needing a second pass afterwards.
         for _, itemId in ipairs((def or {}).drops or {}) do
-            out[itemId] = out[itemId] or {}
-            out[itemId].authored = true
-            out[itemId][#out[itemId] + 1] = charId
+            local row = touch(itemId)
+            row.authored = true
+            -- A body on both of its own lists is named once, as the stronger of the two.
+            if row.byRoute[charId] == nil then row[#row + 1] = charId end
+            row.byRoute[charId] = "drops"
         end
     end
     return out
@@ -218,6 +230,53 @@ local function riftPool()
         if def.unlockLevel and not def.price and not def.bound then out[id] = def end
     end
     return out
+end
+
+-- ---------------------------------------------------------------------------
+-- The shared answer: which body hands this item over
+-- ---------------------------------------------------------------------------
+
+-- WHO PAYS FOR EACH ITEM IN THE RIFT POOL, as one measurement that both this report and the wiki read.
+--
+-- Exported for the same reason M.placement() is: "which body drops this" must have exactly ONE answer
+-- in the tree. The wiki prints it on 46 class pages and this report grades it; if the two computed it
+-- separately they would drift the first time the route precedence changed, and a page would name a
+-- body the report calls unreachable with nothing to show the disagreement.
+--
+-- Returns index[itemId] = {
+--   route  = "drops" | "carried" | "boss" | "band" | "none",   -- the BEST route, same precedence as the report
+--   bodies = { charId, ... },        -- sorted; drops/carried only
+--   byRoute = { [charId] = "drops"|"carried" },
+--   boss   = { sin = , which = , pos = },                      -- boss route only
+-- }
+-- plus the raw pieces, so a caller that needs the census or the queue does not sweep twice.
+function M.sources()
+    local placed = census()
+    local carried = carriedBy(placed)
+    local queue = bossQueue()
+    local pool = riftPool()
+
+    local index = {}
+    for id, def in pairs(pool) do
+        local holders = carried[id]
+        local q = queue[id]
+        local row = { bodies = {}, byRoute = (holders or {}).byRoute or {} }
+
+        if holders then
+            for _, charId in ipairs(holders) do row.bodies[#row.bodies + 1] = charId end
+            table.sort(row.bodies)
+            row.route = holders.authored and "drops" or "carried"
+        elseif q then
+            row.route, row.boss = "boss", q
+        elseif inBand(def) then
+            row.route = "band"
+        else
+            row.route = "none"
+        end
+        index[id] = row
+    end
+
+    return index, placed, carried, queue, pool
 end
 
 -- ---------------------------------------------------------------------------
@@ -282,10 +341,8 @@ function M.run(args)
     args = args or {}
     local mode = args[1]
 
-    local placed = census()
-    local carried = carriedBy(placed)
-    local queue = bossQueue()
-    local pool = riftPool()
+    -- ONE measurement, shared with the wiki. See M.sources().
+    local index, placed, carried, queue, pool = M.sources()
 
     local placedTotal, kinds = printCensus(placed)
     if mode == "bodies" then return end
@@ -295,23 +352,11 @@ function M.run(args)
     local queuedPast = {}
 
     for _, id in ipairs(sortedKeys(pool)) do
-        local def = pool[id]
-        local holders = carried[id]
-        local q = queue[id]
-
-        if holders and holders.authored then
-            byRoute.drops[#byRoute.drops + 1] = id
-        elseif holders then
-            byRoute.carried[#byRoute.carried + 1] = id
-        elseif q then
-            byRoute.boss[#byRoute.boss + 1] = id
-            if q.pos > QUEUE_REACH then
-                queuedPast[#queuedPast + 1] = { id = id, q = q }
-            end
-        elseif inBand(def) then
-            byRoute.band[#byRoute.band + 1] = id
-        else
-            byRoute.none[#byRoute.none + 1] = id
+        local row = index[id]
+        local bucket = byRoute[row.route]
+        bucket[#bucket + 1] = id
+        if row.route == "boss" and row.boss.pos > QUEUE_REACH then
+            queuedPast[#queuedPast + 1] = { id = id, q = row.boss }
         end
     end
 

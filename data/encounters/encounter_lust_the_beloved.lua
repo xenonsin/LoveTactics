@@ -3,6 +3,8 @@
 -- Every threshold sheds more drifts, and every drift is one more argument for holding your good ability.
 -- Holding it is what this stratum charges for. So the fight does not get harder so much as the choice
 -- gets worse, which is the most Lust thing an apex could do.
+local Band = require("models.band")
+
 return {
     name = "The Beloved",
     kind = "elite",
@@ -18,9 +20,6 @@ return {
     condition = function(ctx) return ctx.biome == "castle" end,
     composition = function(ctx)
         local list = { "character_the_beloved", "character_chorister" }
-        for _ = 1, 1 + math.floor((ctx.depth or 1) / 6) do
-            list[#list + 1] = "character_bloom_wraith"
-        end
-        return list
+        return Band.fill(list, ctx, "character_bloom_wraith", { base = 1, per = 6 })
     end,
 }

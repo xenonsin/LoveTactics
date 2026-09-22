@@ -36,8 +36,29 @@ local Item = require("models.item")
 local Class = require("models.class")
 local Trait = require("models.trait")
 local Spoils = require("models.spoils")
+local Character = require("models.character")
+local Race = require("models.race")
+local Descent = require("models.descent")
 
 local M = {}
+
+-- WHICH BODY HANDS A FOUND ITEM OVER, built once per run and read by dropCell.
+--
+-- The measurement is NOT made here. tools/drop_report owns it (M.sources), because "which body drops
+-- this" has to have one answer in the tree: the report grades the authoring and these pages print it,
+-- and if each computed its own the two would drift the first time the route precedence moved -- a page
+-- naming a body the report calls unreachable, with nothing anywhere to show the disagreement.
+--
+-- It is a MEASUREMENT and not a read of the blueprints, which is the part that matters for a reader.
+-- An item named on a body's `drops` list is not actually obtainable unless some encounter seats that
+-- body, and 122 of the 173 character blueprints are never placed at all. So a name on these pages
+-- means a body you can really meet, and the silence where there is no name is honest too.
+local DROPS = {}
+
+-- The second half of that same sweep: charId -> { biomes = { [biome] = true }, ungated, encounters }.
+-- The bestiary's "Where" is read off it, so an item page and a body page cannot disagree about which
+-- ground a thing stands on -- they are two renderings of one measurement.
+local PLACED = {}
 
 local OUT_DEFAULT = "wiki"
 
@@ -63,6 +84,7 @@ local COLUMNS = {
     { key = "tags",   head = "Tags" },
     { key = "rank",   head = "Rank",   align = ":--:" },
     { key = "source", head = "Source" },
+    { key = "drops",  head = "Dropped by" },
     { key = "notes",  head = "Notes" },
 }
 
@@ -95,6 +117,200 @@ end
 
 local function pageOf(classId)
     return "Items-" .. slugOf(classId)
+end
+
+local function bestiaryPageOf(kind)
+    return "Bestiary-" .. slugOf(kind)
+end
+
+-- THE ANCHOR A HEADING GETS, computed the way the renderer that serves these pages computes it:
+-- lowercased, every character that is neither alphanumeric nor a space nor a hyphen or underscore
+-- dropped, then spaces to hyphens. "Acedia, the Unrelieved" -> `acedia-the-unrelieved`, and the em
+-- dash in "Floor 3 — Gluttony" leaves the two spaces around it behind as `floor-3--gluttony`.
+--
+-- WRITTEN ONCE AND USED FOR BOTH ENDS. Every in-page link this tool emits is built from the same
+-- heading text the section is titled with, through this function -- so a link cannot point at a
+-- heading that is spelled differently, and tests/wiki_spec walks every one of them back to its
+-- heading. (Lua's %w is ASCII under the C locale, which is what strips the multi-byte punctuation.)
+local function anchorOf(heading)
+    local s = tostring(heading):lower()
+    s = s:gsub("[^%w%s%-_]", "")
+    s = s:gsub("%s", "-")
+    return s
+end
+
+-- Which section of its class page an item's row is in. The class page titles its sections off TYPES,
+-- and its own counts line already links them this way -- this is that link, addressable from off-page.
+local function typeAnchorOf(def)
+    local t = (def and def.type) or "other"
+    for _, e in ipairs(TYPES) do
+        if e.id == t then return anchorOf(e.title) end
+    end
+    return anchorOf(t:sub(1, 1):upper() .. t:sub(2))
+end
+
+-- An item, named and addressed: the row this links to is the one the item's own class page prints.
+-- Section-deep rather than row-deep because a markdown table row cannot carry an anchor -- the reader
+-- lands on the right table of the right page and the row is the one bearing the name in the link.
+local function itemLink(id)
+    local def = Item.defs[id]
+    if not def then return "`" .. cell(id) .. "`" end
+    return "[" .. cell(def.name or id) .. "](" .. pageOf(def.class or "unclassed")
+        .. "#" .. typeAnchorOf(def) .. ")"
+end
+
+-- A list of item ids as links, nil when the list is empty -- which is what lets a caller hand the
+-- result straight to a line that is only printed when there is something to print.
+local function itemLinks(ids)
+    local parts = {}
+    for _, entry in ipairs(ids or {}) do
+        local id = entry
+        if type(entry) == "table" then id = entry.id or entry[1] end
+        if type(id) == "string" then parts[#parts + 1] = itemLink(id) end
+    end
+    if #parts == 0 then return nil end
+    return table.concat(parts, " · ")
+end
+
+-- ---------------------------------------------------------------------------
+-- the bestiary's address book
+-- ---------------------------------------------------------------------------
+
+-- WHERE EVERY BODY LIVES, resolved before a single page is rendered, because both directions of the
+-- link need it: an item's "Dropped by" cell and the Rift's composition rows are written BEFORE the
+-- bestiary pages exist, and both have to name the page and the anchor the body will get.
+--
+-- BY KIND rather than by race (models/race.lua). Race is the fine axis and kind is the coarse one it
+-- rolls up to -- `race = "wolf"` with `kind = "beast"` is a refinement the model explicitly leaves
+-- room for, and it must not scatter the wolves onto a page of their own the day somebody takes it. So
+-- the pages are cut on the axis that is stable, and the race is printed on the body's own line.
+local BODY_KINDS = {}   -- ordered kind ids
+local BODIES = {}       -- kind -> { charId, ... }, in page order
+local KIND_OF = {}      -- charId -> kind
+local HEADING = {}      -- charId -> the text its section is titled with
+local ANCHOR = {}       -- charId -> the anchor that heading gets
+
+local function kindName(kind)
+    local def = Race.defs[kind]
+    return (def and def.name) or slugOf(kind)
+end
+
+-- THE RACES THAT ROLL UP INTO A KIND, which is what a kind page has to say about itself instead of
+-- quoting a race blurb. Six of the eight kinds are named after their one race and could have borrowed
+-- its line; `humanoid` is not -- human and naga share it -- and a page whose description silently
+-- vanishes for the one kind that is actually a rollup would be the axis breaking exactly where it
+-- earns its keep.
+local function racesOf(kind)
+    local out = {}
+    for id, def in pairs(Race.defs) do
+        if def.kind == kind then out[#out + 1] = id end
+    end
+    table.sort(out, function(a, b)
+        return ((Race.defs[a].name or a) < (Race.defs[b].name or b))
+    end)
+    return out
+end
+
+local function bodyName(charId)
+    local def = Character.defs[charId]
+    return (def and def.name) or charId
+end
+
+-- Tier first, then name: a page reads shallowest-first the way the rift is walked, and a body's tier
+-- is the one number that says what meeting it costs.
+local function bodyOrder(a, b)
+    local da, db = Character.defs[a] or {}, Character.defs[b] or {}
+    local ta, tb = da.tier or 99, db.tier or 99
+    if ta ~= tb then return ta < tb end
+    local na, nb = bodyName(a), bodyName(b)
+    if na ~= nb then return na < nb end
+    return a < b
+end
+
+local function bodyCatalogue()
+    BODY_KINDS, BODIES, KIND_OF, HEADING, ANCHOR = {}, {}, {}, {}, {}
+    for id, def in pairs(Character.defs) do
+        -- A blueprint whose race the registry does not know still gets a page rather than vanishing,
+        -- for the same reason an unknown item type does: a bucket nobody has taught this tool about
+        -- is still content. tests/data_spec is what fails such a blueprint, not this.
+        local kind = Race.kindOf(def.race) or "unknown"
+        if not BODIES[kind] then BODIES[kind] = {}; BODY_KINDS[#BODY_KINDS + 1] = kind end
+        BODIES[kind][#BODIES[kind] + 1] = id
+        KIND_OF[id] = kind
+    end
+    table.sort(BODY_KINDS, function(a, b) return kindName(a) < kindName(b) end)
+    for kind, list in pairs(BODIES) do
+        table.sort(list, bodyOrder)
+        -- TWO BODIES MAY LEGITIMATELY SHARE A DISPLAY NAME: a boss twin extends its companion and
+        -- keeps her name (character_saber_bout is Saber, fought once and recruited once). Two sections
+        -- titled `Saber` would read as a generator bug rather than as the twin it is, so a repeated
+        -- name carries the blueprint id that tells them apart -- and only a repeated one, since the
+        -- id is already printed under every heading and the other 171 do not need it twice.
+        local count = {}
+        for _, id in ipairs(list) do
+            local nm = bodyName(id)
+            count[nm] = (count[nm] or 0) + 1
+        end
+        for _, id in ipairs(list) do
+            local nm = bodyName(id)
+            HEADING[id] = (count[nm] > 1) and (nm .. " (`" .. id .. "`)") or nm
+            ANCHOR[id] = anchorOf(HEADING[id])
+        end
+    end
+end
+
+-- A body, named and addressed. Falls back to the bare name for a blueprint the catalogue has not been
+-- built for, which is what keeps a caller that runs before bodyCatalogue() honest rather than broken.
+local function bodyLink(charId)
+    local name = cell(bodyName(charId))
+    local kind = KIND_OF[charId]
+    if not kind or not ANCHOR[charId] then return name end
+    return "[" .. name .. "](" .. bestiaryPageOf(kind) .. "#" .. ANCHOR[charId] .. ")"
+end
+
+-- THE RIFT'S FLOOR SECTIONS, titled in one place so that the page which writes them and the bestiary
+-- which links at them cannot spell them differently. Read off the model in first-descent order, the
+-- same order the rift page is laid out in (`Descent.INFERNO` -- once the Crown breaks the circles
+-- shuffle, and the page says so).
+local FLOOR_HEADS
+
+local function floorHeads()
+    if FLOOR_HEADS then return FLOOR_HEADS end
+    FLOOR_HEADS = {}
+    local run = Descent.new(nil, 1)
+    for floor = 1, Descent.FLOORS do
+        run.floor = floor
+        local sin = Descent.sinAt(run, floor)
+        FLOOR_HEADS[floor] = { sin = sin, circle = sin and sin.name or "The Hollow Crown" }
+    end
+    return FLOOR_HEADS
+end
+
+local function floorHeading(floor)
+    return "Floor " .. floor .. " — " .. floorHeads()[floor].circle
+end
+
+local function floorLink(floor)
+    return "[floor " .. floor .. "](The-Rift#" .. anchorOf(floorHeading(floor)) .. ")"
+end
+
+-- Which floors a circle holds, keyed by the ground it owns -- the unit the placement census reports a
+-- body's reach in (`placed[id].biomes`). So "this thing stands in the forest" becomes "floors 3 and 4"
+-- without a second table to go stale when a circle's depth moves.
+local BIOME_FLOORS
+
+local function biomeFloors()
+    if BIOME_FLOORS then return BIOME_FLOORS end
+    BIOME_FLOORS = {}
+    for floor = 1, Descent.FLOORS do
+        local sin = floorHeads()[floor].sin
+        if sin and sin.biome then
+            local row = BIOME_FLOORS[sin.biome]
+            if not row then row = { sin = sin, floors = {} }; BIOME_FLOORS[sin.biome] = row end
+            row.floors[#row.floors + 1] = floor
+        end
+    end
+    return BIOME_FLOORS
 end
 
 -- ---------------------------------------------------------------------------
@@ -209,6 +425,70 @@ local function sourceCell(def)
     return "—"
 end
 
+-- The body a player can go and kill for this piece.
+--
+-- `source` answers counter-or-rift; this answers WHICH BODY, which is the only form of that answer a
+-- player can act on. Four routes reach the column differently:
+--
+--   drops    the body's authored list -- what it is KNOWN for, and the one route you can aim at
+--   carried  the body is holding one, so you can take it off them. Real but incidental, and SAID SO,
+--            because a reader who farms a body for its axe deserves to know it was never promised one
+--   boss     a circle's lieutenant or general. Named as the body, with its position in the queue:
+--            that list is walked unowned-first, so #7 is seven complete descents to that circle
+--   band     the depth-banded draw, which is 302 of the 387 rift items. LEFT BLANK ON PURPOSE --
+--            writing "random" 302 times would bury the 85 cells that name something, and the dash
+--            already reads as "nothing is known for it" once the legend says so
+--
+-- A cell left empty is also a vote to drop the whole column (see renderTable), so a section where no
+-- item comes off a named body prints no "Dropped by" column at all rather than a stripe of dashes.
+local MAX_BODIES = 4
+
+-- Whose list is it: the circle's general stands behind its guardian, the lieutenant two floors up.
+local function bossBody(sin, which)
+    local slot = (which == "general") and sin.guardian or sin.minor
+    return slot and slot.lead or nil
+end
+
+local function dropCell(id)
+    local row = DROPS[id]
+    if not row then return "" end
+
+    if row.route == "boss" then
+        local q = row.boss
+        for _, sin in ipairs(Descent.SINS) do
+            if sin.id == q.sin then
+                local body = bossBody(sin, q.which)
+                local who = body and bodyLink(body) or cell(sin.name .. " " .. q.which)
+                local rank = (q.which == "general") and "general" or "lieutenant"
+                return "**" .. who .. "**<br>" .. cell(sin.name) .. " " .. rank
+                    .. ", #" .. tostring(q.pos) .. " in the queue"
+            end
+        end
+        return ""
+    end
+
+    if row.route ~= "drops" and row.route ~= "carried" then return "" end
+
+    local names, carriedOnly = {}, 0
+    for _, charId in ipairs(row.bodies) do
+        local nm = bodyLink(charId)
+        if row.byRoute[charId] == "carried" then
+            nm = nm .. " *(carried)*"
+            carriedOnly = carriedOnly + 1
+        end
+        names[#names + 1] = nm
+    end
+    if #names == 0 then return "" end
+
+    local shown = names
+    if #names > MAX_BODIES then
+        shown = {}
+        for i = 1, MAX_BODIES do shown[i] = names[i] end
+        shown[#shown + 1] = "*+" .. tostring(#names - MAX_BODIES) .. " more*"
+    end
+    return table.concat(shown, "<br>")
+end
+
 -- Everything that changes what the piece IS rather than what its numbers are. Each of these is rare
 -- enough that the column disappears on most tables and loud enough that it must not be a footnote on
 -- the ones where it does not.
@@ -257,6 +537,7 @@ local function rowOf(id)
         tags   = tagsCell(def),
         rank   = tostring(Spoils.depthOf(def)),
         source = sourceCell(def),
+        drops  = dropCell(id),
         notes  = notesCell(def),
     }
 end
@@ -396,7 +677,10 @@ local function classPage(classId, bucket)
     line()
     line("Rank is the " .. rankSpan() .. " ladder a piece sits on: how deep in the rift it "
         .. "falls, or how far up the class it is sold. Stats read *forge 0 → fully forged*. "
-        .. "See [Items](Items) for the whole catalogue.")
+        .. "**Dropped by** names the body you can go and take one off — follow it to that body's own "
+        .. "entry for the rest of what it carries; blank means no body is known for it and it comes "
+        .. "out of the rift's depth-banded draw instead. "
+        .. "See [Items](Items) for the whole catalogue and [Bestiary](Bestiary) for the bodies.")
     line()
 
     for _, t in ipairs(order) do
@@ -433,6 +717,17 @@ local function indexPage(byClass, classIds)
         .. "one falls out of the rift at that depth. **Source** is `120g` for something a counter "
         .. "deals, *Found* for something the rift gives up, *Rift only* for a body's own trophy that "
         .. "is shown on the rack and never sold, and *Monster kit* for what is not a player's at all.")
+    line()
+    line("**Dropped by** answers the question *Source* cannot: which body actually hands the piece "
+        .. "over, and **every name there is a link into the [Bestiary](Bestiary)** — to that body's "
+        .. "stat block, the rest of its kit, and the floors it stands on. "
+        .. "A name there is a body some encounter really seats, measured rather than read off "
+        .. "the blueprints — an authored list on a body nothing ever fields is not a way in. A body "
+        .. "marked *(carried)* is holding one rather than being known for it, and a circle's "
+        .. "lieutenant or general names its place in a queue that is walked unowned-first, so *#7* is "
+        .. "seven complete descents to that circle. **A blank is a real answer**: most of the "
+        .. "catalogue comes off no particular body and falls out of the depth-banded draw, which is "
+        .. "by design — not everything is meant to be farmable.")
     line()
 
     local groups = {
@@ -524,11 +819,20 @@ end
 -- "character_petal_drift" x6 -> "Petal Drift x6", in authored order and counted. The composition is
 -- resolved through the same call the arena builds a fight from, so a blueprint that sizes its swarm
 -- off the depth is printed at the size this floor will really field.
-local function compositionOf(def, ctx)
+--
+-- EVERY NAME IS A LINK to the body's own bestiary entry, which is what makes this page a way IN to the
+-- catalogue rather than a wall of names: the reader is asking "what is standing on floor nine" and the
+-- next question is always "and what is that". A body the catalogue has no page for -- which cannot
+-- happen while it is built from Character.defs -- degrades to the bare name rather than a broken link.
+local function compositionIds(def, ctx)
     local Arena = require("models.arena")
-    local Character = require("models.character")
     local ok, ids = pcall(Arena.resolveComposition, def and def.composition, ctx)
-    if not ok or type(ids) ~= "table" or #ids == 0 then return "—" end
+    if not ok or type(ids) ~= "table" then return {} end
+    return ids
+end
+
+local function compositionText(ids)
+    if #ids == 0 then return "—" end
     local order, count = {}, {}
     for _, id in ipairs(ids) do
         if not count[id] then order[#order + 1] = id; count[id] = 0 end
@@ -536,25 +840,46 @@ local function compositionOf(def, ctx)
     end
     local parts = {}
     for _, id in ipairs(order) do
-        local name = (Character.defs[id] and Character.defs[id].name) or id
-        parts[#parts + 1] = name .. (count[id] > 1 and (" ×" .. count[id]) or "")
+        parts[#parts + 1] = bodyLink(id) .. (count[id] > 1 and (" ×" .. count[id]) or "")
     end
     return table.concat(parts, ", ")
 end
 
-local function floorsPage()
-    local Descent = require("models.descent")
+local function compositionOf(def, ctx)
+    return compositionText(compositionIds(def, ctx))
+end
+
+-- EVERY FLOOR, GATHERED ONCE -- and gathered OUTSIDE the page that prints it, because the bestiary
+-- reads the same walk.
+--
+-- WHAT STANDS ON A STAIR IS NOT IN THE ENCOUNTER POOL. A guardian, her escort, a ward and the Crown
+-- itself are seated by Descent directly (floorObjectives / stairPlan), so a body census taken from
+-- encounters alone -- which is what the placement sweep in tools/drop_report is -- calls a circle's
+-- general unfielded. That is not a bug there: the report models exactly this hole as its separate
+-- `boss` route. This is that route MEASURED rather than re-derived from the blueprint's slots, and
+-- measured by the same walk the rift page prints, so the two pages cannot seat different bodies on
+-- the same stair.
+local RIFT_FLOORS, STAIR
+
+local function riftFloors()
+    if RIFT_FLOORS then return RIFT_FLOORS, STAIR end
+
     local Encounter = require("models.encounter")
     local Biome = require("models.biome")
-
-    local out = {}
-    local function line(s) out[#out + 1] = s or "" end
 
     local levels = expectedLevels()
     local run = Descent.new(nil, 1)
 
-    -- Everything each floor needs, gathered once so the summary and the sections cannot disagree.
-    local floors = {}
+    local floors, stair = {}, {}
+    local function post(charId, floor, role)
+        local list = stair[charId]
+        if not list then list = {}; stair[charId] = list end
+        for _, e in ipairs(list) do
+            if e.floor == floor then return end
+        end
+        list[#list + 1] = { floor = floor, role = role }
+    end
+
     for floor = 1, Descent.FLOORS do
         run.floor = floor
         local quest = Descent.floorQuest(run)
@@ -586,9 +911,14 @@ local function floorsPage()
         local ward
         for _, spec in ipairs(quest.map.objectives or {}) do
             if spec.wardFor then
-                ward = { name = spec.name or "The ward", bodies = compositionOf(spec, ctx) }
+                local ids = compositionIds(spec, ctx)
+                for _, id in ipairs(ids) do post(id, floor, "ward") end
+                ward = { name = spec.name or "The ward", bodies = compositionText(ids) }
             end
         end
+
+        local bossIds = compositionIds(quest.map.objective, ctx)
+        for _, id in ipairs(bossIds) do post(id, floor, "stair") end
 
         floors[floor] = {
             circle = sin and sin.name or "The Hollow Crown",
@@ -597,7 +927,7 @@ local function floorsPage()
             place = Biome.get(quest.map.biome).name,
             levels = levels[floor],
             boss = quest.map.objective and quest.map.objective.name or "—",
-            bossBodies = compositionOf(quest.map.objective, ctx),
+            bossBodies = compositionText(bossIds),
             -- SLOTH'S OPEN STAIR AND THE CROWN'S ABSENCE ARE NOT THE SAME ANSWER. Acedia authors
             -- `none` -- she is asleep and the way down stands open, which is a reading of her sin and
             -- the one gate worth protecting in review. The bottom is not a circle and bars nothing
@@ -618,6 +948,16 @@ local function floorsPage()
         }
     end
 
+    RIFT_FLOORS, STAIR = floors, stair
+    return RIFT_FLOORS, STAIR
+end
+
+local function floorsPage()
+    local out = {}
+    local function line(s) out[#out + 1] = s or "" end
+
+    local floors = riftFloors()
+
     line(banner("The descent: models/descent.lua + data/encounters/."))
     line()
     line("# The Rift")
@@ -631,6 +971,9 @@ local function floorsPage()
     line("Laid out in the order a **first descent** walks (`Descent.INFERNO`). Once the Crown is "
         .. "broken the circles are shuffled, so the grounds and the generals below move with them — "
         .. "the depths do not.")
+    line()
+    line("**Every body named below is a link** into the [Bestiary](Bestiary): its stat block, what it "
+        .. "is carrying, and what it is known to drop.")
     line()
     line("## The stack")
     line()
@@ -662,7 +1005,7 @@ local function floorsPage()
 
     for floor = 1, Descent.FLOORS do
         local f = floors[floor]
-        line("## Floor " .. floor .. " — " .. f.circle)
+        line("## " .. floorHeading(floor))
         line()
         line("> **" .. f.place .. "** (`" .. f.biome .. "`) · company level **"
             .. f.levels[1] .. "–" .. f.levels[2] .. "** · gate: " .. f.gate)
@@ -677,6 +1020,418 @@ local function floorsPage()
         fightTable("Ordinary", f.combat)
         fightTable("Elite", f.elite)
     end
+
+    return table.concat(out, "\n")
+end
+
+-- ---------------------------------------------------------------------------
+-- The Bestiary: every body, by kind
+-- ---------------------------------------------------------------------------
+--
+-- THE OTHER HALF OF THE CATALOGUE. The item pages answer "what does this thing do"; these answer "what
+-- is standing in front of me, and what will it leave on the floor" -- and the two questions are asked
+-- in the same breath, which is why every name on an item page links here and every item named here
+-- links back. A player reading the Knight's shelf for a coat can follow the body that drops it to what
+-- else that body carries; a player reading the rift's ninth floor can follow a name to its stat block.
+--
+-- NOT A TABLE, and that is the one place these pages break the wiki's idiom on purpose. A markdown
+-- table row cannot carry an anchor, and an anchor per body is the whole point -- it is what "vice
+-- versa" means. Sections cost a little vertical space and buy an address for all 173 bodies.
+--
+-- PLACEMENT IS PRINTED, NOT ASSUMED. `Where` is read off the same sweep the drop column is (the
+-- placement census in tools/drop_report), so a body no encounter ever seats says so in as many words
+-- rather than sitting on the page looking like something you might meet. Most of the blueprints in the
+-- tree are in exactly that state, and a bestiary that hid it would be a bestiary of things that are
+-- not there.
+
+-- The body's own line, in the game's own words for these quantities (models/meal.lua's STAT_LABEL is
+-- the same vocabulary; lower-cased here because this is running prose and not a stat panel).
+local BODY_STATS = {
+    { key = "health",       label = "health" },
+    { key = "mana",         label = "mana" },
+    { key = "stamina",      label = "stamina" },
+    { key = "staminaRegen", label = "stamina regen" },
+    { key = "damage",       label = "damage" },
+    { key = "magicDamage",  label = "magic damage" },
+    { key = "defense",      label = "defense" },
+    { key = "magicDefense", label = "magic defense" },
+    { key = "movement",     label = "movement" },
+    { key = "speed",        label = "speed" },
+    { key = "skill",        label = "skill" },
+    { key = "luck",         label = "luck" },
+}
+
+-- READ THROUGH Character.instantiate, for the same reason a weapon's damage is read through
+-- Item.growth: the blueprint is not the last word on a stat. A body that declares neither accuracy
+-- stat is handed the pair every combat formula will actually see (Character.ACCURACY_STATS), and a
+-- resource is split into a pool whose max is the number that matters -- so this prints what the game
+-- has, not what the file says.
+local function statsLine(charId)
+    local ok, char = pcall(Character.instantiate, charId)
+    if not ok or type(char) ~= "table" or type(char.stats) ~= "table" then return nil end
+    local parts = {}
+    for _, s in ipairs(BODY_STATS) do
+        local v = char.stats[s.key]
+        if type(v) == "table" then v = v.max end
+        if type(v) == "number" then parts[#parts + 1] = s.label .. " " .. tostring(v) end
+    end
+    if #parts == 0 then return nil end
+    return table.concat(parts, " · ")
+end
+
+-- A NEGATIVE IS A WEAKNESS, which is the one thing about this line a reader has to be told once. The
+-- innate hide is a redistribution across the damage types (docs/bestiary.md): a creature pays for
+-- everything it shrugs off, so these lines very nearly sum to nothing and the sign is the whole
+-- content of each entry.
+local function hideLine(def)
+    if type(def.resist) ~= "table" then return nil end
+    local keys = {}
+    for k in pairs(def.resist) do keys[#keys + 1] = k end
+    table.sort(keys)
+    local parts = {}
+    for _, k in ipairs(keys) do
+        local v = def.resist[k]
+        parts[#parts + 1] = cell(k) .. " " .. (v < 0 and ("−" .. tostring(-v)) or ("+" .. tostring(v)))
+    end
+    if #parts == 0 then return nil end
+    return table.concat(parts, " · ")
+end
+
+-- WHAT IS IN ITS NINE CELLS. `startingItems` is a POSITIONAL grid, so it carries `false` for an empty
+-- cell and may carry a { id, count } stack -- both skipped over here rather than printed as holes.
+--
+-- The blueprint's `defaultAction` is marked HERE rather than given a line of its own: it is almost
+-- always one of these same items, and a second line naming it again read as a second item on every
+-- body that carries one thing. A default that is NOT in the grid (a natural weapon, usually) still
+-- earns its own mention, which bodyNotes makes under `unarmed`.
+local function kitLine(def)
+    local parts = {}
+    for _, entry in ipairs(def.startingItems or {}) do
+        local id = entry
+        if type(entry) == "table" then id = entry.id or entry[1] end
+        if type(id) == "string" then
+            parts[#parts + 1] = itemLink(id)
+                .. (id == def.defaultAction and " *(opens with)*" or "")
+        end
+    end
+    if #parts == 0 then return nil end
+    return table.concat(parts, " · ")
+end
+
+-- Only when the grid does not already carry it -- see kitLine.
+local function defaultActionLine(def)
+    local id = def.defaultAction
+    if type(id) ~= "string" then return nil end
+    for _, entry in ipairs(def.startingItems or {}) do
+        local held = entry
+        if type(entry) == "table" then held = entry.id or entry[1] end
+        if held == id then return nil end
+    end
+    return itemLink(id)
+end
+
+local function immuneLine(def)
+    local names = {}
+    for _, k in ipairs(def.immune or {}) do names[#names + 1] = cell(k) end
+    for k in pairs(def.statusImmunity or {}) do names[#names + 1] = cell(k) end
+    if #names == 0 then return nil end
+    table.sort(names)
+    return table.concat(names, ", ")
+end
+
+-- WHERE YOU MEET IT, in floors. The census reports a body's reach as the set of GROUNDS its encounters
+-- pass on (plus a flag for the ones that gate on no ground at all), and a circle owns its ground -- so
+-- the two resolve to a list of floors without a second table anybody has to keep.
+--
+-- In first-descent order, like the rift page it links into: once the Crown breaks the circles shuffle
+-- and these depths move with them. The GROUND is the durable half of the answer.
+local ROLE_WORD = { stair = "on the stair", ward = "warding the stair" }
+
+local function whereLine(charId)
+    local _, stair = riftFloors()
+    local row = PLACED[charId]
+    local posts = stair[charId]
+    if not row and not posts then return nil end
+
+    local parts = {}
+    -- The stair first: a body that is seated there is the floor's reason to exist, and it is the one
+    -- placement a reader can count on rather than roll for. Grouped by role, because a lieutenant who
+    -- is also her general's escort holds the same post on both of a circle's floors and printing that
+    -- as two clauses reads as two different jobs.
+    local roles, byRole = {}, {}
+    for _, post in ipairs(posts or {}) do
+        local word = ROLE_WORD[post.role] or "on the stair"
+        if not byRole[word] then byRole[word] = {}; roles[#roles + 1] = word end
+        table.insert(byRole[word], floorLink(post.floor))
+    end
+    for _, word in ipairs(roles) do
+        parts[#parts + 1] = "**" .. cell(word) .. "** at " .. table.concat(byRole[word], ", ")
+    end
+
+    local grounds, names = biomeFloors(), {}
+    for biome in pairs((row or {}).biomes or {}) do names[#names + 1] = biome end
+    table.sort(names)
+    for _, biome in ipairs(names) do
+        local g = grounds[biome]
+        if g then
+            local fl = {}
+            for _, n in ipairs(g.floors) do fl[#fl + 1] = floorLink(n) end
+            parts[#parts + 1] = "**" .. cell(g.sin.name) .. "** (" .. table.concat(fl, ", ") .. ")"
+        else
+            parts[#parts + 1] = "**" .. cell(biome) .. "**"
+        end
+    end
+    if row and row.ungated then
+        parts[#parts + 1] = "**any circle** — its encounters gate on no ground"
+    end
+    if #parts == 0 then return nil end
+    return table.concat(parts, " · ")
+end
+
+-- Is this body reachable at all: seated by an encounter, or standing on a stair. The two halves are
+-- the two routes tools/drop_report already splits `drops`/`carried` from `boss` on.
+local function isFielded(charId)
+    local _, stair = riftFloors()
+    return PLACED[charId] ~= nil or stair[charId] ~= nil
+end
+
+local MAX_ENCOUNTERS = 8
+
+local function standsInLine(charId)
+    local Encounter = require("models.encounter")
+    local row = PLACED[charId]
+    if not row then return nil end
+    local names = {}
+    for _, encId in ipairs(row.encounters or {}) do
+        local def = Encounter.get(encId)
+        names[#names + 1] = cell((def and def.name) or encId)
+    end
+    if #names == 0 then return nil end
+    table.sort(names)
+    if #names > MAX_ENCOUNTERS then
+        local shown = {}
+        for i = 1, MAX_ENCOUNTERS do shown[i] = names[i] end
+        shown[#shown + 1] = "*+" .. tostring(#names - MAX_ENCOUNTERS) .. " more*"
+        names = shown
+    end
+    return table.concat(names, " · ")
+end
+
+-- Everything that changes what the BODY is rather than what its numbers are -- the sibling of the
+-- item pages' Notes column, and rare enough per body that the line is absent on most of them.
+local function bodyNotes(def)
+    local parts = {}
+    if def.boss then parts[#parts + 1] = "a **boss**: no execute lands on it and no Charm takes it" end
+    if def.revivable == false then parts[#parts + 1] = "no downed window — it does not come back" end
+    if def.scaling == false then
+        parts[#parts + 1] = "**blueprint-exact**: it never grows with the company"
+    end
+    local fp = def.footprint
+    if type(fp) == "table" and (fp.w or 1) * (fp.h or 1) > 1 then
+        parts[#parts + 1] = "stands on " .. tostring(fp.w or 1) .. "×" .. tostring(fp.h or 1) .. " tiles"
+    end
+    if def.unarmed == false then
+        parts[#parts + 1] = "no natural weapon at all: it cannot strike"
+    elseif type(def.unarmed) == "string" then
+        parts[#parts + 1] = "strikes bare with " .. itemLink(def.unarmed)
+    end
+    if type(def.personalGrowth) == "table" then
+        local keys = {}
+        for k in pairs(def.personalGrowth) do keys[#keys + 1] = k end
+        table.sort(keys)
+        local bits = {}
+        for _, k in ipairs(keys) do
+            bits[#bits + 1] = "+" .. tostring(def.personalGrowth[k]) .. " " .. cell(k)
+        end
+        parts[#parts + 1] = "keeps " .. table.concat(bits, ", ") .. " a level in any class"
+    end
+    if type(def.traits) == "table" then
+        local bits = {}
+        for _, tid in ipairs(def.traits) do
+            local t = Trait.defs[tid]
+            bits[#bits + 1] = cell((t and t.name) or tid)
+        end
+        if #bits > 0 then parts[#parts + 1] = "born with " .. table.concat(bits, ", ") end
+    end
+    if #parts == 0 then return nil end
+    return table.concat(parts, " · ")
+end
+
+-- THE QUEUE A CIRCLE'S LIEUTENANT OR GENERAL PAYS OUT OF, and the reason it is printed as a numbered
+-- list rather than a set. Descent.DROPS is walked unowned-first, so an entry's POSITION is a count of
+-- complete descents to that circle -- the fourth thing on a general's list is the fourth time you have
+-- come all the way down and beaten her. That is the one fact about a boss's loot a player can plan on.
+local function bossQueues()
+    local out = {}
+    for _, sin in ipairs(Descent.SINS) do
+        local set = Descent.DROPS[sin.id] or {}
+        for _, which in ipairs({ "minor", "general" }) do
+            local slot = (which == "general") and sin.guardian or sin.minor
+            local lead = slot and slot.lead
+            if lead and set[which] and #set[which] > 0 then
+                out[lead] = out[lead] or {}
+                out[lead][#out[lead] + 1] = { sin = sin, which = which, items = set[which] }
+            end
+        end
+    end
+    return out
+end
+
+local function bodySection(out, charId, queues)
+    local def = Character.defs[charId]
+    local function line(s) out[#out + 1] = s or "" end
+    local function fact(label, value)
+        if value then line("- **" .. label .. "** — " .. value) end
+    end
+
+    line("## " .. cell(HEADING[charId] or bodyName(charId)))
+    line()
+
+    local meta = { "`" .. charId .. "`" }
+    -- The race, but only where it says something the page title has not: a Beast on the Beast page is
+    -- a word doing no work, and a Naga on the Humanoid page is the whole reason the axis is a rollup.
+    local race = Race.get(def.race)
+    local raceWord = (race and race.name) or def.race
+    if raceWord and raceWord ~= kindName(KIND_OF[charId] or "") then
+        meta[#meta + 1] = cell(raceWord)
+    end
+    if def.tier then meta[#meta + 1] = "tier " .. tostring(def.tier) end
+    if def.archetype then meta[#meta + 1] = cell(def.archetype) .. " posture" end
+    if def.class then
+        meta[#meta + 1] = "[" .. cell(Class.displayName(def.class) or def.class) .. "]("
+            .. pageOf(def.class) .. ") shelf"
+    end
+    line(table.concat(meta, " · "))
+    line()
+
+    fact("Body", statsLine(charId))
+    fact("Hide", hideLine(def))
+    fact("Immune", immuneLine(def))
+    fact("Carries", kitLine(def))
+    fact("Opens with", defaultActionLine(def))
+    local sig = {}
+    if def.signatureWeapon then sig[#sig + 1] = itemLink(def.signatureWeapon) end
+    if def.signatureAbility then sig[#sig + 1] = itemLink(def.signatureAbility) end
+    fact("Signature", #sig > 0 and table.concat(sig, " · ") or nil)
+    fact("Drops", itemLinks(def.drops))
+
+    for _, q in ipairs(queues[charId] or {}) do
+        local rank = (q.which == "general") and "general" or "lieutenant"
+        local bits = {}
+        for pos, itemId in ipairs(q.items) do
+            bits[#bits + 1] = tostring(pos) .. ". " .. itemLink(itemId)
+        end
+        fact("As " .. cell(q.sin.name) .. "'s " .. rank .. ", in queue order",
+            table.concat(bits, " · "))
+    end
+
+    local where = whereLine(charId)
+    fact("Where", where)
+    fact("Stands in", standsInLine(charId))
+    if not where then
+        -- SAY EXACTLY WHAT WAS MEASURED, which is the rift: an encounter that passes somewhere, or a
+        -- floor's stair. A scripted scene can still seat a body outside both (the prologue's demons
+        -- are hand-placed by data/tutorials/village.lua), so "nothing in the game fields it" would be
+        -- a stronger claim than this page has any way to check.
+        line("- **Where** — *the rift never fields it.* Nothing a floor can roll seats this body and "
+            .. "no stair is held by it, so nothing it carries or is known for is reachable down there.")
+    end
+    fact("Notes", bodyNotes(def))
+    line()
+end
+
+local function kindPage(kind)
+    local out = {}
+    local function line(s) out[#out + 1] = s or "" end
+
+    local list = BODIES[kind]
+    local queues = bossQueues()
+    local fielded = 0
+    for _, id in ipairs(list) do if isFielded(id) then fielded = fielded + 1 end end
+
+    line(banner("Bestiary: kind " .. kind .. "."))
+    line()
+    line("# " .. kindName(kind))
+    line()
+    local races = racesOf(kind)
+    for _, rid in ipairs(races) do
+        local rdef = Race.defs[rid]
+        line("> **" .. cell(rdef.name or rid) .. "** — " .. cell(rdef.description or "—"))
+    end
+    if #races > 0 then line() end
+    line("**" .. #list .. " bodies**, " .. fielded .. " of them fielded by the rift. "
+        .. "Shallowest tier first.")
+    line()
+    line("*Carries* is the nine-cell grid the body walks in with — take it off the corpse and it is "
+        .. "yours. *Drops* is what it is **known** for, which is the list you can go and farm. *Where* "
+        .. "is measured, not authored: a body is listed on a floor only if some encounter that floor "
+        .. "draws from really seats it, or the floor seats it on its stair. Every item links to its "
+        .. "shelf; see [The Rift](The-Rift) for the floors and [Items](Items) for the catalogue.")
+    line()
+
+    local jump = {}
+    for _, id in ipairs(list) do
+        jump[#jump + 1] = "[" .. cell(HEADING[id] or bodyName(id)) .. "](#" .. ANCHOR[id] .. ")"
+    end
+    line(table.concat(jump, " · "))
+    line()
+
+    for _, id in ipairs(list) do bodySection(out, id, queues) end
+
+    return table.concat(out, "\n")
+end
+
+local function bestiaryIndexPage()
+    local out = {}
+    local function line(s) out[#out + 1] = s or "" end
+
+    local total, fielded = 0, 0
+    for _, kind in ipairs(BODY_KINDS) do
+        for _, id in ipairs(BODIES[kind]) do
+            total = total + 1
+            if isFielded(id) then fielded = fielded + 1 end
+        end
+    end
+
+    line(banner("Bestiary index."))
+    line()
+    line("# Bestiary")
+    line()
+    line("Every one of the **" .. total .. " bodies** in the game — what it is made of, what it is "
+        .. "holding, what it leaves behind, and which floors it stands on.")
+    line()
+    line("Split by **kind** (`models/race.lua`), which is the coarse axis every rule in the bestiary "
+        .. "reads: a race may be as fine as *wolf*, and it rolls up to *beast* here so a refinement "
+        .. "never scatters a page.")
+    line()
+    line("**" .. fielded .. " of the " .. total .. " are fielded by the rift** — seated on a board "
+        .. "by an encounter that really passes, or standing on a floor's stair. The rest say so on "
+        .. "their own entry rather than being quietly left off: a name here is a thing you can meet, "
+        .. "and the silence where there is none is an answer too.")
+    line()
+    line("*Drops* is what a body is **known** for and the only list you can aim at. *Carries* is its "
+        .. "own kit, which the spoils draw can also hand over — real, but never promised. A circle's "
+        .. "lieutenant and general pay out of a **queue** instead, walked unowned-first, so a "
+        .. "position on that list is a count of complete descents to that circle.")
+    line()
+
+    line("| Kind | Races | What it is | Bodies | Fielded |")
+    line("| --- | --- | --- | :--: | :--: |")
+    for _, kind in ipairs(BODY_KINDS) do
+        local list = BODIES[kind]
+        local n = 0
+        for _, id in ipairs(list) do if isFielded(id) then n = n + 1 end end
+        local races, names, blurbs = racesOf(kind), {}, {}
+        for _, rid in ipairs(races) do
+            local rdef = Race.defs[rid]
+            names[#names + 1] = cell(rdef.name or rid)
+            blurbs[#blurbs + 1] = cell((rdef.description or ""):gsub("%..*$", "."))
+        end
+        line("| **[" .. cell(kindName(kind)) .. "](" .. bestiaryPageOf(kind) .. ")** | "
+            .. table.concat(names, ", ") .. " | " .. table.concat(blurbs, "<br>") .. " | "
+            .. #list .. " | " .. n .. " |")
+    end
+    line()
 
     return table.concat(out, "\n")
 end
@@ -705,8 +1460,16 @@ local function homePage(byClass, classIds)
     line()
     line("## Pages")
     line()
+    local bodies = 0
+    for _, kind in ipairs(BODY_KINDS) do bodies = bodies + #BODIES[kind] end
+
     line("- **[The Rift](The-Rift)** — the fifteen floors: ground, the level the company is expected "
         .. "to be, what walks there, and what is standing on each stair.")
+    line("- **[Bestiary](Bestiary)** — all " .. bodies .. " bodies, by kind: what each one carries, "
+        .. "what it drops, and which floors it stands on.")
+    for _, kind in ipairs(BODY_KINDS) do
+        line("  - [" .. kindName(kind) .. "](" .. bestiaryPageOf(kind) .. ") — " .. #BODIES[kind])
+    end
     line("- **[Items](Items)** — all " .. total .. " items, by class and type.")
     for _, id in ipairs(classIds) do
         line("  - [" .. (Class.displayName(id) or id) .. "](" .. pageOf(id) .. ") — " .. byClass[id].count)
@@ -722,6 +1485,10 @@ local function sidebarPage(byClass, classIds)
     line()
     line("- [Home](Home)")
     line("- [The Rift](The-Rift)")
+    line("- [Bestiary](Bestiary)")
+    for _, kind in ipairs(BODY_KINDS) do
+        line("  - [" .. kindName(kind) .. "](" .. bestiaryPageOf(kind) .. ")")
+    end
     line("- [Items](Items)")
     for _, id in ipairs(classIds) do
         line("  - [" .. (Class.displayName(id) or id) .. "](" .. pageOf(id) .. ")")
@@ -747,17 +1514,31 @@ end
 -- once between them, every class page reachable from the index, no row broken by an unescaped pipe.
 -- Ordered rather than a map so the report below counts the same thing twice running.
 function M.render()
+    -- The placement sweep, once, before any page is built. Required here rather than at the top of the
+    -- file so the cost lands only when pages are actually rendered, and so a headless caller that only
+    -- wants the models never drags the encounter layer in behind them.
+    DROPS, PLACED = require("tools.drop_report").sources()
+
+    -- The address book BEFORE any page, because both directions of every cross-link are written by
+    -- pages that render before the bestiary does: an item's "Dropped by" cell and the rift's
+    -- composition rows both have to name the page and anchor a body will get.
+    bodyCatalogue()
+
     local byClass, classIds = catalogue()
     local pages = {
         { name = "Home", body = homePage(byClass, classIds) },
         { name = "_Sidebar", body = sidebarPage(byClass, classIds) },
         { name = "Items", body = indexPage(byClass, classIds) },
         { name = "The-Rift", body = floorsPage() },
+        { name = "Bestiary", body = bestiaryIndexPage() },
     }
     for _, id in ipairs(classIds) do
         pages[#pages + 1] = { name = pageOf(id), body = classPage(id, byClass[id]) }
     end
-    return pages, byClass, classIds
+    for _, kind in ipairs(BODY_KINDS) do
+        pages[#pages + 1] = { name = bestiaryPageOf(kind), body = kindPage(kind) }
+    end
+    return pages, byClass, classIds, BODY_KINDS, BODIES
 end
 
 function M.run(args)

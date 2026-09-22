@@ -937,18 +937,49 @@ character editor, which edits the blueprint itself and so has no defaults behind
 ## Scale a combat encounter's roster
 
 A `combat` / `elite` encounter fields its enemies in the battle arena via `composition`, a
-`function(ctx)` that returns a list of `data/characters` ids and **scales with player prestige**
-(`ctx = { prestige, biome, quest }`), mirroring the dynamic `weight`:
+`function(ctx)` that returns a list of `data/characters` ids. `ctx = { depth, rung, biome, quest, seed }`
+— **depth is the clock** (the floor the fight is standing on; the campaign calendar and its `prestige`
+are both gone), and `seed` is the fight's own, stamped on by `Arena.build`.
+
+**How many bodies is `models/band.lua`, not arithmetic in the blueprint.** A named lead is written out;
+everything repeated is filled:
 
 ```lua
+local Band = require("models.band")
+-- ...
 composition = function(ctx)
-    local p = ctx.prestige or 1
-    local list = {}
-    for i = 1, 2 + math.floor(p / 2) do list[i] = "character_wolf_grunt" end
-    if p >= 3 then list[#list + 1] = "character_wolf_alpha" end -- an alpha joins at higher renown
-    return list
+    local list = { "character_wolf_alpha" }                                    -- the named cast, listed first
+    return Band.fill(list, ctx, "character_wolf_grunt", { base = 3, per = 5 }) -- 3, +1 every 5 floors, ±1
 end,
 ```
+
+`Band.fill(list, ctx, id, spec)` appends the rolled count and hands `list` back, so a mixed stop is one
+line per body. `spec` is `{ base, per, vary, max, min }` — `per` omitted means the count does not grow
+with depth (often the right answer: what makes a deep-floor body worse is that it is minted at the
+floor's own level, not that there are more of it), `max` is the stop's own ceiling, and `vary = 0`
+declines the roll.
+
+Two rules govern it, and both are enforced by `tests/encounter_spec.lua`:
+
+- **One cast, one stop.** No two encounters may field the same set of bodies. Two blueprints that field
+  the same cast at two counts are one fight the player meets twice — and the count is invisible from
+  the tile anyway, because `Arena.clampComposition` cuts both to the same tier ceiling
+  (`SKIRMISH_CAP` 4, `ELITE_CAP` 6). The answer is a different BODY or a deletion, never a different
+  number — when this rule was first enforced, four of the five collisions were answered by deleting the
+  redundant blueprint outright.
+- **Rated at the middle, played across the band.** Everything that *rates* a fight rather than seating
+  one — `Muster.encounter` (the marker colour, the walk-off gate), `Descent.floorPool`, the balance
+  report — resolves the composition with no seed, and gets the band's centre. Only `Arena.build` holds
+  a seed, so only the real fight rolls. Never put `math.random` in a blueprint: it would make the
+  marker price a fight the board then does not seat.
+
+A stop that must not roll is **pinned by name** in `tests/encounter_spec.lua`, with the reason written
+in its own blueprint — four are today (the Shoal and the lone stag are boxed in by measurements, the
+prologue's two objective lessons are timed tick by tick, and the Mimic is a cast of one because two
+mimics is two chests).
+
+Authoring order matters for a mixed stop: `clampComposition` keeps one of every distinct id first and
+then tops up **from the filler in authored order**, so list the bodies a ceiling should take last, last.
 
 A quest's **objective** battle is authored on `map.objective` — its own `composition` plus a win
 condition `win = { type = "killAll" | "survive" | "assassinate", turns = N, target = "<id>" }`

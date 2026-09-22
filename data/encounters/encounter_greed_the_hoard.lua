@@ -5,6 +5,8 @@
 -- careful costs you the thing you were being careful about.
 --
 -- The sharpest reading of the sin available, and the reason this is the apex rather than the Wyrm.
+local Band = require("models.band")
+
 return {
     name = "The Hoard",
     kind = "elite",
@@ -20,9 +22,6 @@ return {
     condition = function(ctx) return ctx.biome == "swamp" end,
     composition = function(ctx)
         local list = { "character_the_hoard" }
-        for _ = 1, 2 + math.floor((ctx.depth or 1) / 6) do
-            list[#list + 1] = "character_coin_chitter"
-        end
-        return list
+        return Band.fill(list, ctx, "character_coin_chitter", { base = 2, per = 6 })
     end,
 }

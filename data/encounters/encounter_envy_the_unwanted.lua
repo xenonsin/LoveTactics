@@ -8,6 +8,8 @@
 -- the exact inverse of The Sated one stratum over, where the apex opens enormous and deflates. Two
 -- circles, two opposite readings of what a big body does as you hurt it, and both of them true to
 -- the sin they belong to.
+local Band = require("models.band")
+
 return {
     name = "The Unwanted",
     kind = "elite",
@@ -23,9 +25,6 @@ return {
     condition = function(ctx) return ctx.biome == "desert" end,
     composition = function(ctx)
         local list = { "character_the_unwanted" }
-        for _ = 1, 1 + math.floor((ctx.depth or 1) / 6) do
-            list[#list + 1] = "character_glass_eater"
-        end
-        return list
+        return Band.fill(list, ctx, "character_glass_eater", { base = 1, per = 6 })
     end,
 }

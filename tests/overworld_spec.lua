@@ -254,7 +254,11 @@ return {
         -- bag. Distance from the start is what "further up the mountain" means on a generated map.
         name = "an ascent lays its guaranteed encounters out in authored order, climbing",
         fn = function()
-            local ids = { "encounter_siege_pickets", "encounter_siege_line", "encounter_siege_breach" }
+            -- SYNTHETIC IDS, because what is under test is the generator's ORDERING and nothing
+            -- resolves these against models/encounter (the cells below carry their own kind and name).
+            -- They used to be the three Bastion siege blueprints; those are deleted, and a spec that
+            -- names a dead file reads as coverage it no longer has.
+            local ids = { "_ascent_first", "_ascent_second", "_ascent_third" }
             for _, seed in ipairs({ 3, 17, 91, 404 }) do
                 local grid = Overworld.generate({
                     cols = 41, rows = 29, seed = seed, biome = "castle", ascent = true,

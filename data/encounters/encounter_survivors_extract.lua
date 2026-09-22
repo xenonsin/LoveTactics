@@ -1,7 +1,8 @@
 -- "Get them out": a refugee has to be walked off the far edge of the board while demons try to cut
 -- the road. The flight leg's second objective lesson (states/prologue.lua), teaching the `reach`
--- (extraction) win after the defend fight taught holding ground -- the same shape the Bastion's
--- siege road runs on (data/encounters/encounter_siege_*.lua), reused here for the prologue.
+-- (extraction) win after the defend fight taught holding ground -- the same shape the Bastion's siege
+-- road ran on, reused here for the prologue. (Those three siege stops are deleted: their quest went
+-- with data/quests, so nothing could place them, and two of them fielded this one's exact cast.)
 --
 -- `weight = 0`: authored-only, placed through a quest's `map.encounters.always`.
 --
@@ -24,6 +25,10 @@ return {
 
     allies = { "character_caravan_driver" },
 
+    -- MEASURED, SO IT DOES NOT ROLL. Like the defend stop before it, this opening is pinned rather
+    -- than banded (models/band.lua): the wave marks below were settled by ten headless runs apiece
+    -- against the two bodies that actually meet them, and a count that varies would vary the crossing
+    -- this whole list exists to time. See encounter_survivors_defend.lua for the same note.
     composition = function(ctx)
         local p = ctx.depth or 1
         local list = { "character_demon_imp", "character_demon_imp" }

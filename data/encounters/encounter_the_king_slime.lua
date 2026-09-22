@@ -17,6 +17,8 @@
 -- KILLALL, WHICH IS THE DEFAULT AND MUST STAY IT. The King is `boss = true` but is deliberately not
 -- an `assassinate` mark -- that objective ends the fight the instant the named body falls, which is
 -- the instant this fight starts. See data/characters/character_king_slime.lua.
+local Band = require("models.band")
+
 return {
     name = "The King Slime",
     kind = "elite",
@@ -30,7 +32,12 @@ return {
     -- Which of a circle's floors a thing bills on is Descent.SINS' `elites` for the standing threat, and
     -- `rung` for anything an author wants split across the approach and the seat.
     condition = function(ctx) return ctx.biome == "swamp" end,
+    -- The king is one; what it has already split off is a band (models/band.lua), floored at the two
+    -- the header argues for -- they are the fen's question ("how many elements did you bring") asked
+    -- cheaply while the expensive body is still walking over, and one of them cannot ask it, because a
+    -- single slime adapts to a single element and the choice disappears.
     composition = function(ctx)
-        return { "character_king_slime", "character_slime", "character_slime" }
+        local list = { "character_king_slime" }
+        return Band.fill(list, ctx, "character_slime", { base = 2, min = 2, per = 7 })
     end,
 }

@@ -6,8 +6,10 @@
 -- completely, only orders that starve it more -- which is the whole sin, playable in two minutes.
 --
 -- Locked to the swamp, which is how every circle keeps its stock. The gate is `ctx.biome`, the same
--- predicate encounter_stag.lua has always used, so no engine work was needed to make a stratum mean
--- something.
+-- predicate every beast blueprint in the wood uses, so no engine work was needed to make a stratum
+-- mean something.
+local Band = require("models.band")
+
 return {
     name = "The Fen Swarm",
     kind = "combat",
@@ -23,9 +25,6 @@ return {
     condition = function(ctx) return ctx.biome == "forest" end,
     composition = function(ctx)
         local list = { "character_tallow_hound" }
-        for _ = 1, 3 + math.floor((ctx.depth or 1) / 5) do
-            list[#list + 1] = "character_gorge_fly"
-        end
-        return list
+        return Band.fill(list, ctx, "character_gorge_fly", { base = 3, per = 5 })
     end,
 }

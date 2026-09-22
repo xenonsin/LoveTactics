@@ -4,6 +4,8 @@
 -- closed rank is armoured and hitting properly, and the same bodies pulled through a doorway are four
 -- suits of armour with opinions. The castle's `rooms` carve is what makes that a puzzle rather than a
 -- number.
+local Band = require("models.band")
+
 return {
     name = "The Rank",
     kind = "combat",
@@ -19,9 +21,6 @@ return {
     condition = function(ctx) return ctx.biome == "spire" end,
     composition = function(ctx)
         local list = { "character_gilded_sworn" }
-        for _ = 1, 3 + math.floor((ctx.depth or 1) / 5) do
-            list[#list + 1] = "character_gilded_page"
-        end
-        return list
+        return Band.fill(list, ctx, "character_gilded_page", { base = 3, per = 5 })
     end,
 }

@@ -3,6 +3,8 @@
 -- Everything here costs turns rather than health -- Freeze from the gnats, Halted from the drift. On the
 -- one board where crossing is free (data/biomes/tundra.lua), that is the only tax a stratum can levy,
 -- and this is it at the cheapest rung.
+local Band = require("models.band")
+
 return {
     name = "The Drift Line",
     kind = "combat",
@@ -18,9 +20,6 @@ return {
     condition = function(ctx) return ctx.biome == "tundra" end,
     composition = function(ctx)
         local list = { "character_drift_thing" }
-        for _ = 1, 3 + math.floor((ctx.depth or 1) / 5) do
-            list[#list + 1] = "character_rime_gnat"
-        end
-        return list
+        return Band.fill(list, ctx, "character_rime_gnat", { base = 3, per = 5 })
     end,
 }
