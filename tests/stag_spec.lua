@@ -393,7 +393,11 @@ return {
             -- THE FAMILY, ASSERTED RATHER THAN WRITTEN DOWN. Two apex bodies carry antlers and both
             -- sweep three wide; a tier-2 member that quietly narrowed to a single target would be a
             -- jab wearing the family's name, and nothing else in the suite reads this footprint.
-            local family = { "weapon_hoarfrost_antlers", "weapon_antler_crown", "weapon_stag_antlers" }
+            --
+            -- It was three. weapon_antler_crown went with the Bride and the Beloved (2026-09-22) and is
+            -- dropped from the list rather than left to fail on a nil -- the contract is over the pieces
+            -- that exist, and both survivors are still held to it.
+            local family = { "weapon_hoarfrost_antlers", "weapon_stag_antlers" }
             for _, id in ipairs(family) do
                 local ab = Item.defs[id] and Item.defs[id].activeAbility
                 assert(ab and ab.aoe, id .. " no longer sweeps anything")

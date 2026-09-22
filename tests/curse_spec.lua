@@ -178,7 +178,7 @@ return {
             assert(#Curse.openingBoons(pair) == 2, "a list of boons arrives as a list")
 
             -- ...and the traits join, item's first.
-            local traited = { traits = { "trait_lure" } }
+            local traited = { traits = { "trait_engorge" } }
             assert(#Curse.traitsOn(traited) == 1, "an uncursed piece brings only its own traits")
         end,
     },

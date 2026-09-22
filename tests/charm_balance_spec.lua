@@ -42,7 +42,7 @@ local tests = {}
 tests[#tests + 1] = { name = "a company charmed entire is a company beaten", fn = function()
     local c = Combat.new(arena(8, 8),
         { unit("character_knight", 1, 1), unit("character_archer", 2, 1) },
-        { unit("character_petal_drift", 6, 6) })
+        { unit("character_the_suppliant", 6, 6) })
     assert(Combat.evaluate(c) == nil, "the fight is live to begin with")
     for _, u in ipairs(c.units) do
         if u.side == "party" then Status.apply(c, u, "status_charm", { duration = 10 }) end
@@ -87,40 +87,18 @@ tests[#tests + 1] = { name = "a landed Petal Touch still takes the body", fn = f
     assert(knight.side == "enemy", "and the flip still happens")
 end }
 
--- The Bride's sweep is the same rule at three bodies wide, and she is the body it matters most on --
--- she takes a rank at a time, so a sweep outside the dice was the one action a party's Avoid bought
--- nothing against. Fought on a real board rather than read off Combat.abilityOutput, which pins its
--- dummy at (0,0) and so never enters an AoE loop at all (the sweep would report no statuses and the
--- case would pass for the wrong reason).
-tests[#tests + 1] = { name = "the Antler Crown's sweep takes what it hits and misses what it misses", fn = function()
-    local crown = Item.instantiate("weapon_antler_crown")
+-- THE BRIDE'S SWEEP WAS TESTED HERE, AND ITS SUBJECT IS GONE. weapon_antler_crown went with
+-- the Hartwood Bride and the Beloved (2026-09-22), so the case is deleted rather than left
+-- instantiating nothing. What it pinned -- that a charm rides each catch of an AoE rather
+-- than being applied after the sweep -- is unasserted until a three-wide charming sweep
+-- exists again, and it is the first thing a replacement owes back.
 
-    local c = Combat.new(arena(10, 10), { unit("character_knight", 4, 3) },
-        { unit("character_the_hartwood_bride", 2, 3) })
-    local bride, knight = c.units[2], c.units[1]
-    Combat.useItem(c, bride, crown, knight.x, knight.y)
-    assert(Status.has(knight, "status_charm"), "a landed sweep still takes the body it caught")
-
-    local c2 = Combat.new(arena(10, 10), { unit("character_knight", 4, 3) },
-        { unit("character_the_hartwood_bride", 2, 3) })
-    local bride2, knight2 = c2.units[2], c2.units[1]
-    local was, avoid = Combat.FORCE_HIT, Combat.avoid
-    Combat.FORCE_HIT = false
-    Combat.avoid = function() return 10000 end
-    local ok, err = pcall(function()
-        Combat.useItem(c2, bride2, crown, knight2.x, knight2.y)
-        assert(not Status.has(knight2, "status_charm"),
-            "a sweep that missed must take nobody -- the charm has to ride each catch")
-    end)
-    Combat.avoid, Combat.FORCE_HIT = avoid, was
-    assert(ok, err)
-end }
 
 -- 2. THE PLANNER WILL NOT TAKE THE LAST ONE.
 tests[#tests + 1] = { name = "AI.lastFreeBody names the last un-charmed body and only then", fn = function()
     local c = Combat.new(arena(8, 8),
         { unit("character_knight", 1, 1), unit("character_archer", 2, 1) },
-        { unit("character_petal_drift", 6, 6) })
+        { unit("character_the_suppliant", 6, 6) })
     local knight, archer = c.units[1], c.units[2]
     assert(AI.lastFreeBody(c, "party") == nil, "two free bodies: there is nothing to protect yet")
     Status.apply(c, knight, "status_charm", { duration = 10 })
@@ -162,8 +140,10 @@ end }
 -- matters is that no body whose only action Charms can be left with nothing when that action is
 -- refused, which is the shape the rule above would otherwise create.
 tests[#tests + 1] = { name = "every body that charms carries an attack that does not", fn = function()
-    local charmers = { "character_petal_drift", "character_chorister", "character_the_suppliant",
-                       "character_the_hartwood_bride", "character_the_beloved" }
+    -- It was five. Four went with the Lust circle (2026-09-22) and the Suppliant is what still
+    -- charms; the floor below is a floor over the bodies that EXIST, so an authored replacement
+    -- joins this list rather than arriving exempt from it.
+    local charmers = { "character_the_suppliant" }
     for _, id in ipairs(charmers) do
         local char = Character.instantiate(id)
         local plain = 0
@@ -230,8 +210,10 @@ end }
 -- The gate itself, proven through a real deliverer rather than through Status.apply, so what is tested
 -- is the path a player actually takes: a landed blow that carries Charm.
 tests[#tests + 1] = { name = "a boss is not taken by a blow that carries Charm", fn = function()
+    -- The deliverer is handed the touch outright rather than owning it, so any body swings it --
+    -- which is what let this case survive the Lust circle being deleted (2026-09-22).
     local c = Combat.new(arena(8, 8), { unit("character_the_suppliant", 2, 1) },
-        { unit("character_petal_drift", 1, 1) })
+        { unit("character_demon_imp", 1, 1) })
     local supp, drift = c.units[1], c.units[2]
     assert(supp.char.boss, "the Suppliant is a quest objective")
     local before = supp.char.stats.health.current
@@ -244,7 +226,7 @@ end }
 -- ...and the same refusal reached through the player's own Charm, which is the other end of it.
 tests[#tests + 1] = { name = "the Charm ability cannot take a boss either", fn = function()
     local c = Combat.new(arena(8, 8), { unit("character_thief", 1, 1) },
-        { unit("character_the_hartwood_bride", 4, 1) })
+        { unit("character_the_sated", 4, 1) })
     local thief, bride = c.units[1], c.units[2]
     -- Wounded to the point where the roll is at its kindest (25% at full health, up to 85% near
     -- death), so a case that passed merely because the spell fizzled would be vanishingly unlikely.

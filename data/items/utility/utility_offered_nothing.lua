@@ -35,8 +35,10 @@ return {
     noSteal = true,
     traits = { "trait_unasked", "trait_boss_phases" },
     phases = {
+        -- The circle's own chaff is deleted (2026-09-22), so the threshold summons the nearest
+        -- surviving body on this ground rather than nothing at all.
         { at = 0.5, responses = {
-            { kind = "summon", id = "character_petal_drift", count = 2 },
+            { kind = "summon", id = "character_demon_imp", count = 2 },
             { kind = "bonus", stat = "magicDamage", amount = 6 },
             { kind = "log", text = "The Suppliant stops asking." },
         } },

@@ -27,6 +27,9 @@ return {
     condition = function(ctx) return ctx.biome == "forest" end,
     composition = function(ctx)
         local list = { "character_the_sated" }
-        return Band.fill(list, ctx, "character_gorge_fly", { base = 2, per = 4 })
+        -- THE FLIES ARE DELETED (2026-09-22) and the hawk is the nearest thing the wood still has.
+        -- The supply reading above is what the replacement owes back: this is a body that carries
+        -- no Engorge and is not what the Sated has been eating.
+        return Band.fill(list, ctx, "character_hawk", { base = 2, per = 4 })
     end,
 }

@@ -20,6 +20,8 @@ return {
     condition = function(ctx) return ctx.biome == "tundra" end,
     composition = function(ctx)
         local list = { "character_the_long_winter" }
-        return Band.fill(list, ctx, "character_hollow_sleeper", { base = 1, per = 6 })
+        -- THE SLEEPERS ARE DELETED (2026-09-22). The ice elemental is the tundra's own surviving
+        -- body; it carries no Torpor, so the escort no longer teaches what the seat does.
+        return Band.fill(list, ctx, "character_ice_elemental", { base = 1, per = 6 })
     end,
 }

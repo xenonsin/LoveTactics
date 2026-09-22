@@ -132,13 +132,13 @@ return {
         fn = function()
             local c = Fixture.combat(Fixture.new(8, 8),
                 { Fixture.unit("character_knight", 4, 4) },
-                { Fixture.unit("character_chorister", 5, 4) })
+                { Fixture.unit("character_the_suppliant", 5, 4) })
             local knight, singer = c.units[1], c.units[2]
             assert(knight.side == "party" and Combat.isPlayerControlled(knight), "the knight starts yours")
 
             Fixture.openTurn(c, singer)
             assert(Combat.useItem(c, singer, Fixture.itemNamed(singer.char, "weapon_petal_touch"),
-                knight.x, knight.y), "the chorister reaches him")
+                knight.x, knight.y), "the suppliant reaches him")
 
             assert(Status.has(knight, "status_charm"), "he is charmed")
             assert(knight.side == "enemy", "and he is fighting on the side that took him")

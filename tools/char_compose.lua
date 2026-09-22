@@ -353,26 +353,16 @@ local CHARACTER_SILHOUETTE = {
     -- the Wolfsong Spirit). The teeth are the honest mark anyway -- her blow lands once per wolf
     -- standing with her (weapon_white_wolf_fangs.lua), so what she IS on a board is a count of bites.
     white_wolf = "lorc/bestial-fangs",
-    -- The wild fauna added with the warband pass. Both would otherwise fall into a bucket already
-    -- occupied: a carrion crawler matches nothing in CREATURE_MATCH and lands on the `beast` fallback,
-    -- which is the wolf grunt's own head; a wyrmling matches "wyrm" and comes out pixel-identical to the
-    -- druid's Wyrm. Named here rather than by adding CREATURE_MATCH rows, because both are ONE body
-    -- rather than a family and a substring row would sweep in whatever is written next.
-    carrion_crawler = "delapouite/grasping-slug", -- low, many-legged, and interested in the floor
-    wyrmling = "lorc/dragon-breath",              -- read as the cone, which is the only thing it does
     -- "sow" shares no substring with "bear", so she matches nothing in CREATURE_MATCH and lands on the
     -- `beast` KIND fallback -- the wolf grunt's own head. Named here rather than given a row, because she
     -- is ONE body and a "sow" substring row would sweep in whatever is written next. The full animal
     -- rather than a head: she is the only 2x2 bear, and the fight is her bulk arriving.
     sow = "cathelineau/polar-bear",
 
-    -- THE GLUTTONY CIRCLE. Five creatures and a mini sin, every one of them `beast` -- so without a name
-    -- here all six would land on the `beast` KIND fallback together, which is the wolf grunt's head. Each
-    -- wears what it DOES rather than what it is, on the same rule the Hiring Hall's thirty-eight follow.
-    gorge_fly = "delapouite/fly",
-    bogswallow = "delapouite/swallower",   -- the grip, not the animal: it holds rather than chases
-    tallow_hound = "delapouite/slime",     -- rendered down and still walking
-    grendlemaw = "lorc/jawbone",           -- it is a mouth with a fen attached
+    -- WHAT IS LEFT OF THE GLUTTONY CIRCLE. Its four creatures are deleted (2026-09-22); the apex and
+    -- the mini sin are what remain, and both are `beast` -- so without a name here they would land on
+    -- the `beast` KIND fallback, which is the wolf grunt's head. Each wears what it DOES rather than
+    -- what it is, on the same rule the Hiring Hall's thirty-eight follow.
     the_sated = "delapouite/stomach",      -- what it has eaten IS the silhouette
     the_gralloch = "lorc/meat-hook",       -- named for Gula's tool, and wearing it
 
@@ -408,11 +398,8 @@ local CHARACTER_SILHOUETTE = {
     rift_born = "sbed/lava",               -- the seam, not the thing that came out of it
     the_anvil = "lorc/anvil-impact",       -- a thing that exists to be struck
 
-    -- THE SLOTH CIRCLE. Three elementals, an undead, a beast and a humanoid mini sin.
-    rime_gnat = "lorc/ice-cube",
-    drift_thing = "delapouite/frozen-body",
-    hollow_sleeper = "lorc/hood",             -- somebody who stopped, not weather
-    the_winter_hart = "caro-asercion/deer-head",
+    -- WHAT IS LEFT OF THE SLOTH CIRCLE. Its four lesser bodies are deleted (2026-09-22); the general's
+    -- ground and the mini sin are what remain.
     the_long_winter = "lorc/icicles-fence",   -- the ground it leaves, not the shape it has
     the_late_watch = "lorc/frozen-block",     -- a relief that came too late to be one
 
@@ -424,23 +411,15 @@ local CHARACTER_SILHOUETTE = {
     the_peerless = "lorc/spartan",         -- it holds a door, alone, on principle
     marginalia = "lorc/quill-ink",         -- lesser writing beside the real text
 
-    -- THE GREED CIRCLE. A beast, a construct, two demons, a beast and an object.
-    coin_chitter = "delapouite/two-coins",
-    coffer_crawler = "delapouite/cave-entrance", -- a shell you have to open
-    -- ...and its cousin that learned to stay still. Keyed by exact id, which also keeps it clear of
-    -- character_mimic_of_ash above -- two unrelated bodies whose ids share a word.
+    -- WHAT IS LEFT OF THE GREED CIRCLE. Its five bodies are deleted (2026-09-22) and the mini sin is
+    -- what remains. The mimic stays: it was the coffer-crawler's cousin that learned to stay still, and
+    -- it is keyed by exact id, which keeps it clear of character_mimic_of_ash above -- two unrelated
+    -- bodies whose ids share a word.
     mimic = "delapouite/mimic-chest",
-    assayer = "delapouite/gold-stack",           -- it is reading your purse, not you
-    the_gilt_wyrm = "lorc/dragon-head",
-    the_hoard = "lorc/cash",                     -- it IS the pile
     the_tally = "delapouite/war-pick",           -- a record of what is owed, collected
 
-    -- THE LUST CIRCLE. A beast, an undead and three demons.
-    petal_drift = "lorc/three-leaves",
-    bloom_wraith = "lorc/haunting",              -- `spectre` is the Gaunt Vigil's; this is the grove's
-    chorister = "lorc/love-howl",                -- the call, not the singer
-    the_hartwood_bride = "lorc/flowers",
-    the_beloved = "lorc/heart-inside",
+    -- WHAT IS LEFT OF THE LUST CIRCLE. Its five bodies are deleted (2026-09-22) and the mini sin is
+    -- what remains.
     the_suppliant = "lorc/fluffy-flame",         -- a bowl held out for a very long time
     wolfsong_spirit = "lorc/direwolf",
 

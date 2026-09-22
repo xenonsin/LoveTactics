@@ -17,13 +17,15 @@ return {
     noSteal = true,
     traits = { "trait_boss_phases" },
     phases = {
+        -- The circle's own chaff is deleted (2026-09-22), so the threshold summons the nearest
+        -- surviving body on this ground rather than nothing at all.
         { at = 0.66, responses = {
-            { kind = "summon", id = "character_drift_thing", count = 2 },
+            { kind = "summon", id = "character_ice_elemental", count = 2 },
             { kind = "log", text = "The cold around the Long Winter thickens, and two pieces of it move." },
         } },
         { at = 0.33, responses = {
-            { kind = "summon", id = "character_drift_thing", count = 2 },
-            { kind = "log", text = "More of the drift stands up. None of it is in a hurry." },
+            { kind = "summon", id = "character_ice_elemental", count = 2 },
+            { kind = "log", text = "More of the ice stands up. None of it is in a hurry." },
         } },
     },
 }

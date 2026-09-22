@@ -47,7 +47,7 @@ code that a change lands in, while a wiki is read by somebody who wants to know 
 `docs/` is untouched and still the design source; it is simply no longer published.
 
 `& "E:\LOVE\lovec.exe" . wiki-gen` (`tools/wiki_gen.lua`) renders **58 pages**: every item by class
-then by type (857 over 46 class pages), every body by kind (**the Bestiary** — 173 over 8), the Rift's
+then by type (842 over 46 class pages), every body by kind (**the Bestiary** — 153 over 8), the Rift's
 fifteen floors, and the indexes over all three, into the gitignored `wiki/`. Every number is read
 through the model (`Item.instantiate` / `Item.growth` at each forge level, `Character.instantiate` for
 a stat block), so a page cannot disagree with the game; a column no item in a section filled is
@@ -68,7 +68,7 @@ so the generator cannot grade itself.
 in `tools/drop_report` sweeps `Encounter.pool`, which is every body a floor can *roll*; a guardian, her
 escort, a ward and the Crown are seated by `Descent` directly and are in no pool, so that sweep alone
 calls a circle's general unfielded. `riftFloors()` walks the fifteen floors once — the same walk the
-Rift page prints — and records who stands on each stair. 67 of the 173 blueprints are reachable by one
+Rift page prints — and records who stands on each stair. 50 of the 153 blueprints are reachable by one
 route or the other; the rest say *the rift never fields it* on their own entry rather than being left
 off. That wording is the measurement and not a stronger claim: a scripted scene can still hand-place a
 body (the prologue's demons), which neither sweep can see.
@@ -212,7 +212,7 @@ The codebase is organized into layers loaded via `require()`. See
   drop list. **That measurement is exported (`drop_report.sources()`) and printed on the wiki as the
   "Dropped by" column**, so the pages name the body a player can go and kill; it is ONE measurement
   on purpose, because a page naming a body the report calls unreachable would be a disagreement with
-  nothing to show it. Today 85 of the 387 rift items come off a named body and the other 302 fall out
+  nothing to show it. Today 85 of the 388 rift items come off a named body and the other 303 fall out
   of the depth-banded draw, which is why a blank cell there is an answer and not a gap.
   An item may also rewrite a **rule of the game** for its bearer (`rules`, `Item.RULE_NAMES`
   — health pinned at 1, no walking at all, mana paid in blood), open a fight wearing a status

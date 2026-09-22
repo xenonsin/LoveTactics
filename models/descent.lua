@@ -140,9 +140,14 @@ Descent.SINS = {
         guardian = { lead = "character_general_gluttony", filler = "character_the_gralloch" },
         -- SHE WILL NOT RISE WHILE THERE IS ANYTHING LEFT TO EAT: the floor must be picked clean.
         gate = { kind = "clear" },
-        minor = { lead = "character_the_gralloch", filler = "character_gorge_fly" },
-        elites = { approach = "encounter_gluttony_fen_mouth",
-            seat = "encounter_gluttony_the_sated",
+        -- THE CIRCLE'S OWN CHAFF WENT WITH ITS STRATUM (2026-09-22). The filler below is the
+        -- nearest surviving body on this ground, not a body authored for this circle -- it stands
+        -- here so the escort is not an empty list, and it is what a replacement replaces.
+        minor = { lead = "character_the_gralloch", filler = "character_hawk" },
+        -- NO `approach`, AND IT DEGRADES RATHER THAN BREAKING -- the same hole Pride carries at
+        -- `seat`. The Fen Mouth is gone, so rung 1 names nobody and every forest elite draws at
+        -- ELITE_WEIGHT; rung 2 still bills the Sated.
+        elites = { seat = "encounter_gluttony_the_sated",
             spares = { "encounter_white_wolf", "encounter_meandering_stag",
             "encounter_the_sow", "encounter_the_unseeing" } } },
     { id = "lust", name = "Lust", vendor = "cathedral", biome = "castle",
@@ -153,9 +158,15 @@ Descent.SINS = {
         -- Dante's order, so it is the one a new company meets, and every other circle's is read
         -- against it. Beat her, the ward breaks, the stair opens.
         gate = { kind = "ward" },
-        minor = { lead = "character_the_suppliant", filler = "character_petal_drift" },
-        elites = { approach = "encounter_lust_hartwood_bride",
-            seat = "encounter_lust_the_beloved" } },
+        -- THE CIRCLE'S OWN CHAFF WENT WITH ITS STRATUM (2026-09-22). The filler below is the
+        -- nearest surviving body on this ground, not a body authored for this circle -- it stands
+        -- here so the escort is not an empty list, and it is what a replacement replaces.
+        minor = { lead = "character_the_suppliant", filler = "character_demon_imp" },
+        -- NO ELITES AT ALL. The Bride and the Beloved were the castle's only two, and the castle
+        -- has nothing else to promote: `named` reads nil and both floors of Lust draw from an
+        -- elite pool this ground does not have. This is the largest of the holes the cut opened
+        -- and the first one an authored replacement should close.
+        elites = {} },
     { id = "greed", name = "Greed", vendor = "undercroft", biome = "swamp",
         scene = "conversation_descent_greed",
         guardian = { lead = "character_general_greed", filler = "character_the_tally" },
@@ -163,10 +174,13 @@ Descent.SINS = {
         -- greed taxes exactly what the company came down for and a fat bag costs more to walk past --
         -- which couples the two systems this mode is built on instead of standing beside them.
         gate = { kind = "toll", share = 0.25 },
-        minor = { lead = "character_the_tally", filler = "character_coin_chitter" },
-        elites = { approach = "encounter_greed_gilt_wyrm",
-            seat = "encounter_greed_the_hoard",
-            spares = { "encounter_fen_ooze", "encounter_the_undertow", "encounter_the_king_slime" } } },
+        -- THE CIRCLE'S OWN CHAFF WENT WITH ITS STRATUM (2026-09-22). The filler below is the
+        -- nearest surviving body on this ground, not a body authored for this circle -- it stands
+        -- here so the escort is not an empty list, and it is what a replacement replaces.
+        minor = { lead = "character_the_tally", filler = "character_slime" },
+        -- NO NAMED ELITE: the Gilt Wyrm and the Hoard are gone. The spares below are the swamp's
+        -- inherited water and they are all Greed has left to stand on either floor.
+        elites = { spares = { "encounter_fen_ooze", "encounter_the_undertow", "encounter_the_king_slime" } } },
     { id = "envy", name = "Envy", vendor = "alchemist", biome = "desert",
         scene = "conversation_descent_envy",
         -- THE SECOND OF THE TWO BROKEN LEADS. character_homunculus is the alchemist's SUMMON -- its own
@@ -208,9 +222,12 @@ Descent.SINS = {
         -- could have spent elsewhere -- which under an extraction descent is a real decision rather
         -- than a formality. Every other circle asks something; this one asks whether you want to.
         gate = { kind = "none" },
-        minor = { lead = "character_the_late_watch", filler = "character_drift_thing" },
-        elites = { approach = "encounter_sloth_winter_hart",
-            seat = "encounter_sloth_long_winter" } },
+        -- THE CIRCLE'S OWN CHAFF WENT WITH ITS STRATUM (2026-09-22). The filler below is the
+        -- nearest surviving body on this ground, not a body authored for this circle -- it stands
+        -- here so the escort is not an empty list, and it is what a replacement replaces.
+        minor = { lead = "character_the_late_watch", filler = "character_ice_elemental" },
+        -- NO `approach`: the Winter Hart is gone. The Long Winter still seats rung 2.
+        elites = { seat = "encounter_sloth_long_winter" } },
     { id = "pride", name = "Pride", vendor = "arcanum", biome = "spire",
         scene = "conversation_descent_pride",
         guardian = { lead = "character_general_pride", filler = "character_marginalia" },

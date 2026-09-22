@@ -474,7 +474,6 @@ Grade.TRAIT_GRADE = {
     trait_torpor =                      2.0,  -- Torpor
     -- Lays a tile of the biome's own hazard per action. Real on the board it belongs to and worth
     -- nothing at all off it, so it grades with the other terrain riders.
-    trait_conduction =                  1.5,  -- Conduction
     -- The offensive twin of Formation Fighter, which grades at 1.0. Damage per adjacent ally rather than
     -- defense, measured live off the same board reading, so it is worth about the same -- a shade more,
     -- since offence compounds with the rest of a rank's output and armour does not.
@@ -514,7 +513,6 @@ Grade.TRAIT_GRADE = {
     trait_unasked =                     1.0,  -- The Unasked
     -- One Charm per cooldown. Charm is the strongest control in the game and a fourteen-tick gate is
     -- what keeps this a decision rather than a lock, so it grades near the other hard controls.
-    trait_lure =                        3.0,  -- Lure
     trait_round_for_the_house =         2.0,  -- Round for the House
     trait_second_wind =                 2.0,  -- Second Wind
     trait_shared_ledger =               2.0,  -- The Shared Ledger

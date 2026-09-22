@@ -29,8 +29,10 @@ return {
     noSteal = true,
     traits = { "trait_assayed", "trait_boss_phases" },
     phases = {
+        -- The circle's own chaff is deleted (2026-09-22), so the threshold summons the nearest
+        -- surviving body on this ground rather than nothing at all.
         { at = 0.5, responses = {
-            { kind = "summon", id = "character_coin_chitter", count = 2 },
+            { kind = "summon", id = "character_slime", count = 2 },
             { kind = "bonus", stat = "damage", amount = 5 },
             { kind = "log", text = "The Tally closes its book. It has decided coin is not enough." },
         } },
