@@ -350,8 +350,16 @@ a boss, met in the discipline's unlock quest — the path demonstrated by somebo
 dealt by the Hiring Hall off a voucher a beaten circle handed up, with a duplicate levelling that
 hero's bound relic. The Hall, the voucher and the Crossing are all retired: the roster is seven
 companions, one per house, and there is nothing left for a pull to deal. The 38 named hires were not
-deleted so much as turned around — `models/warband.lua` now fields each discipline's **exemplar**
-where its hire used to stand, so those bodies are met as enemies instead of bought as allies.
+deleted so much as turned around — each discipline's **exemplar** stands where its hire used to, so
+those bodies are met as enemies instead of bought as allies.
+
+**Met in the unlock quest, and nowhere else since 2026-09-22.** `models/warband.lua` drew the exemplars
+into rolled traffic as well — a company composed out of role buckets, four times in five seeded so the
+four bodies answered each other. That engine and every encounter built on it are deleted: a company of
+people is the one fight this combat model cannot close (both sides mitigate, both sides heal, and
+`tests/support/slow_road_fights.lua` recorded a full warband against a full company running past
+Autobattle's 400-turn cap). So an exemplar is a **boss you are sent at**, once, and rolled traffic is
+the circle's own cast.
 
 The plain classes under the disciplines are met as those seven **companions** — Saber for the fighter,
 Rowan for the knight, Clem for the rogue. The pairing is authored on the houses themselves

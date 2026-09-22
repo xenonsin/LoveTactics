@@ -6,7 +6,7 @@
 -- ordinary suits of armour.
 --
 -- Which makes this the circle's readable answer: not "kill the big one", but "kill the one that is not
--- hitting you". The same lesson the Long Note warband teaches with a Rally Banner, told again in armour.
+-- hitting you". The same lesson Pride's colours teach with a Rally Banner, told again in armour.
 return {
     name = "Standard-Bearer",
     race = "construct",

@@ -52,6 +52,14 @@ local function floorCtx(floor)
         -- HOW DEEP THIS FLOOR IS, which is what the pool gates on. It read a borrowed campaign day
         -- (Descent.poolDay); there are no days and no calendar to borrow one from.
         depth = floor,
+        -- ...AND WHICH GROUND IT IS, WITHOUT WHICH THIS SWEEP MEASURED ALMOST NOTHING. Every fight is
+        -- locked to one circle's ground now (the condition is `ctx.biome == "..."`), so a context that
+        -- names no biome is a context every circle-locked blueprint refuses. The case's own prose says
+        -- "every combat blueprint eligible on every floor"; without this line the only blueprints it
+        -- ever rated were the ones that floated free of a circle -- the human companies -- and when
+        -- those were deleted on 2026-09-22 the sweep rated ZERO and said so. It had been covering a
+        -- shrinking subset in silence for as long as the circle-lock rule has existed.
+        biome = quest.map and quest.map.biome,
         enemyLevel = quest.dangerLevel,
         quest = quest,
         floorLevel = quest.floorLevel,
@@ -229,19 +237,25 @@ return {
         end,
     },
 
-    -- ------------------------------------------------------------ the campaign is not touched
+    -- ------------------------------------------------------------ the fallback is not touched
     {
-        -- The descent hands its level in; everyone else falls through to the day, and that fallback is
-        -- the campaign's whole difficulty dial (models/calendar.lua). A change to the descent that moved
-        -- the road would be a change to the other game.
-        name = "a fight that names no level still takes the calendar's",
+        -- A caller that names no level falls through to the floor's own (Muster -> Descent.dangerLevel),
+        -- and that fallback is what a bare marker over a fight is priced by. A change to the descent
+        -- that moved it would mis-price every marker in the game.
+        --
+        -- IT USED TO SAY "the calendar's" AND PICK ITS BLUEPRINT OUT OF `pool({ day = 20 })`. Both
+        -- halves are dead: models/calendar.lua was deleted with the day axis, and a context naming no
+        -- GROUND matches nothing now that every fight is locked to one circle -- so this asked an empty
+        -- pool for a blueprint and got nil. It picks off a real floor now. The assertions underneath
+        -- are the ones it always made and are unchanged.
+        name = "a fight that names no level still takes the floor's",
         fn = function()
             local def = nil
-            for _, entry in ipairs(Encounter.pool({ day = 20 })) do
+            for _, entry in ipairs(Encounter.pool(floorCtx(8))) do
                 local d = Encounter.get(entry.id)
                 if d and d.kind == "combat" then def = d break end
             end
-            assert(def, "the pool should hold a combat encounter partway down")
+            assert(def, "floor eight's pool should hold a combat encounter")
 
             -- NAMING THE LEVEL AND LEAVING IT TO THE DEPTH MUST AGREE, which is the property this case
             -- has always been about -- it simply used to be spelled in days. Muster falls through to

@@ -2,7 +2,8 @@
 --
 -- The standard-bearer holds the rank together and barely fights. Killing it does not merely stop a buff:
 -- because the rank rule is measured live off adjacency, the shape collapses and the survivors become
--- ordinary. The same lesson the Long Note warband teaches with a Rally Banner, told again in armour.
+-- ordinary. It is where the game teaches killing the body that is not hitting you -- a job the Long
+-- Note held until the human companies were deleted, and this fight now holds alone.
 return {
     name = "The Colours",
     kind = "combat",

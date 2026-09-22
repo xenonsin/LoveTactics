@@ -227,8 +227,12 @@ return {
         -- tiers look identical, and a case run there would pass while proving nothing), shallow enough
         -- to still be ordinary traffic rather than the floor under the Crown. Swept across depths 3, 11
         -- and 15 while this was rebuilt, the SHAPE does not move -- the monster fights sit at six to
-        -- eight unit-turns at every depth and the human warbands run long at every depth -- so one
-        -- reference depth is honest here and a sweep would only cost minutes to say the same thing.
+        -- eight unit-turns at every depth -- so one reference depth is honest here and a sweep would
+        -- only cost minutes to say the same thing.
+        --
+        -- THAT SWEEP IS ALSO WHAT EMPTIED THE DEBT LIST. Its other half read "and the human companies
+        -- run long at every depth", which was every row the list had; those fights are deleted
+        -- (2026-09-22) and two circle set-pieces are what is left. See the support file.
         --
         -- The budget carries roughly 1.5x headroom over the worst single monster fight. It is a guard
         -- against an ordinary stop growing back into a set-piece, not a tuning target to be nudged

@@ -220,8 +220,13 @@ Descent.SINS = {
         -- shuffle deals it early.
         gate = { kind = "worth", n = 3 },
         minor = { lead = "character_marginalia", filler = "character_gilded_sworn" },
-        elites = { approach = "encounter_pride_the_gallery",
-            seat = "encounter_pride_the_peerless" } },
+        -- NO `seat`, AND THE FALLBACK IS THE POINT. The Peerless was a human company and went with
+        -- the rest of them (2026-09-22); the spire has no second elite to promote in its place. The
+        -- reader is `rung == 2 and named.seat or named.approach`, so Pride's seat floor draws the
+        -- APPROACH elite until a spire elite is authored to stand there -- both floors billing the
+        -- same threat, which is the one thing the named-elite rule exists to avoid. It degrades
+        -- rather than breaking, and this comment is the marker for whoever authors the replacement.
+        elites = { approach = "encounter_pride_the_gallery" } },
 }
 
 -- WHAT COMES OFF THE BODY: the unique piece a rank pays for being put down, per sin, in the order it is
@@ -1091,8 +1096,13 @@ Descent.MIN_BODIES = 2
 -- distinct cast alone is already over the ceiling it yields rather than truncate -- a winnability rule,
 -- since 43 quests win by assassinating a body the truncation would have deleted. So the opening floor's
 -- cap of two silently does nothing to the fights made entirely of named bodies, which on a first circle
--- is exactly the wrong set: A Rival Company is four discipline exemplars in full loadouts (992 muster
--- against a pair's 296), and the Press-Gang is a four-part combo whose every piece is distinct.
+-- is exactly the wrong set: the Overstayed is four distinct bodies of which three are healers, and the
+-- Wyrmling Brood is three, none of them filler and none of them droppable.
+--
+-- (It was argued here off A Rival Company and the Press-Gang, which were the sharpest cases in the game
+-- -- four discipline exemplars in full loadouts against a pair's 296 muster. Both went with the human
+-- companies on 2026-09-22. The rule did not go with them: what it is really about is a cast of distinct
+-- named bodies, and the circles are full of those.)
 --
 -- A floor that cannot cut a fight to its own size does not seat it. Stated as a property of the CUT
 -- rather than as a second worth threshold, so it needs no ratio of its own and cannot disagree with the

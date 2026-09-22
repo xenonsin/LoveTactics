@@ -106,11 +106,17 @@ Request.KINDS = {
     -- from being interchangeable with an ordinary fight on the way past.
     fell = {
         label = "Fell",
+        -- IT NAMES ITS OWN QUARRY OR IT SEEDS NOTHING. The fallback here was `encounter_elite`, the
+        -- Phoenix, which was a champion and his bandits -- deleted with the human companies on
+        -- 2026-09-22. A default that names a fight nobody can be sent at is worse than no default, so
+        -- a Fell request that carries no `encounter` now adds no row and reads as no progress rather
+        -- than quietly standing in a body that is not there.
         seed = function(board, req)
-            board.always[#board.always + 1] = req.encounter or "encounter_elite"
+            if req.encounter then board.always[#board.always + 1] = req.encounter end
         end,
         progress = function(run, req)
-            return (run.felled and run.felled[req.encounter or "encounter_elite"]) or 0
+            if not req.encounter then return 0 end
+            return (run.felled and run.felled[req.encounter]) or 0
         end,
     },
 }

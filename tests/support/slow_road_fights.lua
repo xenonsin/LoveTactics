@@ -185,22 +185,32 @@
 -- Regenerate by printing `turns` in the spec's loop; do not hand-edit a number upward to make a build
 -- pass.
 
-return {
-    -- Did not resolve inside Autobattle.run's 400-turn cap. The mirror match, and the row to look at
-    -- first: a full warband met by a full company, where neither side can close.
-    encounter_warband_broken_column  = 400,
+-- ---------------------------------------------------------------------------
+-- AND THE BACKLOG IS ANSWERED BY DELETION, 2026-09-22. THIRTEEN ROWS BECOME NONE.
+-- ---------------------------------------------------------------------------
+--
+-- The section above ends on a finding it declined to act on: every row left on this list was a company
+-- of PEOPLE, no monster fight survived the honest harness, and the worst row -- the Broken Column at
+-- Autobattle's 400-turn cap -- was a full warband met by a full company, a mirror match neither side
+-- can close. That finding has been acted on, in two passes on the same day.
+--
+-- The first took the human COMPANIES: the six floating bands, the eleven authored warband combos, the
+-- rival company, and models/warband.lua itself. Eleven rows went with them, leaving two -- Sloth's
+-- Standing Watch and Gluttony's Overstayed, both circle set-pieces rather than roadside stock.
+--
+-- The second took every remaining encounter that fields a human BODY AT ALL, by `race` rather than by
+-- eye: twelve more, those last two rows among them. So the table is empty. Not one fight in the game
+-- is outside SKIRMISH_TURN_BUDGET.
+--
+-- AN EMPTY TABLE IS NOT A CLEAN BILL, and this file stays on disk to say so. Nothing here was measured
+-- faster; the fights were deleted. Every row this list ever held was a company of people, which is the
+-- finding restated by its own disappearance -- sustain and mitigation outscale damage, it is visible
+-- only where BOTH sides have them, and the game no longer contains a fight where both sides do. The
+-- combat-model debt is not paid, it is out of reach of the harness.
+--
+-- SO THE ROW TO WATCH FOR IS THE FIRST NEW ONE. Replacement fights are owed (the circles are thin
+-- without the deleted stock), and the moment one of them is a company of people this table will start
+-- filling again with the same shape it always had. If that happens, the answer is the combat model --
+-- a term on mitigation and healing that scales with the ladder -- and not a number in this file.
 
-    -- Resolves, but nowhere near an ordinary stop. Every one of them a company of people.
-    encounter_the_reclaimers         = 85,
-    encounter_sloth_standing_watch   = 76,
-    encounter_the_sworn_company      = 66,
-    encounter_rival_company          = 65,
-    encounter_gluttony_overstayed    = 64,
-    encounter_the_cutpurses          = 38,
-    encounter_free_company           = 36,
-    encounter_warband_beast_line     = 34,
-    encounter_warband_the_writ       = 32,
-    encounter_warband_the_assay      = 32,
-    encounter_the_hedge_chapel       = 28,
-    encounter_road_bandits           = 24,
-}
+return {}

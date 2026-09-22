@@ -146,8 +146,10 @@ identically.
 
 > **The count fell from 191 to 153.** The 38 named discipline hires — Brann the Barbarian, Pim the
 > Thief and the rest — were the Crossing's stock, and the Crossing is retired. Their bodies were
-> the wrong thing to recruit and the right thing to fight, so `models/warband.lua` now draws each
-> discipline's **exemplar** where its hire used to stand. One body per discipline instead of two.
+> the wrong thing to recruit and the right thing to fight, so each discipline's **exemplar** stands
+> where its hire used to. One body per discipline instead of two. (`models/warband.lua` drew those
+> exemplars into rolled fights as well; it is deleted as of 2026-09-22 and an exemplar is met in its
+> discipline's unlock quest. The art bill is unchanged — the bodies are still fought.)
 
 ### The named cast — the board still IS the portrait
 

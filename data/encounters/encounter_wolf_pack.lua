@@ -5,7 +5,8 @@
 -- fight acquires a kill order: the pack is worth more with it alive, so the correct play is to reach
 -- past the teeth in front of you.
 --
--- Which is the same lesson four warbands teach with people, taught here by animals on every floor.
+-- Which is a lesson the human companies used to teach four ways over; they are deleted, so the animals
+-- teach it now, on every floor.
 return {
     name = "Wolf Pack",
     kind = "combat",

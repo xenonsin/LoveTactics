@@ -8,7 +8,7 @@
 -- THIS IS THE ONE AN EARLY DEATH MEETS, and that is the reason the two guards are split by pile size
 -- rather than by depth. The pack a company leaves on its first bad night is four or five things, and
 -- what stands over it should be something a stripped, wounded company can walk back into. The full
--- warband is the answer to losing a lot, not to losing early.
+-- scavenger pack is the answer to losing a lot, not to losing early.
 --
 -- `kind = "pack"` and `weight = 0`: see data/encounters/encounter_pack_scavengers.lua, which explains
 -- both, and why neither of these blueprints carries a composition of its own.
