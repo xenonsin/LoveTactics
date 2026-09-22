@@ -139,24 +139,30 @@ local function anchorOf(heading)
     return s
 end
 
--- Which section of its class page an item's row is in. The class page titles its sections off TYPES,
--- and its own counts line already links them this way -- this is that link, addressable from off-page.
-local function typeAnchorOf(def)
-    local t = (def and def.type) or "other"
-    for _, e in ipairs(TYPES) do
-        if e.id == t then return anchorOf(e.title) end
-    end
-    return anchorOf(t:sub(1, 1):upper() .. t:sub(2))
+-- THE ANCHOR AN ITEM'S OWN ROW CARRIES. itemCell writes it into the row's name cell; every link to
+-- that item is built from it here, so the two cannot drift.
+--
+-- IT IS THE ITEM ID, not a slug of the display name. The id is already unique across the whole
+-- catalogue (models/registry.lua keys it off the filename), it is already printed in the row, and it
+-- is already safe for a URL fragment. A name-slug would collide the first time two classes both
+-- shelf a "Buckler", and would break every inbound link the day somebody renames a piece.
+local function itemAnchor(id)
+    return tostring(id)
 end
 
--- An item, named and addressed: the row this links to is the one the item's own class page prints.
--- Section-deep rather than row-deep because a markdown table row cannot carry an anchor -- the reader
--- lands on the right table of the right page and the row is the one bearing the name in the link.
+-- An item, named and addressed: this links at the ROW its own class page prints, not at the table the
+-- row is in.
+--
+-- It used to link at the type section, on the reasoning that a markdown table row cannot carry an
+-- anchor. That is true of markdown and irrelevant in practice -- a table cell passes inline HTML
+-- through, so itemCell gives every row an empty <a> of its own. The old link technically resolved and
+-- practically did not work: on the Creature page's 56-row Weapons table it dropped the reader at the
+-- top of the table to go hunting for the name they had just clicked.
 local function itemLink(id)
     local def = Item.defs[id]
     if not def then return "`" .. cell(id) .. "`" end
     return "[" .. cell(def.name or id) .. "](" .. pageOf(def.class or "unclassed")
-        .. "#" .. typeAnchorOf(def) .. ")"
+        .. "#" .. itemAnchor(id) .. ")"
 end
 
 -- A list of item ids as links, nil when the list is empty -- which is what lets a caller hand the
@@ -325,8 +331,23 @@ end
 -- stopping on it; in a table of forty rows it is forty sentences of voice between the reader and the
 -- number they came for, and it triples the height of every row to say nothing a shelf decision turns
 -- on. It stays on the blueprint and stays in the game. This page is the lookup, not the reading.
+-- THE ROW CARRIES ITS OWN ANCHOR, and this is what makes an item link land on the item.
+--
+-- A markdown row cannot carry an anchor -- which was true, and was why every itemLink used to point at
+-- the TYPE SECTION the row sits in. On a 56-row Weapons table that drops the reader at the top of the
+-- table to go hunting for the name they just clicked, which is a link that technically resolves and
+-- practically does not work.
+--
+-- Markdown cannot, but HTML can, and a table cell passes inline HTML through: an empty <a> in the name
+-- cell gives the row a real target. Both `name` and `id` are written -- `name` is the form GitHub has
+-- always honoured, `id` is the one every other renderer wants, and an empty anchor costs nothing to
+-- carry twice.
+--
 local function itemCell(def, id)
-    local parts = { "**" .. cell(def.name or id) .. "**" }
+    local anchor = itemAnchor(id)
+    local parts = {
+        '<a name="' .. anchor .. '" id="' .. anchor .. '"></a>**' .. cell(def.name or id) .. "**",
+    }
     if def.description then parts[#parts + 1] = cell(def.description) end
     parts[#parts + 1] = "`" .. id .. "`"
     return table.concat(parts, "<br>")

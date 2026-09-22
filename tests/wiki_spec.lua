@@ -34,7 +34,18 @@ local function slug(heading)
     return s
 end
 
--- Every anchor a page offers, from its own headings, with the renderer's duplicate rule applied.
+-- Every anchor a page offers, with the renderer's duplicate rule applied to the headings.
+--
+-- TWO KINDS, because the pages carry two kinds. A heading is addressed by the slug of its own text,
+-- which is the rule written out above. An item's ROW is addressed by an empty <a> the renderer writes
+-- into the row's name cell -- markdown gives a table row no anchor of its own, so an item link would
+-- otherwise have to settle for the section heading above the table and drop the reader at the top of
+-- it.
+--
+-- READ BACK OUT OF THE RENDERED TEXT, exactly like the heading rule beside it: this scrapes the <a>
+-- tags the page actually contains rather than asking the generator which anchors it meant to write.
+-- An item link pointing at a row whose anchor was never printed is then a red case here, which is the
+-- whole reason this file re-derives anything at all.
 local function anchorsOf(body)
     local out, seen = {}, {}
     for line in (body .. "\n"):gmatch("([^\n]*)\n") do
@@ -45,6 +56,7 @@ local function anchorsOf(body)
             seen[base] = (n or 0) + 1
             out[n and (base .. "-" .. tostring(n)) or base] = true
         end
+        for id in line:gmatch('<a%s+name="([^"]+)"') do out[id] = true end
     end
     return out
 end
