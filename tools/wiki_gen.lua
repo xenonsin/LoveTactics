@@ -265,6 +265,40 @@ local function bodyCatalogue()
     end
 end
 
+-- WHOSE KIT A PIECE IS: itemId -> { charId, ... }, over EVERY blueprint rather than the placed ones.
+--
+-- This is deliberately not the same question as "Dropped by", and the difference is the whole reason
+-- it is a second index. DROPS answers *which body can I go and kill for this*, so it is measured over
+-- bodies the rift actually fields and a piece belonging to an unfielded body correctly answers
+-- nothing. "Whose natural weapon is this" is a fact about the blueprint and is true whether or not
+-- anything seats the creature -- the Dire Bear's Great Claws are the Dire Bear's claws on a page that
+-- says in the next column that the rift never fields it.
+--
+-- `startingItems` is a POSITIONAL grid: it carries `false` for an empty cell and may carry a
+-- { id, count } stack, so both are unwrapped here the way kitLine already unwraps them.
+local KIT_OF = {}
+
+local function kitCatalogue()
+    KIT_OF = {}
+    local ids = {}
+    for id in pairs(Character.defs) do ids[#ids + 1] = id end
+    table.sort(ids)
+    for _, charId in ipairs(ids) do
+        local def = Character.defs[charId]
+        local seen = {}
+        local function own(entry)
+            local itemId = entry
+            if type(entry) == "table" then itemId = entry.id or entry[1] end
+            if type(itemId) ~= "string" or seen[itemId] then return end
+            seen[itemId] = true
+            KIT_OF[itemId] = KIT_OF[itemId] or {}
+            table.insert(KIT_OF[itemId], charId)
+        end
+        for _, entry in ipairs(def.startingItems or {}) do own(entry) end
+        own(def.defaultAction)
+    end
+end
+
 -- A body, named and addressed. Falls back to the bare name for a blueprint the catalogue has not been
 -- built for, which is what keeps a caller that runs before bodyCatalogue() honest rather than broken.
 local function bodyLink(charId)
@@ -436,13 +470,38 @@ end
 -- a real way in. A signature is a companion's bound relic and arrives with her; a reagent is brewed on
 -- the field it is spent on (`ephemeral`); a creature's kit is never a player's at all. None has a
 -- price or a tier BECAUSE none is dealt, which makes "no source field" a statement rather than a gap.
-local function sourceCell(def)
+-- MONSTER KIT NAMES THE MONSTER. "Monster kit" was a category where the reader wanted a body: it is
+-- the right answer to "is this for sale" and no answer at all to "whose is it", and the page had the
+-- second answer in hand the whole time. A creature's piece now links the bodies that carry it.
+--
+-- It stays a CATEGORY when the sweep finds nobody: a creature-class piece no blueprint holds is
+-- authored kit waiting for its body, and "Monster kit" is the honest thing to print about it.
+--
+-- Capped at MAX_BODIES like the Dropped by column beside it, and for the same reason -- a shared
+-- natural weapon is held by a dozen bodies and a cell that lists all twelve is a cell nobody reads.
+local MAX_BODIES = 4
+
+local function kitOwnersCell(id)
+    local owners = KIT_OF[id]
+    if not owners or #owners == 0 then return nil end
+    local names = {}
+    for _, charId in ipairs(owners) do names[#names + 1] = bodyLink(charId) end
+    if #names > MAX_BODIES then
+        local shown = {}
+        for i = 1, MAX_BODIES do shown[i] = names[i] end
+        shown[#shown + 1] = "*+" .. tostring(#names - MAX_BODIES) .. " more*"
+        names = shown
+    end
+    return table.concat(names, "<br>")
+end
+
+local function sourceCell(def, id)
     if def.price then return tostring(def.price) .. "g" end
     if def.unstocked then return "Rift only" end
     if def.unlockLevel then return "Found" end
     if hasTag(def, "signature") then return "Signature relic" end
     if def.ephemeral then return "Crafted in the field" end
-    if def.class == "creature" then return "Monster kit" end
+    if def.class == "creature" then return kitOwnersCell(id) or "Monster kit" end
     return "—"
 end
 
@@ -462,7 +521,8 @@ end
 --
 -- A cell left empty is also a vote to drop the whole column (see renderTable), so a section where no
 -- item comes off a named body prints no "Dropped by" column at all rather than a stripe of dashes.
-local MAX_BODIES = 4
+--
+-- MAX_BODIES is shared with the Source column's own body list and is declared above it.
 
 -- Whose list is it: the circle's general stands behind its guardian, the lieutenant two floors up.
 local function bossBody(sin, which)
@@ -557,7 +617,7 @@ local function rowOf(id)
         stack  = (def.type == "consumable") and tostring(Item.maxStack(def)) or "",
         tags   = tagsCell(def),
         rank   = tostring(Spoils.depthOf(def)),
-        source = sourceCell(def),
+        source = sourceCell(def, id),
         drops  = dropCell(id),
         notes  = notesCell(def),
     }
@@ -696,12 +756,31 @@ local function classPage(classId, bucket)
     end
     line("**" .. bucket.count .. " items** — " .. table.concat(counts, " · "))
     line()
-    line("Rank is the " .. rankSpan() .. " ladder a piece sits on: how deep in the rift it "
+    -- THE LEGEND DESCRIBES THE COLUMNS THIS PAGE HAS, which is renderTable's drop-what-nobody-filled
+    -- rule owed back to the prose. The Creature page carried a paragraph about "Dropped by" while
+    -- printing no such column: monster kit has no `unlockLevel`, so it is not in the rift pool the drop
+    -- census measures at all -- it is never dealt, never sold and never in the depth-banded draw.
+    local anyDrop, anyKit = false, false
+    for _, t in ipairs(order) do
+        for _, id in ipairs(bucket.types[t.id]) do
+            if dropCell(id) ~= "" then anyDrop = true end
+            if (Item.defs[id] or {}).class == "creature" then anyKit = true end
+        end
+    end
+
+    local legend = "Rank is the " .. rankSpan() .. " ladder a piece sits on: how deep in the rift it "
         .. "falls, or how far up the class it is sold. Stats read *forge 0 → fully forged*. "
-        .. "**Dropped by** names the body you can go and take one off — follow it to that body's own "
-        .. "entry for the rest of what it carries; blank means no body is known for it and it comes "
-        .. "out of the rift's depth-banded draw instead. "
-        .. "See [Items](Items) for the whole catalogue and [Bestiary](Bestiary) for the bodies.")
+    if anyKit then
+        legend = legend .. "**Source** names the body whose kit it is — none of this is dealt at a "
+            .. "counter, so the answer to where it comes from is whoever you take it off. "
+    end
+    if anyDrop then
+        legend = legend .. "**Dropped by** names the body you can go and take one off — follow it to "
+            .. "that body's own entry for the rest of what it carries; blank means no body is known "
+            .. "for it and it comes out of the rift's depth-banded draw instead. "
+    end
+    line(legend .. "See [Items](Items) for the whole catalogue and [Bestiary](Bestiary) for the "
+        .. "bodies.")
     line()
 
     for _, t in ipairs(order) do
@@ -1630,6 +1709,7 @@ function M.render()
     -- pages that render before the bestiary does: an item's "Dropped by" cell and the rift's
     -- composition rows both have to name the page and anchor a body will get.
     bodyCatalogue()
+    kitCatalogue()
 
     local byClass, classIds = catalogue()
     local pages = {
