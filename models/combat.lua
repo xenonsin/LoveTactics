@@ -5926,6 +5926,7 @@ end
 --   range      -- added to the ability's reach       (Long-Fuse Reagent, Farsight Lens)
 --   speed      -- added to the initiative the action bills; NEGATIVE is faster (Quickened Sigil)
 --   lifesteal  -- share of damage healed back        (Vampiric Strike)
+--   manaHeal   -- share of the MANA the cast cost, healed back (The Poured Measure)
 --   preserve   -- the neighbour consumable's own stack is not spent (Everflask)
 --   careful    -- the cast's area spares the caster's own side (Careful Sigil)
 --   twin       -- a single-target cast strikes one more body beside its target (Twinned Sigil)
@@ -5937,7 +5938,7 @@ end
 local function adjacencyAura(char, item)
     local tags, statuses = {}, {}
     local mods = { amount = 0, range = 0, speed = 0, preserve = false, lifesteal = 0,
-                   careful = false, twin = false }
+                   manaHeal = 0, careful = false, twin = false }
     local idx = char and Character.slotIndex(char, item)
     if idx then
         for _, nb in ipairs(Character.adjacentItems(char, idx)) do
@@ -5948,6 +5949,7 @@ local function adjacencyAura(char, item)
                 mods.range = mods.range + (nb.aura.rangeBonus or 0)
                 mods.speed = mods.speed + (nb.aura.speedBonus or 0)
                 mods.lifesteal = mods.lifesteal + (nb.aura.lifesteal or 0) -- Vampiric Strike: heal a share of damage
+                mods.manaHeal = mods.manaHeal + (nb.aura.manaHeal or 0)    -- The Poured Measure: heal a share of the mana spent
                 if nb.aura.preserve then mods.preserve = true end
                 if nb.aura.careful then mods.careful = true end
                 if nb.aura.twin then mods.twin = true end
@@ -5975,6 +5977,34 @@ end
 local function withStatusLifesteal(unit, mods)
     mods.lifesteal = mods.lifesteal + Status.lifesteal(unit)
     return mods
+end
+
+-- THE MANA A WORKING COST, DRUNK BACK AS HEALTH: a neighbouring charm's `manaHeal` aura (The Poured
+-- Measure) pays its bearer a share of what the cast actually took out of the pool. `before` is the
+-- mana reading taken immediately ahead of Combat.spendCosts, so this is called as a PAIR with that
+-- line and nowhere else -- it is the only point in a cast where the two readings bracket the spend.
+--
+-- MEASURED OFF THE POOL, NEVER OFF THE PRINTED PRICE, and that is the whole reason it reads twice
+-- rather than asking Combat.abilityCosts what the working costs. Three rules sit between the number on
+-- the tooltip and the mana that actually leaves (Combat.spendCost): a Dampening Oath doubles it, a
+-- battlemage's melee discount cuts it, and the Overdraft rewrites the price into health entirely. A
+-- charm paying out against the quoted figure would hand a caster under the Overdraft a heal for mana
+-- nobody spent, and would shortchange one standing inside an oath. A diff cannot disagree with a pool.
+--
+-- Floors like every other share in this file, so a one-mana cantrip beside the charm returns nothing.
+--
+-- IT IS PAID ON THE CAST PATH ONLY, and that is a boundary rather than an oversight. Four functions
+-- call Combat.spendCosts: Combat.useItem, which is a body using an item, and strikeTrap/strikeWall/
+-- strikeProp, which are a WEAPON swung at scenery. The crescent blade bills mana, so those three can
+-- empty a pool -- but they can only ever be handed a weapon, and no aura reaches a weapon unless its
+-- `appliesTo` says so. Every shipped `manaHeal` names abilities, so there is nothing to pay there
+-- today. The day a weapon-facing one is authored, those three sites are what it owes.
+local function drinkSpentMana(combat, unit, item, before)
+    local _, _, mods = adjacencyAura(unit.char, item)
+    if mods.manaHeal <= 0 then return 0 end
+    local spent = before - Combat.resource(unit.char, "mana")
+    if spent <= 0 then return 0 end
+    return Combat.applyHeal(combat, unit, math.floor(spent * mods.manaHeal))
 end
 
 -- The magnitude a cast of `ab` at (tx, ty) actually lands with: its declared amount (nil for an
@@ -9145,6 +9175,20 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
         consumeCorpse = function() touchesBoard() return false end,
     }
     if ab.effect then pcall(ab.effect, fx) end
+    -- THE POURED MEASURE'S RETURN, on the caster's own bar, so the forecast counts the health the
+    -- working pays back rather than leaving it to arrive unannounced. The live half is drinkSpentMana,
+    -- which measures the mana that actually left the pool; this one is priced off the PRINTED cost,
+    -- which is the figure every other cost readout in the game quotes. The two diverge only where the
+    -- game already sells the divergence as a surprise -- a Dampening Oath's doubling and a battlemage's
+    -- discount are applied AFTER affordability on purpose (Combat.spendCost) -- so the forecast is not
+    -- the thing that spoils them.
+    if auraMods.manaHeal > 0 then
+        for _, cost in ipairs(Combat.abilityCosts(unit, ab)) do
+            if cost.stat == "mana" and (cost.amount or 0) > 0 then
+                entryFor(unit).heal = entryFor(unit).heal + math.floor(cost.amount * auraMods.manaHeal)
+            end
+        end
+    end
     -- A damage total >= the target's current HP would drop it: flag the lethal blow.
     for _, e in ipairs(order) do
         local hp = e.unit.char and e.unit.char.stats and e.unit.char.stats.health
@@ -11217,7 +11261,15 @@ function Combat.useItem(combat, unit, item, tx, ty, windup, dest, spend)
     -- Affordability was settled by itemBlockReason above (nothing has been spent since), so the
     -- cast is committed from here: pay the cost. The reservation isn't taken until the effect
     -- produces the summon that holds it (below).
+    --
+    -- The two readings bracketing it are The Poured Measure's (see drinkSpentMana): a charm beside this
+    -- item heals its bearer a share of the mana the working actually took, which is knowable here and
+    -- nowhere later -- every tax, discount and inversion has landed by the second reading. Paid at
+    -- COMMIT rather than at resolution, because that is when the pool empties: a channel that is
+    -- interrupted still emptied it, and the measure answers the spending, not the spell.
+    local manaBefore = Combat.resource(unit.char, "mana")
     Combat.spendCosts(combat, unit, ab)
+    drinkSpentMana(combat, unit, item, manaBefore)
 
     -- The cast is now committed (never a preview or a refused arm reaches here). Bank it toward any
     -- signature gated on casting, and settle a fired signature's own unlock -- re-locking a repeatable

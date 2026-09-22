@@ -800,9 +800,11 @@ Kept here rather than deleted, because what a debt looked like when it was paid 
   abilities. It was to make the consumables *say something*: coatings that run out, elixirs that lend
   you somebody else's stat, and the Coveted Blood, whose damage stat is the rest of your party.
 - ~~**The 3×3 `aura` block is under-used**~~ — the vocabulary is now `grantTags` / `requiresTags` /
-  `exceptTags` / `amountBonus` / `rangeBonus` / `speedBonus` / `lifesteal` / `preserve` / `careful` /
-  `twin`, and the mage's five sigils exist to spend it. `speedBonus` is the interesting one: it is the
-  only aura field that touches initiative, which is the one currency nobody gets back.
+  `exceptTags` / `amountBonus` / `rangeBonus` / `speedBonus` / `lifesteal` / `manaHeal` / `preserve` /
+  `careful` / `twin`, and the mage's five sigils exist to spend it. `speedBonus` is the interesting
+  one: it is the only aura field that touches initiative, which is the one currency nobody gets back.
+  `manaHeal` (The Poured Measure) is the only one priced off what the neighbour SPENT rather than off
+  what it did, which is why it is measured at the spend and not folded into the damage call.
 
 ## Adding an item to a class
 

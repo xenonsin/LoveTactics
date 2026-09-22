@@ -765,6 +765,7 @@ return {
     ["items/utility_miasma_flask.png"] = { icon = "lorc/fizzing-flask", by = "hand" },
     ["items/utility_miasmal_plate.png"] = { icon = "lorc/plate-claw", by = "hand" },
     ["items/utility_pale_vesture.png"] = { icon = "delapouite/palette", by = "auto" },
+    ["items/utility_poured_measure.png"] = { icon = "lorc/bowl-spiral", by = "hand" },
     ["items/utility_quarrys_due.png"] = { icon = "lorc/target-shot", by = "hand" },
     ["items/utility_quickened_sigil.png"] = { icon = "lorc/star-swirl", by = "hand" },
     ["items/utility_reading_the_blade.png"] = { icon = "lorc/magnifying-glass", by = "hand" },

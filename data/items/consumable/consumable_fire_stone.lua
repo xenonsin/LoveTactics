@@ -29,6 +29,9 @@
 --   rangeBonus  = <n>                  -- added to the neighbor's range (Long-Fuse Reagent, Farsight Lens)
 --   speedBonus  = <n>                  -- added to the initiative it bills; NEGATIVE is faster (Quickened Sigil)
 --   lifesteal   = <f>                  -- share of the damage healed back (Vampiric Strike)
+--   manaHeal    = <f>                  -- share of the MANA the neighbour's cast cost, healed back to
+--                                         the caster (The Poured Measure). Measured off the pool at the
+--                                         spend, not off the printed price (combat.lua drinkSpentMana)
 --   preserve    = true                 -- the neighbor consumable's own stack is not spent (Everflask)
 --   careful     = true                 -- the neighbor's area spares the caster's own side (Careful Sigil)
 --   twin        = true                 -- a single-target neighbor forks into a second body (Twinned Sigil)

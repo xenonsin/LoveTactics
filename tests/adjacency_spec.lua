@@ -259,4 +259,53 @@ return {
             assert(#Combat.adjacencyLinks(apart) == 0, "opposite-corner items are not adjacent")
         end,
     },
+    {
+        -- The Poured Measure's `manaHeal` aura: a neighbouring ABILITY's mana cost comes back to the
+        -- caster as health. Fire Bolt bills 10 mana and the charm drinks half, so the figure asserted
+        -- on is 5 -- and it is asserted on the caster's HEALTH rather than on the aura block, because
+        -- an aura that folds into `mods` and is then paid out by nobody is the exact shape of bug the
+        -- field could have shipped with.
+        name = "The Poured Measure heals half the mana an adjacent ability spends (and the preview agrees)",
+        fn = function()
+            -- The mark stands at the bolt's full range (3), not toe to toe: an adjacent bandit
+            -- ANSWERS the cast, and a counter landing on the caster would be counted into the same
+            -- health bar this case is measuring the drink off.
+            local function caster(map)
+                local c = Combat.new(arena(8, 8), { unit("character_rowan", 3, 3) },
+                                                  { unit("character_bandit", 3, 6) })
+                local k = c.units[1]
+                equip(k.char, map)
+                k.char.stats.mana.current = 40
+                k.char.stats.health.current = k.char.stats.health.max - 20 -- room for the heal to land
+                openTurn(c, k)
+                return c, k
+            end
+
+            -- Charm in the centre, the spell beside it: 10 mana out, 5 health back.
+            local c1, k1 = caster({ [5] = "utility_poured_measure", [4] = "ability_fire_bolt" })
+            local before = k1.char.stats.health.current
+            -- The forecast is taken BEFORE the cast, off the same arrangement, and must quote what the
+            -- cast then delivers -- the rule every other aura in this file is held to.
+            local pv = Combat.previewAbility(c1, k1, k1.char.inventory[4], 3, 6)
+            local promised = pv.entries[k1] and pv.entries[k1].heal or 0
+            assert(Combat.useItem(c1, k1, k1.char.inventory[4], 3, 6), "the bolt is cast")
+            local drunk = k1.char.stats.health.current - before
+            assert(drunk == 5, "half of Fire Bolt's 10 mana comes back as health (got " .. drunk .. ")")
+            assert(promised == drunk,
+                "the preview promises what the cast pays (" .. promised .. " vs " .. drunk .. ")")
+
+            -- Same two items, opposite corners: nothing is adjacent, so nothing is drunk.
+            local c2, k2 = caster({ [1] = "utility_poured_measure", [9] = "ability_fire_bolt" })
+            local b2 = k2.char.stats.health.current
+            assert(Combat.useItem(c2, k2, k2.char.inventory[9], 3, 6), "the distant bolt is cast")
+            assert(k2.char.stats.health.current == b2, "a non-adjacent charm pays nothing")
+
+            -- appliesTo = { "ability" }: the weapon rack is Vampiric Strike's, not this charm's.
+            local measure = Item.instantiate("utility_poured_measure")
+            assert(Combat.auraApplies(measure.aura, Item.instantiate("ability_fire_bolt")),
+                "the measure reaches an ability")
+            assert(not Combat.auraApplies(measure.aura, Item.instantiate("weapon_iron_sword")),
+                "the measure does not reach a weapon")
+        end,
+    },
 }

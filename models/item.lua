@@ -575,6 +575,7 @@ local function eachMagnitude(item, fn)
         -- resolve on a boolean and an upgrade has nothing to buy on one.
         if aura.speedBonus ~= nil then fn(aura.speedBonus, function(x) aura.speedBonus = x end) end
         if aura.lifesteal ~= nil then fn(aura.lifesteal, function(x) aura.lifesteal = x end) end
+        if aura.manaHeal ~= nil then fn(aura.manaHeal, function(x) aura.manaHeal = x end) end
         local st = aura.status
         if st and st.opts and st.opts.magnitude ~= nil then
             fn(st.opts.magnitude, function(x) st.opts.magnitude = x end)
@@ -715,6 +716,7 @@ local function statBreakdown(item)
         add("Aura Range", "aura:range", aura.rangeBonus)
         add("Aura Tempo", "aura:speed", aura.speedBonus)
         add("Lifesteal", "aura:lifesteal", aura.lifesteal)
+        add("Mana Drawn Back", "aura:manaHeal", aura.manaHeal)
         if aura.status and aura.status.opts then add("Aura Effect", "aura:status", aura.status.opts.magnitude) end
     end
     return out
