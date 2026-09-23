@@ -42,6 +42,6 @@ return {
     -- any surplus is spread, fewer at the front than at the deep end (tools/shelf_curve.lua,
     -- tests/unlock_ladder_spec.lua) -- so a find drops into a gap rather than onto rung 4, which the
     -- Sentinel already deals three wares from.
-    unlockLevel = 6,
+    unlockLevel = 8,
     traits = { "trait_wanting_costs" },
 }

@@ -202,9 +202,7 @@ Descent.SINS = {
     -- LUST: THE CIRCLE THAT NEVER TAKES YOUR HEALTH. IT TAKES YOUR SAY OVER WHERE YOU ARE STANDING.
     -- ---------------------------------------------------------------------------
     --
-    -- Re-premised 2026-09-22, after the cut took the stratum's whole roster. The old Lust was petals
-    -- and briars and a Hartwood Bride -- a WOODLAND circle authored onto a castle, which is why every
-    -- one of its bodies read as having wandered in from Gluttony's ground. What it is now is the five
+    -- Re-premised 2026-09-22, after the cut took the stratum's whole roster. What it is now is the five
     -- verbs the sin actually owns, and they are five ways of saying one sentence:
     --
     --   CHARM   you do not choose whose side you are on      (status_charm -- it flips side and control)
@@ -240,20 +238,24 @@ Descent.SINS = {
     --     haul you IN, the gust drives you OUT; a company spread across a doorway gives both of them
     --     somewhere to put you, and one that has already chosen its room gives them nothing.
     --
-    -- ROOT CAME BACK, AND IT CAME BACK ON THE BODY THE CONDITION WAS WRITTEN FOR. The flock's talons
-    -- pinned in the first cut and it was the wrong verb THERE, for a mechanical reason: Root sets
-    -- `blocksForcedMove`, so a rooted victim cannot be shoved or dragged by ANYBODY, and a circle
-    -- built on displacement was switching itself off one target at a time. The note left here said it
-    -- could return "on something that is not also doing the moving" -- which is a lamia
-    -- (data/characters/character_lamia.lua). It displaces nothing; holding is the whole animal.
+    -- ROOT IS A MAIN VERB OF THIS CIRCLE, AND THE RULE THAT KEEPS IT ONE IS A RULE ABOUT ROSTERS
+    -- (2026-09-23, on Keno's call). Root sets `blocksForcedMove`, so a rooted body cannot be shoved or
+    -- dragged by ANYBODY -- which is why the flock's talons stopped pinning in the first cut: a body
+    -- that roots and throws switches its own circle off one target at a time. The answer is not to keep
+    -- root off the ground. It is to keep it out of the same FIGHT as a throw. The circle has two halves,
+    -- and no roster -- rolled, seated or escorted -- mixes them:
     --
-    -- SO THE TWO ANIMALS ARE OPPOSITE HALVES OF ONE RULE, and a floor that rolls both is pulled two
-    -- ways at once. A harpy decides where your body is; a lamia decides that it does not get to be
-    -- anywhere else. The flock's shoves DELIVER the coils' damage for free -- a gust that moves a
-    -- tethered body a tile is the serpent billing you on somebody else's wings -- and, read the
-    -- other way, a rooted company cannot be scattered at all, so being caught by the snakes is
-    -- genuine shelter from the birds. They were never meant to be additive, and choosing which of
-    -- the two to be caught by is a decision the player makes on the board.
+    --   HOLD   the Lamiae (the knot), the Alraune line (Taproot, and the honey it holds you on)
+    --   MOVE   the flock, the three succubi (the kiss trades tiles), the Wind Elemental, the Dryad line
+    --   EITHER the Fire Elemental and the mushroom folk -- they neither root nor shove
+    --
+    -- tests/greed_lust_circle_spec.lua sweeps every roster this circle can field and fails on a mix; a
+    -- body is classed by its KIT, not by a list, so a new one cannot slip past it.
+    --
+    -- SO A FLOOR IS PULLED TWO WAYS, BUT A FIGHT IS NOT. A harpy decides where your body is; a lamia
+    -- decides that it does not get to be anywhere else. Met on the same stair they were never additive
+    -- (a rooted company cannot be scattered, so the coils were shelter from the birds), and that
+    -- argument is settled by never staging it: each half is a whole fight on its own.
     --
     -- AND THE FIFTH VERB IS REAL NOW. `status_taunt` used to be enforced in models/ai.lua's enemy
     -- planner and nowhere else, so a taunt landed on a PARTY member was a badge the player read and
@@ -268,7 +270,7 @@ Descent.SINS = {
         -- THE UNBIDDEN COMES WHEN SHE IS CALLED, and the body that calls her stands at its own end of
         -- the floor: the ward is a body. Beat her, the ward breaks, the stair opens. Who that body is
         -- is the lieutenant, and the lieutenant is gone -- so the ward is currently held by whatever
-        -- `minor.lead` names, which is the flock. It reads as nothing until a replacement is authored.
+        -- `minor.lead` names, which is a lamia. It reads as nothing until a replacement is authored.
         --
         -- IT USED TO BE THE TEACHING GATE, back when this circle opened the descent. Gluttony's
         -- `clear` took that job with the first slot, and the ward is better off second: a gate that is
@@ -276,12 +278,14 @@ Descent.SINS = {
         -- was not.
         gate = { kind = "ward" },
         -- NO LIEUTENANT. The Suppliant is gone and a lamia stands in -- the animal whose whole rule is
-        -- holding, which is at least the right verb for a body barring a stair. The escort is untouched
-        -- and belongs here: the harpy is authored for this stratum, and it is the right escort for a
-        -- lieutenant whose own rule is about what a company does with its turn, since a body being
-        -- shoved a tile at a time is a body spending turns walking, and walking is not spending
-        -- (trait_unasked). The LEAD is a stand-in and reads as one.
-        minor = { lead = "character_lamia", filler = "character_harpy" },
+        -- holding, which is at least the right verb for a body barring a stair. The LEAD is a stand-in
+        -- and reads as one; a new minor boss is owed here and is being authored by hand (2026-09-23).
+        --
+        -- THE FILLER IS THE MUSHROOM FOLK'S PUFFER, and it was a harpy until the hold/move rule above
+        -- made that a mix: a lamia holding the stair with harpies throwing its prisoners was the one
+        -- roster on the circle that staged the argument the rule settles. A Puffer neither roots nor
+        -- shoves, so it escorts whatever lead the stair is given next.
+        minor = { lead = "character_lamia", filler = "character_swooncap_puffer" },
         -- ...AND THE STRATUM HAS AN ELITE AGAIN. The Bride and the Beloved were the castle's only two
         -- and both went in the cut, which left `named` reading nil and BOTH floors of Lust drawing from
         -- an elite pool this ground did not have. The Eyrie seats the Matriarch on the stair floor.
@@ -338,8 +342,6 @@ Descent.SINS = {
         -- anywhere -- it stays in the building. The heat stands in the lamp rooms (the Fire Elemental, which
         -- burns whatever reaches for it, at any range, by any means) and the breath stands in the bell
         -- loft (the Wind Elemental, which throws a body three tiles and cannot be moved by anything at all).
-        -- That is the test the old woodland Lust failed and these have to pass: a body on this stratum
-        -- is something the KEEP made.
         --
         -- AND THEY ARE THE FIRST TWO ON THE FLOOR THAT ARE NOT ABOUT POSITION -- or, in the Wind Elemental's
         -- case, that are outside the conversation entirely. A Fire Elemental bills an INTENTION, so the
@@ -355,9 +357,27 @@ Descent.SINS = {
         -- Chapel is runged onto the seat: a fight that inverts the circle's own standing counterplay is
         -- a lesson, and a lesson goes on the floor walked onto first. Six ordinary fights on the castle
         -- now, and four elites across two floors rather than four on each.
+        --
+        -- ...AND THE GARDEN (2026-09-23): THREE MORE LINES, ONE PER HALF AND ONE FOR EITHER. The pit the
+        -- blooding's dead are dumped in (docs/story.md) has grown something, and so has the yew over it:
+        --
+        --   HOLD    the Alraune line -- Mandrake, Alraune, Alraune Anchoress. Casters: the root holds
+        --           you on her honey, the honey heals you into her seed, and the seed pays her. Every
+        --           Mandrake screams when it dies. (The Pit Garth; the Anchorhold.)
+        --   MOVE    the Dryad line -- Nymph, Dryad, Hamadryad. The druid's growing magic: saplings,
+        --           hedges behind you, thorns that bill every tile you are thrown across, and a
+        --           Hamadryad who cannot die while her tree stands. (The Rood Loft; the Churchyard Yew.)
+        --   EITHER  the mushroom folk -- a Puffer that walks in and pops, a Verger that makes you hit
+        --           it, a Thurifer that casts from behind -- and they are the circle's filler now, since
+        --           a filler has to be able to stand in either half. (The Ossuary.)
+        --
+        -- The two new elites are spares on the Lady Chapel's argument, one per rung: the Anchorhold on
+        -- the approach beside the Flue, the Churchyard Yew on the seat beside the Eyrie. Nine ordinary
+        -- fights on the castle, and six elites across the two floors.
         elites = { approach = "encounter_lust_the_drowned_stair",
                    seat = "encounter_lust_the_eyrie",
-                   spares = { "encounter_lust_the_lady_chapel", "encounter_lust_the_flue" } } },
+                   spares = { "encounter_lust_the_lady_chapel", "encounter_lust_the_flue",
+                              "encounter_lust_the_anchorhold", "encounter_lust_the_churchyard_yew" } } },
     { id = "greed", name = "Greed", vendor = "undercroft", biome = "swamp",
         scene = "conversation_descent_greed",
         guardian = { lead = "character_general_greed", filler = "character_fen_lancer" },

@@ -35,6 +35,6 @@ return {
     type = "utility",
     tags = { "charm", "wind" },
     class = "bulwark",
-    unlockLevel = 9,
+    unlockLevel = 5,
     traits = { "trait_nothing_to_hold" },
 }

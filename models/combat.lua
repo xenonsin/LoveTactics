@@ -4998,6 +4998,9 @@ function Combat.knockbackTile(combat, source, target, distance, opts)
     local total = opts and opts.dest
         and math.max(math.abs(opts.dest.x - target.x), math.abs(opts.dest.y - target.y))
         or (distance or 1)
+    -- Mistlight throws the next shove further, and the ghost has to land where the throw will.
+    local lit = not (opts and opts.dest) and Status.shoveBonus(target)
+    if lit then total = total + lit.def.shoveBonus end
     local w, h = target.w or 1, target.h or 1
     for _ = 1, total do
         -- Test the whole body at the next anchor, ignoring the target's own cells (it slides through
@@ -5073,6 +5076,18 @@ function Combat.knockback(combat, source, target, distance, opts)
     local total = opts.dest
         and math.max(math.abs(opts.dest.x - target.x), math.abs(opts.dest.y - target.y))
         or (distance or 1)
+    -- MISTLIGHT (the Nymph's cast): a lit body goes one tile further than the shove that finds it,
+    -- and the light is spent on that shove. A plain shove only -- a THROWN body picked its own landing
+    -- (opts.dest) and the extra tile would carry it past the spot it was aimed at. Spent here, before
+    -- the lane is walked, so a shove that collides at once still used it up: the light was on the
+    -- shove, not on the distance travelled.
+    if not opts.dest then
+        local lit = Status.shoveBonus(target)
+        if lit then
+            total = total + lit.def.shoveBonus
+            Status.remove(combat, target, lit.id)
+        end
+    end
     local moved = 0
     for _ = 1, total do
         local ok, blocker, kind = footprintCanShift(combat, target, dx, dy)
@@ -7522,7 +7537,7 @@ local function dispatchAnswer(combat, held)
     -- The statuses riding the survivor get the same news, for the ones a blow is supposed to BREAK
     -- (Sleep). After the traits, so a reflex that answers the blow is not robbed of its trigger by the
     -- very hit that wakes its bearer -- the order the inline dispatch ran in, carried across the hold.
-    if held.wakes then Status.onDamaged(combat, held.unit, held.amount, held.tags) end
+    if held.wakes then Status.onDamaged(combat, held.unit, held.amount, held.tags, held.serial) end
     -- ...and the striker's ALLIES beside the struck body get their opening (Trait.onAllyStrike -- what a
     -- follow-up hangs on). Fired here, at the same settled moment onDamaged is, so a follow-up is judged
     -- by the board as it finally stands rather than mid-effect.
@@ -7599,6 +7614,9 @@ local function raiseAnswer(combat, unit, info)
     --     two duelists volley forever -- the exact bug `answersReactions` exists to prevent.
     --   * the two tiles the blow was struck ACROSS -- what a reflecting reflex is judged by, since
     --     spikes bite the fist at the instant it lands and not wherever a later shove leaves anyone.
+    -- ...and the status stamp at the moment of the hit, so a status the same cast applies AFTER this
+    -- blow is not woken by it when a held answer is finally reported (Status.onDamaged's `serial`).
+    info.serial = combat and combat._statusSerial or 0
     info.at = {
         answering = Trait.isReacting(info.attacker),
         ux = unit.x, uy = unit.y,
@@ -8055,8 +8073,11 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
         Combat.logEvent(combat, "action",
             string.format("%s refuses to fall!", unitName(target)), target)
         inflictCarried()
+        -- `wakes`, as the ordinary survivor below: a blow held at 1 is still a blow, so a sleeper wakes
+        -- and a status that answers being floored hears it (Heartbound sends its bearer home to its
+        -- tree on exactly this beat -- data/status/status_heartbound.lua).
         raiseAnswer(combat, target, { amount = dmg, tags = tags, source = source, attacker = attacker,
-            area = opts and opts.area })
+            area = opts and opts.area, wakes = true })
         applyKnockback()
         return dmg
     end
@@ -8490,6 +8511,23 @@ function Combat.applyHeal(combat, target, amount)
         tollHealth(combat, target, amount,
             string.format("%s cannot be healed -- the grace burns it for %d (%s).",
                 unitName(target), amount, inverted.name or inverted.id), target)
+        return 0
+    end
+    -- A GALLOWS SEED draws the heal off whole: it lands on the body that planted the seed instead, through
+    -- this same funnel, so everything that shapes a heal still shapes it -- the seeder's own Uncloseable
+    -- Wound would refuse it. The patient gets nothing. Checked after the block and the inversion (a heal
+    -- that was never going to land cannot be stolen) and before the deferral (a seeded body under a
+    -- Sealed Hour banks nothing, because nothing reached it). It cannot chain: while a stolen heal is
+    -- being relayed no second seed is consulted, so a seeder that is itself seeded simply drinks it.
+    local seed, seeder = Status.healThief(target)
+    if seed and (amount or 0) > 0 and not combat._seedRelay then
+        Combat.logEvent(combat, "status",
+            string.format("%s's healing is drawn off by the %s.", unitName(target), seed.name or "seed"),
+            { target, seeder })
+        combat._seedRelay = true
+        local ok, drunk = pcall(Combat.applyHeal, combat, seeder, amount)
+        combat._seedRelay = nil
+        if not ok then error(drunk, 0) end
         return 0
     end
     -- A DEFERRAL banks the heal instead of landing it (the Sealed Hour). Negative on the ledger, since
@@ -10799,6 +10837,15 @@ function Combat.itemBlockReason(unit, item)
     -- violence rather than a second Stun (see Status.halted).
     if Status.halted(unit) then
         return { kind = "halted", reason = "halted", text = "Halted -- cannot act this turn" }
+    end
+
+    -- Swooning: the narrow half of Halted. Refuses only what HURTS -- anything carrying a `damage`
+    -- figure, which is every weapon swing and every damaging cast -- so a swooning body can still heal,
+    -- brace, cleanse, mark and walk (Status.forbidsHarm). Keyed on the figure and not on `support`,
+    -- which says how a cast READS rather than whether it wounds. Checked after Halted so a body under
+    -- both is told the broader thing.
+    if Status.forbidsHarm(unit) and ab.damage ~= nil then
+        return { kind = "swooning", reason = "swooning", text = "Swooning -- cannot bring itself to strike" }
     end
 
     -- Silenced: a mana cost can't be paid, so a mana ability is refused (one drawing on stamina or

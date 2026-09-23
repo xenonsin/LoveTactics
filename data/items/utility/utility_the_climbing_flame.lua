@@ -43,6 +43,6 @@ return {
     -- piece, it does nothing at all until the bearer already commands fire, and a Bombardier who does
     -- not is exactly who a cheap rung would hand it to. The ramp wants the deep end carrying more than
     -- the front (tools/shelf_curve.lua, tests/unlock_ladder_spec.lua).
-    unlockLevel = 14,
+    unlockLevel = 4,
     traits = { "trait_climbing_flame" },
 }

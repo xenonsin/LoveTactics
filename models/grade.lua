@@ -757,6 +757,21 @@ Grade.TRAIT_GRADE = {
     -- also on nothing a player can hold -- the crown is `bound` creature kit -- so the number's only job
     -- is to stop the estimator from answering for it.
     trait_court_of_bone =               0.5,  -- Court of Bone
+
+    -- THE LUST GARDEN (2026-09-23), judged against the rules they are shaped like. The Shriek and
+    -- Spore Burst are Volatile with a different payload -- a turn of Stun or a Swoon on everything
+    -- beside the fallen body, both sides -- and sit under it because half of what they catch is the
+    -- bearer's own line. Spongeflesh is Thorns' counter with a Swoon for a sting; weighed at its
+    -- carried quarter (the mantle), since the Verger's hundred-percent copy is on nothing a company
+    -- holds. The Pit Grows on a player is a turret per kill, capped by how many foes fall within two
+    -- tiles -- a Wolf Companion that has to be earned each time. Heartwood is judged at Second Wind's
+    -- weight, because the only copy a company holds is the one-save sapling (utility_heartwood rides
+    -- a status, not this trait).
+    trait_mandrake_shriek =             3.0,  -- The Shriek
+    trait_spore_burst =                 3.0,  -- Spore Burst
+    trait_spongeflesh =                 1.5,  -- Spongeflesh (at the mantle's quarter)
+    trait_the_pit_grows =               3.5,  -- The Pit Grows
+    trait_heartwood =                   2.0,  -- Heartwood
 }
 
 -- Which of the weights above were ADOPTED from the classifier's seed rather than weighed one by
@@ -1858,6 +1873,11 @@ Grade.SLOT_PINS = {
     weapon_hornbow_of_the_hunt = { at = 1, why = "the Lodge's quest 2, vacated by the eye above it" },
     utility_feather_boots = { at = 0, why = "the Undercroft's quest 1: the thinnest shelf in the game" },
     consumable_smoke_bomb = { at = 1, why = "the Undercroft's quest 2" },
+    -- THE GROVE'S FIRST SPELL (2026-09-23). The grader reads a summon and prices it near the top of
+    -- the druid shelf, but a sapling is not the prize -- it is the grain Greenstep and Through the
+    -- Grain step between (models/grove.lua). Graded alone it landed at 15, ten rungs above the step
+    -- that needs it, which strands the whole growing half of the shelf behind its own entry point.
+    ability_seedfall = { max = 4, why = "the grove's first spell: Greenstep and Through the Grain need its saplings" },
 }
 
 Grade.PRICE_BASE = 80   -- what the opening rung costs

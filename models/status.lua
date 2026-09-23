@@ -840,6 +840,43 @@ function Status.halted(unit)
     return false
 end
 
+-- Is this unit SWOONING -- unable to bring itself to strike anybody? True while any active status sets
+-- `disablesHarm` (Swoon, the Lust circle's mushrooms). Read by Combat.itemBlockReason, beside Halted.
+--
+-- The narrow half of Halted, and the gap between them is the whole status. Halted refuses the ACT;
+-- this refuses only an act that hurts. A swooning priest still heals, a swooning knight still braces
+-- and still walks, and anybody can still cleanse -- which is the counterplay, since a Cure lifts it.
+-- It is Sleep with the turn left in the player's hands.
+function Status.forbidsHarm(unit)
+    for _, s in ipairs((unit and unit.statuses) or {}) do
+        if s.def.disablesHarm then return s end
+    end
+    return nil
+end
+
+-- The status on `unit` that throws its NEXT shove further -- one declaring `shoveBonus` (Mistlight) --
+-- or nil. Read by Combat.knockback, which adds the bonus to the shove's travel and spends the status,
+-- and by Combat.knockbackTile, so the ghost the preview draws lands where the live throw does.
+function Status.shoveBonus(unit)
+    for _, s in ipairs((unit and unit.statuses) or {}) do
+        if s.def.shoveBonus then return s end
+    end
+    return nil
+end
+
+-- The status on `unit` that draws off every heal aimed at it -- one declaring `stealsHealing` (the
+-- Alraune's Gallows Seed) -- together with the living body it feeds, or nil. The status stamps that body
+-- on itself as `seeder` when it lands; a seed whose planter has died feeds nobody and is simply a badge,
+-- which is why this asks after the planter and not only after the flag.
+function Status.healThief(unit)
+    for _, s in ipairs((unit and unit.statuses) or {}) do
+        if s.def.stealsHealing and s.seeder and s.seeder.alive and s.seeder ~= unit then
+            return s, s.seeder
+        end
+    end
+    return nil
+end
+
 -- Is this unit's reflexes shut down -- unable to REACT to anything? True while any active status sets
 -- `disablesReactions` (the hard-control statuses: Stun, Frozen, and any future Sleep). Read by
 -- models/trait.lua to suppress a disabled unit's triggered reactions -- counters, thorns, a dodge, a
@@ -1029,6 +1066,15 @@ function Status.apply(combat, unit, id, opts)
     else
         status = Status.instantiate(id, opts)
         unit.statuses[#unit.statuses + 1] = status
+    end
+    -- WHEN IT LANDED, in the combat's own order of events. A blow struck inside a resolving cast is
+    -- HELD and reported to the survivor's statuses only once the cast is over (models/combat.lua,
+    -- Combat.beginAnswers) -- so a cast that wounds a body and THEN puts it to sleep or makes it swoon
+    -- would have that very wound wake it on the flush. The stamp lets Status.onDamaged skip a status
+    -- that arrived after the blow being reported. A refresh re-stamps: it has just landed again.
+    if combat then
+        combat._statusSerial = (combat._statusSerial or 0) + 1
+        status.serial = combat._statusSerial
     end
     if def.onApply then
         local ctx = ctxFor(combat, unit, status)
@@ -1228,7 +1274,10 @@ end
 -- deep until something hits you and then is not. Deliberately a status hook rather than a trait one:
 -- the rule belongs to the sleep, not to the sleeper, so it travels with the status onto anyone it
 -- lands on. The hook receives the usual ctx plus `ctx.amount` and `ctx.tags`.
-function Status.onDamaged(combat, unit, amount, tags)
+-- `serial` is the combat's status stamp at the moment the blow LANDED (see Status.apply): a status
+-- applied after that -- by the same cast, before its held blows were reported -- did not feel the blow and
+-- is skipped. Nil (an unheld, unstamped report) reports to everything, as it always did.
+function Status.onDamaged(combat, unit, amount, tags, serial)
     -- RE-ENTRY GUARD, and it is load-bearing rather than defensive. A hook here is free to deal damage
     -- (Rimebitten's cold bites the bearer on every hit), and that damage re-enters Combat.dealFlatDamage,
     -- which fires this hook again -- on the same body, for the bite it just landed. Without the latch
@@ -1243,7 +1292,7 @@ function Status.onDamaged(combat, unit, amount, tags)
     local snapshot = {}
     for _, s in ipairs(unit.statuses or {}) do snapshot[#snapshot + 1] = s end
     for _, s in ipairs(snapshot) do
-        if s.def.onDamaged then
+        if s.def.onDamaged and not (serial and s.serial and s.serial > serial) then
             local ctx = ctxFor(combat, unit, s)
             ctx.amount, ctx.tags = amount, tags
             s.def.onDamaged(ctx)

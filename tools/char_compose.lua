@@ -415,6 +415,22 @@ local CHARACTER_SILHOUETTE = {
     succubus = "lorc/temptation",
     succubus_abbess = "lorc/angel-wings", -- the rite took CLEANLY: she is what it makes when nothing goes wrong
 
+    -- THE GARDEN (2026-09-23). Three more lines, all `demon`, so every one of them needs a name here or
+    -- the whole garden lands on the daemon skull. Each line's ladder reads in its silhouette: the root,
+    -- the flower that eats, the one that sits in the church; the small green thing, the tree that walks,
+    -- the tree she cannot leave; and the mushroom folk by what each of them does.
+    mandrake = "delapouite/beet",                 -- a root with a face, pulled half out of the floor
+    alraune = "delapouite/carnivorous-plant",     -- the flower, and what the flower is for
+    alraune_anchoress = "lorc/lotus-flower",      -- seated, and never getting up
+    nymph = "delapouite/butterfly-flower",
+    dryad = "caro-asercion/willow-tree",
+    hamadryad = "delapouite/deku-tree",           -- the tree has the face now
+    swooncap_puffer = "lorc/mushroom",            -- the plain one; the one that pops
+    swooncap_verger = "delapouite/mushroom-house", -- big enough to stand in front of anything
+    swooncap_thurifer = "lorc/spotted-mushroom",  -- the one with something coming off it
+    sapling = "delapouite/seedling",
+    heartwood_tree = "lorc/pine-tree",            -- a yew, as near as the set comes
+
     -- ...AND THE THIRD ELEMENTAL THE KEEP MADE. The other two need nothing here and must not get it:
     -- character_fire_elemental and character_wind_elemental carry their element word in the id, so
     -- `elementOf` seats them on ELEMENT_SILHOUETTE and ELEMENT_TINT exactly as it always has -- and

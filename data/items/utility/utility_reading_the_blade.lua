@@ -28,7 +28,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "duelist",
-    unlockLevel = 10,
+    unlockLevel = 11,
     traits = { "trait_watching_the_shoulder" },
     charge = { key = "tempo", from = { "repeatStrike" }, max = 5, resetOn = "targetSwitch" },
     -- it converts tempo into Power, so the floor is the tempo itself

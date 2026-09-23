@@ -67,6 +67,13 @@ local TROPHIES = {
     -- taking itself is off the market, because it is the verb the stratum is built on and a counter
     -- dealing one would sell the answer to the fight that exists to teach it.
     "ability_charm",
+    -- The Lust garden's (2026-09-23): the Alraune line's four -- its Mandrake whole, its seed, its
+    -- sleeping draught, the Anchoress's rule -- and the Hamadryad's bow and the mushroom folk's three.
+    -- Each is the body's own trick, and the Dryad line's spells are NOT here: those are ordinary druid
+    -- stock, found first and then shelved once the class has grown that far, on the author's call.
+    "ability_mandrake_sprout", "ability_gallows_seed", "consumable_mandragora", "utility_the_pit_grows",
+    "weapon_churchyard_yew",
+    "consumable_puffball", "armor_spongeflesh_mantle", "weapon_spore_censer",
 }
 
 local function vendorFor(class)

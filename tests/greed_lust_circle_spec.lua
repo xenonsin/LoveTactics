@@ -403,14 +403,15 @@ return {
         end,
     },
     {
-        name = "nothing on this stratum holds a body still",
+        name = "the flock throws and never holds",
         fn = function()
-            -- ROOT IS OFF THIS GROUND AND THE REASON IS MECHANICAL, not flavour. The talons pinned in
-            -- the first cut of this circle, and Root sets `blocksForcedMove` -- so a rooted victim
-            -- cannot be shoved or dragged by ANYBODY, and the line body was quietly switching the rest
-            -- of the circle off one target at a time. A stratum built on displacement must not hold.
-            -- Asserted rather than written down, because "the talons also pin" is a one-line change
-            -- that reads like an improvement.
+            -- A BODY THAT THROWS MUST NOT ALSO ROOT. The talons pinned in the first cut of this circle,
+            -- and Root sets `blocksForcedMove` -- so a rooted victim cannot be shoved or dragged by
+            -- ANYBODY, and the line body was quietly switching the rest of the circle off one target at
+            -- a time. Root is a main verb of this circle now (Descent.SINS' Lust entry), but it lives on
+            -- the HOLD half and never shares a fight with a throw; a harpy that pinned would be that mix
+            -- inside one body, which the roster sweep below cannot see. Asserted rather than written
+            -- down, because "the talons also pin" is a one-line change that reads like an improvement.
             local map = Fixture.new(12, 12)
             local c = Fixture.combat(map, { unit("character_knight", 5, 5) },
                                           { unit("character_harpy", 5, 7) })
@@ -773,10 +774,11 @@ return {
         name = "the two animals argue, and the argument is left in",
         fn = function()
             -- A ROOTED BODY CANNOT BE SHOVED (status_root's `blocksForcedMove`), so a company caught
-            -- in the coils is sheltered from the wind. That is a texture rather than a bug: being
-            -- pinned next to a serpent is a real alternative to being scattered by a flock, and
-            -- choosing which of the two to be caught by is a decision the player makes on the board.
-            -- Pinned here because it reads like an oversight to anyone who meets it cold.
+            -- in the coils is sheltered from the wind. That is the mechanism the hold/move rule rests
+            -- on (Descent.SINS' Lust entry): the circle no longer stages this meeting in any one fight
+            -- -- the sweep below holds that -- but the engine fact it answers is pinned here, because
+            -- a change that let a throw move a rooted body would quietly make the rule unnecessary
+            -- and every rooter on the ground a free target for the flock.
             local map = Fixture.new(14, 14)
             local c = Fixture.combat(map, { unit("character_knight", 5, 5) },
                 { unit("character_lamia", 5, 6), unit("character_harpy", 5, 9) })
@@ -1076,6 +1078,94 @@ return {
             assert(lust.elites.approach == "encounter_lust_the_drowned_stair"
                 and lust.elites.seat == "encounter_lust_the_eyrie",
                 "the two rungs stay billed to the circle's two original animals -- cheapest rule first")
+        end,
+    },
+
+    -- -------------------------------------------------------------- Lust: HOLD and MOVE never meet
+    --
+    -- Root is a main verb of this circle, and a rooted body cannot be thrown (status_root's
+    -- `blocksForcedMove`) -- so a fight that fielded a rooter beside a shover would switch itself off
+    -- one target at a time. The rule is written on ROSTERS (Descent.SINS' Lust entry): no fight this
+    -- circle can field mixes the two. A body is classed by what its KIT does, read off the source of
+    -- every item and trait it carries, so a new body is classed the day it is authored and cannot be
+    -- left off a hand-kept list.
+    {
+        name = "no Lust roster fields a rooter beside a shover",
+        fn = function()
+            local Encounter = require("models.encounter")
+            local sourceCache = {}
+            local function source(path)
+                if sourceCache[path] == nil then
+                    sourceCache[path] = love.filesystem.read(path) or false
+                end
+                return sourceCache[path] or ""
+            end
+            local ROOTS = { "status_root" }
+            local MOVES = { "fx%.knockback%(", "fx%.pull%(", "fx%.swap%(", "fx%.teleport%(",
+                            "ctx%.knockback%(", "ctx%.swap%(", "Combat%.knockback%(", "Combat%.pull%(" }
+            local function any(src, pats)
+                for _, p in ipairs(pats) do if src:find(p) then return true end end
+                return false
+            end
+            local classCache = {}
+            local function classOf(charId)
+                if classCache[charId] then return classCache[charId] end
+                local def = Character.defs[charId]
+                assert(def, charId .. " is fielded on the Lust circle and does not exist")
+                local roots, moves = false, false
+                for _, itemId in ipairs(def.startingItems or {}) do
+                    local idef = itemId and Item.defs[itemId]
+                    if idef then
+                        local src = source("data/items/" .. idef.type .. "/" .. itemId .. ".lua")
+                        roots = roots or any(src, ROOTS)
+                        moves = moves or any(src, MOVES)
+                        for _, tid in ipairs(idef.traits or {}) do
+                            local tsrc = source("data/traits/" .. tid .. ".lua")
+                            roots = roots or any(tsrc, ROOTS)
+                            moves = moves or any(tsrc, MOVES)
+                        end
+                    end
+                end
+                assert(not (roots and moves), charId .. " roots AND shoves: one body is the mix the rule forbids")
+                classCache[charId] = roots and "hold" or (moves and "move" or "either")
+                return classCache[charId]
+            end
+            local function check(label, roster)
+                local seen = {}
+                for _, id in ipairs(roster) do seen[classOf(id)] = id end
+                assert(not (seen.hold and seen.move),
+                    label .. " fields " .. tostring(seen.hold) .. " (hold) beside " .. tostring(seen.move)
+                    .. " (move)")
+            end
+
+            -- The kit reading is itself measured, on the bodies whose half is the point of them.
+            assert(classOf("character_lamia") == "hold", "a lamia holds")
+            assert(classOf("character_mandrake") == "hold", "a mandrake holds")
+            assert(classOf("character_harpy") == "move", "a harpy throws")
+            assert(classOf("character_dryad") == "move", "a dryad pulls")
+            assert(classOf("character_swooncap_puffer") == "either", "a puffer does neither")
+
+            -- Every rolled and elite fight on the castle, at every depth and on both rungs, since a
+            -- band can add a body the base list does not name.
+            local swept = 0
+            for id, enc in pairs(Encounter.defs) do
+                local ctx = { biome = "castle", depth = 1, rung = enc.rung or 1, quest = { sin = "lust" } }
+                if enc.composition and (not enc.condition or enc.condition(ctx)) then
+                    for depth = 1, Descent.FLOORS do
+                        ctx.depth = depth
+                        local roster = enc.composition
+                        if type(roster) == "function" then roster = roster(ctx) end
+                        check(id .. " at depth " .. depth, roster)
+                    end
+                    swept = swept + 1
+                end
+            end
+            assert(swept >= 15, "the sweep reached only " .. swept .. " castle fights -- is it reading the ground?")
+
+            -- ...and the bodies Descent seats directly, which no encounter pool contains.
+            local lust = sinNamed("lust")
+            check("the Lust stair", { lust.minor.lead, lust.minor.filler })
+            check("the Lust guardian", { lust.guardian.lead, lust.guardian.filler })
         end,
     },
 }

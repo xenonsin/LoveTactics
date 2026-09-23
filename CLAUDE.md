@@ -47,7 +47,7 @@ code that a change lands in, while a wiki is read by somebody who wants to know 
 `docs/` is untouched and still the design source; it is simply no longer published.
 
 `& "E:\LOVE\lovec.exe" . wiki-gen` (`tools/wiki_gen.lua`) renders **58 pages**: every item by class
-then by type (842 over 46 class pages), every body by kind (**the Bestiary** — 153 over 8), the Rift's
+then by type (913 over 46 class pages), every body by kind (**the Bestiary** — 165 over 7), the Rift's
 fifteen floors, and the indexes over all three, into the gitignored `wiki/`. Every number is read
 through the model (`Item.instantiate` / `Item.growth` at each forge level, `Character.instantiate` for
 a stat block), so a page cannot disagree with the game; a column no item in a section filled is
@@ -68,7 +68,7 @@ so the generator cannot grade itself.
 in `tools/drop_report` sweeps `Encounter.pool`, which is every body a floor can *roll*; a guardian, her
 escort, a ward and the Crown are seated by `Descent` directly and are in no pool, so that sweep alone
 calls a circle's general unfielded. `riftFloors()` walks the fifteen floors once — the same walk the
-Rift page prints — and records who stands on each stair. 50 of the 153 blueprints are reachable by one
+Rift page prints — and records who stands on each stair. 63 of the 165 blueprints are reachable by one
 route or the other; the rest say *the rift never fields it* on their own entry rather than being left
 off. That wording is the measurement and not a stronger claim: a scripted scene can still hand-place a
 body (the prologue's demons), which neither sweep can see.

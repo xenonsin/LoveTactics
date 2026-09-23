@@ -517,6 +517,10 @@ function Character.instantiate(id, progress)
         -- A general/boss blueprint sets `boss = true`; carried through so an ability can refuse to work
         -- on one (Coup de Grace won't execute a boss, Charm won't turn it). Nil for an ordinary unit.
         boss = def.boss,
+        -- A PLANT body -- a sapling, a heartwood tree, a mandrake -- is one the Dryad line's grain runs
+        -- through (models/grove.lua): a Nymph steps out beside it, the Hamadryad moves foes between them.
+        -- Nil for everything else.
+        plant = def.plant,
         -- Can this body be brought back once it falls? Default true; a blueprint opts OUT with
         -- `revivable = false` (demons do not come back). A non-revivable unit skips the whole downed
         -- window (models/combat.lua killUnit / reanimate): it dies to a plain corpse with no countdown,

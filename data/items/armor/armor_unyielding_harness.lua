@@ -29,7 +29,7 @@ return {
     type = "armor",
     tags = { "heavy", "plate" },
     class = "bulwark", -- deeper cut of the shelf: buyable only once the bulwark gate is cleared
-    unlockLevel = 5,
+    unlockLevel = 6,
     traits = { "trait_unyielding" },
     bonus = { defense = Curve.ramp(7, 17), magicDefense = Curve.ramp(3, 13), movement = -2 },
     resist = { physical = 3 },
