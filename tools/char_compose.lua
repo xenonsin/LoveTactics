@@ -394,6 +394,8 @@ local CHARACTER_SILHOUETTE = {
     -- tint and the frame separate them by nothing a player reads at board size. The silhouette is the
     -- only axis left: the flock is a harpy, she is the carrion version of it.
     harpy = "lorc/harpy",
+    lamia = "delapouite/cobra",
+    elder_lamia = "lorc/snake",        -- the same animal, all of it in frame
     harpy_matriarch = "lorc/vulture", -- the same bird, grown -- an alpha that is not a second animal
 
     -- THE WRATH CIRCLE. Two elementals, two demons and a beast, which without names here would collapse

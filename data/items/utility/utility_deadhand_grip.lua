@@ -27,7 +27,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "rogue",
-    unlockLevel = 5,
+    unlockLevel = 4,
     statusImmunity = { "status_disarmed" },
     -- a grip nothing takes the weapon out of
     bonus = { damage = 1, defense = 1 },

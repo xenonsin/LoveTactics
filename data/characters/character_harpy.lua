@@ -50,6 +50,17 @@ return {
     --   Feathers lie flat over each other and an edge slides across them without finding a seam.
     --   A point goes between them, and there is a great deal less behind than the shape promised.
     resist = { slash = 3, pierce = -3, fire = 3, holy = -6 },
+    -- WHAT IT IS KNOWN FOR (docs/drops.md). The gust, handed over: every melee blow the bearer lands
+    -- drives what it hit back a tile. The rift sells you the trick, which is the ordering the Barrow
+    -- Lord argues -- a rule like that is strange handed cold at a counter and ordinary handed by the
+    -- corpse of the thing that spent a fight doing it to you.
+    --
+    -- The SNATCH is not on this list and that is not an oversight: a pull handed to the player is
+    -- already four abilities deep (Pull, Collapse, Gaff Line, Indrawn Breath) while nothing in the
+    -- game puts a shove on an ordinary swing. The flock is known for the half that was missing.
+    drops = {
+        "utility_the_updraught",
+    },
     startingItems = { "weapon_harpy_talons", "weapon_stooping_gust" },
     -- The talons rather than the gust: `defaultAction` is what a compulsion and a counter swing
     -- (models/ai.lua), and the grab is what this body does to anything already standing next to it.

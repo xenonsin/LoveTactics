@@ -63,6 +63,19 @@ return {
     --   The same feathers as the flock, laid deeper, and an edge finds even less of a seam in them.
     --   The same hollow behind them. What goes between them goes a long way in.
     resist = { slash = 4, pierce = -4, fire = 4, holy = -8 },
+    -- WHAT SHE IS KNOWN FOR (docs/drops.md), and it is the cry rather than the wing-beat. Downdraft
+    -- would have been a third copy of a reflex the game already sells twice (Shield Shove, Antler
+    -- Toss); the Taunt-and-Burn couple is hers alone and is the thing a player actually remembers
+    -- about this fight. Handed over as the COUPLING rather than the cast, so it pays off whatever
+    -- taunt the company already carries -- including the two Sentinel armours that pointed at nobody
+    -- until the stamp moved into the status.
+    --
+    -- Her flock's drop is listed second, so a company that already holds the charm is paid the wind
+    -- instead of nothing (Descent.dropFor walks the list and skips what you hold).
+    drops = {
+        "utility_coalsong",
+        "utility_the_updraught",
+    },
     startingItems = { "weapon_harpy_talons", "weapon_stooping_gust", "weapon_the_wanting",
                       "utility_flight_feathers" },
     defaultAction = "weapon_harpy_talons",

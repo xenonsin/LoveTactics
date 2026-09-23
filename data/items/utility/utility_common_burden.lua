@@ -18,6 +18,6 @@ return {
     type = "utility",
     tags = { "charm", "dark", "morale" },
     class = "shaman",
-    unlockLevel = 5,
+    unlockLevel = 4,
     traits = { "trait_common_burden" },
 }

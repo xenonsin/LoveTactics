@@ -19,7 +19,7 @@ return {
     type = "utility",
     tags = { "charm", "magical" },
     class = "spellbreaker",
-    unlockLevel = 8,
+    unlockLevel = 9,
     traits = { "trait_spell_eater" },
     -- anti-magic as absorption -- the item is the resistance
     bonus = { magicDefense = 3 },

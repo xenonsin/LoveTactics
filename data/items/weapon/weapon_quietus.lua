@@ -28,7 +28,7 @@ return {
     type = "weapon",
     tags = { "dagger", "pierce", "physical", "melee" },
     class = "assassin",
-    unlockLevel = 12,
+    unlockLevel = 13,
     activeAbility = {
         target = "enemy",
         range = 1,

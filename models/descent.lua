@@ -169,7 +169,9 @@ Descent.SINS = {
     --   TAUNT   you do not choose who you fight              (status_taunt -- it takes control too)
     --   WIND    you do not choose where you stand            (Combat.knockback, Combat.pull)
     --   FIRE    ...and wanting costs, whether or not you get there  (status_burn)
-    --   ROOT    you do not choose whether to leave           (status_root -- UNFIELDED, see below)
+    --   ROOT    you do not choose whether to leave           (status_root -- the lamia's knot)
+    --   ...and COILED, which is the tether and is this circle's own (data/status/status_coiled.lua):
+    --           you may leave, and leaving is what costs.
     --
     -- EVERY OTHER CIRCLE BILLS A RESOURCE. Wrath takes the board, Envy takes your blessings, Greed
     -- takes the haul, Gluttony takes the floor's own leavings. Lust takes AGENCY -- position and
@@ -196,12 +198,20 @@ Descent.SINS = {
     --     haul you IN, the gust drives you OUT; a company spread across a doorway gives both of them
     --     somewhere to put you, and one that has already chosen its room gives them nothing.
     --
-    -- ROOT IS OFF THIS GROUND, DELIBERATELY, and it is listed above rather than struck out because it
-    -- is still the sin's verb -- nothing fields it today. The flock's talons pinned in the first cut
-    -- and it was the wrong verb for the wrong reason: Root sets `blocksForcedMove`, so a rooted victim
-    -- cannot be shoved or dragged by ANYBODY, and the circle's own line body was switching the circle
-    -- off one target at a time. A stratum built on displacement must not hold. If root comes back here
-    -- it comes back on something that is not also doing the moving.
+    -- ROOT CAME BACK, AND IT CAME BACK ON THE BODY THE CONDITION WAS WRITTEN FOR. The flock's talons
+    -- pinned in the first cut and it was the wrong verb THERE, for a mechanical reason: Root sets
+    -- `blocksForcedMove`, so a rooted victim cannot be shoved or dragged by ANYBODY, and a circle
+    -- built on displacement was switching itself off one target at a time. The note left here said it
+    -- could return "on something that is not also doing the moving" -- which is a lamia
+    -- (data/characters/character_lamia.lua). It displaces nothing; holding is the whole animal.
+    --
+    -- SO THE TWO ANIMALS ARE OPPOSITE HALVES OF ONE RULE, and a floor that rolls both is pulled two
+    -- ways at once. A harpy decides where your body is; a lamia decides that it does not get to be
+    -- anywhere else. The flock's shoves DELIVER the coils' damage for free -- a gust that moves a
+    -- tethered body a tile is the serpent billing you on somebody else's wings -- and, read the
+    -- other way, a rooted company cannot be scattered at all, so being caught by the snakes is
+    -- genuine shelter from the birds. They were never meant to be additive, and choosing which of
+    -- the two to be caught by is a decision the player makes on the board.
     --
     -- AND THE FIFTH VERB IS REAL NOW. `status_taunt` used to be enforced in models/ai.lua's enemy
     -- planner and nowhere else, so a taunt landed on a PARTY member was a badge the player read and
@@ -231,11 +241,13 @@ Descent.SINS = {
         -- and both went in the cut, which left `named` reading nil and BOTH floors of Lust drawing from
         -- an elite pool this ground did not have. The Eyrie seats the Matriarch on the stair floor.
         --
-        -- NO `approach` YET, and it degrades rather than breaking (the reader is
-        -- `rung == 2 and named.seat or named.approach`): rung 1 names nobody and every castle elite
-        -- draws at ELITE_WEIGHT. That is the next thing this ground is owed, along with a second
-        -- ordinary fight that is not a harpy.
-        elites = { seat = "encounter_lust_the_eyrie" } },
+        -- BOTH RUNGS ARE BILLED NOW, and to the stratum's two different animals rather than to one
+        -- of them twice. The coils hold the approach and the wings hold the seat: the Elder's
+        -- tether only PRICES a company's turns where the Matriarch's cry takes them outright, so
+        -- the cheaper rule stands on the floor walked onto first -- and a party that learned on the
+        -- stair that distance costs arrives at the Eyrie about to be compelled to cross a room.
+        elites = { approach = "encounter_lust_the_drowned_stair",
+                   seat = "encounter_lust_the_eyrie" } },
     { id = "greed", name = "Greed", vendor = "undercroft", biome = "swamp",
         scene = "conversation_descent_greed",
         guardian = { lead = "character_general_greed", filler = "character_the_tally" },

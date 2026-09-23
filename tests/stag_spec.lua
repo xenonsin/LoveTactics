@@ -300,9 +300,25 @@ return {
                 assert(def.unstocked, id .. " is still dealt by a counter")
                 -- DEPTH IS RARITY (docs/drops.md), so the ORDER of the numbers is the drop-rate design:
                 -- the print you meet, the rule, the chase.
+                -- ORDERED, AND THE TEST IS FOR AN INVERSION RATHER THAN FOR A TIE.
+                --
+                -- It read `>` until a pass added two finds to the catalogue and the vanguard's
+                -- Lowered Crown quantized from rank 5 down onto the sentinel's Close Herd at 4 --
+                -- with no item retuned and no author decision behind it. That is not the list going
+                -- wrong, it is the RUNG being a coarser thing than the rarity it stands for: the
+                -- Crown grades 15.3 against the Herd's 11.4, so it is still the rarer of the two and
+                -- `. drop-tier` still says so; fifteen rungs cannot separate 390 finds, and every
+                -- item added makes a tie likelier.
+                --
+                -- What the assertion is actually protecting is the ORDER Descent.dropFor walks: a
+                -- list written rarest-first pays the best thing first and hands a floor-one company
+                -- the chase. `>=` refuses every one of those and stops refusing arithmetic nobody
+                -- performed. If a tie ever needs breaking, break it in the GRADE -- never by hand
+                -- here, and never by re-writing a rung the tool derives.
                 if last then
-                    assert(def.unlockLevel > last, string.format(
-                        "%s sits at rank %d, not deeper than the entry before it (%d)",
+                    assert(def.unlockLevel >= last, string.format(
+                        "%s sits at rank %d, shallower than the entry before it (%d) -- a drops list "
+                        .. "runs commonest-first, or the first floor that pays out hands over the chase",
                         id, def.unlockLevel, last))
                 end
                 last = def.unlockLevel
@@ -525,9 +541,15 @@ return {
                 assert(def.class ~= "creature", id .. " is creature kit and cannot be carried home")
                 assert(def.unlockLevel, id .. " has no depth, so no floor can pay it")
                 assert(def.unstocked, id .. " is still dealt by a counter")
+                -- `>=` rather than `>`, for the reason spelled out on the apex's own drops
+                -- loop above: a RUNG is a coarser thing than the rarity it stands for, so two entries
+                -- can legitimately tie (this list's own Close Herd and Lowered Crown do, at 4). What
+                -- is refused is an INVERSION -- a list written rarest-first pays the best thing
+                -- first, and Descent.dropFor walks it in order.
                 if last then
-                    assert(def.unlockLevel > last, string.format(
-                        "%s sits at rank %d, not deeper than the entry before it (%d)",
+                    assert(def.unlockLevel >= last, string.format(
+                        "%s sits at rank %d, shallower than the entry before it (%d) -- a drops list "
+                        .. "runs commonest-first, or the first floor that pays out hands over the chase",
                         id, def.unlockLevel, last))
                 end
                 last = def.unlockLevel

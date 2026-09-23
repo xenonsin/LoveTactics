@@ -543,6 +543,294 @@ return {
             assert(elite >= 1, "the castle rolls no elite at all")
         end,
     },
+    -- ------------------------------------------------------------ WHAT THE FLOCK IS KNOWN FOR
+    --
+    -- The rift sells you the trick (docs/drops.md, and the Barrow Lord's Marrowlight argues the
+    -- ordering): each of these two is the thing the body spent the fight doing to you, handed over.
+    {
+        name = "the flock's drop is its gust, and a bow does not get it",
+        fn = function()
+            local map = Fixture.new(12, 12)
+            local c = Fixture.combat(map,
+                { unit("character_knight", 5, 5, { isolate = "bare",
+                      items = { "weapon_iron_sword", "weapon_corvids_bow",
+                                "utility_the_updraught" } }) },
+                { unit("character_harpy", 5, 6), unit("character_harpy", 5, 9) })
+            local knight, near, far
+            for _, u in ipairs(c.units) do
+                if u.char.id == "character_knight" then knight = u
+                elseif not near then near = u else far = u end
+            end
+            for _, u in ipairs(c.units) do Combat.refreshPassives(u) end
+
+            -- MELEE: the blow lands and the body it landed on goes back a tile, away from the swinger.
+            openTurn(c, knight)
+            local y = near.y
+            Combat.useItem(c, knight, itemNamed(knight.char, "weapon_iron_sword"), near.x, near.y)
+            assert(near.alive and near.y == y + 1,
+                "a melee blow drives what it hit back a tile")
+
+            -- RANGED: nothing moves, and that is the item's PRICE rather than a category. On a bow this
+            -- would be a free disengage on every arrow -- strictly good, never once a decision. On a
+            -- blade it costs the follow-up, because the thing you just hit is now out of reach.
+            openTurn(c, knight)
+            local fy = far.y
+            Combat.useItem(c, knight, itemNamed(knight.char, "weapon_corvids_bow"), far.x, far.y)
+            assert(far.alive and far.y == fy,
+                "an arrow shoves nobody -- the reach is what pays for the control")
+        end,
+    },
+    {
+        name = "the Matriarch's drop is her cry factored: what you taunt, burns",
+        fn = function()
+            local map = Fixture.new(12, 12)
+            local c = Fixture.combat(map,
+                { unit("character_knight", 5, 5, { isolate = "bare", items = { "utility_coalsong" } }) },
+                { unit("character_harpy", 5, 6) })
+            local knight, harpy
+            for _, u in ipairs(c.units) do
+                if u.char.id == "character_knight" then knight = u else harpy = u end
+            end
+            for _, u in ipairs(c.units) do Combat.refreshPassives(u) end
+
+            -- THE COUPLING, NOT THE CAST. It fires on whatever taunt the bearer already owns, which is
+            -- what makes it half of a pair rather than a tier -- on a body with no taunt in its kit it
+            -- is a blank cell, deliberately.
+            Status.apply(c, harpy, "status_taunt", { applier = knight })
+            assert(Status.get(harpy, "status_burn"),
+                "a foe the bearer taunts catches fire")
+
+            -- AND ONLY ON THE APPLIER'S SIDE OF IT. Being taunted is not taunting: without the role
+            -- gate the charm would light its own wearer every time an enemy jeered at them, which is
+            -- the same rule read backwards and strictly a downside.
+            local victim = c.units[1]
+            Status.remove(c, victim, "status_burn")
+            Status.apply(c, victim, "status_taunt", { applier = harpy })
+            assert(not Status.get(victim, "status_burn"),
+                "being taunted is not taunting -- the charm reads the applier's side only")
+        end,
+    },
+    {
+        name = "both bodies are known for something, and neither trophy is merchandise",
+        fn = function()
+            -- A DROP IS A HEAD START, NOT A SOURCE OF RECORD (docs/drops.md): no price, so a counter
+            -- deals it only once the class has climbed to its rung, and the rift pays it early and
+            -- free before that. `unlockLevel` is the DERIVED half -- `. drop-tier` files both off
+            -- their grades -- so this asserts that one exists rather than pinning the figure, which
+            -- would go stale the next time the ladder is re-cut.
+            local flock = Character.defs.character_harpy.drops
+            local alpha = Character.defs.character_harpy_matriarch.drops
+            assert(flock and #flock > 0, "the flock is known for nothing")
+            assert(alpha and #alpha > 0, "the alpha is known for nothing")
+            assert(flock[1] == "utility_the_updraught", "the flock hands over its gust")
+            assert(alpha[1] == "utility_coalsong", "the alpha hands over her cry, first")
+
+            for _, id in ipairs({ "utility_the_updraught", "utility_coalsong" }) do
+                local def = Item.defs[id]
+                assert(def, id .. " does not exist")
+                assert(not def.price, id .. ": a rift find carries no price")
+                assert(def.unlockLevel, id .. ": every graded ware sits somewhere on the ladder")
+                assert(def.class and def.class ~= "creature",
+                    id .. ": a drop is a player's ware and belongs on a real shelf")
+            end
+        end,
+    },
+    -- ------------------------------------------------------------ THE COILS
+    --
+    -- The circle's second animal, and the opposite half of the flock's rule. A harpy decides where
+    -- your body is; a lamia decides that it does not get to be anywhere else. See the Lust entry in
+    -- models/descent.lua for why the two are authored to make each other worse.
+    {
+        name = "one sentence at two lengths: the knot takes the turn, the fang takes the ground",
+        fn = function()
+            local map = Fixture.new(14, 14)
+            local c = Fixture.combat(map, { unit("character_knight", 5, 5) },
+                                          { unit("character_lamia", 5, 8) })
+            local lamia, knight
+            for _, u in ipairs(c.units) do
+                if u.char.id == "character_lamia" then lamia = u else knight = u end
+            end
+
+            -- THE FANG at reach: no pin, no clock -- a string.
+            openTurn(c, lamia)
+            Combat.useItem(c, lamia, itemNamed(lamia.char, "weapon_lunging_fang"), knight.x, knight.y)
+            local st = Status.get(knight, "status_coiled")
+            assert(st and st.coiler == lamia, "the fang leaves a tether that knows what it measures from")
+            assert(not Status.get(knight, "status_root"), "and it does not pin -- that is the other weapon")
+
+            -- THE KNOT at melee: the circle's fifth verb, returned on the one body that displaces
+            -- nothing. See the Lust entry for the condition that was written down before it came back.
+            lamia.x, lamia.y = knight.x, knight.y + 1
+            openTurn(c, lamia)
+            Combat.useItem(c, lamia, itemNamed(lamia.char, "weapon_strangleknot"), knight.x, knight.y)
+            assert(Status.get(knight, "status_root"), "the knot pins what it winds around")
+        end,
+    },
+    {
+        name = "the coil is a price, not a lock -- and it is the circle it charges for",
+        fn = function()
+            local map = Fixture.new(14, 14)
+            local c = Fixture.combat(map, { unit("character_knight", 5, 5) },
+                                          { unit("character_lamia", 5, 8) })
+            local lamia, knight
+            for _, u in ipairs(c.units) do
+                if u.char.id == "character_lamia" then lamia = u else knight = u end
+            end
+            openTurn(c, lamia)
+            Combat.useItem(c, lamia, itemNamed(lamia.char, "weapon_lunging_fang"), knight.x, knight.y)
+            assert(Status.get(knight, "status_coiled"), "coiled to begin with")
+
+            -- INSIDE THE CIRCLE costs nothing. A tether that bit wherever you stood would be a poison
+            -- with a serpent painted on it; what makes it a decision is that obeying it is free.
+            knight.x, knight.y = lamia.x, lamia.y - 2
+            local before = Fixture.hp(knight)
+            Status.onTurnEnd(c, knight)
+            assert(Fixture.hp(knight) == before, "two tiles is inside the coils and costs nothing")
+
+            -- OUTSIDE IT, the walking is what costs -- and the victim keeps its whole turn either way,
+            -- which is the entire difference from the Root the same body deals at melee.
+            knight.x, knight.y = lamia.x, lamia.y - 5
+            before = Fixture.hp(knight)
+            Status.onTurnEnd(c, knight)
+            assert(Fixture.hp(knight) < before, "a turn ended outside the circle closes the coil")
+        end,
+    },
+    {
+        name = "the Elder's coil is a slope, and the slope has a ceiling",
+        fn = function()
+            local map = Fixture.new(16, 16)
+            local c = Fixture.combat(map, { unit("character_knight", 5, 5) },
+                                          { unit("character_elder_lamia", 5, 8) })
+            local elder, knight
+            for _, u in ipairs(c.units) do
+                if u.char.id == "character_elder_lamia" then elder = u else knight = u end
+            end
+            for _, u in ipairs(c.units) do Combat.refreshPassives(u) end
+            openTurn(c, elder)
+            Combat.useItem(c, elder, itemNamed(elder.char, "weapon_lunging_fang"), knight.x, knight.y)
+            local st = Status.get(knight, "status_coiled")
+            assert(st and st.perTile and st.perTile > 0,
+                "an Elder's application carries the slope (trait_the_long_coil stamps it)")
+            -- ...AND IT RIDES A RELIC, like every creature rule: a blueprint's own `traits` field is
+            -- never collected (models/trait.lua), so the slope lives in her grid where a Sunder can
+            -- silence it and a corpse can be looted for the idea.
+            assert(itemNamed(elder.char, "utility_serpents_length"),
+                "the slope rides Serpent's Length in her grid, not a bare field on the blueprint")
+
+            local function bite(gap)
+                knight.x, knight.y = elder.x, elder.y - gap
+                local before = Fixture.hp(knight)
+                Status.onTurnEnd(c, knight)
+                return before - Fixture.hp(knight)
+            end
+
+            -- THE SLOPE: further is dearer, which turns "whether to leave" into "how far".
+            local near, far = bite(3), bite(5)
+            assert(far > near, "every tile past the circle is worth another bite")
+
+            -- ...AND THE CEILING, which is what keeps a curve from becoming a second attack the victim
+            -- delivers to itself. Measured before the cap existed this billed 17 raw a turn at five
+            -- tiles -- a full melee hit from her, unmitigated, on top of the ones she was throwing,
+            -- and more than a GENERAL'S oath bills. Stated as a multiple of the flat toll so the two
+            -- cannot drift apart.
+            local def = Status.defs and Status.defs.status_coiled
+            local flat = (def and def.magnitude) or st.magnitude
+            local scale = (def and def.maxScale) or 2
+            assert(bite(9) <= flat * scale,
+                "the slope may double the toll and no more -- running has to stop mattering somewhere")
+        end,
+    },
+    {
+        name = "the coil dies with the serpent, which is this circle's standing law",
+        fn = function()
+            -- EVERY CONTROL EFFECT IN LUST ENDS WITH THE BODY HOLDING IT: a charm with its charmer
+            -- (Combat.releaseCharmedBy), a jeer with its taunter (status_taunt's onTick), a coil with
+            -- the serpent. Deliberately the OPPOSITE of Acedia's Sworn, whose own header insists the
+            -- oath "does not release you for having failed it" -- two circles, two laws, and this one
+            -- is the reason cutting the thing that did it is the whole counterplay of the stratum.
+            local map = Fixture.new(14, 14)
+            local c = Fixture.combat(map, { unit("character_knight", 5, 5) },
+                                          { unit("character_lamia", 5, 8) })
+            local lamia, knight
+            for _, u in ipairs(c.units) do
+                if u.char.id == "character_lamia" then lamia = u else knight = u end
+            end
+            openTurn(c, lamia)
+            Combat.useItem(c, lamia, itemNamed(lamia.char, "weapon_lunging_fang"), knight.x, knight.y)
+            lamia.alive = false
+            knight.x, knight.y = 13, 13 -- as far from the corpse as the board allows
+            local before = Fixture.hp(knight)
+            Status.onTurnEnd(c, knight)
+            assert(Fixture.hp(knight) == before, "a dead serpent bills nobody")
+            assert(not Status.get(knight, "status_coiled"), "and the badge goes with it")
+        end,
+    },
+    {
+        name = "the two animals argue, and the argument is left in",
+        fn = function()
+            -- A ROOTED BODY CANNOT BE SHOVED (status_root's `blocksForcedMove`), so a company caught
+            -- in the coils is sheltered from the wind. That is a texture rather than a bug: being
+            -- pinned next to a serpent is a real alternative to being scattered by a flock, and
+            -- choosing which of the two to be caught by is a decision the player makes on the board.
+            -- Pinned here because it reads like an oversight to anyone who meets it cold.
+            local map = Fixture.new(14, 14)
+            local c = Fixture.combat(map, { unit("character_knight", 5, 5) },
+                { unit("character_lamia", 5, 6), unit("character_harpy", 5, 9) })
+            local lamia, harpy, knight
+            for _, u in ipairs(c.units) do
+                if u.char.id == "character_lamia" then lamia = u
+                elseif u.char.id == "character_harpy" then harpy = u else knight = u end
+            end
+            openTurn(c, lamia)
+            Combat.useItem(c, lamia, itemNamed(lamia.char, "weapon_strangleknot"), knight.x, knight.y)
+            assert(Status.get(knight, "status_root"), "held by the coils")
+
+            openTurn(c, harpy)
+            local y = knight.y
+            Combat.useItem(c, harpy, itemNamed(harpy.char, "weapon_stooping_gust"), knight.x, knight.y)
+            assert(knight.y == y,
+                "the flock cannot throw what the coils are holding -- the stratum's two animals are "
+                .. "not additive, and were never meant to be")
+        end,
+    },
+    {
+        name = "the coils' drops are a pair, and the circle sells you both halves",
+        fn = function()
+            local line = Character.defs.character_lamia.drops
+            local alpha = Character.defs.character_elder_lamia.drops
+            assert(line and line[1] == "utility_the_slow_circle", "the lamia hands over its string")
+            assert(alpha and alpha[1] == "utility_constrictors_due", "the Elder hands over her patience")
+
+            for _, id in ipairs({ "utility_the_slow_circle", "utility_constrictors_due" }) do
+                local def = Item.defs[id]
+                assert(def, id .. " does not exist")
+                assert(not def.price, id .. ": a rift find carries no price")
+                assert(def.unlockLevel, id .. ": every graded ware sits somewhere on the ladder")
+                assert(def.class and def.class ~= "creature",
+                    id .. ": a drop is a player's ware and belongs on a real shelf")
+            end
+
+            -- THE PAIR, ASSERTED RATHER THAN WRITTEN DOWN. One puts a body in a hold and the other
+            -- bills for it, so a player who walks out with both has been taught a rule in two halves
+            -- and sold both -- and a player who walks out with one has a reason to go back down. If
+            -- the Due ever stops reading the status the Circle applies, the pair is silently over and
+            -- nothing else in the suite would say so.
+            local map = Fixture.new(12, 12)
+            local c = Fixture.combat(map,
+                { unit("character_knight", 5, 5, { isolate = "bare",
+                      items = { "weapon_iron_sword", "utility_constrictors_due" } }) },
+                { unit("character_lamia", 5, 6) })
+            local knight, foe = c.units[1], c.units[2]
+            for _, u in ipairs(c.units) do Combat.refreshPassives(u) end
+            local sword = itemNamed(knight.char, "weapon_iron_sword")
+            assert(Trait.outgoingDamageBonus(c, knight, foe, sword, { "melee" }) == 0,
+                "a free body owes nothing")
+            local st = Status.apply(c, foe, "status_coiled")
+            st.coiler = knight
+            assert(Trait.outgoingDamageBonus(c, knight, foe, sword, { "melee" }) > 0,
+                "and a coiled one owes the constrictor's due")
+        end,
+    },
     {
         name = "every harpy item is natural kit and nothing else",
         fn = function()

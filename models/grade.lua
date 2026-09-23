@@ -184,6 +184,11 @@ Grade.STATUS_GRADE = {
     -- denies the CHOICE and leaves the turn -- the body still swings, at a target it did not pick --
     -- so it sits below both and well above a nudge.
     status_taunt = 1.8,
+    -- COILED is the circle's tether and it is priced against Sworn's shape rather than against a
+    -- disable, because it disables nothing: the victim keeps its whole turn and pays for where it
+    -- spends it. A toll a careful company can decline to pay most turns, and cannot decline forever --
+    -- under the 1.3 a plain steer used to cost, and well under anything that takes an action away.
+    status_coiled = 1.1,
     status_knell = 3.0,          -- a kill on a clock, if the clock is allowed to run out
     status_downed = 2.5,         -- a body off the board, short of a corpse
     status_interred = 1.0,       -- every heal lands as a wound: it cannot be saved
@@ -456,6 +461,24 @@ Grade.TRAIT_GRADE = {
     trait_brawlers_bandolier =          2.0,  -- Brawler's Bandolier
     trait_cullers_kit =                 2.0,  -- Culler's Kit
     trait_executioners_eye =            2.0,  -- Executioner's Eye
+    -- COALSONG, weighed against the Eye directly above it, which it copies verb for verb: both are
+    -- onStatusApplied riders that add a second status to a foe the bearer just afflicted. Two things
+    -- push it up half a step and one pulls it back, and they do not cancel.
+    --   up    no cooldown where the Eye carries eight ticks, and a taunt is often an AREA cast (Shout
+    --         takes a whole diamond), so one cast can light four bodies where the Eye marks one.
+    --   down  it is HALF OF A PAIR. On a body carrying no taunt it is a blank cell -- dead on purpose
+    --         -- where stun and freeze ride on weapons anybody might already be holding.
+    trait_coalsong =                    2.5,  -- Coalsong
+    -- THE LONG COIL is a magnitude on somebody else's status and nothing more: it makes the Elder's
+    -- own tether steepen with distance and does nothing at all on a body that is not applying one.
+    -- Priced like the other pure multipliers on this shelf rather than like a rule, because a slope
+    -- on a 1.1 toll is still a toll.
+    trait_the_long_coil =               1.5,  -- The Long Coil
+    -- THE SLOW CIRCLE hands a player the tether. Above Coalsong's 2.5 on two counts -- it needs no
+    -- second half to work, where Coalsong is a blank cell without a taunt, and what it applies has no
+    -- clock, so one application holds for the fight. Held under the reflexes at 3.0 by the cooldown
+    -- and by the melee gate: you have to get in, and you get one string every ten ticks.
+    trait_the_slow_circle =             2.8,  -- The Slow Circle
     trait_field_still =                 2.0,  -- Field Still
     trait_ghost_wind =                  2.0,  -- Ghost-Wind
     trait_guardians_blessing =          2.0,  -- Guardian's Blessing
@@ -579,6 +602,23 @@ Grade.TRAIT_GRADE = {
     -- prices the rule, not the Thinwall Keep; if the castle ever makes it feel dearer than a Riposte,
     -- the thing to look at is the board's own shove arithmetic and not this line.
     trait_downdraft =                   3.0,  -- Downdraft
+    -- STOOPING BLOW is the shove taken off the reflex and put on the bearer's own turn, and it lands
+    -- on Shield Shove's number from the opposite side. The Shove is two tiles, fires only when struck,
+    -- and pays the escalating answer price; this is ONE tile, fires on every melee blow the bearer
+    -- lands, and costs nothing. Half the distance against several times the frequency -- which is why
+    -- it is the same figure rather than a new step between them.
+    --
+    -- What keeps it from climbing past them is that it fights its own bearer: the foe you just hit is
+    -- now out of reach, so the control is bought with the follow-up. On a Skirmisher, who was leaving
+    -- anyway, that costs nothing -- but the bench prices the rule, not the one build that dodges it.
+    trait_stooping_blow =               3.0,  -- Stooping Blow
+    -- CONSTRICTOR'S DUE is a flat pre-mitigation bonus against a held body, and it sits on the
+    -- bench beside the other conditional charms rather than beside the rules: Empty Vessel takes 8
+    -- against a spent caster, the Duelist 6 in a one-on-one. Seven, and the condition is NARROWER
+    -- than either (three named statuses, all of them "cannot leave") while being one a bearer can
+    -- create for itself -- which is the pair it forms with The Slow Circle, and the reason it is not
+    -- cheaper for being conditional.
+    trait_constrictors_due =            2.2,  -- Constrictor's Due
     trait_slipstep =                    3.0,  -- Slipstep
     trait_spiteful_ichor =              3.0,  -- Spiteful Ichor
     trait_splitglass_parry =            3.0,  -- Splitglass Parry

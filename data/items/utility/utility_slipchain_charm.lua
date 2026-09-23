@@ -17,7 +17,7 @@ return {
     type = "utility",
     tags = { "charm" },
     class = "rogue",
-    unlockLevel = 4,
+    unlockLevel = 3,
     statusImmunity = { "status_root", "status_mired" },
     -- nothing holds you, which is half movement and half fortune
     bonus = { movement = 1, luck = 1 },

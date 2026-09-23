@@ -37,7 +37,7 @@ return {
     class = "vanguard",
     -- The last of three by depth (docs/drops.md): the hide is the print you meet, the Close Herd is
     -- the rule, and this is the one you are still after.
-    unlockLevel = 5,
+    unlockLevel = 4,
     unstocked = true,
     traits = { "trait_antler_toss" },
 }

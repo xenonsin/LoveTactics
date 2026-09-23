@@ -37,7 +37,7 @@ return {
     -- SHELVED WITH THE DISCIPLINE ITS EFFECT FEEDS: the house that takes the animal apart and carries
     -- the useful bits away. `class` is the vendor shelf and never an equip gate -- anyone may carry it.
     class = "poacher",
-    unlockLevel = 7,
+    unlockLevel = 8,
     -- RIFT-ONLY. It comes off the body and nowhere else: no counter deals one however many
     -- the company carries out, and none will buy one back (docs/drops.md, Vendor.foundPrice).
     unstocked = true,

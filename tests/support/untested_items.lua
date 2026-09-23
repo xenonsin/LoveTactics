@@ -189,7 +189,6 @@ return {
     "weapon_censer_of_the_unravelling",
     "weapon_conductor",
     "weapon_confessors_needle",
-    "weapon_corvids_bow",
     "weapon_crozier",
     "weapon_cutpurse_knife",
     "weapon_debt_bell",
