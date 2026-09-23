@@ -74,6 +74,9 @@ local TROPHIES = {
     "ability_mandrake_sprout", "ability_gallows_seed", "consumable_mandragora", "utility_the_pit_grows",
     "weapon_churchyard_yew",
     "consumable_puffball", "armor_spongeflesh_mantle", "weapon_spore_censer",
+    -- The Whirl Elemental's rush (data/items/ability/ability_whirlwind.lua): the body's own trick, the
+    -- one cast that picks its own landing, and off the thing that used it on you.
+    "ability_whirlwind",
 }
 
 local function vendorFor(class)

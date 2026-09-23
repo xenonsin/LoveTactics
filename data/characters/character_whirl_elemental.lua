@@ -79,13 +79,19 @@ return {
     --   The same flame as the lamp rooms, with a chimney's worth of air under it.
     --   And the same answer: it is a fire. Take the air away, or put it out.
     resist = { fire = 4, slash = 4, impact = -4, water = -8, ice = -8 },
-    startingItems = { "weapon_chimney_draw", "weapon_flashover", "utility_flue_throat" },
+    -- The Gyre is the third hand and the wild one: it goes where the wind puts it, cutting every body it
+    -- passes over (data/items/weapon/weapon_gyre.lua). A body that keeps moving is a body scattering
+    -- fire, so a rush it did not choose still lays the room alight on the way.
+    startingItems = { "weapon_chimney_draw", "weapon_flashover", "weapon_gyre", "utility_flue_throat" },
     -- WHAT IT IS KNOWN FOR (docs/drops.md): the combination, which is the only thing on this floor that
     -- is neither the fire nor the wind. Its escort's drop is listed second, so a company that already
     -- holds the Flame is paid the lamp's bill instead of nothing (Descent.dropFor walks the list and
     -- skips what you hold) -- the Matriarch's arrangement with her own flock, exactly.
+    -- The Whirlwind follows it: the Gyre learned, the body's own trick taken off the thing that used it
+    -- on you, and on no counter anywhere (data/items/ability/ability_whirlwind.lua).
     drops = {
         "utility_the_climbing_flame",
+        "ability_whirlwind",
         "utility_the_answered_wish",
     },
     -- The flashover rather than the draw: `defaultAction` is what a compulsion and a counter swing

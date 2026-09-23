@@ -1058,7 +1058,7 @@ return {
         fn = function()
             for _, id in ipairs({ "weapon_flame_fists", "utility_living_flame",
                                   "weapon_bellstroke", "utility_moving_air",
-                                  "weapon_flashover", "weapon_chimney_draw", "utility_flue_throat" }) do
+                                  "weapon_flashover", "weapon_chimney_draw", "weapon_gyre", "utility_flue_throat" }) do
                 local def = Item.defs[id]
                 assert(def, id .. " does not exist")
                 assert(def.noSteal and not def.price and def.class == "creature",

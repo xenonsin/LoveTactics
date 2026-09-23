@@ -5650,10 +5650,18 @@ function Combat.teleportUnit(combat, unit, x, y, opts)
     -- on foot, which makes every blink in her grid a purchase of damage. Measured before the move,
     -- and in the same Chebyshev tiles the board reasons in everywhere else.
     Combat.tally(unit, "tilesBlinked", math.max(math.abs((unit.x or x) - x), math.abs((unit.y or y) - y)))
+    local fromX, fromY = unit.x, unit.y
     unit.x, unit.y = x, y
     if not (opts and opts.silent) then
         Combat.logEvent(combat, "move",
-            string.format("%s leaps to (%d, %d).", unitName(unit), x, y), unit)
+            string.format(opts and opts.glide and "%s sweeps to (%d, %d)." or "%s leaps to (%d, %d).",
+                unitName(unit), x, y), unit)
+    end
+    -- `glide`: the same move, shown CROSSING the gap rather than vanishing out of it -- a body carried
+    -- over the heads of everyone in its lane (ability_whirlwind), which is a flight and not a blink.
+    -- Still no `reason` below: it touches down once, where it lands, exactly as a leap does.
+    if opts and opts.glide and fromX and (fromX ~= x or fromY ~= y) then
+        Combat.pushFx(combat, { type = "slide", unit = unit, fromX = fromX, fromY = fromY })
     end
     -- No `reason`: a leap crosses no ground, so it springs the tile it lands on but never fires a
     -- per-tile status. Bleeding out of a melee costs blood; blinking out of one does not.
@@ -12236,7 +12244,8 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
         -- else, so no cast can ever open a hole under a company standing on dry ground.
         flood = function(x, y) return Combat.floodTile(combat, x, y) end,
         -- Teleport the CASTER onto a tile, springing whatever it lands on (Leaping Crash's jump).
-        teleportUser = function(x, y) return Combat.teleportUnit(combat, unit, x, y) end,
+        -- `opts.glide` slides it across instead of blinking it (Combat.teleportUnit).
+        teleportUser = function(x, y, opts) return Combat.teleportUnit(combat, unit, x, y, opts) end,
         -- Teleport SOMEBODY ELSE onto a tile. The general form of the line above, and kept separate
         -- from it rather than replacing it: the overwhelming majority of blink effects move their own
         -- caster, and a helper that made every one of them pass `fx.user` would be noise on all of
