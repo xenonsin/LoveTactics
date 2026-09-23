@@ -1931,8 +1931,27 @@ end
 -- `total` comes off the def's declared `cooldown` -- never `magnitude`, which on some traits is the
 -- effect's own size (the Stayed Hand's health fraction) and would report a nonsense fraction. It is
 -- floored at `remaining`, so a def whose cooldown was raised mid-battle can't report above 1.
+--
+-- AN ACTIVE ABILITY'S OWN COOLDOWN (`activeAbility.cooldown`) rides the same table under its own key
+-- (Combat.castCooldownKey) and is reported here too, as a pseudo-reflex named for the item, so the
+-- grid's clock and the tooltip's countdown need no second reader. The field was authored on
+-- ability_call_the_court for a long time and read by nothing -- the King's header calls it "the
+-- limiter" -- so it is real now for that body as well as for the manticore's tail.
+function Combat.castCooldownKey(item)
+    return "cast:" .. tostring(item and item.id)
+end
+
 function Combat.itemCooldown(unit, item)
-    if not unit or not item or not unit.traits then return nil end
+    if not unit or not item then return nil end
+    local ab = item.activeAbility
+    if ab and ab.cooldown then
+        local left = unit.cooldowns and unit.cooldowns[Combat.castCooldownKey(item)]
+        if left and left > 0 then
+            return { remaining = left, total = math.max(ab.cooldown, left),
+                trait = { name = item.name, id = Combat.castCooldownKey(item) } }
+        end
+    end
+    if not unit.traits then return nil end
     local best
     for _, t in ipairs(unit.traits) do
         if t.item == item then
@@ -11084,6 +11103,13 @@ function Combat.itemBlockReason(unit, item)
     -- `counterGates = false` opts out of the refusal while keeping the badge: a counter that merely
     -- SCALES the cast (the Long Count grows harder per turn taken, but swings fine at zero) is a readout,
     -- not a purse, so an empty count is a floor rather than a wasted turn.
+    -- A cast on its own cooldown (`ab.cooldown`, set by Combat.useItem when it fires) is refused like an
+    -- empty purse: the slot greys, the click is refused, and the planner never lists it.
+    if ab.cooldown and unit and Combat.onCooldown(unit, Combat.castCooldownKey(item)) then
+        local left = math.ceil(unit.cooldowns[Combat.castCooldownKey(item)])
+        return { kind = "cooldown", reason = "cooldown",
+            text = "Cooling down -- ready in " .. left .. " ticks" }
+    end
     if ab.counter and ab.counterGates ~= false then
         local n = ab.counter(unit, item) or 0
         if n <= 0 then
@@ -11611,6 +11637,10 @@ function Combat.useItem(combat, unit, item, tx, ty, windup, dest, spend)
     local manaBefore = Combat.resource(unit.char, "mana")
     Combat.spendCosts(combat, unit, ab)
     drinkSpentMana(combat, unit, item, manaBefore)
+    -- ...and the cast's own cooldown starts at commit, beside the cost and for the same reason: a
+    -- channel that is interrupted still spent its window. Set before the effect, so an effect that
+    -- hands the cast straight back (the manticore's Man-eater clears it) is not overwritten here.
+    if ab.cooldown then Combat.setCooldown(unit, Combat.castCooldownKey(item), ab.cooldown) end
 
     -- The cast is now committed (never a preview or a refused arm reaches here). Bank it toward any
     -- signature gated on casting, and settle a fired signature's own unlock -- re-locking a repeatable

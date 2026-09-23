@@ -83,6 +83,9 @@ local TROPHIES = {
     -- Supper, is NOT here -- it is Poisoner stock the brood also drops.
     "armor_gossamer_mantle", "ability_dragline",
     "utility_the_still_hunt", "ability_brood_sac", "utility_tremor_cord", "armor_castoff_coat",
+    -- The Manticore's (Gluttony's seat, 2026-09-23): its Bristle's barbs as a coat, its volley as a
+    -- fletching, and the Bristle itself as the chase.
+    "armor_quillhide", "utility_barbed_fletching", "utility_the_bristling",
 }
 
 local function vendorFor(class)

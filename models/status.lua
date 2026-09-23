@@ -1058,7 +1058,17 @@ function Status.apply(combat, unit, id, opts)
         status.remaining = def.refreshKeepsShortest
             and math.min(status.remaining, fresh)
             or math.max(status.remaining, fresh)
-        if opts.magnitude then status.magnitude = opts.magnitude end
+        -- A STACKING status (`stacks = N`) ADDS on a refresh rather than replacing, up to its own cap:
+        -- each application is one more of the thing (a quill lodged beside the last one). Fury Swipes
+        -- reached the same place by computing `have + 1` in its trait and re-applying, which is fine
+        -- for one applier -- status_quilled has five (a volley, a spray, a coat, a fletching, a
+        -- bristling), and a status that knows it stacks is the one place that arithmetic can live.
+        if def.stacks then
+            local add = opts.magnitude or def.magnitude or 1
+            status.magnitude = math.min((status.magnitude or 0) + add, def.stacks)
+        elseif opts.magnitude then
+            status.magnitude = opts.magnitude
+        end
         -- A re-stamp REPLACES the instance table rather than merging into it: the caller that hands one
         -- in has just recomputed the whole thing (an injury's clamp is a fold over every injury the body
         -- carries), so a merge would leave a stale stat behind after a bone was set.

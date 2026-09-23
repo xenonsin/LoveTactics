@@ -135,7 +135,8 @@ end
 -- health fraction, Adrenal Surge's initiative pull), and reading it here would print a nonsense
 -- duration -- the same trap Combat.itemCooldown avoids.
 local function declaredCooldown(item)
-    local best
+    -- An active ability's own cooldown is the item's property as surely as a reflex's is.
+    local best = item and item.activeAbility and item.activeAbility.cooldown or nil
     for _, id in ipairs((item and item.traits) or {}) do
         local def = Trait.defs[id]
         local ticks = def and def.cooldown

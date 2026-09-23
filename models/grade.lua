@@ -426,6 +426,17 @@ Grade.TRAIT_GRADE = {
     trait_feels_the_web =               0.5,  -- Feels the Web -- the Larder Mother's reach
     trait_moult =                       0.5,  -- Moult -- the Larder Mother's half-health turn
 
+    -- THE MANTICORE (2026-09-23), the same way. Quillhide is Spongeflesh's shape -- a status handed to
+    -- whoever strikes you in melee -- and graded with it: no damage, a setup for somebody else's pierce.
+    -- Barbed Fletching lays the same stack on every landed weapon blow, a standing coating capped at
+    -- Vulnerable: Pierce, so a point over. Bristle is Thorns turned into an area on a damage bank, with
+    -- a stack on top and a lighter blow, and sits a notch under Thorns. Man-eater is a boss rule on one
+    -- creature and sits at the reactive-rule floor.
+    trait_quillhide =                   1.5,  -- Quillhide -- melee strikers are Quilled
+    trait_barbed_fletching =            2.5,  -- Barbed Fletching -- every landed weapon blow Quills
+    trait_bristle =                     2.5,  -- Bristle -- every 15 taken, Quill everything close
+    trait_man_eater =                   0.5,  -- Man-eater -- the Manticore's appetite
+
     -- ADOPTED FROM THE SEED, not individually weighed. These are the classifier's own numbers, taken
     -- as authored on the designer's instruction rather than argued one by one. They are real weights
     -- and the grader treats them as such -- but Grade.TRAIT_ADOPTED below keeps the provenance, because

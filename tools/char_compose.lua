@@ -438,6 +438,10 @@ local CHARACTER_SILHOUETTE = {
     spiderling = "delapouite/spider-eye",
     larder_husk = "delapouite/spider-bot",        -- the empty skin, still spider-shaped
 
+    -- THE MANTICORE (Gluttony's seat). A man's face on a winged lion is the Greek sphinx's outline
+    -- exactly, which is nearer the animal than any lion or wyvern in the set.
+    manticore = "delapouite/greek-sphinx",
+
     -- ...AND THE THIRD ELEMENTAL THE KEEP MADE. The other two need nothing here and must not get it:
     -- character_fire_elemental and character_wind_elemental carry their element word in the id, so
     -- `elementOf` seats them on ELEMENT_SILHOUETTE and ELEMENT_TINT exactly as it always has -- and
