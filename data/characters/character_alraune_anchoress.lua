@@ -40,6 +40,10 @@ return {
         skill = 9, luck = 8,
     },
     resist = { pierce = 4, slash = -4, dark = 4, fire = -6, holy = -4 },
+    -- THE GARDEN'S OWN GROUND: sweetbriar, which Charms whoever blunders into it. It was the forest's
+    -- signature hazard while the wood was Lust's; the wood went to Gluttony (and its web), and the briar
+    -- came with the circle it was written for -- laid by the bodies that grow it (models/arena.lua).
+    seedsGround = { id = "hazard_sweetbriar", count = 3 },
     startingItems = { "weapon_nightshade", "weapon_honeyed_ground", "weapon_gallows_seed",
                       "weapon_taproot", "weapon_compline", "utility_the_anchorhold",
                       "utility_mandrake_scream" },

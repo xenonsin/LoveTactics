@@ -20,5 +20,10 @@ return {
     debuff = true,                -- removable by Cure
     blocksMove = true,
     blocksForcedMove = true,      -- and no shove, throw, drag or charge budges it either
+    -- AND A ROOT THAT LANDS MID-WALK ENDS THE WALK, on the tile that caught it. blocksMove is only
+    -- asked before the feet leave, so without this a body that stepped into a web (or over a snare)
+    -- partway through its route was rooted and kept walking -- held in place everywhere but where it
+    -- was actually standing.
+    stopsMovement = true,
     turnEndMoveCost = function(ctx) return ctx.moveBudget end,
 }

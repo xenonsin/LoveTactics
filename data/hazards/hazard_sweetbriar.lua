@@ -1,4 +1,9 @@
--- SWEETBRIAR: the forest's signature ground, and the one the biome shipped without.
+-- SWEETBRIAR: Lust's garden ground, grown by the Alraune line (`seedsGround` on character_alraune and
+-- character_alraune_anchoress, laid by models/arena.lua). It WAS the forest's signature ground, written
+-- when the wood was Lust's -- the history below is that version's, kept because the reasoning about
+-- Charm on the floor still holds. The forest is Gluttony's now and strings web instead (hazard_web).
+--
+-- (Originally:) the forest's signature ground, and the one the biome shipped without.
 --
 -- Every other surface stratum declares a hazard on its blueprint -- the swamp's grasping hollow, the
 -- tundra's black ice, the desert's quicksand, the volcanic rifts' fire. Forest, castle and underworld

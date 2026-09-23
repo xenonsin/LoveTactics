@@ -196,7 +196,7 @@ Descent.SINS = {
         -- `spares` is listed by the rung each one stands on, because a spare billed against the wrong
         -- floor is a spare that never turns up there.
         elites = { approach = "encounter_white_wolf", seat = "encounter_gluttony_the_sated",
-            spares = { "encounter_the_unseeing",                               -- rung 1
+            spares = { "encounter_the_unseeing", "encounter_the_larder",       -- rung 1
                        "encounter_the_sow", "encounter_meandering_stag" } } },  -- rung 2
     -- ---------------------------------------------------------------------------
     -- LUST: THE CIRCLE THAT NEVER TAKES YOUR HEALTH. IT TAKES YOUR SAY OVER WHERE YOU ARE STANDING.

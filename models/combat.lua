@@ -2639,6 +2639,36 @@ function Combat.openTileNear(combat, x, y, w, h)
     return nil
 end
 
+-- The nearest anchor, out to `opts.radius` (default 3) rings from (x, y), where a w x h body fits.
+-- openTileNear's one-tile ring is right for a 1x1 arrival and wrong for a wide one: a 2x2 body can
+-- only clear the thing it is arriving beside -- or its own old footprint -- from two tiles out.
+--   opts.ignore   a unit whose own cells do not count as taken (the body that is moving)
+--   opts.clearOf  { x, y, w, h }: the block must not overlap this rectangle either (a Moult steps
+--                 OFF its old footprint so the husk has somewhere to stand)
+-- Rings are walked in a fixed order, so the same board always answers the same tile.
+function Combat.openBlockNear(combat, x, y, w, h, opts)
+    w, h, opts = w or 1, h or 1, opts or {}
+    local avoid = opts.clearOf
+    local function clear(nx, ny)
+        if not avoid then return true end
+        return nx + w - 1 < avoid.x or nx > avoid.x + (avoid.w or 1) - 1
+            or ny + h - 1 < avoid.y or ny > avoid.y + (avoid.h or 1) - 1
+    end
+    for r = 1, opts.radius or 3 do
+        for dy = -r, r do
+            for dx = -r, r do
+                if math.max(math.abs(dx), math.abs(dy)) == r then
+                    local nx, ny = x + dx, y + dy
+                    if clear(nx, ny) and Combat.footprintFree(combat, w, h, nx, ny, opts.ignore) then
+                        return nx, ny
+                    end
+                end
+            end
+        end
+    end
+    return nil
+end
+
 -- ---------------------------------------------------------------------------
 -- Reinforcement edges: which side of the board a wave walks on from.
 -- ---------------------------------------------------------------------------
@@ -4095,6 +4125,10 @@ function Combat.isPhasing(unit)
     return false
 end
 
+-- Forward-declared: Combat.reachable (below) asks it, and it is defined beside Combat.walkStop further
+-- down, which is where its reasoning lives.
+local groundStopsMovement
+
 local function moveGraph(combat, unit, tolls)
     local arena = combat.arena
     local budget = flatStat(unit, "movement")
@@ -4204,6 +4238,35 @@ function Combat.reachable(combat, unit)
         -- An ally's tile is a walk-through, never a stopping point: keep it out of the reachable set.
         if not node.occupied then out[k] = node end
     end
+    -- STOPS SHORT: a destination whose route runs through a friendly standing on ground that would stop
+    -- this walker (a web, quicksand). The order is legal and the walk ends on the last clear tile
+    -- before them (Combat.stepMove, and tests/spells_spec.lua holds it), so the tile stays in this set
+    -- -- but it is not a tile the unit can STOP ON this turn, and Combat.reachableList, which the
+    -- planner and the attack band scan for a stand, leaves it out. Without that the planner chose such
+    -- a tile, the walk ended on its own first tile at no cost, and the same unit planned it again,
+    -- zero-cost turn after zero-cost turn (a caught priest in a web held a mage there for 400 turns).
+    if not Status.stopsMovement(unit) then
+        local blocked
+        for _, other in ipairs(combat.units) do
+            if other.alive and other ~= unit and other.side == unit.side then
+                for _, c in ipairs(Combat.cellsAt(other.w or 1, other.h or 1, other.x, other.y)) do
+                    if groundStopsMovement(combat, unit, c.x, c.y) then
+                        blocked = blocked or {}
+                        blocked[key(c.x, c.y)] = true
+                    end
+                end
+            end
+        end
+        if blocked then
+            for _, node in pairs(out) do
+                local prev = node.fromKey and graph[node.fromKey]
+                while prev do
+                    if blocked[key(prev.x, prev.y)] then node.stopsShort = true break end
+                    prev = prev.fromKey and graph[prev.fromKey]
+                end
+            end
+        end
+    end
     return out
 end
 
@@ -4221,7 +4284,7 @@ end
 function Combat.reachableList(combat, unit, reachable)
     local out = {}
     for _, node in pairs(reachable or Combat.reachable(combat, unit)) do
-        out[#out + 1] = node
+        if not node.stopsShort then out[#out + 1] = node end -- see Combat.reachable
     end
     table.sort(out, function(a, b)
         if a.y ~= b.y then return a.y < b.y end
@@ -4280,7 +4343,7 @@ function Combat.travelField(combat, unit, goal, ignore)
     -- also the half of the answer the route alone cannot give -- hazardRoute bends THIS turn's walk
     -- around a fire it can see past, while this is what stops a body two turns out from setting off
     -- into the burning half of the board in the first place.
-    local tolls = Hazard.tollMap(combat)
+    local tolls = Hazard.tollMap(combat, unit)
     local function stepCost(x, y)
         local worst, toll = 0, 0
         for _, c in ipairs(Combat.cellsAt(w, h, x, y)) do
@@ -4364,6 +4427,16 @@ function Combat.scriptedRoute(combat, unit, x, y)
     return path
 end
 
+-- The attack band's half of Combat.reachWaiver: a foe standing on (x, y) that this unit may see
+-- through cover (a Rooted body, to a Tremor Cord). Range waivers are not drawn here -- the only body
+-- holding one (the Larder Mother) is never driven by a player.
+local function sightWaivedAt(combat, unit, x, y)
+    local other = Combat.unitAt(combat, x, y)
+    if not (other and other.side ~= unit.side) then return false end
+    local _, sight = Combat.reachWaiver(combat, unit, other)
+    return sight
+end
+
 -- Every cell a unit could strike THIS turn with a `range`-reach weapon: for the origin tile
 -- and each tile it can move to, the Manhattan diamond of radius `range`, clamped to the arena.
 -- Returns `{ [key] = { x, y, fromX, fromY, moveCost } }`, where from/moveCost is the CHEAPEST
@@ -4415,7 +4488,8 @@ function Combat.attackReach(combat, unit, range, reachable, requiresSight, minRa
                         -- click-to-attack can't fire into a wall.
                         if x >= 1 and x <= combat.arena.cols and y >= 1 and y <= combat.arena.rows
                             and combat.arena.tiles[y][x].walkable
-                            and (not requiresSight or Combat.hasLineOfSight(combat, bc.x, bc.y, x, y)) then
+                            and (not requiresSight or Combat.hasLineOfSight(combat, bc.x, bc.y, x, y)
+                                or sightWaivedAt(combat, unit, x, y)) then
                             local k = key(x, y)
                             local e = out[k]
                             if not e or s.cost < e.moveCost then
@@ -4607,9 +4681,46 @@ end
 -- legal and both cost the same reach, so only a planner asks for it -- the enemy turn in
 -- states/battle.lua and the headless one in models/autobattle.lua. A player steering a walk by hand
 -- can see the fire.
+-- What the ROUTE to each reachable tile costs in hostile ground, keyed "x,y": the hazard toll
+-- (Hazard.PATH_TOLL per hostile zone crossed, a welcoming zone free) paid by the route this unit would
+-- really walk there -- the detour Combat.hazardRoute bends onto where one fits in the move, the
+-- straight line through the fire where none does. nil when the board holds no hostile ground, which
+-- is most fights; a tile missing from the map pays nothing.
+--
+-- For the PLANNER, which until this scored only the tile a body stops on: it declined to end its turn
+-- in a web and then chose, over a tile one step shorter, a stand whose only road ran through three.
+-- Legality is untouched -- Combat.reachable is still the untolled graph, so what a body MAY reach is
+-- exactly what it always was; this only prices the way there.
+function Combat.routeTolls(combat, unit)
+    local tolls = Hazard.tollMap(combat, unit)
+    if not tolls then return nil end
+    local out = {}
+    -- The tolled search first: where it reaches a tile inside the move, its route is the detour.
+    for k, node in pairs(moveGraph(combat, unit, tolls)) do
+        out[k] = (node.weight or 0) - (node.cost or 0)
+    end
+    -- A tile the tolled search pruned (it ordered by weight, so a cheap-but-burning road to a tile can
+    -- lose to a dear-but-clean one that then runs out of move) is walked by the plain route: sum the
+    -- tolls along that chain, which is the fire the walk will actually cross.
+    local plain = moveGraph(combat, unit)
+    for k, node in pairs(plain) do
+        if out[k] == nil then
+            local t, n = 0, node
+            while n and n.fromKey do
+                for _, c in ipairs(Combat.cellsAt(unit.w or 1, unit.h or 1, n.x, n.y)) do
+                    t = t + (tolls[key(c.x, c.y)] or 0)
+                end
+                n = plain[n.fromKey]
+            end
+            out[k] = t
+        end
+    end
+    return out
+end
+
 function Combat.hazardRoute(combat, unit, x, y)
     if not (combat and unit) then return nil end
-    local tolls = Hazard.tollMap(combat)
+    local tolls = Hazard.tollMap(combat, unit)
     if not tolls then return nil end
     return (tracePath(moveGraph(combat, unit, tolls), unit, x, y))
 end
@@ -4745,10 +4856,13 @@ end
 -- status on `unit`? Dry-run through Hazard.preview, so nothing on the board is touched and nobody is
 -- mired to find the answer out: this is asked once per route tile, every frame the cursor moves.
 -- An immunity (the Slipchain Charm) answers no, exactly as it will when the unit really steps there.
-local function groundStopsMovement(combat, unit, x, y)
+function groundStopsMovement(combat, unit, x, y) -- assigns the forward-declared local above moveGraph
     for _, c in ipairs(Combat.cellsAt(unit.w or 1, unit.h or 1, x, y)) do
         for _, h in ipairs(Hazard.allAt(combat, c.x, c.y)) do
-            local preview = Hazard.preview(h.id, h.amount)
+            -- The preview runs against a stand-in, so it cannot see who is walking: ground that
+            -- welcomes this body (a spider's own web) stops nothing of its, whatever it does to others.
+            local welcomed = h.def.welcomes and h.def.welcomes(unit)
+            local preview = (not welcomed) and Hazard.preview(h.id, h.amount)
             for _, st in ipairs((preview and preview.statuses) or {}) do
                 if st.def and st.def.stopsMovement and not Status.isImmune(unit, st.id) then return true end
             end
@@ -5985,6 +6099,15 @@ end
 -- charms beside one spell simply both apply. PURE: it reads the grid and touches nothing, because the
 -- damage preview calls it on every hover -- spending a coating here would drain the satchel by looking
 -- at it. Combat.spendAuras is the half that bills, and it runs once, on a resolved cast.
+-- A coating's status as it lands: the blueprint's opts (never written to -- a shared table) plus the
+-- STRIKER as its applier, so a status that answers to whoever put it there (Spider's Supper's
+-- Digesting heals them) knows who that was. fx.applyStatus names the caster the same way.
+local function coatingOpts(opts, applier)
+    local out = { applier = applier }
+    for k, v in pairs(opts or {}) do out[k] = v end
+    return out
+end
+
 local function adjacencyAura(char, item)
     local tags, statuses = {}, {}
     local mods = { amount = 0, range = 0, speed = 0, preserve = false, lifesteal = 0,
@@ -9779,6 +9902,37 @@ function Combat.abilityOutput(unit, item)
 end
 
 -- Living units a unit may target with `item`'s ability, by range + target kind.
+-- A STANDING EXEMPTION FROM REACH, asked of one caster against one target: returns
+-- `waivesRange, waivesSight`. Two traits grant one today, both off the spider line, and both are flags
+-- rather than numbers because what they change is not how far a body reaches but WHICH bodies the
+-- ordinary limits apply to at all:
+--   reachesWeb   (the Larder Mother's Feels the Web) -- a target standing on a strand, or beside one,
+--                is in range and in sight from anywhere: the web is how she senses the board.
+--   sightsRooted (the Tremor Cord) -- a Rooted target is in sight through cover. Range still applies.
+-- Asked by every gate that decides whether a target may be picked -- Combat.abilityTargets (the AI),
+-- Combat.useItem (the model's own refusal) and Combat.attackReach (the player's red band) -- so the
+-- three can never disagree about a shot one of them allows.
+function Combat.reachWaiver(combat, unit, other)
+    if not (unit and other and other.alive) then return false, false end
+    local Trait = require("models.trait")
+    local range, sight = false, false
+    if Trait.flag(unit, "reachesWeb") and Combat.besideWeb(combat, other) then range, sight = true, true end
+    if Trait.flag(unit, "sightsRooted") and Status.has(other, "status_root") then sight = true end
+    return range, sight
+end
+
+-- Is any cell of `other`'s body on a web strand, or next to one (diagonals count)?
+function Combat.besideWeb(combat, other)
+    for _, c in ipairs(Combat.cellsAt(other.w or 1, other.h or 1, other.x, other.y)) do
+        for dy = -1, 1 do
+            for dx = -1, 1 do
+                if Combat.tileHasTag(combat, c.x + dx, c.y + dy, "web") then return true end
+            end
+        end
+    end
+    return false
+end
+
 function Combat.abilityTargets(combat, unit, item)
     local ab = item.activeAbility
     if not ab then return {} end
@@ -9787,7 +9941,8 @@ function Combat.abilityTargets(combat, unit, item)
     local minRange = Combat.abilityMinRange(ab)
     for _, other in ipairs(combat.units) do
         local d = Combat.unitGap(unit, other) -- nearest cell to nearest cell, so either body may be wide
-        if other.alive and d <= range and d >= minRange then
+        local waivesRange, waivesSight = Combat.reachWaiver(combat, unit, other)
+        if other.alive and (d <= range or waivesRange) and d >= minRange then
             local valid = false
             -- An untargetable foe (Invisible) can't be picked; a friendly cast ignores the status,
             -- so an ally can still heal or buff someone the enemy has lost sight of.
@@ -9800,9 +9955,18 @@ function Combat.abilityTargets(combat, unit, item)
             elseif ab.target == "tile" and ab.aoe and ab.allowOccupied then
                 valid = other.side ~= unit.side and not Status.untargetable(other) end
             -- A sight-gated ability can't reach a target it has no clear line to (terrain cover).
-            if valid and ab.requiresSight
+            if valid and ab.requiresSight and not waivesSight
                 and not Combat.unitsSighted(combat, unit, other) then
                 valid = false
+            end
+            -- `notOn`: statuses this ability is never AIMED at a body already wearing. A lockdown cast
+            -- (Silk Shot's Root + Halted) spent on somebody already held does nothing but chain them out
+            -- of the fight, which three spiders taking turns would otherwise do. The planner's list only:
+            -- a player may still aim it wherever they like, Combat.useItem does not ask.
+            if valid and ab.notOn then
+                for _, id in ipairs(ab.notOn) do
+                    if Status.has(other, id) then valid = false break end
+                end
             end
             if valid then out[#out + 1] = other end
         end
@@ -11171,7 +11335,7 @@ function Combat.strikeWith(combat, user, weapon, tx, ty)
                 d = d + hit
                 if hit > 0 then
                     for _, st in ipairs(auraStatuses) do
-                        Status.apply(combat, tgt, st.id, st.opts)
+                        Status.apply(combat, tgt, st.id, coatingOpts(st.opts, user))
                     end
                     if auraMods.lifesteal > 0 then
                         result.healed = result.healed + Combat.applyHeal(combat, user, math.floor(hit * auraMods.lifesteal))
@@ -11385,13 +11549,19 @@ function Combat.useItem(combat, unit, item, tx, ty, windup, dest, spend)
     -- tile itself may be any cell of a big TARGET's footprint -- Combat.unitAt below resolves the
     -- occupant from it -- so a 2×2 foe can be struck from beside any of its four cells.
     local dist = Combat.cellGap(tx, ty, unit)
-    if dist > Combat.abilityRange(combat, unit, ab) + Combat.adjacencyRangeBonus(unit.char, item) then
+    local aimedAt = ab.target == "enemy" and Combat.unitAt(combat, tx, ty) or nil
+    local waivesRange, waivesSight = false, false
+    if aimedAt and aimedAt.side ~= unit.side then
+        waivesRange, waivesSight = Combat.reachWaiver(combat, unit, aimedAt)
+    end
+    if dist > Combat.abilityRange(combat, unit, ab) + Combat.adjacencyRangeBonus(unit.char, item)
+        and not waivesRange then
         return false, "out of range"
     end
     if dist < Combat.abilityMinRange(ab) then
         return false, "too close"
     end
-    if ab.requiresSight and not Combat.unitHasSight(combat, unit, tx, ty) then
+    if ab.requiresSight and not waivesSight and not Combat.unitHasSight(combat, unit, tx, ty) then
         return false, "no line of sight"
     end
     -- Tile-target casts (e.g. summoning a trap) land ON the chosen cell, so it must be an empty,
@@ -11892,7 +12062,7 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
                 d = d + hit
                 if hit > 0 then
                     for _, st in ipairs(auraStatuses) do
-                        Status.apply(combat, tgt, st.id, st.opts)
+                        Status.apply(combat, tgt, st.id, coatingOpts(st.opts, unit))
                     end
                     -- A neighboring Vampiric Strike charm makes this weapon drink: the caster heals a
                     -- share of the damage it just dealt. Per LANDING, not per swing -- the charm reads
@@ -12441,9 +12611,9 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
         if back > 0 then Combat.giveGround(combat, unit, target, back) end
     end
 
-    -- Water quenches fire: a cast carrying the "water" tag douses any dousable hazard across its
-    -- footprint (the AoE cells, or just the aimed cell). Runs after the effect so a water AoE that
-    -- also lays down rain clears the fire it fell on. Uses the full cast tag set (item + ability).
+    -- A cast douses what its element answers across its footprint (the AoE cells, or just the aimed
+    -- cell): water quenches fire, fire burns off silk and briar. Runs after the effect so a water AoE
+    -- that also lays down rain clears the fire it fell on. Uses the full cast tag set (item + ability).
     local castTags = collectTags(item, nil)
     -- THE RESONANT GRIP remembers what you last threw: the element of the most recent cast is kept on
     -- the caster so a weapon strike can carry it (see Combat.dealDamage). Recorded for everyone rather
@@ -12453,9 +12623,10 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
         if Combat.ELEMENT_TAGS[t] then unit.lastCastElement = t end
     end
     local footprint = ab.aoe and Combat.aoeCells(combat, ab, tx, ty, unit) or { { x = tx, y = ty } }
-    if hasTag(castTags, "water") then
-        Hazard.douse(combat, footprint, castTags)
-    end
+    -- Every cast asks, not only a water one: douse matches the cast's tags against each zone's own
+    -- `dousedByTags`, so a fire cast burns off a web or a briar (both declare fire) and a slash does
+    -- nothing to anything. It was gated on water back when water was the only element any zone named.
+    Hazard.douse(combat, footprint, castTags)
 
     -- A DAMAGING cast breaks what STANDS in its footprint. Props are furniture, not bodies, so
     -- fx.aoeUnits never turns one up and a data-file effect that iterates its victims will never hit

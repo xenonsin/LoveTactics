@@ -77,6 +77,12 @@ local TROPHIES = {
     -- The Whirl Elemental's rush (data/items/ability/ability_whirlwind.lua): the body's own trick, the
     -- one cast that picks its own landing, and off the thing that used it on you.
     "ability_whirlwind",
+    -- The spider line's (Gluttony, 2026-09-23), each one of the animal's mechanics rebuilt for a person:
+    -- off the Giant Spider its feet (the Mantle) and the line it pays out (the Dragline); off the Larder
+    -- Mother her patience, her brood, her senses and her skin. The one priced piece of the set, Spider's
+    -- Supper, is NOT here -- it is Poisoner stock the brood also drops.
+    "armor_gossamer_mantle", "ability_dragline",
+    "utility_the_still_hunt", "ability_brood_sac", "utility_tremor_cord", "armor_castoff_coat",
 }
 
 local function vendorFor(class)

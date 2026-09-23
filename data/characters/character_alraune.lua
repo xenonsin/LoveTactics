@@ -43,6 +43,10 @@ return {
     -- The Mandrake's hide at a tier's budget (docs/bestiary.md): fibre turns a point and not an edge, and
     -- the petals burn. The blood is Luxuria's, so holy bites.
     resist = { pierce = 3, slash = -3, dark = 3, fire = -4, holy = -3 },
+    -- THE GARDEN'S OWN GROUND: sweetbriar, which Charms whoever blunders into it. It was the forest's
+    -- signature hazard while the wood was Lust's; the wood went to Gluttony (and its web), and the briar
+    -- came with the circle it was written for -- laid by the bodies that grow it (models/arena.lua).
+    seedsGround = { id = "hazard_sweetbriar", count = 2 },
     startingItems = { "weapon_nightshade", "weapon_honeyed_ground", "weapon_gallows_seed",
                       "weapon_taproot", "utility_mandrake_scream" },
     -- WHAT SHE IS KNOWN FOR (docs/drops.md), rarest first: the seed, which is the trap's hook and the

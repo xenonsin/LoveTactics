@@ -104,6 +104,10 @@ AI.WEIGHTS = {
     STANDOFF     = 0,     -- see AI.riskScore: only a kiter buys distance INSIDE a zone it can't leave
     HAZARD       = 4,     -- Hazard.tileBias + Prop.tileBias, already signed for my side (fire and a
                           -- live powder keg negative, sanctuary positive)
+    ROUTE_HAZARD = 1,     -- per point of hazard toll the ROUTE to a stand pays (Combat.routeTolls):
+                          -- a hostile tile crossed costs Hazard.PATH_TOLL (6), a quarter of what ending
+                          -- the turn on one does (HAZARD x HOSTILE_BIAS = 24) -- enough that a clean road
+                          -- beats a step saved, never so much that a hemmed-in body refuses to move
     SPEND        = 0.15,  -- per point of a resource cost, so a mage doesn't nuke a woodlouse
     STEPS        = 0.25,  -- mild: keeps motion sensible without making the AI lazy
     TARGET_PREF  = 6,     -- bonus when a candidate matches the rule's stated targeting preference
@@ -1067,7 +1071,7 @@ function AI.candidates(combat, unit, items, tiles, wantSupport)
                 -- tile). That is the price of letting a unit walk somewhere worth detonating, and it
                 -- falls only on the handful of units carrying one.
                 out[#out + 1] = {
-                    x = tile.x, y = tile.y, steps = tile.steps or 0,
+                    x = tile.x, y = tile.y, steps = tile.steps or 0, toll = tile.toll,
                     item = item, target = unit, tx = tile.x, ty = tile.y,
                     moved = tile.x ~= unit.x or tile.y ~= unit.y,
                 }
@@ -1094,7 +1098,7 @@ function AI.candidates(combat, unit, items, tiles, wantSupport)
                             and (not ab.requiresSight
                                  or Combat.sightFrom(combat, unit, tile.x, tile.y, tcx, tcy)) then
                             out[#out + 1] = {
-                                x = tile.x, y = tile.y, steps = tile.steps or 0,
+                                x = tile.x, y = tile.y, steps = tile.steps or 0, toll = tile.toll,
                                 item = item, target = t, tx = tcx, ty = tcy,
                                 moved = tile.x ~= unit.x or tile.y ~= unit.y,
                             }
@@ -1231,9 +1235,12 @@ function AI.scoreCandidate(combat, unit, cand, w, previews)
     -- Ground bias: the zones under this tile, plus any powder keg near enough to reach it. One term,
     -- because they are one judgement -- "do I want to be standing here when my turn ends" -- and a
     -- planner that weighed fire but strolled into a barrel's blast would read as the same mistake.
-    score = score + (Hazard.tileBias(combat, cand.x, cand.y, unit.side)
+    score = score + (Hazard.tileBias(combat, cand.x, cand.y, unit.side, unit)
         + Prop.tileBias(combat, cand.x, cand.y)) * w.HAZARD
     score = score - (cand.steps or 0) * w.STEPS
+    -- ...and the road there. Priced separately from the stop tile, because they are different mistakes:
+    -- standing in the web is one, walking through three strands to reach clean ground is the other.
+    score = score - (cand.toll or 0) * (w.ROUTE_HAZARD or 0)
 
     for _, s in ipairs(Combat.abilitySpend(unit, cand.item.activeAbility) or {}) do
         score = score - (s.amount or 0) * w.SPEND
@@ -1491,12 +1498,15 @@ local function fleeMove(ctx)
     local best
     -- Board order, not key order, as every other scan in this file: distance, bias and steps can all
     -- tie at once and then first-wins is the whole decision (Combat.reachableList).
+    local tolls = Combat.routeTolls(combat, unit)
     for _, node in ipairs(Combat.reachableList(combat, unit)) do
         local d = pressure(node.x, node.y)
         -- The same hazard and prop read the approach makes, unchanged: a body running for its life
-        -- still does not run through fire, and ground it OWNS is still worth standing in.
-        local bias = Hazard.tileBias(combat, node.x, node.y, unit.side)
+        -- still does not run through fire, and ground it OWNS is still worth standing in. The road
+        -- there is read too (Combat.routeTolls): an escape through the web is not an escape.
+        local bias = Hazard.tileBias(combat, node.x, node.y, unit.side, unit)
             + Prop.tileBias(combat, node.x, node.y)
+            - (tolls and tolls[node.x .. "," .. node.y] or 0) / Hazard.PATH_TOLL
         if not best or d > best.d
             or (d == best.d and bias > best.bias)
             or (d == best.d and bias == best.bias and node.steps > best.steps) then
@@ -1569,10 +1579,14 @@ local function fallbackMove(ctx, mode)
     local best
     -- Board order, not key order: distance, hazard bias and steps can all tie at once, and then the
     -- scan's first-wins is the whole decision. See Combat.reachableList.
+    local tolls = Combat.routeTolls(combat, unit)
     for _, node in ipairs(Combat.reachableList(combat, unit)) do
         if not (mode == "leash" and manhattan(node.x, node.y, anchorX, anchorY) > leash) then
-            local d = gapTo(node.x, node.y)
-            local bias = Hazard.tileBias(combat, node.x, node.y, unit.side)
+            -- The whole road, both halves, in one currency: the travel field already tolls hostile
+            -- ground between this tile and the goal, and routeTolls adds what the walk TO this tile
+            -- crosses -- so a stand one step nearer through a web loses to a clean one a step back.
+            local d = gapTo(node.x, node.y) + (tolls and tolls[node.x .. "," .. node.y] or 0)
+            local bias = Hazard.tileBias(combat, node.x, node.y, unit.side, unit)
                 + Prop.tileBias(combat, node.x, node.y)
             -- COVER BREAKS THE TIE, one rung above "fewer steps". This walk has no blow attached to
             -- it -- it is what a body does when no rule produced an action -- and it was choosing
@@ -1982,9 +1996,11 @@ function AI.plan(combat, unit)
     -- this turn can strike whatever has already come to it.
     local tiles = { { x = unit.x, y = unit.y, steps = 0 } }
     if not posture.rooted then
+        local tolls = Combat.routeTolls(combat, unit) -- what the road to each tile costs in hostile ground
         for _, node in ipairs(Combat.reachableList(combat, unit)) do
             if AI.atPost(node.x, node.y, post) then
-                tiles[#tiles + 1] = { x = node.x, y = node.y, steps = node.steps }
+                tiles[#tiles + 1] = { x = node.x, y = node.y, steps = node.steps,
+                                      toll = tolls and tolls[node.x .. "," .. node.y] or 0 }
             end
         end
     end

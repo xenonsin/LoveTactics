@@ -411,6 +411,21 @@ Grade.TRAIT_GRADE = {
     -- reason, being fed by the bodies you are making anyway.
     trait_bereft =                      1.0,  -- Bereft -- one ally, once, and you cannot want it
 
+    -- THE SPIDER LINE (2026-09-23), judged against their nearest neighbours in this table.
+    -- Silkfoot is a terrain answer on one ground plus a small haste there: Slipchain-shaped (a status
+    -- immunity bought with a slot), so under Slipstep. The Still Hunt is Fury Swipes' shape -- capped,
+    -- fed by a choice the bearer keeps making -- and graded a notch under it, because the choice is to
+    -- NOT move, which a front line rarely can. Tremor Cord waives only sight against one status: narrow,
+    -- Marksman's Lens' half without its damage. Castoff is Last Stand's shape (once, at a threshold) with
+    -- a cleanse and a turn of cover in place of a barrier and a permanent bump, so a point under it.
+    -- Feels the Web and Moult are boss rules on one creature and sit at the reactive-rule floor.
+    trait_silkfoot =                    2.0,  -- Silkfoot -- web does not catch you, and you act sooner on it
+    trait_still_hunt =                  2.5,  -- The Still Hunt -- a quarter of Damage per unmoved turn, max 3
+    trait_tremor_cord =                 1.5,  -- Tremor Cord -- sight through cover to a Rooted foe
+    trait_castoff =                     2.0,  -- Castoff -- once at half: cleanse and a turn unseen
+    trait_feels_the_web =               0.5,  -- Feels the Web -- the Larder Mother's reach
+    trait_moult =                       0.5,  -- Moult -- the Larder Mother's half-health turn
+
     -- ADOPTED FROM THE SEED, not individually weighed. These are the classifier's own numbers, taken
     -- as authored on the designer's instruction rather than argued one by one. They are real weights
     -- and the grader treats them as such -- but Grade.TRAIT_ADOPTED below keeps the provenance, because

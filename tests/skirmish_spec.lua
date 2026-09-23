@@ -267,6 +267,23 @@ return {
             return player
         end
 
+        -- EACH FIGHT ON ITS OWN GROUND (2026-09-23). This built every encounter on a forest board, which
+        -- was harmless while the forest's signature ground was a nuisance and stopped being harmless when
+        -- the wood started stringing web: the Shoal -- a Greed swamp fight nobody ever meets in the wood --
+        -- went from a win in 14 to a wipe in 35 because a Shoalkin got caught on a strand, and the case
+        -- was measuring a fight the game never deals. So each encounter is stood on the first ground in
+        -- the circles' order that its own `condition` admits. A fight with no ground lock (humans float)
+        -- keeps the forest it was always measured on.
+        local GROUNDS = { "forest", "castle", "swamp", "volcanic", "tundra", "desert", "spire", "underworld" }
+        local function homeGround(def)
+            if not def.condition then return "forest" end
+            for _, g in ipairs(GROUNDS) do
+                local ok, yes = pcall(def.condition, { biome = g, depth = DEPTH })
+                if ok and yes then return g end
+            end
+            return "forest"
+        end
+
         local worst, worstId = 0, nil
         for _, e in ipairs(weightedByKind("combat")) do
             local player = companyAtDepth(DEPTH)
@@ -278,7 +295,7 @@ return {
             -- and silently builds a one-bandit default fight, which is a measurement of nothing.
             local built = EncounterBattle.build({
                 encounter = { id = e.id, kind = e.def.kind },
-                biome = "forest", depth = DEPTH,
+                biome = homeGround(e.def), depth = DEPTH,
                 party = player.roster, seed = 20260809,
             })
             -- Guard the harness itself: if the composition ever stops reaching the arena, every number

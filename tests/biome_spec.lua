@@ -207,14 +207,14 @@ return {
     },
     {
         -- WAS "a biome with no signature hazard seeds none", asserting the forest seeded nothing. The
-        -- forest has ground of its own now (sweetbriar), so what is worth holding is the general shape:
+        -- forest has ground of its own now (web), so what is worth holding is the general shape:
         -- a biome that declares a hazard seeds it, and a caller that declares none still seeds none.
         name = "a biome seeds the ground its blueprint declares, and only that",
         fn = function()
             -- The three biomes that had none until this pass, each now seeding its own and nothing
             -- borrowed from a neighbour.
             for biome, want in pairs({
-                forest = "hazard_sweetbriar",
+                forest = "hazard_web", -- sweetbriar until the wood became Gluttony's; see forest.lua
                 castle = "hazard_threshold",
                 underworld = "hazard_spoil_heap",
             }) do

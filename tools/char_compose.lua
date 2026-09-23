@@ -431,6 +431,13 @@ local CHARACTER_SILHOUETTE = {
     sapling = "delapouite/seedling",
     heartwood_tree = "lorc/pine-tree",            -- a yew, as near as the set comes
 
+    -- THE SPIDER LINE (Gluttony). Each its own row: a CREATURE_MATCH on "spider" would seat the spider
+    -- and the spiderling on one silhouette, which char_compose_spec refuses.
+    giant_spider = "carl-olsen/spider-face",
+    the_larder_mother = "skoll/long-legged-spider",
+    spiderling = "delapouite/spider-eye",
+    larder_husk = "delapouite/spider-bot",        -- the empty skin, still spider-shaped
+
     -- ...AND THE THIRD ELEMENTAL THE KEEP MADE. The other two need nothing here and must not get it:
     -- character_fire_elemental and character_wind_elemental carry their element word in the id, so
     -- `elementOf` seats them on ELEMENT_SILHOUETTE and ELEMENT_TINT exactly as it always has -- and

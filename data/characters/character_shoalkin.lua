@@ -30,7 +30,8 @@ return {
         defense = 2, magicDefense = 2,
         -- 4, which the race takes to 3: a naga on dry stone is slower than the men it is fighting.
         movement = 4,
-        speed = 4,
+        speed = 3, -- WAS 4 (2026-09-23): a knife this quick (speed 2) on a body this quick struck so
+                   -- often that a depth-11 company lost the Shoal on its own swamp. See the encounter.
         skill = 5, luck = 4,
     },
     startingItems = {

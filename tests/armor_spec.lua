@@ -200,7 +200,7 @@ return {
         end,
     },
     {
-        name = "only two armors sell a negative resist, and both argue for it",
+        name = "only three armors sell a negative resist, and each argues for it",
         fn = function()
             -- A negative `resist` AMPLIFIES the hit (Combat.mitigatedDamage sums the term without a
             -- floor). The mechanic is old -- utility_demonic_essence carries holy = -8 so Demon Bane
@@ -230,18 +230,22 @@ return {
             -- Quoted keys rather than bare ones, and not for style: tests/item_coverage_spec.lua
             -- counts an item as tested when some spec names it IN QUOTES, so a bare key here would
             -- drop both of these off the coverage ratchet while still reading as if it named them.
+            -- THREE (2026-09-23): armor_gossamer_mantle is spider silk and burns as the spider does
+            -- (`fire = -4`) -- the coat that walks the Gluttony web freely is the one a fire cast finds
+            -- first. Its header argues it; no spider wears one, so the weakness never stacks.
             local WEARABLE_AMPLIFIERS = {
                 ["armor_reckless_cuirass"] = true,
                 ["armor_scale_hauberk"] = true,
+                ["armor_gossamer_mantle"] = true,
             }
             table.sort(wearable)
             for _, id in ipairs(wearable) do
                 assert(WEARABLE_AMPLIFIERS[id], id .. " is a wearable negative resist and is not one of "
                     .. "the two named here. Write the header first, then add the line.")
             end
-            assert(#wearable == 2, "exactly two ARMORS carry a negative resist; found " .. #wearable
+            assert(#wearable == 3, "exactly three ARMORS carry a negative resist; found " .. #wearable
                 .. ": " .. table.concat(wearable, ", "))
-            assert(#all == 3, "and the only others are the demon's own flesh and the naga's; found " .. #all)
+            assert(#all == 4, "and the only other is the demon's own flesh; found " .. #all)
         end,
     },
 }

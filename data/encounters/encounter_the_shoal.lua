@@ -33,8 +33,19 @@ return {
     -- a shoal of two at depth eleven and the fight ran 33 unit-turns against the budget of 22 -- which
     -- is the finding both this header and tests/support/slow_road_fights.lua already record from the
     -- other side: where neither party can close, a LIGHTER fight is a longer one.
+    --
+    -- RETUNED 2026-09-23, WHEN IT WAS FIRST MEASURED ON ITS OWN GROUND. tests/skirmish_spec.lua stood every
+    -- ordinary fight on a forest board, and there this one "won" in 14 unit-turns only because a Shoalkin
+    -- walked into sweetbriar and was charmed to the party's side -- a planner that priced the stop tile
+    -- and not the road. Met on the swamp, by a planner that walks round hostile ground, a depth-11 company
+    -- LOST it at 35-41 on three seeds in five. Two changes, measured across five seeds on the swamp:
+    --   * the shoal caps at TWO (was three): three shoalkin at the depth ceiling is what lost it
+    --   * the Shoalkin act at speed 3 (was 4): two alone still lost one seed in five
+    -- Together: W18 W15 W24 W14 W14 -- all five won, the spec's own seed at 18. Health, defense and the
+    -- damage stat were tried and moved nothing (the ladder's growth sets those at depth), which is why the
+    -- levers are the count and the tempo.
     composition = function(ctx)
         local list = { "character_fen_lancer" }
-        return Band.fill(list, ctx, "character_shoalkin", { base = 2, per = 2, max = 3, vary = 0 })
+        return Band.fill(list, ctx, "character_shoalkin", { base = 2, per = 2, max = 2, vary = 0 })
     end,
 }

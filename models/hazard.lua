@@ -87,7 +87,14 @@ Hazard.FRIENDLY_BIAS = 6
 -- always worth taking when one exists. A body's whole move is 3-5, so the detour it will pay for is
 -- bounded by one turn's walking: a body properly hemmed in by fire walks through and takes the burn
 -- rather than standing still forever, which is the failure the hard stop would have.
-Hazard.PATH_TOLL = 4
+--
+-- RAISED TO 6 (2026-09-23), when the forest started stringing web on every board: at 4 a hostile tile
+-- was only one point dearer than a hill, and a planner happily walked into a strand to save a step.
+-- 6 is two hills' worth -- a detour of a tile or two is always preferred, and a body truly walled in
+-- still walks through (its whole move is 3-5, so no hazard is ever an absolute wall). The same toll is
+-- now also CHARGED to the planner's choice of destination (Combat.routeTolls, AI.WEIGHTS.ROUTE_HAZARD),
+-- not only to the route it walks once it has chosen.
+Hazard.PATH_TOLL = 6
 
 -- Orthogonal neighbor offsets (matches the movement DIRS in models/combat.lua); used by spread.
 local DIRS = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }
@@ -292,6 +299,13 @@ function Hazard.place(combat, x, y, id, opts)
 
     local tags = {}
     for _, t in ipairs(def.tags or {}) do tags[#tags + 1] = t end
+
+    -- NEW GROUND PUTS OUT THE GROUND IT IS DOUSED BY, on its own tile, before it lands. A fire that
+    -- creeps onto a web (it spreads into anything `burnable`) burns the strand away; rain falling on a
+    -- fire smothers it. `dousedByTags` already said which ground answers to which element -- a cast's
+    -- footprint was simply the only thing that ever asked, so a fire SPREADING across briarfloor sat on
+    -- top of it forever despite the briar's own line saying fire clears it.
+    Hazard.douse(combat, { { x = x, y = y } }, tags)
 
     local hazard = {
         id = id,
@@ -628,11 +642,16 @@ end
 -- the party's sanctuary, so it must not detour onto one. Omitting `side` scores the tile for a unit
 -- that every hazard counts as an ally. Pure, so the enemy planner can fold it into destination
 -- scoring and tests can assert it directly.
-function Hazard.tileBias(combat, x, y, side)
+--
+-- `unit` is optional and names who is asking: a zone that WELCOMES that body (`def.welcomes(unit)`) --
+-- a web to the spider that walks it -- reads as friendly ground to it and hostile to everyone else.
+function Hazard.tileBias(combat, x, y, side, unit)
     local score = 0
     for _, h in ipairs(Hazard.allAt(combat, x, y)) do
         local disp = h.def.disposition
-        if disp == "hostile" then
+        if unit and h.def.welcomes and h.def.welcomes(unit) then
+            score = score + Hazard.FRIENDLY_BIAS
+        elseif disp == "hostile" then
             score = score - Hazard.HOSTILE_BIAS
         elseif disp == "friendly" and Hazard.allied(h, side) then
             score = score + Hazard.FRIENDLY_BIAS
@@ -656,10 +675,13 @@ end
 -- allocates a fresh table on every call and a route search asks about every tile on the board, which
 -- is precisely the shape that once turned a twenty-second test suite into one that never finished
 -- (see Combat.terrainEase's cache).
-function Hazard.tollMap(combat)
+--
+-- `unit`, when given, is the walker: a zone that welcomes it (Hazard.tileBias) charges it nothing.
+function Hazard.tollMap(combat, unit)
     local out, any = {}, false
     for _, h in ipairs((combat and combat.hazards) or {}) do
-        if h.alive and h.def and h.def.disposition == "hostile" then
+        if h.alive and h.def and h.def.disposition == "hostile"
+            and not (unit and h.def.welcomes and h.def.welcomes(unit)) then
             local k = h.x .. "," .. h.y
             out[k] = (out[k] or 0) + Hazard.PATH_TOLL
             any = true

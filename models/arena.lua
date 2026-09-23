@@ -1162,6 +1162,81 @@ local function withTerrainZones(layout)
     return out
 end
 
+-- GROUND A BODY BRINGS WITH IT (`seedsGround = { id, count }` on a character blueprint): a spider
+-- strings its web before the bell, a garden body roots its briar. The biome's signature pass is a fact
+-- about the PLACE; this is a fact about WHO IS STANDING IN IT, so the same wood reads differently with a
+-- spider in it than without -- and that difference is legible from deployment, before anyone moves.
+--
+-- Laid in the BAND BETWEEN THE TWO SIDES (the rows strictly between the party's seats and the enemy's),
+-- because that is ground somebody has to cross; a strand behind the enemy line is scenery. Only on
+-- plain ground nothing holds -- no body, no prop, no zone already there -- so it never stacks a second
+-- hazard on a tile or lands under a seated unit before the bell.
+--
+-- Here in Arena.build and not in generateLayout, for two reasons: this is the first place that knows
+-- the enemy BLUEPRINT IDS (the generator is handed a count), and it is where the curated and rolled
+-- paths meet, so a hand-laid board gets its spiders' web too. Drawn off its own generator salted from
+-- the fight's seed, so a stored seed still reproduces the fight tile for tile, and a board nobody seeded
+-- (a rating pass) simply lays none rather than rolling an unrepeatable one.
+local GROUND_SALT = 7919
+
+local function bodyGround(layout, enemyIds, party, enemies, taken, seed)
+    if not (seed and layout.tiles) then return nil end
+    local Character = require("models.character") -- lazily, as footprintOf does
+    local wanted = {}
+    for _, id in ipairs(enemyIds) do
+        local g = Character.defs[id] and Character.defs[id].seedsGround
+        if g and g.id and (g.count or 0) > 0 then wanted[#wanted + 1] = g end
+    end
+    if #wanted == 0 then return nil end
+
+    local function meanY(list)
+        local s, n = 0, 0
+        for _, u in ipairs(list) do s, n = s + u.y, n + 1 end
+        return n > 0 and s / n or nil
+    end
+    local py, ey = meanY(party), meanY(enemies)
+    local lo, hi = 1, layout.rows
+    if py and ey then lo, hi = math.min(py, ey), math.max(py, ey) end
+
+    local blocked = {}
+    for k in pairs(taken) do blocked[k] = true end
+    for _, u in ipairs(party) do blocked[key(u.x, u.y)] = true end
+    for _, h in ipairs(layout.hazards or {}) do blocked[key(h.x, h.y)] = true end
+    local band, rest = {}, {}
+    for y = 1, layout.rows do
+        for x = 1, layout.cols do
+            if layout.tiles[y] and layout.tiles[y][x] == "ground" and not blocked[key(x, y)] then
+                local list = (y > lo and y < hi) and band or rest
+                list[#list + 1] = { x = x, y = y }
+            end
+        end
+    end
+
+    local rng = love.math.newRandomGenerator(seed + GROUND_SALT)
+    local function draw(list)
+        if #list == 0 then return nil end
+        return table.remove(list, rng:random(1, #list))
+    end
+    local out = {}
+    for _, g in ipairs(wanted) do
+        for _ = 1, g.count do
+            local c = draw(band) or draw(rest)
+            if not c then return out end
+            out[#out + 1] = { id = g.id, x = c.x, y = c.y, duration = g.duration }
+        end
+    end
+    return out
+end
+
+-- The layout's hazards (withTerrainZones) with any body-brought ground appended, as a fresh list.
+local function withBodyGround(zones, extra)
+    if not extra or #extra == 0 then return zones end
+    local out = {}
+    for _, h in ipairs(zones) do out[#out + 1] = h end
+    for _, h in ipairs(extra) do out[#out + 1] = h end
+    return out
+end
+
 local function hydrateTiles(layout)
     local tiles = {}
     for y = 1, layout.rows do
@@ -1447,7 +1522,9 @@ function Arena.build(ctx, spec)
         -- curated paths meet -- a fort someone laid by hand in data/arenas/ must mend the body holding
         -- it exactly as a rolled one does, and doing it twice in two places is how the two would come
         -- to disagree.
-        hazards = withTerrainZones(layout),
+        -- ...and whatever ground the bodies standing here brought with them (bodyGround).
+        hazards = withBodyGround(withTerrainZones(layout),
+            bodyGround(layout, enemyIds, party, enemies, taken, spec.seed or layout.seed)),
         props = layout.props or {}, -- scattered/authored props (barrels, crates) carried into combat (Combat.new places them)
         objective = normalizeObjective(spec.objective, layout, enemyIds),
         -- The seed the caller chose, not whatever the layout happened to record: it is what the
