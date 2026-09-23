@@ -389,6 +389,13 @@ local CHARACTER_SILHOUETTE = {
     the_unwanted = "lorc/crystal-cluster", -- it is already several things
     second_water = "lorc/frozen-orb",      -- the thinner wash, poured off and kept
 
+    -- THE LUST CIRCLE. Both demons, so without names here they would land on one kind fallback and the
+    -- alpha would be the chaff drawn larger -- and the two of them are the same bird on purpose, so the
+    -- tint and the frame separate them by nothing a player reads at board size. The silhouette is the
+    -- only axis left: the flock is a harpy, she is the carrion version of it.
+    harpy = "lorc/harpy",
+    harpy_matriarch = "lorc/vulture", -- the same bird, grown -- an alpha that is not a second animal
+
     -- THE WRATH CIRCLE. Two elementals, two demons and a beast, which without names here would collapse
     -- onto three kind fallbacks between them.
     ember_spit = "lorc/small-fire",

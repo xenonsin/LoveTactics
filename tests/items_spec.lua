@@ -7,6 +7,7 @@
 local Item = require("models.item")
 local Combat = require("models.combat")
 local Status = require("models.status")
+local AI = require("models.ai")
 local Fixture = require("tests.support.fixture")
 
 local arena = Fixture.new
@@ -391,6 +392,139 @@ return {
                 assert(st, "each nearby foe is taunted")
                 assert(st.taunter == knight, "the taunt points back at the shouter")
             end
+        end,
+    },
+    -- ----------------------------------------------------------------------------------------
+    -- TAUNT BINDS THE PLAYER. For years it did not: the compulsion lived entirely in models/ai.lua's
+    -- planner, which only ever runs for a unit the player is NOT driving -- so a taunt landed on a
+    -- party member was a badge with a description and no rule behind it, and every enemy taunt in the
+    -- game was decorative. The seizure lives in the status now (data/status/status_taunt.lua) and is
+    -- Charm's own mechanism minus the side flip. These cases are the ones that would have caught the
+    -- hole, so they are written about the SWITCH rather than about any one deliverer.
+    -- ----------------------------------------------------------------------------------------
+    {
+        name = "a taunted party unit is taken out of the player's hands",
+        fn = function()
+            local c = Combat.new(arena(10, 10),
+                { mkunit(3, 3, {}) },
+                { mkunit(8, 8, {}) })
+            local mine, foe = c.units[1], c.units[2]
+            assert(Combat.isPlayerControlled(mine), "it starts out mine to drive")
+
+            Status.apply(c, mine, "status_taunt", { applier = foe })
+            -- ONE FIELD IS THE WHOLE SWITCH. Combat.isPlayerControlled is a single read of
+            -- `unit.control`, and it is what every input handler in states/battle.lua bails on and
+            -- what the update loop hands the turn to executeEnemyAction on. Asserting the field is
+            -- asserting all of that, without dragging a battle screen into a headless spec.
+            assert(not Combat.isPlayerControlled(mine),
+                "a taunted body takes no orders -- this is the bug that shipped for years")
+
+            -- ...AND IT IS DRIVEN AT THE TAUNTER, which is the other half. A seizure with no
+            -- compulsion behind it would be strictly worse than doing nothing: the AI would play the
+            -- player's own knight, on the player's own tactics, for three turns.
+            local plan = AI.preempt(c, mine)
+            assert(plan and plan.reason and plan.reason:find("taunted"),
+                "and the compulsion fires above the rule list")
+
+            Status.remove(c, mine, "status_taunt")
+            assert(Combat.isPlayerControlled(mine), "and the body comes back when the jeer ends")
+        end,
+    },
+    {
+        name = "a taunt with no taunter holds nobody",
+        fn = function()
+            -- THE FAILURE MODE THE SEIZURE HAS TO DECLINE. AI.preempt reads `taunter`; with none it
+            -- falls through to the ordinary rule list -- so taking control on a pointless badge would
+            -- hand a party member to the AI with nothing compelling it. The badge still runs its
+            -- clock; it simply does not take anybody.
+            local c = Combat.new(arena(10, 10), { mkunit(3, 3, {}) }, { mkunit(8, 8, {}) })
+            local mine = c.units[1]
+            Status.apply(c, mine, "status_taunt")
+            assert(Status.get(mine, "status_taunt"), "the badge is on")
+            assert(Combat.isPlayerControlled(mine), "and it holds nobody")
+        end,
+    },
+    {
+        name = "the taunter stamps itself, so a deliverer that forgets still points somewhere",
+        fn = function()
+            -- IT USED TO BE EVERY DELIVERER'S JOB and two of them did not do it: armor_crowds_due and
+            -- armor_standing_debt applied this to every foe around their wearer and pointed it at
+            -- nobody, so the Sentinel's whole standing rule redirected exactly zero blows. Defaulted
+            -- from the applier now, which is the same argument status_charm makes about its own flip.
+            local c = Combat.new(arena(10, 10), { mkunit(3, 3, {}) },
+                                                { mkunit(8, 8, {}), mkunit(8, 6, {}) })
+            local mine, foe, decoy = c.units[1], c.units[2], c.units[3]
+            local st = Status.apply(c, mine, "status_taunt", { applier = foe })
+            assert(st and st.taunter == foe, "the jeer knows who made it without being told twice")
+
+            -- ...AND A DELIVERER THAT MEANS SOMEBODY ELSE STILL WINS, which is what lets
+            -- ability_straw_sentry name its dummy rather than its shouter: the default only fills a
+            -- nil, so the line after the apply still overrides it, and the compulsion follows.
+            st.taunter = decoy
+            local plan = AI.preempt(c, mine)
+            assert(plan and plan.reason and plan.reason:find("taunted"), "still compelled")
+            local aimed = plan.tx and { plan.tx, plan.ty } or nil
+            if aimed then
+                assert(aimed[1] == decoy.x and aimed[2] == decoy.y,
+                    "and it is driven at the hand-stamped taunter, not at whoever applied the badge")
+            end
+        end,
+    },
+    {
+        name = "cutting the taunter down hands the body straight back",
+        fn = function()
+            -- The counterplay Charm keeps, arrived at from the clock as well as from the death: a
+            -- taunter that falls, or one that stops being hostile, releases what it was holding. A
+            -- seizure that outlived its own reason would leave a party member AI-driven with nothing
+            -- driving it -- the exact state the case above refuses to enter in the first place.
+            local c = Combat.new(arena(10, 10), { mkunit(3, 3, {}) }, { mkunit(4, 4, {}) })
+            local mine, foe = c.units[1], c.units[2]
+            Status.apply(c, mine, "status_taunt", { applier = foe })
+            assert(not Combat.isPlayerControlled(mine), "held to begin with")
+            foe.alive = false
+            Status.tick(c, 5)
+            assert(not Status.get(mine, "status_taunt"), "the jeer dies with the jeerer")
+            assert(Combat.isPlayerControlled(mine), "and the body is the player's again")
+        end,
+    },
+    {
+        name = "a jeer that lands mid-turn waits, then takes the body on the clock",
+        fn = function()
+            -- THE ONE REFUSAL THAT IS ABOUT TIMING RATHER THAN ABOUT THE JEER. Flipping control out
+            -- from under an OPEN turn would hand the player's half-spent turn -- a walk already taken,
+            -- a cast already aimed -- to the AI to finish, and the input handlers would start
+            -- declining between one click and the next. Nothing in the game can reach this today: a
+            -- taunt arrives on its deliverer's turn, so the victim's is never the open one. It is
+            -- guarded because the first reflex or hazard that jeers during somebody else's turn would
+            -- find it, and the failure would read as the battle screen going dead.
+            local c = Combat.new(arena(10, 10), { mkunit(3, 3, {}) }, { mkunit(8, 8, {}) })
+            local mine, foe = c.units[1], c.units[2]
+            c.turn = { unit = mine, moved = false, moveCost = 0 }
+            Status.apply(c, mine, "status_taunt", { applier = foe })
+            assert(Status.get(mine, "status_taunt"), "the badge lands either way")
+            assert(Combat.isPlayerControlled(mine),
+                "...but the open turn is finished by the player who started it")
+
+            -- AND THE JEER IS NOT LOST. The next rebase takes the body -- which is before its own turn
+            -- comes round again, so the compulsion costs the victim every turn it was ever going to.
+            c.turn = nil
+            Status.tick(c, 1)
+            assert(not Combat.isPlayerControlled(mine), "the clock collects what the landing could not")
+        end,
+    },
+    {
+        name = "a refreshed taunt does not strand the body it is already holding",
+        fn = function()
+            -- CHARM'S LESSON, ON THE OTHER STATUS THAT STASHES A FIELD. onApply fires on a refresh as
+            -- readily as on a fresh landing, so re-reading `control` there would record "ai" as the
+            -- state to go home to and the victim would never get its turn back.
+            local c = Combat.new(arena(10, 10), { mkunit(3, 3, {}) }, { mkunit(8, 8, {}) })
+            local mine, foe = c.units[1], c.units[2]
+            Status.apply(c, mine, "status_taunt", { applier = foe })
+            Status.apply(c, mine, "status_taunt", { applier = foe })
+            Status.remove(c, mine, "status_taunt")
+            assert(Combat.isPlayerControlled(mine),
+                "topping the duration up must not overwrite what the body goes home to")
         end,
     },
     {

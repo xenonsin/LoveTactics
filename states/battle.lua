@@ -7309,6 +7309,15 @@ function battle.drawHudText(boardX, boardW)
                 or (InputMode.touch and "Drag onto a blue tile to move  ·  a foe in red range to attack  ·  tap an item  ·  Wait to delay"
                     or "Click a blue tile to move  ·  a foe in red range to attack  ·  an item  ·  Wait to delay")
         end
+    elseif battle.current and not battle.over
+        and battle.current.side == (battle.combat.playerSide or "party")
+        and Status.get(battle.current, "status_taunt") then
+        -- ONE OF YOURS, ACTING WITHOUT YOU. A taunted body is handed to the AI for the duration
+        -- (data/status/status_taunt.lua), so every branch above declines it and it would otherwise
+        -- fall through to "Enemy acting" -- which is a flat lie about whose knight that is, at the one
+        -- moment the player most needs to know why their turn is being played for them. The badge on
+        -- the card says WHAT; this says why the controls went away.
+        hint = "Taunted — it will not hear you"
     else
         hint = "Enemy acting..."
     end

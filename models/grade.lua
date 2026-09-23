@@ -172,7 +172,18 @@ Grade.STATUS_GRADE = {
     -- Balance.MAGNITUDE_WAIVERS already says the same thing from the other end -- the Swineherd's Wand
     -- is excused its damage because "polymorph removes the body from the fight outright".
     status_polymorph = 2.4,
-    status_taunt = 1.3,          -- must swing at the taunter, wherever that leaves it
+    -- TAUNT WAS 1.3, PRICED AS A STEER, AND IT IS A COMPULSION NOW. The old weight was honest about
+    -- what the status did at the time: the victim "must swing at the taunter", which the planner read
+    -- as one more consideration. It takes the victim'"'"'s CONTROL now -- the body is driven at the taunter
+    -- and its owner gets no say for the duration (data/status/status_taunt.lua) -- and on a player
+    -- unit that used to be worth literally nothing at all, since the compulsion lived only in the
+    -- enemy planner.
+    --
+    -- Placed between the two it is now bracketed by, rather than picked. Charm (2.2) is this plus the
+    -- side flip: their turn denied AND yours gained. Polymorph (2.4) denies the turn outright. This
+    -- denies the CHOICE and leaves the turn -- the body still swings, at a target it did not pick --
+    -- so it sits below both and well above a nudge.
+    status_taunt = 1.8,
     status_knell = 3.0,          -- a kill on a clock, if the clock is allowed to run out
     status_downed = 2.5,         -- a body off the board, short of a corpse
     status_interred = 1.0,       -- every heal lands as a wound: it cannot be saved
@@ -558,6 +569,16 @@ Grade.TRAIT_GRADE = {
     -- Two-thirds of the shove is what those three cuts come to, and like the shove it deals nothing
     -- itself: the wall, the fire and the next body in the rank do the talking.
     trait_antler_toss =                 2.0,  -- Antler Toss
+    -- DOWNDRAFT is the Toss with Whirl Answer's reach, and it is weighed as exactly that product
+    -- rather than guessed. The Toss is the one-tile, attack-only, no-slot shove (2.0 above); widening
+    -- a melee reflex from the hand that reached in to EVERYTHING adjacent is what separates the plain
+    -- counters (3.0) from Whirl Answer (4.5), which is one and a half times. 2.0 x 1.5 = 3.0.
+    --
+    -- It deals nothing itself, like both of its parents -- the wall, the fire and the threshold do the
+    -- talking -- and on this circle's ground that is worth more than it is anywhere else. The weight
+    -- prices the rule, not the Thinwall Keep; if the castle ever makes it feel dearer than a Riposte,
+    -- the thing to look at is the board's own shove arithmetic and not this line.
+    trait_downdraft =                   3.0,  -- Downdraft
     trait_slipstep =                    3.0,  -- Slipstep
     trait_spiteful_ichor =              3.0,  -- Spiteful Ichor
     trait_splitglass_parry =            3.0,  -- Splitglass Parry

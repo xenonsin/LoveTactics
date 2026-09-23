@@ -361,4 +361,198 @@ return {
             end
         end,
     },
+    -- ------------------------------------------------------------ LUST, RE-PREMISED (2026-09-22)
+    --
+    -- The circle is five verbs -- Charm, Taunt, Root, Wind, Fire -- and one sentence: it never takes
+    -- your health, it takes your say over where you are standing and who you are standing for. The
+    -- cases below hold the three of those five that are now on the flock and its alpha (Root, Wind,
+    -- Fire) and the one interaction that is the circle's own counterplay. See the Lust entry in
+    -- models/descent.lua for the whole argument, including the verb that is NOT wired.
+    {
+        name = "the flock is one verb pointed both ways: the talons haul in, the gust drives off",
+        fn = function()
+            local map = Fixture.new(12, 12)
+            local c = Fixture.combat(map, { unit("character_knight", 5, 5) },
+                                          { unit("character_harpy", 5, 8) })
+            local harpy, knight
+            for _, u in ipairs(c.units) do
+                if u.char.id == "character_harpy" then harpy = u else knight = u end
+            end
+
+            -- THE STOOP drives a body one tile straight off the bird -- worth nothing on this bare
+            -- fixture and everything in the Thinwall Keep, where the tile behind you is a wall and
+            -- Combat.knockback bills the impact of a shove it could not finish.
+            openTurn(c, harpy)
+            local y = knight.y
+            Combat.useItem(c, harpy, itemNamed(harpy.char, "weapon_stooping_gust"), knight.x, knight.y)
+            assert(knight.y == y - 1, "the gust drives a body one tile off the harpy")
+
+            -- THE SNATCH is the same verb reversed: it hauls a body out of its line and onto the bird.
+            -- A flock that only pushed would scatter a company; a flock that only pulled would gather
+            -- it into a heap, which is the one arrangement a party actually wants. Both is what
+            -- unpicks a rank.
+            harpy.x, harpy.y = knight.x, knight.y + 2
+            openTurn(c, harpy)
+            Combat.useItem(c, harpy, itemNamed(harpy.char, "weapon_harpy_talons"), knight.x, knight.y)
+            assert(math.max(math.abs(knight.x - harpy.x), math.abs(knight.y - harpy.y)) == 1,
+                "the talons haul their mark to the bird's side")
+        end,
+    },
+    {
+        name = "nothing on this stratum holds a body still",
+        fn = function()
+            -- ROOT IS OFF THIS GROUND AND THE REASON IS MECHANICAL, not flavour. The talons pinned in
+            -- the first cut of this circle, and Root sets `blocksForcedMove` -- so a rooted victim
+            -- cannot be shoved or dragged by ANYBODY, and the line body was quietly switching the rest
+            -- of the circle off one target at a time. A stratum built on displacement must not hold.
+            -- Asserted rather than written down, because "the talons also pin" is a one-line change
+            -- that reads like an improvement.
+            local map = Fixture.new(12, 12)
+            local c = Fixture.combat(map, { unit("character_knight", 5, 5) },
+                                          { unit("character_harpy", 5, 7) })
+            local harpy, knight
+            for _, u in ipairs(c.units) do
+                if u.char.id == "character_harpy" then harpy = u else knight = u end
+            end
+            openTurn(c, harpy)
+            Combat.useItem(c, harpy, itemNamed(harpy.char, "weapon_harpy_talons"), knight.x, knight.y)
+            assert(not Status.get(knight, "status_root"),
+                "the flock moves you and never holds you")
+            assert(not Status.get(knight, "status_halted") and not Status.get(knight, "status_mired"),
+                "...and it does not hold you under another name either")
+        end,
+    },
+    {
+        name = "the Matriarch's cry takes the body out of the player's hands and lights it",
+        fn = function()
+            local map = Fixture.new(12, 12)
+            local c = Fixture.combat(map, { unit("character_knight", 5, 5) },
+                                          { unit("character_harpy_matriarch", 5, 9) })
+            local mother, knight
+            for _, u in ipairs(c.units) do
+                if u.char.id == "character_harpy_matriarch" then mother = u else knight = u end
+            end
+            assert(Combat.isPlayerControlled(knight), "the knight starts out the player's")
+            openTurn(c, mother)
+            Combat.useItem(c, mother, itemNamed(mother.char, "weapon_the_wanting"), knight.x, knight.y)
+
+            -- SHE ESCALATES IN KIND. The flock decides where your body is; she decides what it does --
+            -- the victim spends its own turns walking to her, and the burn is what the walking costs.
+            local st = Status.get(knight, "status_taunt")
+            assert(st and st.taunter == mother, "the cry points the victim back at her")
+            assert(not Combat.isPlayerControlled(knight),
+                "and the compulsion is real: a called body takes no orders (status_taunt's seizure)")
+            assert(Status.get(knight, "status_burn"), "the coming is what burns")
+
+            -- SHE DOES NOT MOVE IT. That is the flock's verb and she deliberately does not share it --
+            -- a cry that also dragged would make her a louder harpy instead of a different problem.
+            assert(knight.x == 5 and knight.y == 5, "the cry calls; it does not haul")
+
+            -- AND CUTTING HER DOWN HANDS IT BACK, which is this circle's standing counterplay and the
+            -- only reason the compulsion is fair. Driven from the clock, so it covers a taunter that
+            -- merely stopped being hostile as well as one that fell.
+            mother.alive = false
+            Status.tick(c, 5)
+            assert(Combat.isPlayerControlled(knight), "the jeer dies with the jeerer")
+        end,
+    },
+    {
+        name = "Downdraft clears the whole room, not only the hand that reached in",
+        fn = function()
+            local map = Fixture.new(12, 12)
+            local c = Fixture.combat(map,
+                { unit("character_knight", 5, 5), unit("character_knight", 6, 6) },
+                { unit("character_harpy_matriarch", 5, 6) })
+            local mother
+            for _, u in ipairs(c.units) do
+                if u.char.id == "character_harpy_matriarch" then mother = u end
+            end
+            for _, u in ipairs(c.units) do Combat.refreshPassives(u) end
+            local party = {}
+            for _, u in ipairs(c.units) do if u.side == "party" then party[#party + 1] = u end end
+            local before = {}
+            for i, u in ipairs(party) do before[i] = { u.x, u.y } end
+            local stamina = mother.char.stats.stamina.current
+
+            -- DISPATCHED DIRECTLY rather than by swinging at her, and the reason is the harness and not
+            -- the rule: an on-hit reflex is HELD until the action finishes (Combat.beginAnswers) and a
+            -- fixture's bare Combat.useItem never opens the turn machinery that flushes the hold. The
+            -- shipped Antler Toss and Shield Shove are equally silent in exactly the same fixture, so a
+            -- case built on the swing would be measuring the scaffolding. This is the call the live
+            -- path makes, carrying the snapshot the live path carries (see Combat's raiseAnswer).
+            Trait.onDamaged(c, mother, {
+                attacker = party[1], amount = 10,
+                tags = { "physical", "pierce", "melee" },
+                at = { answering = false, ux = mother.x, uy = mother.y,
+                       ax = party[1].x, ay = party[1].y },
+            })
+
+            local moved = 0
+            for i, u in ipairs(party) do
+                if u.x ~= before[i][1] or u.y ~= before[i][2] then moved = moved + 1 end
+            end
+            assert(moved == #party, string.format(
+                "the wing-beat takes everything adjacent (Whirl Answer's shape in this circle's verb); "
+                .. "%d of %d moved", moved, #party))
+            assert(mother.char.stats.stamina.current < stamina,
+                "and she pays for it, which is what paces her being surrounded")
+        end,
+    },
+    {
+        name = "the Matriarch is the harpy escalated, not a second animal",
+        fn = function()
+            local flock, alpha = Character.defs.character_harpy, Character.defs.character_harpy_matriarch
+            assert(flock and alpha, "the Lust circle fields a flock and an alpha")
+            assert(flock.tier == 2 and alpha.tier == 3, "line body, then elite")
+            assert(alpha.stats.health > flock.stats.health, "the alpha outweighs its own flock")
+            -- THE SAME BIRD, which is the whole reason the escalation reads without a word of
+            -- explanation: identical resist SHAPE, deeper, so a party that learned to shoot the flock
+            -- is right about her too. A different profile here would make her a second lesson.
+            for _, key in ipairs({ "slash", "pierce", "fire", "holy" }) do
+                local a, b = flock.resist[key], alpha.resist[key]
+                assert(a and b, "both carry a " .. key .. " line")
+                assert((a < 0) == (b < 0), key .. ": the alpha must lean the way its flock leans")
+                assert(math.abs(b) >= math.abs(a), key .. ": the alpha is the deeper version of it")
+            end
+            -- The two weapons the flock swings are hers as well; the cry and the feathers are what she
+            -- adds. Anything else and the escalation stops being an escalation.
+            local hers = {}
+            for _, id in ipairs(alpha.startingItems) do hers[id] = true end
+            for _, id in ipairs(flock.startingItems) do
+                assert(hers[id], "the alpha drops the flock's own " .. id)
+            end
+            assert(hers.weapon_the_wanting and hers.utility_flight_feathers,
+                "and she carries the cry and the wing-beat on top")
+        end,
+    },
+    {
+        name = "the castle fields an ordinary fight and an elite again",
+        fn = function()
+            -- THE 2026-09-22 CUT LEFT THIS GROUND AT 0/0 -- Lust's two floors rolled nothing at all,
+            -- which is a playability break rather than thinning. Measured the way that hole was
+            -- measured: the floor pool derives its circle from ctx.quest.sin, so a ctx without it
+            -- silently skips the elite billing entirely.
+            local Encounter = require("models.encounter")
+            local combat, elite = 0, 0
+            for _, row in ipairs(Encounter.pool({ biome = "castle", depth = 3, rung = 2,
+                                                  quest = { sin = "lust" } })) do
+                if row.kind == "elite" then elite = elite + 1
+                elseif row.kind == "combat" then combat = combat + 1 end
+            end
+            assert(combat >= 1, "the castle rolls no ordinary fight at all")
+            assert(elite >= 1, "the castle rolls no elite at all")
+        end,
+    },
+    {
+        name = "every harpy item is natural kit and nothing else",
+        fn = function()
+            for _, id in ipairs({ "weapon_harpy_talons", "weapon_stooping_gust", "weapon_the_wanting",
+                                  "utility_flight_feathers" }) do
+                local def = Item.defs[id]
+                assert(def, id .. " does not exist")
+                assert(def.noSteal and not def.price and def.class == "creature",
+                    id .. ": creature kit is unpriced, unshelved and unstealable")
+            end
+        end,
+    },
 }

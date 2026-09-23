@@ -41,8 +41,8 @@ local Descent = {}
 -- (Listed here in the order a first descent meets them -- Descent.INFERNO -- which is not the order
 -- the table below is written in.)
 --
---   lust      castle      a court, and its cast has always belonged in one
 --   gluttony  forest      a beast hunt: the circle that eats is the circle you hunt
+--   lust      castle      a court, and its cast has always belonged in one
 --   greed     swamp       a drowned vault, silted up, and the things that live in it
 --   wrath     volcanic    the obvious one, and it has earned it
 --   sloth     tundra      the post nobody came back to
@@ -83,10 +83,10 @@ local Descent = {}
 -- Named ids rather than an encounter blueprint because none of this is rollable content: there is
 -- exactly one boss per circle and the circle chooses it, never a weight.
 --
--- ORDERED, and the order here is only a canonical listing: what a run actually walks is Dante's, and
--- then its own once the Crown is broken (Descent.INFERNO, Descent.sinOrder). It is a list rather than a
--- registry because `pairs` is unspecified, and a run must lay out the same floors from the same seed on
--- any machine.
+-- ORDERED, and the order here is only a canonical listing: what a run actually walks is the authored
+-- running order, and then its own once the Crown is broken (Descent.INFERNO, Descent.sinOrder). It is a
+-- list rather than a registry because `pairs` is unspecified, and a run must lay out the same floors
+-- from the same seed on any machine.
 -- AND SHE SPEAKS, every run, on her own stair. `scene` is the conversation played over the guardian
 -- fight (data/conversations/descent/), which is the only seam an antagonist has: an `intro` runs before
 -- the party is even picked, and by the time an `outro` runs the fight is over.
@@ -139,6 +139,12 @@ Descent.SINS = {
         -- rule it taught you the slow way is standing next to the thing that has it in full.
         guardian = { lead = "character_general_gluttony", filler = "character_the_gralloch" },
         -- SHE WILL NOT RISE WHILE THERE IS ANYTHING LEFT TO EAT: the floor must be picked clean.
+        --
+        -- AND IT IS THE TEACHING GATE NOW, since this circle opens the descent (Descent.INFERNO). That
+        -- is the other half of why Gluttony goes first: "kill everything down here" is the one gate in
+        -- the mode a player never has to be told, so the first stair teaches that a stair HAS a
+        -- condition without also spending a lesson on what this one is. Every other circle's gate --
+        -- the ward, the toll, the count, the open door -- is read against it.
         gate = { kind = "clear" },
         -- THE CIRCLE'S OWN CHAFF WENT WITH ITS STRATUM (2026-09-22). The filler below is the
         -- nearest surviving body on this ground, not a body authored for this circle -- it stands
@@ -150,23 +156,86 @@ Descent.SINS = {
         elites = { seat = "encounter_gluttony_the_sated",
             spares = { "encounter_white_wolf", "encounter_meandering_stag",
             "encounter_the_sow", "encounter_the_unseeing" } } },
+    -- ---------------------------------------------------------------------------
+    -- LUST: THE CIRCLE THAT NEVER TAKES YOUR HEALTH. IT TAKES YOUR SAY OVER WHERE YOU ARE STANDING.
+    -- ---------------------------------------------------------------------------
+    --
+    -- Re-premised 2026-09-22, after the cut took the stratum's whole roster. The old Lust was petals
+    -- and briars and a Hartwood Bride -- a WOODLAND circle authored onto a castle, which is why every
+    -- one of its bodies read as having wandered in from Gluttony's ground. What it is now is the five
+    -- verbs the sin actually owns, and they are five ways of saying one sentence:
+    --
+    --   CHARM   you do not choose whose side you are on      (status_charm -- it flips side and control)
+    --   TAUNT   you do not choose who you fight              (status_taunt -- it takes control too)
+    --   WIND    you do not choose where you stand            (Combat.knockback, Combat.pull)
+    --   FIRE    ...and wanting costs, whether or not you get there  (status_burn)
+    --   ROOT    you do not choose whether to leave           (status_root -- UNFIELDED, see below)
+    --
+    -- EVERY OTHER CIRCLE BILLS A RESOURCE. Wrath takes the board, Envy takes your blessings, Greed
+    -- takes the haul, Gluttony takes the floor's own leavings. Lust takes AGENCY -- position and
+    -- allegiance -- and it is the only stratum where a body can spend an entire fight without ever
+    -- meaningfully hurting anybody.
+    --
+    -- SO WHAT DOES THE KILLING IS THE KEEP. The castle is the Thinwall Keep (data/biomes/castle.lua):
+    -- a rooms carve, thin walls, a warren of doorways, and a signature hazard that Disarms whoever
+    -- stands in one. A tile of shove is worth nothing in open country and everything in here --
+    -- Combat.knockback charges the impact of a shove it could not finish, harder the more travel it was
+    -- denied, so a body driven into a wall pays for the whole distance it never travelled. The flock
+    -- rearranges the company; the building kills it. That is the circle, and it is why the bodies on it
+    -- are authored thin and fast rather than heavy.
+    --
+    -- THE COUNTERPLAY, STATED, because a circle whose rule cannot be answered is a tax:
+    --   * Decide where the fight happens. The roofless room is the one piece of open floor on the
+    --     stratum and standing in the middle of it turns most of this circle off.
+    --   * CUT THE ONE DOING IT. Both of this circle's control effects end with the body that cast
+    --     them -- a charm when its charmer leaves the field (Combat.releaseCharmedBy), a jeer when its
+    --     taunter falls or stops being hostile (status_taunt's onTick). They are the only two effects
+    --     in the game a kill undoes retroactively, and this stratum owns both of them on purpose: it
+    --     is the circle that hands a company back what it took, if the company can reach her.
+    --   * Read the flock's two verbs as opposites and stand where neither is worth much. The talons
+    --     haul you IN, the gust drives you OUT; a company spread across a doorway gives both of them
+    --     somewhere to put you, and one that has already chosen its room gives them nothing.
+    --
+    -- ROOT IS OFF THIS GROUND, DELIBERATELY, and it is listed above rather than struck out because it
+    -- is still the sin's verb -- nothing fields it today. The flock's talons pinned in the first cut
+    -- and it was the wrong verb for the wrong reason: Root sets `blocksForcedMove`, so a rooted victim
+    -- cannot be shoved or dragged by ANYBODY, and the circle's own line body was switching the circle
+    -- off one target at a time. A stratum built on displacement must not hold. If root comes back here
+    -- it comes back on something that is not also doing the moving.
+    --
+    -- AND THE FIFTH VERB IS REAL NOW. `status_taunt` used to be enforced in models/ai.lua's enemy
+    -- planner and nowhere else, so a taunt landed on a PARTY member was a badge the player read and
+    -- ignored -- which is why the Matriarch's cry originally dragged the body instead of calling it.
+    -- The seizure lives in the status now, as Charm's flip does (data/status/status_taunt.lua), so a
+    -- taunted body is taken out of the player's hands and driven at whoever jeered. That is what lets
+    -- this circle's alpha escalate in KIND rather than in size: the flock decides where your body is,
+    -- and she decides what it does.
     { id = "lust", name = "Lust", vendor = "cathedral", biome = "castle",
         scene = "conversation_descent_lust",
         guardian = { lead = "character_general_lust", filler = "character_the_suppliant" },
         -- THE UNBIDDEN COMES WHEN SHE IS CALLED, and the Suppliant is who calls her -- so the ward is
-        -- a body, standing at its own end of the floor. This is the TEACHING GATE: Lust is first in
-        -- Dante's order, so it is the one a new company meets, and every other circle's is read
-        -- against it. Beat her, the ward breaks, the stair opens.
+        -- a body, standing at its own end of the floor. Beat her, the ward breaks, the stair opens.
+        --
+        -- IT USED TO BE THE TEACHING GATE, back when this circle opened the descent. Gluttony's
+        -- `clear` took that job with the first slot, and the ward is better off second: a gate that is
+        -- a BODY somewhere else on the floor only reads as a rule once the player has met one that
+        -- was not.
         gate = { kind = "ward" },
-        -- THE CIRCLE'S OWN CHAFF WENT WITH ITS STRATUM (2026-09-22). The filler below is the
-        -- nearest surviving body on this ground, not a body authored for this circle -- it stands
-        -- here so the escort is not an empty list, and it is what a replacement replaces.
-        minor = { lead = "character_the_suppliant", filler = "character_demon_imp" },
-        -- NO ELITES AT ALL. The Bride and the Beloved were the castle's only two, and the castle
-        -- has nothing else to promote: `named` reads nil and both floors of Lust draw from an
-        -- elite pool this ground does not have. This is the largest of the holes the cut opened
-        -- and the first one an authored replacement should close.
-        elites = {} },
+        -- THE ESCORT IS THE CIRCLE'S OWN STOCK AGAIN. It was character_demon_imp -- the nearest
+        -- surviving body on this ground after the cut, standing here so the list was not empty. The
+        -- harpy is a body authored for this stratum, and it is the right escort for a mini sin whose
+        -- own rule is about what a company does with its turn: a body being shoved a tile at a time is
+        -- a body spending turns walking, and walking is not spending (trait_unasked).
+        minor = { lead = "character_the_suppliant", filler = "character_harpy" },
+        -- ...AND THE STRATUM HAS AN ELITE AGAIN. The Bride and the Beloved were the castle's only two
+        -- and both went in the cut, which left `named` reading nil and BOTH floors of Lust drawing from
+        -- an elite pool this ground did not have. The Eyrie seats the Matriarch on the stair floor.
+        --
+        -- NO `approach` YET, and it degrades rather than breaking (the reader is
+        -- `rung == 2 and named.seat or named.approach`): rung 1 names nobody and every castle elite
+        -- draws at ELITE_WEIGHT. That is the next thing this ground is owed, along with a second
+        -- ordinary fight that is not a harpy.
+        elites = { seat = "encounter_lust_the_eyrie" } },
     { id = "greed", name = "Greed", vendor = "undercroft", biome = "swamp",
         scene = "conversation_descent_greed",
         guardian = { lead = "character_general_greed", filler = "character_the_tally" },
@@ -1707,13 +1776,36 @@ Descent.OPENING_CAP = 3
 -- A FLAT BODY COUNT IS SAFE HERE FOR A REASON WORTH WRITING DOWN. The seven minor bands do not field
 -- comparable filler -- a cinder-kin is worth three petal-drifts -- so six of one is not six of another,
 -- and at these numbers Wrath's opening stair would read 1100 where Lust's reads 465. It cannot happen to
--- the company this constant is for: a first descent walks Dante's order (Descent.INFERNO), so floor one
--- is ALWAYS Lust until the Crown is broken, and the shuffle that could seat any other circle first is
--- only dealt to a lap that carries its veteran company across (Player.newGamePlus). The cheap filler and
--- the level-one pair are the same case, every time.
+-- the company this constant is for: a first descent walks the authored order (Descent.INFERNO), so
+-- floor one is ALWAYS Gluttony until the Crown is broken, and the shuffle that could seat any other
+-- circle first is only dealt to a lap that carries its veteran company across (Player.newGamePlus). The
+-- cheap filler and the level-one pair are the same case, every time.
 --
 -- Scoped to the opening floor because that is the floor whose company is known. Every minor stair below
 -- it is met by whatever the player has assembled, and re-pricing those is a separate argument.
+--
+-- AND IT IS INERT TODAY, WHICH IS A MEASUREMENT AND NOT A REASON TO DELETE IT. This constant was
+-- written when the stair was sized by a body-count formula that gave ONE filler at floorLevel 1; the
+-- count is solved against a WORTH now (Descent.stairPlan, Descent.stairTarget), and the Gralloch over
+-- hawks solves to seven on its own -- so the `math.max` below changes nothing on the floor it exists
+-- for. It stays because it is a FLOOR, it can only ever raise, and the next circle to be seated first
+-- or re-cast with cheaper filler is the case it was written for. See the numbers below before touching
+-- it: the shape it was guarding against is real and has not gone anywhere.
+--
+-- MEASURED ON THE CURRENT OPENING FLOOR, against the pair Act 0 leaves (worth 460):
+--
+--     stairTarget(1)                716   companyWorth(1) 651, at STAIR_MULTIPLE
+--     Gluttony's stair, as seated   801   the Gralloch over seven hawks -- 57% of the pair
+--     Lust's stair, when it was first 937  the Suppliant over five harpies -- 49%
+--
+-- BOTH ARE TWO STEPS ABOVE THE PAIR, and tests/descent_spec.lua's opening-floor case says so. The gap
+-- is NOT this constant: `Descent.companyWorth` ramps from a FOUR-body company and floor one is walked
+-- by two, so a stair solved to 1.1x that ramp is 1.56x the company actually standing there before the
+-- solve has overshot anything. Even a perfect solve to 716 reads 64%, which is the one step the case
+-- allows and nothing to spare. The overshoot on top of it is Descent.stairPlan's break rule taking the
+-- first count AT OR OVER the target: six hawks reads 713 against a target of 716, three short, so the
+-- plan buys a seventh and lands 85 over. Both are real and both are a re-pricing argument of their own
+-- rather than a number to nudge here.
 Descent.OPENING_GUARD = 5
 
 -- Is this the floor a descent opens on -- the one board walked by a company that has not been assembled
@@ -1904,7 +1996,7 @@ function Descent.new(player, seed, startFloor)
         seed = runSeed,
         -- WHICH ORDER THE SEVEN CIRCLES COME IN, decided once, here, at the mouth of the run.
         --
-        -- False is Dante's order and true is this run's own shuffle; what flips it is having broken the
+        -- False is the authored order and true is this run's own shuffle; what flips it is having broken
         -- Crown (Player.hasFinishedCampaign). See Descent.sinOrder for why the poem goes first.
         --
         -- STAMPED RATHER THAN ASKED, and the reason is that a layout must not move under a company
@@ -2800,7 +2892,7 @@ function Descent.floorLevel(run)
     return Descent.rung(Descent.depth(run), 1, Descent.BOTTOM_DANGER - Descent.OPENING_DANGER + 1)
 end
 
--- THE ORDER THE CIRCLES ARE MET IN, FIRST TIME THROUGH: Dante's, top to bottom.
+-- THE ORDER THE CIRCLES ARE MET IN, FIRST TIME THROUGH: the poem's, with its first two swapped.
 --
 -- The Inferno is a funnel of nine circles and the sinners get worse as it narrows, so a first descent
 -- walks it in the poet's own order. Four of the seven are his outright -- Lust in the second circle,
@@ -2811,12 +2903,31 @@ end
 -- fraudulent in the eighth, and pride is the ninth circle itself -- Lucifer frozen at the centre, whose
 -- sin was pride and who is the root the other six grew out of.
 --
+-- GLUTTONY GOES FIRST, AND IT IS THE ONE PLACE THE POEM IS OVERRULED. A first circle is the mode's
+-- teaching ground whether or not it is written as one: it is the only stratum whose company is known
+-- before it is rolled -- a pair, at the level Act 0 leaves them (Descent.OPENING_CAP) -- and whatever
+-- it asks of them is what every circle under it gets read against. Gluttony is a beast hunt on open
+-- forest. Bodies that walk at you and bite, a `clear` gate that needs no explaining, and a ground with
+-- no signature hazard on it, so the lesson of the first stratum is the lesson of the game: stand
+-- somewhere, swing, and go down.
+--
+-- Lust is the opposite of a first lesson. It is the circle that takes your say over where you are
+-- standing and whose side you are on, fought in a warren of thin walls that does the actual killing --
+-- and every one of its answers (cut the charmer, choose the room, read the two verbs as opposites) is
+-- counterplay to a rule the player has not met yet. A company two bodies deep, being shoved into walls
+-- by a flock, cannot practise any of it. One stratum later the same fight costs nothing and reads as
+-- the descent getting stranger, which is what a second circle is for.
+--
+-- SO THE SWAP IS A LESSON ORDER, and it is the smallest one that buys it: Lust takes Gluttony's slot
+-- rather than being pushed down the stack, so the poem's own sequence resumes intact from floor three
+-- and five of the seven circles are still exactly where Dante left them.
+--
 -- WHY IT IS AUTHORED AT ALL, since this was a per-run shuffle and the shuffle was the feature. A
 -- permutation makes re-treading the shallow floors tolerable, and that argument is sound -- for a player
 -- who has re-tread them. A FIRST descent is not a re-tread: it is the only time the seven circles are
 -- new, and dealing them at random spends that once and never gets it back. A player who meets Pride on
 -- floor one and Lust on floor thirteen has been handed the fiction backwards, and the game has no way to
--- tell them there was an order. So the first way down is the poem, and the shuffle is what the ending
+-- tell them there was an order. So the first way down is authored, and the shuffle is what the ending
 -- unlocks (see Descent.sinOrder).
 --
 -- BY ID rather than by rebuilding the table, so a sin's blueprint stays the one authored copy of it and
@@ -2824,7 +2935,8 @@ end
 -- tests/descent_spec.lua fails a list that drops or invents one.
 Descent.INFERNO = { "lust", "gluttony", "greed", "wrath", "sloth", "envy", "pride" }
 
--- WHICH SIN THIS FLOOR IS. Dante's order on a first descent, a per-run shuffle once the Crown is broken.
+-- WHICH SIN THIS FLOOR IS. The authored order on a first descent, a per-run shuffle once the Crown is
+-- broken.
 --
 -- THE SHUFFLE IS THE POST-GAME, and that is the whole of why there are two orders. A permutation is what
 -- makes going back down worth doing -- floors 1..7 are the seven sins in some order, exactly once each,
@@ -4674,7 +4786,7 @@ function Descent.snapshot(run)
     return {
         floor = run.floor or 1,
         seed = run.seed or 0,
-        -- Which order this run's circles were dealt in (Descent.new). Nil on Dante's, which is what an
+        -- Which order this run's circles were dealt in (Descent.new). Nil on the authored one, which is what an
         -- older save and a first descent both read as -- so this is purely additive and Save.VERSION
         -- does not move. A run resumed after the Crown fell keeps the order it opened with.
         shuffled = run.shuffled or nil,
@@ -4751,7 +4863,7 @@ function Descent.restore(snap)
     return {
         floor = snap.floor or 1,
         seed = snap.seed or 0,
-        -- Absent on an older save and on a first descent alike, and both read as Dante's order --
+        -- Absent on an older save and on a first descent alike, and both read as the authored order --
         -- which is what they are (Descent.sinOrder).
         shuffled = snap.shuffled or nil,
         -- Absent on an older save and on a run that offers nobody alike, and both read as "nobody is
