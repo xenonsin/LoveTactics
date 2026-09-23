@@ -46,6 +46,33 @@ return {
     -- `control = "ai"` is the "uncontrollable" half -- turned or not, nobody is driving it by hand.
     onApply = function(ctx)
         local u = ctx.unit
+        local turner = ctx.applier
+        -- ---------------------------------------------------------------------------
+        -- A BINDING: A CHARM LANDED BY SOMEBODY ALREADY ON THE VICTIM'S SIDE
+        -- ---------------------------------------------------------------------------
+        --
+        -- There is nothing to take. The body is already standing where the charmer is standing -- it
+        -- walked onto the board hers (the succubus line's congregation, data/traits/trait_the_blooded.lua),
+        -- and what the status is doing is RECORDING WHOSE IT IS rather than changing hands.
+        --
+        -- Without this branch the fallback below reads "a charm always changes hands" and flips the
+        -- body to the far side, which for one of her own thralls means handing it to the player at the
+        -- opening bell. That fallback is correct for the case it was written for -- ground charms
+        -- nobody, so a sweetbriar turns its victim on its own line -- and wrong for this one, and the
+        -- two are told apart by the one fact that distinguishes them: whether the turner is a foe.
+        --
+        -- IT STASHES NO SIDE, BECAUSE THERE IS NONE TO GO BACK TO. A bound body has no allegiance of
+        -- its own left; the binding is the only reason it is on a side at all. What happens when it
+        -- ends is onExpire's business, and it is not a reversion.
+        --
+        -- `control = "ai"` regardless: bound or taken, nobody drives a charmed body by hand.
+        if turner and turner.alive and turner.side == u.side then
+            if u._charmSide then return end -- taken from somewhere else already; that claim is older
+            ctx.status.bound = true
+            ctx.status.charmer = turner
+            u.control = "ai"
+            return
+        end
         -- A REFRESH must not re-stash. The unit is already flipped, so reading its side again would
         -- record the charmer's side as the one to go home to and the reversion would strand it.
         if u._charmSide then return end
@@ -55,7 +82,6 @@ return {
         -- fallback turns the victim on its own line, which is the same sentence from the other end.
         -- The turner's own side is used only when it really is the far side: a charm is a body
         -- changing hands, and it always changes.
-        local turner = ctx.applier
         local takes = (turner and turner.side ~= u.side and turner.side)
             or ((u.side == "party") and "enemy" or "party")
         u.side, u.control = takes, "ai"
@@ -71,11 +97,35 @@ return {
     -- and Combat.reviveFallenParty, which reads `side == "party"` to decide who is carried out of a won
     -- fight, would leave them on the floor for good. Expiring here runs the ordinary reversion below.
     onDeath = function(ctx) ctx.expire() end,
+    -- TWO ENDINGS, BECAUSE THERE WERE TWO BEGINNINGS.
+    --
+    -- A body that was TAKEN goes back: the stash is restored and it stands on its own side again. That
+    -- is the ordinary charm, and the stash being present is what says so.
+    --
+    -- A body that was BOUND has no side to be put back on (see onApply). It was never anybody else's
+    -- during this fight -- it walked on already hers -- so there is no allegiance to hand it. It comes
+    -- back to itself and it LEAVES, which is the honest reading of a blooded soldier waking up in a
+    -- room full of demons with the woman who was holding its name lying dead on the floor. Dismissed
+    -- rather than killed: nothing struck it, so it leaves no corpse, feeds no death reflex, pays no
+    -- spoils and cannot be raised by whatever else is watching.
+    --
+    -- WHICH MAKES CUTTING THE CHARMER THE WHOLE FIGHT ON THAT GROUND, which is this circle's own law
+    -- (the Lust entry in models/descent.lua) finally given the largest payoff it has: fell her and the
+    -- room empties, because most of the room was never fighting you on its own account.
+    --
+    -- The stash is checked FIRST and wins, for the one case that carries both marks: a bound thrall the
+    -- PLAYER charmed away from her holds a real stash, and a body the party took should be handed back
+    -- to the side it was standing on when they took it rather than walked off the board.
     onExpire = function(ctx)
         local u = ctx.unit
         if u._charmSide then
             u.side, u.control = u._charmSide, u._charmControl
             u._charmSide, u._charmControl = nil, nil
+            return
+        end
+        if ctx.status.bound and u.alive then
+            require("models.combat").dismiss(ctx.combat, u, string.format(
+                "%s comes back to itself, and walks out.", (u.char and u.char.name) or "The bound"))
         end
     end,
 }

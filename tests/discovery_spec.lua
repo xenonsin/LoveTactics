@@ -58,6 +58,15 @@ local TROPHIES = {
     -- and the Reprisal Quiver already are -- so what a counter would be dealing is the answer to the
     -- fight rather than a piece of the body.
     "armor_bellowhide", "utility_the_close_herd", "utility_lowered_crown",
+    -- The succubus line's, and the first trophy on this list that was taken OFF a counter rather than
+    -- authored onto a body. Charm sat on the thief shelf at 610 gold, which said that taking a body is
+    -- a technique a fence teaches for money; it is the Lust circle's own verb, and it comes off the
+    -- thing that used it on you now (data/items/ability/ability_charm.lua). The Congregation is its
+    -- payoff (utility_the_congregation) falls off the same line, so the pair is assembled out of one
+    -- circle -- but the payoff stays ORDINARY rift stock, shelf-gated like any other find. Only the
+    -- taking itself is off the market, because it is the verb the stratum is built on and a counter
+    -- dealing one would sell the answer to the fight that exists to teach it.
+    "ability_charm",
 }
 
 local function vendorFor(class)

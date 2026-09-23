@@ -280,6 +280,27 @@ function Status.ownSide(unit)
     return unit and (unit._charmSide or unit.side)
 end
 
+-- HOW LIKELY A CHARM IS TO LAND ON `unit`, as a percentage: kinder the more the body is already hurt.
+-- 25 against a whole one, climbing to 85 against one nearly down, so charm rewards softening a victim
+-- first rather than opening with it.
+--
+-- IT LIVES HERE BECAUSE THERE ARE TWO DELIVERERS NOW, and that is the only reason. status_charm's own
+-- header says the landing ROLL stayed with the ability because it is a fact about the SPELL rather than
+-- about being charmed -- which was true while there was one spell. There are two (ability_charm, and
+-- the Abbess's weapon_the_anointing), and two copies of `25 + (1 - frac) * 60` is a number that drifts
+-- the first time anybody tunes it, with the tuning landing on whichever file the tuner had open.
+--
+-- What each deliverer still owns is everything this does not: whether to roll at all, what it costs,
+-- and what it says when the roll fails. This is the curve and nothing else -- it rolls nothing, reads
+-- no randomness, and refuses nobody (a boss's refusal is `bossProof`, and it happens at Status.apply
+-- long after this has answered).
+function Status.charmChance(unit)
+    local hp = unit and unit.char and unit.char.stats and unit.char.stats.health
+    local frac = (hp and hp.max and hp.max > 0) and (hp.current / hp.max) or 1
+    if frac < 0 then frac = 0 elseif frac > 1 then frac = 1 end
+    return 25 + math.floor((1 - frac) * 60)
+end
+
 -- The active status of `id` on `unit`, or nil.
 function Status.get(unit, id)
     for _, s in ipairs(unit.statuses or {}) do

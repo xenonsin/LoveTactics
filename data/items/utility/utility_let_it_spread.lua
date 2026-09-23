@@ -21,7 +21,7 @@ return {
     type = "utility",
     tags = { "charm", "dark" },
     class = "shaman",
-    unlockLevel = 2,
+    unlockLevel = 1,
     encounterCleared = function(_, ctx)
         -- A third of the time, and only off a hex the bearer already has: this charm does not CREATE a
         -- curse, it moves one that is already there into a second cell. A clean body carrying it is

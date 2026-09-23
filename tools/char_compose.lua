@@ -398,6 +398,13 @@ local CHARACTER_SILHOUETTE = {
     elder_lamia = "lorc/snake",        -- the same animal, all of it in frame
     harpy_matriarch = "lorc/vulture", -- the same bird, grown -- an alpha that is not a second animal
 
+    -- THE THIRD ANIMAL, AND IT IS NOT ONE. Three rungs of one line, and the silhouette has to carry the
+    -- ladder because the tint and the frame do not: the lesser is a shape with wings, the succubus is
+    -- the same shape holding something, and the Abbess is the one the other two are copies of.
+    lesser_succubus = "delapouite/bat",
+    succubus = "lorc/temptation",
+    succubus_abbess = "lorc/angel-wings", -- the rite took CLEANLY: she is what it makes when nothing goes wrong
+
     -- THE WRATH CIRCLE. Two elementals, two demons and a beast, which without names here would collapse
     -- onto three kind fallbacks between them.
     ember_spit = "lorc/small-fire",

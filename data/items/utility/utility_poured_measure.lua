@@ -34,7 +34,7 @@ return {
     type = "utility",
     tags = { "charm", "holy" },
     class = "theurge", -- the mage x priest crossing: arcane spending, answered as a priest answers it
-    unlockLevel = 6, -- where `. drop-tier` files a 19.2 on the theurge ladder; not hand-picked
+    unlockLevel = 6,
     -- NO AUTHORED `grade`, deliberately. The instrument prices the PRESENCE of an `aura` block and is
     -- blind to what any of them carry, so it reads this at 19.2 and Vampiric Strike at 19.2 -- two
     -- charms doing the same trade on two shelves, rated alike. A judged grade here (Grade.of's

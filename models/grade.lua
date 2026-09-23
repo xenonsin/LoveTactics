@@ -479,6 +479,34 @@ Grade.TRAIT_GRADE = {
     -- clock, so one application holds for the fight. Held under the reflexes at 3.0 by the cooldown
     -- and by the melee gate: you have to get in, and you get one string every ten ticks.
     trait_the_slow_circle =             2.8,  -- The Slow Circle
+    -- THE OFFERED PLACE hands over the succubus's kiss: every melee blow trades tiles with what it
+    -- hit. Priced beside The Slow Circle rather than beside a pure multiplier, because it is a RULE --
+    -- it changes where the bearer is standing every time it fires -- but under it, and the reason is
+    -- that half its firings are unwanted. A tether is worth something on every target; a trade is worth
+    -- something on some of them, and the bearer does not get to choose which ([[a-pair-is-a-synergy-not-a-tier]]
+    -- is the shape, with the board rather than a second item as the other half).
+    trait_the_offered_place =           2.4,  -- The Offered Place
+    -- THE CONGREGATION splits every wound across the foes the bearer has Charmed. Above both of the
+    -- above on what it does -- whole-blow mitigation is the strongest verb on this shelf -- and held
+    -- level with them by the condition, which is the narrowest in the file: it is DEAD until the
+    -- bearer both owns a charm and has landed one, and it lapses the moment the victim does. Coalsong
+    -- is the precedent for pricing a payoff that ships without its own half.
+    trait_the_congregation =            2.8,  -- The Congregation
+    -- THE BLOODED and THE FIRST YES are the succubus line's opening, and both are priced as what they
+    -- are worth to a PLAYER, which is the bench this whole table measures on: nothing at all. Neither
+    -- is dropped and neither can be (utility_the_blooded's header says why) -- the first hands you a
+    -- body you did not bring, which is a summon and belongs to another shelf entirely, and the second
+    -- is a free unrolled charm at the bell, which is a different item in a different game. They carry a
+    -- weight because every trait must, so that nothing rides the shape estimate, and the weight is the
+    -- honest one rather than a placeholder: on the only body that can hold them they are setup for the
+    -- two rules that do the work.
+    trait_the_blooded =                 1.0,  -- The Blooded
+    trait_the_first_yes =               1.0,  -- The First Yes
+    -- BORROWED BLOOD is a flat sip off somebody else's swing, gated on the bearer holding a charm --
+    -- which is two conditions a player has to assemble and one of them is a whole ability. Priced under
+    -- the pure multipliers on this shelf: a heal that only fires while a foe you took is still swinging
+    -- is worth less per turn than a bonus that fires on every one of yours.
+    trait_borrowed_blood =              1.2,  -- Borrowed Blood
     trait_field_still =                 2.0,  -- Field Still
     trait_ghost_wind =                  2.0,  -- Ghost-Wind
     trait_guardians_blessing =          2.0,  -- Guardian's Blessing

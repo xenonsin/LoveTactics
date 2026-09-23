@@ -7713,6 +7713,40 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
         end
         return Combat.dealFlatDamage(combat, guardian, base, tags, source, attacker, redirected)
     end
+    -- A CONGREGATION takes the blow instead, in shares, and was never asked (Trait.shareTargets and
+    -- data/traits/trait_the_congregation.lua). The guardian redirect above is the same seam pointed
+    -- the other way: a knight steps in front of an ally it chose to cover, where this makes the bodies
+    -- the bearer has CHARMED eat a wound meant for her. Sits here, beside it, for the same reason --
+    -- whatever ends up taking the hit should take it with all of its own machinery attached, so each
+    -- share re-enters this funnel and is mitigated, warded and answered by the body it lands on.
+    --
+    -- The whole blow, split: one victim takes all of it, three take a third each, and no share falls
+    -- below a point -- floor division across several bodies would quietly round a small hit away and
+    -- make the bearer immune to chip damage, which is the opposite of the rule. She is not warded, she
+    -- is hiding, and hiding behind somebody does not stop the blow existing.
+    --
+    -- The shove does not ride along, exactly as it does not for the guardian: a knockback is aimed at
+    -- the ORIGINAL target and the geometry means nothing on a body standing somewhere else.
+    local congregation = Trait.shareTargets(combat, target)
+    if congregation then
+        local share = math.max(1, math.floor((base or 0) / #congregation))
+        local passed = opts
+        if opts and opts.knockback then
+            passed = {}
+            for k, v in pairs(opts) do passed[k] = v end
+            passed.knockback = nil
+        end
+        Combat.logEvent(combat, "status", string.format("%s is not there to be hit -- %s take%s it.",
+            unitName(target), #congregation == 1 and unitName(congregation[1])
+                or string.format("%d she holds", #congregation),
+            #congregation == 1 and "s" or ""), target)
+        for _, u in ipairs(congregation) do
+            if u.alive then
+                Combat.dealFlatDamage(combat, u, share, tags, source, attacker, passed)
+            end
+        end
+        return 0
+    end
     -- A barrier of the incoming school (physical/magical, the same switch mitigation reads) negates
     -- the blow outright: consume that one ward, deal nothing, and return BEFORE the trait dispatch --
     -- an absorbed hit is not a "wound survived", so it grants no rage and advances no threshold phase.

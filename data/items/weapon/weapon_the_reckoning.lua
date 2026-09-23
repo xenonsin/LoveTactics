@@ -26,7 +26,7 @@ return {
     type = "weapon",
     tags = { "staff", "magical", "dark", "melee" },
     class = "shaman",
-    unlockLevel = 7,
+    unlockLevel = 8,
     waitBehavior = {
         kind = "focus",
         mana = Curve.ramp(6, 17),

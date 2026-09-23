@@ -246,8 +246,40 @@ Descent.SINS = {
         -- tether only PRICES a company's turns where the Matriarch's cry takes them outright, so
         -- the cheaper rule stands on the floor walked onto first -- and a party that learned on the
         -- stair that distance costs arrives at the Eyrie about to be compelled to cross a room.
+        -- ...AND A THIRD ANIMAL THAT IS NOT ONE (2026-09-22). The two above are the stratum's rule
+        -- stated as POSITION -- a harpy decides where your body is, a lamia decides it does not get to
+        -- be anywhere else -- and between them they field four of the five verbs at the top of this
+        -- entry. The fifth, CHARM, headed the list and was fielded by nobody a floor could roll: the
+        -- Suppliant charms, and she is SEATED, one landing, once. So the circle's own headline rule,
+        -- and the counterplay this entry spends a paragraph on, existed in prose and in no fight a
+        -- company could learn from ([[prose-can-be-the-only-implementation]] is the shape).
+        --
+        -- The succubus line is that, three rungs of it, and what makes it a third animal rather than a
+        -- third flock is that it bills ALLEGIANCE where the other two bill position. It also fields
+        -- PEOPLE. Every rung walks on already holding one or two of the Cathedral's own -- blooded
+        -- soldiers, in their own plate, carrying a real `status_charm` with the succubus stamped as its
+        -- charmer (data/traits/trait_the_blooded.lua) -- which is the Unbidden's own fiction handed
+        -- down a rung: "the holy magic in the anointed is her blood; she has seeded the whole order as
+        -- a sleeper army" (character_general_lust). Cut the succubus and they have no side left to be
+        -- given back to, so they come back to themselves and walk off the board.
+        --
+        -- WHICH MAKES THIS THE FLOOR WHERE "CUT THE ONE DOING IT" FINALLY PAYS. It has been this
+        -- circle's stated law since the re-premise and it has always been free advice, because the one
+        -- doing it was a body you walked over to. Here she is standing behind two people in plate and,
+        -- at the elite rung, behind your own anvil as well (trait_the_congregation splits every wound
+        -- meant for her across everyone she holds). Go straight at her and the room empties in two
+        -- turns; go through the room and you feed her every step (trait_borrowed_blood).
+        --
+        -- BILLED NOWHERE, ON PURPOSE. Both rungs are already argued above and that argument is not
+        -- worth unpicking to seat a third: the Lady Chapel turns up at ELITE_WEIGHT on either floor,
+        -- which is the right rarity for the thing that is not what the stratum is ABOUT but is the
+        -- worst thing standing in it. The two ordinary stops (the Long Gallery, the Chapter House) roll
+        -- at their own weights beside the Open Roof and the Cistern, taking the castle to four ordinary
+        -- fights -- which is also the hole the 2026-09-22 human-body sweep left on this ground, closed
+        -- with a fight that is not a company.
         elites = { approach = "encounter_lust_the_drowned_stair",
-                   seat = "encounter_lust_the_eyrie" } },
+                   seat = "encounter_lust_the_eyrie",
+                   spares = { "encounter_lust_the_lady_chapel" } } },
     { id = "greed", name = "Greed", vendor = "undercroft", biome = "swamp",
         scene = "conversation_descent_greed",
         guardian = { lead = "character_general_greed", filler = "character_the_tally" },

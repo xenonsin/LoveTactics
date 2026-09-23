@@ -867,6 +867,18 @@ local function ctxFor(combat, unit, trait, event)
             if not tgt then return 0 end
             return Combat.knockback(combat, unit, tgt, distance or 1, opts)
         end,
+        -- TRADE TILES with another body (Combat.swapUnits): what a reflex or a rider that answers by
+        -- CHANGING PLACES reaches for, rather than by pushing or by arriving. Unlike `knockback` it
+        -- moves the bearer too, and unlike `teleport` it needs no free tile -- the other body vacates
+        -- the one it is going to.
+        --
+        -- Both arrivals spring whatever waits on the tile they land on, and a trade that cannot seat two
+        -- bodies of different size is refused outright. All of that belongs to the primitive; a data
+        -- hook reads the boolean and nothing else.
+        swap = function(other)
+            if not other then return false end
+            return Combat.swapUnits(combat, unit, other)
+        end,
         -- Move the BEARER onto a tile, crossing no ground to get there (Combat.teleportUnit): what a
         -- reflex that answers by ARRIVING reaches for, rather than by reaching. The tile it lands on is
         -- sprung exactly as a walked-onto one is -- a knife that steps behind a swordsman standing over
@@ -1509,6 +1521,35 @@ end
 -- priced against, see ctx.pay), so the reflex's ctx.basicAttack and its price read the same body. A
 -- hard-controlled ally (Stun, Frozen) is too rattled to seize the opening -- the same gate every on-hit
 -- reflex passes -- so it is skipped here, as Trait.onDamaged skips a rattled counter.
+-- WHO IS STANDING IN FRONT OF `unit` WITHOUT HAVING AGREED TO. The bodies it has Charmed -- and only
+-- those, read off each charm's own `charmer` stamp rather than off sides, so a flat-out ally of the
+-- bearer is never mistaken for one of them.
+--
+-- Read by Combat.dealFlatDamage for a bearer carrying `sharesWounds` (the Abbess's Congregation,
+-- data/traits/trait_the_congregation.lua): the blow is split whole across whatever comes back and the
+-- bearer takes none of it. nil when the flag is absent or nobody is being held, which is the caller's
+-- signal to deal the blow the ordinary way -- so a bearer holding nobody is simply a body.
+--
+-- Trait.flag does the gagging: a bearer under `status_sundered` reports no flag and therefore no
+-- congregation, which is the whole of why silencing her is a key to that fight.
+--
+-- It cannot chain. The flag only ever rides an item in a grid, and the bodies coming back are the
+-- bearer's VICTIMS -- so a share re-thrown at one of them can never find the same flag and split again.
+function Trait.shareTargets(combat, unit)
+    if not (combat and unit and unit.alive) then return nil end
+    if not Trait.flag(unit, "sharesWounds") then return nil end
+    local Status = require("models.status")
+    local out = {}
+    for _, u in ipairs(combat.units or {}) do
+        if u ~= unit and u.alive then
+            local st = Status.get(u, "status_charm")
+            if st and st.charmer == unit then out[#out + 1] = u end
+        end
+    end
+    if #out == 0 then return nil end
+    return out
+end
+
 function Trait.onAllyStrike(combat, striker, foe)
     if not (striker and foe and foe.alive) then return end
     for _, unit in ipairs(combat.units) do

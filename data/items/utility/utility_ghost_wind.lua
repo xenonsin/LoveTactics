@@ -19,7 +19,7 @@ return {
     type = "utility",
     tags = { "charm", "spirit" },
     class = "shaman",
-    unlockLevel = 5,
+    unlockLevel = 4,
     traits = { "trait_ghost_wind" },
     -- everything you field arrives already moving
     bonus = { speed = 2 },
