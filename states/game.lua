@@ -2769,7 +2769,7 @@ function game:openEncounter(cell, opts)
                             -- THE DEMON LORD IS DOWN, AND THE SAVE REMEMBERS IT.
                             --
                             -- WHAT IT OPENS is the shuffle: every descent after this one deals its own
-                            -- order of the seven circles instead of walking Dante's
+                            -- order of the seven circles instead of walking the authored one
                             -- (models/descent.lua's Descent.sinOrder). Written BEFORE clearRun, so the
                             -- next run opened off this player is already the shuffled kind.
                             Player.finishCampaign(game.player)

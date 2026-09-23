@@ -355,8 +355,8 @@ return {
         -- seven contiguous blocks, never interleaved. Checked across many seeds because a single one
         -- could be a lucky permutation.
         --
-        -- WALKED ON BOTH ORDERS. A first descent takes Dante's (Descent.INFERNO) and a post-Crown one
-        -- deals its own, and this rule is about the SHAPE of a stratum rather than about which sin
+        -- WALKED ON BOTH ORDERS. A first descent takes the authored one (Descent.INFERNO) and a post-Crown
+        -- one deals its own, and this rule is about the SHAPE of a stratum rather than about which sin
         -- holds it -- so it has to hold either way, and running only the default would leave the
         -- shuffle with no coverage at all now that it is no longer what a fresh run does.
         for seed = 1, 40 do
@@ -380,17 +380,21 @@ return {
         end
     end },
 
-    { name = "a first descent walks Dante's order, top to bottom", fn = function()
-        -- THE POEM IS THE FIRST WAY DOWN. A first descent is the only time the seven circles are new,
-        -- and dealing them at random spends that once and never gets it back -- a player who meets
-        -- Pride on floor one and Lust on floor thirteen has been handed the fiction backwards with no
-        -- way to be told there was an order.
+    { name = "a first descent walks the authored order, top to bottom", fn = function()
+        -- THE AUTHORED ORDER IS THE FIRST WAY DOWN. A first descent is the only time the seven circles
+        -- are new, and dealing them at random spends that once and never gets it back -- a player who
+        -- meets Pride on floor one and Lust on floor thirteen has been handed the fiction backwards
+        -- with no way to be told there was an order.
         --
-        -- Lust, Gluttony and Greed are Dante's second, third and fourth circles outright; the Wrathful
-        -- hold the surface of the Styx in the fifth with the Sullen submerged beneath them, so sloth is
-        -- the deeper of that pair; the envious who act are among the fraudulent in the eighth; and pride
-        -- is the ninth circle itself, Lucifer frozen at the centre.
-        local want = { "lust", "gluttony", "greed", "wrath", "sloth", "envy", "pride" }
+        -- IT IS THE POEM WITH ITS FIRST TWO SWAPPED. Lust, Gluttony and Greed are Dante's second, third
+        -- and fourth circles outright; the Wrathful hold the surface of the Styx in the fifth with the
+        -- Sullen submerged beneath them, so sloth is the deeper of that pair; the envious who act are
+        -- among the fraudulent in the eighth; and pride is the ninth circle itself, Lucifer frozen at
+        -- the centre. Gluttony takes the first slot off Lust because the first stratum is the mode's
+        -- teaching ground -- a beast hunt on open forest against a circle that takes your say over
+        -- where you stand -- and Lust takes Gluttony's, so the poem resumes intact from floor three.
+        -- Descent.INFERNO's own header carries that argument in full.
+        local want = { "gluttony", "lust", "greed", "wrath", "sloth", "envy", "pride" }
         for i, id in ipairs(want) do
             assert(Descent.INFERNO[i] == id,
                 "circle " .. i .. " of the poem should be " .. id .. ", got " ..
@@ -458,7 +462,7 @@ return {
                 if Descent.sinAt(r, floor).id ~= id then moved = true end
             end
         end
-        assert(moved, "every shuffled seed dealt Dante's order: the shuffle is not running")
+        assert(moved, "every shuffled seed dealt the authored order: the shuffle is not running")
     end },
 
     { name = "a stratum is a descent toward its general, not interchangeable floors", fn = function()
@@ -570,7 +574,7 @@ return {
         -- else is re-derived. Two runs on one seed must agree, and a run must still agree with itself
         -- after a round trip through the serializer.
         --
-        -- ON THE SHUFFLED PATH, because that is the only one where the seed decides anything: Dante's
+        -- ON THE SHUFFLED PATH, because that is the only one where the seed decides anything: the authored
         -- order is the same list on every seed, so a run laid out that way would pass this case with
         -- the derivation entirely broken.
         local a, b = Descent.new(nil, 777), Descent.new(nil, 777)

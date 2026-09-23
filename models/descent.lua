@@ -2945,7 +2945,7 @@ end
 -- BY ID rather than by rebuilding the table, so a sin's blueprint stays the one authored copy of it and
 -- this is only a running order. Every id must name one of Descent.SINS and all seven must appear;
 -- tests/descent_spec.lua fails a list that drops or invents one.
-Descent.INFERNO = { "lust", "gluttony", "greed", "wrath", "sloth", "envy", "pride" }
+Descent.INFERNO = { "gluttony", "lust", "greed", "wrath", "sloth", "envy", "pride" }
 
 -- WHICH SIN THIS FLOOR IS. The authored order on a first descent, a per-run shuffle once the Crown is
 -- broken.

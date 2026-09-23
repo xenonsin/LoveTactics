@@ -184,7 +184,7 @@ return {
     end },
 
     { name = "the first descent walks the poem whatever the seed", fn = function()
-        -- THE SEED DEALS THE SHUFFLE, NOT THE ORDER. A first way down is Dante's, authored, and no
+        -- THE SEED DEALS THE SHUFFLE, NOT THE ORDER. A first way down is authored, and no
         -- number moves it -- the shuffle is what breaking the Crown opens up (Descent.sinOrder). This is
         -- the one thing about a run the seed is deliberately not allowed to decide, so it is asserted
         -- against seeds rather than assumed.

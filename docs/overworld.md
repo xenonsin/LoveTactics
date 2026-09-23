@@ -751,8 +751,8 @@ and cannot drift.
 
 | | before | after |
 |---|---|---|
-| floor 1's end | "The Stair Down — Lust" | **"The Suppliant"** |
-| floor 2's end | "The Stair Down — Lust" | **"Luxuria, the Unbidden"** |
+| floor 1's end | "The Stair Down — Gluttony" | **"The Gralloch"** |
+| floor 2's end | "The Stair Down — Gluttony" | **"Gula, the Unsated"** |
 | once the guard falls | — | "The Stair Down" |
 
 **And the stairs run both ways.** `Descent.retreat` takes the company up one floor, to the floor above
