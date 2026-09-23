@@ -1422,6 +1422,9 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
         -- (Descent.rearmFloor) -- so a floor you finished is not an empty corridor next time, and the
         -- walk back down to a dropped pack costs what walking down cost the first time.
         Descent.rearmFloor(game.grid)
+        -- ...and its elites are dealt again, onto new places (Descent.reseatElites). Only here: a resumed
+        -- trip brings its own board above, so an elite cleared this trip stays cleared until the next.
+        Descent.reseatElites(game.grid, game.floorPool, game.descent, game.player)
     elseif mp.layout then
         game.grid = Overworld.fromLayout({
             layout = mp.layout,

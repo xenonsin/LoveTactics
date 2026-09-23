@@ -2510,7 +2510,8 @@ end
 -- walking down it the first time. Our fights are seated on tiles instead, so without this a floor a
 -- company had finished was an empty corridor and the walk back to a dropped pack cost nothing but time.
 --
--- WHAT RE-ARMS is only what LIVES there: combat, elites, and the fights that walk their beat. What
+-- WHAT RE-ARMS is only what LIVES there: combat, elites, and the fights that walk their beat -- and the
+-- elites do not even come back where they stood: Descent.reseatElites deals them again per trip. What
 -- stays spent is everything that was a PLACE rather than an inhabitant --
 --
 --   the stair       its guard is dead and the circle is credited. Waking her would un-earn a boon --
@@ -2696,6 +2697,21 @@ function Descent.rearmFloor(grid)
         end
     end
     return n
+end
+
+-- ...AND THE ELITES COME BACK SOMEWHERE ELSE. Called beside rearmFloor when a trip walks back onto a kept
+-- floor: every elite is lifted and a fresh draw seated on new places (Overworld:reseatElites argues it).
+--
+-- DEALT OFF THE TRIP, not the lap. `run.seed` is the lap's and never moves (models/seed.lua), which is
+-- right for the ground and would put the same elites on the same tiles every trip; `runsStarted` is the
+-- count Seed.run still advances per descent for exactly this kind of use -- the same fold that deals
+-- the companion (Descent.new). One trip reproduces as itself; the next one is a different floor's worth
+-- of standing threats.
+function Descent.reseatElites(grid, pool, run, player)
+    if not (grid and run) then return 0 end
+    local Seed = require("models.seed")
+    local seed = Seed.mix(run.seed or 0, (player and player.runsStarted) or 0, Descent.depth(run), 5323)
+    return grid:reseatElites(pool, seed)
 end
 
 -- The board this company already has for `floor`, or nil for one it has never walked.

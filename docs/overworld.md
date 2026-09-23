@@ -467,6 +467,14 @@ its FOEs, and deleting it with the ordinary fight would leave a floor with nothi
 the map *for*. So the map answers *what is worth going to, and what stands in front of it*; the walk
 answers *what finds you on the way*.
 
+**An elite is met once a trip, and stands somewhere new on the next.** A kept board re-arms its fights,
+but a landmark woken on the tile it fell on is a fixture the company plans every trip around. So when a
+new trip walks back onto a kept floor, `Descent.reseatElites` lifts every elite off it and deals the same
+number again from the floor's own pool — a different set where the circle has spares — onto new places
+under the generator's rules: the deep half only, spaced from every stop, a chokepoint before open ground,
+and the door kept free. It is dealt off the trip (`runsStarted`), not the lap, so a trip reproduces as
+itself; a resumed trip brings its own board, so an elite cleared this trip stays cleared until the next.
+
 `Descent.FLOOR_SEEN` (2 → 3) is how many of a floor's fights are on it, ends included; the ends come off
 it first, so an errand-heavy floor stands fewer elites rather than more markers. The stop count moves
 with that number and nothing else — see **A fight budget, not a combat share** for the measured reason.

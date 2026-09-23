@@ -1940,6 +1940,144 @@ function Overworld:freeTheDoor()
     self.freeAtDoor = n
 end
 
+-- WHO STANDS WHERE THIS TRIP. Lift every elite off a kept board and seat a fresh draw of them on new
+-- places. Returns how many were seated.
+--
+-- THE MAZE IS PERMANENT AND AN ELITE IS NOT A PLACE, which is the split Descent.rearmFloor draws, taken
+-- one step further. Woken on the tile it fell on, an elite is a fixture: the company learns the floor has
+-- the Bride in the east wing and plans the whole trip around a fact that never moves. Reseated per trip it
+-- stays the thing the map is read FOR -- you still see it and route around it, and what you see is news.
+-- Each one is still met at most once a trip, because the board it was cleared on is only re-dealt when a
+-- new trip walks back in (states/game.lua).
+--
+-- HOW MANY is what the board was laid with, so FLOOR_SEEN's arithmetic is not re-run against ends this
+-- trip may not carry. WHICH ones is drawn from `pool`'s elites (Descent.floorPool, whose billing still
+-- decides what the floor is about), without repeats until the pool runs out, so a floor with spares can
+-- stand a different set. WHERE follows the generator's own rules: the deep half only (ELITE_MIN_DEPTH),
+-- spaced from every stop, a chokepoint preferred over open ground (blockRoutes' reason: a fight in the
+-- open is a shopping list), and the door kept free afterwards.
+--
+-- A SPRUNG MIMIC IS LEFT ALONE: it is a spent chest, not an inhabitant (Descent.rearmFloor says why).
+-- An empty elite pool leaves the board exactly as rearmFloor woke it rather than emptying the floor.
+function Overworld:reseatElites(pool, seed)
+    local start = self:startCell()
+    if not (start and pool) then return 0 end
+
+    local sub = {}
+    for _, e in ipairs(pool) do
+        if e.kind == "elite" and (e.weight or 1) > 0 then sub[#sub + 1] = e end
+    end
+    -- Sorted before the draw: a pool built from the registry has no guaranteed order, and one seed has to
+    -- deal the same elites every time it is asked.
+    table.sort(sub, function(a, b) return tostring(a.id) < tostring(b.id) end)
+    if #sub == 0 then return 0 end
+
+    local old = {}
+    for y = 1, self.rows do
+        for x = 1, self.cols do
+            local c = self.cells[y][x]
+            local e = c.encounter
+            if e and e.kind == "elite" and not e.mimic and not e.wandering then old[#old + 1] = c end
+        end
+    end
+    if #old == 0 then return 0 end
+    for _, c in ipairs(old) do c.encounter, c.cleared = nil, nil end
+
+    local rng = love.math.newRandomGenerator(seed or 0)
+
+    -- The set: weighted, and without repeats while the pool has any left.
+    local picks, left = {}, {}
+    for i = 1, #old do
+        if #left == 0 then for _, e in ipairs(sub) do left[#left + 1] = e end end
+        local total = 0
+        for _, e in ipairs(left) do total = total + (e.weight or 1) end
+        local r, at = rng:random() * total, #left
+        for j, e in ipairs(left) do
+            r = r - (e.weight or 1)
+            if r <= 0 then at = j break end
+        end
+        picks[i] = table.remove(left, at)
+    end
+
+    -- The places: deep, empty, and nothing somebody put there on purpose.
+    local startDist = self:bfsDistances(start)
+    local farthest = 1
+    for _, d in pairs(startDist) do if d > farthest then farthest = d end end
+    local total = 0
+    for y = 1, self.rows do
+        for x = 1, self.cols do
+            if self:typeWalkable(self.cells[y][x].tile) then total = total + 1 end
+        end
+    end
+
+    local cuts, open = {}, {}
+    for y = 1, self.rows do
+        for x = 1, self.cols do
+            local c = self.cells[y][x]
+            local d = startDist[cellKey(c)]
+            if d and c ~= start and self:typeWalkable(c.tile) and d / farthest >= ELITE_MIN_DEPTH
+                and not c.encounter and not c.cache and not c.gate and not c.key
+                and not c.vault and not c.trap and not c.secret then
+                local was = c.tile
+                c.tile = Overworld.BLOCKED
+                local n = 0
+                for _ in pairs(self:reachable(start)) do n = n + 1 end
+                c.tile = was
+                local stranded = total - 1 - n
+                if stranded > 0 and stranded <= total * Overworld.MAX_GATED then
+                    cuts[#cuts + 1] = c
+                else
+                    open[#open + 1] = c
+                end
+            end
+        end
+    end
+    local function shuffle(t)
+        for i = #t, 2, -1 do
+            local j = rng:random(i)
+            t[i], t[j] = t[j], t[i]
+        end
+    end
+    shuffle(cuts)
+    shuffle(open)
+    local cands = cuts
+    for _, c in ipairs(open) do cands[#cands + 1] = c end
+
+    local stops = {}
+    for y = 1, self.rows do
+        for x = 1, self.cols do
+            if self.cells[y][x].encounter then stops[#stops + 1] = self.cells[y][x] end
+        end
+    end
+    local function spacedAt(c, gap)
+        for _, p in ipairs(stops) do
+            if math.abs(p.x - c.x) + math.abs(p.y - c.y) < gap then return false end
+        end
+        return true
+    end
+
+    local seated = 0
+    for _, pick in ipairs(picks) do
+        local chosen
+        for gap = STOP_GAP, STOP_GAP_MIN, -1 do
+            for _, c in ipairs(cands) do
+                if not c.encounter and spacedAt(c, gap) then chosen = c break end
+            end
+            if chosen then break end
+        end
+        if not chosen then break end -- the floor is full: it simply stands fewer this trip
+        local depth = (startDist[cellKey(chosen)] or 0) / farthest
+        chosen.encounter = { kind = "elite", id = pick.id, name = pick.name,
+                             -- assignEncounterTiers' band, without its spike: one rank above the depth.
+                             tier = math.max(1, math.min(3, 2 + math.min(2, math.floor(depth * 3)))) }
+        stops[#stops + 1] = chosen
+        seated = seated + 1
+    end
+
+    self:freeTheDoor()
+    return seated
+end
+
 -- Weighted pick restricted to the pool's non-combat entries, or nil if the pool is all combat. Used to
 -- keep the spine walkable -- a stop there is never a forced fight.
 function Overworld:pickNonCombat(pool)
