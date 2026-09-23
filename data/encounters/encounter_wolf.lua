@@ -32,6 +32,7 @@ return {
     -- float to every floor and everything else belongs to exactly one circle. This was shared
     -- road stock on all fifteen, and the beast band is Gluttony's identity now.
     condition = function(ctx) return ctx.biome == "forest" end,
+    rung = 1, -- home floor of the circle (models/encounter.lua)
     -- A pack that grows as the descent runs on, and never gains a head: that is the pack stop's.
     --
     -- ONE BODY PER TWO FLOORS WAS ALSO TOO STEEP TO READ. A skirmish seats four (Arena.SKIRMISH_CAP),

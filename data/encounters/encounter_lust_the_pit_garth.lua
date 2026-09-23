@@ -20,6 +20,7 @@ return {
     kind = "combat",
     weight = 4,
     condition = function(ctx) return ctx.biome == "castle" end,
+    rung = 1, -- home floor of the circle (models/encounter.lua)
     composition = function(ctx)
         local list = { "character_alraune", "character_mandrake", "character_mandrake" }
         return Band.fill(list, ctx, "character_swooncap_puffer", { base = 1, per = 6, max = 3 })

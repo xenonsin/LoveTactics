@@ -41,6 +41,7 @@ return {
     kind = "combat",
     weight = 5,
     condition = function(ctx) return ctx.biome == "castle" end,
+    rung = 1, -- home floor of the circle (models/encounter.lua)
     composition = function(ctx)
         -- ONE charmer, however deep the floor. What thickens is the congregation, which is the right
         -- axis: a second succubus would double the number of party members that can be taken in a turn

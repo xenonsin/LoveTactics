@@ -41,6 +41,7 @@ return {
     kind = "combat",
     weight = 5,
     condition = function(ctx) return ctx.biome == "castle" end,
+    rung = 2, -- home floor of the circle (models/encounter.lua)
     composition = function(ctx)
         -- A ROOM OF ONE KIND, on the Open Roof's own argument. What makes four Fire Elementals worse
         -- than one is not that one of them is bigger -- it is that there are four bills to pay and

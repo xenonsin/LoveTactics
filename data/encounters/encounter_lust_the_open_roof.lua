@@ -28,6 +28,7 @@ return {
     kind = "combat",
     weight = 5,
     condition = function(ctx) return ctx.biome == "castle" end,
+    rung = 1, -- home floor of the circle (models/encounter.lua)
     composition = function(ctx)
         -- A FLOCK OF ONE KIND, where the wood and the glass field each lead with a heavier body. There
         -- is nothing else on this ground yet to lead with -- and a flock that is all one bird is also

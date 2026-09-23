@@ -39,6 +39,7 @@ return {
     kind = "combat",
     weight = 5,
     condition = function(ctx) return ctx.biome == "castle" end,
+    rung = 1, -- home floor of the circle (models/encounter.lua)
     composition = function(ctx)
         -- ONE HEAVIER THAN THE CISTERN'S BAND, AND THE NUMBER WAS MEASURED RATHER THAN CHOSEN. This
         -- shipped on the Cistern's own count (base 1) on the argument that a tier-2 body which reaches

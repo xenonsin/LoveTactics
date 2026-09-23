@@ -40,6 +40,7 @@ return {
     -- float to every floor and everything else belongs to exactly one circle. This was shared
     -- road stock on all fifteen, and the beast band is Gluttony's identity now.
     condition = function(ctx) return ctx.biome == "forest" end,
+    rung = 1, -- home floor of the circle (models/encounter.lua)
     -- Enemy roster for the battle arena, rolled off the fight's own seed and scaled by the depth.
     -- Returns a flat list of data/characters ids (models/arena.lua binds them onto enemy spawn tiles).
     --

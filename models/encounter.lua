@@ -112,16 +112,39 @@ local function eligible(def, ctx)
         if from and depth < from then return false end
         if to and depth > to then return false end
     end
-    if def.rung and (ctx.rung or 1) ~= def.rung then return false end
+    --
+    -- ON AN ORDINARY FIGHT THE RUNG IS A HOME, NOT A LOCK. The floors of a circle are meant to get harder
+    -- going down, and a pool shared by both stairs made the seat the approach again with a bigger level on
+    -- it -- the same wolves, twice. So an ordinary fight names the floor it belongs to, never turns up
+    -- ABOVE it, and lingers on the floor under it at STRAY_SHARE (weightOf). One way on purpose: the
+    -- approach's wolves still wander down onto the seat now and then, but a seat's fight arriving early
+    -- would be the circle getting harder in the wrong direction.
+    if def.rung then
+        local rung = ctx.rung or 1
+        if def.kind == "combat" then
+            if rung < def.rung then return false end
+        elseif rung ~= def.rung then
+            return false
+        end
+    end
     if def.condition and not def.condition(ctx) then return false end
     return true
 end
+
+-- What a fight homed on a shallower floor of its circle is dealt at, as a share of its own weight, on
+-- the floor below. Rare rather than none: "the wolves are mostly on the first floor" is a truer wood than
+-- "the wolves stop at the stair".
+Encounter.STRAY_SHARE = 0.15
 
 -- Resolve a blueprint's weight, which may be a number or a function(ctx).
 local function weightOf(def, ctx)
     local w = def.weight or 1
     if type(w) == "function" then w = w(ctx) end
-    return w or 0
+    w = w or 0
+    if def.kind == "combat" and def.rung and (ctx.rung or 1) > def.rung then
+        w = w * Encounter.STRAY_SHARE
+    end
+    return w
 end
 
 -- Eligible encounters for `ctx`, as { id, kind, name, weight } entries (weight

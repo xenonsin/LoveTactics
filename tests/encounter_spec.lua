@@ -62,7 +62,7 @@ return {
             local p1 = Encounter.pool({ depth = 1, biome = "forest" })
             assert(not has(p1, "encounter_the_skeleton_king"),
                 "a floor-twelve body should be gated on floor one")
-            assert(has(p1, "encounter_boar"), "the boar is the wood's own, from the first floor")
+            assert(has(p1, "encounter_wolf"), "the wolves are the wood's own, from the first floor")
         end,
     },
     {

@@ -42,6 +42,7 @@ return {
     -- float to every floor and everything else belongs to exactly one circle. This was shared
     -- road stock on all fifteen, and the beast band is Gluttony's identity now.
     condition = function(ctx) return ctx.biome == "forest" end,
+    rung = 1, -- home floor of the circle (models/encounter.lua)
     composition = function(ctx)
         -- IT HAS TO KEEP PACE, AND IT HAS TO STOP. Both halves were learned the hard way and the two
         -- pull against each other, which is why the expression has a floor AND a ceiling.

@@ -21,6 +21,7 @@ return {
     -- Which of a circle's floors a thing bills on is Descent.SINS' `elites` for the standing threat, and
     -- `rung` for anything an author wants split across the approach and the seat.
     condition = function(ctx) return ctx.biome == "volcanic" end,
+    rung = 1, -- home floor of the circle (models/encounter.lua)
     composition = function(ctx)
         local list = { "character_cinder_kin" }
         return Band.fill(list, ctx, "character_ember_spit", { base = 3, per = 5 })

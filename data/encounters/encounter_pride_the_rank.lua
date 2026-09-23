@@ -19,6 +19,7 @@ return {
     -- Which of a circle's floors a thing bills on is Descent.SINS' `elites` for the standing threat, and
     -- `rung` for anything an author wants split across the approach and the seat.
     condition = function(ctx) return ctx.biome == "spire" end,
+    rung = 1, -- home floor of the circle (models/encounter.lua)
     composition = function(ctx)
         local list = { "character_gilded_sworn" }
         return Band.fill(list, ctx, "character_gilded_page", { base = 3, per = 5 })

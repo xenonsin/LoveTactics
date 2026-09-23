@@ -25,6 +25,7 @@ return {
     -- float to every floor and everything else belongs to exactly one circle. This was shared
     -- road stock on all fifteen, and the beast band is Gluttony's identity now.
     condition = function(ctx) return ctx.biome == "forest" end,
+    rung = 1, -- home floor of the circle (models/encounter.lua)
     composition = function(ctx)
         local list = { "character_wolf_alpha" }
         return Band.fill(list, ctx, "character_wolf_grunt", { base = 3, per = 5 })

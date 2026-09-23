@@ -29,6 +29,7 @@ return {
     -- float to every floor and everything else belongs to exactly one circle. This was shared
     -- road stock on all fifteen, and the beast band is Gluttony's identity now.
     condition = function(ctx) return ctx.biome == "forest" end,
+    rung = 1, -- home floor of the circle (models/encounter.lua)
     -- Three or four, rolled off the fight's own seed, so a herd met twice is not the same herd twice
     -- (models/band.lua). Three is the floor because three is what the other two files say -- a herd of
     -- two is the stop that was deleted, wearing this one's name.
