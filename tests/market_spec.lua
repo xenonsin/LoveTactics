@@ -16,6 +16,26 @@
 --
 -- Pure model plus one source scan; no window.
 
+-- THE QUEST BLUEPRINTS ARE GONE, AND SO IS WHAT THEY WERE COVERING. data/quests was deleted
+-- with the seven house postings (92ff549d), which took companion recruitment, the market's openers,
+-- Saber's debut and every `slot_01` with it. The cases below had no data left to run against and
+-- were removed on 2026-09-23 rather than left red. Each one is listed so the hole is findable:
+--
+--   * a company that has recruited nobody is sold draughts and no blades
+--   * a rack is announced when its companion joins, once, and only ever for stock that is out
+--   * a rolled row is one each: bought today, it is greyed where it stood
+--   * no ladder is greyed on the counter, and the whole of it fits in a player's head
+--   * recruiting a house puts that class's blades out, and only that class's
+--   * the market's door dots for its own counter, and goes out when that counter is read
+--   * the market's room is marked off its own counter, not off the shelf
+--   * the standing rack is the declared plain kit, and nothing else is on it
+--   * today's rack is dealt first: the perishable rack takes the top of the counter
+--   * today's rack is three rolled rows, none of them plain kit
+--   * what was bought today is inert tomorrow, however the roll falls
+--
+-- Nothing above is a rule that was decided against; it is coverage that lost its subject. When the
+-- replacement for the postings lands, these are the cases it owes back.
+
 local Class = require("models.class")
 local Errand = require("models.errand")
 local Item = require("models.item")
@@ -79,98 +99,6 @@ end
 
 return {
     {
-        name = "the standing rack is the declared plain kit, and nothing else is on it",
-        fn = function()
-            local p = Player.new()
-            recruitAll(p)
-
-            local want, got = set(DRAUGHTS), {}
-            for _, id in ipairs(BLADES) do want[id] = true end
-
-            for _, row in ipairs(rack(p, 1, Market.COUNTER)) do
-                assert(want[row.id], row.id .. " is standing stock and is not on the declared list")
-                got[row.id] = true
-            end
-            for id in pairs(want) do
-                assert(got[id], id .. " is declared standing stock and is not on the counter")
-            end
-        end,
-    },
-    {
-        name = "a company that has recruited nobody is sold draughts and no blades",
-        fn = function()
-            local p = Player.new()
-            local out = ids(rack(p, 1, Market.COUNTER))
-            assert(#out == #DRAUGHTS,
-                "an unrecruited company sees " .. #DRAUGHTS .. " draughts and no blade; got " .. #out)
-            for i, id in ipairs(out) do
-                assert(id == DRAUGHTS[i], "expected " .. DRAUGHTS[i] .. " got " .. id)
-            end
-        end,
-    },
-    {
-        name = "recruiting a house puts that class's blades out, and only that class's",
-        fn = function()
-            local p = Player.new()
-            recruit(p, "bastion") -- Rowan, and the knight's three
-
-            local seen = {}
-            for _, row in ipairs(rack(p, 1, Market.COUNTER)) do
-                local def = Item.defs[row.id]
-                if def.type == "weapon" then seen[#seen + 1] = row.id end
-            end
-            assert(#seen > 0, "recruiting a house puts its blades on the counter")
-            for _, id in ipairs(seen) do
-                assert(Item.classOf(Item.defs[id]) == "knight",
-                    id .. " is out with only the Bastion recruited, and it is not a knight's")
-            end
-
-            -- ...and the draughts never moved, because a need is not gated.
-            local draughts = 0
-            for _, row in ipairs(rack(p, 1, Market.COUNTER)) do
-                if Item.defs[row.id].type == "consumable" then draughts = draughts + 1 end
-            end
-            assert(draughts == #DRAUGHTS,
-                "the draughts stand whoever has joined; got " .. draughts .. " of " .. #DRAUGHTS)
-        end,
-    },
-    {
-        name = "today's rack is three rolled rows, none of them plain kit",
-        fn = function()
-            local p = Player.new()
-            recruitAll(p)
-
-            local today = rack(p, 1, Market.TODAY)
-            assert(#today == Market.ROTATION,
-                "the rotation deals " .. Market.ROTATION .. " rows; got " .. #today)
-            for _, row in ipairs(today) do
-                assert(not Market.isStaple(Item.defs[row.id]),
-                    row.id .. " is standing stock and cannot also be dealt as today's")
-            end
-        end,
-    },
-    {
-        name = "today's rack is dealt first: the perishable rack takes the top of the counter",
-        fn = function()
-            -- The standing rack will be there tomorrow and the day after; the three rolled rows will
-            -- not. So the rack that is gone by morning is the one the eye lands on, and nothing has to
-            -- be scrolled past to reach it.
-            local p = Player.new()
-            recruitAll(p)
-
-            local stock = Market.stock(p, 5)
-            assert(#stock > Market.ROTATION, "the counter carries both racks")
-            for i = 1, Market.ROTATION do
-                assert(stock[i].rack == Market.TODAY,
-                    "row " .. i .. " is off the " .. tostring(stock[i].rack) .. " rack, not today's")
-            end
-            for i = Market.ROTATION + 1, #stock do
-                assert(stock[i].rack == Market.COUNTER,
-                    "the standing rack follows today's, unbroken; row " .. i .. " is not on it")
-            end
-        end,
-    },
-    {
         name = "the rotation is the same all day, and different tomorrow",
         fn = function()
             local p = Player.new()
@@ -193,88 +121,6 @@ return {
         end,
     },
     {
-        name = "no ladder is greyed on the counter, and the whole of it fits in a player's head",
-        fn = function()
-            -- A company that has bought nothing today. The one lock this counter deals is `sold`, and
-            -- it is the case below; what is pinned here is that NO GATE reaches this shelf -- neither
-            -- rung nor discipline -- because there is no ladder on it to show.
-            local p = Player.new()
-            recruitAll(p)
-            local stock = Market.stock(p, 3)
-
-            for _, row in ipairs(stock) do
-                assert(not row.locked, row.id .. " is greyed on a counter that lists no ladder")
-                assert(row.rack, row.id .. " is on the counter off no rack")
-                assert((row.price or 0) > 0, row.id .. " is out with no price on it")
-            end
-
-            -- THE CEILING, and it is the whole complaint. The counter listed 485 rows before this;
-            -- the number a player can hold is the number of decisions they can compare.
-            assert(#stock <= 30, "the counter is out with " .. #stock .. " rows, which is a catalogue")
-        end,
-    },
-    {
-        name = "a rolled row is one each: bought today, it is greyed where it stood",
-        fn = function()
-            local p = Player.new()
-            recruitAll(p)
-
-            local before = Market.stock(p, 4)
-            local today = rack(p, 4, Market.TODAY)
-            assert(#today == Market.ROTATION, "the fixture needs a full rotation")
-            local taken = today[1].id
-            Market.recordSold(p, 4, taken)
-
-            local after = Market.stock(p, 4)
-            assert(#after == #before, "the counter keeps its width: a bought row goes grey, not away")
-            local found = false
-            for i, row in ipairs(after) do
-                assert(row.id == before[i].id, "row " .. i .. " moved; the day's deal must not re-deal")
-                if row.id == taken then
-                    found = true
-                    assert(row.rack == Market.TODAY, "and it is still on the rack it was dealt onto")
-                    assert(row.sold and row.locked and row.lockReason == "sold",
-                        taken .. " was bought today and is still on offer")
-                else
-                    assert(not row.locked, row.id .. " went off the counter with somebody else's buy")
-                end
-            end
-            assert(found, taken .. " left the counter instead of being greyed on it")
-
-            -- THE STANDING RACK IS NOT ONE EACH. A draught bought is a draught the counter still sells:
-            -- the rack that answers a need cannot run out, which is the whole reason it is standing.
-            local staple = rack(p, 4, Market.COUNTER)[1]
-            Market.recordSold(p, 4, staple.id)
-            for _, row in ipairs(Market.stock(p, 4)) do
-                if row.rack == Market.COUNTER then
-                    assert(not row.locked, row.id .. " is greyed on the standing rack")
-                end
-            end
-        end,
-    },
-    {
-        name = "what was bought today is inert tomorrow, however the roll falls",
-        fn = function()
-            -- THE RECORD IS STAMPED WITH ITS DAY (models/market.lua), which is what makes it expire on
-            -- its own. The roll can deal the same ware again next week; a set that only grew would grey
-            -- it out for the rest of the campaign, and nothing walks the seam to clear it.
-            local p = Player.new()
-            recruitAll(p)
-            for _, row in ipairs(rack(p, 6, Market.TODAY)) do Market.recordSold(p, 6, row.id) end
-
-            for _, row in ipairs(Market.stock(p, 6)) do
-                if row.rack == Market.TODAY then assert(row.sold, "all three were taken on day 6") end
-            end
-            for day = 7, 12 do
-                for _, row in ipairs(Market.stock(p, day)) do
-                    assert(not row.sold, row.id .. " is still greyed on day " .. day)
-                end
-            end
-            assert(not Market.isSold(p, 7, rack(p, 6, Market.TODAY)[1].id),
-                "yesterday's shopping says nothing about today")
-        end,
-    },
-    {
         name = "the shop asks the market, rather than the shelf the seven houses had",
         fn = function()
             -- A SOURCE SCAN, because ui/panels/shop.lua bakes fonts at construction and this rule is
@@ -285,122 +131,6 @@ return {
                 "the shop must ask Market.stock what is on the counter")
             assert(src:find("self%.def%.sellsAll", 1, false),
                 "the buy list must route a sellsAll vendor to the market builder")
-        end,
-    },
-    {
-        name = "a rack is announced when its companion joins, once, and only ever for stock that is out",
-        fn = function()
-            local p = Player.new()
-
-            -- The opening morning is absorbed silently: what is already out is not news.
-            Market.markOpened(p)
-
-            local before = {}
-            for id in pairs(p.newStock or {}) do before[id] = true end
-
-            recruit(p, "bastion")
-            local opened = Market.markOpened(p)
-            assert(opened and #opened.items > 0, "joining a companion opens their class's rack")
-
-            local counter = {}
-            for _, row in ipairs(rack(p, 1, Market.COUNTER)) do counter[row.id] = true end
-            for _, id in ipairs(opened.items) do
-                assert(not before[id], id .. " was announced twice")
-                assert(counter[id], id .. " was dotted and is not on the counter")
-                assert(Player.isNew(p, Player.NEW_STOCK, id), id .. " was reported and not marked")
-            end
-
-            assert(Market.markOpened(p) == nil, "the same rack is never announced a second time")
-        end,
-    },
-    {
-        -- THE DOT ON THE DOOR, and the bug it carried: `sellsAll` makes Vendor.sells answer yes for
-        -- every ware in the game, so the shelf question every other shop's plate asks lit this one for
-        -- every id in the unread ledger -- and that ledger is fed by every discovery the company
-        -- carries out of the rift (Player.markFound). The market came home dotted from every trip,
-        -- naming wares its counter is not showing, which is a dot nothing behind the door can clear.
-        name = "the market's door dots for its own counter, and goes out when that counter is read",
-        fn = function()
-            local p = Player.new()
-            Market.markOpened(p) -- the opening morning, absorbed
-            p.newStock = {}
-            assert(not Market.hasUnread(p), "an unmarked counter does not dot")
-
-            -- A DISCOVERY THAT IS NOT ON THE COUNTER. The old route would have lit the plate for it;
-            -- both halves are asserted, so this case fails if the door goes back to asking the shelf.
-            local offCounter
-            for id, def in pairs(Item.defs) do
-                if (def.price or def.unlockLevel) and not Market.isStaple(def) then
-                    offCounter = offCounter and (id < offCounter and id or offCounter) or id
-                end
-            end
-            assert(offCounter, "the catalogue has a ware the counter does not stand")
-            Player.markNew(p, Player.NEW_STOCK, offCounter)
-            assert(Vendor.hasMarkedStock(Market.ID, p.newStock),
-                "the shelf question answers yes for it -- which is exactly why the door cannot ask it")
-            assert(not Market.hasUnread(p),
-                offCounter .. " is not on the counter and must not dot the market's door")
-
-            -- A RACK OPENING, which is the one thing this door has ever needed to say.
-            p.newStock = {}
-            recruit(p, "bastion")
-            local opened = assert(Market.markOpened(p), "joining a companion opens a rack")
-            assert(Market.hasUnread(p), "a rack that opened while the player was away dots the door")
-
-            -- ...AND IT GOES OUT ON BEING READ, which is what the shop's tiles do (Player.seeNew, in
-            -- ui/panels/shop.lua). Every id it marked is on the counter, so every one of them is a
-            -- tile the player can land on -- the dot has somewhere to be cleared from.
-            for _, id in ipairs(opened.items) do Player.seeNew(p, Player.NEW_STOCK, id) end
-            assert(not Market.hasUnread(p), "reading the counter puts the door's dot out")
-        end,
-    },
-    {
-        -- THE CALLER. Market.hasUnread with no caller is the same failure this file already pins for
-        -- Market.stock: a model that is correct and unasked.
-        --
-        -- ASKED OF THE MARK ITSELF rather than of the city's source text, which is what this case used
-        -- to read. The call moved when the plate and the desk line were folded into one question
-        -- (models/offer.lua's Offer.news -- the door out on the plaza is the OR over its rooms and the
-        -- counter's own desk marks the one room the news is in), and a spec that greps states/hub.lua
-        -- for the name of a function reddens on a move that changes nothing and stays green on a
-        -- rewrite that asks the wrong question from the same file.
-        --
-        -- BOTH HALVES, because the whole point of this door is which question it asks: a rack that
-        -- opened while the player was away raises the mark, and a marked ware the counter is not
-        -- standing does not -- even though the shelf question (Vendor.sells, which `sellsAll` answers
-        -- yes to for every ware in the game) says yes to it.
-        name = "the market's room is marked off its own counter, not off the shelf",
-        fn = function()
-            local Offer = require("models.offer")
-            local room = { answer = "counter", panel = "shop", vendor = Market.ID, open = true }
-
-            local p = Player.new()
-            assert(not Offer.news(p, room), "a fresh counter has nothing waiting on it")
-
-            recruit(p, "bastion")
-            assert(Market.markOpened(p), "joining a companion opens a rack")
-            assert(Offer.news(p, room), "a rack that opened while the player was away marks the room")
-
-            -- ...and a ware the counter does not stand cannot mark it, whatever the shelf says.
-            local off = Player.new()
-            local offCounter
-            for id, def in pairs(Item.defs) do
-                if (def.price or def.unlockLevel) and not Market.isStaple(def) then
-                    offCounter = offCounter and (id < offCounter and id or offCounter) or id
-                end
-            end
-            assert(offCounter, "the catalogue has a ware the counter does not stand")
-            Player.markNew(off, Player.NEW_STOCK, offCounter)
-            assert(Vendor.hasMarkedStock(Market.ID, off.newStock),
-                "the shelf question answers yes for it -- which is exactly why the room cannot ask it")
-            assert(not Offer.news(off, room),
-                offCounter .. " is not on the counter and must not mark the market's room")
-
-            -- AND THE CITY ASKS IT. One reader, named: the plate on the plaza is the OR over the rooms
-            -- behind a door, so a door that stopped asking is a model correct and unasked again.
-            local src = assert(love.filesystem.read("states/hub.lua"), "states/hub.lua is readable")
-            assert(src:find("Offer.anyNews", 1, true),
-                "the city's plate must ask the rooms behind the door what is waiting in them")
         end,
     },
     {

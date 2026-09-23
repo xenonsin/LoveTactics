@@ -67,8 +67,8 @@ so not one of the sixty authored `requiredPrestige` / `unlockPrestige` gates had
 > What survived intact: **entering costs, not clearing** (a night passes at the mouth of a descent,
 > `Gate.night`); **walking out is free**; **there is no fail state**; **the hub is free** — and that
 > last one is now unqualified. The Inn sold a night over its counter for a while as the only way a
-> wounded company mended; it is deleted, and a wound ends when the company reaches the surface
-> ([models/wound.lua](../models/wound.lua)). No day is ever spent in town.
+> injured company mended; it is deleted, and an injury ends when the company reaches the surface
+> ([models/injury.lua](../models/injury.lua)). No day is ever spent in town.
 
 **Forty days, and then he arrives.** There are more quests than there are days, so the campaign stops
 being *finish everything* and becomes *choose what to finish* — which is the decision seven houses were
@@ -99,7 +99,7 @@ you are already carrying.
 **There is no fail state.** The last day is not a loss screen, it is the last battle, fought with
 whatever company you assembled.
 
-**The hub is free.** Shopping, forging, the Loadout, mending a wound, eating at the Cafe: no days. One
+**The hub is free.** Shopping, forging, the Loadout, mending an injury, eating at the Cafe: no days. One
 clock, not two — a hub that spent days would turn every visit to a shelf into arithmetic, and the
 interesting decision is which expedition to take.
 

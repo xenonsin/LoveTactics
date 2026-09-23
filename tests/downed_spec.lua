@@ -51,7 +51,7 @@ return {
         fn = function()
             assert(Character.instantiate("character_rowan").revivable == true,
                 "an ordinary character is revivable by default")
-            assert(Character.instantiate("character_demon_grunt").revivable == false,
+            assert(Character.instantiate("character_demon_grunt_tutorial").revivable == false,
                 "a demon blueprint opts out with revivable = false")
         end,
     },
@@ -163,7 +163,7 @@ return {
         -- from the roster. It is reverted, and deliberately. Losing a quarter of the company to one bad
         -- turn in a fight you WON is the harshest possible reading of a countdown, and it made the
         -- countdown the whole game rather than a beat in it. What carries the stake instead is the
-        -- WOUND (models/wound.lua) -- a reserve on the body plus debuffs that stack -- which degrades a
+        -- INJURY (models/injury.lua) -- a reserve on the body plus debuffs that stack -- which degrades a
         -- company over an expedition rather than deleting part of it in a turn. The only thing that
         -- ever costs a body is a wipe, and even then they lie where they fell to be fetched.
         name = "a won fight carries out both fallen states, gone cold or not, in every mode",
@@ -189,7 +189,7 @@ return {
         name = "a demon skips the whole window: a corpse at once, and no revive takes it",
         fn = function()
             local c = Combat.new(arena(6, 6), { unit("character_rowan", 2, 2) },
-                { unit("character_demon_grunt", 4, 4) })
+                { unit("character_demon_grunt_tutorial", 4, 4) })
             local demon = c.units[2]
             assert(demon.char.revivable == false, "precondition: a demon is not revivable")
             kill(c, demon)
@@ -242,9 +242,9 @@ return {
         end,
     },
     {
-        name = "the severing kit is final only on the KILL -- a mere wound leaves the window intact",
+        name = "the severing kit is final only on the KILL -- a mere injury leaves the window intact",
         fn = function()
-            -- Same bolt into a HEALTHY body: it wounds without felling, so denyRevival never fires and
+            -- Same bolt into a HEALTHY body: it injuries without felling, so denyRevival never fires and
             -- the foe stays a normal revivable target for whatever kills it later.
             local c = Combat.new(Fixture.new(6, 6),
                 { Fixture.unit("character_mage", 2, 2, { isolate = "mechanics",
@@ -253,8 +253,8 @@ return {
                     stats = { health = 500, magicDefense = 0 } }) })
             local caster, foe = c.units[1], c.units[2]
             assert(Fixture.strike(c, caster, foe, "weapon_the_unreturning"), "the bolt lands")
-            assert(foe.alive, "precondition: it wounded but did not fell")
-            assert(not foe.noRevive, "a wound stamps nothing -- only a kill severs the window")
+            assert(foe.alive, "precondition: it injured but did not fell")
+            assert(not foe.noRevive, "an injury stamps nothing -- only a kill severs the window")
             Combat.dealFlatDamage(c, foe, 9999, {}, "test") -- felled by something else
             assert(foe.incapacitated and Status.get(foe, "status_downed"),
                 "so this later death opens the ordinary downed window")

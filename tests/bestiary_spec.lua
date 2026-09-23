@@ -424,7 +424,7 @@ tests[#tests + 1] = { name = "a demon's blows burn, and the bear it borrowed its
     assert(not bear.fire, "the Dire Bear's claws are not infernal -- weapon_demon_claws is the demon's")
 
     -- And the body actually holds the split one, or the tag above is true of nothing anyone fights.
-    local champion = Character.instantiate("character_demon_champion")
+    local champion = Character.instantiate("character_demon_champion_tutorial")
     local held = false
     for _, item in ipairs(Character.eachItem(champion)) do
         if item.id == "weapon_demon_claws" then held = true end

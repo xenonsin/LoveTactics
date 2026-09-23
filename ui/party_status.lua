@@ -17,7 +17,7 @@ local Character = require("models.character") -- Character.spriteOf: the skin an
 local Colors = require("ui.colors")
 local CloseButton = require("ui.close_button")
 local OverworldAbility = require("models.overworld_ability")
-local Wound = require("models.wound") -- the part of a health bar that will not fill again
+local Injury = require("models.injury") -- the part of a health bar that will not fill again
 local Sprite = require("models.sprite")
 local Theme = require("ui.theme")
 
@@ -77,6 +77,34 @@ local function drawBadge(cx, cy, r, hovered)
         cx - r * 0.32, cy - r * 0.32)
 end
 
+-- THE INJURY PIP: a small notched disc on the corner of the portrait, carrying how many the body is
+-- carrying. It is NOT the dark band on the health bar and it is not drawn in the same place, which is
+-- the whole reason it exists.
+--
+-- THE BAND WAS THE ONLY MARK, AND IT STOPPED BEING ENOUGH. When every injury was the same injury, the
+-- reserve WAS the meter and the missing top of the bar said everything there was to say. There are
+-- seven kinds now and five of them take almost nothing off the pool -- a Shattered Leg draws a band two
+-- pixels wide -- so a body could walk around with a broken leg and a rattled head and the strip would
+-- show nothing at all.
+--
+-- A DIFFERENT SHAPE, NOT A DIFFERENT COLOUR, and on a different object: the band is about the POOL and
+-- is drawn on the pool; this is about the BODY and is drawn on the body. A player reading the strip
+-- learns "that much of them is not coming back" from one and "something is wrong with them" from the
+-- other, and the card under the pointer says what (ui/body_tooltip.lua).
+local function drawInjuryPip(cx, cy, r, n, font)
+    love.graphics.setColor(0.10, 0.11, 0.15, 0.92)
+    love.graphics.circle("fill", cx, cy, r + 1)
+    love.graphics.setColor(0.62, 0.22, 0.24)
+    love.graphics.circle("fill", cx, cy, r)
+    -- The notch: a wedge out of the disc, so the mark is a shape at a glance rather than a red dot that
+    -- has to be told apart from every other red dot on a screen full of health.
+    love.graphics.setColor(0.10, 0.11, 0.15, 0.92)
+    love.graphics.polygon("fill", cx, cy, cx + r * 1.2, cy - r * 0.55, cx + r * 1.2, cy + r * 0.55)
+    love.graphics.setFont(font)
+    love.graphics.setColor(0.98, 0.92, 0.92)
+    love.graphics.printf(tostring(n), cx - r, cy - 8, r * 2, "center")
+end
+
 -- One row: portrait, name, HP + mana bars, and (if the companion has an overworld ability) the star
 -- badge with its banked-count number. Returns the badge centre + info so the caller can hit-test hover.
 local function drawRow(char, x, y, stripFont, headFont, bucket, player)
@@ -102,11 +130,14 @@ local function drawRow(char, x, y, stripFont, headFont, bucket, player)
     end
     if type(hp) == "table" then
         bar(y + 15, hp.current or 0, hp.max or 0, Colors.PARTY, 6)
-        -- A WOUND, drawn as the part of the bar that will not fill again. The mechanic IS a cap on
-        -- the refill (models/wound.lua), so the honest picture is the missing top of the bar rather
+        -- AN INJURY, drawn as the part of the bar that will not fill again. The mechanic IS a cap on
+        -- the refill (models/injury.lua), so the honest picture is the missing top of the bar rather
         -- than a badge somewhere else saying so -- the player reads "that much of them is not coming
         -- back until I pay" off the same bar they already read health from.
-        local share = Wound.healShare(player, char.id)
+        -- Only the health-reserving kinds draw here, which is the honest picture: this mark is the
+        -- part of the POOL that will not fill again, and a Shattered Leg does not touch it. What says
+        -- the body is hurt at all is the pip on the portrait above.
+        local share = Injury.healShare(player, char.id)
         if share < 1 then
             local lostX = barX + barW * share
             love.graphics.setColor(0.62, 0.22, 0.24, 0.85)
@@ -119,6 +150,14 @@ local function drawRow(char, x, y, stripFont, headFont, bucket, player)
     end
     if type(mp) == "table" and (mp.max or 0) > 0 then
         bar(y + 23, mp.current or 0, mp.max or 0, Colors.MANA, 4)
+    end
+
+    -- ...AND THE PIP LAST, on the portrait's bottom-right corner, so it rides over the frame rather
+    -- than under it. Drawn after the bars for the same reason: it is the thing a player scanning a
+    -- strip of four should find first.
+    local hurt = Injury.count(player, char.id)
+    if hurt > 0 then
+        drawInjuryPip(x + PORTRAIT - 3, y + PORTRAIT - 1, 7, hurt, stripFont)
     end
 
     local info = OverworldAbility.info(char)
@@ -171,7 +210,7 @@ function PartyStatus.stripHeight(n)
 end
 
 -- WHERE ONE MEMBER'S ROW SITS, in the same logical space the strip was drawn at -- for anything that
--- has to point AT a body rather than at the readout as a whole. The overworld's first-wound coach
+-- has to point AT a body rather than at the readout as a whole. The overworld's first-injury coach
 -- bubble anchors here (states/game.lua's drawCoach): the mark it is explaining is the dark cap on
 -- that row's health bar, so the bubble has to name that row and not the corner it lives in.
 --

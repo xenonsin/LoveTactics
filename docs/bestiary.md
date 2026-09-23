@@ -29,7 +29,7 @@ companies and the Undercroft all field a Line body as their cheapest unit, so th
 those fights to swat.
 
 `tier` is a **declared label, not a multiplier.** Nothing derives stats from it. This codebase tunes
-by hand and defends the number in the header — `character_demon_grunt.lua` spends twenty lines
+by hand and defends the number in the header — `character_demon_grunt_tutorial.lua` spends twenty lines
 explaining why its 74 health is the sum of five authored blows and moves only when one of them does.
 A tier field
 that generated stats would quietly break exactly those beats. What the label buys instead:
@@ -144,7 +144,7 @@ The bands are judged on the **best** melee probe, which is by construction the o
 So every body's TTK moves *down* as this table is authored, never up, and the pass needed no rescale
 behind it.
 
-There are no waivers. `character_demon_grunt` used to be one, for the same reason `Balance.FROZEN`
+There are no waivers. `character_demon_grunt_tutorial` used to be one, for the same reason `Balance.FROZEN`
 names it — the prologue's parry lesson is written against its exact arithmetic — and it still carries
 no physical line, because the lesson's blows are a sword and a mace. It carries the holy line below,
 which the lesson never touches.
@@ -299,7 +299,7 @@ to `assassinate` is a per-quest authoring call with a story cost, not a gap to b
 The line that makes this mechanical rather than taste: **a body carries `boss = true` if and only if
 it is an `assassinate` mark.** The flag already means something specific in the engine — immune to
 Coup de Grace, Charm and Polymorph, so the assassinate win is earned by fighting rather than skipped
-by a finisher (`character_demon_champion.lua`). Outside an assassinate objective the flag protects
+by a finisher (`character_demon_champion_tutorial.lua`). Outside an assassinate objective the flag protects
 nothing and only removes verbs from the player's kit.
 
 ### How a boss reads on screen
@@ -363,10 +363,31 @@ one would make the host read as a guild.
 
 | Rung | Name | | |
 |---|---|---|---|
-| 1 | Imp · Bomblet | E | `character_demon_imp`, `character_demon_bomblet` |
-| 2 | Grunt | E | `character_demon_grunt` — the sturdiest common enemy in the game, deliberately |
-| 3 | Champion | E | `character_demon_champion` — three phases, all of it in the Sigil |
+| 1 | Imp · Bomblet | E | `character_demon_imp_tutorial`, `character_demon_bomblet_tutorial` |
+| 2 | Grunt | E | `character_demon_grunt_tutorial` — the sturdiest common enemy in the game, deliberately |
+| 3 | Champion | E | `character_demon_champion_tutorial` — three phases, all of it in the Sigil |
 | 4 | The Hollow Crown | E | `character_demon_lord` |
+
+**Rungs 1–3 are Act 0's, and the `_tutorial` suffix is load-bearing.** The prologue's fights are not
+tuned, they are *counted*: the first step of the village lesson is one sword stroke and an imp falling,
+the last is a grunt left inside exactly one more, and every figure in both columns is authored against a
+level-1 company ([`data/tutorials/village.lua`](../data/tutorials/village.lua)). So those three bodies
+are pinned to blueprint level (`scaling = false`) and nothing outside the prologue fields them.
+
+The suffix exists because that stopped being obvious. An unsuffixed `character_demon_imp` reads as
+general-purpose stock, and on 2026-09-22 something treated it as such — the Lust honour guard, having
+lost its own chaff, reached for it as a phase summon. One blueprint then served a level-1 lesson and a
+deep-floor boss phase, which want opposite things from every line of it. Worse, the imp had never been
+pinned: it grew with the company (14 health at party level 3, 42 at level 10) against a sword that bills
+18, so the very first thing the game teaches quietly stopped being true from about party level 4.
+`tests/tutorial_spec.lua` could not see it, because it measures the lesson at blueprint level — the one
+level the bug is invisible at; `tests/enemy_scaling_spec.lua` now holds the pin and the one-stroke claim
+across the whole ladder. **A new body added to Act 0 inherits the unpinned default, so it owes the suffix
+and the pin.**
+
+The Champion is the exception and stays scaled: pinning it would be a no-op in the game (Act 0 fields it
+at party level 2) and *not* a no-op in the suite, which uses it as the reference elite that must scale.
+That is a smell recorded in its header rather than fixed — those sweeps want a circle general.
 
 ### The Forsworn — Bastion (knight)
 
@@ -624,3 +645,16 @@ the rule means first deciding what the flag means on a recruitable body — a se
   pays little because the gear is worth little (self-limiting, honest, and the drop pool stays
   connected to the fiction), or chaff carries unpriced kit and only the Line rung up actually pays.
   The first now looks better than it did when this was written as an open call.
+- **Two creature verbs went out with the strata cut, and nothing carries them now.** The
+  2026-09-22 deletion took the carrion crawler and the wyrmling, and their naturals with them, so
+  both of these are unfielded and unasserted rather than merely unused. `tests/bestiary_items_spec.lua`
+  existed to hold exactly these two and was deleted with its subjects:
+  - **Feeding is the whole turn.** `weapon_carrion_jaws` bit a standing body for ordinary damage, but
+    with a downed body underneath it the same swing fed and healed *instead* — it did not also bite,
+    and a bystander standing beside it went untouched. That is what made a crawler a clock the company
+    had to answer rather than a second source of damage, and it is the one mechanic in the game that
+    charged a corpse as a resource.
+  - **A cone.** `weapon_wyrmling_breath` fanned out from the aimed cell, one tile each side per row,
+    and left Burn on everything it caught — so two wyrmlings aimed at the same rank overlapped and a
+    single one did not. There is no cone-shaped ability left in the data at all; `front` and `line`
+    are the whole of the fan-shaped vocabulary now.

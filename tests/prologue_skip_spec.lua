@@ -50,20 +50,20 @@ end
 
 return {
     {
-        -- THE SKIP HAS TO DEAL THE WOUND, AND THEN IT WALKS IT THROUGH THE INN. The Demon Champion
+        -- THE SKIP HAS TO DEAL THE INJURY, AND THEN IT WALKS IT THROUGH THE INN. The Demon Champion
         -- fells Rowan at its last stage, and that one mark is what grows the INN on the plaza
-        -- (models/building.lua's `unlockWound`) -- and Xin is standing inside it. A skip that arrives
+        -- (models/building.lua's `unlockInjury`) -- and Xin is standing inside it. A skip that arrives
         -- whole opens a city with no inn, no healer, and a party of two against an expedition of four,
         -- which is the "broken city rather than a skipped prologue" the whole grant exists to prevent.
         -- Reported from a real play-through of the debug button, not from reading the code.
         --
         -- So the order is the thing this pins, and it is not a formality: INFLICT, then mend. The mark
-        -- the door is hung on is one-way (Wound.everWounded) and survives the mending, which is what
+        -- the door is hung on is one-way (Injury.everInjured) and survives the mending, which is what
         -- lets the button hand over a company that is both whole and standing in a city that has an
         -- inn. Skipping the inflict would shut the door on the room the company just came through.
-        name = "a skipped Act 0 takes Rowan's wound through the Inn: door open, bone set, Xin met",
+        name = "a skipped Act 0 takes Rowan's injury through the Inn: door open, bone set, Xin met",
         fn = function()
-            local Wound = require("models.wound")
+            local Injury = require("models.injury")
             local Building = require("models.building")
             local p = skipped()
 
@@ -73,8 +73,8 @@ return {
                 if char.id == "character_xin" then xin = char end
             end
             assert(rowan, "the skip recruits Rowan")
-            assert(Wound.count(p, rowan.id) == 0, "and the Inn sets the bone she was carried out on")
-            assert(Wound.everWounded(p), "but the one-way mark the door is hung on outlives the mending")
+            assert(Injury.count(p, rowan.id) == 0, "and the Inn sets the bone she was carried out on")
+            assert(Injury.everInjured(p), "but the one-way mark the door is hung on outlives the mending")
             assert(xin, "and the room's own scene hands over the healer standing in it")
 
             local open

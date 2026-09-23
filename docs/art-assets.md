@@ -238,7 +238,7 @@ classless boss one body, `kind` gives every demon one body — correct for the *
 of each bucket, wrong for everyone else in it. Left to the guesses alone, **51 of the 107 blueprints
 resolved to just 15 pictures**: the seven sin generals were one token, and Rowan, the Forsworn Captain and
 the Road-Knight were another. So a bucket's silhouette stays the property of the generic body at its head
-(`character_knight` keeps the knight banner, `character_bandit` the rank swordman, `character_demon_grunt`
+(`character_knight` keeps the knight banner, `character_bandit` the rank swordman, `character_demon_grunt_tutorial`
 the daemon skull) and every other occupant is named out of it — one line, never art.
 
 Two invariants in `tests/char_compose_spec.lua` hold it: **no two blueprints resolve to the same
@@ -263,7 +263,9 @@ were reviewed shape-by-shape; `tests/char_compose_spec.lua` guards them.
 
 Like `icon-build`, `assets` mode **skips any file already on disk**, so real board art dropped in later
 is never overwritten — and it writes to the exact `def.sprite` path (not `<id>.png`), so a shared file
-(`demon_bomblet` → `demon_imp.png`) is composed once and every borrower rides along on it. A composed token
+(`demon_bomblet_tutorial` → `demon_imp.png`) is composed once and every borrower rides along on it. That
+pair is also the clearest case of why the path matters rather than the id: Act 0's four demons carry a
+`_tutorial` suffix on their **blueprints** and none of it on their **art**, which is untouched. A composed token
 is a placeholder in the painted register, so it is deliberately **not** committed by default: the plain run
 lands in `vendor/compose-preview/chars/` for review, and only the explicit `assets` arg publishes.
 

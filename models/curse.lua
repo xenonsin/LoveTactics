@@ -44,7 +44,7 @@
 -- extra steps.
 --
 -- ---------------------------------------------------------------------------
--- WHAT IT COSTS TO BE RID OF ONE, and why it is shaped exactly like a wound
+-- WHAT IT COSTS TO BE RID OF ONE, and why it is shaped exactly like an injury
 -- ---------------------------------------------------------------------------
 --
 -- docs/the-count.md states the law this room could most easily have broken:
@@ -52,13 +52,13 @@
 --     A cost on recovery is a tax on NEEDING to recover, and needing to recover is what being bad at
 --     the game looks like.
 --
--- models/wound.lua's Ward is the answer that survived three attempts, and this is that answer with an
+-- models/injury.lua's Ward is the answer that survived three attempts, and this is that answer with an
 -- item where the body goes:
 --
 --   THE RITE    free, always, no gate and no purse test. The piece is left with the priests and is out
 --               of the company for Curse.RITE_DESCENTS trips while they work on it -- so the cost is
 --               paid in going down without it, exactly as a resting body's is paid in who walks down
---               without them. Served by DESCENDING (Curse.tickRites, called where Wound.tickRest is).
+--               without them. Served by DESCENDING (Curse.tickRites, called where Injury.tickRest is).
 --   THE LIFTING Curse.fee in gold, and the hex is off before you leave the room.
 --
 -- The gold buys SPEED and never relief. A company that cannot pay is never stuck with a hex forever;
@@ -423,7 +423,7 @@ end
 
 -- THE DEFAULT LIFTING FEE, for a hex that names no figure of its own.
 --
--- 120 GOLD, AGAINST THE THREE BILLS ALREADY ON THE BOARD. A bone is Wound.TREAT_COST 40; a reading is
+-- 120 GOLD, AGAINST THE THREE BILLS ALREADY ON THE BOARD. A bone is Injury.TREAT_COST 40; a reading is
 -- Identify.FEE_BASE 100 plus 45 a level; a complete descent pays something like 20,000 (the arithmetic
 -- is in models/identify.lua's fee block). So this sits a little above a reading and nowhere near a
 -- trip's income, which is the band it wants: payable the moment you decide you want the piece back,
@@ -444,7 +444,7 @@ function Curse.fee(item)
     return math.max(0, math.floor(tonumber(def.fee) or Curse.LIFT_COST))
 end
 
--- HOW MANY TRIPS THE FREE RITE TAKES. Two, which is Wound.REST_DESCENTS, and they are the same number
+-- HOW MANY TRIPS THE FREE RITE TAKES. Two, which is Injury.REST_DESCENTS, and they are the same number
 -- on purpose: the two free paths in the city cost the same span of the same clock, so a player learns
 -- the unit once. A body laid up and a piece left on the altar both come back on the second homecoming.
 Curse.RITE_DESCENTS = 2
@@ -454,7 +454,7 @@ Curse.RITE_DESCENTS = 2
 -- ---------------------------------------------------------------------------
 
 -- Has anything in this company ever been hexed? The Cathedral's room gate (models/offer.lua's
--- GATES.cursed), and a sticky flag rather than a live count for exactly the reason Wound.everWounded is
+-- GATES.cursed), and a sticky flag rather than a live count for exactly the reason Injury.everInjured is
 -- one: a door that appeared when the first hex landed and vanished the moment it was lifted would take
 -- the room away at the instant the player finished learning what it was for.
 function Curse.everCursed(player)
@@ -583,7 +583,7 @@ function Curse.rites(player)
     return out
 end
 
--- SERVE A TRIP. Called on the descent, from the same seam Wound.tickRest is -- one trip down is one
+-- SERVE A TRIP. Called on the descent, from the same seam Injury.tickRest is -- one trip down is one
 -- night the rite is worked, and both free paths in the city are therefore paid in the same currency and
 -- tick on the same event.
 --

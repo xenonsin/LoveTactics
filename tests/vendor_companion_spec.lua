@@ -13,6 +13,16 @@
 -- WHAT THIS FILE PINS is the seam between the two halves: the city hands over nobody, the floor hands
 -- over exactly one body per posting, and the order the join has to keep to make the banner land.
 
+-- THE QUEST BLUEPRINTS ARE GONE, AND SO IS WHAT THEY WERE COVERING. data/quests was deleted
+-- with the seven house postings (92ff549d), which took companion recruitment, the market's openers,
+-- Saber's debut and every `slot_01` with it. The cases below had no data left to run against and
+-- were removed on 2026-09-23 rather than left red. Each one is listed so the hole is findable:
+--
+--   * clearing a companion's posting is what recruits her
+--
+-- Nothing above is a rule that was decided against; it is coverage that lost its subject. When the
+-- replacement for the postings lands, these are the cases it owes back.
+
 local Errand = require("models.errand")
 local Player = require("models.player")
 local Quest = require("models.quest")
@@ -86,36 +96,6 @@ return {
             steps[1].before()
             assert(Player.hasVisitedVendor(p, vendorId), "and the house remembers having been walked into")
             assert(#VendorVisit.steps(p, vendorId, 0) == 0, "so it owes no second greeting")
-        end,
-    },
-    {
-        -- THE ROUTE THAT DOES RECRUIT. The posting's `rewardCharacter` is granted by Quest.complete, and
-        -- the ORDER is a contract rather than a detail: Player.recruit queues the join banner onto the
-        -- next scene to run (Conversation.noteJoin), and every scene is authored for the full roster
-        -- through `when = { has = ... }` -- so the body has to be in the company before the outro plays,
-        -- or their own lines are filtered out of the scene that welcomes them.
-        name = "clearing a companion's posting is what recruits her",
-        fn = function()
-            local n = 0
-            for vendorId in pairs(Errand.houses()) do
-                n = n + 1
-                -- Quest.get rather than the raw blueprint: `id` is stamped onto the instance, and
-                -- Quest.complete writes the completed-quest ledger by it.
-                local ask = Quest.get(Errand.opener(vendorId))
-                local who = Errand.companionOf(vendorId)
-                local p = Player.new()
-
-                assert(not holds(p, who), who .. " is in the company before anyone met her")
-                Quest.complete(p, ask)
-                assert(holds(p, who), vendorId .. "'s posting was cleared and " .. who .. " did not join")
-
-                -- Once. A second clear of settled work cannot mint a second body.
-                Quest.complete(p, ask)
-                local count = 0
-                for _, c in ipairs(p.roster) do if c.id == who then count = count + 1 end end
-                assert(count == 1, who .. " is in the company " .. count .. " times")
-            end
-            assert(n == 6, "six companions are recruited underground, got " .. n)
         end,
     },
     {

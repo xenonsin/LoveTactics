@@ -3,6 +3,16 @@
 -- (`defend` is wave-based, not timed: it wins by clearing every wave -- see tests/flight_leg_spec.lua.)
 -- See Combat.evaluate and Arena.resolveRegion.
 
+-- THE QUEST BLUEPRINTS ARE GONE, AND SO IS WHAT THEY WERE COVERING. data/quests was deleted
+-- with the seven house postings (92ff549d), which took companion recruitment, the market's openers,
+-- Saber's debut and every `slot_01` with it. The cases below had no data left to run against and
+-- were removed on 2026-09-23 rather than left red. Each one is listed so the hole is findable:
+--
+--   * the grimoire fight is won on the monster and lost on Gyeom, in that order
+--
+-- Nothing above is a rule that was decided against; it is coverage that lost its subject. When the
+-- replacement for the postings lands, these are the cases it owes back.
+
 local Arena = require("models.arena")
 local Combat = require("models.combat")
 
@@ -614,7 +624,7 @@ return {
                 "and it holds on ANY foe standing inside the range, not just the nearest")
 
             local stride, who = 0, nil
-            for _, id in ipairs({ "character_demon_imp", "character_demon_grunt" }) do
+            for _, id in ipairs({ "character_demon_imp_tutorial", "character_demon_grunt_tutorial" }) do
                 local m = Character.defs[id].stats.movement or 0
                 if m > stride then stride, who = m, id end
             end
@@ -680,57 +690,6 @@ return {
                     end
                 end
             end
-        end,
-    },
-    {
-        -- GYEOM'S RECRUIT FIGHT, WHICH IS TWO CONDITIONS AT ONCE AND READS ITS OWN QUEST TO SAY SO.
-        -- The deal she offers is "help me kill the thing on the book": you win by felling the monster,
-        -- and you lose the moment she does. Both halves are authored on one objective --
-        -- `win.type = "assassinate"` with `protect` layered under it -- and nothing tested that they
-        -- compose, only a comment in the quest file claiming they did.
-        --
-        -- THE ORDER IS THE INTERESTING HALF, and it is the assertion worth having: Combat.outcomeFor
-        -- checks `protect` BEFORE it looks at the win type, so a fight where the monster is dead AND she
-        -- is dead is a LOSS, not a win on a technicality. The blow that kills the thing does not buy her
-        -- back.
-        --
-        -- She fights as an ALLY, not a party member (the objective's `allies`, AI-run) -- so this also
-        -- pins that an ally satisfies `protect` at all, which turns on Combat.isProtectedAlive testing
-        -- `side == "party"` rather than roster membership. An escorted body is party-side and
-        -- uncommanded; if that ever stops being true this objective silently becomes unlosable.
-        name = "the grimoire fight is won on the monster and lost on Gyeom, in that order",
-        fn = function()
-            local Quest = require("models.quest")
-            local obj = Quest.defs["quest_arcanum_slot_01"].map.objective
-            assert(obj.protect == "character_gyeom", "the fight is lost if she falls")
-            assert(obj.win.type == "assassinate", "and won only by felling the thing on the book")
-            local monster = obj.win.target
-            assert(monster and obj.composition()[1] == monster,
-                "the assassinate mark is the body the objective actually fields")
-            local seated = false
-            for _, id in ipairs(obj.allies or {}) do seated = seated or id == "character_gyeom" end
-            assert(seated, "she stands in her own fight rather than waiting it out")
-
-            -- Both up: nothing decided yet.
-            local gyeom = named("party", 1, 1, "character_gyeom")
-            local beast = named("enemy", 4, 4, monster)
-            local hero = named("party", 2, 1, "character_avatar")
-            local c = fakeCombat({ hero, gyeom, beast }, obj)
-            assert(Combat.outcomeFor(c, "party") == nil, "the fight is live while both are standing")
-
-            -- Monster down, she is up: the job is done.
-            beast.alive = false
-            assert(Combat.outcomeFor(c, "party") == "win", "felling the thing on the book wins it")
-
-            -- ...and she is what it was for. Down with the monster already dead is STILL a loss, which
-            -- is the ordering this case exists for.
-            gyeom.alive = false
-            assert(Combat.outcomeFor(c, "party") == "loss",
-                "protect is read before the win type -- killing it does not buy her back")
-
-            -- Her falling with the monster alive is the ordinary loss.
-            beast.alive = true
-            assert(Combat.outcomeFor(c, "party") == "loss", "and she is the fight either way")
         end,
     },
 }

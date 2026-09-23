@@ -8,6 +8,16 @@
 -- day tags this house's stock" to "a foraging day advances this house", and that second thing would
 -- let a player buy the whole catalogue without running a single line, which is the campaign.
 
+-- THE QUEST BLUEPRINTS ARE GONE, AND SO IS WHAT THEY WERE COVERING. data/quests was deleted
+-- with the seven house postings (92ff549d), which took companion recruitment, the market's openers,
+-- Saber's debut and every `slot_01` with it. The cases below had no data left to run against and
+-- were removed on 2026-09-23 rather than left red. Each one is listed so the hole is findable:
+--
+--   * foraging is worth less coin than the work the houses post
+--
+-- Nothing above is a rule that was decided against; it is coverage that lost its subject. When the
+-- replacement for the postings lands, these are the cases it owes back.
+
 local Request = require("models.request")
 local Player = require("models.player")
 local Quest = require("models.quest")
@@ -228,19 +238,4 @@ return {
         end,
     },
 
-    {
-        name = "foraging is worth less coin than the work the houses post",
-        fn = function()
-            -- Or it would be the efficient way to earn, and the campaign becomes the inefficient one.
-            -- The point of a request is the stock it tags, not the purse.
-            local worst
-            for id, def in pairs(Quest.defs) do
-                if def.rewardGold and (not worst or def.rewardGold < worst) then worst = def.rewardGold end
-            end
-            assert(worst, "the campaign posts paid work")
-            assert(Request.GOLD <= worst,
-                string.format("a foraging day (%d) must not out-pay the cheapest quest (%d)",
-                    Request.GOLD, worst))
-        end,
-    },
 }

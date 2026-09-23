@@ -1,35 +1,57 @@
 -- Conversation authored inline (English); localization ids (`tag`) are stamped by
 -- tools/extract_strings.lua and must not be hand-edited. See models/conversation.lua.
 --
--- THE BUBBLES ABOVE GROUND: the instructions the Gate and the Ward give, and the four the city used
--- to. A hint bag like the flight leg's -- fetched by id (Locale.coach), never played in order, never
--- spoken by anybody. The windows' longer words are next door in conversation_tutorial_notes.lua.
+-- THE BUBBLES ABOVE GROUND: the one instruction the city itself gives, the ones the Gate and the Ward
+-- give, and the three nobody gives any more. A hint bag like the flight leg's -- fetched by id
+-- (Locale.coach), never played in order, never spoken by anybody. The windows' longer words are next
+-- door in conversation_tutorial_notes.lua.
 --
 -- EVERY LINE OPENS WITH {select}, because every one of them is asking for a press. The token is what
 -- keeps that device-honest: a key cap for pad and keyboard, "Click" for a mouse, "Tap" for a finger
 -- (models/locale.lua's coachLine). A line here that wrote "Click" itself would be lying to two of the
 -- three inputs this project supports, and tests/tutorial_spec.lua fails the build over it.
 --
--- NOTHING ON THE PLAZA SPEAKS ANY MORE (2026-09-21). Four of the seven lines below were the city's
--- own, and the city's whole coach went with the same cut: a bubble on a card, with every other card
--- refused until that one had been walked into, on the one screen whose job is to be a place you choose
--- in. What is left fielded is the Gate's descend row and the Ward's two rows -- both INSIDE a screen,
--- pointing at the control that answers the thing being taught. See states/hub.lua's header.
+-- THE PLAZA SPEAKS ONCE, AND ONLY HERE (2026-09-23). Four of the seven lines below were the city's
+-- own, and all four went in the cut that took the plaza's coach -- a bubble on a card with every other
+-- card refused until that one had been walked into, on the one screen whose job is to be a place you
+-- choose in. The REFUSAL was the wrong half and it stays cut. `ward_card` is back without it: a bubble
+-- on the Cathedral's plate on the first morning, no door turned down, because the cut left the one
+-- lesson that had nowhere else to live with nowhere at all (states/hub.lua's header argues it).
 --
--- The four are kept rather than cut, on the reasoning that kept rift_card twice before: a stamped,
--- translated line is dear to lose, and a bag is not a cost -- Locale.coach fetches by id, so a line
--- nobody asks for is never read.
+-- Everything else fielded is INSIDE a screen, pointing at the control that answers the thing being
+-- taught: the Gate's descend row, and the Ward's two rows behind the plate this one names.
+--
+-- The three still fielded by nobody are kept rather than cut, on the reasoning that kept rift_card
+-- twice before -- and that ward_card has now cashed in: a stamped, translated line is dear to lose, a
+-- bag is not a cost (Locale.coach fetches by id, so a line nobody asks for is never read), and the day
+-- one of them is owed again it costs a draw call rather than a translation pass.
 --
 -- WHO FIELDS THEM:
 --   gate_stair  states/gate.lua  -- the descend row, until the company has actually gone down
 --   mend_row    ui/panels/ward.lua -- see below
 --   mend_rest   ui/panels/ward.lua -- see below
---   ward_card   nobody           -- RETIRED (2026-09-21) with the plaza's coach. It was the first
---                                 morning's ONE coached door: the company walks out of Act 0 with
---                                 Rowan hurt, so the city's opening instruction was where that gets
---                                 seen to. The lesson survives where its answer lives -- the window
---                                 and the row bubble inside the Ward -- and the card outside it says
---                                 nothing.
+--   ward_card   states/hub.lua   -- the first morning's ONE coached door, retired with the plaza's
+--                                 coach (2026-09-21) and BACK WITHOUT THE RAIL (2026-09-23). The
+--                                 company walks out of Act 0 with Rowan hurt, so the city's opening
+--                                 instruction is where that gets seen to.
+--
+--                                 IT WAS RETIRED ON THE ARGUMENT THAT THE LESSON SURVIVED INSIDE THE
+--                                 ROOM -- the window in the doorway and the row bubble, both of which
+--                                 are still there and still the better half of the teaching. What that
+--                                 missed is that both of them are behind a door the player has to
+--                                 choose to open first, and nothing told them it was the one. Every
+--                                 other plaza line had a second home: the stair is named in Rowan's own
+--                                 words one beat earlier, and a grown room says what it is for once you
+--                                 are in it. This one had none, and the morning it is about is the one
+--                                 where the company is three bodies deep with one of them hurt and the
+--                                 next thing the city asks for is four.
+--
+--                                 IT NAMES ROWAN OUTRIGHT, with no {who} token, and that is right for
+--                                 exactly this line: it is drawn on one morning of one save, and the
+--                                 body carried out of the Champion's last stage is always hers
+--                                 (models/combat.lua's Combat.spendScriptedFell). A token here would be
+--                                 a promise that this bubble can point at anybody, which it cannot --
+--                                 the room's own rows are the ones that take a name (mend_row).
 --   rift_card   nobody           -- RETIRED TWICE OVER. It was the first morning's second door, and
 --                                 what retired it the first time was not a deleted card: the arrival
 --                                 scene (conversation_prologue_arrival) has Rowan name the Rift and
@@ -49,7 +71,7 @@
 --
 -- AND THE TWO THAT STILL SPEAK INSIDE THE WARD:
 --   mend_row    ui/panels/ward.lua -- the Inn's ONE row, on the one morning somebody is standing in
---                                 front of it not knowing a wound is a thing you go and answer. The
+--                                 front of it not knowing an injury is a thing you go and answer. The
 --                                 bubble is the same widget the plaza's cards used to wear, pinned
 --                                 to a control inside a panel instead.
 --
@@ -58,7 +80,7 @@
 --                                 taught BOTH ways out and did not rank them, which is right -- the
 --                                 choice is the room. This instruction is not the room, it is the
 --                                 first morning, and on the first morning the two are not equal:
---                                 resting benches Rowan for Wound.REST_DESCENTS trips and the very
+--                                 resting benches Rowan for Injury.REST_DESCENTS trips and the very
 --                                 next thing the city asks for is an expedition of four
 --                                 (models/descent.lua's PARTY_MAX) out of a company of three. A coach
 --                                 that shrugged here would be teaching the player to walk down a body
@@ -84,10 +106,10 @@ return {
 
     script = {
         { "character_rowan", "{select} to take the stair down.", tag = 1, id = "gate_stair" },
-        { "character_rowan", "{select} the Cathedral to mend Rowan's wounds.", tag = 5, id = "ward_card" },
+        { "character_rowan", "{select} the Cathedral to mend Rowan's injuries.", tag = 5, id = "ward_card" },
         { "character_rowan", "{select} the Rift. The stair down is inside.", tag = 2, id = "rift_card" },
         { "character_rowan", "{select} {door}", tag = 3, id = "new_door" },
-        { "character_rowan", "{select} to mend {who}'s wounds.", tag = 6, id = "mend_row" },
+        { "character_rowan", "{select} to mend {who}'s injuries.", tag = 6, id = "mend_row" },
         { "character_rowan", "{select} to rest {who}. The purse will not cover setting the bone today.", tag = 7, id = "mend_rest" },
     },
 }

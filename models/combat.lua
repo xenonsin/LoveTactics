@@ -1281,7 +1281,7 @@ local function applyUnitPassives(unit)
     -- The rare tier's inversions, onto the CHARACTER as well as the unit. Combat.unreservedMax is asked
     -- about a char rather than a unit -- it is called from the hub, the loadout screen and the wound
     -- ledger, none of which have a board -- so a rule that moves a ceiling has to arrive the way
-    -- `maxBonus` and `woundShare` already do. Cleared to nil rather than left stale when a fight is
+    -- `maxBonus` and `injuryShare` already do. Cleared to nil rather than left stale when a fight is
     -- fought without them, so a relic traded away stops applying the moment the next setup runs.
     unit.char.rules = unit.rules
 end
@@ -2991,6 +2991,10 @@ end
 -- is that (see the blueprint) -- it used to fall out of standing in the hallowed tile, and now it is
 -- stated rather than implied.
 --
+-- `scatter = N` keeps that rule and loosens the aim: the ground goes somewhere within N of the vacated
+-- tile rather than onto it, one draw per step. Same contract, different shape -- a trail is a line a
+-- company can read and step around, a scatter is a room quietly catching. See the note at the draw.
+--
 -- Laying behind needs a tile to have come FROM, so the ground half lays nothing when the caller hands
 -- over no origin -- a summon's arrival, a blink. Same rule the trail already obeys through `reason`:
 -- ground is pressed by feet, and a unit that crossed nothing left nothing. `selfStatus` does not read
@@ -3010,7 +3014,30 @@ function Combat.layTrail(combat, unit, fromX, fromY)
             end
             if fromX and fromY then
                 if trail.hazard then
-                    Hazard.place(combat, fromX, fromY, trail.hazard,
+                    -- SCATTERED, where a plain trail is laid. `scatter = N` throws the ground somewhere
+                    -- within N of the tile just vacated instead of onto it, one draw per step -- which
+                    -- is a different SHAPE of the same mechanism rather than a second one, and the
+                    -- difference is what separates the two bodies that carry it. A line behind a walker
+                    -- is legible: a company can read it, avoid it, and be denied a corridor on purpose.
+                    -- A scatter cannot be planned around at all; the room simply starts catching.
+                    --
+                    -- A DRAW THAT LANDS BADLY LAYS NOTHING, and that is the honest behaviour rather than
+                    -- a retry. Hazard.place already skips a cell that is off the map or on impassable
+                    -- terrain -- its own header calls that the licence for an effect to paint a rough
+                    -- footprint without clamping every cell -- so a spark thrown at a wall goes out.
+                    -- Re-rolling until it stuck would make the rate depend on how enclosed the room is,
+                    -- which is backwards: a warren should catch more slowly than a hall.
+                    --
+                    -- Combat.roll rather than math.random, so a seeded battle replays tile for tile
+                    -- (see the note on Combat.newRandom: the draw is counted into the state hash, which
+                    -- is what keeps two peers agreeing about where the fire went).
+                    local hx, hy = fromX, fromY
+                    local n = trail.scatter
+                    if n and n > 0 then
+                        hx = hx + Combat.roll(combat, n * 2 + 1) - (n + 1)
+                        hy = hy + Combat.roll(combat, n * 2 + 1) - (n + 1)
+                    end
+                    Hazard.place(combat, hx, hy, trail.hazard,
                         { side = unit.side, duration = trail.duration })
                 end
                 if trail.trap and not Trap.at(combat, fromX, fromY) then
@@ -6280,6 +6307,24 @@ local function withAuraTags(opts, auraTags)
     return merged
 end
 
+-- One blow's opts, copied per landing, for the BRAVE RULE (Item.strikes -- a weapon that lands its
+-- swing more than once).
+--
+-- THE COPY IS NOT HYGIENE, IT IS THE MECHANIC. Combat.dealDamage WRITES to the table it is handed and
+-- clears none of it: `critical` on a lucky roll, `baseParts` for the combat log's receipt, `area` for
+-- the reflex gate. Hand it one table twice and the second strike inherits the first's critical for
+-- free -- a 10% roll that pays out on every later strike of the flurry -- and the receipt under the
+-- second blow names the first blow's numbers. `withAuraTags` above copies only when there ARE aura
+-- tags, which is the uncommon case, so the common one has to copy here.
+--
+-- Shallow is enough and deliberately so: collectTags builds a fresh list rather than appending to
+-- `opts.tags`, so the one table a strike shares with its siblings is never written through.
+local function strikeOpts(opts)
+    local copy = {}
+    if opts then for k, v in pairs(opts) do copy[k] = v end end
+    return copy
+end
+
 -- An adjacency predicate as the player reads it: "adjacent bow", "adjacent weapon". Public so the
 -- slot badge and the tooltip name a requirement the same way.
 function Combat.adjacencyLabel(pred)
@@ -7370,8 +7415,8 @@ end
 -- stage skips it -- and wrong for the debug button, because the beat is not a threat the player dodged:
 -- it is a CONSEQUENCE the rest of the game is written from. The Champion fells Rowan at 33%
 -- (data/items/utility/utility_demon_sigil.lua), the win writes that to the wound ledger
--- (states/game.lua's inflictWounds), and the Ward's card in the city is hung on the mark it leaves
--- (models/building.lua's `unlockWound`). Debug-winning the prologue's last fight therefore opened a
+-- (states/game.lua's inflictInjuries), and the Ward's card in the city is hung on the mark it leaves
+-- (models/building.lua's `unlockInjury`). Debug-winning the prologue's last fight therefore opened a
 -- city with no ward and no healer -- the exact "broken city" states/prologue.lua's `skip` spends a
 -- paragraph refusing to hand over, arrived at from the other direction.
 --
@@ -8648,7 +8693,7 @@ end
 -- ceiling bonuses (unreservedMax's maxBonus) are gone by the time the party is back on the map.
 -- Every party body that ENDED this fight down, as character instances, whether it is carried out or
 -- not. The same test Combat.reviveFallenParty applies, factored out because a defeat needs the list
--- without the standing-up: a lost fight wounds everyone who fell (models/wound.lua) and revives
+-- without the standing-up: a lost fight injures everyone who fell (models/injury.lua) and revives
 -- nobody. Returns an empty list rather than nil -- the question is who, never whether.
 function Combat.fallenParty(combat)
     local out = {}
@@ -8668,7 +8713,7 @@ end
 -- A DEFEAT DOES NOT ALWAYS LEAVE BODIES ON THE FLOOR, and that is the hole this closes. An escort whose
 -- charge was killed, a defend whose charge was, a control run out on the clock, a company that broke off
 -- before it was destroyed -- every one of those ends with the party still standing, and the wound meter
--- reads `fallen` (models/wound.lua), so a rout at a sliver of health walked back into the city
+-- reads `fallen` (models/injury.lua), so a rout at a sliver of health walked back into the city
 -- indistinguishable from a fight that never happened. The bodies were free.
 --
 -- SO THE LINE IS DRAWN AT A THIRD of what the body can still USE. Below it the fight ended before the
@@ -8707,7 +8752,7 @@ end
 -- lost -- and it is gone: losing a member outright to one bad turn in a fight you WON is the harshest
 -- possible reading of a countdown, and it made the countdown the whole game rather than a beat in it.
 --
--- WHAT CARRIES THE STAKE INSTEAD IS THE WOUND (models/wound.lua), which now reserves a share of the
+-- WHAT CARRIES THE STAKE INSTEAD IS THE INJURY (models/injury.lua), which now reserves a share of the
 -- body's health and stacks debuffs as they accumulate. A body that keeps going down keeps getting
 -- harder to field, which degrades a company across a whole expedition rather than deleting a quarter of
 -- it in one turn -- and the only thing that ever costs you a body is a WIPE, where the whole company is
@@ -8836,6 +8881,9 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
     -- Fold in a neighboring Alchemic Mastery charm's magnitude bonus (and any frenzy) exactly as
     -- Combat.useItem does, so the previewed number matches the hit the player is about to land.
     local effectiveAmount = castAmount(combat, unit, ab, tx, ty, auraMods, item)
+    -- The brave rule, forecast: a swing that lands twice has to PREVIEW as landing twice, or the
+    -- panel quotes half the wound the player is about to deal (Item.strikes).
+    local strikes = Item.strikes(ab)
     local fx = {
         user = unit, target = target, item = item, combat = combat, tx = tx, ty = ty,
         dest = dest, -- a two-stage throw's chosen landing (Heave); nil for every single-aim ability
@@ -8935,7 +8983,16 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
             if not tgt then return 0 end
             opts = opts or {}
             if opts.amount == nil then opts.amount = effectiveAmount end
-            local d = Combat.computeDamage(combat, unit, tgt, item, withAuraTags(opts, auraTags))
+            -- The brave rule, quoted whole: `strikes` landings of the same blow, each mitigated on its
+            -- own exactly as the live path mitigates them (Item.strikes). Summed into ONE number,
+            -- because the forecast answers "what will this swing cost the body in front of me" and the
+            -- body does not care how many times the knife went in. No `alive` check here that the live
+            -- path has: a forecast never kills anything, so there is no corpse to stop short of, and
+            -- quoting the flurry in full is the honest ceiling to commit against.
+            local d = 0
+            for _ = 1, strikes do
+                d = d + Combat.computeDamage(combat, unit, tgt, item, withAuraTags(strikeOpts(opts), auraTags))
+            end
             local e = entryFor(tgt)
             e.damage = e.damage + d
             -- A blow that folds a shove in (opts.knockback -- the Iron Mace, the Sworn Aegis) never
@@ -9341,6 +9398,7 @@ end
 -- active-ability effect. The effect is pcall-guarded so a data-file quirk can never crash the caller.
 function Combat.abilityOutput(unit, item)
     local ab = item and item.activeAbility
+    local strikes = Item.strikes(ab) -- the brave rule: how many landings this hover is quoting
     if not ab or not ab.effect then return nil end
     unit = unit or previewStandIn()
     local dummy = dummyTarget()
@@ -9438,7 +9496,14 @@ function Combat.abilityOutput(unit, item)
         -- Every data effect only loops aoeCells to place hazards, so a single cell can't inflate damage.
         aoeCells = function() return { { x = 0, y = 0 } } end,
         damage = function(tgt, opts)
-            local d = Combat.computeDamage(nil, unit, tgt or dummy, item, opts)
+            -- The brave rule on the SHELF (Item.strikes): a hover over a weapon that lands its swing
+            -- twice has to quote both landings, or the rack under-sells the one weapon in the game
+            -- whose whole purchase is the second blow. Each landing is mitigated on its own against
+            -- the stand-in, exactly as the board forecast and the live swing mitigate theirs.
+            local d = 0
+            for _ = 1, strikes do
+                d = d + Combat.computeDamage(nil, unit, tgt or dummy, item, opts)
+            end
             out.damage = out.damage + d
             -- A carried status (see Combat.dealFlatDamage) bypasses fx.applyStatus, so the inventory
             -- tooltip has to read it off the hit itself to keep naming it.
@@ -10306,18 +10371,26 @@ function Combat.unreservedMax(char, stat)
     -- the base `max`. `char.maxBonus` is rebuilt from the grid every setup (applyUnitPassives), so it
     -- never compounds; it is nil outside a battle, where these items have no effect anyway.
     max = max + ((char.maxBonus and char.maxBonus[stat]) or 0)
-    -- A WOUND RESERVES PART OF THE BODY (models/wound.lua). `char.woundShare` is stamped by Wound.stamp
-    -- from the player's ledger, because wounds are keyed by char id on the PLAYER and this function is
-    -- asked about summons, enemies and duel rosters that have no player behind them at all -- so the
-    -- share arrives on the character the same way `maxBonus` does, and nothing here learns what a wound
-    -- is. Health only: a wound is an injury, not exhaustion, so stamina and mana refill against their
-    -- true ceiling (the same split Player.restore makes).
+    -- AN INJURY RESERVES PART OF THE BODY (models/injury.lua). `char.injuryShare` is stamped by
+    -- Injury.stamp from the player's ledger, because injuries are keyed by char id on the PLAYER and
+    -- this function is asked about summons, enemies and duel rosters that have no player behind them at
+    -- all -- so the share arrives on the character the same way `maxBonus` does, and nothing here learns
+    -- what an injury is.
     --
-    -- Applied to the CEILING rather than to `max`, which is never modified: a wounded body's pool is
+    -- A TABLE PER POOL, and it used to be one number applied to health alone. The comment here read "a
+    -- wound is an injury, not exhaustion, so stamina and mana refill against their true ceiling", which
+    -- was true of a meter with one kind in it. There are seven now and two of them are about the other
+    -- pools by construction -- a Burst Lung seals a fifth of the stamina, a Ruptured Font a quarter of
+    -- the mana -- so the share is asked for BY STAT and an injury that says nothing about this pool
+    -- still says nothing about it. Health-only behaviour falls out of the blueprints rather than out of
+    -- a condition here.
+    --
+    -- Applied to the CEILING rather than to `max`, which is never modified: an injured body's pool is
     -- the size it always was and part of it is simply not available -- so nothing has to be un-written
     -- when the bone is set, and every recomputation of max from level and gear stays untouched.
-    if stat == "health" and (char.woundShare or 0) > 0 then
-        max = math.max(1, math.floor(max * (1 - char.woundShare)))
+    local reserved = char.injuryShare and char.injuryShare[stat]
+    if reserved and reserved > 0 then
+        max = math.max(1, math.floor(max * (1 - reserved)))
     end
     -- THE WHETTED VOW (a rare relic): the company hits for twice and holds half the health -- a third at
     -- two copies, a quarter at three. Applied to the CEILING here beside the wound share and for the
@@ -10981,6 +11054,7 @@ function Combat.strikeWith(combat, user, weapon, tx, ty)
     local auraTags, auraStatuses, auraMods = adjacencyAura(user.char, weapon)
     withStatusLifesteal(user, auraMods) -- a sub-strike drinks under the Red Thirst exactly as the main swing does
     local effectiveAmount = castAmount(combat, user, ab, tx, ty, auraMods, item)
+    local strikes = Item.strikes(ab) -- the brave rule, on the sub-strike path too (Dual Wield, a wolf's teeth)
     local result = { damageDealt = 0, healed = 0 }
     local fx = {
         user = user, target = target, item = weapon, combat = combat,
@@ -11032,16 +11106,24 @@ function Combat.strikeWith(combat, user, weapon, tx, ty)
             if not tgt then return 0 end
             opts = opts or {}
             if opts.amount == nil then opts.amount = effectiveAmount end
-            local d = Combat.dealDamage(combat, user, tgt, weapon, withAuraTags(opts, auraTags))
-            result.damageDealt = result.damageDealt + d
-            if d > 0 then
-                for _, st in ipairs(auraStatuses) do
-                    Status.apply(combat, tgt, st.id, st.opts)
-                end
-                if auraMods.lifesteal > 0 then
-                    result.healed = result.healed + Combat.applyHeal(combat, user, math.floor(d * auraMods.lifesteal))
+            -- The brave rule (Item.strikes), the twin of resolveCast's loop and for the same reasons:
+            -- a fresh opts per landing so no strike inherits the last one's critical, and a stop the
+            -- moment there is nothing left standing to strike.
+            local d = 0
+            for i = 1, strikes do
+                if i > 1 and not tgt.alive then break end
+                local hit = Combat.dealDamage(combat, user, tgt, weapon, withAuraTags(strikeOpts(opts), auraTags))
+                d = d + hit
+                if hit > 0 then
+                    for _, st in ipairs(auraStatuses) do
+                        Status.apply(combat, tgt, st.id, st.opts)
+                    end
+                    if auraMods.lifesteal > 0 then
+                        result.healed = result.healed + Combat.applyHeal(combat, user, math.floor(hit * auraMods.lifesteal))
+                    end
                 end
             end
+            result.damageDealt = result.damageDealt + d
             return d
         end,
     }
@@ -11606,6 +11688,10 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
     -- default opts.amount below -- Combat.dealDamage bases its hit on opts.amount/ab.damage, not on
     -- fx.amount, so a damage bomb needs it fed in there too.
     local effectiveAmount = castAmount(combat, unit, ab, tx, ty, auraMods, item)
+    -- How many times a swing of this lands (Item.strikes -- the brave rule). Read ONCE per cast, not
+    -- per blow: it is a property of the weapon, and an effect that damages several bodies must strike
+    -- each of them the same number of times.
+    local strikes = Item.strikes(ab)
     -- THE ARCANE CONDUIT (the Battlemage's): a charm that sharpens the items sitting NEXT TO IT in the
     -- grid, funded by the caster's banked Arcane rather than free. Read here, in resolveCast, which is
     -- the REAL cast path -- the damage preview goes through Combat.computeDamage and never reaches this,
@@ -11736,18 +11822,32 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
             -- effectiveAmount == ab.damage, so this is a no-op for every cast with no charm beside it.
             opts = opts or {}
             if opts.amount == nil then opts.amount = effectiveAmount end
-            local d = Combat.dealDamage(combat, unit, tgt, item, withAuraTags(opts, auraTags))
-            result.damageDealt = result.damageDealt + d
-            if d > 0 then
-                for _, st in ipairs(auraStatuses) do
-                    Status.apply(combat, tgt, st.id, st.opts)
-                end
-                -- A neighboring Vampiric Strike charm makes this weapon drink: the caster heals a
-                -- share of the damage it just dealt.
-                if auraMods.lifesteal > 0 then
-                    result.healed = result.healed + Combat.applyHeal(combat, unit, math.floor(d * auraMods.lifesteal))
+            -- THE BRAVE RULE (Item.strikes): the blow lands `strikes` times, and each landing is a
+            -- whole separate blow -- its own accuracy roll, its own crit roll, its own subtraction of
+            -- the target's armour. That last is what makes a brave weapon a read rather than simply
+            -- more damage: two half-sized strikes lose twice as much to plate as one full one, and
+            -- almost nothing extra to a robe. Every weapon in the game but one strikes once, and the
+            -- loop is a no-op for them.
+            local d = 0
+            for i = 1, strikes do
+                -- Nothing to strike a second time. Checked between landings rather than before the
+                -- first, so a single-strike swing never asks the question at all.
+                if i > 1 and not tgt.alive then break end
+                local hit = Combat.dealDamage(combat, unit, tgt, item, withAuraTags(strikeOpts(opts), auraTags))
+                d = d + hit
+                if hit > 0 then
+                    for _, st in ipairs(auraStatuses) do
+                        Status.apply(combat, tgt, st.id, st.opts)
+                    end
+                    -- A neighboring Vampiric Strike charm makes this weapon drink: the caster heals a
+                    -- share of the damage it just dealt. Per LANDING, not per swing -- the charm reads
+                    -- "a share of what this blow drew", and a flurry draws blood more than once.
+                    if auraMods.lifesteal > 0 then
+                        result.healed = result.healed + Combat.applyHeal(combat, unit, math.floor(hit * auraMods.lifesteal))
+                    end
                 end
             end
+            result.damageDealt = result.damageDealt + d
             -- TWINNED (a neighbouring Twinned Sigil): a single-target cast forks into one more body
             -- beside the one it was aimed at. Re-entered through this same closure, so the fork carries
             -- everything the original did -- the aura's granted tags, its on-hit status, its lifesteal

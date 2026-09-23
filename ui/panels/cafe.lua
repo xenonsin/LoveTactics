@@ -123,9 +123,9 @@ function Cafe:refresh()
         self.rows[#self.rows + 1] = row
     end
 
-    -- THE KITCHEN NO LONGER SETS BONES, and neither does anywhere else in the city. A wounded body was
+    -- THE KITCHEN NO LONGER SETS BONES, and neither does anywhere else in the city. An injured body was
     -- mended here for gold, on a row appended after the dishes; that moved to the Inn as a bed priced
-    -- per wound, and then the whole toll was deleted (models/wound.lua). A wound lasts the expedition
+    -- per injury, and then the whole toll was deleted (models/injury.lua). An injury lasts the expedition
     -- and the surface ends it, free -- so there is nothing here to sell, and this house sells suppers.
 
     local items = {}

@@ -1,6 +1,6 @@
 -- The demon that leads the raiding party on the flight leg -- the capstone the whole tutorial ends on
 -- (states/prologue.lua's FLIGHT_QUEST objective, won by `assassinate`: cut the champion down and the
--- fight is over). A step above the Demon Grunt (66 health) and well below the Demon Lord it serves
+-- fight is over). A step above the Demon Grunt (80 health) and well below the Demon Lord it serves
 -- (420, the finale) -- the first foe the game frames as a real BOSS, and the one that asks the player
 -- to spend the whole toolkit the road handed them.
 --
@@ -19,7 +19,23 @@
 --
 -- `boss = true` marks it a quest objective: immune to instant execution (Coup de Grace), Charm and
 -- Polymorph, so the assassinate win is earned by fighting it down rather than skipped by a finisher.
--- Reusable as a mid-tier demon boss in later content -- the phase system is all in the Sigil.
+--
+-- ACT 0 OWNS THIS BODY, and the `_tutorial` says so -- it used to end this paragraph with "reusable as a
+-- mid-tier demon boss in later content", and nothing ever reused it. One objective fields it, its whole
+-- kit is exclusive to it (the Sigil, the Roar, the Cleave), and the rift's demon bosses are the circle
+-- generals. The imp's header carries the argument for the suffix across all four of Act 0's demons.
+--
+-- IT IS STILL SCALED, unlike the imp, the grunt and the bomblet beside it, and that is deliberate
+-- rather than an omission from this pass. A pin would be a no-op in the game -- the prologue fields it
+-- at party level 2, which lags to 1 -- and it would NOT be a no-op in the suite, because
+-- tests/enemy_scaling_spec.lua uses this body as its reference elite in two structural cases: "an elite
+-- must still be the dangerous thing on the board", and the sweep over every growth table that proves no
+-- class is one-shot by a scaled elite at any level. Pinning it would leave both of those measuring a
+-- level-1 body and passing for that reason.
+--
+-- WHICH IS A SMELL AND IS WRITTEN DOWN HERE RATHER THAN FIXED: Act 0's capstone should not be what the
+-- scaling sweep measures. Those two cases want a body the rift actually scales -- a circle general --
+-- and repointing them is a balance job (their bands were fitted to this stat block), not a rename.
 --
 -- HEALTH IS THE FIGHT'S RUNNING TIME, and it has now been raised twice for the same reason: 92 -> 115
 -- -> 150. The three stages above are worth about six rounds of board time and kept being handed three.
@@ -48,7 +64,7 @@ return {
     revivable = false, -- a demon does not come back: no downed window, and no revive takes it
     stats = {
         -- TWO POOLS, AND THE SPLIT IS THE FIGHT. A demon's body is billed to stamina and its will to
-        -- mana (the contract data/characters/character_demon_grunt.lua states in full), so the claws,
+        -- mana (the contract data/characters/character_demon_grunt_tutorial.lua states in full), so the claws,
         -- the Sigil's escalating riposte and a Heave come out of the 24 below, while the Roar (12) and
         -- the Cleave (10) -- the two casts the three stages are actually made of -- come out of the 60.
         --

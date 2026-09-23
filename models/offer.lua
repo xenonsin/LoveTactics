@@ -31,7 +31,7 @@ local Offer = {}
 
 -- The gate vocabulary, deliberately the SAME WORDS models/building.lua's unlock keys use, minus the
 -- `unlock` prefix that only made sense on a card. A gate is a table; every key in it must hold, so
--- `{ expeditions = 2, wound = true }` ANDs. An offer with no gate is open always, which is the common
+-- `{ expeditions = 2, injury = true }` ANDs. An offer with no gate is open always, which is the common
 -- case -- most rooms behind a door are simply the door's own business.
 --
 -- (`classLevel` stood here and is GONE WITH THE SHELF GATE. It read the roster's best level in the
@@ -71,7 +71,7 @@ end
 -- A boolean gate, written out longhand ON PURPOSE. The obvious `want and is or not is` is wrong in Lua
 -- whenever `is` is false -- it falls through to the `or` arm and answers TRUE -- so both gates below read
 -- as open on a fresh save, and the Cathedral and the Crucible stood on the plaza on the first morning
--- offering rooms for a wound nobody had and a find nobody was carrying. The suite caught it; the idiom
+-- offering rooms for an injury nobody had and a find nobody was carrying. The suite caught it; the idiom
 -- is the trap, so neither of these gets to use it.
 local function is(value, want)
     local held = value and true or false
@@ -80,8 +80,8 @@ end
 
 -- Somebody has been carried up broken. One-way and never cleared -- not by setting the bone, not by
 -- walking home -- so the mending line stays on the desk once it has arrived, exactly as the card did.
-GATES.wound = function(player, want)
-    return is(require("models.wound").everWounded(player), want)
+GATES.injury = function(player, want)
+    return is(require("models.injury").everInjured(player), want)
 end
 
 -- The company is carrying something it cannot read. The most literal gate in the game: the player finds
@@ -90,7 +90,7 @@ GATES.unidentified = function(player, want)
     return is(require("models.identify").everFound(player), want)
 end
 
--- Something this company owns has been hexed (models/curse.lua). The same one-way shape `wound` above
+-- Something this company owns has been hexed (models/curse.lua). The same one-way shape `injury` above
 -- has, and for a sharper version of the same reason: a curse can be LIFTED, so a gate that read a live
 -- count would put the rite on the desk, have the player use it, and take the room away in the same
 -- visit -- removing the door at the exact moment they learned what it was for. Once a company has met a
@@ -229,7 +229,7 @@ end
 -- the house, and a shopfront that offers no shop is not a shopfront -- so without `quiet` all seven
 -- cards would stand on the plaza on the first morning, onto rung-0 racks of five buyable rows apiece (a
 -- counter stocks a ware only once the company has carried one out). The plaza reacts to a deed the
--- player can FEEL -- a wound, a trip home, a find nobody can read -- and browsing is not one of them.
+-- player can FEEL -- an injury, a trip home, a find nobody can read -- and browsing is not one of them.
 --
 -- THE CARD AND THE ROOM ARE TWO QUESTIONS, which is the whole of what this field buys. They used to be
 -- one: the shelf carried a `classLevel = 1` gate that decided both, so a company with no rogue had no
@@ -296,7 +296,7 @@ end
 -- "lift", "read") and the panel is the room. Two houses could offer the same room under different
 -- words; nobody does today, and this way nobody has to remember not to.
 --
--- EVERY ONE OF THESE IS A STATE, NOT A SIGHTING, with one deliberate exception. A wound, a hex and an
+-- EVERY ONE OF THESE IS A STATE, NOT A SIGHTING, with one deliberate exception. An injury, a hex and an
 -- unread find are things the company is still CARRYING -- a dot that went out on the first look would
 -- stop reminding the player at the exact moment they decided to deal with it after the next trip -- so
 -- they clear when the thing is dealt with, not when it is seen. The exception is a shelf, whose whole
@@ -307,11 +307,11 @@ end
 -- dot on this board means nothing. A mark has to be able to go out.
 local NEWS = {}
 
--- SOMEBODY IS HURT AND NOBODY HAS SEEN TO THEM YET. `unattended` rather than `wounded`: a body already
--- lying up is being dealt with (the stay is served by descending -- models/wound.lua), and a room that
+-- SOMEBODY IS HURT AND NOBODY HAS SEEN TO THEM YET. `unattended` rather than `injured`: a body already
+-- lying up is being dealt with (the stay is served by descending -- models/injury.lua), and a room that
 -- went on flagging it would be asking for a decision the player has made.
 NEWS.ward = function(player)
-    return #require("models.wound").unattended(player) > 0
+    return #require("models.injury").unattended(player) > 0
 end
 
 -- SOMETHING THE COMPANY OWNS IS HEXED (models/curse.lua). Counts the kit AND the stash, which is what

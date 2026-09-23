@@ -1,6 +1,6 @@
 -- CROSSROADS dilemmas: the data behind a `crossroads` overworld stop (states/game.lua routes one to a
 -- ui/panels/choice.lua modal). Each is a small branching gamble with real stakes -- a relic, some coin, a
--- wound, an unread blade -- so a stop between fights is a decision, not a cutscene. Kept as pure data +
+-- injury, an unread blade -- so a stop between fights is a decision, not a cutscene. Kept as pure data +
 -- resolve functions; the mechanics come in through a `ctx` of headless-safe helpers the caller binds (the
 -- same shape relics and traits take), so this module never reaches into a model directly and stays
 -- testable.
@@ -17,17 +17,22 @@
 --     (models/scrip.lua). The two helpers keep their old names because a dilemma has never known or
 --     needed to know which coin it was playing for; states/game.lua decides that at the seam.
 --   drainParty(n) (blood, floored so it never fells),
---   mendWound(n) -> how many bodies it set a bone on (models/wound.lua; 0 for a whole company),
+--   mendWound(n) -> how many bodies it set a bone on (models/injury.lua; 0 for a whole company),
+--   injure(kind?) -> deals ONE body an injury and answers its name (nil if the company is empty).
+--     The other direction, and the only thing in the game that hurts a body without a fight. `kind`
+--     names a data/injuries blueprint; omitted, the ordinary seeded roll deals it. A stake that is
+--     neither health nor coin: it costs a body something for the rest of the campaign, and only the
+--     Ward ends it -- so spend it where the dilemma's fiction earns it, not as a second drainParty.
 --   reveal() (study the ground), rnd() -> [0,1), notify(msg),
 --
 -- drainParty AND mendWound ARE NOT OPPOSITES, and a resolve that treats them as one will read wrong.
--- Draining takes HEALTH out of the bar. Mending gives back the part of the bar a wound had RESERVED --
+-- Draining takes HEALTH out of the bar. Mending gives back the part of the bar an injury had RESERVED --
 -- room, not blood. So a dilemma can honestly do both at once ("set the fast way") and the company comes
 -- out of it with more capacity and less in it, which is a trade rather than a wash.
 --
 -- MENDING IS RARE ON PURPOSE. It and a Rest spent on Bind are the only two things below ground that
--- shed a wound, and both are taken INSTEAD of something else; a wound that could be shed for free as
--- often as it was met would not be a meter at all (models/wound.lua's header).
+-- shed an injury, and both are taken INSTEAD of something else; an injury that could be shed for free as
+-- often as it was met would not be a meter at all (models/injury.lua's header).
 -- }
 -- A resolve returns nothing; it speaks its own outcome through ctx.notify / the grant's own toast.
 --
@@ -150,7 +155,7 @@ Crossroads.SHARED = {
         },
     },
     {
-        prompt = "Somebody has been living in this stretch a long while. They look at the company's walking wounded before they look at the company.",
+        prompt = "Somebody has been living in this stretch a long while. They look at the company's walking injured before they look at the company.",
         options = {
             { label = "Let them work", desc = "Fast, and not gentle. What they hand back is room in the body, not blood.",
                 resolve = function(ctx)

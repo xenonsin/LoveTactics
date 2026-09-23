@@ -22,6 +22,10 @@ return {
     kind = "elite",
     weight = 1, -- rarest thing on the floor: the body a stratum is remembered for
     condition = function(ctx) return ctx.biome == "castle" end,
+    -- RUNG 2 -- the seat, which is where Lust bills it. A party that learned on the stair that
+    -- distance costs arrives here about to be compelled to cross a room.
+    -- One elite, one floor: see models/encounter.lua's eligibility note.
+    rung = 2,
     composition = function(ctx)
         local list = { "character_harpy_matriarch" }
         return Band.fill(list, ctx, "character_harpy", { base = 2, per = 5 })

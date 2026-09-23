@@ -93,7 +93,7 @@ return {
         name = "aiming a blow at a foe keeps its whole readout -- stats, pools and intent alike",
         fn = function()
             withFonts(function()
-                local terrain, obj, action = aimedAt("character_demon_grunt")
+                local terrain, obj, action = aimedAt("character_demon_grunt_tutorial")
                 local plan = TileTooltip.dockPlan(terrain, obj, W, budgetAfter({ action }), GAP)
                 assert(plan.occupant, "the foe's stats went missing at the moment they are read")
                 assert(plan.intent, "the intent section was shed with room still in the column")

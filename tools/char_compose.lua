@@ -51,7 +51,7 @@ local CREATURE_MATCH = {
     -- THE TWO BEARS ARE NOT ONE BEAR, and the ordering note this pair used to carry ("dire_bear before
     -- bear is moot -- both land on the bear") stopped being true the day a bear anybody fights existed.
     -- The Dire Bear is CARGO, a shape a hunter wears; character_bear is a body on the road. They are
-    -- separate blueprints for the reason character_the_gralloch exists, so they may not be one picture.
+    -- separate blueprints for the reason the Gralloch was authored, so they may not be one picture.
     { "dire_bear", "delapouite/bear-head" }, -- the shape keeps the head it has always shipped
     { "bear", "sparker/bear-face" },         -- ...and the animal gets its own face
     -- Before "wolf" only because it must be before the `beast` KIND fallback, which is the wolf's head:
@@ -180,7 +180,7 @@ local DISCIPLINE_SILHOUETTE = {
 -- must not converge (character_greywatch_captain: "the silhouettes must not converge").
 --
 -- So: a bucket's silhouette stays the property of the GENERIC body at its head (character_knight keeps
--- knight-banner, character_bandit the rank swordman, character_demon_grunt the daemon skull), and every
+-- knight-banner, character_bandit the rank swordman, character_demon_grunt_tutorial the daemon skull), and every
 -- other occupant is lifted out by name here. Keyed by tokenId, exact match -- never a substring -- so it
 -- behaves like the discipline tier and cannot fire on a lookalike id.
 --
@@ -328,8 +328,13 @@ local CHARACTER_SILHOUETTE = {
 
     -- Off the daemon skull, which the rank Demon Grunt keeps. The horde is a ladder -- bomblet, champion,
     -- lord -- and the ladder should be visible on the board.
-    demon_bomblet = "delapouite/inferno-bomb",      -- a demon bred hollow and filled with fire
-    demon_champion = "delapouite/devil-mask",
+    --
+    -- THE `_tutorial` IS PART OF THE KEY, because these keys are tokenId(blueprint id) and Act 0's four
+    -- demons carry the suffix now (data/characters/character_demon_imp_tutorial.lua says why). Drop it
+    -- and the entry stops matching -- silently, since an unmatched body just composes off its race base.
+    -- The Demon Lord is the rift's and keeps its bare id.
+    demon_bomblet_tutorial = "delapouite/inferno-bomb", -- a demon bred hollow and filled with fire
+    demon_champion_tutorial = "delapouite/devil-mask",
     demon_lord = "caro-asercion/tarot-15-the-devil",
 
     -- Off the priest's supplicant. NOT a nun's face: the Cathedral brands her fallen and she walks out
@@ -359,12 +364,17 @@ local CHARACTER_SILHOUETTE = {
     -- rather than a head: she is the only 2x2 bear, and the fight is her bulk arriving.
     sow = "cathelineau/polar-bear",
 
-    -- WHAT IS LEFT OF THE GLUTTONY CIRCLE. Its four creatures are deleted (2026-09-22); the apex and
-    -- the mini sin are what remain, and both are `beast` -- so without a name here they would land on
-    -- the `beast` KIND fallback, which is the wolf grunt's head. Each wears what it DOES rather than
-    -- what it is, on the same rule the Hiring Hall's thirty-eight follow.
+    -- WHAT IS LEFT OF THE GLUTTONY CIRCLE. Its four creatures are deleted (2026-09-22) and its
+    -- lieutenant went with the other six the same day; the apex is what remains. It is a `beast`, so
+    -- without a name here it would land on the `beast` KIND fallback, which is the wolf grunt's head. It
+    -- wears what it DOES rather than what it is, on the same rule the Hiring Hall's thirty-eight follow.
+    --
+    -- The seven lieutenants keep their rows below and in the tables that follow. A row is looked up by
+    -- id, so a row for a body that is not on disk composes nothing and costs nothing -- and it is the
+    -- silhouette an author reaching for that name again would otherwise have to re-pick. The rows are
+    -- the_gralloch, the_suppliant, the_tally, second_water, the_anvil, the_late_watch and marginalia.
     the_sated = "delapouite/stomach",      -- what it has eaten IS the silhouette
-    the_gralloch = "lorc/meat-hook",       -- named for Gula's tool, and wearing it
+    the_gralloch = "lorc/meat-hook",       -- named for Gula's tool, and wearing it (body deleted)
 
     -- THE MERE. Four nagas and a boss, and they are the first faction to hit this table from the
     -- HUMANOID side rather than the creature side: `race = "naga"` rolls up to `kind = "humanoid"`
@@ -404,6 +414,18 @@ local CHARACTER_SILHOUETTE = {
     lesser_succubus = "delapouite/bat",
     succubus = "lorc/temptation",
     succubus_abbess = "lorc/angel-wings", -- the rite took CLEANLY: she is what it makes when nothing goes wrong
+
+    -- ...AND THE THIRD ELEMENTAL THE KEEP MADE. The other two need nothing here and must not get it:
+    -- character_fire_elemental and character_wind_elemental carry their element word in the id, so
+    -- `elementOf` seats them on ELEMENT_SILHOUETTE and ELEMENT_TINT exactly as it always has -- and
+    -- tests/char_compose_spec pins the fire one's flame and its #ef7d4a by name.
+    --
+    -- The whirl has no element word in it at all, which is correct (an id holding both "fire" and
+    -- "wind" would pick between them through `pairs`, and that order is not stable --
+    -- [[hash-order-flips-on-a-new-require]]) and leaves it falling to KIND_SILHOUETTE.elemental, which
+    -- IS carl-olsen/flame -- pixel-identical to the fire elemental and a straight failure of "no two
+    -- characters resolve to the same silhouette". So it is named here, and tinted below.
+    whirl_elemental = "lorc/flame-spin", -- the two of them met: a fire with a chimney's worth of air under it
 
     -- THE WRATH CIRCLE. Two elementals, two demons and a beast, which without names here would collapse
     -- onto three kind fallbacks between them.
@@ -578,7 +600,17 @@ local function slugFor(def, id)
     return KIND_SILHOUETTE[kind] or HUMANOID_DEFAULT
 end
 
+-- 2b. TINT by NAMED BODY -- the tint half of CHARACTER_SILHOUETTE above, and it exists for the same
+-- reason: a body the element scan cannot read falls to a whole bucket's wash. The Whirl Elemental is
+-- the only occupant, and it is a real miss rather than a preference -- it is made of fire and air and
+-- its id can name only one of them, so the scan finds neither and it comes out the pale grey every
+-- unclassifiable elemental wears. Tinted as the fire it mostly is.
+local CHARACTER_TINT = {
+    whirl_elemental = "#ef7d4a", -- ELEMENT_TINT.fire: it is a fire with air under it
+}
+
 local function tintFor(def, id)
+    if CHARACTER_TINT[id] then return CHARACTER_TINT[id] end
     local element = elementOf(id)
     if element and ELEMENT_TINT[element] then return ELEMENT_TINT[element] end
     local kind = kindOf(def, id)

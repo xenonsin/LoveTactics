@@ -7,9 +7,14 @@
 --   twenty without it). The first item in the game to touch that number, and it answers a refusal the
 --   player has certainly already met: "the chest stays shut -- there is no room to carry what is in it".
 --
---   in a fight -- a bite whose weight is WHAT THE COMPANY IS CARRYING RIGHT NOW (Descent.carried), the
---   same figure the stair prices its toll against (Descent.tollFor). One number, two readers, so the
---   item and the toll can never come to different answers about what "carrying" means.
+--   in a fight -- a bite whose weight is WHAT THIS TRIP HAS FOUND (Descent.found), the same figure the
+--   stair prices its toll against (Descent.tollFor). One number, two readers, so the item and the toll
+--   can never come to different answers about what "carrying" means.
+--
+--   THAT FIGURE WAS CALLED Descent.carried UNTIL THE PACK ARRIVED, and the rename is not cosmetic:
+--   `carried` counts the BAG now, rations included, and a gullet fed by the company's own draughts
+--   would be a different item -- pack four potions at the Gate and it would already be biting for them
+--   before the first fight. The haul is the ammunition. It still is.
 --
 -- WHAT THAT BUYS IS A DECISION THE DESCENT WAS ALREADY ASKING AND COULD NOT PRICE: go deeper with a
 -- full bag -- dangerous, and no room for the next chest -- or hand the haul over at the stair and have
@@ -64,7 +69,7 @@ local CAP = 6
 local function fullness()
     local Player = require("models.player")
     local player = Player.active
-    return math.min(CAP, require("models.descent").carried(player, player and player.descentRun))
+    return math.min(CAP, require("models.descent").found(player, player and player.descentRun))
 end
 
 return {

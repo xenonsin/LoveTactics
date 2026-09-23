@@ -640,6 +640,46 @@ Grade.TRAIT_GRADE = {
     -- now out of reach, so the control is bought with the follow-up. On a Skirmisher, who was leaving
     -- anyway, that costs nothing -- but the bench prices the rule, not the one build that dodges it.
     trait_stooping_blow =               3.0,  -- Stooping Blow
+
+    -- THE FOUR ELEMENTAL RULES, judged together because they arrived together and because each one is
+    -- an existing line of this table with one term swapped. None of them is on a shelf -- all four ride
+    -- `class = "creature"` kit no counter stocks -- but a weight is what keeps the estimate from
+    -- answering for them if a rule is ever lifted onto something a player can hold, which is the two
+    -- slime rules' reasoning a few blocks down.
+    --
+    -- BACKDRAUGHT is the fifth line of the list its own header keeps: Antler Toss (2.0), Shield Shove
+    -- (3.0), Downdraft (3.0), Whirl Answer (4.5), and this. It is Downdraft's shape exactly -- a melee
+    -- counter, physical-gated, stamina-priced, catching EVERYTHING adjacent -- with fire where the
+    -- shove was. So it is graded above Downdraft, which deals nothing itself, and below Whirl Answer,
+    -- which deals immediately and cannot be declined: Burn is real damage arriving late, and
+    -- Status.apply REFRESHES rather than stacks, so a rank that all reached in at once takes one burn
+    -- between them. Half a step, and the escalating answer price (Trait.answerCost) is what stops it
+    -- being a whole one -- by the third body to touch it, it is a large fire with no air.
+    trait_backdraught =                 3.5,  -- Backdraught
+    -- CLIMBING FLAME is Antler Toss's figure, reached from the other direction. One tile, like the
+    -- Toss; a PULL rather than a shove, which its header argues is the only direction loose enough to
+    -- ride an ordinary blow; and it fires on every ranged hit the bearer lands rather than only when
+    -- struck. What pays that frequency back down to the Toss's number is the gate: the target has to
+    -- already be BURNING, which is a condition the bearer spent an action creating, and gap > 1, which
+    -- takes the bearer's own melee off the list. A rider that needs a setup cast is worth what a free
+    -- one-tile reflex is worth.
+    trait_climbing_flame =              2.0,  -- Climbing Flame
+    -- WANTING COSTS lands on Thorns' number from the opposite side, the way Stooping Blow lands on
+    -- Shield Shove's. Thorns reflects a PERCENTAGE, so it scales with the blow, and it is melee-only
+    -- and silenced by a stun; this is a flat Burn, at ANY range, and `notAReaction` means a rattled
+    -- body is still hot. Wider and unstoppable against narrower and scaling -- and Burn's refresh caps
+    -- it the same way it caps Backdraught above, so a company that puts the body out in one action
+    -- pays once. The two pull even.
+    trait_wanting_costs =               3.0,  -- Wanting Costs
+    -- NOTHING TO HOLD is the only categorical immunity in this table that is not Adaptive's, and it is
+    -- graded nowhere near it. Adaptive sits at the ceiling for buying immunity to a DAMAGE type plus an
+    -- element on every blow out; this buys immunity to one narrow category -- forced movement -- and
+    -- gives back nothing offensive at all. Against a company that owns no shove it is worth exactly
+    -- zero, which is most companies. It is graded at the Toss's 2.0 for being real, categorical and
+    -- permanent, and no higher: the bench prices the rule, not the one stratum built on displacement
+    -- where it happens to read as enormous (the same line Downdraft's entry draws about the Keep).
+    trait_nothing_to_hold =             2.0,  -- Nothing to Hold
+
     -- CONSTRICTOR'S DUE is a flat pre-mitigation bonus against a held body, and it sits on the
     -- bench beside the other conditional charms rather than beside the rules: Empty Vessel takes 8
     -- against a spent caster, the Duelist 6 in a one-on-one. Seven, and the condition is NARROWER
@@ -1625,7 +1665,7 @@ Grade.SLOT_PINS = {
     -- has a haul worth protecting and the coin is a real decision.
 
     -- THE PROLOGUE'S TEACHING SPELL. The first working the player ever casts, and the lesson's closing
-    -- beat is built on its exact weight -- data/characters/character_demon_grunt.lua's health is "the
+    -- beat is built on its exact weight -- data/characters/character_demon_grunt_tutorial.lua's health is "the
     -- SUM of five authored blows" and this is one of them.
     --
     -- Jolt used to be pinned here, and that was the wrong fix. The grade kept sending Jolt up the shelf

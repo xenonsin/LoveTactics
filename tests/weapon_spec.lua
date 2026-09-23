@@ -319,6 +319,45 @@ return {
         end,
     },
 
+    -- ---------------------------------------------------------------- brave (the count, not the power)
+    {
+        -- THE KEYWORD'S OWN CONTRACT, held over the whole catalogue rather than over the one weapon
+        -- that uses it today -- which is the point of writing it as a keyword at all. `strikes` is a
+        -- COUNT: a whole number above one, never a per-level curve. The curve half is the load-bearing
+        -- one, because eachMagnitude deliberately does not walk this field (models/item.lua): a
+        -- blueprint that authored `strikes = Curve.ramp(2, 12)` would not fail, it would quietly ship
+        -- a weapon striking twelve times at every forge level including the ones the player has not
+        -- bought, since nothing would ever resolve the list down to a number.
+        name = "a brave weapon declares a COUNT, and the forge never buys another strike",
+        fn = function()
+            local brave = 0
+            for _, w in ipairs(eachWeapon()) do
+                local n = w.def.activeAbility and w.def.activeAbility.strikes
+                if n ~= nil then
+                    assert(type(n) == "number", w.id .. ": `strikes` is a count, not a "
+                        .. type(n) .. " -- a per-level curve here never resolves and ships its own"
+                        .. " top entry at every forge level (models/item.lua's eachMagnitude skips it)")
+                    assert(n == math.floor(n) and n >= 2, w.id .. ": `strikes` is a whole number of"
+                        .. " landings above one, not " .. tostring(n) .. " -- one is every weapon in"
+                        .. " the game and says nothing")
+                    brave = brave + 1
+                    -- Item.strikes is what combat reads, and it must answer what the blueprint wrote.
+                    assert(Item.strikes(Item.instantiate(w.id).activeAbility) == n,
+                        w.id .. ": Item.strikes disagrees with the blueprint's own count")
+                end
+            end
+            -- Every OTHER weapon answers one, so the loops in models/combat.lua are a no-op for them.
+            for _, w in ipairs(eachWeapon()) do
+                if not (w.def.activeAbility and w.def.activeAbility.strikes) then
+                    assert(Item.strikes(w.def.activeAbility) == 1,
+                        w.id .. ": a weapon that declares no count must strike exactly once")
+                end
+            end
+            assert(brave >= 1, "no weapon carries the brave rule -- the keyword has no shipped case,"
+                .. " and data/keywords/keyword_brave.lua is a definition of nothing")
+        end,
+    },
+
     -- ---------------------------------------------------------------- bleed (the dagger's verb)
     {
         name = "bleed costs a tile of blood for every tile WALKED, and nothing for standing still",

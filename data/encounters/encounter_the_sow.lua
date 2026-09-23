@@ -36,12 +36,20 @@ return {
     -- It also gated Lust's own elites off Lust's own floors: converted from the retired calendar they
     -- asked for floors three and four, and Lust owns one and two.
     --
-    -- Which of a circle's floors a thing bills on is Descent.SINS' `elites` for the standing threat, and
-    -- `rung` for anything an author wants split across the approach and the seat.
+    -- WHICH of the two is `rung` below, and on an elite it is REQUIRED rather than optional: one elite,
+    -- one floor. A biome lock places a body in the stratum and then leaves it standing on both of that
+    -- stratum's stairs, which makes a landmark into traffic -- see models/encounter.lua's eligibility
+    -- note for the whole argument, and tests/elite_floor_spec.lua for the count that holds it.
+    --
+    -- Descent.SINS' `elites` is the SEPARATE question of which of a floor's candidates the floor is
+    -- ABOUT (billed at ELITE_NAMED_WEIGHT). The rung says where a thing may stand at all.
     -- LOCKED TO THE WOOD, which is the circle-lock rule arriving rather than a retune: humans
     -- float to every floor and everything else belongs to exactly one circle. This was shared
     -- road stock on all fifteen, and the beast band is Gluttony's identity now.
     condition = function(ctx) return ctx.biome == "forest" end,
+    -- RUNG 2 -- the seat. Her own argument seats her above the wolf, and the wood's two deepest
+    -- bodies are what the seat floor stands.
+    rung = 2,
     composition = function(ctx)
         -- A LITTER, NOT A ROSTER. One cub early and up to three deep, because a fixed pair could not keep
         -- pace: a company grows floor on floor and Muster rates the OPENING roster, so the fight she was

@@ -7,6 +7,13 @@
 -- quietly rot -- it ratchets down and never up.
 --
 -- See tests/item_coverage_spec.lua for what "has a test" means (and what it does not).
+--
+-- ONE ID WAS ADDED RATHER THAN DELETED, which the rule above forbids, so it is recorded here.
+-- weapon_ledgemans_axe was named by exactly one case -- progression_spec's "Quest.complete grants a
+-- quest's items into the stash exactly once" -- and it was a quest REWARD, so its only coverage was
+-- the grant path. data/quests is deleted (92ff549d) and that case went with the rest of the quest
+-- suite, which left the axe shipping with no test rather than gaining one. It is a debt like every
+-- other line here: the ratchet still only turns down from this point.
 
 return {
     "ability_answering_din",
@@ -197,7 +204,6 @@ return {
     "weapon_duelists_edge",
     "weapon_emberwand",
     "weapon_exposing_pike",
-    "weapon_flame_fists",
     "weapon_frost_fists",
     "weapon_frostfall_hammer",
     "weapon_gale_fists",
@@ -298,5 +304,6 @@ return {
     "utility_unheld_hand",
     "utility_with_interest",
     "utility_written_charge",
+    "weapon_ledgemans_axe",
     "weapon_long_bout",
 }

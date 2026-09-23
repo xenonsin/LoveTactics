@@ -1,7 +1,7 @@
 -- WHO GOES DOWN THE STAIR (models/descent.lua's party/setParty).
 --
 -- The expedition is four and the roster is not. That distinction did not exist while the whole company
--- walked down and the deployment phase picked four per fight -- and it is the premise models/wound.lua
+-- walked down and the deployment phase picked four per fight -- and it is the premise models/injury.lua
 -- is priced against, whose FLOOR assumes a company with no bench underground.
 --
 -- What this pins is the three ways the pick can be wrong: letting more than four down, losing somebody

@@ -160,8 +160,8 @@ function Building.locked(player, def, prestige)
     end
     -- ...and the door that opens the first time somebody is carried up broken. The mark is one-way and
     -- never cleared -- not by setting the bone, not by walking home -- so the Ward stays on the plaza
-    -- once it has arrived (models/wound.lua's Wound.everWounded).
-    if def.unlockWound and not require("models.wound").everWounded(player) then
+    -- once it has arrived (models/injury.lua's Injury.everInjured).
+    if def.unlockInjury and not require("models.injury").everInjured(player) then
         return true
     end
     return false
@@ -184,17 +184,17 @@ end
 --                    EITHER door (Player.expeditionsOut -- bounties finished, or floors descended).
 --                    The Cafe at two, the Forge at four. It was `unlockDepth` and read floors alone;
 --                    the stair stopped being the only way out of the city, so the noun had drifted.
---   unlockWound      somebody has been carried up broken. It opened the INN, which was deleted on
+--   unlockInjury      somebody has been carried up broken. It opened the INN, which was deleted on
 --                    2026-09-02 along with the toll it charged, and this gate went with it. Both are
 --                    back as of 2026-09-16, pointed at the WARD (data/buildings/the_ward.lua) -- and the
 --                    difference is the whole reason it is legal this time: the Inn charged at the door,
 --                    so you paid to be treated at all, where the Ward's rest is free forever and the
---                    gold buys only speed. See models/wound.lua's ward block for the full argument and
+--                    gold buys only speed. See models/injury.lua's ward block for the full argument and
 --                    for the two earlier passes it is not repeating.
 --
 --                    THE GATE IS THE LESSON. The Ward is the one door in the city whose job a player
 --                    cannot understand until it is needed, so it arrives on the beat that teaches it:
---                    Rowan is felled by the Demon Champion at the end of Act 0, and the wound she
+--                    Rowan is felled by the Demon Champion at the end of Act 0, and the injury she
 --                    carries into town is what puts this card on the plaza.
 --   unlockUnidentified  the company is carrying something it cannot read (models/identify.lua). The
 --                    Touchstone, whose only job is reading it. The most literal of the six: the player

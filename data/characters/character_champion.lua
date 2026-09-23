@@ -14,6 +14,12 @@ return {
     archetype = "defensive",
     stats = {
         health = 96, mana = 20, stamina = 20,
+        -- Authored 2026-09-22, because it was MISSING and a missing stat is not a zero. A body with
+        -- no `staminaRegen` regenerates nothing and, worse, cannot be injured in the lung: an
+        -- injury's cut is clamped against the body's own base (models/injury.lua), so a stat that is
+        -- not there gives an allowance of nothing and Burst Lung lands free. 2 is the front-line
+        -- figure every other body on this shelf carries.
+        staminaRegen = 2,
         damage = 20, magicDamage = 6,
         defense = 0, magicDefense = 8,
         movement = 4,

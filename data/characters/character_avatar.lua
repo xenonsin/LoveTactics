@@ -59,11 +59,11 @@
 -- Rowan's follow-up and fall to the player's stroke. Every point of Damage here costs two points of
 -- that window, and the grunt cannot pay for any of it -- it is already at the top of its rung's health
 -- band. 16/80 is the strongest pairing the beat has room for, measured across the whole grid rather
--- than reasoned out. See character_demon_grunt.lua.
+-- than reasoned out. See character_demon_grunt_tutorial.lua.
 --
 -- The prologue's opening lesson survives intact, which is the constraint 12 was originally held by:
 -- 16 + 6 - the imp's 2 defense is 20 against 14 health, so the imp still falls to exactly one stroke
--- (data/characters/character_demon_imp.lua). It falls harder, and that is all.
+-- (data/characters/character_demon_imp_tutorial.lua). It falls harder, and that is all.
 --
 -- The magic half moves with it, because the symmetry above is a promise and not a coincidence.
 --

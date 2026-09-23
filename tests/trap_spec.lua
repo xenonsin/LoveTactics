@@ -326,4 +326,45 @@ return {
             assert(ally.char.stats.health.current == allyHp, "and nothing goes off at all")
         end,
     },
+    {
+        name = "a trap records an injury rather than charging one, and only for a body with an id",
+        fn = function()
+            -- THE SPLIT THIS CASE EXISTS FOR. An injury is keyed by character id on the PLAYER
+            -- (models/injury.lua), and the combat model has no player and must not grow one -- it is
+            -- asked about summons, enemies and duel rosters that have no player behind them at all. So
+            -- `ctx.injure` writes an intent onto the combat object and states/game.lua's
+            -- inflictInjuries drains it on the way out, which is the same "the battle records, the
+            -- launcher charges" split `battle.fallen` already keeps. A trap sprung in a duel therefore
+            -- records into a list nobody reads, and correctly costs nobody a bone.
+            --
+            -- Driven through a def injected into the registry rather than through a shipped trap,
+            -- because no shipped trap uses this yet -- and an unused seam with no case behind it is
+            -- exactly the thing that rots before its first author arrives.
+            Trap.defs.test_pit = {
+                name = "Test Pit", health = 1, tags = { "trap", "physical" }, damage = 0,
+                onTrigger = function(ctx) ctx.injure(ctx.victim, "injury_shattered_leg") end,
+            }
+            local c = Combat.new(arena(6, 6),
+                { unit("character_rowan", 2, 2) }, { unit("character_bandit", 5, 5) })
+            local trap = Trap.place(c, 3, 3, "test_pit", "enemy")
+            assert(trap, "the pit went down")
+            local rowan = c.units[1]
+
+            assert(Trap.trigger(c, trap, rowan), "and Rowan walked into it")
+            assert(c.dealtInjuries and #c.dealtInjuries == 1, "the intent is recorded on the combat object")
+            assert(c.dealtInjuries[1].charId == rowan.char.id, "against the body that stepped in it")
+            assert(c.dealtInjuries[1].kind == "injury_shattered_leg", "and it says which bone")
+            -- NOTHING WAS CHARGED. The ledger lives on a player this combat has never heard of.
+            assert(rowan.char.injuryShare == nil, "the trap did not stamp a reserve on the body itself")
+
+            -- A body with no id -- a summon, a decoy, an AI escortee -- has no business accruing a
+            -- history, and records nothing rather than recording a row that is silently dropped later.
+            local trap2 = Trap.place(c, 4, 4, "test_pit", "enemy")
+            local nameless = { char = {}, x = 4, y = 4, alive = true, side = "party" }
+            Trap.trigger(c, trap2, nameless)
+            assert(#c.dealtInjuries == 1, "a body with no id recorded nothing")
+
+            Trap.defs.test_pit = nil
+        end,
+    },
 }

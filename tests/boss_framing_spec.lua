@@ -68,7 +68,7 @@ return {
         name = "an ordinary line body is not, and neither is a discipline exemplar",
         fn = function()
             local c = { objective = { type = "killAll" } }
-            assert(not Combat.isBoss(c, unit("character_demon_grunt")), "a grunt is a grunt")
+            assert(not Combat.isBoss(c, unit("character_demon_grunt_tutorial")), "a grunt is a grunt")
             -- The exemplars carry `boss = true` -- the immunity marker, not a rung -- which is exactly
             -- the confusion this gate exists to refuse. Fielded as one body in a pack they are line
             -- work, and neither surface may plate them.
@@ -93,7 +93,7 @@ return {
     {
         name = "a fight with no objective at all still answers, without reaching through a nil",
         fn = function()
-            assert(not Combat.isBoss(nil, unit("character_demon_grunt")), "no fight, no mark")
+            assert(not Combat.isBoss(nil, unit("character_demon_grunt_tutorial")), "no fight, no mark")
             assert(Combat.isBoss(nil, unit("character_demon_lord")), "the rung clause needs no fight")
             assert(not Combat.isBoss({ objective = { type = "killAll" } }, nil), "no body, no answer")
         end,
@@ -103,7 +103,7 @@ return {
     {
         name = "the notches are the phase script's own thresholds, in descending order",
         fn = function()
-            local marks = Combat.bossThresholds(unit("character_demon_champion"))
+            local marks = Combat.bossThresholds(unit("character_demon_champion_tutorial"))
             assert(marks and #marks == 2, "the Champion's Sigil scripts two stages")
             assert(marks[1] > marks[2], "descending, so a board hash is stable")
             -- The same numbers the rule fires on, read off the same relic. Pinning the values rather
@@ -138,7 +138,7 @@ return {
         name = "a boss's bar is heavier, and the badge row is pushed up by exactly that much",
         fn = function()
             local m = map({ type = "assassinate", target = "character_champion" })
-            local mark, rank = unit("character_champion"), unit("character_demon_grunt")
+            local mark, rank = unit("character_champion"), unit("character_demon_grunt_tutorial")
             local plain, heavy = barH(m, rank), barH(m, mark)
             assert(plain == 5, "an ordinary body keeps the 5px sliver")
             assert(heavy > plain, "a boss's bar is drawn as an instrument, not a sliver")
@@ -160,11 +160,11 @@ return {
             -- before this has been a horde, this one has a NAME" -- and the Champion is tier 3, so a
             -- rung gate alone would have left both surfaces saying nothing at the one moment the
             -- script says everything.
-            local champ = unit("character_demon_champion")
+            local champ = unit("character_demon_champion_tutorial")
             assert(champ.char.tier == 3, "Elite by rung; it is the FIGHT that makes it a boss")
             assert(not Combat.isBoss({ objective = { type = "killAll" } }, champ),
                 "fielded as one body in a sweep, it is Elite")
-            local m = map({ type = "assassinate", target = "character_demon_champion" })
+            local m = map({ type = "assassinate", target = "character_demon_champion_tutorial" })
             assert(m:isBoss(champ), "standing as the flight leg's mark, it is the boss")
             assert(barH(m, champ) > 5, "and the board draws it like one")
             assert(#Combat.bossThresholds(champ) == 2, "and the strip card notches at its two stages")

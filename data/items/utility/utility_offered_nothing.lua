@@ -37,8 +37,23 @@ return {
     phases = {
         -- The circle's own chaff is deleted (2026-09-22), so the threshold summons the nearest
         -- surviving body on this ground rather than nothing at all.
+        --
+        -- IT REACHED FOR ACT 0's IMP FOR A DAY, and that is what forced the prologue's demons onto
+        -- their own `_tutorial` blueprints (see data/characters/character_demon_imp_tutorial.lua). One
+        -- body cannot be both the thing that dies to the first sword stroke in the game and the thing a
+        -- mini sin calls in at half health: the imp is pinned to blueprint level for the lesson's sake,
+        -- so down here it would have arrived as two 14-health bodies and been chaff in the literal
+        -- sense of costing nothing to clear.
+        --
+        -- So it summons LUST'S OWN smallest body instead -- the lesser succubus is written as "the
+        -- cheapest possible statement" of the circle's third animal, and Lust's own stops already field
+        -- her as traffic. Note that she brings the charm kit with her, which two imps did not, so this
+        -- is a harder threshold than the line it replaces. Nothing carries this bowl today (the
+        -- Suppliant is deleted and Lust's lieutenant slot holds a stand-in -- see
+        -- tests/greed_lust_circle_spec.lua), so it is inert until somebody seats that slot; whoever does
+        -- owes this count a look rather than inheriting it.
         { at = 0.5, responses = {
-            { kind = "summon", id = "character_demon_imp", count = 2 },
+            { kind = "summon", id = "character_lesser_succubus", count = 2 },
             { kind = "bonus", stat = "magicDamage", amount = 6 },
             { kind = "log", text = "The Suppliant stops asking." },
         } },

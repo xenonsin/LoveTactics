@@ -192,7 +192,7 @@ return {
     ["line.conversation_cathedral_counter.1"] = { en = "Cold in here. It is always cold in here. The faithful arm those who purge, and we keep beds for the ones who come back needing them.", ja = "" },  -- TODO
     ["line.conversation_cathedral_counter.2"] = { en = "State your business.", ja = "" },  -- TODO
     ["line.conversation_cathedral_counter.3"] = { en = "Visit priest class trainer", ja = "" },  -- TODO
-    ["line.conversation_cathedral_counter.4"] = { en = "Heal a wound", ja = "" },  -- TODO
+    ["line.conversation_cathedral_counter.4"] = { en = "Heal an injury", ja = "" },  -- TODO
     ["line.conversation_cathedral_counter.5"] = { en = "Leave", ja = "" },  -- TODO
     ["line.conversation_cathedral_counter.6"] = { en = "Lift a curse", ja = "" },  -- TODO
     ["line.conversation_cathedral_discipline_unlocked.1"] = { en = "The {discipline}'s calling is open to you, {name}. What the Cathedral kept back for that path is on the shelf. Take what serves.", ja = "" },  -- TODO
@@ -410,9 +410,8 @@ return {
     ["line.conversation_tutorial_city.1"] = { en = "{select} to take the stair down.", ja = "" },  -- TODO
     ["line.conversation_tutorial_city.2"] = { en = "{select} the Rift. The stair down is inside.", ja = "" },  -- TODO
     ["line.conversation_tutorial_city.3"] = { en = "{select} {door}", ja = "" },  -- TODO
-    ["line.conversation_tutorial_city.4"] = { en = "{select} the Bounty Board. The houses post their work there.", ja = "" },  -- TODO
-    ["line.conversation_tutorial_city.5"] = { en = "{select} the Cathedral to mend Rowan's wounds.", ja = "" },  -- TODO
-    ["line.conversation_tutorial_city.6"] = { en = "{select} to mend {who}'s wounds.", ja = "" },  -- TODO
+    ["line.conversation_tutorial_city.5"] = { en = "{select} the Cathedral to mend Rowan's injuries.", ja = "" },  -- TODO
+    ["line.conversation_tutorial_city.6"] = { en = "{select} to mend {who}'s injuries.", ja = "" },  -- TODO
     ["line.conversation_tutorial_city.7"] = { en = "{select} to rest {who}. The purse will not cover setting the bone today.", ja = "" },  -- TODO
     ["line.conversation_tutorial_flight.1"] = { en = "Walk to the chest ahead. Use WASD, the arrow keys, or click a tile.", ja = "" },  -- TODO
     ["line.conversation_tutorial_flight.2"] = { en = "Open your loadout to see what you found.", ja = "" },  -- TODO
@@ -421,11 +420,13 @@ return {
     ["line.conversation_tutorial_flight.5"] = { en = "Walk to the chest ahead. Tap it, or swipe to take one step.", ja = "" },  -- TODO
     ["line.conversation_tutorial_flight.6"] = { en = "You've leveled up! See how your stats have risen.", ja = "" },  -- TODO
     ["line.conversation_tutorial_flight.7"] = { en = "Your class decides which stats rise. Open Classes to change it.", ja = "" },  -- TODO
+    ["line.conversation_tutorial_injury.1"] = { en = "They were carried out of that fight. The dark band on their bar is health that will not come back - not from a potion, not from the stair. A camp can bind it instead of resting, or the Ward will set it when we are home.", ja = "" },  -- TODO
+    ["line.conversation_tutorial_injury.2"] = { en = "That one did not take blood, it took something else. It is on them until the Ward sees to it, and they will carry it into every fight - hold the pointer over them to read what it costs.", ja = "" },  -- TODO
     ["line.conversation_tutorial_notes.1"] = { en = "The Tally", ja = "" },  -- TODO
     ["line.conversation_tutorial_notes.10"] = { en = "Relics", ja = "" },  -- TODO
     ["line.conversation_tutorial_notes.11"] = { en = "Relics are bonuses that affect the whole party that only last until you leave the rift.", ja = "" },  -- TODO
-    ["line.conversation_tutorial_notes.12"] = { en = "Wounds", ja = "" },  -- TODO
-    ["line.conversation_tutorial_notes.13"] = { en = "When a character becomes incapacitated in battle and isn't revived before they bleed out, they obtain a wound. Each wound reduces the max health that the character can heal.\n\nThe Cathedral can mend wounds instantly for a price, or you can choose to have the character rest for a few days for free, but they won't be able to descend with you until they recover.", ja = "" },  -- TODO
+    ["line.conversation_tutorial_notes.12"] = { en = "Injuries", ja = "" },  -- TODO
+    ["line.conversation_tutorial_notes.13"] = { en = "When a character becomes incapacitated in battle and isn't revived before they bleed out, they take an injury. There are seven kinds and which one they take is dealt on the spot: Blood Loss seals part of the health pool, while a Shattered Leg, a Torn Shoulder, Cracked Ribs, a Rattled head, a Burst Lung or a Ruptured Font each leave something the body fights under until it is set. They stack, and nothing in a fight lifts one.\n\nThe Cathedral can mend injuries instantly for a price, or you can choose to have the character rest for a few descents for free, but they won't be able to descend with you until they recover.", ja = "" },  -- TODO
     ["line.conversation_tutorial_notes.2"] = { en = "This meter measures the energy of the rift and tells us if a breach is imminent. It will increase every day, but clearing the champion on each floor reduces the meter.\n\nThe merchants lobby heavily to keep the rift active, but many lives are spent keeping the balance.", ja = "" },  -- TODO
     ["line.conversation_tutorial_notes.3"] = { en = "Tactics", ja = "" },  -- TODO
     ["line.conversation_tutorial_notes.4"] = { en = "Characters can be taught to fight on their own using tactics.\n\nTactics are prioritized and evaluated from top to bottom and are used when the character is set to auto mode.", ja = "" },  -- TODO
@@ -450,7 +451,6 @@ return {
     ["line.conversation_tutorial_village.7"] = { en = "While it's stunned, {name}. Let's finish this!", ja = "" },  -- TODO
     ["line.conversation_tutorial_village.8"] = { en = "Not that, {name}. Do as I showed you.", ja = "" },  -- TODO
     ["line.conversation_tutorial_village.9"] = { en = "{select} on the imp to move in range and attack with your weapon.", ja = "" },  -- TODO
-    ["line.conversation_tutorial_wound.1"] = { en = "They were carried out of that fight. The dark band on their bar stays held back until we are above ground again - or until we spend a camp binding it instead of resting.", ja = "" },  -- TODO
     ["line.conversation_undercroft_counter.1"] = { en = "Everything on this floor belonged to somebody else once. Some of it twice.", ja = "" },  -- TODO
     ["line.conversation_undercroft_counter.2"] = { en = "So what is it you need?", ja = "" },  -- TODO
     ["line.conversation_undercroft_counter.3"] = { en = "Go to market", ja = "" },  -- TODO
@@ -481,7 +481,7 @@ return {
     ["line.conversation_undercroft_vendor_intro.6"] = { en = "The floor is open. Everything is for sale, and everything is owed.", ja = "" },  -- TODO
     ["line.conversation_ward_first_visit.1"] = { en = "PLACEHOLDER -- she takes Rowan's weight without being asked.", ja = "" },  -- TODO
     ["line.conversation_ward_first_visit.2"] = { en = "PLACEHOLDER -- the bone goes back, under her hands, now.", ja = "" },  -- TODO
-    ["line.conversation_ward_first_visit.3"] = { en = "PLACEHOLDER -- she minds being carried more than she minds the wound.", ja = "" },  -- TODO
+    ["line.conversation_ward_first_visit.3"] = { en = "PLACEHOLDER -- she minds being carried more than she minds the injury.", ja = "" },  -- TODO
     ["line.conversation_ward_first_visit.4"] = { en = "PLACEHOLDER -- she asks to come, and says what she is for.", ja = "" },  -- TODO
     ["name.alchemist"] = { en = "The Crucible", ja = "" },  -- TODO
     ["name.arcanum"] = { en = "The Arcanum", ja = "" },  -- TODO
@@ -576,9 +576,9 @@ return {
     ["title.conversation_touchstone_vendor_intro"] = { en = "Touchstone", ja = "" },  -- TODO
     ["title.conversation_tutorial_city"] = { en = "The City's Instructions", ja = "" },  -- TODO
     ["title.conversation_tutorial_flight"] = { en = "The Open Road", ja = "" },  -- TODO
+    ["title.conversation_tutorial_injury"] = { en = "Carried Out", ja = "" },  -- TODO
     ["title.conversation_tutorial_notes"] = { en = "What the Screen Owes You", ja = "" },  -- TODO
     ["title.conversation_tutorial_village"] = { en = "Rowan's Lesson", ja = "" },  -- TODO
-    ["title.conversation_tutorial_wound"] = { en = "Carried Out", ja = "" },  -- TODO
     ["title.conversation_undercroft_counter"] = { en = "The Undercroft", ja = "" },  -- TODO
     ["title.conversation_undercroft_discipline_unlocked"] = { en = "Off the Book", ja = "" },  -- TODO
     ["title.conversation_undercroft_errand_asked"] = { en = "The Vault Door", ja = "" },  -- TODO

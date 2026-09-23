@@ -4,10 +4,16 @@
 -- The tier's design rule, pinned as it is for every other circle: A MINI SIN'S SECOND PHASE IS ITS
 -- GENERAL'S FIRST.
 --
---   Aurea lifts an ITEM off an adjacent body from her opening bell; the Tally takes coin, and starts
+--   Aurea lifts an ITEM off an adjacent body from her opening bell; the Reckoning takes coin, and starts
 --   taking gear at half health.
---   Luxuria drains a foe's held-back reserves on EVERY hit; the Suppliant drains only a body that spent
+--   Luxuria drains a foe's held-back reserves on EVERY hit; the Unasked drains only a body that spent
 --   nothing, and drops the condition at half health.
+--
+-- BOTH BODIES THAT CARRIED THOSE RULES ARE GONE. The Tally and the Suppliant were deleted with the other
+-- five lieutenants (2026-09-22, Descent.SINS' header) and their naturals are not: the rules above are
+-- pinned on the ITEMS now, and the Lust cases dress a stand-in in the Suppliant's kit rather than assert
+-- about a blueprint. That is a weaker case on purpose -- it measures the rule and not the fight -- and it
+-- reddens the day a replacement wears the bowl for real.
 --
 -- Both circles are grouped here because both are about what a player is CARRYING rather than about
 -- terrain, and the two rules are each other's mirror -- one takes what you hoarded, the other punishes
@@ -27,17 +33,51 @@ local function sinNamed(id)
     for _, s in ipairs(Descent.SINS) do if s.id == id then return s end end
 end
 
+-- LUST'S DRAIN, WITHOUT THE BODY THAT CARRIED IT. `trait_unasked` and `utility_offered_nothing` are the
+-- Suppliant's and she is deleted, so the three cases below dress Lust's own stand-in lieutenant in her
+-- kit: the bowl, the touch, and the 180 health the arithmetic in those cases is written against (40 off
+-- it reads 78%, comfortably above the threshold; 100 off reads 44%, under it). `isolate = "bare"` empties
+-- the grid first, so what the host swings is only what is handed to it here.
+local function unasked(x, y)
+    return unit("character_lamia", x, y, {
+        isolate = "bare",
+        items = { "weapon_petal_touch", "utility_offered_nothing" },
+        stats = { health = 180 },
+    })
+end
+
+-- GREED'S SCALES, THE SAME WAY, AND GREED HAS EVEN LESS LEFT. The cut took the whole stratum -- the
+-- Assayer, the Chorister, the Coin-Chitter, the Hoard and the Beloved -- and what survived it is
+-- `trait_assayed` and the one piece that grants it. So the two purse cases dress a stand-in in the
+-- Reckoning rather than field a body authored to read a purse: the scales are the subject and the
+-- scales are still here. Health well clear of the Reckoning's own half-health phase, so nothing the
+-- case does can trip it.
+local function assayed(x, y)
+    return unit("character_slime", x, y, {
+        isolate = "bare",
+        items = { "utility_the_reckoning" },
+        stats = { health = 200 },
+    })
+end
+
 return {
     -- ------------------------------------------------------------ both stairs
     {
-        name = "Greed and Lust are each held by their own mini sin",
+        -- BOTH LIEUTENANTS ARE DELETED AND THIS CASE IS THE MARKER. Each slot holds ordinary traffic
+        -- off its own ground as a stand-in (see the lieutenant note at the head of Descent.SINS). They
+        -- are named here on purpose: seating a replacement reddens this case, and whoever does it owes
+        -- the contract written out where the sizing case used to be, at the foot of this file.
+        name = "Greed's and Lust's lieutenant slots are filled, and by stand-ins that say so",
         fn = function()
-            assert(sinNamed("greed").minor.lead == "character_the_tally", "the Tally holds the Undercroft")
-            assert(sinNamed("lust").minor.lead == "character_the_suppliant", "the Suppliant holds the Cathedral")
+            assert(sinNamed("greed").minor.lead == "character_fen_lancer", "a lancer stands in for the Tally")
+            assert(sinNamed("lust").minor.lead == "character_lamia", "a lamia stands in for the Suppliant")
+            assert(not Character.defs["character_the_tally"], "the Tally is gone")
+            assert(not Character.defs["character_the_suppliant"], "the Suppliant is gone")
             for _, id in ipairs({ "greed", "lust" }) do
                 local sin = sinNamed(id)
+                assert(Character.defs[sin.minor.lead], id .. "'s stand-in is a body that loads")
                 assert(sin.guardian.filler == sin.minor.lead,
-                    id .. "'s mini sin must fill out its own general's stair")
+                    id .. "'s approach body must fill out its own general's stair")
             end
         end,
     },
@@ -49,10 +89,10 @@ return {
             local map = Fixture.new(10, 10)
             local c = Fixture.combat(map,
                 { unit("character_knight", 3, 3) },
-                { unit("character_assayer", 6, 6) })
+                { assayed(6, 6) })
             local assayer
             for _, u in ipairs(c.units) do
-                if u.char.id == "character_assayer" then assayer = u end
+                if u.side ~= "party" then assayer = u end
             end
 
             -- No purse injected: a draft duel, an arena, a headless fixture. It must read as nothing
@@ -79,10 +119,10 @@ return {
             local map = Fixture.new(10, 10)
             local c = Fixture.combat(map,
                 { unit("character_knight", 3, 3) },
-                { unit("character_assayer", 6, 6) })
+                { assayed(6, 6) })
             local assayer
             for _, u in ipairs(c.units) do
-                if u.char.id == "character_assayer" then assayer = u end
+                if u.side ~= "party" then assayer = u end
             end
             c.purse = { get = function() return 9999999 end, spend = function() end }
             assert(Trait.liveBonus(assayer, "damage") == def.ceiling,
@@ -100,36 +140,29 @@ return {
             assert(carries, "it opens reading the purse")
         end,
     },
-    {
-        name = "the Hoard spends itself as you open it",
-        fn = function()
-            local hoard = Item.defs["utility_the_hoard"]
-            assert(hoard and hoard.phases and #hoard.phases == 2, "it comes apart twice")
-            for _, phase in ipairs(hoard.phases) do
-                for _, r in ipairs(phase.responses or {}) do
-                    if r.kind == "summon" then
-                        assert(r.id == "character_coin_chitter",
-                            "what leaves a disturbed hoard is pieces of it, carrying as much as they can")
-                    end
-                end
-            end
-            local def = Character.defs["character_the_hoard"]
-            assert(def.footprint and def.footprint.w == 2, "the apex stands on four tiles")
-            assert(def.kind == "object", "it is the pile, not something guarding one")
-        end,
-    },
+    -- THE HOARD'S OWN CASE IS DELETED WITH THE BODY, and this is what it said, because Greed's apex
+    -- is the one in the seven that was not a creature at all:
+    --
+    --     kind = "object"          the pile itself, not something standing guard over one
+    --     footprint 2x2            four tiles of it
+    --     two phases, each         what leaves a disturbed hoard is PIECES of it -- the summon was
+    --       summoning coin-chitters  character_coin_chitter, carrying as much as it could hold
+    --
+    -- So the apex got smaller as you opened it and the room filled with the difference, which is the
+    -- only apex in the descent that fights by being spent. utility_the_hoard is gone too, so there is
+    -- nothing left here to repoint onto. A refill owes that shape or owes an argument against it.
 
     -- ------------------------------------------------------------ Lust: it reads what you held back
     {
         name = "the Unasked drains a foe and takes half of it as health",
         fn = function()
             -- `isolate = "bare"` empties the victim's grid. Without it a knight PARRIES the touch and
-            -- counters for more than the drain heals, so the Suppliant's net health goes DOWN and the
+            -- counters for more than the drain heals, so the host's net health goes DOWN and the
             -- rule looks broken when it is working exactly as authored.
             local map = Fixture.new(10, 10)
             local c = Fixture.combat(map,
                 { unit("character_knight", 4, 4, { isolate = "bare" }) },
-                { unit("character_the_suppliant", 5, 4) })
+                { unasked(5, 4) })
             local sup, victim
             for _, u in ipairs(c.units) do
                 if u.side == "party" then victim = u else sup = u end
@@ -150,7 +183,7 @@ return {
             local stam = victim.char.stats.stamina.current
             openTurn(c, sup)
             assert(Combat.useItem(c, sup, itemNamed(sup.char, "weapon_petal_touch"), victim.x, victim.y),
-                "the Suppliant acts")
+                "the host acts")
             assert(victim.char.stats.stamina.current < stam, "it draws off what was held back")
             assert(Fixture.hp(sup) > hurt, "and takes it into itself")
         end,
@@ -161,7 +194,7 @@ return {
             local map = Fixture.new(10, 10)
             local c = Fixture.combat(map,
                 { unit("character_knight", 4, 4, { isolate = "bare" }) },
-                { unit("character_the_suppliant", 5, 4) })
+                { unasked(5, 4) })
             local sup, victim
             for _, u in ipairs(c.units) do
                 if u.side == "party" then victim = u else sup = u end
@@ -178,17 +211,17 @@ return {
             local stam = victim.char.stats.stamina.current
             openTurn(c, sup)
             assert(Combat.useItem(c, sup, itemNamed(sup.char, "weapon_petal_touch"), victim.x, victim.y),
-                "the Suppliant acts")
+                "the host acts")
             assert(victim.char.stats.stamina.current == stam, "and the bowl passes it over")
         end,
     },
     {
-        name = "past half health the Suppliant stops asking, and drains a body that spent",
+        name = "past half health the bowl stops asking, and drains a body that spent",
         fn = function()
             local map = Fixture.new(10, 10)
             local c = Fixture.combat(map,
                 { unit("character_knight", 4, 4, { isolate = "bare" }) },
-                { unit("character_the_suppliant", 5, 4) })
+                { unasked(5, 4) })
             local sup, victim
             for _, u in ipairs(c.units) do
                 if u.side == "party" then victim = u else sup = u end
@@ -207,12 +240,12 @@ return {
             local stam = victim.char.stats.stamina.current
             openTurn(c, sup)
             assert(Combat.useItem(c, sup, itemNamed(sup.char, "weapon_petal_touch"), victim.x, victim.y),
-                "the Suppliant acts")
+                "the host acts")
             assert(victim.char.stats.stamina.current < stam, "it stops asking, and takes it anyway")
         end,
     },
     {
-        name = "the Suppliant stops asking on the same beat its relic sheds the grove",
+        name = "the bowl stops asking on the same beat its relic sheds the grove",
         fn = function()
             -- Two authored numbers, in two files, that have to mean one moment: the trait's threshold
             -- and the relic's phase. Apart, the fight makes a promise ("The Suppliant stops asking.")
@@ -241,47 +274,36 @@ return {
             end
         end,
     },
+    -- THE CHORISTER'S FIRST CASE IS DELETED WITH ITS TRAIT. It said that the singer Charms as part of
+    -- acting and then HAS TO WAIT -- `trait_lure` declared a cooldown, and the cooldown is what made
+    -- the song a decision rather than a lock. The trait had one bearer and went with it, so there is
+    -- no cooldown anywhere to assert on: the succubus line's charm is priced by a ROLL against the
+    -- target's wounds instead (Status.charmChance), which is a different answer to the same worry and
+    -- is held by tests/succubus_spec.lua.
+    --
+    -- THE OTHER TWO SURVIVE, BECAUSE THEIR SUBJECT IS THE RELEASE AND NOT THE SINGER. Who is holding a
+    -- charm, and whether a death hands it back, is Combat.releaseCharmedBy and is the circle's whole
+    -- counterplay -- so both are staged on the stratum's own live charmer instead, with the status
+    -- applied directly rather than rolled for. The roll is succubus_spec's business; this is the rule
+    -- underneath it, and it must hold however the charm was landed.
     {
-        name = "a Chorister Charms as it acts, then has to wait",
+        name = "cut the charmer down and what it took comes back",
         fn = function()
             local map = Fixture.new(10, 10)
             local c = Fixture.combat(map,
                 { unit("character_knight", 4, 4) },
-                { unit("character_chorister", 5, 4) })
-            local chor, victim
+                { unit("character_succubus", 5, 4) })
+            local charmer, victim
             for _, u in ipairs(c.units) do
-                if u.side == "party" then victim = u else chor = u end
+                if u.side == "party" then victim = u else charmer = u end
             end
-            openTurn(c, chor)
-            assert(Combat.useItem(c, chor, itemNamed(chor.char, "weapon_petal_touch"), victim.x, victim.y),
-                "the chorister sings")
-            assert(Status.has(victim, "status_charm"), "and somebody goes to it")
-
-            local def = Trait.defs["trait_lure"]
-            assert(def.cooldown and def.cooldown > 0,
-                "the cooldown is what makes it a decision rather than a lock")
-        end,
-    },
-    {
-        name = "cut the singer down and what it took comes back",
-        fn = function()
-            local map = Fixture.new(10, 10)
-            local c = Fixture.combat(map,
-                { unit("character_knight", 4, 4) },
-                { unit("character_chorister", 5, 4) })
-            local chor, victim
-            for _, u in ipairs(c.units) do
-                if u.side == "party" then victim = u else chor = u end
-            end
-            openTurn(c, chor)
-            assert(Combat.useItem(c, chor, itemNamed(chor.char, "weapon_petal_touch"), victim.x, victim.y),
-                "the chorister sings")
+            Status.apply(c, victim, "status_charm", { duration = 6, applier = charmer })
             assert(Status.has(victim, "status_charm") and victim.side == "enemy",
                 "and the knight is standing on their line")
 
             -- The counterplay the circle is written to be read as: kill the thing that took it.
-            Combat.dealFlatDamage(c, chor, 9999, { "physical" }, "test")
-            assert(not chor.alive, "the singer falls")
+            Combat.dealFlatDamage(c, charmer, 9999, { "physical" }, "test")
+            assert(not charmer.alive, "the charmer falls")
             assert(not Status.has(victim, "status_charm"), "and the charm falls with it")
             assert(victim.side == "party" and victim.control ~= "ai",
                 "the knight is yours again, command and all")
@@ -293,67 +315,49 @@ return {
             local map = Fixture.new(10, 10)
             local c = Fixture.combat(map,
                 { unit("character_knight", 4, 4) },
-                { unit("character_chorister", 8, 8) })
-            local chor, victim
+                { unit("character_succubus", 8, 8) })
+            local bystander, victim
             for _, u in ipairs(c.units) do
-                if u.side == "party" then victim = u else chor = u end
+                if u.side == "party" then victim = u else bystander = u end
             end
             -- A briar names no applier: the charm is the ground's, and the ground outlives everyone.
             Status.apply(c, victim, "status_charm", { duration = 6 })
             assert(victim.side == "enemy", "the flowers take it all the same")
-            Combat.dealFlatDamage(c, chor, 9999, { "physical" }, "test")
+            Combat.dealFlatDamage(c, bystander, 9999, { "physical" }, "test")
             assert(Status.has(victim, "status_charm"),
                 "a body nobody is holding is not let go by a death")
         end,
     },
-    {
-        name = "the Beloved makes the choice worse rather than the fight",
-        fn = function()
-            local dev = Item.defs["utility_beloveds_devotion"]
-            assert(dev and dev.phases and #dev.phases == 2, "it sheds twice")
-            for _, phase in ipairs(dev.phases) do
-                for _, r in ipairs(phase.responses or {}) do
-                    if r.kind == "summon" then
-                        assert(r.id == "character_petal_drift",
-                            "it sheds the chaff that makes holding your good ability feel correct")
-                    end
-                    assert(r.kind ~= "bonus" or r.amount < 0,
-                        "the apex escalates the dilemma, not its own stat line")
-                end
-            end
-        end,
-    },
+    -- THE BELOVED'S CASE IS DELETED WITH THE APEX, and this is what it said, since it is the one shape
+    -- in the seven that escalated by making the PLAYER'S choice worse rather than its own stat line:
+    --
+    --     utility_beloveds_devotion, two phases
+    --     every `bonus` response NEGATIVE       the apex turns itself down as it is cut
+    --     every `summon` a character_petal_drift  and fills the room with chaff, so holding your one
+    --                                             good ability back keeps feeling like the right call
+    --
+    -- Both the item and the drift are gone. A Lust apex that escalates by growing would be the
+    -- opposite reading, and that is the thing this case existed to refuse.
 
-    -- ------------------------------------------------------------ both mini sins sit in band
-    {
-        name = "both mini sins sit between their line body and their general",
-        fn = function()
-            for _, case in ipairs({
-                { mini = "character_the_tally", general = "character_general_greed",
-                  line = "character_coffer_crawler" },
-                { mini = "character_the_suppliant", general = "character_general_lust",
-                  line = "character_bloom_wraith" },
-            }) do
-                local mini = Character.defs[case.mini]
-                local gen = Character.defs[case.general]
-                assert(mini.boss and mini.referenceLevel, case.mini .. ": a centrepiece that scales down")
-                assert(mini.stats.health > Character.defs[case.line].stats.health,
-                    case.mini .. " must outweigh its circle's line body")
-                local share = mini.stats.health / gen.stats.health
-                assert(share > 0.6 and share < 0.85, string.format(
-                    "%s is %.0f%% of its general; the tier sits between 60%% and 85%%",
-                    case.mini, share * 100))
-            end
-        end,
-    },
+    -- ------------------------------------------------------------ what a replacement is sized to
+    --
+    -- THE CASE THAT SIZED BOTH IS GONE WITH THE BODIES, and this is what it said, for either circle:
+    --
+    --     boss = true and a referenceLevel   a centrepiece that scales down toward the shallows
+    --     health above its circle's line     a mini sin outweighs the stock it stands over
+    --     health 60-85% of its general's     and stands below the sin whose stair it is holding
+    --
+    -- The same band tests/wrath_circle_spec.lua argues out in full.
     {
         name = "every Greed and Lust item is natural kit and nothing else",
         fn = function()
-            for _, id in ipairs({ "weapon_cutpurse_nip", "weapon_coffer_shell", "weapon_gilt_maw",
-                                  "utility_assay_scales", "utility_the_reckoning", "utility_the_hoard",
-                                  "weapon_petal_touch", "weapon_bloom_reach", "weapon_antler_crown",
-                                  "utility_chorister_call", "utility_offered_nothing",
-                                  "utility_beloveds_devotion" }) do
+            -- Six of the twelve went with the bodies that swung them: weapon_coffer_shell,
+            -- utility_assay_scales, utility_the_hoard, weapon_bloom_reach, weapon_antler_crown,
+            -- utility_chorister_call and utility_beloveds_devotion. What is left is the naturals a
+            -- survivor still carries and the two the deleted mini sins left behind -- and the contract
+            -- is the same one either way, so a refill adds its pieces to this list.
+            for _, id in ipairs({ "weapon_cutpurse_nip", "weapon_gilt_maw", "utility_the_reckoning",
+                                  "weapon_petal_touch", "utility_offered_nothing" }) do
                 local def = Item.defs[id]
                 assert(def, id .. " does not exist")
                 assert(def.noSteal and not def.price and def.class == "creature",
@@ -841,6 +845,237 @@ return {
                 assert(def.noSteal and not def.price and def.class == "creature",
                     id .. ": creature kit is unpriced, unshelved and unstealable")
             end
+        end,
+    },
+
+    -- ------------------------------------------- Lust: the two the building made, and what they meet in
+    --
+    -- The circle's FIRE verb -- "wanting costs, whether or not you get there" -- sat in prose in
+    -- models/descent.lua for as long as this stratum existed, with nothing on the ground charging a
+    -- company for reaching. These are the cases that make it real rather than authored
+    -- ([[prose-can-be-the-only-implementation]] is the shape, and this entry has now been caught by it
+    -- twice).
+    {
+        name = "a Fire Elemental bills whoever damages it, in melee and from across the room alike",
+        fn = function()
+            local map = Fixture.new(12, 12)
+            local c = Fixture.combat(map,
+                { unit("character_knight", 5, 5, { isolate = "bare",
+                      items = { "weapon_iron_sword" } }),
+                  unit("character_mage", 5, 11, { isolate = "bare" }) },
+                { unit("character_fire_elemental", 5, 6) })
+            local knight, mage, wick = c.units[1], c.units[2], c.units[3]
+            for _, u in ipairs(c.units) do Combat.refreshPassives(u) end
+
+            openTurn(c, knight)
+            Combat.useItem(c, knight, itemNamed(knight.char, "weapon_iron_sword"), wick.x, wick.y)
+            assert(Status.has(knight, "status_burn"),
+                "the hand that reached in is what catches -- that is the whole of the circle's fire verb")
+
+            -- AND THE RANGE GATE IS THE POINT. Every retaliation in the game is a reflex with a reach
+            -- on it (Antler Toss, Shield Shove, Downdraft); this is a property of the thing, so a body
+            -- six tiles off that has never been near it pays the same bill. If a reach ever creeps in
+            -- here the Lamp Room silently becomes a fight a bow solves for free.
+            assert(not Status.has(mage, "status_burn"), "nothing has touched the mage yet")
+            Combat.dealFlatDamage(c, wick, 4, { "magical" }, "a spell", mage)
+            assert(Status.has(mage, "status_burn"),
+                "reaching for it from six tiles is still reaching for it")
+        end,
+    },
+    {
+        -- THE ONE FREE ANSWER, AND IT IS THE ENGINE'S RULE RATHER THAN THE TRAIT'S -- which is exactly
+        -- why it is pinned here. A reflex is held while a cast resolves and Combat.endAnswers skips the
+        -- fallen, so a body killed by the blow that reached it answers nothing. Every word of the Lamp
+        -- Room's design rests on that (commit and the room is free, chip at it and every exchange is
+        -- another burn), and nothing in this file would notice if the flush ever started dispatching to
+        -- corpses.
+        name = "a Fire Elemental put out by the blow that reached it bills nobody",
+        fn = function()
+            local map = Fixture.new(10, 10)
+            local c = Fixture.combat(map,
+                { unit("character_knight", 5, 5, { isolate = "bare",
+                      items = { "weapon_iron_sword" } }) },
+                { unit("character_fire_elemental", 5, 6, { stats = { health = 1 } }) })
+            local knight, wick = c.units[1], c.units[2]
+            for _, u in ipairs(c.units) do Combat.refreshPassives(u) end
+
+            openTurn(c, knight)
+            Combat.useItem(c, knight, itemNamed(knight.char, "weapon_iron_sword"), wick.x, wick.y)
+            assert(not wick.alive, "the fixture put it inside one swing on purpose")
+            assert(not Status.has(knight, "status_burn"),
+                "a candle that has gone out does not charge anybody -- commit, and a lamp room is free")
+        end,
+    },
+    {
+        name = "a Wind Elemental cannot be held, dragged or thrown by anything -- its own circle included",
+        fn = function()
+            local map = Fixture.new(12, 12)
+            local c = Fixture.combat(map,
+                { unit("character_knight", 5, 5, { isolate = "bare" }) },
+                { unit("character_wind_elemental", 5, 9), unit("character_lamia", 6, 9) })
+            local knight, wind = c.units[1], c.units[2]
+            for _, u in ipairs(c.units) do Combat.refreshPassives(u) end
+
+            assert(Status.has(wind, "status_unheld"),
+                "it wears the stance from the opening bell, not once somebody has tried")
+
+            local x, y = wind.x, wind.y
+            Combat.knockback(c, knight, wind, 3)
+            assert(wind.x == x and wind.y == y, "a shove finds no shoulder")
+            Combat.pull(c, knight, wind)
+            assert(wind.x == x and wind.y == y, "and a hook finds no rib")
+
+            -- THE CIRCLE ARGUING WITH ITSELF, ASSERTED RATHER THAN ONLY WRITTEN DOWN. The whole stratum
+            -- is displacement; this is the one body outside that conversation, which is what makes the
+            -- Bell Loft the only stop on the floor where reaching the thing IS the fight.
+            Status.apply(c, wind, "status_root")
+            assert(Status.blocksForcedMove(wind), "a coil closes on it and shuts on itself")
+        end,
+    },
+    {
+        name = "a bellstroke throws three tiles where the flock's gust throws one",
+        fn = function()
+            local map = Fixture.new(12, 12)
+            local c = Fixture.combat(map,
+                -- Three tiles apart, which is the bellstroke's whole reach: at four the cast is out of
+                -- range, lands nothing, and the shove is correctly gated off the hit it never made.
+                { unit("character_knight", 5, 6, { isolate = "bare" }) },
+                { unit("character_wind_elemental", 5, 9) })
+            local knight, wind = c.units[1], c.units[2]
+            for _, u in ipairs(c.units) do Combat.refreshPassives(u) end
+
+            openTurn(c, wind)
+            local y0 = knight.y
+            Combat.useItem(c, wind, itemNamed(wind.char, "weapon_bellstroke"), knight.x, knight.y)
+            assert(y0 - knight.y == 3, string.format(
+                "the stroke takes a body out of the ROOM, not out of a rank -- moved %d, wanted 3",
+                y0 - knight.y))
+        end,
+    },
+    {
+        name = "the Chimney-Draw hauls what is burning and only stumbles what is not",
+        fn = function()
+            local map = Fixture.new(14, 14)
+            local c = Fixture.combat(map,
+                { unit("character_knight", 5, 10, { isolate = "bare" }),
+                  unit("character_bulwark", 3, 10, { isolate = "bare" }) },
+                { unit("character_whirl_elemental", 5, 5) })
+            local lit, cold, draw = c.units[1], c.units[2], c.units[3]
+            for _, u in ipairs(c.units) do Combat.refreshPassives(u) end
+            Status.apply(c, lit, "status_burn")
+
+            openTurn(c, draw)
+            Combat.useItem(c, draw, itemNamed(draw.char, "weapon_chimney_draw"), 5, 8)
+            -- The fire is the handhold: it comes the whole way and ends against the body.
+            assert(Combat.unitGap(draw, lit) == 1, string.format(
+                "a burning body is hauled all the way in -- it is standing %d tiles off",
+                Combat.unitGap(draw, lit)))
+            -- Nothing to hold: one step, and it keeps its rank. Measured as a move of exactly one
+            -- rather than as "not adjacent", so a change that quietly hauled everyone a fixed two
+            -- tiles would still fail here.
+            assert(cold.y == 9, string.format(
+                "a cold body only stumbles one tile -- it moved to y=%d from 10", cold.y))
+        end,
+    },
+    {
+        name = "Backdraught lights the whole room, which is what arms the draw",
+        fn = function()
+            local map = Fixture.new(12, 12)
+            local c = Fixture.combat(map,
+                { unit("character_knight", 5, 5, { isolate = "bare",
+                      items = { "weapon_iron_sword" } }),
+                  unit("character_bulwark", 6, 6, { isolate = "bare" }) },
+                { unit("character_whirl_elemental", 5, 6) })
+            local knight, bystander, draw = c.units[1], c.units[2], c.units[3]
+            for _, u in ipairs(c.units) do Combat.refreshPassives(u) end
+
+            openTurn(c, knight)
+            Combat.useItem(c, knight, itemNamed(knight.char, "weapon_iron_sword"), draw.x, draw.y)
+            assert(Status.has(knight, "status_burn"), "the hand that reached in")
+            assert(Status.has(bystander, "status_burn"),
+                "...and everybody standing next to it, which is what separates the alpha's copy from "
+                .. "the wick's -- see trait_backdraught's family list")
+        end,
+    },
+    {
+        name = "the Climbing Flame drags a burning foe at range and declines to in melee",
+        fn = function()
+            local map = Fixture.new(12, 12)
+            local c = Fixture.combat(map,
+                { unit("character_archer", 5, 5, { isolate = "bare", items = {
+                      "weapon_iron_bow", "weapon_iron_sword", "utility_the_climbing_flame" } }) },
+                { unit("character_bandit", 5, 8), unit("character_bandit", 5, 6) })
+            local archer, far, near = c.units[1], c.units[2], c.units[3]
+            for _, u in ipairs(c.units) do Combat.refreshPassives(u) end
+            Status.apply(c, far, "status_burn")
+            Status.apply(c, near, "status_burn")
+
+            openTurn(c, archer)
+            Combat.useItem(c, archer, itemNamed(archer.char, "weapon_iron_bow"), far.x, far.y)
+            assert(far.y == 7, string.format(
+                "a burning foe shot at range comes a tile nearer -- it is at y=%d, was 8", far.y))
+
+            -- AND NOT IN MELEE, WHICH IS A REFUSAL RATHER THAN A CATEGORY. The step would land on the
+            -- bearer's own tile, Combat.knockback would find the shift blocked and bill impact damage
+            -- instead -- so an ungated version is a free damage rider on every swing wearing a control
+            -- rider's name. See data/traits/trait_climbing_flame.lua.
+            openTurn(c, archer)
+            Combat.useItem(c, archer, itemNamed(archer.char, "weapon_iron_sword"), near.x, near.y)
+            assert(near.x == 5 and near.y == 6, "an adjacent body is not dragged anywhere")
+        end,
+    },
+    {
+        name = "the elementals' finds are three shelves' worth, and every one is a rift find",
+        fn = function()
+            -- Named literally rather than walked out of the blueprints, because
+            -- tests/item_coverage_spec reads test files as TEXT: a table-walk exercises the items and
+            -- covers none of them.
+            local drops = {
+                utility_the_answered_wish  = "sentinel",   -- the wick's bill, on the house that collects blows
+                utility_the_unheld         = "bulwark",    -- the stance, on the house that already claims it
+                utility_the_climbing_flame = "bombardier", -- the combination, on the house that lays the fire
+            }
+            for id, shelf in pairs(drops) do
+                local def = Item.defs[id]
+                assert(def, id .. " does not exist")
+                assert(not def.price, id .. ": a rift find carries no price")
+                assert(def.unlockLevel, id .. ": every graded ware sits somewhere on the ladder")
+                assert(def.class == shelf, string.format(
+                    "%s shelves at %s, expected %s -- the shelf is the argument, not a spare slot",
+                    id, tostring(def.class), shelf))
+            end
+
+            -- THE THREE BODIES PAY THEM, which is the half that makes the shelf entry reachable at all.
+            assert(Character.defs.character_fire_elemental.drops[1] == "utility_the_answered_wish")
+            assert(Character.defs.character_wind_elemental.drops[1] == "utility_the_unheld")
+            assert(Character.defs.character_whirl_elemental.drops[1] == "utility_the_climbing_flame")
+        end,
+    },
+    {
+        name = "every Fire, Wind and Whirl Elemental item is natural kit and nothing else",
+        fn = function()
+            for _, id in ipairs({ "weapon_flame_fists", "utility_living_flame",
+                                  "weapon_bellstroke", "utility_moving_air",
+                                  "weapon_flashover", "weapon_chimney_draw", "utility_flue_throat" }) do
+                local def = Item.defs[id]
+                assert(def, id .. " does not exist")
+                assert(def.noSteal and not def.price and def.class == "creature",
+                    id .. ": creature kit is unpriced, unshelved and unstealable")
+            end
+        end,
+    },
+    {
+        name = "the Flue is a spare on the Lust circle rather than a billing",
+        fn = function()
+            local lust = sinNamed("lust")
+            local found = false
+            for _, id in ipairs(lust.elites.spares or {}) do
+                if id == "encounter_lust_the_flue" then found = true end
+            end
+            assert(found, "the Flue turns up at ELITE_WEIGHT on either floor, beside the Lady Chapel")
+            assert(lust.elites.approach == "encounter_lust_the_drowned_stair"
+                and lust.elites.seat == "encounter_lust_the_eyrie",
+                "the two rungs stay billed to the circle's two original animals -- cheapest rule first")
         end,
     },
 }

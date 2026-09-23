@@ -9,7 +9,7 @@
 -- The immunity is identical, deliberately. A King is not harder to cut than a slime -- it is exactly
 -- as impossible, and the difference is entirely how much of it there is and what is inside. A player
 -- who learned the rule off the common body is never surprised by the crowned one, which is the
--- promise data/characters/character_demon_bomblet.lua makes about its 12 and for the same reason.
+-- promise data/characters/character_demon_bomblet_tutorial.lua makes about its 12 and for the same reason.
 return {
     name = "Sovereign Mass",
     description = "Blades, points and blows are voided. Takes on elements, and divides into three when it falls.",

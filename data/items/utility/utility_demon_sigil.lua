@@ -27,7 +27,7 @@
 -- revived -- a scripted beat a player can answer is one they will replay the fight trying to answer.
 --
 -- IT FIRES AT 33% AND NOT 66% FOR AN ARITHMETIC REASON. The party here is two bodies, the avatar and
--- Rowan, putting roughly 40 a round into 150 health (character_demon_champion.lua does this sum). Felled
+-- Rowan, putting roughly 40 a round into 150 health (character_demon_champion_tutorial.lua does this sum). Felled
 -- at 66% the avatar finishes 100 health alone through the Roar AND the crossing -- five rounds solo, and
 -- a loss restarts the fight, so the player loops on something the script made unwinnable. At 33% it is
 -- about 50 health: two or three rounds, alone, which is a climax.

@@ -1,12 +1,18 @@
--- Tests for the WRATH CIRCLE: the volcanic stratum's five bodies, its mini sin, and the rule they share.
+-- Tests for the WRATH CIRCLE: the volcanic stratum's five bodies, its lieutenant slot, and the rule they
+-- share.
 --
 -- The tier's design rule, pinned here as it is for Gluttony and Envy: A MINI SIN'S SECOND PHASE IS ITS
--- GENERAL'S FIRST. Ira's Unappeased Heart is two compounding terms with no ceiling; the Anvil runs one
--- term with a cap and then, at half health, takes the cap off.
+-- GENERAL'S FIRST. Ira's Unappeased Heart is two compounding terms with no ceiling; the Cold Forge runs
+-- one term with a cap and then, at half health, takes the cap off.
+--
+-- THE BODY THAT WORE THE FORGE IS GONE. The Anvil was deleted with the other six lieutenants
+-- (2026-09-22, Descent.SINS' header) and the rule above is now pinned on the ITEM alone, which is still
+-- on disk and is the material a replacement is built from. Every case here that read the blueprint is
+-- deleted; the contract it held is written out beside the slot below.
 --
 -- Also pins the circle's real design property: the escalation is on the BOARD, not on the stat lines.
--- Everything here leaves fire behind, the drake drinks it, and the Anvil is paid for the trades you take
--- once you can no longer kite.
+-- Everything here leaves fire behind, the drake drinks it, and the Cold Forge is paid for the trades you
+-- take once you can no longer kite.
 
 local Character = require("models.character")
 local Combat = require("models.combat")
@@ -20,13 +26,21 @@ local unit, openTurn, itemNamed = Fixture.unit, Fixture.openTurn, Fixture.itemNa
 
 return {
     {
-        name = "Wrath's stair is held by its own mini sin, not by a borrowed arena fighter",
+        -- THE ANVIL IS DELETED AND THIS CASE IS THE MARKER. Wrath's lieutenant slot holds the circle's
+        -- own line body as a stand-in (see the lieutenant note at the head of Descent.SINS), which is
+        -- not a mini sin and does not pretend to be one. The stand-in is named here on purpose: seating
+        -- a replacement reddens this case, and whoever does it owes the contract the deleted case below
+        -- used to hold -- boss-rung, a `referenceLevel`, opening damage under its general's, and health
+        -- between 60% and 85% of hers and over its own line body's.
+        name = "Wrath's lieutenant slot is filled, and by a stand-in that says so",
         fn = function()
             local sin
             for _, s in ipairs(Descent.SINS) do if s.id == "wrath" then sin = s end end
             assert(sin, "the wrath circle exists")
-            assert(sin.minor.lead == "character_the_anvil", "the Anvil holds the honour-guard floor")
+            assert(sin.minor.lead == "character_forge_wretch", "the wretch stands in for the Anvil")
+            assert(Character.defs[sin.minor.lead], "and whatever stands there is a body that loads")
             assert(sin.guardian.filler == sin.minor.lead, "and fills out Ira's own stair")
+            assert(not Character.defs["character_the_anvil"], "the Anvil is gone")
             -- The Champion is still a correctly built body and still the pattern for authoring phases;
             -- it just is not a sin.
             assert(Character.defs["character_champion"], "the Champion is still in the game")
@@ -119,7 +133,7 @@ return {
         end,
     },
     {
-        name = "the Anvil's second phase is Ira's first",
+        name = "the Cold Forge's second phase is Ira's first",
         fn = function()
             local forge = Item.defs["utility_cold_forge"]
             assert(forge, "the Cold Forge exists")
@@ -137,27 +151,18 @@ return {
             assert(enrages, "the phase switches on the general's own uncapped curve")
         end,
     },
-    {
-        name = "the Anvil opens soft, which is what makes it the player's own fault",
-        fn = function()
-            local anvil = Character.defs["character_the_anvil"]
-            local ira = Character.defs["character_general_wrath"]
-            assert(anvil.boss and anvil.referenceLevel, "a centrepiece that scales toward the shallows")
-            assert(anvil.stats.damage < ira.stats.damage,
-                "it starts below its general -- everything it becomes, you did to it")
-            -- THE BAND IS 60-85%, AND THE TOP OF IT IS ARITHMETIC RATHER THAN TASTE. A mini sin is a
-            -- boss-rung body (it is a floor's centrepiece with a phase table), so Balance.HEALTH_BANDS
-            -- floors it at 155 -- and Ira is the lightest general in the game at 211. 155/211 is already
-            -- 73%, so no Wrath mini sin can sit at "roughly 60%" and still be tier 4. The rule that
-            -- actually holds across all seven circles is: comfortably under its general, comfortably
-            -- over its own circle's line body.
-            local share = anvil.stats.health / ira.stats.health
-            assert(share > 0.6 and share < 0.85, string.format(
-                "the Anvil is %.0f%% of Ira; the tier sits between 60%% and 85%%", share * 100))
-            assert(anvil.stats.health > Character.defs["character_cinder_kin"].stats.health,
-                "and it outweighs its circle's line body")
-        end,
-    },
+    -- THE CASE THAT SIZED THE ANVIL IS GONE WITH THE BODY, and this is what it said so the replacement
+    -- can be held to it:
+    --
+    --     boss = true and a referenceLevel        a centrepiece that scales toward the shallows
+    --     stats.damage < its general's            it starts below her; everything it becomes, you did
+    --     health between 60% and 85% of hers      and above its own circle's line body
+    --
+    -- THE BAND'S TOP IS ARITHMETIC RATHER THAN TASTE. A mini sin is a boss-rung body (it is a floor's
+    -- centrepiece with a phase table), so Balance.HEALTH_BANDS floors it at 155 -- and Ira is the
+    -- lightest general in the game at 211. 155/211 is already 73%, so no Wrath mini sin can sit at
+    -- "roughly 60%" and still be tier 4. The rule that actually holds across all seven circles is:
+    -- comfortably under its general, comfortably over its own circle's line body.
 
     -- ------------------------------------------------------------ the apex
     {

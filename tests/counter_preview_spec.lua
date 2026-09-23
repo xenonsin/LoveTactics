@@ -240,7 +240,7 @@ return {
         fn = function()
             for _, grid in ipairs({ { "weapon_iron_sword" }, { "weapon_iron_sword", "weapon_iron_longbow" } }) do
                 local knight = fighter("character_rowan", {}, grid)
-                local imp = fighter("character_demon_imp", {}, {}) -- carries its Cinder Spit (range 2)
+                local imp = fighter("character_demon_imp_tutorial", {}, {}) -- carries its Cinder Spit (range 2)
                 local c = Combat.new(arena(8, 8), { unit(knight, 1, 1) }, { unit(imp, 3, 1) })
                 local k, i = c.units[1], c.units[2]
                 k.char.stats.health.current = 999 -- survive so the on-hit reflex is actually reached

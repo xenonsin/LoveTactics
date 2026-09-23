@@ -243,7 +243,9 @@ function Status.initiativeShove(unit, id, opts)
     return opts.magnitude or def.magnitude or 0
 end
 
--- Build a fresh status instance from a blueprint id. `opts` may override duration/magnitude.
+-- Build a fresh status instance from a blueprint id. `opts` may override duration, magnitude, or the
+-- whole `statBonus` table (models/injury.lua clamps an injury's cut against the body's own base and
+-- hands the result in, so the badge shows what is actually being paid).
 function Status.instantiate(id, opts)
     opts = opts or {}
     local def = Status.defs[id]
@@ -253,6 +255,9 @@ function Status.instantiate(id, opts)
         name = def.name,
         remaining = opts.duration or def.duration or 0,
         magnitude = opts.magnitude or def.magnitude,
+        -- nil unless the applier handed one in, so every ordinary status reads straight off its def and
+        -- Status.statBonus's `s.statBonus or s.def.statBonus` costs one nil test.
+        statBonus = opts.statBonus,
         -- The ZONE that granted this status, if any (e.g. "hazard_heal") -- stamped by the zone itself
         -- (models/hazard.lua), never by hand, and only onto a status that does not declare `lingers`.
         -- Its presence is what makes this instance zone-bound: it never ages (see Status.tick), and it
@@ -374,14 +379,22 @@ function Status.cleanse(combat, unit)
     return removed
 end
 
--- Sum the flat stat bonus for `name` contributed by every active status on `unit` (0 if none). Two
--- sources add in: a static `statBonus[name]` on the def (Aegis's fixed +defense/+magicDefense), and
--- the per-instance `magnitude` when the def routes it to this stat via `magnitudeStat = name`
+-- Sum the flat stat bonus for `name` contributed by every active status on `unit` (0 if none). Three
+-- sources add in: a static `statBonus[name]` on the def (Aegis's fixed +defense/+magicDefense), a
+-- PER-INSTANCE `statBonus` handed in at apply time, which overrides the def's outright, and the
+-- per-instance `magnitude` when the def routes it to this stat via `magnitudeStat = name`
 -- (Defending's +defense, whose size the granting shield tunes). Folded into combat's flatStat.
+--
+-- THE PER-INSTANCE TABLE EXISTS FOR THE INJURIES (models/injury.lua). A body carrying two Shattered
+-- Legs must read -2 and then -1 rather than -2 twice, because an injury can never take a stat below a
+-- quarter of the body's base -- and the clamp has to land on the BADGE, or the tooltip promises a number
+-- the body is not paying. `magnitude` could not carry it: two of the injury statuses move two stats at
+-- once. Overrides rather than adds, so the authored table stays readable as "what this is at full
+-- strength" and the instance says what was actually taken.
 function Status.statBonus(unit, name)
     local total = 0
     for _, s in ipairs(unit.statuses or {}) do
-        local bonus = s.def.statBonus
+        local bonus = s.statBonus or s.def.statBonus
         if bonus and bonus[name] then total = total + bonus[name] end
         if s.def.magnitudeStat == name and s.magnitude then total = total + s.magnitude end
     end
@@ -396,7 +409,9 @@ function Status.statBonusParts(unit, name)
     local parts = {}
     for _, s in ipairs(unit.statuses or {}) do
         local v = 0
-        local bonus = s.def.statBonus
+        -- The instance's own table wins, exactly as it does in Status.statBonus above -- the breakdown
+        -- and the fold must never disagree about what a badge is taking.
+        local bonus = s.statBonus or s.def.statBonus
         if bonus and bonus[name] then v = v + bonus[name] end
         if s.def.magnitudeStat == name and s.magnitude then v = v + s.magnitude end
         if v ~= 0 then parts[#parts + 1] = { label = s.def.name or s.id, value = v } end
@@ -1007,6 +1022,10 @@ function Status.apply(combat, unit, id, opts)
             and math.min(status.remaining, fresh)
             or math.max(status.remaining, fresh)
         if opts.magnitude then status.magnitude = opts.magnitude end
+        -- A re-stamp REPLACES the instance table rather than merging into it: the caller that hands one
+        -- in has just recomputed the whole thing (an injury's clamp is a fold over every injury the body
+        -- carries), so a merge would leave a stale stat behind after a bone was set.
+        if opts.statBonus then status.statBonus = opts.statBonus end
     else
         status = Status.instantiate(id, opts)
         unit.statuses[#unit.statuses + 1] = status

@@ -31,8 +31,17 @@ return {
     -- It also gated Lust's own elites off Lust's own floors: converted from the retired calendar they
     -- asked for floors three and four, and Lust owns one and two.
     --
-    -- Which of a circle's floors a thing bills on is Descent.SINS' `elites` for the standing threat, and
-    -- `rung` for anything an author wants split across the approach and the seat.
+    -- AND NO `rung` EITHER, WHICH IS THE ONE PLACE THAT IS NOT AN OVERSIGHT. Every other elite in the
+    -- tree carries one, because a circle owns TWO floors and a biome lock alone would stand the same
+    -- landmark on both of them -- one elite, one floor (models/encounter.lua's eligibility note).
+    --
+    -- The underworld is not a circle. It is the Hollow Crown, the single floor under all seven
+    -- (Descent.biomeAt returns it where `sinAt` returns nothing), so the ground IS the pin: this is
+    -- eligible on floor fifteen and nowhere else, which is already exactly one floor. A rung on top of
+    -- that would be a second opinion about a floor that has no sibling to be told apart from -- and it
+    -- would read as 1 or 2 by an accident of arithmetic (floorWithinCircle(15) happens to be 1), which
+    -- is a number nothing down here means. tests/elite_floor_spec.lua counts floors rather than reading
+    -- fields, so it holds this the same way it holds the other twenty.
     condition = function(ctx) return ctx.biome == "underworld" end,
     -- The lord is one body and always will be; the rank behind him is a band, so the same barrow met
     -- on two floors is not the same count twice (models/band.lua). An `elite` seats six

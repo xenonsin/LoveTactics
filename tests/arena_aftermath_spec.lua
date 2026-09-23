@@ -4,6 +4,17 @@
 -- join banner -- so the flow can't rot without a test going red. Headless, pure. See
 -- data/quests/colosseum/quest_colosseum_slot_01.lua, data/conversations/arena_saber_joins.lua, states/game.lua.
 
+-- THE QUEST BLUEPRINTS ARE GONE, AND SO IS WHAT THEY WERE COVERING. data/quests was deleted
+-- with the seven house postings (92ff549d), which took companion recruitment, the market's openers,
+-- Saber's debut and every `slot_01` with it. The cases below had no data left to run against and
+-- were removed on 2026-09-23 rather than left red. Each one is listed so the hole is findable:
+--
+--   * the debut still earns Saber, and hands off to a scripted follow-up leg
+--   * the follow-up leg ends on a non-combat meeting that plays the join scene
+--
+-- Nothing above is a rule that was decided against; it is coverage that lost its subject. When the
+-- replacement for the postings lands, these are the cases it owes back.
+
 local Quest = require("models.quest")
 local Player = require("models.player")
 local Character = require("models.character")
@@ -16,28 +27,6 @@ local function clearJoins()
 end
 
 return {
-    {
-        name = "the debut still earns Saber, and hands off to a scripted follow-up leg",
-        fn = function()
-            local def = Quest.defs["quest_colosseum_slot_01"]
-            assert(def, "arena_debut exists")
-            assert(def.rewardCharacter == "character_saber", "Saber is still the debut's reward")
-            local leg = def.followUp
-            assert(type(leg) == "table", "the debut carries an inline followUp leg")
-            assert(leg.map and leg.map.scripted, "the leg is scripted (no Back button, no abandon)")
-        end,
-    },
-    {
-        name = "the follow-up leg ends on a non-combat meeting that plays the join scene",
-        fn = function()
-            local obj = Quest.defs["quest_colosseum_slot_01"].followUp.map.objective
-            assert(obj.meet, "the objective is a non-combat meeting, not a fight")
-            assert(obj.conversation == JOIN_SCENE, "reaching it plays Saber's join scene")
-            -- A meeting objective needs no composition (there is no battle); a stray one would mean the
-            -- leg was authored as a fight by mistake.
-            assert(obj.composition == nil, "a meeting objective fields no opponents")
-        end,
-    },
     {
         name = "the aftermath leg never lands on the Quest Board (it is inline, not a board quest)",
         fn = function()

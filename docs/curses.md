@@ -71,7 +71,7 @@ cannot be lost the trip it was found on, only lifted.
 > A cost on recovery is a tax on **needing** to recover, and needing to recover is what being bad at the
 > game looks like.
 
-The Ward's answer to a wound is the answer that survived three attempts, and the Cathedral's rite is that
+The Ward's answer to an injury is the answer that survived three attempts, and the Cathedral's rite is that
 answer with an item where the body goes:
 
 | | cost | served by |
@@ -81,7 +81,7 @@ answer with an item where the body goes:
 
 Gold buys **speed** and never relief. A company that cannot pay is never stuck with a hex forever; it is
 stuck with it for two trips, and it chose which two. `Curse.RITE_DESCENTS` is the same figure as
-`Wound.REST_DESCENTS` on purpose — the city's two free paths cost the same span of the same clock, so a
+`Injury.REST_DESCENTS` on purpose — the city's two free paths cost the same span of the same clock, so a
 player learns the unit once.
 
 The rite ticks in `Gate.night`, beside the ward's, because walking into the stair is the one moment a
@@ -199,7 +199,7 @@ Three of those are doing a specific job beyond their numbers:
   is deliberately left open: the counter's spread (half price out, full price back) is dearer than the
   100g lifting, so laundering a hex is a worse deal than paying for the rite, and closing the door would
   take away the one counterplay this curse is built around.
-- **The Blood Price** might be a *gift*, and is left as one. On a mage it is a serious wound; on a knight
+- **The Blood Price** might be a *gift*, and is left as one. On a mage it is a serious injury; on a knight
   who casts nothing it does nothing; on a big body with a small pool it is an upgrade. A curse whose value
   depends on who carries it could be answered by moving it — except that it binds.
 

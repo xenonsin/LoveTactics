@@ -278,6 +278,32 @@ function Item.windupRange(ab)
     return lo, math.max(lo, wu.max or lo)
 end
 
+-- THE BRAVE RULE: how many times a swing of this ability lands. Fire Emblem's brave weapons -- the
+-- Brave Sword and its kin -- strike twice per attack for nothing but the weapon slot, and this is
+-- that, declared as `strikes = 2` on the activeAbility and honoured by every damage path at once
+-- (models/combat.lua). A blueprint that says nothing strikes once, which is every weapon but one.
+--
+-- IT IS THE COUNT, NOT THE POWER, AND THE DISTINCTION IS THE WHOLE MECHANIC. Each strike is a
+-- separate blow: its own hit roll, its own crit roll, its own subtraction of the target's armour
+-- (Combat.mitigatedDamage runs per hit). So two half-sized strikes are NOT one full one -- they are
+-- savage against a robe, where almost all of each lands, and poor against plate, where almost none
+-- of either does. That is the trade a brave weapon buys, and it is the same one the wolves have been
+-- making with their teeth since data/items/weapon/weapon_wolf_fangs.lua learned to double.
+--
+-- DISTINCT FROM THE DOUBLING RULE, which the wolves keep. Theirs is conditional -- a speed gap read
+-- off the board at swing time, so it fires against the armoured half of a warband and not the quick
+-- half. This one is unconditional and priced into the blueprint's own damage line instead. FE carries
+-- both and stacks them; here the brave weapon is the bought version of the rolled one.
+--
+-- NOT A MAGNITUDE. It is deliberately absent from eachMagnitude's walk, on the same principle that
+-- keeps a censer's radius and an ability's speed off the forge: an upgrade buys a HEAVIER blow, never
+-- a longer flurry, or every forge level would be worth double on exactly one weapon in the game.
+function Item.strikes(ab)
+    local n = ab and ab.strikes
+    if type(n) ~= "number" then return 1 end
+    return math.max(1, math.floor(n))
+end
+
 -- Is this ability chargeable -- does the caster get to choose how long to hold it? The question the
 -- battle UI's +/- control and the AI's optional `windup` rule both ask, so a fixed tell and a
 -- chargeable one are never told apart by poking at the field's type in two places.

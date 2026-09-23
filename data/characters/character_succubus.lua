@@ -2,11 +2,14 @@
 -- board a company can meet more than once.
 --
 -- `Descent.SINS` lists five verbs for this stratum and CHARM heads the list -- "you do not choose whose
--- side you are on". Until this line arrived nothing ROLLABLE on the castle delivered it. The Suppliant
--- charms, and she is seated: one landing, once, at the end of the circle. So the circle's headline rule
--- and the counterplay its own header argues at length -- cut the charmer and everyone she holds comes
--- home, mid-turn (Combat.releaseCharmedBy) -- existed in prose and in no fight a player could learn
--- from. This is where that is learned.
+-- side you are on". Until this line arrived nothing ROLLABLE on the castle delivered it: the one body
+-- that charmed was the Suppliant, and she was seated -- one landing, once, at the end of the circle. So
+-- the circle's headline rule and the counterplay its own header argues at length -- cut the charmer and
+-- everyone she holds comes home, mid-turn (Combat.releaseCharmedBy) -- existed in prose and in no fight a
+-- player could learn from. This is where that is learned.
+--
+-- ...AND IT IS NOW THE ONLY PLACE. The Suppliant was deleted with the other six lieutenants on
+-- 2026-09-22, so this line is the whole of Lust's charm rather than the rollable half of it.
 --
 -- THE ESCALATION IS EXACTLY ONE SENTENCE, which is what this whole line is built as:
 --

@@ -514,7 +514,12 @@ end
 function Identify.grant(player, id, floor, level)
     local item = Identify.sealed(id, floor, level)
     if not item then return nil end
-    Player.addToStash(player, item)
+    -- THROUGH Player.stow, so a husk found underground rides down in the pack. It matters more here
+    -- than anywhere else that this is the bag and not the shelf: an unread piece is dead weight for the
+    -- whole trip (Player.takeFromList refuses to move it), so a satchel of husks is exactly the thing
+    -- the ceiling is supposed to put on the scales when the player decides whether to take one more
+    -- floor. Sealed in the stash where it could not be reached, it weighed nothing.
+    Player.stow(player, item)
     if Player.onItemGranted then Player.onItemGranted(item) end
     return item
 end
@@ -530,7 +535,7 @@ Identify.VENDOR = "touchstone"
 -- the thing, cannot read it, and THEN the door is there. The second is memory: once the counter has been
 -- walked into it stays, because a door that came off the plaza the morning after it was used is a city
 -- that gains and loses a building every time the company happens to be carrying one of something. (The
--- Inn was the other door built this way, gated on the first wound. It is deleted -- see models/wound.lua
+-- Inn was the other door built this way, gated on the first injury. It is deleted -- see models/injury.lua
 -- -- and this is the last door of the kind, which is why the rule now lives here.)
 --
 -- The memory is `visitedVendors`, which the first-visit greeting already sets and models/save.lua already

@@ -46,7 +46,7 @@ return {
     {
         name = "a hovered body glosses the intent mark: the kind's own word, who it comes for, and what it lands",
         fn = function()
-            local foe, mark = body("character_demon_grunt", "enemy"), body("character_rowan", "party")
+            local foe, mark = body("character_demon_grunt_tutorial", "enemy"), body("character_rowan", "party")
             local blocks = TileTooltip.blocks({ unit = foe,
                 intent = { kind = "attack", target = mark, amount = 12.4 } })
 
@@ -91,7 +91,7 @@ return {
     {
         name = "a hold names nobody and quotes no figure",
         fn = function()
-            local foe = body("character_demon_grunt", "enemy")
+            local foe = body("character_demon_grunt_tutorial", "enemy")
             local blocks = TileTooltip.blocks({ unit = foe, intent = { kind = "wait", wait = true } })
             local row = find(blocks, "intent")
             assert(row and row.name == "Wait", "a hold is glossed as " .. tostring(row and row.name))
@@ -120,7 +120,7 @@ return {
             -- is what catches that: the fallback collides with Wait's own row.
             local seen = {}
             for _, kind in ipairs(Intent.KINDS) do
-                local blocks = TileTooltip.blocks({ unit = body("character_demon_grunt", "enemy"),
+                local blocks = TileTooltip.blocks({ unit = body("character_demon_grunt_tutorial", "enemy"),
                     intent = { kind = kind } })
                 local row = find(blocks, "intent")
                 assert(row and row.name, "no word for intent kind " .. kind)

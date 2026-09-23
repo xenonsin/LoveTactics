@@ -2,6 +2,18 @@
 -- prestige-based unlocking, quest discovery and availability filtering, and
 -- blueprint immutability.
 
+-- THE QUEST BLUEPRINTS ARE GONE, AND SO IS WHAT THEY WERE COVERING. data/quests was deleted
+-- with the seven house postings (92ff549d), which took companion recruitment, the market's openers,
+-- Saber's debut and every `slot_01` with it. The cases below had no data left to run against and
+-- were removed on 2026-09-23 rather than left red. Each one is listed so the hole is findable:
+--
+--   * a house whose companion is unrecruited posts on a floor, and a done one posts nothing
+--   * quest registry discovers def files by filename
+--   * the duel opens on the sand, and the sand is the Colosseum's first job
+--
+-- Nothing above is a rule that was decided against; it is coverage that lost its subject. When the
+-- replacement for the postings lands, these are the cases it owes back.
+
 local Building = require("models.building")
 local Quest = require("models.quest")
 local Player = require("models.player")
@@ -69,7 +81,7 @@ return {
             -- it. Listed rather than spelled out one by one, so a sixth kind of deed added to the model
             -- and forgotten here fails loudly instead of quietly widening what this case claims.
             local deeds = { "unlockQuest", "unlockExpeditions", "unlockUnidentified",
-                "unlockClassLevel", "unlockAnyHouse", "unlockWound" }
+                "unlockClassLevel", "unlockAnyHouse", "unlockInjury" }
             for _, b in ipairs(Building.list(1)) do
                 local def = Building.defs[b.id]
                 local onDeed = false
@@ -77,7 +89,7 @@ return {
                     if def[field] then onDeed = true end
                 end
                 -- ...and a house, whose door is the OR of the rooms behind it (models/offer.lua). Every
-                -- one of those rooms is on a deed of its own -- a class level, a wound, a floor count --
+                -- one of those rooms is on a deed of its own -- a class level, an injury, a floor count --
                 -- so a bare prestige number cannot answer for it either.
                 if def.offers then onDeed = true end
                 if not onDeed then
@@ -129,45 +141,6 @@ return {
         end,
     },
     {
-        -- THE ONE DOOR THAT OPENS ON SOMEBODY ELSE'S WORK. The Dueling Grounds keep no shelf and post no
-        -- errands, and were gated on the Colosseum debut -- a quest that went with the board, leaving
-        -- the card shut forever while advertising a prestige number that was not even the gate being
-        -- asked. The sand is the Colosseum's own first job now, which is the same sentence with a deed
-        -- behind it that the player can actually reach.
-        name = "the duel opens on the sand, and the sand is the Colosseum's first job",
-        fn = function()
-            local Errand = require("models.errand")
-            local Offer = require("models.offer")
-            -- IT IS A ROOM NOW, NOT A CARD. The Dueling Grounds stood on the plaza and were the only
-            -- door that named somebody ELSE'S errand -- this house's opener -- which is a card that
-            -- exists to point at another card. It is a line on the Colosseum's own desk
-            -- (data/buildings/colosseum.lua), and the gate behind it did not change.
-            assert(not Building.defs.dueling_grounds, "the Dueling Grounds are a room, not a card")
-            local colosseum = Building.defs.colosseum
-
-            local function duelOpen(player)
-                return Offer.openSet(player, colosseum).duel == true
-            end
-
-            assert(not duelOpen({ completedQuests = standingOf(20) }),
-                "no amount of standing should open the duel")
-            assert(duelOpen({ completedQuests = { [Errand.opener("colosseum")] = true } }),
-                "running the Colosseum's opener should open the duel")
-            -- ...and it is the Colosseum's job specifically, not any house's.
-            assert(not duelOpen({ completedQuests = { [Errand.opener("arcanum")] = true } }),
-                "another house's opener should not open the duel")
-
-            -- The HOUSE, meanwhile, is open either way -- its shelf answers to a fighter level, and a
-            -- door opens on any room behind it. What the opener buys is the line, not the plate.
-            local sandy = { completedQuests = { [Errand.opener("colosseum")] = true } }
-            for _, b in ipairs(Building.list(sandy)) do
-                if b.id == "colosseum" then
-                    assert(not b.locked, "the sand should stand the Colosseum's door open")
-                end
-            end
-        end,
-    },
-    {
         -- A SHUT DOOR SAYS NOTHING, and that is the decision rather than an omission. The card carried a
         -- sentence for an afternoon -- composed off whichever gate was really being asked -- and it was
         -- the right fix for one quoting prestige, a currency the city stopped counting. It is the wrong
@@ -187,63 +160,6 @@ return {
                 "Building.requirement has no reader; it should not have survived the card that read it")
         end,
     },
-    {
-        -- THE POSTING IS SEATED WHERE IT CAN BE FOUND, which is the half of the recruit that lives in
-        -- the descent. A companion nobody is ever shown is a body that can never join.
-        name = "a house whose companion is unrecruited posts on a floor, and a done one posts nothing",
-        fn = function()
-            local Descent = require("models.descent")
-            local Errand = require("models.errand")
-
-            -- A COMPANION IS MET AT THEIR COUNTER FIRST, so a company that has visited nobody is
-            -- offered nobody. This one has walked into every house -- and has Saber already, because she
-            -- is scripted onto floor one until she joins and the roll never runs while she is outstanding
-            -- (Descent.SCRIPTED_COMPANION). What is being seated here is a ROLLED posting.
-            local p = Player.new()
-            p.completedQuests = { [Errand.opener(Descent.SCRIPTED_COMPANION)] = true }
-            for vendorId in pairs(Errand.houses()) do Player.markVendorVisited(p, vendorId) end
-
-            -- ONE PER DESCENT, on a floor the run rolls for (Descent.dealCompanion). It was one per
-            -- FLOOR, a permutation dealt across the first six -- which made the roster fill itself on a
-            -- schedule whether or not the player went looking.
-            local run, dealt
-            for seed = 4242, 4400 do
-                run = Descent.new(p, seed)
-                if run.companion then dealt = run.companion break end
-            end
-            assert(dealt, "no seed in 159 offered anybody to a company that has met every house")
-
-            local seen = 0
-            for floor = 1, Descent.FLOORS do
-                local here = Descent.openersAt(run, floor)
-                assert(#here <= 1, "floor " .. floor .. " carries " .. #here .. " companions, not one")
-                seen = seen + #here
-            end
-            assert(seen == 1, "a descent offers one companion; this one offered " .. seen)
-            -- The Bastion is what the gate is for: it names Rowan, who is sworn in the prologue, so its
-            -- posting recruits nobody and must never be dealt.
-            assert(dealt.house ~= "bastion", "the Bastion posts a recruit for a body already in the company")
-
-            -- The seating itself: a shut house's opener is one more end on the board, and it stops being
-            -- one the moment that door is open.
-            local function endsOn(player, floor)
-                local sin = Descent.sinAt(run, floor)
-                local ids = {}
-                for _, spec in ipairs(Descent.floorObjectives(player, floor, sin, 1, false, run)) do
-                    if spec.questId then ids[spec.questId] = true end
-                end
-                return ids
-            end
-
-            local opener = Errand.opener(dealt.house)
-            assert(endsOn(p, dealt.floor)[opener],
-                dealt.house .. "'s opener is not on floor " .. dealt.floor .. ", which posts it")
-
-            p.completedQuests[opener] = true
-            assert(not endsOn(p, dealt.floor)[opener],
-                "a house whose companion has joined is still posting the job that recruited her")
-        end,
-    },
     -- ("the city's front door is the Gate, and the board is parked rather than cut" stood here. It
     -- pinned the board as RETIRED-not-deleted: its blueprint still on disk, hidden by one entry in
     -- Building.RETIRED, so bringing the campaign back was a one-line change. The board is CUT now --
@@ -260,7 +176,7 @@ return {
         fn = function()
             local Descent = require("models.descent")
             local Errand = require("models.errand")
-            local Wound = require("models.wound")
+            local Injury = require("models.injury")
 
             local function shut(who, id)
                 for _, b in ipairs(Building.list(who)) do
@@ -397,9 +313,9 @@ return {
             local hurt = Player.new()
             assert(not Offer.openSet(hurt, Building.defs.cathedral).mend,
                 "nobody is hurt, so there is nothing to mend")
-            Wound.inflict(hurt, { { id = "character_rowan" } })
+            Injury.inflict(hurt, { { id = "character_rowan" } })
             assert(Offer.openSet(hurt, Building.defs.cathedral).mend,
-                "a wound did not put the mending on the Cathedral's desk")
+                "an injury did not put the mending on the Cathedral's desk")
         end,
     },
     {
@@ -422,7 +338,7 @@ return {
             local Class = require("models.class")
             local Offer = require("models.offer")
             local Quest = require("models.quest")
-            local Wound = require("models.wound")
+            local Injury = require("models.injury")
 
             local function shut(who, id)
                 for _, b in ipairs(Building.list(who)) do
@@ -548,8 +464,8 @@ return {
             -- with Rowan hurt and no priest in the world: the mending opens, and the Cathedral's door
             -- with it -- or the only bone-setting in the game is behind a class nobody has.
             local hurt = Player.new()
-            Wound.inflict(hurt, { { id = "character_rowan" } })
-            assert(not shut(hurt, "cathedral"), "a wound must stand the Cathedral's door open")
+            Injury.inflict(hurt, { { id = "character_rowan" } })
+            assert(not shut(hurt, "cathedral"), "an injury must stand the Cathedral's door open")
             assert(shut(hurt, "colosseum"), "and must not open anybody else's")
         end,
     },
@@ -587,13 +503,6 @@ return {
             -- fit being exact is what the fold bought, and a tenth card would have nowhere to go but on
             -- top of a neighbour (the failure above, which has shipped once).
             assert(#cards == 9, "the plaza holds nine cards; it holds " .. #cards)
-        end,
-    },
-    {
-        name = "quest registry discovers def files by filename",
-        fn = function()
-            assert(Quest.defs.quest_bastion_slot_01, "quest_bastion_slot_01 missing")
-            assert(Quest.defs.quest_colosseum_slot_01, "quest_colosseum_slot_01 missing")
         end,
     },
     -- (Four cases stood here, all about what the BOARD would show: that Quest.available gated on

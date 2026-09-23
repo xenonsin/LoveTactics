@@ -17,10 +17,10 @@
 -- ui/pool_grid.lua keeps against the stash.
 --
 -- A TILE IS A FACE AND NOTHING ELSE, so hovering one opens the body's card (ui/body_tooltip.lua) --
--- pools, what a wound has taken off the top, and the stats with the gear folded in.
+-- pools, what an injury has taken off the top, and the stats with the gear folded in.
 -- Drawn by :drawHover, which the host calls after everything else on the screen.
 
-local BodyTooltip = require("ui.body_tooltip") -- the hovered body's pools, wounds and stats
+local BodyTooltip = require("ui.body_tooltip") -- the hovered body's pools, injuries and stats
 local Descent = require("models.descent")
 local Character = require("models.character") -- Character.spriteOf: the skin an aspect item draws the bearer in
 local InputMode = require("input_mode")
@@ -77,7 +77,7 @@ end
 -- THE INN IS NOT ON THIS ROW, AND IT IS NOT ANYWHERE ELSE EITHER. It was a fifth plate out to the
 -- right, and a body dropped on it was put to bed for coin -- which made the departure row answer two
 -- questions at once and read as five seats with a gap in it. It moved to a card in the city and was
--- then deleted outright with the whole toll (models/wound.lua): a dive's wounds end when the company
+-- then deleted outright with the whole toll (models/injury.lua): a dive's injuries end when the company
 -- reaches the surface, free. So this screen asks the one thing it was left with, and it is the one
 -- thing it is for: who goes down.
 --
@@ -364,7 +364,7 @@ local function drawBody(char, x, y, size, font, dim)
 end
 
 function Picker:draw()
-    local Wound = require("models.wound")
+    local Injury = require("models.injury")
     local party = self:party()
 
     -- THE PLATES. An empty one is drawn as a plate rather than as nothing, because four slots with two
@@ -404,15 +404,15 @@ function Picker:draw()
 
         -- GREYED MEANS ONE THING ON THIS ROW: already on a plate. A body used to be dimmed for a second
         -- reason as well -- lying in a bed at the Inn -- and needed a word in the corner to say which of
-        -- the two it was. The Inn is gone (models/wound.lua) and no body is ever lodged, so the dimming
+        -- the two it was. The Inn is gone (models/injury.lua) and no body is ever lodged, so the dimming
         -- answers itself and the word is deleted with the building.
 
-        -- A wound is the one fact that changes who you send, so it is on the tile rather than a hover.
-        local wounds = Wound.count(self.player, char.id)
-        if wounds > 0 then
+        -- An injury is the one fact that changes who you send, so it is on the tile rather than a hover.
+        local injuries = Injury.count(self.player, char.id)
+        if injuries > 0 then
             love.graphics.setFont(self.smallFont)
             Theme.set(Theme.accentWeapon)
-            love.graphics.printf("x" .. wounds, x, y + h - 15, w - 5, "right")
+            love.graphics.printf("x" .. injuries, x, y + h - 15, w - 5, "right")
         end
         if self.cursor == Descent.PARTY_MAX + i then
             Theme.set(Theme.cursor)
@@ -428,11 +428,11 @@ function Picker:draw()
 end
 
 -- WHAT THIS BODY IS WORTH, under the cursor (ui/body_tooltip.lua). The tiles say who; a company picked
--- four at a time is a decision about pools, wounds and what the gear is worth, and without this the
+-- four at a time is a decision about pools, injuries and what the gear is worth, and without this the
 -- player answers it from memory or from a trip to the Armory and back.
 --
 -- A SEPARATE CALL rather than the tail of :draw, because a full card -- three pools, six stats and a
--- wound's statuses -- runs tall, and everything the host draws after the company would be drawn over
+-- injury's statuses -- runs tall, and everything the host draws after the company would be drawn over
 -- the top of it. The host calls this last (states/gate.lua), under its own modals.
 --
 -- NOT WHILE SOMETHING IS IN HAND: a card that followed a dragged body would ride over the plates being

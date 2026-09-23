@@ -36,7 +36,7 @@
 >
 > **This page's law is intact and the sentence below it is not.** The law is about *recovery* — "a cost
 > on recovery is a tax on needing to recover" — and this takes nothing that helps a company recover:
-> not gold, not gear they owned, not a wound, not a level, not their map. What it takes is the *unbanked
+> not gold, not gear they owned, not an injury, not a level, not their map. What it takes is the *unbanked
 > winnings of the failed trip*, which is the one thing a company can lose without ever ending up behind
 > where it started.
 >
@@ -74,16 +74,16 @@ Every other event in the descent's loop is priced, and the table is now the whol
 | **Climbing out** | **a decision** | **one mark** (`Descent.COUNT_STAIR`) |
 | **A wipe** | **a failure** | **two marks** (`Descent.COUNT_WIPE`), and nothing else at all |
 
-> **The third row used to break the law this page states, and so did the fourth.** Mending a wound was
-> 120 gold at a counter; then a bed at the Inn, 60 a wound plus a day with the body out of the company.
-> Both are a price on *needing to recover* — and a wipe wounds the whole expedition by construction, so
+> **The third row used to break the law this page states, and so did the fourth.** Mending an injury was
+> 120 gold at a counter; then a bed at the Inn, 60 an injury plus a day with the body out of the company.
+> Both are a price on *needing to recover* — and a wipe injuries the whole expedition by construction, so
 > the bill always landed on the company that had just lost. The Inn is deleted, the toll with it.
 >
 > **A wipe was the same error one row up, and much larger.** It took the haul as a guarded pack, three
-> quarters of the run's forging stock, the whole run purse and a wound on every head — the most
+> quarters of the run's forging stock, the whole run purse and an injury on every head — the most
 > expensive line in the game, charged to the failure, in a document whose argument is that failures are
 > not where you put the price. All of it is deleted: `Player.loseHaul`, `Descent.dropPack` and the pile
-> system it fed, and the wound the rout inflicted (which the surface cleared for free a screen later
+> system it fed, and the injury the rout inflicted (which the surface cleared for free a screen later
 > anyway). ~~**Losing takes nothing a company can carry.**~~ *(Withdrawn 2026-09-17 — see the banner at the top of this page. A wipe leaves the trip's haul on the floor it happened on.)*
 
 ## Why a wipe still costs two
@@ -96,7 +96,7 @@ cheaper way home — the optimal play becomes *loot until threatened, then throw
 mark is the smallest thing that closes that, and it is paid on a clock rather than out of a pack.
 
 It does bend this page's own law, and the bend is worth naming rather than hiding: one mark on a meter
-most companies never approach is a different order of thing from haul + purse + wounds.
+most companies never approach is a different order of thing from haul + purse + injuries.
 
 ## What the rates measure, re-run with wipes in the tally
 
@@ -187,7 +187,7 @@ way), and **re-entering a floor the company climbed out of pays nothing**, becau
 move. The walk back to where they were is correctly worth zero.
 
 A WIPE REACHES IT NOW. `Descent.climbOut` had one call site and the loss path deliberately was not it,
-because a wipe already cost the haul, the purse and a wound on every head. It costs none of those any
+because a wipe already cost the haul, the purse and an injury on every head. It costs none of those any
 more, so the exemption inverted: the rout charges `Descent.COUNT_WIPE` directly, and the count means an
 expedition that ended with the floor unfinished — one meaning covering both exits, rather than a rule
 with a carve-out for the worse way of doing it.
@@ -237,7 +237,7 @@ addition rather than a fill. Once, on the first draw after the number moved, nev
 
 The readout is hidden until the player takes the ascent stair for the first time. Not a threshold on the
 number — their own act, which is the moment it becomes about something they did. Once revealed it stays,
-even at nought, which is `Wound.everWounded`'s pattern and the Inn's own argument: the mark rather than
+even at nought, which is `Injury.everInjured`'s pattern and the Inn's own argument: the mark rather than
 the ledger, or the readout comes off the plaza the morning after it was earned.
 
 Two one-way marks, and they are deliberately not one:
@@ -332,7 +332,7 @@ the losing one is the one that snapshots the floor into the company's map book.
 The campaign used to end on a date. Forty days, bought one expedition at a time off a Quest Board, with
 the demon lord landing on the fortieth and every unfelled general standing beside him. The board was
 retired and the descent became the campaign; a clock that counted expeditions had nothing left to count,
-and `models/calendar.lua` says what the day is now (a real unit — nights pass, wounds mend by them — with
+and `models/calendar.lua` says what the day is now (a real unit — nights pass, injuries mend by them — with
 no ceiling on it).
 
 The ending it was pointing at did not need the date. This is the same fight, reached by what the company

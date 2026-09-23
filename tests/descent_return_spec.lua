@@ -244,43 +244,57 @@ return {
         -- THE BAG HAS A BOTTOM AGAIN, and it is the same reversal as the floor count: models/mule.lua's
         -- ceiling was deleted because "the wipe takes nothing now, so the ceiling was guarding a stake
         -- that no longer exists". The wipe takes the haul again, so the stake is back.
-        name = "the bag caps the trip's finds and never the kit that walked in, and town is unbounded",
+        --
+        -- AND IT COUNTS THE BAG NOW, NOT THE DIFF. This case used to fill the STASH and assert that
+        -- the ceiling saw it, because the ceiling was Player.atRisk and the stash was where a find
+        -- landed. Both halves moved: a find lands in player.pack (Player.stow) and the ceiling counts
+        -- that container's slots (Descent.carried). What the case is FOR is unchanged -- the shelf at
+        -- home is unbounded and the bag is not -- so it is rewritten rather than deleted.
+        name = "the bag counts what is in it, the shelf at home is unbounded, and town is not the bag",
         fn = function()
             local Item = require("models.item")
             local Character = require("models.character")
 
             local player = Player.new()
             player.roster = { Character.instantiate("character_knight") }
-            -- A COMPANY THAT MARCHED IN RICH. Well past the cap, and none of it is "carried".
+            -- A COMPANY THAT MARCHED IN RICH -- on the SHELF, well past the cap, and none of it in the
+            -- bag. The town's stock has never been what the ceiling measures.
             for _ = 1, Descent.CARRY_MAX + 5 do
                 Player.addToStash(player, Item.instantiate("weapon_iron_sword"))
             end
             local run = Descent.new(player, 7)
             run.entry = Save.snapshot(player)
 
-            assert(Descent.carried(player, run) == 0,
-                "the kit the company walked in with is being counted against the bag")
-            assert(Descent.carryRoom(player, run) == Descent.CARRY_MAX,
-                "a company that has found nothing has the whole bag free")
+            assert(Descent.carried(player) == 0,
+                "the shelf at home is being counted against the bag")
+            assert(Descent.carryRoom(player) == Descent.CARRY_MAX,
+                "a company with an empty bag has the whole of it free")
 
-            -- ...AND THE SAME SHELF AT HOME IS UNBOUNDED. The cap is on the HAUL, which is why the
-            -- stash can hold more than CARRY_MAX without anything being wrong.
+            -- ...AND THE SHELF STAYS UNBOUNDED. The cap is on what they CARRY, which is why the stash
+            -- can hold more than CARRY_MAX without anything being wrong.
             assert(#player.stash > Descent.CARRY_MAX,
                 "the fixture did not actually exceed the cap; the next assertion proves nothing")
 
-            -- FOUND, one at a time, until the bag is full.
+            -- PACKED, one at a time, until the bag is full. Straight into the pack rather than through
+            -- Player.stow: what is being measured here is the container, not the routing (that is
+            -- tests/pack_spec.lua's question).
             for _ = 1, Descent.CARRY_MAX do
-                Player.addToStash(player, Item.instantiate("weapon_iron_sword"))
+                Player.addToPack(player, Item.instantiate("weapon_iron_sword"))
             end
-            assert(Descent.carried(player, run) == Descent.CARRY_MAX,
-                "found " .. Descent.CARRY_MAX .. " and the bag reads " ..
-                Descent.carried(player, run))
-            assert(Descent.carryRoom(player, run) == 0, "the bag should be full")
+            assert(Descent.carried(player) == Descent.CARRY_MAX,
+                "packed " .. Descent.CARRY_MAX .. " and the bag reads " .. Descent.carried(player))
+            assert(Descent.carryRoom(player) == 0, "the bag should be full")
 
             -- OVER THE LINE READS AS FULL rather than as owing slots -- a cap lowered between saves
             -- must not hand back a negative that a caller then adds to something.
-            Player.addToStash(player, Item.instantiate("weapon_iron_sword"))
-            assert(Descent.carryRoom(player, run) == 0, "an over-full bag reported negative room")
+            Player.addToPack(player, Item.instantiate("weapon_iron_sword"))
+            assert(Descent.carryRoom(player) == 0, "an over-full bag reported negative room")
+
+            -- AND THE DIFF SURVIVES AS ITS OWN QUESTION. Everything above was packed after the entry
+            -- snapshot, so the trip has "found" all of it -- but the two numbers answer different
+            -- questions and the stair must only ever see this one (Descent.tollFor).
+            assert(Descent.found(player, run) > 0,
+                "the haul diff stopped seeing what was added after the snapshot")
         end,
     },
     {
@@ -292,6 +306,12 @@ return {
             assert(Descent.CARRY_MAX <= 40,
                 "a bag this big (" .. Descent.CARRY_MAX .. ") is never reached, which is the mule's "
                 .. "own complaint: a bet with no ceiling is not a bet")
+            -- ...AND IT HAS TO LEAVE ROOM FOR A TRIP ON TOP OF THE RATIONS. The bag carries the
+            -- provisions now, so a ceiling that a packed company meets before it has found anything is
+            -- a ceiling that prices the Gate rather than the descent (models/descent.lua's header:
+            -- twenty of finding plus eight of supplies).
+            assert(Descent.CARRY_MAX >= 20 + 8,
+                "the bag no longer holds a provisioned company plus four floors of finding")
         end,
     },
     {

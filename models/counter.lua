@@ -88,7 +88,7 @@ end
 --
 -- THERE WAS AN `opts.afterIntro(go)` SEAM HERE and it is gone with the beat it was cut for. It fired
 -- once, after a house's `intro` scene and before its desk, and its one user was the wound window the
--- Cathedral's doorway owes a player who has never seen one (states/hub.lua's teachWounds). That window
+-- Cathedral's doorway owes a player who has never seen one (states/hub.lua's teachInjuries). That window
 -- teaches the rule the ROOM is about, so it moved to the room's own door when the scene it was riding
 -- moved to the far side of the press (see `introAfter` below) -- and a seam with no user is a seam
 -- that goes stale unread. The host hangs the window off opening the room now, which is a moment the

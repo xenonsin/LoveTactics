@@ -56,7 +56,7 @@ local Experience = require("models.experience") -- the one ladder: what turns ba
 local Relic = require("models.relic")
 local ItemHook = require("models.item_hook") -- the between-fight half of the parked relic shelf, as gear
 local Meal = require("models.meal") -- the Cafe's supper: one platter, worn by the company all run
-local Wound = require("models.wound") -- what a body that went down carries out of the run
+local Injury = require("models.injury") -- what a body that went down carries out of the run
 local Trap = require("models.trap")   -- ...and the bad ground a floor is laid with (Overworld:placeTraps)
 local Mimic = require("models.mimic") -- ...and the lids on that floor which are not lids
 local CoachBubble = require("ui.coach_bubble")
@@ -73,7 +73,7 @@ local hudFont = Theme.body(16)
 
 -- Coach lines, keyed by conversation and node id and resolved through Locale so {select}/localization
 -- behave exactly as in a spoken line. Two files feed the map: the prologue's flight leg, and the one
--- line the campaign teaches out here (the first wound).
+-- line the campaign teaches out here (the first injury).
 --
 -- The lookup itself moved to models/locale.lua (Locale.node), which is where every surface that fields
 -- a hint bag now goes -- the city's bubbles, the Gate's, the tutorial windows and the guided battle's
@@ -123,7 +123,7 @@ local function coachBounds()
 end
 
 -- Where the always-on party strip is drawn (ui/party_status.lua). A constant rather than two literals
--- because something now has to POINT at a row of it: the first-wound coach bubble anchors through
+-- because something now has to POINT at a row of it: the first-injury coach bubble anchors through
 -- PartyStatus.rowRect, which can only find the row if it is handed the origin the strip was drawn at.
 local STRIP_X, STRIP_Y = 16, 60
 
@@ -245,8 +245,14 @@ end
 -- the wipe takes the haul again (Descent.dropPack), so the stake the mule's ceiling existed to bound
 -- exists once more. Both halves live in models/descent.lua now rather than here -- the count so a spec
 -- can reach it, and the cap beside it so the two cannot drift.
+-- THIS WAS ONE FUNCTION AND IS NOW A NAME FOR ONE OF TWO. It fed the toll, the gate readout, the HUD
+-- and the wipe alike, back when "what the trip found" and "how full the bag is" were the same number.
+-- The pack split them (Descent.carried / Descent.found) and the split is load-bearing: a stair that
+-- priced its share against the company's own rations would be the robbery payToll forbids by name. So
+-- this keeps the HAUL, and the one reader that wanted the BAG asks Descent.carried where the
+-- difference is visible at the call site rather than hidden behind a name that means neither.
 local function haulCount(run)
-    return Descent.carried(game.player, run)
+    return Descent.found(game.player, run)
 end
 
 -- HOW MUCH MORE THE COMPANY COULD PICK UP, or unbounded off a descent -- the prologue, an authored
@@ -254,7 +260,7 @@ end
 -- them behaving exactly as it did.
 local function carryRoom()
     if not game.descent then return math.huge end
-    return Descent.carryRoom(game.player, game.descent)
+    return Descent.carryRoom(game.player)
 end
 
 local function backContains(x, y)
@@ -445,6 +451,17 @@ local function openLoadout()
         -- the flag is not the whole of Act 0 -- the sweep's own fights are launched from here as
         -- ordinary encounters and carry none.
         classes = Descent.classesUnlocked(game.player),
+        -- WHO IS ACTUALLY DOWN HERE, and WHAT THEY CAN ACTUALLY REACH. The same two narrowings the Use
+        -- panel takes twenty lines up, gated on `game.descent` for the same reason: every other leg --
+        -- the prologue's flight, an authored quest, the tutorial -- has no expedition and no stair, and
+        -- passing nil leaves all of them exactly as they were.
+        --
+        -- THIS IS THE HOLE THE PACK WAS BUILT TO CLOSE. The law is that the stash stays in town, and it
+        -- held on the Use panel and nowhere else: this screen showed the whole town shelf as a live drag
+        -- source on floor nine, so a company could reach into the city from the bottom of the rift. The
+        -- column shows the bag now, and the rail shows the four who are carrying it.
+        party = game.descent and Descent.party(game.descent, game.player) or nil,
+        pool = game.descent and "pack" or nil,
         -- Clear the equip coach the instant the player equips something, not on panel close.
         onEquip = function()
             if game.coach == "equip" then game.coach = nil end
@@ -493,7 +510,7 @@ local saveRun
 -- with a voluntary exit keeping everything (toHub), a total wipe penalty makes the last fight before
 -- you turn back an all-or-nothing coin flip, and the sensible play is to leave after the first cache.
 --
--- ...AND IT NOW TAKES NOTHING AT ALL. It used to take wounds plus most of the run's gold and forging
+-- ...AND IT NOW TAKES NOTHING AT ALL. It used to take injuries plus most of the run's gold and forging
 -- stock (Player.loseHaul, deleted). Losing is a failure and this design does not price failures --
 -- docs/the-count.md says so and then broke its own rule on this one line for a long time. What a lost
 -- expedition costs is marks on the count, charged where a count exists to charge (the descent branch's
@@ -531,6 +548,12 @@ local function endDescent(outcome, result, keep)
     if not keep and game.player then
         -- The run is over. The company is not -- it walks back into the city with everything it kept,
         -- and the next descent starts a fresh stack of floors.
+        --
+        -- THE BAG COMES OFF HERE, which is the catch-all for every ordinary way a trip ends. The wipe
+        -- and the climb-out unpack inline instead, because on those two the ORDER matters against a
+        -- pile and a re-baseline; this is the one that catches everything else, and unpacking twice is
+        -- a no-op on an empty bag rather than a thing to guard against.
+        Player.unpack(game.player)
         game.player.descentRun = nil
     end
     Player.save()
@@ -652,7 +675,7 @@ function game:payToll(n)
     -- takeAtRisk lifts the WHOLE haul, so the remainder goes straight back -- this is a share, not a
     -- confiscation. Sorted out here rather than by asking it for a subset, because "which particular
     -- finds" is not a question the player was asked and must not become one.
-    for i = n + 1, #dropped do Player.addToStash(game.player, dropped[i]) end
+    for i = n + 1, #dropped do Player.stow(game.player, dropped[i]) end
     run.tollPaid = run.tollPaid or {}
     run.tollPaid[tostring(Descent.depth(run))] = true
     game:pushToast("She takes " .. math.min(n, #dropped) ..
@@ -709,8 +732,8 @@ function game:payoutPhrase(enc)
 end
 
 -- WHAT THE LAST FIGHT COST THE BODIES IN IT. states/battle.lua records who ended a fight down --
--- carried out on a win, simply down on a loss -- on `battle.fallen`, and this turns that into wounds
--- that outlive the run (models/wound.lua).
+-- carried out on a win, simply down on a loss -- on `battle.fallen`, and this turns that into injuries
+-- that outlive the run (models/injury.lua).
 --
 -- Read off the battle state rather than handed through the callback because there is nowhere to hand
 -- it: onWin takes the spoils and onLoss takes nothing, and threading a second argument through both
@@ -724,26 +747,80 @@ end
 -- (Muster.canWalkOver) is resolved against a combat object nobody ever entered a state for, so
 -- states/battle.lua's field would hold whatever the last real fight left in it. Everything else omits
 -- it and takes that field, which is the ordinary case.
-function game:inflictWounds(chars)
-    -- Asked BEFORE the ledger moves, because Wound.inflict is what writes the one-way mark. See the
+function game:inflictInjuries(chars, kind)
+    -- Asked BEFORE the ledger moves, because Injury.inflict is what writes the one-way mark. See the
     -- coach below: this is the only moment the answer is still "never".
-    local firstEver = not Wound.everWounded(game.player)
+    local firstEver = not Injury.everInjured(game.player)
+    -- ...and the second mark, which becomes true on a different day: the first injury that stamps a
+    -- BADGE rather than a band (models/injury.lua's Injury.everBadged). Two lessons, two ledgers --
+    -- one flag read twice would spend the second lesson on the first injury, which is Blood Loss by
+    -- script and has no badge to teach.
+    local firstBadge = not Injury.everBadged(game.player)
     local fallen = chars or require("states.battle").fallen
-    local hurt = Wound.inflict(game.player, fallen)
+    local hurt = Injury.inflict(game.player, fallen, kind)
     -- Named off the instances the battle handed back rather than looked up by id: these ARE the
     -- roster's own tables, and a companion's name can be the one the player typed at creation.
     local byId = {}
     for _, char in ipairs(fallen or {}) do byId[char.id] = char end
     for _, id in ipairs(hurt) do
         local char = byId[id]
-        game:pushToast(((char and char.name) or "Someone") .. " is wounded")
+        game:pushToast(((char and char.name) or "Someone") .. " is injured")
     end
 
-    -- THE FIRST ONE IS TAUGHT, and only the first. A toast says who; it does not say what a wound IS,
+    -- ...AND WHATEVER THE GROUND DID TO THEM, which is a second source and a different one: a trap
+    -- records an intent on the combat object (models/trap.lua's ctx.injure) because combat has no
+    -- player to charge. Drained here, where it does -- the same "the battle records, the launcher
+    -- charges" split `battle.fallen` keeps, and the reason neither has to know about the other.
+    --
+    -- Named kinds only, deliberately: a trap that breaks a leg says so, and one that wanted a roll can
+    -- pass nothing and take one.
+    --
+    -- ONE INJURY PER FIGHT PER BODY, and it has to be enforced HERE rather than trusted to
+    -- Injury.inflict -- that call dedupes within a single list, and this is a second call. A body that
+    -- was dropped down the shaft and then carried out of the fight it landed in has had one bad fight,
+    -- which is the rule the fall above already keeps; without this it would be charged twice for the
+    -- same few seconds. The fall wins, because it is the thing the player watched happen.
+    local combat = (chars == nil) and require("states.battle").combat or nil
+    local dealt = combat and combat.dealtInjuries
+    if dealt then
+        combat.dealtInjuries = nil
+        local already, byRosterId = {}, {}
+        for _, id in ipairs(hurt) do already[id] = true end
+        for _, char in ipairs((game.player and game.player.roster) or {}) do byRosterId[char.id] = char end
+        for _, row in ipairs(dealt) do
+            local char = byRosterId[row.charId]
+            if char and not already[row.charId] then
+                already[row.charId] = true
+                if #Injury.inflict(game.player, { char }, row.kind) > 0 then
+                    hurt[#hurt + 1] = row.charId
+                    byId[row.charId] = char
+                    game:pushToast((char.name or "Someone") .. " is injured")
+                end
+            end
+        end
+    end
+
+    if firstEver and hurt[1] then
+        game.coach = "injury"
+        game.coachChar = hurt[1] -- whose row the bubble points at; the toasts name the rest
+    elseif firstBadge and Injury.everBadged(game.player) then
+        -- THE SECOND LESSON, once ever: the first time a fall deals something that is not a band. It
+        -- points at the same row for the same reason -- that is where the body is -- but it is naming
+        -- the thing the strip CANNOT show, which is why it is a second bubble and not a longer first
+        -- one. Never both in one beat: the branch is exclusive, so a company whose very first injury
+        -- somehow carried a badge learns the band first and meets this one on the next bad fight.
+        for _, id in ipairs(hurt) do
+            if Injury.count(game.player, id) > 0 then
+                game.coach = "injury_badge"
+                game.coachChar = id
+                break
+            end
+
+    -- THE FIRST ONE IS TAUGHT, and only the first. A toast says who; it does not say what an injury IS,
     -- and the mark it leaves -- the dark cap on that body's bar in the party strip -- is a thing the
     -- player has never seen before and will now be routing around for the rest of the expedition. So
     -- the very first time anybody in the company is carried out, the strip's own row gets a coach
-    -- bubble naming it (drawCoach's "wound" branch).
+    -- bubble naming it (drawCoach's "injury" branch).
     --
     -- ARMED HERE, WHICH IS ALSO WHY A WIPE NEVER SEES IT. Every wipe path calls this and then leaves
     -- the map inside the same function -- the haul is cut, the run is dropped, and the next screen is
@@ -753,9 +830,7 @@ function game:inflictWounds(chars)
     -- bar to be taught. The split falls out of where each path ends rather than out of a flag -- a
     -- company still standing on the board learns the mark, a company standing in a town has nothing to
     -- learn yet and will be taught by the first body carried out of a fight it survives.
-    if firstEver and hurt[1] then
-        game.coach = "wound"
-        game.coachChar = hurt[1] -- whose row the bubble points at; the toasts name the rest
+        end
     end
     return hurt
 end
@@ -960,7 +1035,7 @@ function game:openLanding(cell)
     if game.player then
         if dropId then
             local item = Item.instantiate(dropId)
-            Player.addToStash(game.player, item)
+            Player.stow(game.player, item)
             Player.markNew(game.player, Player.NEW_STASH, dropId)
         else
             -- NOTHING OF HERS LEFT, so the house pays in its own stock -- the material its bench bills in
@@ -1499,13 +1574,13 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
         onArrive = function(cell, revealed)
             fireAbility("step", { cell = cell, revealed = revealed })
             fireRelics("step", { cell = cell, revealed = revealed })
-            -- THE FIRST-WOUND LESSON IS SPENT BY WALKING ON, and a step is the only honest thing to
+            -- THE FIRST-INJURY LESSON IS SPENT BY WALKING ON, and a step is the only honest thing to
             -- spend it on. Every other coach step out here is cleared by the player doing the thing it
-            -- asked for; this one asks for nothing -- a wound cannot be answered on the board -- so
+            -- asked for; this one asks for nothing -- an injury cannot be answered on the board -- so
             -- what it is waiting for is to have been READ. Taking a step is the player saying so, and
             -- it is the same beat the bubble was put up to inform: the next stop is chosen by a
             -- company that is now short of that much.
-            if game.coach == "wound" then
+            if game.coach == "injury" or game.coach == "injury_badge" then
                 game.coach, game.coachChar = nil, nil
             end
             -- A DOOR IS FOUND BY BEING BESIDE IT. Wizardry makes you stand at a wall and press Search,
@@ -1531,7 +1606,7 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
             -- BEFORE it checks the cell for an encounter, so a fight written onto the cell here is
             -- picked up by the very next line of the widget and opened through the same seam a seated
             -- fight has always come through -- the approach autosave, the entry edge, the arena roll,
-            -- the spoils, the wounds. Nothing downstream learns a new way to start a battle.
+            -- the spoils, the injuries. Nothing downstream learns a new way to start a battle.
             --
             -- NOT ONTO AN OCCUPIED PLACE. A cell holds one thing (docs/overworld.md), and writing a
             -- fight over a merchant would delete the merchant. The meter stays full instead and fires on
@@ -1657,8 +1732,8 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
     local freshExpedition = not game.descent or not game.descent.entry
     if runResumable() and quest and quest.id and not resume and freshExpedition then
         -- A NIGHT PASSES, which is now the day itself and nothing else. It used to be three things --
-        -- the day, a wound off everybody lodged at the Inn, and whoever that finished walking out of
-        -- their room -- and the Inn is deleted along with the whole toll (models/wound.lua).
+        -- the day, an injury off everybody lodged at the Inn, and whoever that finished walking out of
+        -- their room -- and the Inn is deleted along with the whole toll (models/injury.lua).
         --
         -- STILL THROUGH Gate.night rather than reaching for Calendar.spend directly. This is the only
         -- caller left, and the indirection is deliberately kept: "a night passes" is a fact about the
@@ -2135,7 +2210,7 @@ function game:openEncounter(cell, opts)
 
     -- A DROPPED PACK WITH SOMETHING STANDING ON IT is a fight like any other, and goes through the
     -- arena on the ordinary path: the same deployment phase, the same relics, the same salvage, the
-    -- same wounds. What is different is only what winning pays, which onWin handles below.
+    -- same injuries. What is different is only what winning pays, which onWin handles below.
     --
     -- Guarded ONLY when the drop carries a cast (see markBodies). A pile left before the guard existed
     -- falls through to the unconditional pickup at the bottom of this function, which is what it was
@@ -2167,16 +2242,19 @@ function game:openEncounter(cell, opts)
             local frontRow = function() return front or deployed end
             fireAbility("battleStart", { cell = cell, party = deployed, frontRow = frontRow })
             local relicCtx = fireRelics("battleStart", { cell = cell, party = deployed, frontRow = frontRow })
-            -- WHAT A WOUNDED BODY FIGHTS UNDER, stamped at spawn beside the relics' own boons because
+            -- WHAT AN INJURED BODY FIGHTS UNDER, stamped at spawn beside the relics' own boons because
             -- it is the same kind of thing: a status the unit ARRIVES wearing rather than one anything
-            -- on the board applied. Two sources, one seam -- so combat never learns what a wound is
-            -- (models/wound.lua's Wound.combatEffects).
+            -- on the board applied. Two sources, one seam -- so combat never learns what an injury is
+            -- (models/injury.lua's Injury.combatEffects).
             --
             -- Over the whole company for the same reason the relic traits are: a benched member has to
             -- arrive already carrying it when they rotate on.
             local boons = Relic.openingBoons(relicCtx)
             for _, char in ipairs((game.player and game.player.roster) or {}) do
-                for _, effect in ipairs(Wound.combatEffects(game.player, char.id)) do
+                -- The CHAR goes in as well as the id: the clamp that stops a stacked injury taking a
+                -- stat to zero is measured against this body's own base (models/injury.lua's
+                -- Injury.STAT_FLOOR), and a caller that omits it gets the authored magnitudes unfloored.
+                for _, effect in ipairs(Injury.combatEffects(game.player, char.id, char)) do
                     boons[#boons + 1] = { char = char, id = effect.id, opts = effect.opts }
                 end
             end
@@ -2557,7 +2635,7 @@ function game:openEncounter(cell, opts)
             -- WHO WALKED DOWN THE STAIR, which underground is four and not the roster (Descent.party).
             -- The expedition is picked at the Gate and fixed for the run, so the deployment phase has
             -- nothing left to choose: it places the four it is given, and only their ARRANGEMENT is
-            -- still a question. There is no bench down here, which is the premise models/wound.lua is
+            -- still a question. There is no bench down here, which is the premise models/injury.lua is
             -- priced against -- and, since the Quest Board went (models/quest.lua), there is no bench
             -- anywhere: the phase itself no longer has one to put anybody on (docs/deployment.md).
             --
@@ -2574,16 +2652,22 @@ function game:openEncounter(cell, opts)
             -- Resolved AFTER placement, since the front line is a thing the player chooses on the board.
             -- Returns { relicTraits, openingBoons } for battle setup to stamp at spawn; see above.
             resolveOpening = resolveOpening,
-            -- The player's stash, by reference: an item stolen mid-battle by a thief with a full
-            -- grid is appended straight to it, so a theft survives whatever the battle does next.
-            stash = game.player and game.player.stash,
+            -- WHERE A LIFT LANDS when the thief's own grid is full: appended by reference, so a theft
+            -- survives whatever the battle does next (Combat.steal).
+            --
+            -- THE PACK UNDERGROUND, and it is the one find in the game that does not arrive through
+            -- Player.stow -- Combat.steal appends to this table directly rather than calling anything,
+            -- so the branch has to happen where the table is handed over. A pickpocket nine floors down
+            -- was stealing onto the town's shelf, which is a find landing somewhere the company cannot
+            -- reach and a wipe cannot take.
+            stash = game.player and Player.carryList(game.player),
             -- Victory resumes THIS overworld (no regenerate); the objective completes
             -- the quest instead. See the file header on why enter is skipped here.
             onWin = function(spoils)
                 cell.cleared = true
                 game.activePanel = nil
                 -- WINNING IS NOT THE SAME AS COMING OUT WHOLE. A member who went down is carried out
-                -- alive (states/battle.lua's win) and keeps the wound anyway -- the free revive stands,
+                -- alive (states/battle.lua's win) and keeps the injury anyway -- the free revive stands,
                 -- and the injury is the price rather than the loss of the body. Here at the top of the
                 -- callback rather than in either branch below, so the objective and an ordinary road
                 -- fight charge the same thing and neither can be given a fork that forgets to.
@@ -2591,21 +2675,32 @@ function game:openEncounter(cell, opts)
                 -- The tutorial's ROAD STOPS are exempt: the flight leg is authored to be lost bodies and
                 -- all, and a lesson that scars the company for every stop it fumbles is not a lesson.
                 --
-                -- ITS OBJECTIVE IS NOT EXEMPT, and that carve-out is where the wound mechanic is taught.
+                -- ITS OBJECTIVE IS NOT EXEMPT, and that carve-out is where the injury mechanic is taught.
                 -- The Champion fells Rowan by script at its last stage (utility_demon_sigil.lua), and the
                 -- scene on the far side of this fight is the company carrying her to the Cathedral. A
-                -- wound the ledger never recorded would make that scene prose describing something the
+                -- injury the ledger never recorded would make that scene prose describing something the
                 -- game did not do -- so the one tutorial fight whose casualty is authored is the one
                 -- tutorial fight that charges for it.
                 --
                 -- It costs the player nothing, which is what makes it safe to teach with: the prologue
                 -- ends by opening the hub, and the Ward on that plaza is where the bone gets set. So
-                -- the wound is live for exactly the stretch the scene is about -- from the Champion's
+                -- the injury is live for exactly the stretch the scene is about -- from the Champion's
                 -- last stage to the city gate -- and reaching the city IS the healing, with no special
                 -- case anywhere to say so.
-                if not game.tutorial or kind == "objective" then game:inflictWounds() end
+                -- AND THE TUTORIAL'S ONE INJURY IS NAMED, never rolled. A fall deals one of seven
+                -- kinds (models/injury.lua) and five of them reserve almost nothing -- but the coach
+                -- bubble waiting on the far side of this fight points at the DARK BAND on Rowan's bar
+                -- in the party strip. A rolled Shattered Leg draws no band, and the one teaching moment
+                -- the whole mechanic gets would be an arrow pointing at nothing. So the scripted
+                -- casualty takes Blood Loss, which is the band and is what the lesson is about; the
+                -- roll starts on floor one, where there is a second bubble to meet it.
+                if not game.tutorial then
+                    game:inflictInjuries()
+                elseif kind == "objective" then
+                    game:inflictInjuries(nil, "injury_blood_loss")
+                end
 
-                -- The flight leg's Use lesson: the party walks off the survivors' defence wounded,
+                -- The flight leg's Use lesson: the party walks off the survivors' defence injured,
                 -- with a pocket of draughts from the teaching chest and nowhere to spend them, so the
                 -- button appears the moment that need does. Revealed on the leg's FIRST combat win --
                 -- which the authored trail makes the defence (states/prologue.lua's FLIGHT_QUEST,
@@ -2630,6 +2725,10 @@ function game:openEncounter(cell, opts)
                     cell.cleared = false
                     Player.finishCampaign(game.player)
                     clearRun()
+                    -- The bag onto the shelf before the run goes: New Game+ carries the stash
+                    -- (Player.newGamePlus) and a pack left full would be a shelf's worth of gear
+                    -- sealed in a container the next campaign never opens.
+                    if game.player then Player.unpack(game.player) end
                     if game.player then game.player.descentRun = nil end
                     Player.save()
                     State.switch(require("states.credits"), { newGamePlus = true })
@@ -2774,6 +2873,7 @@ function game:openEncounter(cell, opts)
                             -- next run opened off this player is already the shuffled kind.
                             Player.finishCampaign(game.player)
                             clearRun()
+                            if game.player then Player.unpack(game.player) end
                             if game.player then game.player.descentRun = nil end
                             Player.save()
 
@@ -3018,13 +3118,13 @@ function game:openEncounter(cell, opts)
                 -- every one of them used to be answered with the WIPE below: pack dropped on the floor,
                 -- the run's coin and ore gone, the company woken in town. That is charging a rout what
                 -- a destruction costs, and Descent.climbOut's note says exactly why it must not happen --
-                -- a wipe already takes the haul, the purse and a wound on every head, and charging the
+                -- a wipe already takes the haul, the purse and an injury on every head, and charging the
                 -- failure twice is the thing this design is built not to do.
                 --
                 -- WHAT A ROUT COSTS INSTEAD IS THE STATE THEY ARE IN, and that is the whole of it. There
                 -- is no rollback here and no Player.restore: whoever walked off that board at four health
                 -- is standing on the map at four health, the potions they drank are drunk, and
-                -- Combat.spentParty has already written a wound for everybody the fight emptied
+                -- Combat.spentParty has already written an injury for everybody the fight emptied
                 -- (states/battle.lua's lose). The second attempt is made by the company the first one left
                 -- behind, which is a real price and the only one that needs no bookkeeping to collect.
                 --
@@ -3044,7 +3144,7 @@ function game:openEncounter(cell, opts)
                 if game.descent and require("states.battle").routed then
                     local errandId = objSpec and objSpec.questId
                     -- Errand.fail answers true on the FIRST failure only, which is exactly when there is
-                    -- news: a bonus spent is spent once. Said here, beside the wound toasts, because it
+                    -- news: a bonus spent is spent once. Said here, beside the injury toasts, because it
                     -- has to be told at the moment it is lost -- a purse that quietly fails to arrive an
                     -- hour later reads as a bug rather than as a price. The work itself is untouched and
                     -- the line says so, so the player is not sent looking for a marker that has moved.
@@ -3055,7 +3155,7 @@ function game:openEncounter(cell, opts)
                     end
                     -- Before the return, and the ordering is the same one the wipe branch keeps: the
                     -- ledger moves while the battle's list of who fell is still the last one written.
-                    game:inflictWounds()
+                    game:inflictInjuries()
                     -- The tutorial's Try Again path with the rewind deleted -- drop the defeat grey and
                     -- the low-HP vignette the loss froze on screen, step the token back onto the tile it
                     -- came from, and resume THIS overworld through State.current so game.enter does not
@@ -3068,7 +3168,7 @@ function game:openEncounter(cell, opts)
                     require("models.sound").music("music.overworld")
                     game:refreshMuster() -- the fight was paid for in health and potions; re-rate
                     -- BOTH saves, because a rout moves both halves: the board (a token stepped back off
-                    -- the marker) and the profile (wounds, and a bonus that is now spent). This is the
+                    -- the marker) and the profile (injuries, and a bonus that is now spent). This is the
                     -- exit that would have been missing them -- of the ways out of a fight, the losing one
                     -- is where the bookkeeping goes unwritten.
                     saveRun()
@@ -3098,7 +3198,7 @@ function game:openEncounter(cell, opts)
                     --
                     -- THIS IS THE PAGE'S OWN LAW, FINALLY APPLIED. the-count.md prices a need at
                     -- nothing and a decision at a mark, and then charged the FAILURE the haul, most of
-                    -- the purse and a wound on every head -- the most expensive line in the game, billed
+                    -- the purse and an injury on every head -- the most expensive line in the game, billed
                     -- to the company that had just lost. It had already caught itself once here (the
                     -- Inn's mending toll, deleted for the same reason). This is the same deletion one
                     -- row up.
@@ -3131,11 +3231,11 @@ function game:openEncounter(cell, opts)
                     -- every find into a spare grid cell before a risky fight -- is now answered by the
                     -- mark instead. The mark is the cost that is not an item.
                     --
-                    -- AND NO WOUNDS, WHICH IS NOW A DECISION RATHER THAN A NO-OP. This read "a wound
+                    -- AND NO INJURIES, WHICH IS NOW A DECISION RATHER THAN A NO-OP. This read "an injury
                     -- lasts the expedition and the surface ends it for free, and a wipe IS a return to
                     -- the surface -- so inflicting them here only ever wrote a state that was cleared
-                    -- in the same breath." That stopped being true when wounds started outliving the
-                    -- trip (models/wound.lua): a wound dealt here would now follow the company into
+                    -- in the same breath." That stopped being true when injuries started outliving the
+                    -- trip (models/injury.lua): an injury dealt here would now follow the company into
                     -- town and have to be rested or bought off.
                     --
                     -- It stays at none, and on the law rather than on the old accident: wounding a
@@ -3177,6 +3277,13 @@ function game:openEncounter(cell, opts)
                                 game.map.px, game.map.py, haul)
                         end
                     end
+
+                    -- ...AND WHAT IS LEFT IN THE BAG COMES HOME. takeAtRisk above has already lifted
+                    -- every find onto the pile, so the pack now holds exactly what the company packed
+                    -- at the Gate -- and that is theirs, which is the law this whole branch is careful
+                    -- about ("nothing the company owned when it walked in is ever taken"). Leaving it
+                    -- sealed in a container the town cannot open would be a price on having lost.
+                    Player.unpack(game.player)
 
                     -- THE RUN CLOSES ON A WIPE TOO, and the symmetry is load-bearing: if dying
                     -- preserved the floor stack and leaving did not, a company standing deep would be
@@ -3222,8 +3329,8 @@ function game:openEncounter(cell, opts)
                     State.switch(require("states.hub"))
                     return
                 end
-                -- NO WOUNDS ON A WIPE. A wound lasts the expedition and the surface ends it for free
-                -- (models/wound.lua), and this route wakes the company in the city -- so inflicting
+                -- NO INJURIES ON A WIPE. An injury lasts the expedition and the surface ends it for free
+                -- (models/injury.lua), and this route wakes the company in the city -- so inflicting
                 -- them here only ever wrote a state that the very next screen cleared.
                 --
                 -- AND THE RUN IS SIMPLY DROPPED (wipeRun). Losing costs nothing material anywhere in
@@ -3268,8 +3375,8 @@ function game:openEncounter(cell, opts)
                 party = game.player and game.player.roster or {},
             })
             local combat = built.combat
-            -- The player's stash by reference, so a theft mid-fight survives it, exactly as in battle.
-            combat.stash = game.player and game.player.stash
+            -- The carried list by reference, so a theft mid-fight survives it, exactly as in battle.
+            combat.stash = game.player and Player.carryList(game.player)
 
             -- Stand the line where pressing Auto-Fill and Begin would have stood it, then let the
             -- companion abilities and relics spend their openings on it (the same resolveOpening the
@@ -3361,13 +3468,13 @@ function game:openEncounter(cell, opts)
                     grantSideSpoils(spoils)
                     -- ...and a wanderer walked off leaves no more of a mark than one fought does.
                     retireRolledFight()
-                    -- A walked-off fight wounds exactly as a played one does, and is TOLD exactly as
+                    -- A walked-off fight injuries exactly as a played one does, and is TOLD exactly as
                     -- one is -- the toast naming who, and the coach bubble the first time it happens
                     -- at all. Through the same seam with the fallen handed in, rather than a bare
-                    -- Wound.inflict: this combat object is the only record of who went down, since no
+                    -- Injury.inflict: this combat object is the only record of who went down, since no
                     -- battle state was ever entered here and states/battle.lua's field would hold
                     -- whatever the last watched fight left in it.
-                    game:inflictWounds(Combat.fallenParty(combat))
+                    game:inflictInjuries(Combat.fallenParty(combat))
                     game:refreshMuster() -- the fight was paid for in health and potions; re-rate
                     saveRun()
                 end } },
@@ -3525,7 +3632,7 @@ function game:openEncounter(cell, opts)
             -- THE HAND ON THE LID. Rewrite the tile as the fight it always was and re-enter through the
             -- one seam every other fight on this board comes through (game:openEncounter), rather than
             -- launching a battle from in here: the combat branch above owns the deployment, the flee
-            -- offer, the walk-off, the wounds and every save between them, and a second launcher would
+            -- offer, the walk-off, the injuries and every save between them, and a second launcher would
             -- be a second copy of all of it quietly drifting.
             --
             -- The chest's contents ride across as `carried`, which is what arms the body AND what the
@@ -3784,7 +3891,7 @@ function game:openEncounter(cell, opts)
     -- everything missing (Player.CAMP_SHARE), so a current-health price is one the floor's own rest
     -- undoes -- you would pay nothing and know it within two stops. A ceiling that does not come back is
     -- a decision every remaining floor has to be fought around, and it reads in the same register a
-    -- wound does.
+    -- injury does.
     --
     -- Priced as a SHARE rather than a flat number so it costs the same fraction on floor one and floor
     -- eight, and can never scale into the absurd against a company that has grown. Floored so that it
@@ -3955,7 +4062,10 @@ function game:openEncounter(cell, opts)
                 local total, stashed, worn = Player.ownedCount(game.player, entry.id)
                 if total <= 0 then return "You have none." end
                 local parts = {}
-                if stashed > 0 then parts[#parts + 1] = stashed .. " in the stash" end
+                -- "ON HAND" RATHER THAN "IN THE STASH": this cart is met underground, where the stash
+                -- is a building in a city the company cannot reach. Player.ownedCount counts the pack
+                -- into the same figure, and one word covers both.
+                if stashed > 0 then parts[#parts + 1] = stashed .. " on hand" end
                 if worn > 0 then parts[#parts + 1] = worn .. " carried" end
                 return "You have " .. total .. " already: " .. table.concat(parts, ", ") .. "."
             end,
@@ -3988,7 +4098,7 @@ function game:openEncounter(cell, opts)
         return
     end
 
-    -- A Crossroads: a branching gamble (models/crossroads.lua) with real stakes -- a relic, coin, a wound.
+    -- A Crossroads: a branching gamble (models/crossroads.lua) with real stakes -- a relic, coin, an injury.
     -- Choosing commits and clears the stop; backing out (X/Esc) leaves it to reconsider. The mechanics come
     -- in through a ctx of helpers, so the dilemma data never touches a model directly.
     if kind == "crossroads" then
@@ -4027,19 +4137,41 @@ function game:openEncounter(cell, opts)
                 end
             end,
             -- SET A BONE, and it is the one helper here that can pay nothing through no fault of the
-            -- dilemma: a company with no wounds has none to set. It answers with the count it actually
+            -- dilemma: a company with no injuries has none to set. It answers with the count it actually
             -- moved rather than with true, so a resolve can say "there was nothing here you needed" in
             -- its own voice instead of leaving the player looking at a stop that reported silence.
             --
             -- Only two things underground can do this and this is the second (the first is a Rest spent
             -- on Bind). Both are the same shape on purpose -- taken INSTEAD of something -- because a
-            -- wound that can be shed for free as often as you like is not a meter (models/wound.lua).
+            -- injury that can be shed for free as often as you like is not a meter (models/injury.lua).
             mendWound = function(n)
-                local mended = Wound.mend(game.player, n or 1)
+                local mended = Injury.mend(game.player, n or 1)
                 if #mended > 0 then
                     game:pushToast((#mended == 1) and "A bone is set" or (#mended .. " bones are set"))
                 end
                 return #mended
+            end,
+            -- ...AND THE OTHER DIRECTION, which is new and is the only thing in the game that can
+            -- injure a body without a fight. A dilemma that drops you down a shaft, seals you in a flue
+            -- or hands you a draught that was not medicine now has a stake that is neither health nor
+            -- coin: it costs a BODY something, for the rest of the campaign, and the Ward is the only
+            -- place that ends it.
+            --
+            -- `kind` names a blueprint; omitted, the ordinary roll deals it (models/injury.lua's
+            -- Injury.roll) -- so a dilemma can say exactly what it did to you or leave the rift to
+            -- decide. ONE BODY, chosen the way a dilemma's costs are always chosen: the whole company
+            -- is what walked into it, and picking a head would need a modal this stop does not have.
+            -- The first member is the one standing in front.
+            --
+            -- Returns the name it hurt, or nil when there was nobody to hurt, so a resolve can say so
+            -- in its own voice rather than reporting silence.
+            injure = function(kind)
+                local char = (game.player and game.player.roster or {})[1]
+                if not char then return nil end
+                local hurt = Injury.inflict(game.player, { char }, kind)
+                if #hurt == 0 then return nil end
+                game:pushToast((char.name or "Someone") .. " is injured")
+                return char.name or char.id
             end,
             -- `grantRelic` IS PARKED (2026-09-17, models/relic.lua). It rolled a relic off the same pool
             -- a Reliquary dealt from and was the Crossroads' find-a-thing stake; its eight dilemmas now
@@ -4114,14 +4246,14 @@ function game:openEncounter(cell, opts)
     end
 
     -- A Rest is a DECISION, not just a breather: Heal the party, Sharpen a lasting run edge, Study the
-    -- ground (models/relic.lua + the fog reveal), or Bind the company's wounds. One only; leaving (X/Esc)
+    -- ground (models/relic.lua + the fog reveal), or Bind the company's injuries. One only; leaving (X/Esc)
     -- forgoes it and leaves the cell to reconsider. The companions plug in here later (Xin strengthens
     -- Heal, Gyeom strengthens Study).
     --
     -- BIND IS OFFERED ONLY TO A COMPANY THAT HAS SOMETHING TO BIND, which is why the callback is handed
     -- over conditionally rather than gated inside the panel: the row simply is not there for a whole
     -- company, and a control draws where it can be used. It is also the only bone-setting the floors
-    -- have -- the Inn that used to do it for coin is gone (models/wound.lua) -- so it has to be spent
+    -- have -- the Inn that used to do it for coin is gone (models/injury.lua) -- so it has to be spent
     -- INSTEAD of the heal, the whetstone or the map, which is the property a counter never had.
     if kind == "rest" then
         -- ...AND SOMETHING MAY FIND THE CAMP (Descent.ambushChance).
@@ -4134,7 +4266,7 @@ function game:openEncounter(cell, opts)
         -- WHAT IT COSTS IS THE CAMP. The stop becomes a fight and the verb is lost -- nothing is taken
         -- off the company, nothing follows them home. `openEncounter` is re-entered on the converted
         -- cell rather than the battle being opened here, so an ambush runs down exactly the same path
-        -- as any other fight on the board: the same deployment, spoils, wounds and summary.
+        -- as any other fight on the board: the same deployment, spoils, injuries and summary.
         --
         -- IN A DESCENT ONLY. An authored quest's rest stop has no floor to read a depth off and no
         -- business being interrupted, so it keeps the guarantee it was authored with.
@@ -4158,7 +4290,7 @@ function game:openEncounter(cell, opts)
         game.activePanel = RestChoice.new({
             title = cell.encounter.name or "Make Camp",
             risk = risk,
-            onBind = (#Wound.wounded(game.player) > 0) and camp(function()
+            onBind = (#Injury.injured(game.player) > 0) and camp(function()
                 game:restBind()
             end) or nil,
             onHeal = camp(function()
@@ -4223,7 +4355,7 @@ function game:openEncounter(cell, opts)
         -- IT IS OPENED AS A FIGHT ON THIS BOARD rather than as a mode of its own. The tile is turned
         -- into an elite encounter carrying its own cast (the same seam a dropped pack's guard uses --
         -- `enc.composition` beats a blueprint's, models/encounter_battle.lua) and re-dispatched through
-        -- the ordinary fight path, so the deployment, the spoils, the wounds and -- the one that
+        -- the ordinary fight path, so the deployment, the spoils, the injuries and -- the one that
         -- matters -- the WIPE all behave exactly as they do everywhere else. Losing the breach is a
         -- wipe: the company wakes in the city with its levels and its map book intact, which is what
         -- makes this a state to fight out of rather than a game over.
@@ -4355,6 +4487,12 @@ function game:openEncounter(cell, opts)
                 -- completed errands and the shelf rungs they opened, the circles it has sealed,
                 -- husks in the satchel, the tally. Only the expedition is thrown away -- which is
                 -- why the bank below has to happen before it is.
+                -- THE BAG IS EMPTIED ONTO THE SHELF FIRST, and the order is load-bearing: the
+                -- re-baseline below photographs the company, so unpacking after it would bank a
+                -- rollback point holding a full pack and an empty stash. Everything the trip found
+                -- lands in town here, which is also the moment it becomes reachable -- the Touchstone
+                -- reads the husks, the Armory rearranges the rest.
+                Player.unpack(game.player)
                 local entry = Save.snapshot(game.player)
                 if game.player.activeRun then game.player.activeRun.entry = entry end
                 run.entry = entry
@@ -4646,7 +4784,11 @@ function game:openEncounter(cell, opts)
     -- nothing is claimed to have been handed over.
     if kind == "pack" then
         local taken = Descent.takePack(game.player, Descent.depth(game.descent), cell) or {}
-        for _, item in ipairs(taken) do Player.addToStash(game.player, item) end
+        -- BACK INTO THE BAG THEY DROPPED IT FROM, through Player.stow. The pile is the trip's finds
+        -- lying where the company fell (Descent.dropPack), so walking back to it is picking the bag up
+        -- -- and it lands against the same ceiling as any other find, which is why a company that comes
+        -- back for a big pile with a full pack has a decision to make on the tile.
+        for _, item in ipairs(taken) do Player.stow(game.player, item) end
         if #taken > 0 then
             game:pushToast(#taken == 1 and "Your pack: 1 piece recovered"
                 or ("Your pack: " .. #taken .. " pieces recovered"))
@@ -4672,7 +4814,7 @@ end
 
 -- HEAL (a rest's first choice): give back a share of every roster member's missing resources
 -- (Player.camp), then replay it on a reveal panel so the player SEES what it did -- each party member's
--- HP bar sweeps from the wound they walked in with to where the camp left them (ui/panels/rest.lua).
+-- HP bar sweeps from the injury they walked in with to where the camp left them (ui/panels/rest.lua).
 -- Factored out of the rest resolution so RestChoice's Heal option and any back-compat non-combat path
 -- both reach the same code.
 --
@@ -4697,7 +4839,7 @@ function game:restHeal()
         game.activePanel = nil
         return
     end
-    -- Snapshot each shown member's wound BEFORE the heal: the reveal animates from it, and once
+    -- Snapshot each shown member's injury BEFORE the heal: the reveal animates from it, and once
     -- Player.camp runs the live stat has already moved, so this is the only place the "before" exists.
     -- The whole roster marches, so the whole roster is healed and shown.
     local shown = game.player.roster or {}
@@ -4710,7 +4852,7 @@ function game:restHeal()
     end
     Player.camp(game.player)
     -- ...and the "after", read back off the same live stat the camp just moved. Taken here rather than
-    -- computed from CAMP_SHARE so the bar cannot disagree with the roster: a wound cap, a rounding rule
+    -- computed from CAMP_SHARE so the bar cannot disagree with the roster: an injury cap, a rounding rule
     -- or a later change to what a camp restores all land on this line for free.
     for _, e in ipairs(entries) do
         local hp = e.char.stats and e.char.stats.health
@@ -4726,19 +4868,19 @@ function game:restHeal()
     end
 end
 
--- BIND (a rest's fourth choice, and only offered when there is something to bind): set one wound off
--- every body carrying one (models/wound.lua's Wound.mend).
+-- BIND (a rest's fourth choice, and only offered when there is something to bind): set one injury off
+-- every body carrying one (models/injury.lua's Injury.mend).
 --
 -- IT IS THE ONLY BONE-SETTING BELOW GROUND, and it has to be a choice rather than a service. The Inn
 -- did this at a counter for coin, and the price landed only ever on the player who had needed it -- so
--- the building went and the wound became a condition of the expedition instead, ended free by the walk
+-- the building went and the injury became a condition of the expedition instead, ended free by the walk
 -- home. What that leaves is a company that is worse for the rest of a dive it may not want to abandon,
 -- and this is the answer to that: spend the camp on the bandage and you do not get the whetstone, the
 -- map or the refill.
 --
 -- IT GIVES BACK THE CEILING, NOT THE HEALTH, and the distinction is the whole reason it sits beside
--- Heal rather than replacing it. A wound RESERVES a slice of the pool (Combat.unreservedMax reads the
--- share Wound.stamp writes); binding hands the slice back, and what is standing in it is whatever the
+-- Heal rather than replacing it. An injury RESERVES a slice of the pool (Combat.unreservedMax reads the
+-- share Injury.stamp writes); binding hands the slice back, and what is standing in it is whatever the
 -- body already had. So the dark band on the party strip retreats and the bar does not rise -- you have
 -- room again, and filling it is a different stop. Anything else would make this strictly better than
 -- Heal and collapse a four-way weigh into a one-way one.
@@ -4749,8 +4891,8 @@ end
 -- refuses to play it). A toast naming who was bound is the honest report.
 function game:restBind()
     if not game.player then return end
-    local mended = Wound.mend(game.player, 1)
-    -- Named off the roster rather than by id, for the same reason the wound toasts are: a companion's
+    local mended = Injury.mend(game.player, 1)
+    -- Named off the roster rather than by id, for the same reason the injury toasts are: a companion's
     -- name can be the one the player typed at creation, and an id is not a person.
     local byId = {}
     for _, char in ipairs(game.player.roster or {}) do byId[char.id] = char end
@@ -5000,19 +5142,23 @@ function game.draw()
 end
 
 -- The gold coach bubble, pinned to whatever the current step is about. Three of the four steps are the
--- prologue's flight leg and draw nowhere else; the fourth ("wound") is the campaign's, and fires once
--- ever, on the first body carried out of a fight (game:inflictWounds).
+-- prologue's flight leg and draw nowhere else; the fourth ("injury") is the campaign's, and fires once
+-- ever, on the first body carried out of a fight (game:inflictInjuries).
 function game.drawCoach()
     local step = game.coach
     if not step then return end
-    -- The first wound, named on the row of the body that took it. Held off while a panel is open for
+    -- The first injury, named on the row of the body that took it. Held off while a panel is open for
     -- the same reason the move hint is: the strip it is pointing at is behind that panel, so a bubble
     -- drawn over the top would be an arrow into a menu. Nothing spends it -- it waits (game:onArrive).
-    if step == "wound" and not game.activePanel then
+    if (step == "injury" or step == "injury_badge") and not game.activePanel then
         local anchor = PartyStatus.rowRect(game.player, game.coachChar, STRIP_X, STRIP_Y)
-        local node = hintNode("conversation_tutorial_wound", "wound_hint")
+        -- ONE BRANCH, TWO LINES. Both are pinned to the same row of the same strip and spent by the
+        -- same step (the walk-on above), so splitting them into two near-identical blocks would be two
+        -- places to keep one behaviour. What differs is the sentence.
+        local node = hintNode("conversation_tutorial_injury",
+            step == "injury_badge" and "badge_hint" or "injury_hint")
         if anchor and node then
-            CoachBubble.draw(Locale.text("conversation_tutorial_wound", node), anchor,
+            CoachBubble.draw(Locale.text("conversation_tutorial_injury", node), anchor,
                 { prefer = "right", bounds = coachBounds() })
         end
         return
@@ -5307,7 +5453,12 @@ function game.drawHud()
     -- THE NUMBER GOES AMBER AS IT FILLS AND RED WHEN IT IS FULL, because the thing it is warning about
     -- is not "you have a lot" but "the next find will not come with you".
     if game.descent then
-        local carried = haulCount(game.descent)
+        -- THE BAG, NOT THE HAUL (Descent.carried, not Descent.found). This readout exists to warn
+        -- about a refusal, and what refuses is the bag being full -- so it counts what is IN the bag,
+        -- the rations the player packed included. It read the haul while the two were one number;
+        -- reading it now would leave a company whose pack was full of draughts looking at a
+        -- comfortable figure one step before the chest would not open.
+        local carried = Descent.carried(game.player)
         -- ...AND THE CEILING IS THE COMPANY'S, not the constant. A piece of gear may widen it
         -- (Descent.haulBonus), and this readout exists precisely to warn about the refusal one line
         -- before it happens -- so a number here that disagreed with what carryRoom actually allows

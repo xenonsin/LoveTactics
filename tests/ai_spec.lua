@@ -410,7 +410,7 @@ return {
                 }),
                 { unit("character_rowan", 3, 7), unit("character_avatar", 4, 7),
                   unit("character_caravan_driver", 12, 7) },
-                { unit("character_demon_imp", 13, 6) })
+                { unit("character_demon_imp_tutorial", 13, 6) })
             local guard, avatar, driver = c.units[1], c.units[2], c.units[3]
 
             assert(AI.chargeScore(c, guard, driver) > AI.chargeScore(c, guard, avatar),
@@ -442,7 +442,7 @@ return {
                 return Combat.new(arena(14, 14, { type = "defend", protect = "character_survivor" }),
                     { unit("character_knight", 7, 7), unit("character_knight", 7, 8),
                       unit("character_survivor", 10, 7) },
-                    { unit("character_demon_imp", 6, 7) })
+                    { unit("character_demon_imp_tutorial", 6, 7) })
             end
 
             local c = board()
@@ -467,7 +467,7 @@ return {
             -- is the nearest foe, which is exactly when it is supposed to be struck.
             local c = Combat.new(arena(14, 14, { type = "defend", protect = "character_survivor" }),
                 { unit("character_knight", 1, 1), unit("character_survivor", 8, 7) },
-                { unit("character_demon_imp", 6, 7) })
+                { unit("character_demon_imp_tutorial", 6, 7) })
             local imp, survivor = c.units[3], c.units[2]
             assert(AI.spared(c, imp) == nil, "with nobody nearer there is nothing to spare it from")
             assert(AI.plan(c, imp).target == survivor, "so the demon takes the opening")
@@ -478,7 +478,7 @@ return {
         fn = function()
             -- Sparing is a default, not a veto over what an author wrote down. The `objective` posture
             -- is a unit whose entire description is "plays the map rather than the bodies".
-            local imp = Character.instantiate("character_demon_imp")
+            local imp = Character.instantiate("character_demon_imp_tutorial")
             imp.archetype = "objective"
             local c = Combat.new(arena(14, 14, { type = "defend", protect = "character_survivor" }),
                 { unit("character_knight", 7, 7), unit("character_knight", 7, 8),
@@ -494,7 +494,7 @@ return {
             -- The same beeline through the movement layer: Combat.objectiveGround resolves a `defend`
             -- to the protectee's tiles, so an enemy reading "hold the objective" used to march onto
             -- the caravan. A node is ground either side can occupy; a body is not.
-            local imp = Character.instantiate("character_demon_imp")
+            local imp = Character.instantiate("character_demon_imp_tutorial")
             imp.archetype = "defensive"
             local c = Combat.new(arena(14, 14, { type = "defend", protect = "character_survivor" }),
                 { unit("character_knight", 7, 7), unit("character_survivor", 10, 7) },
@@ -507,7 +507,7 @@ return {
                     type = "hold", protect = "character_survivor", tiles = { { x = 4, y = 4 } },
                 }),
                 { unit("character_knight", 7, 7), unit("character_survivor", 10, 7) },
-                { unit(Character.instantiate("character_demon_imp"), 6, 7, function(ch)
+                { unit(Character.instantiate("character_demon_imp_tutorial"), 6, 7, function(ch)
                     ch.archetype = "defensive"
                 end) })
             local post = AI.post(held, held.units[3])

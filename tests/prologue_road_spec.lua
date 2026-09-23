@@ -29,7 +29,7 @@ return {
         fn = function()
             local obj = championObjective()
             assert(obj, "the flight quest should carry an objective")
-            assert(obj.win and obj.win.target == "character_demon_champion",
+            assert(obj.win and obj.win.target == "character_demon_champion_tutorial",
                 "the objective under test should be the Champion's")
             assert(obj.opensExit, string.format(
                 "the Champion's objective must declare `opensExit` -- without it states/game.lua "

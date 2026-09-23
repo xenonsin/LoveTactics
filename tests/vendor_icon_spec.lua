@@ -7,6 +7,16 @@
 --
 -- Pure table lookups, so it runs headless: ui/vendor_icons.lua touches love.graphics only inside a mark.
 
+-- THE QUEST BLUEPRINTS ARE GONE, AND SO IS WHAT THEY WERE COVERING. data/quests was deleted
+-- with the seven house postings (92ff549d), which took companion recruitment, the market's openers,
+-- Saber's debut and every `slot_01` with it. The cases below had no data left to run against and
+-- were removed on 2026-09-23 rather than left red. Each one is listed so the hole is findable:
+--
+--   * every sponsored quest resolves to a house with a mark
+--
+-- Nothing above is a rule that was decided against; it is coverage that lost its subject. When the
+-- replacement for the postings lands, these are the cases it owes back.
+
 local VendorIcons = require("ui.vendor_icons")
 local Vendor = require("models.vendor")
 local Quest = require("models.quest")
@@ -85,28 +95,6 @@ return {
                 if not Vendor.get(id) then orphans[#orphans + 1] = id end
             end
             assert(#orphans == 0, "mark for no such vendor: " .. table.concat(orphans, ", "))
-        end,
-    },
-    {
-        name = "every sponsored quest resolves to a house with a mark",
-        fn = function()
-            -- The board's own path, end to end: a cell carries a quest id and nothing else, so the
-            -- marker asks Quest.sponsorOf and then asks the icons. Both hops have to answer for every
-            -- piece of work in the data, or a writ somewhere draws the generic scroll.
-            local unmarked, checked = {}, 0
-            for id, def in pairs(Quest.defs) do
-                if def.sponsor then
-                    checked = checked + 1
-                    assert(Quest.sponsorOf(id) == def.sponsor,
-                        "sponsorOf disagrees with the blueprint for " .. id)
-                    if not VendorIcons.has(def.sponsor) then unmarked[def.sponsor] = true end
-                end
-            end
-            assert(checked > 0, "no sponsored quests were found to check")
-            local ids = {}
-            for id in pairs(unmarked) do ids[#ids + 1] = id end
-            table.sort(ids)
-            assert(#ids == 0, "sponsoring house with no mark: " .. table.concat(ids, ", "))
         end,
     },
     {

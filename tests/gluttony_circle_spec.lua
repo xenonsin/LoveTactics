@@ -13,10 +13,9 @@ local Combat = require("models.combat")
 local Descent = require("models.descent")
 local Growth = require("models.growth")
 local Item = require("models.item")
-local Status = require("models.status")
 local Fixture = require("tests.support.fixture")
 
-local unit, openTurn, itemNamed = Fixture.unit, Fixture.openTurn, Fixture.itemNamed
+local unit = Fixture.unit
 
 local function sinNamed(id)
     for _, sin in ipairs(Descent.SINS) do
@@ -59,44 +58,60 @@ return {
         end,
     },
     {
-        name = "Gluttony's stair is held by its own mini sin, escorted by its own stock",
+        -- THE GRALLOCH IS DELETED AND THIS CASE IS THE MARKER. Gluttony's lieutenant slot holds the
+        -- pack's alpha as a stand-in (see the lieutenant note at the head of Descent.SINS), which is
+        -- ordinary forest traffic and not a lesser embodiment of anything. The stand-in is named here on
+        -- purpose: seating a replacement reddens this case, and whoever does it owes the contract written
+        -- out where the sizing case used to be, below.
+        name = "Gluttony's lieutenant slot is filled, and by a stand-in that says so",
         fn = function()
             local sin = sinNamed("gluttony")
             assert(sin, "the gluttony circle exists")
-            assert(sin.minor.lead == "character_the_gralloch", "the Gralloch holds the honour-guard floor")
-            assert(sin.minor.filler == "character_gorge_fly", "escorted by the circle's own swarm")
-            -- ...and it is Gula's own lieutenant, which tests/descent_spec.lua pins across every circle.
-            -- That invariant is what the whole tier is for: the body that barred the stair two floors ago
-            -- is at her shoulder when you reach her, so the rule it taught you the slow way stands beside
-            -- the thing that has had it from the opening bell.
+            assert(sin.minor.lead == "character_wolf_alpha", "the alpha stands in for the Gralloch")
+            assert(Character.defs[sin.minor.lead], "and whatever stands there is a body that loads")
+            assert(not Character.defs["character_the_gralloch"], "the Gralloch is gone")
+            -- The invariant tests/descent_spec.lua pins across every circle survives the cut, because a
+            -- stand-in fills both slots exactly as a lieutenant did: the body that barred the stair two
+            -- floors ago is at her shoulder when you reach her. What is missing is that it be a SIN.
             assert(sin.guardian.filler == sin.minor.lead,
-                "the mini sin fills out its own general's stair")
+                "whatever holds the approach fills out its own general's stair")
         end,
     },
 
     -- ------------------------------------------------------------ the rule
+    --
+    -- BOTH ENGORGE CASES LOST THEIR FIXTURE AND KEPT THEIR SUBJECT. The pack they were staged with --
+    -- a Tallow Hound fed by its own Gorge-Flies -- is deleted, but trait_engorge is not: it still
+    -- rides utility_gralloch_hook, and the hook is the only live bearer left. So the pair is staged
+    -- on a bare body WEARING the hook rather than on a body authored to carry it. That is the trait's
+    -- rule under test either way; what is no longer asserted is that any SHIPPED body carries it,
+    -- which is the replacement's job and is watched by the reachability sweep, not by this file.
     {
         name = "Engorge feeds on any death nearby, including the pack's own",
         fn = function()
             local map = Fixture.new(10, 10)
             local c = Fixture.combat(map,
                 { unit("character_knight", 2, 2) },
-                { unit("character_tallow_hound", 5, 5), unit("character_gorge_fly", 5, 6) })
-            local hound, fly
+                -- 200 health so the twenty below lands nowhere near the hook's own half-health phase.
+                { unit("character_slime", 5, 5, { isolate = "bare", stats = { health = 200 },
+                    items = { "utility_gralloch_hook" } }),
+                  unit("character_slime", 5, 6, { isolate = "bare" }) })
+            local eater, chaff
             for _, u in ipairs(c.units) do
-                if u.char.id == "character_tallow_hound" then hound = u end
-                if u.char.id == "character_gorge_fly" then fly = u end
+                if u.side ~= "party" then
+                    if u.y == 5 then eater = u else chaff = u end
+                end
             end
-            assert(hound and fly, "both bodies took the field")
+            assert(eater and chaff, "both bodies took the field")
 
-            Combat.dealFlatDamage(c, hound, 20, {}, "test")
-            local hurt = Fixture.hp(hound)
+            Combat.dealFlatDamage(c, eater, 20, {}, "test")
+            local hurt = Fixture.hp(eater)
 
-            -- Kill its OWN fly beside it. The pack's combo is that clearing the chaff also feeds it.
-            Combat.dealFlatDamage(c, fly, 99999, {}, "test")
-            assert(not fly.alive, "the fly falls")
-            assert(Fixture.hp(hound) > hurt,
-                "the hound is fed by a death on its own side -- Engorge does not check whose")
+            -- Kill its OWN chaff beside it. The pack's combo is that clearing the chaff also feeds it.
+            Combat.dealFlatDamage(c, chaff, 99999, {}, "test")
+            assert(not chaff.alive, "the chaff falls")
+            assert(Fixture.hp(eater) > hurt,
+                "it is fed by a death on its own side -- Engorge does not check whose")
         end,
     },
     {
@@ -105,16 +120,19 @@ return {
             local map = Fixture.new(20, 20)
             local c = Fixture.combat(map,
                 { unit("character_knight", 1, 1) },
-                { unit("character_tallow_hound", 18, 18), unit("character_gorge_fly", 2, 2) })
-            local hound, fly
+                { unit("character_slime", 18, 18, { isolate = "bare", stats = { health = 200 },
+                    items = { "utility_gralloch_hook" } }),
+                  unit("character_slime", 2, 2, { isolate = "bare" }) })
+            local eater, chaff
             for _, u in ipairs(c.units) do
-                if u.char.id == "character_tallow_hound" then hound = u end
-                if u.char.id == "character_gorge_fly" then fly = u end
+                if u.side ~= "party" then
+                    if u.x == 18 then eater = u else chaff = u end
+                end
             end
-            Combat.dealFlatDamage(c, hound, 20, {}, "test")
-            local hurt = Fixture.hp(hound)
-            Combat.dealFlatDamage(c, fly, 99999, {}, "test")
-            assert(Fixture.hp(hound) == hurt,
+            Combat.dealFlatDamage(c, eater, 20, {}, "test")
+            local hurt = Fixture.hp(eater)
+            Combat.dealFlatDamage(c, chaff, 99999, {}, "test")
+            assert(Fixture.hp(eater) == hurt,
                 "a death sixteen tiles away feeds nothing -- it has to get to the body")
         end,
     },
@@ -150,24 +168,16 @@ return {
             assert(armsThirst, "the phase arms heal-on-hit, which is Gula's baseline")
         end,
     },
-    {
-        name = "the Gralloch is a step below its general and a step above the line",
-        fn = function()
-            local mini = Character.defs.character_the_gralloch
-            local gula = Character.defs.character_general_gluttony
-            assert(mini.boss, "a centrepiece is off the execute and Charm tables")
-            assert(mini.referenceLevel, "and scales DOWN toward the shallows, since circles are shuffled")
-
-            local line = Character.defs.character_bogswallow.stats.health
-            assert(mini.stats.health > line, "a mini sin outweighs the line body of its own circle")
-            assert(mini.stats.health < gula.stats.health,
-                "and stands below the sin whose stair it is holding")
-            -- The band the tier was authored to: around 60% of a general.
-            local share = mini.stats.health / gula.stats.health
-            assert(share > 0.6 and share < 0.85, string.format(
-                "the Gralloch is %.0f%% of Gula; the tier sits between 60%% and 85%%", share * 100))
-        end,
-    },
+    -- THE CASE THAT SIZED THE GRALLOCH IS GONE WITH THE BODY, and this is what it said so the
+    -- replacement can be held to it:
+    --
+    --     boss = true                        a centrepiece is off the execute and Charm tables
+    --     referenceLevel                     and scales DOWN toward the shallows, since circles shuffle
+    --     health above its circle's line      a mini sin outweighs the stock it stands over
+    --     health 60-85% of its general's      and stands below the sin whose stair it is holding
+    --
+    -- The same band tests/wrath_circle_spec.lua argues out in full: comfortably under its general,
+    -- comfortably over its own circle's line body.
 
     -- ------------------------------------------------------------ the apex
     {
@@ -197,58 +207,23 @@ return {
     },
 
     -- ------------------------------------------------------------ the swarm's own combo
-    {
-        name = "a gorge-fly bleeds, so the hound behind it has something to finish",
-        fn = function()
-            local map = Fixture.new(10, 10)
-            local c = Fixture.combat(map,
-                { unit("character_knight", 4, 4) },
-                { unit("character_gorge_fly", 5, 4) })
-            local fly, victim
-            for _, u in ipairs(c.units) do
-                if u.side == "party" then victim = u else fly = u end
-            end
-            openTurn(c, fly)
-            assert(Combat.useItem(c, fly, itemNamed(fly.char, "weapon_gorge_bite"), victim.x, victim.y),
-                "the fly bites")
-            assert(Status.has(victim, "status_bleed"), "and leaves Bleed for the pack to cash")
-        end,
-    },
-    {
-        name = "a bogswallow roots, so nothing walks out of the trade",
-        fn = function()
-            local map = Fixture.new(10, 10)
-            local c = Fixture.combat(map,
-                { unit("character_knight", 4, 4) },
-                { unit("character_bogswallow", 5, 4) })
-            local swallow, victim
-            for _, u in ipairs(c.units) do
-                if u.side == "party" then victim = u else swallow = u end
-            end
-            openTurn(c, swallow)
-            assert(Combat.useItem(c, swallow, itemNamed(swallow.char, "weapon_swallowing_grip"),
-                victim.x, victim.y), "the bogswallow seizes")
-            assert(Status.has(victim, "status_root"), "and the mire keeps what it catches")
-        end,
-    },
-    {
-        name = "the Grendlemaw removes a body from the fight in both directions",
-        fn = function()
-            local map = Fixture.new(10, 10)
-            local c = Fixture.combat(map,
-                { unit("character_knight", 4, 4) },
-                { unit("character_grendlemaw", 5, 4) })
-            local maw, victim
-            for _, u in ipairs(c.units) do
-                if u.side == "party" then victim = u else maw = u end
-            end
-            openTurn(c, maw)
-            assert(Combat.useItem(c, maw, itemNamed(maw.char, "weapon_grendlemaw_gullet"),
-                victim.x, victim.y), "the maw swallows")
-            assert(Status.has(victim, "status_suspended"),
-                "a swallowed body is lifted off the board -- unable to act, and unreachable by anyone")
-        end,
-    },
+    --
+    -- THREE CASES ARE DELETED WITH THEIR SUBJECTS, and this is what each one said so a replacement
+    -- can be held to it. All three bodies and all three weapons are gone (see the deletion's own
+    -- commit); nothing survives to repoint them onto, which is the line between the two Engorge
+    -- cases above and these:
+    --
+    --   the gorge-fly    weapon_gorge_bite left status_bleed          -- chaff that OPENS a wound the
+    --                                                                    pack behind it can finish
+    --   the bogswallow   weapon_swallowing_grip left status_root      -- the mire keeps what it catches
+    --   the Grendlemaw   weapon_grendlemaw_gullet left status_suspended  -- a swallowed body is off the
+    --                                                                    board in BOTH directions: it
+    --                                                                    cannot act and nobody can
+    --                                                                    reach it
+    --
+    -- What the three of them said together is the circle's combo -- chaff that softens, a body that
+    -- holds, and an apex that removes -- and none of it is asserted anywhere now. Whatever the swamp
+    -- is refilled with owes those three verbs, or owes an argument for why it does not.
 
     -- ------------------------------------------------------------ the kit contract
     {
@@ -256,10 +231,11 @@ return {
         -- (tests/bestiary_spec.lua states the rule; this holds the circle's own gear to it).
         name = "every Gluttony item is natural kit and nothing else",
         fn = function()
-            for _, id in ipairs({ "weapon_gorge_bite", "weapon_swallowing_grip", "weapon_tallow_maw",
-                                  "weapon_grendlemaw_gullet", "weapon_glutted_bulk",
-                                  "utility_rendered_hide", "utility_distended_hide",
-                                  "utility_gralloch_hook" }) do
+            -- The cut took weapon_gorge_bite, weapon_swallowing_grip, weapon_grendlemaw_gullet and
+            -- utility_rendered_hide with the four bodies that swung them. What is left is the two
+            -- pieces a survivor still carries plus the two the deleted mini sin left behind.
+            for _, id in ipairs({ "weapon_tallow_maw", "weapon_glutted_bulk",
+                                  "utility_distended_hide", "utility_gralloch_hook" }) do
                 local def = Item.defs[id]
                 assert(def, id .. " does not exist")
                 assert(def.noSteal, id .. ": a pickpocket cannot lift a creature's own body off it")
@@ -291,8 +267,9 @@ return {
     {
         name = "every new Gluttony body grows through the same tables as everything else",
         fn = function()
-            for _, id in ipairs({ "character_gorge_fly", "character_bogswallow", "character_tallow_hound",
-                                  "character_grendlemaw", "character_the_sated", "character_the_gralloch" }) do
+            -- Four of the five are deleted; the apex is the whole of what the circle still fields.
+            -- A refill puts its own bodies back on this list.
+            for _, id in ipairs({ "character_the_sated" }) do
                 local base = Character.instantiate(id)
                 local grown = Growth.spawn(id, 20)
                 assert(grown.stats.health.max >= base.stats.health.max,

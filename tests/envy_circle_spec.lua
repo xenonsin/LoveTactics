@@ -2,9 +2,13 @@
 --
 -- The tier's design rule, pinned here as it is for Gluttony: A MINI SIN'S SECOND PHASE IS ITS GENERAL'S
 -- FIRST. Livia's Envious Glass copies your STRONGEST body at the opening bell, every fight
--- (data/traits/trait_covetous_reflection.lua). Second Water copies your WEAKEST, once, and only past
+-- (data/traits/trait_covetous_reflection.lua). The Second Wash copies your WEAKEST, once, and only past
 -- half health -- so the circle's first floor teaches the mechanic late, small and in the harmless
 -- direction, and its second floor is a recognition.
+--
+-- THE BODY THAT WORE THE WASH IS GONE. Second Water was deleted with the other six lieutenants
+-- (2026-09-22, Descent.SINS' header) and the wash is not, so the mirror case below dresses the circle's
+-- stand-in in it. That is a weaker case on purpose -- it measures the rule and not the fight.
 --
 -- Also pins the live bug this circle closed: Envy's honour-guard lead was character_homunculus, an
 -- alchemist's SUMMON scaled by the summoning item's level, standing as a stratum's centrepiece with
@@ -24,13 +28,31 @@ local function sinNamed(id)
     end
 end
 
+-- THE MIRROR, WITHOUT THE BODY THAT CARRIED IT. `trait_lesser_reflection` lives on
+-- utility_second_wash, which was Second Water's own kit and outlived her, so the case below hands it to
+-- the circle's stand-in. `isolate = "bare"` empties the grid first, so the wash is the only thing the
+-- host is wearing and nothing else can answer a wound.
+local function mirrorHost(x, y)
+    return Fixture.unit("character_glass_eater", x, y, {
+        isolate = "bare",
+        items = { "utility_second_wash" },
+    })
+end
+
 return {
     {
-        name = "Envy's stair is held by its own mini sin, not by a summon target",
+        -- SECOND WATER IS DELETED AND THIS CASE IS THE MARKER. The slot holds the circle's line body as
+        -- a stand-in (see the lieutenant note at the head of Descent.SINS): the glass eater, whose
+        -- stripping fed her mirror, promoted for want of the thing it was feeding. It is named here on
+        -- purpose -- seating a replacement reddens this case, and whoever does it owes the contract
+        -- written out where the sizing case used to be, at the foot of this file.
+        name = "Envy's lieutenant slot is filled, and by a stand-in that says so",
         fn = function()
             local sin = sinNamed("envy")
             assert(sin, "the envy circle exists")
-            assert(sin.minor.lead == "character_second_water", "Second Water holds the honour-guard floor")
+            assert(sin.minor.lead == "character_glass_eater", "the eater stands in for Second Water")
+            assert(Character.defs[sin.minor.lead], "and whatever stands there is a body that loads")
+            assert(not Character.defs["character_second_water"], "Second Water is gone")
             assert(sin.minor.lead ~= "character_homunculus",
                 "the alchemist's summon is not a stratum's centrepiece")
             assert(sin.minor.filler == "character_glass_mote", "escorted by the circle's own swarm")
@@ -58,7 +80,7 @@ return {
             local Reflect = require("models.trait").defs.trait_covetous_reflection
             assert(Reflect, "the general's rule exists to be cut down from")
             assert(Reflect.onCombatStart and def.onDamaged,
-                "the general opens with it; the mini sin earns it by being wounded")
+                "the general opens with it; the lesser rule earns it by being wounded")
         end,
     },
     {
@@ -67,12 +89,12 @@ return {
             local map = Fixture.new(14, 14)
             local c = Fixture.combat(map,
                 { unit("character_knight", 3, 3), unit("character_archer", 3, 5) },
-                { unit("character_second_water", 8, 4) })
+                { mirrorHost(8, 4) })
             local mirror
             for _, u in ipairs(c.units) do
-                if u.char.id == "character_second_water" then mirror = u end
+                if u.side ~= "party" then mirror = u end
             end
-            assert(mirror, "the mini sin took the field")
+            assert(mirror, "the host took the field")
 
             local before = #c.units
             -- A scratch is not a wound: above the threshold nothing answers.
@@ -180,17 +202,12 @@ return {
             end
         end,
     },
-    {
-        name = "Second Water is a step below its general and a step above the line",
-        fn = function()
-            local mini = Character.defs.character_second_water
-            local livia = Character.defs.character_general_envy
-            assert(mini.boss and mini.referenceLevel, "a centrepiece, and one that scales toward the shallows")
-            assert(mini.stats.health > Character.defs.character_glass_eater.stats.health,
-                "it outweighs its circle's line body")
-            local share = mini.stats.health / livia.stats.health
-            assert(share > 0.6 and share < 0.85, string.format(
-                "Second Water is %.0f%% of Livia; the tier sits between 60%% and 85%%", share * 100))
-        end,
-    },
+    -- THE CASE THAT SIZED SECOND WATER IS GONE WITH THE BODY, and this is what it said so the
+    -- replacement can be held to it:
+    --
+    --     boss = true and a referenceLevel   a centrepiece, and one that scales toward the shallows
+    --     health above character_glass_eater  it outweighs its circle's line body
+    --     health 60-85% of Livia's           and stands below the sin whose stair it is holding
+    --
+    -- The same band tests/wrath_circle_spec.lua argues out in full.
 }

@@ -9,7 +9,7 @@ local Descent = require("models.descent")
 local Gate = require("models.gate")
 local Player = require("models.player")
 local Save = require("models.save")
-local Wound = require("models.wound")
+local Injury = require("models.injury")
 
 local function reserialize(data)
     return Save.decode("return " .. Save.encode(data, 0))
@@ -57,32 +57,32 @@ end
 
 return {
     { name = "reaching a town sets every bone, free and unasked", fn = function()
-        -- THE LAW THE INN BROKE. A cost on recovery is a tax on needing to recover, and a wipe wounds
+        -- THE LAW THE INN BROKE. A cost on recovery is a tax on needing to recover, and a wipe injuries
         -- the whole expedition by construction -- so the company least able to pay was always the one
-        -- handed the bill (models/wound.lua, docs/the-count.md). What replaces it is scope: a wound
+        -- handed the bill (models/injury.lua, docs/the-count.md). What replaces it is scope: an injury
         -- lasts the expedition it was taken on, and the two town screens end it on the way in.
         --
-        -- Driven through the WARD's free path and then Player.restore. It used to be Wound.clear +
+        -- Driven through the WARD's free path and then Player.restore. It used to be Injury.clear +
         -- restore, the pair both town screens ran at their door -- and that pair is gone: the doorstep
         -- no longer sets bones, a room does (data/buildings/the_ward.lua). Order is still load-bearing
         -- for the same reason: mend first, or the refill fills to a ceiling that is about to move.
         local p = company(1, 0) -- and NO GOLD, which is the whole point: recovery is not for sale
         local char = p.roster[1]
-        for _ = 1, 3 do Wound.inflict(p, { char }) end
+        for _ = 1, 3 do Injury.inflict(p, { char }) end
         char.stats.health.current = 1
-        assert(Wound.count(p, char.id) == 3, "precondition: somebody is badly hurt")
+        assert(Injury.count(p, char.id) == 3, "precondition: somebody is badly hurt")
 
-        Wound.rest(p, char.id)
+        Injury.rest(p, char.id)
         local mended = {}
-        for _ = 1, 3 * Wound.REST_DESCENTS do
-            for _, id in ipairs(Wound.tickRest(p)) do mended[#mended + 1] = id end
+        for _ = 1, 3 * Injury.REST_DESCENTS do
+            for _, id in ipairs(Injury.tickRest(p)) do mended[#mended + 1] = id end
         end
         Player.restore(p)
         assert(#mended == 1 and mended[1] == char.id, "the term walks exactly one body out, and names her")
-        assert(Wound.count(p, char.id) == 0, "and left nothing on the ledger")
-        assert(char.woundShare == nil, "nor any reserve stamped on the body")
+        assert(Injury.count(p, char.id) == 0, "and left nothing on the ledger")
+        assert(char.injuryShare == nil, "nor any reserve stamped on the body")
         assert(char.stats.health.current == char.stats.health.max,
-            "and the refill fills the WHOLE pool, not the wounded ceiling it walked in with")
+            "and the refill fills the WHOLE pool, not the injured ceiling it walked in with")
         assert(p.gold == 0, "and it took nothing to do it")
     end },
 
@@ -108,8 +108,8 @@ return {
         flask.quantity = 1
         char.stats.health.current = 1
 
-        Wound.rest(p, char.id)
-        for _ = 1, 3 * Wound.REST_DESCENTS do Wound.tickRest(p) end
+        Injury.rest(p, char.id)
+        for _ = 1, 3 * Injury.REST_DESCENTS do Injury.tickRest(p) end
         Player.restore(p)
         assert(char.stats.health.current == char.stats.health.max,
             "precondition: an unwounded body tops all the way up, so this case ran a real rest")

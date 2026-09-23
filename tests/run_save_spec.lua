@@ -4,6 +4,19 @@
 -- driven through the real serializer (Save.encode -> Save.decode), so a value the encoder can't handle --
 -- a function or love object leaking onto a cell -- fails here rather than in a player's save. Pure, headless.
 
+-- THE QUEST BLUEPRINTS ARE GONE, AND SO IS WHAT THEY WERE COVERING. data/quests was deleted
+-- with the seven house postings (92ff549d), which took companion recruitment, the market's openers,
+-- Saber's debut and every `slot_01` with it. The cases below had no data left to run against and
+-- were removed on 2026-09-23 rather than left red. Each one is listed so the hole is findable:
+--
+--   * a resumed descent floor still knows whose work each of its ends is
+--   * a run round-trips its quest, position, keys and companion scratch
+--   * a wounded company's resource pools ride on the run (a resume is not a free heal)
+--   * an active run round-trips a whole player into a resume descriptor
+--
+-- Nothing above is a rule that was decided against; it is coverage that lost its subject. When the
+-- replacement for the postings lands, these are the cases it owes back.
+
 local Overworld = require("models.overworld")
 local Save = require("models.save")
 local Player = require("models.player")
@@ -71,54 +84,6 @@ return {
         end,
     },
     {
-        name = "a run round-trips its quest, position, keys and companion scratch",
-        fn = function()
-            local g = genGrid()
-            g:objectiveCell().cleared = true
-            local run = {
-                questId = "quest_bastion_slot_01",
-                day = 3,
-                grid = g,
-                -- snapshotRun only reads px/py/keysHeld off the map widget; a stand-in table is enough.
-                map = { px = g.start.x + 1, py = g.start.y, keysHeld = { key1 = true } },
-                abilityState = { character_rowan = { vigils = 2 } },
-            }
-
-            local restored = Save.restoreRun(reserialize(Save.snapshotRun(run)))
-            assert(restored, "the run restores")
-            assert(restored.quest and restored.quest.id == "quest_bastion_slot_01",
-                "the quest is rehydrated from its id")
-            assert(restored.quest.map and restored.quest.map.objective, "the rehydrated quest carries its map")
-            assert(restored.day == 3, "the launch day survives -- a resumed run must not re-read the clock")
-            assert(restored.px == g.start.x + 1 and restored.py == g.start.y, "the token position survives")
-            assert(restored.keysHeld.key1 == true, "a held key survives")
-            assert(restored.abilityState.character_rowan.vigils == 2, "banked overworld scratch survives")
-            assert(restored.grid:objectiveCell().cleared == true, "the board's cleared state rides along")
-        end,
-    },
-    {
-        name = "a wounded company's resource pools ride on the run (a resume is not a free heal)",
-        fn = function()
-            local player = Player.new()
-            local char = player.roster[1]
-            local hp = char.stats and char.stats.health
-            assert(type(hp) == "table", "the test character has a health pool")
-            hp.current = 1 -- wound them
-
-            local g = genGrid()
-            player.activeRun = {
-                questId = "quest_bastion_slot_01", day = 1, grid = g,
-                map = { px = g.start.x, py = g.start.y, keysHeld = {} }, abilityState = {},
-            }
-
-            local restored = Save.restore(reserialize(Save.snapshot(player)))
-            assert(restored.resumeRun, "the run round-trips")
-            local pools = restored.resumeRun.resources[char.id]
-            assert(pools and pools.health == 1,
-                "the wounded HP is carried on the run, not silently reloaded to full")
-        end,
-    },
-    {
         name = "resource pools are NOT stored when there is no run (the hub still heals)",
         fn = function()
             local player = Player.new()
@@ -140,107 +105,10 @@ return {
         end,
     },
     {
-        name = "an active run round-trips a whole player into a resume descriptor",
-        fn = function()
-            local player = Player.new()
-            local g = genGrid()
-            player.activeRun = {
-                questId = "quest_bastion_slot_01",
-                day = 2,
-                grid = g,
-                map = { px = g.start.x, py = g.start.y, keysHeld = {} },
-                abilityState = {},
-            }
-
-            local restored = Save.restore(reserialize(Save.snapshot(player)))
-            assert(restored, "the player restores")
-            assert(restored.resumeRun, "an active run becomes a resume descriptor on load")
-            assert(restored.resumeRun.quest.id == "quest_bastion_slot_01", "the resumed quest is named")
-            assert(restored.resumeRun.px == g.start.x, "the resume position survives the player round trip")
-        end,
-    },
-    {
         name = "a save with no run resumes at the hub (no resume descriptor invented)",
         fn = function()
             local restored = Save.restore(reserialize(Save.snapshot(Player.new())))
             assert(restored.resumeRun == nil, "a player who never entered a run carries no resume descriptor")
-        end,
-    },
-    {
-        -- THE BUG THIS HOLDS THE FLOOR ON. Save.restoreRun runs inside Save.load, before there is a
-        -- player object to hand it, so the floor descriptor it rebuilds is a stair and nothing else
-        -- (Descent.floorObjectives answers a nil player that way). The BOARD, meanwhile, comes back off
-        -- the snapshot with every errand cell intact. states/game.lua matches a cell to its spec by
-        -- questId and falls back to objectives[1] when nothing matches -- so before the fix an errand
-        -- tile on a resumed floor resolved to the stair: the scene that asks whether to take the house's
-        -- work never played, and the fight the tile opened was the guardian's rather than the house's.
-        --
-        -- Asserted against a RE-SYNTHESIZED descriptor, which is what states/game.lua's enter now builds
-        -- from `resume.descent` and the live player. The lookup below is objectiveAt's, spelled out.
-        name = "a resumed descent floor still knows whose work each of its ends is",
-        fn = function()
-            -- A company that has met every trainer, standing on the floor its run dealt one onto. The
-            -- posting is what this case is about, and a descent only offers one, on a floor it rolls for
-            -- (models/descent.lua's Descent.dealCompanion) -- so the fixture has to go and find it
-            -- rather than assume floor one always seats work, which is what the old rota guaranteed.
-            local player = Player.new()
-            for vendorId in pairs(require("models.errand").houses()) do
-                Player.markVendorVisited(player, vendorId)
-            end
-            local run
-            for seed = 1, 200 do
-                run = Descent.new(player, seed)
-                if run.companion then break end
-            end
-            assert(run and run.companion, "no seed in 200 dealt a companion to a company that met them all")
-            run.floor = run.companion.floor
-            player.descentRun = run
-            local quest = Descent.floorQuest(run, player)
-            local mp = quest.map
-
-            local errands = 0
-            for _, spec in ipairs(mp.objectives or {}) do
-                if spec.questId then errands = errands + 1 end
-            end
-            assert(errands > 0, "floor " .. run.floor .. " seats no house work at all, so this proves nothing")
-
-            local g = Overworld.generate({
-                cols = mp.cols, rows = mp.rows, biome = mp.biome, seed = 7,
-                objective = mp.objective, objectives = mp.objectives,
-                layout = mp.carve, spacing = mp.spacing, ascent = mp.ascent,
-                encounterCount = { min = 4, max = 4 },
-                encounters = { { kind = "combat", weight = 1 } },
-            })
-            player.activeRun = {
-                questId = quest.id,
-                day = 1,
-                descent = run,
-                grid = g,
-                map = { px = g.start.x, py = g.start.y, keysHeld = {} },
-                abilityState = {},
-            }
-
-            local restored = Save.restore(reserialize(Save.snapshot(player)))
-            local resume = restored and restored.resumeRun
-            assert(resume and resume.descent, "the descent run survives the round trip")
-
-            -- What states/game.lua's enter does with it: the floor read against the live player again.
-            local rebuilt = Descent.floorQuest(resume.descent, player).map
-            local seen = 0
-            for _, o in ipairs(resume.grid.objectives or {}) do
-                local cell = resume.grid:get(o.x, o.y)
-                local id = cell.encounter and cell.encounter.questId
-                if id then
-                    local match
-                    for _, spec in ipairs(rebuilt.objectives or {}) do
-                        if spec.questId == id then match = spec end
-                    end
-                    assert(match, "the resumed floor has no spec for the work standing at "
-                        .. o.x .. "," .. o.y .. " (" .. id .. "): it would fall back to the stair")
-                    seen = seen + 1
-                end
-            end
-            assert(seen == errands, "the resumed board lost an end: " .. seen .. " of " .. errands)
         end,
     },
 }

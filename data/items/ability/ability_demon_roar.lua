@@ -38,7 +38,7 @@ return {
         windup = 2,
         -- Paid in MANA, like the Cleave: the Champion's body (its claws, the Sigil's riposte, a Heave)
         -- is billed to stamina and its WILL to mana, which is the contract every demon on the board
-        -- keeps (data/characters/character_demon_grunt.lua). 12 of a 60-mana pool, and mana does not
+        -- keeps (data/characters/character_demon_grunt_tutorial.lua). 12 of a 60-mana pool, and mana does not
         -- regenerate (Combat.regenerate) -- so the Roar is a thing the fight has a countable number of,
         -- and a Drain Mana thrown at the Champion (8 at base, 20 forged) is most of one taken away.
         cost = { stat = "mana", amount = 12 },
@@ -54,7 +54,7 @@ return {
             -- The call it was winding up: two Bomblets on open ground beside it, sustained by it.
             for _ = 1, 2 do
                 local x, y = fx.openTileNear(fx.user.x, fx.user.y)
-                if x then fx.summon("character_demon_bomblet", x, y) end
+                if x then fx.summon("character_demon_bomblet_tutorial", x, y) end
             end
             -- ...and it steels itself for having weathered the interrupt window.
             fx.applyStatus(fx.user, "status_hasted")

@@ -24,7 +24,7 @@ return {
         { "cathedral", "Cold in here. It is always cold in here. The faithful arm those who purge, and we keep beds for the ones who come back needing them.", tag = 1 },
         { "cathedral", "State your business.", tag = 2, id = "desk", choices = {
             { "Visit priest class trainer", tag = 3, answer = "shelf", when = { offer = "shelf" } },
-            { "Heal a wound", tag = 4, answer = "mend", when = { offer = "mend" } },
+            { "Heal an injury", tag = 4, answer = "mend", when = { offer = "mend" } },
             { "Lift a curse", tag = 6, answer = "lift", when = { offer = "lift" } },
             { "Leave", tag = 5, answer = "leave" },
         } },

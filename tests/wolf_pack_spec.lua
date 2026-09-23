@@ -428,8 +428,12 @@ return {
         end,
     },
     {
-        -- The player-facing half of the doubling rule, on the one weapon that carries it.
-        name = "The Second Bite strikes twice on the same speed rule",
+        -- THE BRAVE RULE, on the one weapon that carries it (docs/weapons.md, Item.strikes). This case
+        -- is the wolves' doubling case turned inside out on purpose: it used to assert that the blade
+        -- struck twice against a slow body and once against a quick one, which was the pack's rule
+        -- borrowed. A brave weapon owes NO condition, so the thing to hold it to is that the target's
+        -- own speed cannot change the count -- the exact property the old assertion denied.
+        name = "The Second Bite strikes twice whatever it is aimed at: a brave weapon asks no question",
         fn = function()
             local function swing(targetSpeed)
                 local hunter = Character.instantiate("character_archer")
@@ -444,11 +448,88 @@ return {
                 return Combat.strikeWith(c, striker, blade, foe.x, foe.y).damageDealt, foe
             end
 
-            local doubled = swing(3)
-            local single, foe = swing(5)
-            assert(doubled == single * 2,
-                string.format("2 clear doubles it: %d against %d", doubled, single))
+            -- 3 is two clear under the striker's 6 and would have doubled under the old rule; 5 is one
+            -- under and would not have. Both land the same, because the count is the weapon's.
+            local slow = swing(3)
+            local quick, foe = swing(5)
+            assert(slow == quick,
+                string.format("a brave weapon does not read the target's speed: %d against %d", slow, quick))
             assert(Status.has(foe, "status_bleed"), "and daggers bleed, on the family contract")
+
+            -- ...and it really is TWO blows rather than one big one, which is the half a damage total
+            -- cannot show on its own. Measured against a plain dagger carrying the same numbers: armour
+            -- is subtracted from each strike (Combat.mitigatedDamage runs per hit), so against a body
+            -- with defense the brave blade's total is strictly less than twice a single blow of its own
+            -- power -- and against a naked one it is exactly twice. A single-strike weapon can satisfy
+            -- neither.
+            local function armoured(defense)
+                local hunter = Character.instantiate("character_archer")
+                for i = 1, Character.MAX_INVENTORY do hunter.inventory[i] = nil end
+                local blade = Item.instantiate("weapon_the_second_bite")
+                hunter.inventory[1] = blade
+                hunter.stats.speed = 6
+                local body = prey(5, defense, 400)
+                local c = Combat.new(arena(9, 5), { unit(hunter, 4, 3) }, { unit(body, 5, 3) })
+                local striker, foe = c.units[1], c.units[2]
+                openTurn(c, striker)
+                local dealt = Combat.strikeWith(c, striker, blade, foe.x, foe.y).damageDealt
+                -- What ONE strike of it would have drawn from the same body, asked of the shared
+                -- damage core rather than of a second weapon, so nothing but the count differs.
+                local one = Combat.computeDamage(c, striker, foe, blade, {})
+                return dealt, one
+            end
+
+            local naked, nakedOne = armoured(0)
+            assert(naked == nakedOne * 2,
+                string.format("unarmoured, two strikes are exactly twice one: %d against %d", naked, nakedOne * 2))
+            local plated, platedOne = armoured(10)
+            assert(plated < nakedOne * 2,
+                "armour bites a brave weapon twice: " .. plated .. " is not under " .. (nakedOne * 2))
+            assert(plated == platedOne * 2,
+                string.format("...and it bites each strike equally: %d against %d", plated, platedOne * 2))
+        end,
+    },
+    {
+        -- THE WIRING, NOT THE RULE. The case above proves the brave rule lands; this one proves the
+        -- three OTHER paths through fx.damage learned it too. A count honoured only where blood is
+        -- drawn is the worst version of this feature: the board panel would quote half the wound the
+        -- player is about to deal and the shelf would under-sell the weapon's whole purchase, and
+        -- both would be quietly, consistently wrong rather than visibly broken. Each closure is its
+        -- own loop in models/combat.lua, so each needs its own assertion.
+        name = "a brave weapon's forecast, its shelf hover and its swing all quote the same two strikes",
+        fn = function()
+            local hunter = Character.instantiate("character_archer")
+            for i = 1, Character.MAX_INVENTORY do hunter.inventory[i] = nil end
+            local blade = Item.instantiate("weapon_the_second_bite")
+            hunter.inventory[1] = blade
+            local c = Combat.new(arena(9, 5), { unit(hunter, 4, 3) }, { unit(prey(5, 4, 400), 5, 3) })
+            local striker, foe = c.units[1], c.units[2]
+            openTurn(c, striker)
+
+            -- One strike's worth, off the shared damage core, so nothing but the count can differ.
+            local one = Combat.computeDamage(c, striker, foe, blade, {})
+
+            -- 1. THE BOARD FORECAST (Combat.previewAbility) -- what the panel promises on hover.
+            local preview = Combat.previewAbility(c, striker, blade, foe.x, foe.y)
+            local quoted = preview and preview.entries[foe] and preview.entries[foe].damage
+            assert(quoted == one * 2,
+                string.format("the forecast quotes both strikes: %s against %d", tostring(quoted), one * 2))
+
+            -- 2. THE SHELF HOVER (Combat.abilityOutput) -- no board, a zero-defense stand-in, so its
+            -- number is the raw pair: twice the ability's damage plus the wielder's attack stat.
+            local out = Combat.abilityOutput(striker, blade)
+            local raw = (blade.activeAbility.damage or 0) + Combat.flatStat(striker, "damage")
+            assert(out and out.damage == raw * 2,
+                string.format("the rack quotes both strikes: %s against %d",
+                    tostring(out and out.damage), raw * 2))
+
+            -- 3. THE SWING ITSELF (Combat.useItem) -- the real cast path, which is a different closure
+            -- again from the sub-strike path the case above swings through.
+            local before = foe.char.stats.health.current
+            assert(Combat.useItem(c, striker, blade, foe.x, foe.y), "the stab lands")
+            assert(before - foe.char.stats.health.current == one * 2,
+                string.format("and the swing deals what both of them promised: %d against %d",
+                    before - foe.char.stats.health.current, one * 2))
         end,
     },
 }

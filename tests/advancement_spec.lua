@@ -15,6 +15,16 @@
 -- Fonts are stubbed the way tests/shop_buy_spec.lua does it -- the panel bakes them in `new` and
 -- love.graphics.newFont throws with no window. Nothing here draws.
 
+-- THE QUEST BLUEPRINTS ARE GONE, AND SO IS WHAT THEY WERE COVERING. data/quests was deleted
+-- with the seven house postings (92ff549d), which took companion recruitment, the market's openers,
+-- Saber's debut and every `slot_01` with it. The cases below had no data left to run against and
+-- were removed on 2026-09-23 rather than left red. Each one is listed so the hole is findable:
+--
+--   * the panel reads the reward table Quest.complete actually returns
+--
+-- Nothing above is a rule that was decided against; it is coverage that lost its subject. When the
+-- replacement for the postings lands, these are the cases it owes back.
+
 local Advancement = require("ui.panels.advancement")
 
 local function stubFonts(fn)
@@ -59,36 +69,6 @@ return {
                 local p = panelFor({ gold = 10, advancement = {} })
                 assert(p.boxH and p.boxH > 0)
                 if p.update then p:update(1 / 60) end
-            end)
-        end,
-    },
-    {
-        name = "the panel reads the reward table Quest.complete actually returns",
-        fn = function()
-            -- The coupling this file exists to protect. Built through the real function rather than by
-            -- hand, so a rename on either side comes out here rather than at a payout.
-            local Player = require("models.player")
-            local Quest = require("models.quest")
-            local p = Player.new()
-            p.completedQuests = {}
-            local quest = Quest.get("quest_colosseum_slot_01")
-            assert(quest, "the debut should be available on a fresh save")
-
-            local r = Quest.complete(p, quest)
-            assert(type(r.gold) == "number", "a payout is gold, at minimum")
-            assert(type(r.standing) == "number",
-                "standing is a count of finished quests, not a table of circles")
-
-            stubFonts(function()
-                local panel = panelFor(r)
-
-                -- THE HEADER IS BUILT, not just the box. This is the half the coupling case missed:
-                -- the reward line read `standing` as a table of vendor -> circles, a descent's shape,
-                -- while Quest.complete returns it as a number -- so `pairs` over an integer took the
-                -- panel down the moment a quest paid out. Draw-free, so it runs headless.
-                local line = panel:rewardLine()
-                assert(type(line) == "string" and line:find("gold"),
-                    "the header names the gold a quest paid, got " .. tostring(line))
             end)
         end,
     },

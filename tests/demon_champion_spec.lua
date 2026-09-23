@@ -1,7 +1,7 @@
 -- Tests for the Demon Champion capstone (the tutorial's conclusion) and the reusable systems it
 -- introduces: the data-driven phase trait (data/traits/trait_boss_phases.lua, scripted by
 -- data/items/utility/utility_demon_sigil.lua), the self-destruct pair on
--- data/characters/character_demon_bomblet.lua (data/traits/trait_volatile.lua when something else
+-- data/characters/character_demon_bomblet_tutorial.lua (data/traits/trait_volatile.lua when something else
 -- kills it, data/items/ability/ability_self_destruct.lua when it pulls its own pin), the generic
 -- Heave throw (data/items/ability/
 -- ability_heave.lua), the Roar's interruptible summon (data/items/ability/ability_demon_roar.lua), and
@@ -51,9 +51,9 @@ return {
         name = "the Sigil carries the phase system AND the counter-guard to the Champion",
         fn = function()
             local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) },
-                { unit("character_demon_champion", 5, 5) })
+                { unit("character_demon_champion_tutorial", 5, 5) })
             local boss = c.units[2]
-            assert(Trait.has(boss, "trait_boss_phases"), "the Champion answers each wound with the next stage")
+            assert(Trait.has(boss, "trait_boss_phases"), "the Champion answers each injury with the next stage")
             assert(Trait.has(boss, "trait_melee_counter"), "and ripostes reckless melee all fight")
             -- The stage script rides on the granting relic, so the trait id can serve every boss.
             local phase = traitOn(boss, "trait_boss_phases")
@@ -65,7 +65,7 @@ return {
         name = "the phases arm the Roar at two-thirds and enrage + hasten at a third",
         fn = function()
             local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) },
-                { unit("character_demon_champion", 5, 5) })
+                { unit("character_demon_champion_tutorial", 5, 5) })
             local boss = c.units[2]
             local hp = boss.char.stats.health
             local phase = traitOn(boss, "trait_boss_phases")
@@ -95,7 +95,7 @@ return {
         name = "a killing blow crosses no stage -- burst it and you skip the threat",
         fn = function()
             local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) },
-                { unit("character_demon_champion", 5, 5) })
+                { unit("character_demon_champion_tutorial", 5, 5) })
             local boss = c.units[2]
             local phase = traitOn(boss, "trait_boss_phases")
             Combat.dealFlatDamage(c, boss, 9999, nil, "test") -- straight from full health to dead
@@ -113,10 +113,10 @@ return {
         name = "a phase can transform the boss into another body, board sprite and all",
         fn = function()
             local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) },
-                { unit("character_demon_champion", 5, 5) })
+                { unit("character_demon_champion_tutorial", 5, 5) })
             local boss = c.units[2]
             local phase = traitOn(boss, "trait_boss_phases")
-            assert(boss.char.id == "character_demon_champion", "starts in its own body")
+            assert(boss.char.id == "character_demon_champion_tutorial", "starts in its own body")
             assert(boss.char.spritePath == "assets/chars/demon_champion.png", "wearing its own board sprite")
             local pool = boss.char.stats.health -- the continuous thing a transform must carry, by reference
 
@@ -144,7 +144,7 @@ return {
         fn = function()
             local c = Combat.new(arena(8, 8),
                 { unit("character_rowan", 2, 3) },              -- durable enough to survive and be measured
-                { unit("character_demon_bomblet", 2, 2) })
+                { unit("character_demon_bomblet_tutorial", 2, 2) })
             local knight, bomblet = c.units[1], c.units[2]
             assert(Trait.has(bomblet, "trait_volatile"), "the Bomblet carries the self-destruct rule")
             local before = knight.char.stats.health.current
@@ -158,7 +158,7 @@ return {
         fn = function()
             local c = Combat.new(arena(8, 8),
                 { unit("character_mage", 8, 8) },                -- a far party unit so the fight is valid
-                { unit("character_demon_bomblet", 2, 2), unit("character_demon_bomblet", 2, 3) })
+                { unit("character_demon_bomblet_tutorial", 2, 2), unit("character_demon_bomblet_tutorial", 2, 3) })
             local a, b = c.units[2], c.units[3]
             Combat.dealFlatDamage(c, a, 9999, nil, "test") -- pop A; its blast should finish the adjacent B
             assert(not a.alive, "the popped Bomblet is gone")
@@ -175,7 +175,7 @@ return {
         fn = function()
             local c = Combat.new(arena(8, 8),
                 { unit("character_rowan", 2, 3) },
-                { unit("character_demon_bomblet", 2, 2) })
+                { unit("character_demon_bomblet_tutorial", 2, 2) })
             local knight, bomblet = c.units[1], c.units[2]
             local bomb = bomblet.char.inventory[2] -- grid cell 2 (see the blueprint)
             assert(bomb and bomb.id == "ability_self_destruct", "the fuse sits above the Core")
@@ -189,7 +189,7 @@ return {
             assert(bomblet.alive and bomblet.channel, "...over a wind-up: nothing has gone off yet")
             assert(knight.char.stats.health.current == before, "and the knight is untouched during the tell")
 
-            assert(Combat.resolveChannel(c, bomblet), "the wound-up burst resolves")
+            assert(Combat.resolveChannel(c, bomblet), "the injury-up burst resolves")
             assert(not bomblet.alive, "the bomber is gone")
             local dealt = before - knight.char.stats.health.current
             assert(dealt > 0, "and the ring caught the adjacent knight")
@@ -198,7 +198,7 @@ return {
             -- bomber's removal would silently double every self-destruct on the board.
             local c2 = Combat.new(arena(8, 8),
                 { unit("character_rowan", 2, 3) },
-                { unit("character_demon_bomblet", 2, 2) })
+                { unit("character_demon_bomblet_tutorial", 2, 2) })
             local knight2, bomblet2 = c2.units[1], c2.units[2]
             local was = knight2.char.stats.health.current
             Combat.dealFlatDamage(c2, bomblet2, 9999, nil, "test") -- the passive half, for comparison
@@ -213,7 +213,7 @@ return {
             -- holding it. This is the answer the passive trait never allowed.
             local c = Combat.new(arena(8, 8),
                 { unit("character_rowan", 2, 3) },
-                { unit("character_demon_bomblet", 2, 2) })
+                { unit("character_demon_bomblet_tutorial", 2, 2) })
             local knight, bomblet = c.units[1], c.units[2]
             local before = knight.char.stats.health.current
             assert(Combat.useItem(c, bomblet, bomblet.char.inventory[2], 2, 2), "the burst begins")
@@ -226,7 +226,7 @@ return {
             -- blast lands anyway. Killing it in your own teeth is still the wrong answer.
             local c2 = Combat.new(arena(8, 8),
                 { unit("character_rowan", 2, 3) },
-                { unit("character_demon_bomblet", 2, 2) })
+                { unit("character_demon_bomblet_tutorial", 2, 2) })
             local knight2, bomblet2 = c2.units[1], c2.units[2]
             local was = knight2.char.stats.health.current
             assert(Combat.useItem(c2, bomblet2, bomblet2.char.inventory[2], 2, 2), "the burst begins")
@@ -244,7 +244,7 @@ return {
             -- AI.candidates -- which is what lets this be a plan at all.)
             local c = Combat.new(arena(8, 8),
                 { unit("character_rowan", 5, 5) },
-                { unit("character_demon_bomblet", 5, 2) }) -- three tiles off: within its movement of 4
+                { unit("character_demon_bomblet_tutorial", 5, 2) }) -- three tiles off: within its movement of 4
             local bomblet = c.units[2]
             local plan = AI.plan(c, bomblet)
             assert(plan.item and plan.item.id == "ability_self_destruct", "it plans the burst: " .. AI.explain(plan))
@@ -255,7 +255,7 @@ return {
             -- that accomplishes nothing, and the posture just walks it closer.
             local c2 = Combat.new(arena(16, 16),
                 { unit("character_rowan", 16, 16) },
-                { unit("character_demon_bomblet", 2, 2) })
+                { unit("character_demon_bomblet_tutorial", 2, 2) })
             local far = AI.plan(c2, c2.units[2])
             assert(not far.item, "far from the party it holds its charge and approaches: " .. AI.explain(far))
         end,
@@ -276,7 +276,7 @@ return {
             -- The passive half: killed by something else, the trait's onDeath paints the ring.
             local c = Combat.new(arena(8, 8),
                 { unit("character_rowan", 5, 5) },              -- out of the blast, so nothing else bursts
-                { unit("character_demon_bomblet", 2, 2) })
+                { unit("character_demon_bomblet_tutorial", 2, 2) })
             Combat.dealFlatDamage(c, c.units[2], 9999, nil, "test")
             assert(burstOn(Combat.drainFx(c), 2, 2), "the passive death throws a burst from the tile it fell on")
 
@@ -284,17 +284,17 @@ return {
             -- nobody in reach to catch a damage cue of their own.
             local c2 = Combat.new(arena(8, 8),
                 { unit("character_rowan", 8, 8) },
-                { unit("character_demon_bomblet", 3, 3) })
+                { unit("character_demon_bomblet_tutorial", 3, 3) })
             local bomblet = c2.units[2]
             assert(Combat.useItem(c2, bomblet, bomblet.char.inventory[2], 3, 3), "it pulls its own pin")
             Combat.drainFx(c2) -- clear the wind-up's channel cue
-            assert(Combat.resolveChannel(c2, bomblet), "the wound-up burst resolves")
+            assert(Combat.resolveChannel(c2, bomblet), "the injury-up burst resolves")
             assert(burstOn(Combat.drainFx(c2), 3, 3), "the deliberate burst throws the same ring, whiff and all")
 
             -- ...but a dry-run preview must not queue a boom the board would then draw.
             local c3 = Combat.new(arena(8, 8),
                 { unit("character_rowan", 3, 4) },
-                { unit("character_demon_bomblet", 3, 3) })
+                { unit("character_demon_bomblet_tutorial", 3, 3) })
             local bomb = c3.units[2].char.inventory[2]
             Combat.previewAbility(c3, c3.units[2], bomb, 3, 3)
             assert(Combat.drainFx(c3) == nil, "hovering the self-destruct raises no cue at all -- least of all a burst")
@@ -308,7 +308,7 @@ return {
             -- The Champion throws its OWN adjacent Bomblet (a friendly): proof Heave is side-agnostic,
             -- not a demon-only trick. Open ground south, so it travels its full three tiles.
             local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) },
-                { unit("character_demon_champion", 4, 3), unit("character_demon_bomblet", 4, 4) })
+                { unit("character_demon_champion_tutorial", 4, 3), unit("character_demon_bomblet_tutorial", 4, 4) })
             local champ, bomblet = c.units[2], c.units[3]
             local heave = champ.char.inventory[1] -- grid cell 1 (see the blueprint)
             assert(heave and heave.id == "ability_heave", "the Champion carries the generic Heave")
@@ -323,22 +323,22 @@ return {
         fn = function()
             -- Resolves: the wind-up pays off with two summoned Bomblets on the Champion's side.
             local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) },
-                { unit("character_demon_champion", 5, 5) })
+                { unit("character_demon_champion_tutorial", 5, 5) })
             local champ = c.units[2]
             local roar = champ.char.inventory[2] -- grid cell 2
             assert(roar and roar.id == "ability_demon_roar", "the Champion carries the Roar")
             assert(Combat.useItem(c, champ, roar, 5, 4), "the Roar begins winding up")
-            assert(Combat.resolveChannel(c, champ), "the wound-up Roar resolves")
-            assert(countAlive(c, "character_demon_bomblet") == 2, "the Roar called two Bomblets")
+            assert(Combat.resolveChannel(c, champ), "the injury-up Roar resolves")
+            assert(countAlive(c, "character_demon_bomblet_tutorial") == 2, "the Roar called two Bomblets")
 
             -- Interrupted: the channel is broken, and the call is fully wasted -- no Bomblets.
             local c2 = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) },
-                { unit("character_demon_champion", 5, 5) })
+                { unit("character_demon_champion_tutorial", 5, 5) })
             local champ2 = c2.units[2]
             assert(Combat.useItem(c2, champ2, champ2.char.inventory[2], 5, 4), "the Roar begins")
             assert(Combat.interruptChannel(c2, champ2, "stunned"), "a Stun/shove breaks the channel")
             assert(not Combat.resolveChannel(c2, champ2), "there is nothing left to resolve")
-            assert(countAlive(c2, "character_demon_bomblet") == 0, "and the denied Roar summoned nothing")
+            assert(countAlive(c2, "character_demon_bomblet_tutorial") == 0, "and the denied Roar summoned nothing")
         end,
     },
 
@@ -352,9 +352,9 @@ return {
                 biome = "forest", seed = 1, layout = "demon_champion",
                 party = { "character_avatar", "character_rowan" },
                 composition = function()
-                    return { "character_demon_champion", "character_demon_imp", "character_demon_imp" }
+                    return { "character_demon_champion_tutorial", "character_demon_imp_tutorial", "character_demon_imp_tutorial" }
                 end,
-                objective = { type = "assassinate", target = "character_demon_champion" },
+                objective = { type = "assassinate", target = "character_demon_champion_tutorial" },
             })
             assert(a.cols == 8 and a.rows == 8, "an 8x8 board")
 
@@ -401,7 +401,7 @@ return {
             assert(map.objective.layout == "demon_champion", "the objective pins the Champion's authored arena")
             assert(map.layout == "tutorial_flight", "distinct from the overworld trail layout (unchanged)")
             assert(map.objective.win.type == "assassinate"
-                and map.objective.win.target == "character_demon_champion",
+                and map.objective.win.target == "character_demon_champion_tutorial",
                 "still won by cutting the Champion down")
         end,
     },
@@ -418,7 +418,7 @@ return {
         fn = function()
             local c = Combat.new(arena(8, 8),
                 { unit("character_rowan", 1, 1) },
-                { unit("character_demon_champion", 8, 8) })
+                { unit("character_demon_champion_tutorial", 8, 8) })
             local rowan, boss = c.units[1], c.units[2]
             crossLastStage(c, boss)
 
@@ -445,7 +445,7 @@ return {
         fn = function()
             local c = Combat.new(arena(8, 8),
                 { unit("character_rowan", 1, 1) },
-                { unit("character_demon_champion", 8, 8) })
+                { unit("character_demon_champion_tutorial", 8, 8) })
             local rowan, boss = c.units[1], c.units[2]
             Status.apply(c, boss, "status_stun", { magnitude = 40 })
             local shoved = boss.initiative
@@ -455,7 +455,7 @@ return {
             local phase = traitOn(boss, "trait_boss_phases")
             assert(phase.stacks == 2, "the stage turns through the stun: a bar is read, not answered")
             assert(Status.get(boss, "status_hasted"), "and everything the stage does lands with it")
-            assert(not rowan.alive, "and she goes down -- the beat is paid by the wound, not by a turn")
+            assert(not rowan.alive, "and she goes down -- the beat is paid by the injury, not by a turn")
             assert(boss.initiative == shoved, "on a body that has not acted: the shove is untouched")
         end,
     },
@@ -467,7 +467,7 @@ return {
         fn = function()
             local c = Combat.new(arena(8, 8),
                 { unit("character_rowan", 1, 1), unit("character_knight", 2, 1) },
-                { unit("character_demon_champion", 8, 8) })
+                { unit("character_demon_champion_tutorial", 8, 8) })
             local rowan, boss = c.units[1], c.units[3]
             Status.apply(c, rowan, "status_physical_barrier", { magnitude = 5 })
             for _, u in ipairs(c.units) do
@@ -502,7 +502,7 @@ return {
         fn = function()
             local c = Combat.new(arena(8, 8),
                 { unit("character_rowan", 1, 1) },
-                { unit("character_demon_champion", 8, 8) })
+                { unit("character_demon_champion_tutorial", 8, 8) })
             local rowan, boss = c.units[1], c.units[2]
             boss.scriptedFell = { victim = "character_rowan", seconds = 0.9 }
 
@@ -527,7 +527,7 @@ return {
         fn = function()
             local c = Combat.new(arena(8, 8),
                 { unit("character_rowan", 1, 1) },
-                { unit("character_demon_champion", 8, 8) })
+                { unit("character_demon_champion_tutorial", 8, 8) })
             local rowan, boss = c.units[1], c.units[2]
             assert(not c.scriptedStrike, "nothing is staged before the stage turns")
 
@@ -591,7 +591,7 @@ return {
                 end
             end
             local c = Combat.new(a, { unit("character_rowan", 1, 8) },
-                { unit("character_demon_champion", 1, 1) })
+                { unit("character_demon_champion_tutorial", 1, 1) })
             local boss = c.units[2]
             local route = Combat.scriptedRoute(c, boss, 2, 8)
             assert(route, "there is a road: the gap in the wall")
@@ -611,7 +611,7 @@ return {
                 sealed.tiles[4][x] = { type = "mountain", moveCost = 1, walkable = false, sightCost = 2 }
             end
             local c2 = Combat.new(sealed, { unit("character_rowan", 1, 8) },
-                { unit("character_demon_champion", 1, 1) })
+                { unit("character_demon_champion_tutorial", 1, 1) })
             assert(not Combat.scriptedRoute(c2, c2.units[2], 2, 8), "a walled-off goal has no route")
         end,
     },
@@ -625,7 +625,7 @@ return {
         fn = function()
             local c = Combat.new(arena(8, 8),
                 { unit("character_rowan", 1, 1) },
-                { unit("character_demon_champion", 8, 8) })
+                { unit("character_demon_champion_tutorial", 8, 8) })
             local boss = c.units[2]
             assert(not c.pendingScene, "nothing is owed before the stage turns")
             crossLastStage(c, boss)
@@ -638,7 +638,7 @@ return {
         name = "a felled companion is still carried off the won board -- felled is not killed",
         fn = function()
             local c = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) },
-                { unit("character_demon_champion", 5, 5) })
+                { unit("character_demon_champion_tutorial", 5, 5) })
             local rowan = c.units[1]
             assert(Combat.fell(c, rowan), "the scripted beat puts her down")
             assert(not rowan.alive and rowan.noRevive, "sealed for the rest of the fight")
@@ -661,7 +661,7 @@ return {
             local sawRowan = false
             for _, char in ipairs(carried) do sawRowan = sawRowan or char.id == "character_rowan" end
             assert(sawRowan, "she is carried out of the won fight like any other casualty")
-            assert(rowan.alive, "and stands up on the far side of it, to be wounded rather than lost")
+            assert(rowan.alive, "and stands up on the far side of it, to be injured rather than lost")
         end,
     },
     {
@@ -722,12 +722,12 @@ return {
             -- correct for a killing blow (data/traits/trait_boss_phases.lua says bursting past a stage
             -- skips it) and wrong for the debug button in states/battle.lua, which is not a player
             -- dodging the beat but a developer skipping the fight. Debug-winning the Champion left
-            -- Rowan untouched, so no wound was written, so the city opened with no Ward and no healer:
+            -- Rowan untouched, so no injury was written, so the city opened with no Ward and no healer:
             -- the "broken city rather than a skipped prologue" states/prologue.lua's `skip` refuses to
             -- hand over, reached from the other direction.
             local c = Combat.new(arena(8, 8),
                 { unit("character_avatar", 1, 1), unit("character_rowan", 2, 1) },
-                { unit("character_demon_champion", 5, 5) })
+                { unit("character_demon_champion_tutorial", 5, 5) })
             local rowan = c.units[2]
             assert(rowan.char.id == "character_rowan" and rowan.alive, "she walks in standing")
             -- AT FULL HEALTH, which is the whole point: there is no armed `scriptedFell` to spend
@@ -742,15 +742,15 @@ return {
             -- beat left queued would sit under the victory panel.
             assert(c.scriptedStrike == nil, "the show is skipped -- only the consequence is paid")
 
-            -- ...and the consequence is the one the ledger reads (states/game.lua's inflictWounds).
+            -- ...and the consequence is the one the ledger reads (states/game.lua's inflictInjuries).
             local carried = Combat.reviveFallenParty(c)
             local sawRowan = false
             for _, char in ipairs(carried) do sawRowan = sawRowan or char.id == "character_rowan" end
-            assert(sawRowan, "she is carried off the won board, which is what becomes the wound")
+            assert(sawRowan, "she is carried off the won board, which is what becomes the injury")
 
             -- AN ORDINARY FIGHT OWES NOTHING, so the button stays a plain win everywhere else.
             local plain = Combat.new(arena(8, 8), { unit("character_rowan", 1, 1) },
-                { unit("character_demon_grunt", 5, 5) })
+                { unit("character_demon_grunt_tutorial", 5, 5) })
             assert(Combat.payScriptedFells(plain) == 0, "no relic here scripts a felling")
             assert(plain.units[1].alive, "so nobody is put down on the way out")
         end,
@@ -762,7 +762,7 @@ return {
             local sawBomblet = false
             for _, wave in ipairs(defend.objective.waves or {}) do
                 for _, id in ipairs(wave.composition({ prestige = 1 }) or {}) do
-                    sawBomblet = sawBomblet or id == "character_demon_bomblet"
+                    sawBomblet = sawBomblet or id == "character_demon_bomblet_tutorial"
                 end
             end
             assert(sawBomblet, "a Bomblet wave teaches the self-destruct demon before the boss reprises it")

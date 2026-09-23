@@ -3,11 +3,23 @@
 -- two people -- it is the first thing in the game that has to be fought rather than swatted.
 -- The Demon Lord it serves is named in the scene, not met (see docs/story.md).
 --
--- ITS 74 HEALTH IS SPENT EXACTLY by the prologue's closing beat, and the whole column is written out
+-- ACT 0 OWNS THIS BODY, which is what the `_tutorial` on the filename says. The village street, the
+-- two survivor stops on the city sweep and one body standing beside the Champion: that is every place a
+-- grunt is fielded, and the rift fields none. The imp's header
+-- (data/characters/character_demon_imp_tutorial.lua) carries the full argument for the suffix and the
+-- day it became necessary -- the short version is that an unsuffixed body reads as general-purpose
+-- stock, and the numbers in this file are not stock, they are a script.
+--
+-- ITS 80 HEALTH IS SPENT EXACTLY by the prologue's closing beat, and the whole column is written out
 -- in data/tutorials/village.lua (under `spawn`) with tests/tutorial_spec.lua pinning it. The short
 -- version: the lesson's last lesson is the turn order, so the grunt has to survive a parry, a mace,
 -- and a Jolt still standing and still dangerous -- and then fall to exactly one blow each from Rowan
 -- and the player, which is what the Jolt's stun buys them. Re-tune this and that beat stops landing.
+--
+-- (It read 74 here for a while after the pool moved to 80 -- the stats block below has argued 80 and
+-- named its ceiling the whole time, and this overview simply kept the old figure. The spec never
+-- caught it because it asserts the INEQUALITIES the beat needs rather than the column's numbers, which
+-- is the right thing for it to assert and the reason a stale copy can sit in a comment for weeks.)
 --
 -- WHICH IS WHY IT IS THE ONE BODY THE HEALTH REBALANCE SKIPPED. Every other character in data/characters/
 -- had its pool cut to roughly 0.7 of what it was, to bring the hits-to-kill down across the game; this
@@ -32,8 +44,8 @@
 -- its WILL costs mana. The claws are the body, so they stay on stamina exactly as they were; the mana
 -- below buys Brimstone (data/items/ability/ability_demon_brimstone.lua), the gout of hellfire it
 -- spits at the ground to close a lane. An imp is all will and pays for everything in mana
--- (character_demon_imp.lua); the Champion pays for its claws, its riposte and its throw out of
--- stamina, and for the Roar and the Cleave out of mana (character_demon_champion.lua). This body is
+-- (character_demon_imp_tutorial.lua); the Champion pays for its claws, its riposte and its throw out of
+-- stamina, and for the Roar and the Cleave out of mana (character_demon_champion_tutorial.lua). This body is
 -- the middle of that and carries both.
 --
 -- None of it touches the prologue's arithmetic. The grunt is hand-driven for every turn it takes in

@@ -94,8 +94,8 @@ return {
     {
         name = "scaling = false is blueprint-exact at any player level",
         fn = function()
-            local base = Character.instantiate("character_demon_grunt")
-            local late = Growth.spawn("character_demon_grunt", Growth.LEVEL_CAP, Growth.LEVEL_CAP)
+            local base = Character.instantiate("character_demon_grunt_tutorial")
+            local late = Growth.spawn("character_demon_grunt_tutorial", Growth.LEVEL_CAP, Growth.LEVEL_CAP)
             assert(late.level == 1, "a pinned unit stays at level 1")
             for stat, value in pairs(base.stats) do
                 if type(value) == "table" then
@@ -103,6 +103,75 @@ return {
                 else
                     assert(late.stats[stat] == value, "pinned stat " .. stat .. " moved")
                 end
+            end
+        end,
+    },
+
+    {
+        -- WHY ACT 0's BODIES ARE PINNED, held as a rule over the set rather than on the one body that
+        -- happened to be caught. The prologue's fights are not tuned, they are COUNTED: the first step
+        -- of the village lesson is one sword stroke and an imp falling, the last is a grunt left inside
+        -- exactly one more, and every number in both columns is authored against a level-1 company
+        -- (data/tutorials/village.lua). A body that grows toward whoever is standing in front of it
+        -- cannot keep a promise like that.
+        --
+        -- THE IMP WAS NOT PINNED AND NOBODY SAW IT, which is the regression this case exists for. It was
+        -- ordinary stock, so Growth.combatantLevel grew it with the company -- 14 health at party level
+        -- 3, 18 at 4, 26 at 6, 42 at 10 -- against an iron sword that bills 18. So "swing, and watch it
+        -- fall", the first thing the game ever teaches, quietly stopped being true from about party
+        -- level 4 and the step had nothing to show. tests/tutorial_spec.lua could not catch it: it
+        -- measures the lesson at blueprint level, which is exactly the level the bug is invisible at.
+        --
+        -- Swept over all of Act 0's demons rather than spot-checked on the imp, because the failure is
+        -- structural -- the next body added to the prologue inherits it by default, since unpinned is
+        -- the default. The Champion is deliberately NOT in this list and its own header says why: the
+        -- suite uses it as the reference elite that MUST scale.
+        name = "every body Act 0 counts its arithmetic against is pinned to blueprint level",
+        fn = function()
+            local counted = {
+                "character_demon_imp_tutorial",
+                "character_demon_grunt_tutorial",
+                "character_demon_bomblet_tutorial",
+            }
+            for _, id in ipairs(counted) do
+                local def = Character.defs[id]
+                assert(def, "Act 0 body missing: " .. id)
+                assert(def.scaling == false, id .. " is not pinned -- the prologue's counted columns "
+                    .. "stop being true as soon as the company outgrows the lag")
+                -- ...and pinned in EFFECT, not just in declaration: the pool is the same at the cap as
+                -- at level 1. Asserted through Growth.spawn rather than off the field, so a change to
+                -- how the flag is read reddens here too.
+                local base = Character.instantiate(id)
+                local late = Growth.spawn(id, Growth.LEVEL_CAP, Growth.LEVEL_CAP)
+                assert(late.stats.health.max == base.stats.health.max,
+                    id .. " grew a health pool between level 1 and the cap: "
+                    .. base.stats.health.max .. " -> " .. late.stats.health.max)
+            end
+        end,
+    },
+
+    {
+        -- The lesson's OWN claim, measured at a level the company could actually be at -- the half of
+        -- this that tutorial_spec structurally cannot ask, because it builds the fight at blueprint
+        -- level. One stroke of the starting sword must fell the prologue's imp however far the roster
+        -- has climbed, or the first step of the first fight in the game is a lie on some saves.
+        name = "one stroke of the opening sword fells Act 0's imp at every level the company can reach",
+        fn = function()
+            local sword = Item.instantiate("weapon_iron_sword")
+            for _, level in ipairs({ 1, 2, 4, 6, 10, Growth.LEVEL_CAP }) do
+                local imp = Growth.spawn("character_demon_imp_tutorial", level, level)
+                local map = Fixture.new(6, 6)
+                -- The avatar as the prologue fields it: blueprint-exact, level 1, its authored kit.
+                -- It is the WEAKEST the swinger ever is, which is the right side to measure from --
+                -- a levelled avatar only ever hits harder.
+                local a = Fixture.unit("character_avatar", 1, 1)
+                local d = Fixture.unit(imp, 2, 1)
+                local combat = Fixture.combat(map, a, d)
+                local blow = Combat.computeDamage(combat, combat.units[1], combat.units[2], sword) or 0
+                assert(blow >= imp.stats.health.max,
+                    "at party level " .. level .. " the opening sword bills " .. blow
+                    .. " against " .. imp.stats.health.max .. " health -- the imp eats the stroke and "
+                    .. "the village lesson's first step has nothing to show")
             end
         end,
     },
@@ -194,7 +263,7 @@ return {
                 > Growth.combatantLevel(Character.defs.character_bandit, Growth.LEVEL_CAP),
                 "declaring a floor should lift a unit out of the lag")
 
-            local elite = Growth.spawn("character_demon_champion", Growth.LEVEL_CAP)
+            local elite = Growth.spawn("character_demon_champion_tutorial", Growth.LEVEL_CAP)
             assert(hitsToKill(elite, knight) < hitsToKill(stock, knight),
                 "an elite must still be the dangerous thing on the board")
         end,
@@ -207,7 +276,7 @@ return {
         -- structural -- it arrives for any table that misses the floor, just at a different level.
         name = "no class is ever one-shot by a scaled elite, at any level up to the cap",
         fn = function()
-            local elite = Growth.spawn("character_demon_champion", Growth.LEVEL_CAP)
+            local elite = Growth.spawn("character_demon_champion_tutorial", Growth.LEVEL_CAP)
             local weapon = weaponOf(elite)
             assert(weapon, "the elite must carry something to swing")
 

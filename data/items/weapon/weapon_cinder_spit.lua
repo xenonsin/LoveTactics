@@ -10,7 +10,7 @@
 --
 -- IT IS PAID FOR IN MANA, and that is the demon contract rather than a quirk of this one body: what
 -- a demon's body does costs stamina, and what its WILL does costs mana (see
--- data/characters/character_demon_imp.lua). An imp is nothing but will -- hellfire is its whole
+-- data/characters/character_demon_imp_tutorial.lua). An imp is nothing but will -- hellfire is its whole
 -- argument and it has no other -- so every shot it takes comes out of the purple bar, and it carries
 -- stamina only for the punch it throws once the fire is gone.
 --

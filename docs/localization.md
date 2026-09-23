@@ -155,7 +155,7 @@ fetches one at a time.
 |---|---|
 | `conversation_tutorial_village.lua` | the guided battle's lesson (`models/tutorial.lua`) |
 | `conversation_tutorial_flight.lua` | the prologue's overworld coach (`states/game.lua`) |
-| `conversation_tutorial_wound.lua` | the first-wound bubble (`states/game.lua`) |
+| `conversation_tutorial_injury.lua` | the first-injury bubble (`states/game.lua`) |
 | `conversation_tutorial_city.lua` | the Gate's and the plaza's bubbles (`states/gate.lua`, `states/hub.lua`) |
 | `conversation_tutorial_notes.lua` | the tutorial windows, and their footer (`ui/panels/tutorial_note.lua`) |
 

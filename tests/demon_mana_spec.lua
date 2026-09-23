@@ -37,7 +37,7 @@ local AI = require("models.ai")
 local Fixture = require("tests.support.fixture")
 
 -- The demons Act 0 actually fields, which is the set the gift is granted against.
-local DEMONS = { "character_demon_imp", "character_demon_grunt", "character_demon_champion" }
+local DEMONS = { "character_demon_imp_tutorial", "character_demon_grunt_tutorial", "character_demon_champion_tutorial" }
 
 -- The declared cost of `id`'s active ability, as stat, amount.
 local function costOf(id)
@@ -103,7 +103,7 @@ return {
             local stat, amount = costOf("weapon_cinder_spit")
             assert(stat == "mana", "the Cinder Spit is drawn from the will, not the arm")
 
-            local char = Character.instantiate("character_demon_imp")
+            local char = Character.instantiate("character_demon_imp_tutorial")
             assert(math.floor(char.stats.mana.max / amount) == 6,
                 "an imp is authored for exactly six spits, got "
                     .. math.floor(char.stats.mana.max / amount))
@@ -130,7 +130,7 @@ return {
             assert(clawStat == "stamina" and gustStat == "mana",
                 "the grunt is the body/will split stated on one sheet")
 
-            local char = Character.instantiate("character_demon_grunt")
+            local char = Character.instantiate("character_demon_grunt_tutorial")
             assert(math.floor(char.stats.mana.max / gustAmount) == 3,
                 "a grunt is authored for exactly three castings, got "
                     .. math.floor(char.stats.mana.max / gustAmount))
@@ -146,7 +146,7 @@ return {
         fn = function()
             local c = Fixture.combat(Fixture.new(8, 8),
                 { Fixture.unit("character_knight", 4, 3), Fixture.unit("character_knight", 5, 3) },
-                Fixture.unit("character_demon_grunt", 4, 6))
+                Fixture.unit("character_demon_grunt_tutorial", 4, 6))
             local left, right, grunt = c.units[1], c.units[2], c.units[3]
             local before = { Fixture.hp(left), Fixture.hp(right) }
 
@@ -167,7 +167,7 @@ return {
         fn = function()
             local c = Fixture.combat(Fixture.new(10, 10),
                 { Fixture.unit("character_knight", 5, 3), Fixture.unit("character_mage", 6, 3) },
-                Fixture.unit("character_demon_grunt", 5, 6))
+                Fixture.unit("character_demon_grunt_tutorial", 5, 6))
             local grunt = c.units[3]
             grunt.char.stats.stamina.current = 0 -- it swung last turn
 
@@ -185,7 +185,7 @@ return {
             assert(roarStat == "mana" and cleaveStat == "mana",
                 "the two casts the three stages are made of come out of the will")
 
-            local char = Character.instantiate("character_demon_champion")
+            local char = Character.instantiate("character_demon_champion_tutorial")
             -- Stage 1 wants a few Cleaves and stage 2 a few Roars; the pool is sized to run that once
             -- through and no more, which is what makes each siphon worth a stage beat.
             assert(char.stats.mana.max >= 3 * cleave + 2 * roar,

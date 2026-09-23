@@ -20,7 +20,7 @@
 -- the same oil either way, carried for the blessing or poured out onto a wound.
 --
 -- IT PAYS OUT ON THE NEXT BLOCK, which is why this charm and not one of the ones that sharpen a number.
--- Every demon on this route runs a negative holy resist (character_demon_imp.lua: holy -4; the Champion:
+-- Every demon on this route runs a negative holy resist (character_demon_imp_tutorial.lua: holy -4; the Champion:
 -- holy -8), so the lesson and its proof are one step apart -- put it beside your blade and the very next
 -- thing you swing at takes more.
 --

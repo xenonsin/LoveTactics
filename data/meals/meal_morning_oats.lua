@@ -4,7 +4,7 @@
 -- to be wrong in.
 --
 -- Health here is a CEILING raise (maxBonus), not a heal: the extra is headroom to heal into, exactly as
--- Toughness's is. Wounds carry between the fights of a run, so the difference matters -- this does not
+-- Toughness's is. Injuries carry between the fights of a run, so the difference matters -- this does not
 -- undo the last quest, it lengthens this one.
 return {
     name = "The Morning Oats",

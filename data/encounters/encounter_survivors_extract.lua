@@ -31,8 +31,8 @@ return {
     -- this whole list exists to time. See encounter_survivors_defend.lua for the same note.
     composition = function(ctx)
         local p = ctx.depth or 1
-        local list = { "character_demon_imp", "character_demon_imp" }
-        for i = 1, 1 + math.floor((p - 1) / 3) do list[#list + 1] = "character_demon_grunt" end
+        local list = { "character_demon_imp_tutorial", "character_demon_imp_tutorial" }
+        for i = 1, 1 + math.floor((p - 1) / 3) do list[#list + 1] = "character_demon_grunt_tutorial" end
         return list
     end,
 
@@ -72,8 +72,8 @@ return {
             -- The party has committed forward with the wagon by now, so the first arrival comes in
             -- beside them -- the edge nearest where they are actually standing, not the far line.
             { at = 16, from = "flank", composition = function(ctx)
-                local list = { "character_demon_imp" }
-                if (ctx.depth or 1) >= 2 then list[#list + 1] = "character_demon_imp" end
+                local list = { "character_demon_imp_tutorial" }
+                if (ctx.depth or 1) >= 2 then list[#list + 1] = "character_demon_imp_tutorial" end
                 return list
             end },
             -- The press: two more imps into the road ahead every few turns for as long as the crossing
@@ -91,7 +91,7 @@ return {
             -- ten headless runs finished every time -- no stall, at either the four-tile hold or the
             -- three it used to keep.
             { every = 14, from = "back", maxAlive = 4,
-              composition = function() return { "character_demon_imp", "character_demon_imp" } end },
+              composition = function() return { "character_demon_imp_tutorial", "character_demon_imp_tutorial" } end },
         },
     },
 }

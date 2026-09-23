@@ -58,7 +58,7 @@ return {
     {
         name = "the stair is only a stair once the guard is off it",
         fn = function()
-            local cell = { x = 3, y = 4, encounter = { kind = "objective", name = "The Suppliant" },
+            local cell = { x = 3, y = 4, encounter = { kind = "objective", name = "The Elder Lamia" },
                            cleared = true }
             Descent.openStair(cell)
             assert(cell.encounter.kind == "stair", "beating the guard opens the way down")

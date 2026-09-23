@@ -345,6 +345,15 @@ function Party.new(opts)
     --            the deployment phase passes its line, so a kit change is made against who is fighting
     --   filters  a chip strip above the stash; see Party:drawFilters. The stash's other header
     --            control, Sort, needs nothing from the host and is always offered (see SORTS)
+    --   party    (opt-in) the bodies on the rail, instead of the whole roster. NARROWING, and that is
+    --            the difference from `fielded` one line up, which only MARKS -- a reader meeting the
+    --            two together will otherwise assume they are the same kind of thing. The overworld
+    --            passes the expedition underground (models/descent.lua's Descent.party), because a
+    --            member left in town is not standing here to be kitted. Same shape and same name as
+    --            ui/panels/consumables.lua's own narrowing, so the two read alike
+    --   pool     which container the pool column shows: "stash" (default, the town shelf), "pack" (the
+    --            bag the company is carrying -- the only one reachable underground), or "both", which
+    --            adds the Stash/Pack switch to the pool header and is what provisioning is done on
     self.modes = { "loadout" }
     if opts.tactics ~= false then self.modes[#self.modes + 1] = "tactics" end
     if opts.classes ~= false then self.modes[#self.modes + 1] = "classes" end
@@ -352,6 +361,14 @@ function Party.new(opts)
     self.persist = opts.persist ~= false
     self.fielded = opts.fielded
     self.filters = opts.filters
+    -- WHICH CONTAINER THE POOL COLUMN SHOWS (see Party:poolSource). Trailing underscore because `pool`
+    -- is already the PoolGrid widget on this object and two things called `pool` one line apart is how
+    -- a file starts lying to its own reader.
+    self.pool_ = opts.pool or "stash"
+    -- ...and which way the switch is set when there is one. It opens on the PACK, because a screen that
+    -- offers both is a screen the player came to in order to pack a bag -- the shelf is one press away
+    -- and is where they have just come from.
+    self.poolSide = (self.pool_ == "both") and "pack" or nil
     self.onFilterChanged = opts.onFilterChanged
     self.filterCursor = 1
     self.filterOpen = false -- the stash filter dropdown starts closed, behind its "Filter" toggle
@@ -376,7 +393,7 @@ function Party.new(opts)
     self.boxX = math.floor(Scale.WIDTH / 2 - self.boxW / 2)
     self.boxY = math.floor(Scale.HEIGHT / 2 - self.boxH / 2)
 
-    self.chars = (self.player and self.player.roster) or {}
+    self.chars = opts.party or (self.player and self.player.roster) or {}
     self.charIndex = 1
     self.railOffset = 0
     self.railCursor = 1 -- rail navigation cursor (distinct from charIndex, the edited member)
@@ -458,7 +475,7 @@ function Party.new(opts)
             if Player.seeNew(self.player, Player.NEW_STASH, item and item.id) then Player.save() end
         end,
     })
-    self.pool:setItems(self.player and self.player.stash or {})
+    self.pool:setItems(self:poolList())
 
     -- The stash header's two controls, filling in from the right edge of the stash: Filter, then Sort
     -- beside it. Both open a dropdown that OVERLAYS the stash rather than reserving a band, so a shut
@@ -478,6 +495,23 @@ function Party.new(opts)
         edge = self.filterBtn.x - 6
     end
     self:layoutSort(edge, self.poolHeaderY - 2, btnH)
+
+    -- THE CONTAINER SWITCH, and it stands where the column's LABEL would otherwise be rather than
+    -- beside it. The segments say "Stash" and "Pack", which is what the label said -- so naming the two
+    -- containers and letting you press one costs the header no width at all, and the count rides on
+    -- whichever is live exactly as it did when there was only one.
+    --
+    -- Drawn only on a screen that can reach both (opts.pool == "both": the Armory and the Gate). On a
+    -- floor of the rift the shelf is a building in a city, so there is nothing to switch TO and no
+    -- control is drawn -- which is this project's standing rule rather than a saving.
+    self.poolSwitch = nil
+    if self.pool_ == "both" then
+        local segW, gap = 78, 4
+        self.poolSwitch = {
+            { side = "pack", x = self.pool.x, y = self.poolHeaderY - 3, w = segW, h = btnH },
+            { side = "stash", x = self.pool.x + segW + gap, y = self.poolHeaderY - 3, w = segW, h = btnH },
+        }
+    end
 
     -- Tab segments, sized to the label rather than to a share of the box: two words centred over a
     -- 1160px panel would read as a header, not as something you can click.
@@ -719,6 +753,7 @@ function Party:cycleFocus(delta)
     -- region boundary on. They follow the stash they act on, in the order the header shows them.
     local regions = {}
     for i, r in ipairs(REGIONS) do regions[i] = r end
+    if self.poolSwitch then regions[#regions + 1] = "source" end
     regions[#regions + 1] = "sort"
     if self.filters then regions[#regions + 1] = "filters" end
     local idx = 1
@@ -794,6 +829,54 @@ function Party:refreshStash()
     self.pool:setItems(self:visibleStash())
 end
 
+-- ---------------------------------------------------------------------------
+-- WHICH CONTAINER THE POOL COLUMN IS A VIEW OF
+-- ---------------------------------------------------------------------------
+--
+-- The column used to be the stash and nothing else, and every transfer path below reached
+-- `self.player.stash` by name. There are two containers now -- the town's shelf and the bag the company
+-- carries (models/player.lua) -- and which one this panel is looking at is a property of WHERE IT WAS
+-- OPENED: the Armory and the Gate can see both, a floor of the rift can only see the bag.
+--
+-- THREE VERBS, AND EVERY PATH BELOW GOES THROUGH THEM. Read the list, take out of it, put into it. That
+-- is the whole of the indirection and it is deliberately NOT the trick Party:setDebugAll uses further
+-- down -- setting `player.stash` aside and pointing it at another table. That works there because it is
+-- temporary, guarded and development-only; doing it with the real pack would mean Party:close's
+-- Player.save() could write the bag over the town's entire shelf if any path returned early, and a
+-- save-destroying failure guarded only by line ordering is not a design.
+function Party:poolSource()
+    -- "both" is a switch the player flips; self.poolSide is which way it is set right now.
+    if self.pool_ == "both" then return self.poolSide or "pack" end
+    return self.pool_ or "stash"
+end
+
+function Party:poolList()
+    if not self.player then return {} end
+    if self:poolSource() == "pack" then
+        self.player.pack = self.player.pack or {}
+        return self.player.pack
+    end
+    self.player.stash = self.player.stash or {}
+    return self.player.stash
+end
+
+-- Take the piece at `index` out of whichever list is showing. Through the model's own funnel, so the
+-- unread-husk refusal (models/player.lua's Player.takeFromList) holds on both containers without this
+-- file knowing the rule.
+function Party:poolTake(index)
+    local Player = require("models.player")
+    return Player.takeFromList(self:poolList(), index)
+end
+
+-- ...and put one back. NOT Player.stow: what this panel is doing is moving a piece between a grid and
+-- the list the player is LOOKING AT, and a displaced item that jumped to the other container because
+-- of where the company happens to be standing would be a piece that vanished off the screen it was
+-- dropped on.
+function Party:poolPut(item)
+    local Player = require("models.player")
+    return Player.addToList(self:poolList(), item)
+end
+
 -- Does `item` survive the active filter strip? An item passes a group when that group either isn't a
 -- view filter (no `valueOf` -- the debug editor's groups filter by rebuilding the catalog instead) or
 -- has nothing picked, OR the item's value for the group is one of the picked options. It must pass
@@ -819,7 +902,7 @@ end
 -- is rearranging is a VIEW. Nothing here writes the stash, so an order picked in the Armory cannot
 -- outlive the panel or reach the save.
 function Party:visibleStash()
-    local stash = (self.player and self.player.stash) or {}
+    local stash = self:poolList()
     local sort = self:sortSpec()
     if not self.filters and not sort.less then self.stashMap = nil return stash end
 
@@ -874,15 +957,20 @@ function Party:setDebugAll(on)
     self.drag = nil
 
     if on then
-        self.realStash = self.player and self.player.stash
-        if self.player then self.player.stash = {} end
+        -- Set aside whichever list is showing, not `stash` by name: with the pack in the column the
+        -- catalog has to replace the pack, or toggling it on underground would blank the town's shelf.
+        self.realStash = self:poolList()
+        self.realStashSide = self:poolSource()
+        if self.player then self.player[self.realStashSide] = {} end
         self.debugAll = true
         self:restockCatalog()
     else
-        if self.player and self.realStash then self.player.stash = self.realStash end
-        self.realStash = nil
+        if self.player and self.realStash then
+            self.player[self.realStashSide or "stash"] = self.realStash
+        end
+        self.realStash, self.realStashSide = nil, nil
         self.debugAll = false
-        self.pool:setItems(self.player and self.player.stash or {})
+        self.pool:setItems(self:poolList())
         self:refreshStash()
     end
     Debug.allItems = self.debugAll
@@ -892,7 +980,7 @@ end
 -- reshuffle under the cursor between restocks. Rebuilt in place (same table identity) because the
 -- pool holds a reference to player.stash. Mirrors states/debug_editor.lua's restock.
 function Party:restockCatalog()
-    local stash = self.player and self.player.stash
+    local stash = self:poolList()
     if not stash then return end
     local ids = {}
     for id in pairs(Item.defs) do ids[#ids + 1] = id end
@@ -1013,20 +1101,20 @@ end
 function Party:placeIntoGrid(stashIndex, cell)
     local char = self:currentChar()
     if not (char and self.player) then return end
-    if self:refuseUnread(self.player.stash and self.player.stash[stashIndex]) then return end
+    if self:refuseUnread(self:poolList()[stashIndex]) then return end
     if Item.isBound(char.inventory[cell]) then return end -- a bound relic can't be displaced from its cell
-    local incoming = Player.takeFromStash(self.player, stashIndex)
+    local incoming = self:poolTake(stashIndex)
     if not incoming then return end
     local displaced = char.inventory[cell]
     char.inventory[cell] = incoming
-    if displaced then Player.addToStash(self.player, displaced) end
+    if displaced then self:poolPut(displaced) end
     self:refreshStash()
     self:noteUnusable(char, incoming)
     if self.onEquip then self.onEquip() end -- a stash item just moved onto a member
 end
 
 function Party:stashIndexOf(item)
-    for i, it in ipairs((self.player and self.player.stash) or {}) do
+    for i, it in ipairs(self:poolList()) do
         if it == item then return i end
     end
     return nil
@@ -1034,7 +1122,7 @@ end
 
 function Party:transferStashToGrid(poolIndex, cell)
     local stashIndex = self:stashIndex(poolIndex)
-    local stashItem = self.player and self.player.stash and self.player.stash[stashIndex]
+    local stashItem = self:poolList()[stashIndex]
     if not stashItem then return end
     if Item.isStackable(stashItem) and (stashItem.quantity or 1) > 1 then
         self:openQuantityPopup(stashItem, cell)
@@ -1087,7 +1175,7 @@ function Party:commitStashToGrid(stashItem, cell, count)
             local displaced = char.inventory[slot]
             char.inventory[slot] = Item.instantiate(stashItem.id, remaining, stashItem.level)
             remaining = 0
-            if displaced then Player.addToStash(self.player, displaced) end
+            if displaced then self:poolPut(displaced) end
         end
     end
 
@@ -1095,7 +1183,7 @@ function Party:commitStashToGrid(stashItem, cell, count)
     stashItem.quantity = stashItem.quantity - moved
     if stashItem.quantity <= 0 then
         local index = self:stashIndexOf(stashItem)
-        if index then Player.takeFromStash(self.player, index) end
+        if index then self:poolTake(index) end
     end
 
     self.pool:cancelPickup()
@@ -1129,7 +1217,7 @@ function Party:stowFromGrid(cell)
     if not item then return end
     if Item.isBound(item) then self.grid:cancelPickup() return end -- a bound relic never leaves the grid
     Character.removeItem(char, item)
-    Player.addToStash(self.player, item)
+    self:poolPut(item)
     self.grid:cancelPickup()
     self:refreshStash()
 end
@@ -1160,12 +1248,12 @@ function Party:givePoolItemToMember(poolIndex, memberIdx)
     local member = self.chars[memberIdx]
     if not member then return end
     local stashIndex = self:stashIndex(poolIndex)
-    local item = self.player and self.player.stash and self.player.stash[stashIndex]
+    local item = self:poolList()[stashIndex]
     if not item then return end
     if self:refuseUnread(item) then self.pool:cancelPickup(); return end
-    Player.takeFromStash(self.player, stashIndex)
+    self:poolTake(stashIndex)
     if not Character.addItem(member, item) then
-        Player.addToStash(self.player, item)
+        self:poolPut(item)
         self:setMsg((member.name or "That member") .. "'s grid is full.", false)
     elseif not self:noteUnusable(member, item) then
         self:setMsg("Gave " .. (item.name or "item") .. " to " .. (member.name or "member") .. ".", true)
@@ -1216,7 +1304,7 @@ end
 -- than emptying itself onto the member because the reach was a click.
 function Party:equipStashItem(poolIndex)
     local char = self:currentChar()
-    local stashItem = self.player and self.player.stash and self.player.stash[self:stashIndex(poolIndex)]
+    local stashItem = self:poolList()[self:stashIndex(poolIndex)]
     if not (char and stashItem) then return end
     if self:refuseUnread(stashItem) then return end
     local slot = Character.firstEmptySlot(char)
@@ -1273,6 +1361,15 @@ function Party:navigate(dc, dr)
         self:moveFilterCursor(dc, dr)
         return
     end
+    if region == "source" then
+        -- A row of two. Left/right walks between them AND takes the one it lands on -- there is no
+        -- second press to confirm, because the column under it changes as you move and a pair where
+        -- the highlight disagrees with the list would be the worse readout. Up or down leaves for the
+        -- column it is a header for.
+        if dr ~= 0 then self:setFocus("pool") return end
+        if dc ~= 0 then self:togglePoolSide() end
+        return
+    end
     if region == "sort" then
         -- One column of orders: up/down walks it, and pushing left leaves for the stash it orders.
         if dc == -1 then self:setFocus("pool") return end
@@ -1309,6 +1406,10 @@ end
 function Party:confirm()
     if self.focus == "editor" then
         self:columnEditor():confirm()
+        return
+    end
+    if self.focus == "source" then
+        self:togglePoolSide()
         return
     end
     if self.focus == "filters" then
@@ -2302,12 +2403,64 @@ function Party:drawModeSelector()
     love.graphics.setColor(1, 1, 1)
 end
 
+-- What the pool column is called, and how full it is.
+--
+-- THE PACK QUOTES ITS CEILING AND THE SHELF DOES NOT, because only one of them has one: the bag is
+-- capped (Descent.carryMax) and the town's shelf is unbounded and always will be. A count with no
+-- denominator beside a count with one is the honest pair -- a "/ inf" on the shelf would invent a limit
+-- to reassure the player about, and a bare number on the bag would hide the one that matters.
+function Party:poolCaption(side)
+    side = side or self:poolSource()
+    if self.debugAll then return "Catalog (all items)" end
+    if side == "pack" then
+        local Descent = require("models.descent")
+        local held = #((self.player and self.player.pack) or {})
+        return "Pack " .. held .. " / " .. Descent.carryMax(self.player)
+    end
+    return "Stash (" .. #((self.player and self.player.stash) or {}) .. ")"
+end
+
 function Party:drawPool()
     love.graphics.setFont(self.smallFont)
-    Theme.set(Theme.muted)
-    local label = self.debugAll and "Catalog (all items)" or "Stash"
-    love.graphics.print(label .. " (" .. self.pool:count() .. ")", self.pool.x, self.poolHeaderY)
+    if self.poolSwitch then
+        -- THE LIVE SIDE IS FILLED, the other is an outline -- ui/panels/shop.lua's Buy/Sell selector and
+        -- this panel's own tab strip, which is the pattern a player has already learnt twice by here.
+        local live = self:poolSource()
+        for _, seg in ipairs(self.poolSwitch) do
+            local on = seg.side == live
+            Theme.set(on and Theme.panel or Theme.panel2)
+            love.graphics.rectangle("fill", seg.x, seg.y, seg.w, seg.h, 4, 4)
+            Theme.set(self.focus == "source" and on and Theme.cursor or (on and Theme.accentAmber or Theme.frame))
+            love.graphics.rectangle("line", seg.x, seg.y, seg.w, seg.h, 4, 4)
+            Theme.set(on and Theme.text or Theme.muted)
+            love.graphics.printf(seg.side == "pack" and "Pack" or "Stash",
+                seg.x, seg.y + (seg.h - self.smallFont:getHeight()) / 2, seg.w, "center")
+        end
+        -- ...and the count for the live side, to the right of the pair.
+        Theme.set(Theme.muted)
+        local right = self.poolSwitch[#self.poolSwitch]
+        love.graphics.print(self:poolCaption(), right.x + right.w + 10, self.poolHeaderY)
+    else
+        Theme.set(Theme.muted)
+        love.graphics.print(self:poolCaption(), self.pool.x, self.poolHeaderY)
+    end
+    love.graphics.setColor(1, 1, 1)
     self.pool:draw()
+end
+
+-- Point the column at the other container. Every in-progress hold is dropped first: a pickup carries an
+-- INDEX, and an index into the list you just stopped looking at would place the wrong piece.
+function Party:setPoolSide(side)
+    if not self.poolSwitch or side == self:poolSource() then return end
+    self.grid:cancelPickup()
+    self.pool:cancelPickup()
+    self.drag = nil
+    self.poolSide = side
+    self:refreshStash()
+end
+
+function Party:togglePoolSide()
+    self:setPoolSide(self:poolSource() == "pack" and "stash" or "pack")
 end
 
 -- The development-only "All Items" pill at the right end of the tab band. Lit when the catalog is
@@ -2388,6 +2541,9 @@ function Party:drawPromptBar()
         local label = (self.focus == "rail") and "Select"
             or (self.focus == "pool") and "Equip"
             or (self.focus == "sort") and "Sort by"
+            -- On the container switch confirm swaps which list the column shows. Named for the deed
+            -- rather than for the control, as every other entry here is.
+            or (self.focus == "source") and "Stash / Pack"
             or (self.focus == "filters") and "Toggle" or "Pick up"
         add(confirmGlyph, label, PROMPT_GO)
         add(cancelGlyph, "Close", PROMPT_NO)
@@ -2625,6 +2781,11 @@ function Party:cursorKind(x, y)
     local editor = self:columnEditor()
     if editor then return editor:cursorKind(x, y) end
     if self.filterBtn and pointIn(self.filterBtn, x, y) then return "hand" end
+    if self.poolSwitch then
+        for _, seg in ipairs(self.poolSwitch) do
+            if pointIn(seg, x, y) then return "hand" end
+        end
+    end
     if self:filterIndexAt(x, y) then return "hand" end
     if self.grid:indexAt(x, y) or self.pool:contains(x, y) then return "hand" end
     return "arrow"
@@ -2752,6 +2913,15 @@ function Party:mousepressed(x, y, button)
         return
     end
 
+    if self.poolSwitch then
+        for _, seg in ipairs(self.poolSwitch) do
+            if pointIn(seg, x, y) then
+                self:setFocus("source")
+                self:setPoolSide(seg.side)
+                return
+            end
+        end
+    end
     if self.filterBtn and pointIn(self.filterBtn, x, y) then
         self:toggleFilterPanel()
         return

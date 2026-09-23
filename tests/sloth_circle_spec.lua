@@ -1,9 +1,18 @@
--- Tests for the SLOTH CIRCLE: the tundra's five bodies, its mini sin, and the rule they share.
+-- Tests for the SLOTH CIRCLE: what is left of the tundra's bodies, its mini sin, and the rule they
+-- share. Four of the five went in the strata cut (2026-09-22) and the apex is the only one standing;
+-- where a case's SUBJECT survived the deletion and only its fixture did not, it is staged on a bare
+-- stand-in wearing the piece, and where the rule itself went with the body the case is deleted and
+-- what it promised is written out where it stood.
 --
 -- The tier's design rule, pinned here as it is for the other circles: A MINI SIN'S SECOND PHASE IS ITS
--- GENERAL'S FIRST. Acedia's Forsworn Pike swears the WHOLE party at the opening bell; the Late Watch
+-- GENERAL'S FIRST. Acedia's Forsworn Pike swears the WHOLE party at the opening bell; the Unkept Watch
 -- swears one pair, on its own turn, and then at half health starts bracing the way her Oathkeeper Shield
 -- does.
+--
+-- THE BODY THAT WORE IT IS GONE. The Late Watch was deleted with the other six lieutenants (2026-09-22,
+-- Descent.SINS' header) and the watch is not, so the rule above is pinned on the ITEM alone and the case
+-- that sized the blueprint is written out as a contract at the foot of this file. Sloth is also the one
+-- circle with nothing ordinary left to stand in for it -- read the slot's own note in Descent.SINS.
 --
 -- The circle's real design property: SLOTH TAKES TURNS, NOT HEALTH. The tundra's floor is the one
 -- terrain in the game that does not tax a step (data/biomes/tundra.lua), so a stratum built on it has to
@@ -12,7 +21,6 @@
 local Character = require("models.character")
 local Combat = require("models.combat")
 local Descent = require("models.descent")
-local Hazard = require("models.hazard")
 local Item = require("models.item")
 local Status = require("models.status")
 local Trait = require("models.trait")
@@ -22,11 +30,19 @@ local unit, openTurn, itemNamed = Fixture.unit, Fixture.openTurn, Fixture.itemNa
 
 return {
     {
-        name = "Sloth's stair is held by its own mini sin",
+        -- THE LATE WATCH IS DELETED AND THIS CASE IS THE MARKER -- and this is the loudest of the seven
+        -- slots, because the tundra rolls exactly two bodies and one of them is tier 1, so the stand-in
+        -- is this circle's own ELITE and the stratum bills the Long Winter twice. Named here on purpose:
+        -- seating a replacement reddens this case, and whoever does it owes the contract at the foot of
+        -- this file.
+        name = "Sloth's lieutenant slot is filled, and by the only body left to fill it",
         fn = function()
             local sin
             for _, s in ipairs(Descent.SINS) do if s.id == "sloth" then sin = s end end
-            assert(sin and sin.minor.lead == "character_the_late_watch", "the Late Watch holds the floor")
+            assert(sin and sin.minor.lead == "character_the_long_winter",
+                "the Long Winter stands in for the Late Watch")
+            assert(Character.defs[sin.minor.lead], "and whatever stands there is a body that loads")
+            assert(not Character.defs["character_the_late_watch"], "the Late Watch is gone")
             assert(sin.guardian.filler == sin.minor.lead, "and fills out Acedia's own stair")
         end,
     },
@@ -38,8 +54,11 @@ return {
             -- Stated as a property of the KIT rather than of one body: what makes this stratum itself is
             -- that its weapons all land control. A future body here that only dealt damage would be a
             -- Wrath creature wearing a tundra tileset.
+            -- weapon_rime_nip went with the rime-gnat in the strata cut and is not on this list any
+            -- more; the two below are what the circle still swings. A refill adds its own pieces here,
+            -- and the point of the list is that adding one to the tundra without a control rider on it
+            -- is what should redden.
             local expect = {
-                weapon_rime_nip = "status_freeze",
                 weapon_drift_touch = "status_halted",
                 weapon_hoarfrost_antlers = "status_freeze",
             }
@@ -51,25 +70,28 @@ return {
         end,
     },
     {
-        name = "a drift-thing Halts, and a rime-gnat Freezes",
+        -- BOTH BODIES THAT WORE THESE ARE GONE and only one of the two weapons survived with them.
+        -- The drift-touch is still here and nobody ships carrying it, so it is measured on a bare
+        -- stand-in; the rime-nip is deleted outright, and what it said -- that the circle's cheapest
+        -- chaff Froze rather than bit -- is unasserted until something is authored to say it again.
+        -- The apex's own antlers are the circle's other live control rider, and the case above holds
+        -- both of them to it by reading the source.
+        name = "a drift-touch Halts what it reaches",
         fn = function()
-            for _, case in ipairs({
-                { id = "character_drift_thing", weapon = "weapon_drift_touch", status = "status_halted" },
-                { id = "character_rime_gnat", weapon = "weapon_rime_nip", status = "status_freeze" },
-            }) do
-                local map = Fixture.new(10, 10)
-                local c = Fixture.combat(map,
-                    { unit("character_knight", 4, 4) },
-                    { unit(case.id, 5, 4) })
-                local foe, victim
-                for _, u in ipairs(c.units) do
-                    if u.side == "party" then victim = u else foe = u end
-                end
-                openTurn(c, foe)
-                assert(Combat.useItem(c, foe, itemNamed(foe.char, case.weapon), victim.x, victim.y),
-                    case.id .. " acts")
-                assert(Status.has(victim, case.status), case.id .. " must land " .. case.status)
+            local map = Fixture.new(10, 10)
+            local c = Fixture.combat(map,
+                { unit("character_knight", 4, 4) },
+                { unit("character_ice_elemental", 5, 4,
+                    { isolate = "bare", items = { "weapon_drift_touch" } }) })
+            local foe, victim
+            for _, u in ipairs(c.units) do
+                if u.side == "party" then victim = u else foe = u end
             end
+            openTurn(c, foe)
+            assert(Combat.useItem(c, foe, itemNamed(foe.char, "weapon_drift_touch"), victim.x, victim.y),
+                "the drifting thing reaches out")
+            assert(Status.has(victim, "status_halted"),
+                "and takes the turn rather than the health -- the circle's whole rule")
         end,
     },
 
@@ -83,14 +105,19 @@ return {
             assert(parent.onCombatStart, "the general's version arrives before anybody moves")
             assert(def.onCast, "the mini sin's is paid for with a turn")
 
+            -- THE SLEEPER IS DELETED AND TORPOR IS NOT. It still rides utility_unkept_watch -- the
+            -- deleted mini sin's own piece, and the only live bearer -- so the rule is measured on a
+            -- stand-in wearing the watch and the touch. Health well clear of the watch's half-health
+            -- phase, which braces and would otherwise fire inside a case that is not about it.
             local map = Fixture.new(12, 12)
             local c = Fixture.combat(map,
                 { unit("character_knight", 3, 3), unit("character_archer", 3, 5),
                   unit("character_knight", 3, 7) },
-                { unit("character_hollow_sleeper", 6, 4) })
+                { unit("character_ice_elemental", 6, 4, { isolate = "bare", stats = { health = 200 },
+                    items = { "weapon_drift_touch", "utility_unkept_watch" } }) })
             local sleeper, foes = nil, {}
             for _, u in ipairs(c.units) do
-                if u.char.id == "character_hollow_sleeper" then sleeper = u else foes[#foes + 1] = u end
+                if u.side ~= "party" then sleeper = u else foes[#foes + 1] = u end
             end
 
             -- Nothing sworn before it acts: that is the whole difference from the general.
@@ -111,24 +138,18 @@ return {
                 "Torpor swears exactly one PAIR (saw %d) -- swearing all three is Acedia's version", sworn))
         end,
     },
-    {
-        name = "the Winter Hart lays the biome's own ice as it acts",
-        fn = function()
-            local map = Fixture.new(12, 12)
-            local c = Fixture.combat(map,
-                { unit("character_knight", 4, 4) },
-                { unit("character_the_winter_hart", 7, 4) })
-            local hart
-            for _, u in ipairs(c.units) do
-                if u.char.id == "character_the_winter_hart" then hart = u end
-            end
-            assert(not Hazard.at(c, hart.x, hart.y, "hazard_black_ice"), "it starts on clean ground")
-            openTurn(c, hart)
-            Combat.useItem(c, hart, itemNamed(hart.char, "weapon_hoarfrost_antlers"), 6, 4)
-            assert(Hazard.at(c, hart.x, hart.y, "hazard_black_ice"),
-                "the danger is where the Hart has BEEN, not the Hart")
-        end,
-    },
+    -- THE WINTER HART'S CASE IS DELETED WITH THE BODY, and it could not be repointed the way the two
+    -- above were, because the rule went with it and not just the fixture. The ice was never the
+    -- antlers' -- those survive on the apex and only Freeze -- it was `trait_conduction`, riding
+    -- utility_hoarfrost_pelt, and both are gone. What it said:
+    --
+    --     it acts, and hazard_black_ice is left on the tile it acted FROM
+    --
+    -- So the danger was where the Hart had BEEN rather than where it was, and a company that chased
+    -- it across the tundra was walking its own pursuit into the floor. Nothing in the game lays black
+    -- ice now except the biome itself (data/biomes/tundra.lua), so the verb is the tundra's alone
+    -- until something is authored to carry it again.
+
 
     -- ------------------------------------------------------------ the tier's rule
     {
@@ -149,19 +170,15 @@ return {
             assert(braces, "the phase braces, which is the Oathkeeper Shield half of Acedia's kit")
         end,
     },
-    {
-        name = "the Late Watch sits between its line body and its general",
-        fn = function()
-            local watch = Character.defs["character_the_late_watch"]
-            local acedia = Character.defs["character_general_sloth"]
-            assert(watch.boss and watch.referenceLevel, "a centrepiece that scales toward the shallows")
-            assert(watch.stats.health > Character.defs["character_drift_thing"].stats.health,
-                "it outweighs its circle's line body")
-            local share = watch.stats.health / acedia.stats.health
-            assert(share > 0.6 and share < 0.85, string.format(
-                "the Late Watch is %.0f%% of Acedia; the tier sits between 60%% and 85%%", share * 100))
-        end,
-    },
+    -- THE CASE THAT SIZED THE LATE WATCH IS GONE WITH THE BODY, and this is what it said so the
+    -- replacement can be held to it:
+    --
+    --     boss = true and a referenceLevel   a centrepiece that scales toward the shallows
+    --     health above its circle's line     it outweighs the stock it stands over
+    --     health 60-85% of Acedia's          and stands below the sin whose stair it holds
+    --
+    -- The same band tests/wrath_circle_spec.lua argues out in full. The line body it was measured
+    -- against, character_drift_thing, went in the strata cut, so the replacement owes a line body too.
 
     -- ------------------------------------------------------------ the apex
     {
@@ -172,8 +189,12 @@ return {
             for _, phase in ipairs(dark.phases) do
                 for _, r in ipairs(phase.responses or {}) do
                     if r.kind == "summon" then
-                        assert(r.id == "character_drift_thing",
-                            "it sheds Halters -- on the board where movement is free, tempo is the tax")
+                        -- It shed drift-things until the strata cut took them; the tundra's own
+                        -- surviving stock stands in (see utility_long_dark's note). What the apex
+                        -- must never shed is a body that trades in DAMAGE -- on the one board where
+                        -- movement is free, tempo is the tax.
+                        assert(r.id == "character_ice_elemental",
+                            "the apex sheds the circle's own stock, not somebody else's")
                     end
                     assert(r.kind ~= "bonus" or r.amount < 0, "the apex adds bodies, not strength")
                 end
@@ -185,8 +206,9 @@ return {
     {
         name = "every Sloth item is natural kit and nothing else",
         fn = function()
-            for _, id in ipairs({ "weapon_rime_nip", "weapon_drift_touch", "weapon_hoarfrost_antlers",
-                                  "utility_sleepers_weight", "utility_hoarfrost_pelt",
+            -- weapon_rime_nip, utility_sleepers_weight and utility_hoarfrost_pelt went with the three
+            -- bodies that wore them. The four below are what the circle still carries.
+            for _, id in ipairs({ "weapon_drift_touch", "weapon_hoarfrost_antlers",
                                   "utility_long_dark", "utility_unkept_watch" }) do
                 local def = Item.defs[id]
                 assert(def, id .. " does not exist")

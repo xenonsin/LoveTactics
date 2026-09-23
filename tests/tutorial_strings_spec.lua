@@ -29,14 +29,17 @@ local NOTES = "conversation_tutorial_notes"
 -- that renames one, shows up as a named failure rather than as a bubble that quietly stops drawing.
 local FIELDED = {
     { conv = CITY,  id = "gate_stair",    coach = true },
-    -- FOUR OF THIS BAG'S LINES ARE NOT HERE -- `ward_card`, `rift_card`, `board_card` and `new_door`
-    -- -- and they are the four the PLAZA used to speak. The city's coach is cut (states/hub.lua's
-    -- header); the lines stay in the bag because they are stamped and translated, and the bag's own
-    -- header argues each. This list is what a surface asks for, so a retired line staying in it would
-    -- pin a bubble nobody draws.
+    -- THE ONE THING THE PLAZA SAYS, on the first morning, pinned to the Cathedral's plate
+    -- (states/hub.lua's draw). It went with the city's whole coach in 2026-09-21 and came back without
+    -- the door refusal that cut it; the bag's own header argues the round trip.
+    { conv = CITY,  id = "ward_card",     coach = true },
+    -- THREE OF THIS BAG'S LINES ARE STILL NOT HERE -- `rift_card`, `board_card` and `new_door` -- and
+    -- they are the rest of what the PLAZA used to speak. They stay in the bag because they are stamped
+    -- and translated, and the bag's own header argues each. This list is what a surface asks for, so a
+    -- retired line staying in it would pin a bubble nobody draws.
     --
-    -- What is left is a bubble on a ROW inside a screen, both of them: the row the Ward names when
-    -- the purse covers the bone, and the row it falls back to when it does not (ui/panels/ward.lua).
+    -- The other two are bubbles on a ROW inside a screen: the row the Ward names when the purse covers
+    -- the bone, and the row it falls back to when it does not (ui/panels/ward.lua).
     { conv = CITY,  id = "mend_row",      coach = true },
     { conv = CITY,  id = "mend_rest",     coach = true },
     { conv = NOTES, id = "tally_title" },
@@ -47,8 +50,8 @@ local FIELDED = {
     { conv = NOTES, id = "classes_body" },
     { conv = NOTES, id = "relics_title" },
     { conv = NOTES, id = "relics_body" },
-    { conv = NOTES, id = "wound_title" },
-    { conv = NOTES, id = "wound_body" },
+    { conv = NOTES, id = "injury_title" },
+    { conv = NOTES, id = "injury_body" },
     -- The window's own footer, one line per device (ui/panels/tutorial_note.lua picks the id).
     { conv = NOTES, id = "dismiss_pad" },
     { conv = NOTES, id = "dismiss_touch" },
@@ -188,10 +191,10 @@ return {
             -- THE CITY ASKS FOR NO BUBBLE AT ALL any more -- the plaza's coach is cut, and this file
             -- used to pin `ward_card` and `new_door` to it by name. What it still owes is the window
             -- the mending opens with, one beat before its rows (states/hub.lua's
-            -- teachWounds). It rode the Cathedral's first-visit scene until that scene moved to the
+            -- teachInjuries). It rode the Cathedral's first-visit scene until that scene moved to the
             -- far side of the press, which is where Xin joins now.
             local hub = source("states/hub.lua")
-            for _, id in ipairs({ "wound_title", "wound_body" }) do
+            for _, id in ipairs({ "injury_title", "injury_body" }) do
                 assert(hub:find(id, 1, true), "states/hub.lua stopped asking for `" .. id .. "`")
             end
 

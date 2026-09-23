@@ -18,7 +18,7 @@
 -- a wrinkle to be patched -- it is the reason the item is on envy's shelf. What it covets is the
 -- fight's ending, and it does not much mind whose.
 --
--- The enemy's own bomblets carry the same rule (utility_volatile_core, character_demon_bomblet). You
+-- The enemy's own bomblets carry the same rule (utility_volatile_core, character_demon_bomblet_tutorial). You
 -- fought this; now you are it -- which is the shape every relic in this game takes.
 local Curve = require("models.curve")
 

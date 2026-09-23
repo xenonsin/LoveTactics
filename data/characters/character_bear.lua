@@ -4,15 +4,16 @@
 -- wears (data/items/ability/ability_wild_shape_bear.lua): its pools are placeholders the hunter's own
 -- body carries across, so its blueprint reads `health = 1` and `tier = 0`. Fielded as a combatant it
 -- spawns with one health at level 1 and swings like a general -- which is not a hypothetical, it is the
--- bug that character_the_gralloch.lua exists to replace, argued there and again in models/descent.lua.
--- A blueprint used as both cargo and combatant has to be SPLIT. The druid's bear stays hers; this is the
--- one anybody fights.
+-- bug the Gralloch was authored to replace, argued in models/descent.lua. A blueprint used as both cargo
+-- and combatant has to be SPLIT. The druid's bear stays hers; this is the one anybody fights. (The
+-- Gralloch itself is deleted -- all seven lieutenants came out on 2026-09-22 to be re-authored, and the
+-- head of Descent.SINS carries that note; the split is the part that mattered and it stands.)
 --
 -- WHAT IT IS FOR, in two jobs that are the same job. On the road it is the body that teaches the one
 -- compounding threat in the game -- meet it at ordinary size, watch the wound deepen, learn to break off
 -- -- and in the sow's fight it is her cub, carrying the identical rule at the identical size. That is
--- the Gralloch's own pattern and its header states it for the whole tier: the small body teaches the
--- rule the cheap way, and the big one has it in full. It also closes a real hole -- the bear shape is a
+-- the lieutenant tier's own pattern, which the Gralloch's header stated for all seven: the small body
+-- teaches the rule the cheap way, and the big one has it in full. It also closes a real hole -- the bear shape is a
 -- DRUID ability, so a party without one would otherwise meet Fury Swipes for the first time on a boss.
 --
 -- THE HIDE IS THE PUZZLE, AND IT POINTS AT ITS OWN WOUND. `pierce +3 / slash -3`: a point sinks into a

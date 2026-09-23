@@ -172,7 +172,7 @@ the shape — the machinery is there and pinned the moment a floor asks for it.
 
 - **On a campaign ground, the objectives are the only fights you must take, and you need not take any of
   them.** `placeEncounters` keeps combat off the spine — the union of the walks back from every end — so
-  a wounded company can always route to an end, or past one, to another.
+  an injured company can always route to an end, or past one, to another.
 
   **A descent floor opts out, and always did.** It sets `ascent`, where *combat is the route*: fights may
   stand on the spine, and `blockRoutes` puts most of them across the one way through something. That is
@@ -262,10 +262,16 @@ it"*, and then the company puts a hand in and the cache stands up.
 
   The item is the mimic stated as gear: **it holds what you take, and the fuller it is the harder it
   bites.** Out of a fight it is the only thing in the game that touches `Descent.CARRY_MAX` (+6 on a
-  ceiling of 20, best-not-sum across the packs) — it answers a refusal the player has certainly already
-  met, *"the chest stays shut"*. In a fight its blow is sized by `Descent.carried`, the same figure the
-  stair prices its toll against, so the item and the toll can never disagree about what "carrying"
-  means. It **reads** the haul and never spends it; eating the company's finds would be the game
+  ceiling of 28, best-not-sum across the roster's grids and the pack) — it answers a refusal the player
+  has certainly already met, *"the chest stays shut"*. In a fight its blow is sized by `Descent.found`,
+  the same figure the stair prices its toll against, so the item and the toll can never disagree about
+  what "carrying" means.
+
+  **THAT FIGURE WAS `Descent.carried` UNTIL THE PACK SHIPPED**, and the rename is not cosmetic:
+  `carried` counts the bag now, rations included, so a gullet pointed at it would already be biting for
+  whatever the player packed at the Gate before the first fight. The haul is the ammunition. The
+  `haulBonus` half moved with it — it used to be read off the town stash, which meant a bag left at
+  home widened the ceiling of a company nine floors from the shelf. It **reads** the haul and never spends it; eating the company's finds would be the game
   destroying loot in front of the player, which is what the chest code refuses to do one file over.
 
   What that buys is a decision the descent was already asking and could not price: **go deeper with a
@@ -465,6 +471,37 @@ answers *what finds you on the way*.
 it first, so an errand-heavy floor stands fewer elites rather than more markers. The stop count moves
 with that number and nothing else — see **A fight budget, not a combat share** for the measured reason.
 
+### One elite, one floor
+
+A standing threat only does that job while it is a **landmark**. *"The floor with the Meandering Stag on
+it"* is a sentence a player can say about a place; a Stag met on both floors of the wood is traffic, and
+the sentence goes away. So **an elite is eligible on exactly one floor of the rift**, and
+`tests/elite_floor_spec.lua` walks the fifteen floors and counts.
+
+The lock every elite blueprint already carried could not say it. `condition = ctx.biome == "forest"`
+places a body in a *stratum*, and a circle owns **two floors** — so the biome pin left every elite legal
+on both of its circle's stairs. The other half of the placement is the blueprint's own **`rung`** (1 for
+the approach, 2 for the seat, `models/encounter.lua`), and on an elite it is required rather than
+optional. It is also what makes the two floors of a circle different from each other: they share a
+ground, a house and a pool, and before this the only thing telling them apart was who stood on the stair.
+
+`Descent.SINS`' `elites` is a **separate** question and the two must not be collapsed: the rung says
+which floor an elite may stand on *at all*, and the billing says which of *that floor's* candidates the
+floor is **about** (weighted to `ELITE_NAMED_WEIGHT` against `ELITE_WEIGHT` for its spares). A billing
+naming an elite runged onto the circle's other floor weights an id the floor cannot deal — a silent
+no-op, which is why the spec holds the two in step rather than trusting the table.
+
+**Two floors stand no elite at all, and that is the honest reading rather than a gap left open.** Sloth's
+approach and Pride's seat are each a circle the 2026-09-22 cut left with a single elite, and under this
+rule a single elite can only stand on one stair. What it replaced was worse: the reader was `rung == 2
+and named.seat or named.approach`, so a circle with no seat billed its approach elite on *both* of its
+floors — the exact thing the named-elite rule exists to avoid, done invisibly because Lua's `and`/`or`
+cannot yield nil from the true branch. A bare floor is a hole an author fills; a doubled billing is a
+landmark demoted to traffic. Both entries in `Descent.SINS` say so where the hole is.
+
+The Crown's two elites carry no rung and are held by the same count: the underworld is **one** floor
+(`Descent.biomeAt` returns it where `sinAt` returns nothing), so the ground alone already pins them.
+
 **And the company can decline one.** A rolled fight arrives with no marker to read, so the judgement the
 muster band used to support moved to the deploy screen: a *Run Away* plate quoting its own odds
 (`models/flee.lua`, `docs/deployment.md`). It is a roll and it can fail — a guaranteed escape would make
@@ -596,7 +633,7 @@ reading a level, and it **compounds** — halving a gap twice leaves a quarter �
 the company down even though every camp is generous. The hub still heals whole; going home is what
 makes a company whole.
 
-**Wounds** (`models/wound.lua`) cap the hub's refill, and cap the camp too. A camp can never top
+**Injuries** (`models/injury.lua`) cap the hub's refill, and cap the camp too. A camp can never top
 someone past what the hub would give them.
 
 The prior swing is worth recording: the rest guarantee originally **no-opped entirely** (it read a
@@ -751,9 +788,15 @@ and cannot drift.
 
 | | before | after |
 |---|---|---|
-| floor 1's end | "The Stair Down — Gluttony" | **"The Gralloch"** |
+| floor 1's end | "The Stair Down — Gluttony" | **the approach body, by name** |
 | floor 2's end | "The Stair Down — Gluttony" | **"Gula, the Unsated"** |
 | once the guard falls | — | "The Stair Down" |
+
+The approach half of that table used to read **"The Gralloch"**, and it is deliberately vague now: all
+seven lieutenants were deleted on 2026-09-22 to be re-authored, so the name a floor's approach reports is
+whatever ordinary body is standing in for the slot (`Descent.SINS`' `minor.lead`, and the note above that
+table argues the whole cut). The mechanism is untouched — `Descent.guardianName` still reads the
+blueprint — and what the marker says is simply a less interesting name until the replacements land.
 
 **And the stairs run both ways.** `Descent.retreat` takes the company up one floor, to the floor above
 and the stair they came down by. The way up used to offer exactly one thing — end the expedition — so a
@@ -783,7 +826,7 @@ floor may name its end with the word *Stair* before the fight.
 
 **Walking out is free.** The company goes home with everything it picked up, and the only thing the day
 cost is the day. **Losing a fight is the whole of the risk**: a wipe takes `Player.WIPE_LOSS` — three
-quarters — of the run's gold and forging stock, and leaves the items, the wounds, and everything carried
+quarters — of the run's gold and forging stock, and leaves the items, the injuries, and everything carried
 in (`Player.loseHaul`, pinned by `tests/extraction_spec.lua`).
 
 **This rule inverted twice, and both old ones are worth recording.** First: *the objective was the only
@@ -810,7 +853,7 @@ Three things a wipe deliberately does not touch:
 
 - **The items.** A sword out of a chest is carried by a body, and the bodies came home. It is also what
   keeps a wipe from undoing the one reward the player can see and name.
-- **The wounds.** An injury outliving the run that caused it is the whole mechanic (`models/wound.lua`).
+- **The injuries.** An injury outliving the run that caused it is the whole mechanic (`models/injury.lua`).
 - **What was brought in, and anything spent.** Only *gains* are at risk, so a company that spent more at
   the Merchant than it found walks home with its purse intact rather than being billed the difference.
 

@@ -977,8 +977,8 @@ local function win()
     -- A won fight is not a lost life: any party member who fell is carried out to the overworld at a
     -- sliver of health rather than staying down. Only on a win -- a defeat costs the run outright.
     --
-    -- WHO WENT DOWN is kept for the launcher, which turns it into wounds (models/wound.lua): the free
-    -- revive stands, and the wound is the price rather than the loss of the body. A field on the
+    -- WHO WENT DOWN is kept for the launcher, which turns it into injuries (models/injury.lua): the free
+    -- revive stands, and the injury is the price rather than the loss of the body. A field on the
     -- existing table and NOT a new file-scope local -- this chunk sits within a couple of declarations
     -- of Lua 5.1's 200-local ceiling, and crossing it is a compile error naming an unrelated line.
     battle.fallen = Combat.reviveFallenParty(battle.combat)
@@ -1000,7 +1000,7 @@ local function lose()
     -- ...AND EVERYONE IT SPENT, which is the other half and the one only a defeat can produce. A fight
     -- lost with the party still on its feet leaves nobody on the floor, so this field came back empty and
     -- the meter never moved for it. Combat.spentParty adds whoever walked off the board under a third of
-    -- the pool they can still use. Appended rather than merged: Wound.inflict keys on character id and
+    -- the pool they can still use. Appended rather than merged: Injury.inflict keys on character id and
     -- dedupes there, so a body that is both fallen and spent is charged once.
     battle.fallen = Combat.fallenParty(battle.combat)
     for _, char in ipairs(Combat.spentParty(battle.combat)) do
@@ -5325,6 +5325,11 @@ function battle.openDeployLoadout(player)
         -- being a scripted one (Descent.classesUnlocked) -- the sweep's stops are launched from the
         -- overworld as ordinary encounters, deployment and all, and carry no tutorial flag to read.
         classes = require("models.descent").classesUnlocked(battle.player),
+        -- THE BAG, not the town's shelf, once the company is below ground. Asked of the player rather
+        -- than of this fight, because a deployment screen has no run to read and Player.packOpen is the
+        -- same question every other surface asks (models/player.lua). Nil above ground, which leaves
+        -- the duel, the draft and Act 0 exactly as they were.
+        pool = require("models.player").packOpen(battle.player) and "pack" or nil,
         onClose = function()
             battle.deployLoadout = nil
             -- A body snapshots what its gear decides at the moment it is stood up (its initiative is
@@ -5343,7 +5348,7 @@ end
 -- The POTIONS screen, opened over the deployment phase: the same panel the overworld's Potions
 -- button opens (ui/panels/consumables.lua), on the same roster and the same satchel.
 --
--- Wounds carry between the fights of a run, and the last place to spend a draught against them was a
+-- Injuries carry between the fights of a run, and the last place to spend a draught against them was a
 -- leg of overworld ago -- before the player had seen the ground, the enemy line or the objective. So a
 -- body that walks in at half health walks in that way because nobody could do anything about it on the
 -- one screen where the damage it is about to take is legible. Out here the flask costs no turn, which
@@ -5359,8 +5364,18 @@ end
 -- reason: a fight that skips deployment never pays to load it.
 function battle.openDeployPotions(player)
     if battle.deployModal() or not battle.deploy then return end
+    -- WHO IS DOWN HERE AND WHAT THEY CAN REACH, which this screen did not ask and should have. It
+    -- passed neither narrowing, so a fight on floor nine offered the whole roster -- bodies left in
+    -- town included -- and the whole town shelf to drink from. That is the same law the overworld's own
+    -- Use panel has held all along (states/game.lua, Player.partyRestoratives); this was simply the
+    -- surface nobody re-checked when it was written, and it predates the pack rather than arriving
+    -- with it.
+    local Descent = require("models.descent")
+    local run = player and player.descentRun
     battle.deployPotions = require("ui.panels.consumables").new({
         player = player,
+        party = run and Descent.party(run, player) or nil,
+        stash = run and false or nil,
         onClose = function()
             battle.deployPotions = nil
             if battle.deploy then battle.deploy:refreshPlacements() end
@@ -5423,7 +5438,7 @@ local function openDeployPhase(opts)
         -- it: a probe or a debug board has nothing to open. See battle.openDeployLoadout.
         onLoadout = opts.player and function() battle.openDeployLoadout(opts.player) end or nil,
         -- ...and the potion screen beside it, on the same terms: a fight with a player behind it has a
-        -- satchel, and this is the last beat before the bell where a wound the run walked in with can
+        -- satchel, and this is the last beat before the bell where an injury the run walked in with can
         -- still be mended without paying a turn for it. See battle.openDeployPotions.
         onPotions = opts.player and function() battle.openDeployPotions(opts.player) end or nil,
         -- Whether the fight is played or watched is asked HERE, next to the bell, seeded from the
@@ -5516,7 +5531,7 @@ function battle.enter(self, opts)
     battle.enemyLevel = opts.enemyLevel
         or require("models.descent").dangerLevel({ floor = battle.depth or 1 })
     battle.floorLevel = opts.floorLevel
-    battle.fallen = nil                  -- who went down in THIS fight, for the launcher's wounds
+    battle.fallen = nil                  -- who went down in THIS fight, for the launcher's injuries
     battle.routed = nil                  -- ...and whether the loss left anybody standing (see lose)
     battle.summary = nil                 -- the victory/defeat overlay, once the fight is decided
     battle.overruled = nil               -- has the objective's `overrule` already fired (once a fight)
@@ -7878,7 +7893,7 @@ function battle.mousepressed(x, y, button)
         if Debug.enabled and pointIn(winButton, x, y) then
             -- ...paying whatever the fight's script still owes on the way past it. A stage fires on a
             -- health threshold and this button crosses none, so the Champion's felling of Rowan -- and
-            -- the wound the city's Ward is hung on -- simply never happened. See
+            -- the injury the city's Ward is hung on -- simply never happened. See
             -- Combat.payScriptedFells: a debug shortcut may skip the SHOW, never the consequence.
             if not battle.over then Combat.payScriptedFells(battle.combat); win() end
             return

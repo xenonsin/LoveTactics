@@ -405,7 +405,7 @@ counter = "conversation_<vendor>_counter",
 offers = {
     -- the house's own shop: never gated, quiet, and announcing only to a company training for it
     { answer = "shelf", panel = "shop", quiet = true, announce = { declared = true } },
-    { answer = "mend",  panel = "ward", gate = { wound = true } },
+    { answer = "mend",  panel = "ward", gate = { injury = true } },
     -- a room may keep its OWN vendor, so a folded counter is not merged into the house's shelf:
     { answer = "supper", panel = "cafe", vendor = "cafe", gate = { expeditions = 2 } },
 },
@@ -415,7 +415,7 @@ offers = {
 
 ```lua
 { "<vendor>", "State your business.", id = "desk", choices = {
-    { "Heal a wound", answer = "mend", when = { offer = "mend" } },
+    { "Heal an injury", answer = "mend", when = { offer = "mend" } },
     { "Leave", answer = "leave" },
 } },
 ```
@@ -432,7 +432,7 @@ to it (`Conversation.play`'s `opts.startAt`), and a desk resolved out of its own
 greeting forever. Every desk needs an ungated `leave` option. `tests/conversation_spec.lua` pins both.
 
 A room's `gate` uses the same vocabulary as a door's unlocks, minus the `unlock` prefix:
-`trips`, `expeditions`, `wound`, `unidentified`, `cursed`, `quest`, `declared`. Every key in a gate must
+`trips`, `expeditions`, `injury`, `unidentified`, `cursed`, `quest`, `declared`. Every key in a gate must
 hold. **A door is drawn when ANY room behind it announces** (`models/offer.lua`), so the city grows one
 room at a time and a house's plate arrives on the morning its first room does.
 
@@ -449,7 +449,7 @@ A new room is marked by adding its panel to `NEWS` in `models/offer.lua`. Two ru
 there:
 
 * **A mark must be able to go out.** It is raised on the same question the screen behind it clears --
-  a wound nobody has seen to, a hex nobody has lifted, a find nobody has read, stock nobody has looked
+  an injury nobody has seen to, a hex nobody has lifted, a find nobody has read, stock nobody has looked
   at. "Something in the kit is damaged" is true after nearly every trip, which is why the Forge keeps
   no mark: a dot that never goes out teaches the player that no dot means anything.
 * **A shut room is never marked.** A dot on a line the desk will not print is a dot with nothing behind
@@ -484,14 +484,14 @@ The gates the play actually feeds are the other four, ANDed, and each names a di
 | field | opens when | who uses it |
 | --- | --- | --- |
 | `trips = N` | the company has begun N descents (`Player.tripsHome`) | **the city's clock** -- the counter at 1, the supper at 2, the forge at 3, the book at 4, the study at 5 |
-| `wound` | somebody has been carried up broken, ever (one-way) | the Cathedral's mending |
+| `injury` | somebody has been carried up broken, ever (one-way) | the Cathedral's mending |
 | `unidentified` | the company is carrying something it cannot read | the Crucible's reading |
 | `quest = "<id>"` | that quest is finished | the Colosseum's duel, on its own first posting |
 | `expeditions = N` | the company has reached floor N (`Player.expeditionsOut`) | nothing ships on it -- see the warning below |
 | `any = { g1, g2 }` | **any** sub-gate holds (every other key ANDs) | the event-plus-backstop pattern |
 
 These are **room** gates (`offers[].gate`), not card gates. They were fields on the blueprint when each
-room was a card of its own -- `unlockClassLevel`, `unlockExpeditions`, `unlockWound` -- and moved inward
+room was a card of its own -- `unlockClassLevel`, `unlockExpeditions`, `unlockInjury` -- and moved inward
 with the rooms. A card's own `unlockPrestige`/`unlockQuest` still apply on top, for the two doors that
 are not counters.
 
@@ -1237,7 +1237,7 @@ debuff — they look similar and refuse very different things:
 | `disablesReactions` | counters, thorns, dodges — but not `onStatusApplied` | `models/trait.lua` |
 | `disablesTraits` | **every** trait hook, `onStatusApplied` included | `models/trait.lua` |
 | `blocksHealing` | every heal, from every source | `Combat.applyHeal` |
-| `invertsHealing` | nothing — it turns every heal into a wound of the same size | `Combat.applyHeal` |
+| `invertsHealing` | nothing — it turns every heal into an injury of the same size | `Combat.applyHeal` |
 | `preventsDeath` | the drop: a lethal blow floors the bearer at 1 | `Combat.dealFlatDamage` |
 | `revealsBearer` | concealment: an invisible bearer is targetable anyway | `Status.untargetable` |
 | `defers` | *everything*, onto a ledger that settles on expiry | both damage and heal |
@@ -1278,7 +1278,7 @@ Apply one from an ability or trap effect via `fx.applyStatus(target, "status_poi
 **A status that shuts down reactions must ride the blow, not follow it.** `fx.damage` runs the whole
 damage core, counters and all, before it returns — so a stun applied on the *next* line lands after
 the target has already answered, and a hammer gets parried by the fighter it just rattled. Hand the
-status to the hit instead, and it lands between the wound and the on-hit hooks:
+status to the hit instead, and it lands between the injury and the on-hit hooks:
 
 ```lua
 effect = function(fx)
@@ -1432,6 +1432,34 @@ and the Touchstone naming a find that was sealed carrying one. `tests/curse_spec
 blueprint to the schema. Read [curses.md](curses.md) before authoring one — in particular the section on
 why the rite is free, which is the law the room is standing on.
 
+## Add an injury
+
+An injury is what a body carries after it has been carried off a floor — dealt by a seeded roll when
+somebody goes down, and ended only at the Ward. Drop a blueprint into `data/injuries/<id>.lua`:
+
+```lua
+return {
+    name = "Shattered Leg",
+    description = "Shattered Leg: moves fewer spaces each turn.",
+    severity = 2,                        -- where it sits in the shallowest-first order; a camp's
+                                         -- field dressing and the Ward's press both set the lowest
+    weight = 15,                         -- its share of the roll (the seven ship summing to 100)
+    reserve = { health = 0.06 },         -- pools it seals; `mana` and `stamina` work the same way.
+                                         -- IT MUST INCLUDE HEALTH, or the kind is free on some bodies
+    effects = { { id = "status_shattered_leg" } },   -- what it fights under, stamped at the bell
+}
+```
+
+The status it names is an ordinary blueprint (see **Add a status effect**) with two rules of its own:
+`debuff = false`, because no Cure may lift an injury, and a duration far past any fight's length. Both
+are asserted over the whole folder by `tests/injury_spec.lua`, so a cleansable badge fails there rather
+than quietly undoing the campaign's attrition meter in play.
+
+Everything else comes free — the registry picks the blueprint up, `Injury.stamp` writes the reserve onto
+the body, `resolveOpening` stamps the badges, the body card names it, the Ward prices it and the save
+persists it. Read [injuries.md](injuries.md) first, in particular the two floors: a stat cut can never
+take a body below a quarter of its own base, and that is what makes stacking safe.
+
 ## Cast an ability outside a fight
 
 Add `outOfCombat = true` to an `activeAbility`, plus a `roadEffect(ctx)` beside its `effect`:
@@ -1570,7 +1598,7 @@ activeAbility = {
 }
 ```
 
-`fx.copy(x, y, opts)` summons a duplicate of the **caster** instead — its current stats, wounds and
+`fx.copy(x, y, opts)` summons a duplicate of the **caster** instead — its current stats, injuries and
 all, plus a fresh copy of its grid. Mark an item `noCopy = true` to keep it out of the duplicate
 (otherwise a doppelganger carries the doppelganger ability and summons itself). See
 `data/items/ability/ability_summon_wolf.lua` and `ability_doppelganger.lua`.

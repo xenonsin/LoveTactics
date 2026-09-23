@@ -1,6 +1,6 @@
--- THE WARD'S COUNTER: the two ways out of a wound, one row each, per hurt body.
+-- THE WARD'S COUNTER: the two ways out of an injury, one row each, per hurt body.
 --
--- See data/buildings/cathedral.lua for what this room is and models/wound.lua's ward block for why it is
+-- See data/buildings/cathedral.lua for what this room is and models/injury.lua's ward block for why it is
 -- allowed to charge for anything at all. In one line: REST is free forever and TREAT buys only speed,
 -- so the gold is priced against impatience rather than against injury.
 --
@@ -13,10 +13,10 @@
 -- than greying, because a control appears only where it is legal -- and the purse is on the header, so
 -- the player is never left guessing which of the two facts stopped them.
 --
--- AND ON ONE MORNING THE ROOM IS A RAIL. The first wound in the game is Rowan's, taken by script at
+-- AND ON ONE MORNING THE ROOM IS A RAIL. The first injury in the game is Rowan's, taken by script at
 -- the end of Act 0, and the host flags that morning off `player.hubIntro` (states/hub.lua's
 -- coachingMend). The city outside says nothing about it -- the plaza's coach bubbles are cut -- so
--- this room is the whole of the lesson: the window that opened the door said what a wound IS and why
+-- this room is the whole of the lesson: the window that opened the door said what an injury IS and why
 -- there are two ways out of one, and what is left is the press, which is a bubble's job and not a
 -- window's -- so the host hands this panel a `coach` flag and the bubble goes on a row.
 --
@@ -27,15 +27,15 @@
 -- who sets the bone walks out of (data/buildings/cathedral.lua's `introAfter`).
 --
 -- THE FREE PATH IS STILL TAUGHT, one beat earlier and by the surface that can carry a rule: the window
--- in the doorway states both ways out and ranks neither (states/hub.lua's teachWounds). What this room
+-- in the doorway states both ways out and ranks neither (states/hub.lua's teachInjuries). What this room
 -- withholds for one morning is the PRESS, not the fact -- the rest row is back on the next trip, and
 -- every trip after that is the shrug the paragraph below argues for.
 --
 -- THE FIRST MORNING IS THE ONE MORNING THE TWO ARE NOT EQUAL, which is why the instruction is allowed
--- to pick. Resting benches Rowan for Wound.REST_DESCENTS trips, and the very next thing the city asks
+-- to pick. Resting benches Rowan for Injury.REST_DESCENTS trips, and the very next thing the city asks
 -- for is an expedition of four (models/descent.lua's PARTY_MAX) out of a company that has three bodies
 -- in it. A coach that shrugged here would be teaching a player who cannot yet know what a short company
--- costs to walk down as one -- and the wound they were laying up was the whole reason the room opened.
+-- costs to walk down as one -- and the injury they were laying up was the whole reason the room opened.
 -- Every trip after this one the player has the window's rule and the two prices side by side, and the
 -- shrug is correct from then on.
 --
@@ -62,7 +62,7 @@ local InputMode = require("input_mode")
 local Locale = require("models.locale")
 local Theme = require("ui.theme")
 local Sound = require("models.sound")
-local Wound = require("models.wound")
+local Injury = require("models.injury")
 
 -- The bubble's words, in the same hint bag the plaza's own coaching lives in, so the one instruction
 -- this room gives is stamped and translated like every other thing the tutorial says
@@ -109,21 +109,21 @@ function Ward.new(opts)
     return self
 end
 
--- The rows, rebuilt after every press: treating drops a wound and resting takes a body off the list
+-- The rows, rebuilt after every press: treating drops an injury and resting takes a body off the list
 -- entirely, so the menu the player is looking at is stale the instant either one lands.
 function Ward:rebuild()
     local p = self.player
     local items = {}
-    for _, entry in ipairs(Wound.wounded(p)) do
+    for _, entry in ipairs(Injury.injured(p)) do
         local char, n = entry.char, entry.count
         local name = char.name or char.id
-        if (p.gold or 0) >= Wound.TREAT_COST then
+        if (p.gold or 0) >= Injury.TREAT_COST then
             items[#items + 1] = {
                 charId = char.id,
                 kind = "treat",
-                label = string.format("Set %s's bone  -  %dg", name, Wound.TREAT_COST),
+                label = string.format("Set %s's bone  -  %dg", name, Injury.TREAT_COST),
                 action = function()
-                    if Wound.treat(p, char.id) then Sound.play("ui.confirm") end
+                    if Injury.treat(p, char.id) then Sound.play("ui.confirm") end
                     self:rebuild()
                 end,
             }
@@ -131,9 +131,9 @@ function Ward:rebuild()
         items[#items + 1] = {
             charId = char.id,
             kind = "rest",
-            label = string.format("Rest %s  -  %d descents", name, n * Wound.REST_DESCENTS),
+            label = string.format("Rest %s  -  %d descents", name, n * Injury.REST_DESCENTS),
             action = function()
-                if Wound.rest(p, char.id) > 0 then Sound.play("ui.confirm") end
+                if Injury.rest(p, char.id) > 0 then Sound.play("ui.confirm") end
                 self:rebuild()
             end,
         }
@@ -186,7 +186,7 @@ end
 -- THE ROW THE COACH IS POINTING AT: its index, or nil when there is nobody owed a mending or this visit
 -- is not being coached.
 --
--- The BODY is read through models/wound.lua's Wound.unattended, which is the same call the city's own
+-- The BODY is read through models/injury.lua's Injury.unattended, which is the same call the city's own
 -- deed is decided by -- so the ring goes out on exactly the press that spends the stage, rather than on
 -- a second opinion about what "seen to" means.
 --
@@ -196,7 +196,7 @@ end
 -- the frame the panel opens.
 function Ward:coachIndex()
     if not self.coach then return nil end
-    local entry = Wound.unattended(self.player)[1]
+    local entry = Injury.unattended(self.player)[1]
     if not entry then return nil end
     local fallback
     for i, item in ipairs(self.items) do
@@ -221,7 +221,7 @@ end
 
 -- IS THE ROOM HELD? True only while the coached morning still has a row owed -- so it goes false on the
 -- press that spends it, and the close that press asks for is allowed through. Every refusal below is
--- written against this rather than against `coach`, which is what keeps a wound that somehow cannot be
+-- written against this rather than against `coach`, which is what keeps an injury that somehow cannot be
 -- answered from locking a player inside a panel: no coached row, no rail.
 function Ward:railed()
     return self.coach ~= nil and self:coachIndex() ~= nil
@@ -275,7 +275,7 @@ function Ward:draw()
 
     -- Who is lying up, and for how much longer. Below the rows rather than mixed among them: these are
     -- not choices, they are the bill for choices already made.
-    local resting = Wound.resters(self.player)
+    local resting = Injury.resters(self.player)
     if #resting > 0 then
         local y = self.boxY + BOX_H - 74 - (#resting - 1) * 20
         Theme.set(Theme.muted)

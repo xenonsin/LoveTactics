@@ -26,8 +26,14 @@
 -- away or into its own kind and the blast is someone else's problem. Kept fragile (one solid hit or any
 -- AoE ends it) and low-count so the board reads as a puzzle, not chaos.
 --
--- Tuned tight, like the Imp (data/characters/character_demon_imp.lua): ~10 health dies to one iron-bow
--- shot or one Clear Out, so the "kill it at range" answer is always available.
+-- Tuned tight, like the Imp (data/characters/character_demon_imp_tutorial.lua): ~10 health dies to one
+-- iron-bow shot or one Clear Out, so the "kill it at range" answer is always available.
+--
+-- ACT 0 OWNS THIS BODY, which is what the `_tutorial` says. Two things field it and both are Act 0's:
+-- the survivor defense's tick-14 wave, and the Champion's Roar calling one in
+-- (data/items/ability/ability_demon_roar.lua, a kit exclusive to the Champion). The rift fields no
+-- bomblet. See the imp's header for the full argument the suffix is making and the day it became
+-- necessary.
 return {
     name = "Bomblet",
     race = "demon",
@@ -35,6 +41,12 @@ return {
     sprite = "assets/chars/demon_bomblet.png",
     revivable = false, -- a demon does not come back (and it bursts on death regardless)
     unarmed = false, -- no natural weapon at all: it cannot strike, only detonate
+    -- Blueprint-exact, like the imp and the grunt. The burst is a fixed 12 the survivor stop is
+    -- counted against, and "one bow shot or one Clear Out ends it" is a promise about THIS pool -- a
+    -- body that grew with the company would keep the promise on the page and break it on the board.
+    -- A no-op in the game today (Act 0 fields it at party level 1) and stated anyway, because what
+    -- makes it a no-op is the prologue's level, which is not a fact about this blueprint.
+    scaling = false,
     stats = {
         health = 10, mana = 0, stamina = 0,
         damage = 0, magicDamage = 0, -- it has no blow to land; the payload is its death

@@ -284,6 +284,7 @@ one exception: it *pairs* the two tiles, so it needs both.
 | Q | `weapon_thin_place` | The strike lands **`magical`** and the Bleed stays **`raw`** — two different defenses in one swing, on one pool. |
 | Q | `weapon_nightjar` | A **kill** makes the rogue Unseen until its next turn. Kill, vanish, cross the field, kill. |
 | Q | `weapon_mired_kris` | Bleed **and Mired**: walking costs blood and acting costs double. There is no correct move left. |
+| Q | `weapon_the_second_bite` | The game's one **brave** weapon (`strikes = 2`): it lands its swing twice, always, and its damage line is cut to 7 to pay for it. Off the White Wolf, and the *bought* half of the doubling rule the pack still rolls. |
 
 ### `bow` — hunter
 | | Weapon | Its extra over the base |
@@ -437,6 +438,7 @@ it for free. Prefer one over hand-rolling the same logic in an `effect`.
 |---|---|
 | `windup = n` | Wind up for `n` ticks; the cast resolves on the wielder's next turn, and hard control breaks it. Exactly `n` — walking first never stretches the telegraph, the move cost is charged past the resolution instead. |
 | `aoe = { shape, … }` | The area the cast covers: `square`, `diamond`, `line` (length), `front` (width). |
+| `strikes = n` | **Brave**: the swing lands `n` times instead of once. Each landing is a whole separate blow — its own accuracy roll, its own crit roll, and the target's armor subtracted from every one of them (`Combat.mitigatedDamage` runs per hit), so `n` half-sized strikes are *not* one full one: savage against a robe, poor against plate. Deliberately not a growth magnitude — the forge buys a heavier blow, never a longer flurry. |
 | `frenzy = f` | Every body the area catches **beyond the first** adds `f` of the magnitude to what *each* of them takes. Counts bodies, not enemies — an ally in the arc feeds it too. |
 | `lifesteal = f` | The user heals `f` of everything the cast deals. Adds to a Vampiric Strike aura rather than overriding it. |
 | `minRange = n` | A dead zone: the cast cannot be aimed closer than `n`. |

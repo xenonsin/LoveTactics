@@ -3,6 +3,16 @@
 -- the avatar and companion blueprints, the recruit path, the avatar-name override, and the debut
 -- quest's Saber objective. Headless, pure.
 
+-- THE QUEST BLUEPRINTS ARE GONE, AND SO IS WHAT THEY WERE COVERING. data/quests was deleted
+-- with the seven house postings (92ff549d), which took companion recruitment, the market's openers,
+-- Saber's debut and every `slot_01` with it. The cases below had no data left to run against and
+-- were removed on 2026-09-23 rather than left red. Each one is listed so the hole is findable:
+--
+--   * the debut quest's boss is the Saber twin, and the win ends when she falls
+--
+-- Nothing above is a rule that was decided against; it is coverage that lost its subject. When the
+-- replacement for the postings lands, these are the cases it owes back.
+
 local Character = require("models.character")
 local Item = require("models.item")
 local Player = require("models.player")
@@ -73,26 +83,6 @@ return {
             local avatar = Character.instantiate("character_avatar")
             avatar.name = "Wend" -- what prologue.begin copies off Player.active.name
             assert(avatar.name == "Wend", "the typed name lands on the instance")
-        end,
-    },
-    {
-        name = "the debut quest's boss is the Saber twin, and the win ends when she falls",
-        fn = function()
-            local def = Quest.defs["quest_colosseum_slot_01"]
-            assert(def, "arena_debut exists")
-            local list = def.map.objective.composition({ prestige = 1 })
-            local hasBout = false
-            for _, id in ipairs(list) do if id == "character_saber_bout" then hasBout = true end end
-            -- The bout fields the boss TWIN, not the recruit -- so the phase relic and the deeper health
-            -- pool never ride home when Quest.complete recruits the clean character_saber.
-            assert(hasBout, "the debut objective fields the Saber bout twin")
-            -- Assassinate, not killAll: once her relic can summon hands, the bout has to end when SABER
-            -- goes down rather than dragging on to clear the reinforcements.
-            local obj = def.map.objective
-            assert(obj.win.type == "assassinate", "the debut ends on Saber's defeat, not a board clear")
-            assert(obj.win.target == "character_saber_bout", "and the mark is the twin on the sand")
-            -- The reward is still the CLEAN companion.
-            assert(def.rewardCharacter == "character_saber", "the recruit is the un-bossed Saber")
         end,
     },
     {

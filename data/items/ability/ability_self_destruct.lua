@@ -1,5 +1,5 @@
 -- Self-Destruct: the Bomblet stops waiting to be killed and sets itself off
--- (data/characters/character_demon_bomblet.lua, which carries this beside the Volatile Core the burst
+-- (data/characters/character_demon_bomblet_tutorial.lua, which carries this beside the Volatile Core the burst
 -- actually lives in). The ACTIVE half of data/traits/trait_volatile.lua -- same ring, same 12, same
 -- friend-and-foe blast -- and the reason the two exist together is that a bomb nobody chooses to
 -- trigger is a bomb the player can simply walk around. The trait is what happens when you kill it; this

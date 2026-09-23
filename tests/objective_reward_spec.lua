@@ -9,6 +9,16 @@
 -- Written against the model rather than the state on purpose: states/game.lua pulls ui/theme.lua and
 -- cannot be required without a window, which is why this arithmetic was moved out of it.
 
+-- THE QUEST BLUEPRINTS ARE GONE, AND SO IS WHAT THEY WERE COVERING. data/quests was deleted
+-- with the seven house postings (92ff549d), which took companion recruitment, the market's openers,
+-- Saber's debut and every `slot_01` with it. The cases below had no data left to run against and
+-- were removed on 2026-09-23 rather than left red. Each one is listed so the hole is findable:
+--
+--   * an errand names its purse and its goods, and only while it is unfinished
+--
+-- Nothing above is a rule that was decided against; it is coverage that lost its subject. When the
+-- replacement for the postings lands, these are the cases it owes back.
+
 local Descent = require("models.descent")
 local Player = require("models.player")
 local Quest = require("models.quest")
@@ -82,28 +92,6 @@ return {
         end
     end },
 
-    { name = "an errand names its purse and its goods, and only while it is unfinished", fn = function()
-        local player = Player.new()
-        local run = runAt(minorFloor())
-
-        -- Any errand-shaped quest def with something to pay. Found rather than hardcoded: the errand pool
-        -- is the parked board's seventy blueprints and naming one here would rot the moment it is retired.
-        local id, def
-        for qid, d in pairs(Quest.defs) do
-            if (d.rewardGold or 0) > 0 or #(d.rewardItems or {}) > 0 then id, def = qid, d break end
-        end
-        assert(id, "the board has at least one quest that pays")
-
-        local out = Descent.objectiveReward(player, run, { questId = id })
-        assert(out, "an unfinished errand pays")
-        assert(out.gold == (def.rewardGold or 0), "its purse is the def's, not a roll")
-        assert(#out.items == #(def.rewardItems or {}), "and every authored good is named")
-
-        -- The same guard Errand.complete keeps as its first line: a cleared tile is worth nothing twice.
-        player.completedQuests = { [id] = true }
-        assert(Descent.objectiveReward(player, run, { questId = id }) == nil,
-            "a finished errand names nothing, so a re-cleared end cannot advertise a second payout")
-    end },
 
     { name = "the awarded half is never the granted half", fn = function()
         -- states/battle.lua hangs this table off `spoils.awarded`, and states/game.lua's grantSideSpoils

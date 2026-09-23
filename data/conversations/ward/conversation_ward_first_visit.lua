@@ -23,20 +23,20 @@
 -- above ground.
 --
 -- IT USED TO BE A PROLOGUE BEAT and the move is the point. A Cathedral scene stood between the last
--- fight and the city, because reaching the city SET EVERY BONE FOR FREE (Wound.clear in hub.enter) --
--- so the only place a wound could be talked about was a moment wedged in before the city existed, and
+-- fight and the city, because reaching the city SET EVERY BONE FOR FREE (Injury.clear in hub.enter) --
+-- so the only place an injury could be talked about was a moment wedged in before the city existed, and
 -- the scene had to carry the whole mechanic in four lines because there was no room that could. There
 -- is a room now. The lesson is taught where its answer lives.
 --
 -- THE THREE JOBS THIS SCENE DOES, in the order they matter:
 --
---   1. IT MAKES THE WOUND A PERSON. Rowan is felled by script at the Champion's last stage
+--   1. IT MAKES THE INJURY A PERSON. Rowan is felled by script at the Champion's last stage
 --      (models/combat.lua's Combat.spendScriptedFell) and the ledger records it (states/game.lua's
---      inflictWounds). So the first wound in the game is one the player WATCHED land on somebody, not
+--      inflictInjuries). So the first injury in the game is one the player WATCHED land on somebody, not
 --      a bar that got shorter. This scene is what collects on that.
 --
 --   2. IT IS THE MENDING, AND NOT A LINE ABOUT ONE. The two ways out are taught a beat earlier by the
---      window in the room's doorway (states/hub.lua's teachWounds), which is a rule and belongs in a
+--      window in the room's doorway (states/hub.lua's teachInjuries), which is a rule and belongs in a
 --      window; what this scene owes the player is the thing they just paid for, happening. Xin sets
 --      the bone here. Never a line pricing it -- the gold is already spent and the free path is the
 --      whole legality of the room (see below).
@@ -49,7 +49,7 @@
 --      blade and I cannot end him. Ask me in and I will keep all of you standing while you do."*
 --
 -- WHAT IT MUST NOT SAY: that healing is something you buy. The free path is the whole legality of this
--- building (models/wound.lua's ward block -- two earlier versions were deleted for charging at the
+-- building (models/injury.lua's ward block -- two earlier versions were deleted for charging at the
 -- door), and a scene that frames the Ward as a shop teaches the opposite of what the room does. Gold
 -- buys the bone set TODAY. It never buys the bone set at all.
 --
@@ -64,11 +64,11 @@ return {
     script = {
         -- 1. She takes Rowan's weight without being asked. The room states itself by what she does.
         -- 2. THE WORK, not a word about the price of it: the bone goes back, and it is her hands.
-        -- 3. Rowan, who minds being carried more than she minds the wound.
+        -- 3. Rowan, who minds being carried more than she minds the injury.
         -- 4. THE JOIN -- she asks to come, and says what she is for. The banner folds onto this line.
         { "character_xin", "PLACEHOLDER -- she takes Rowan's weight without being asked.", tag = 1 },
         { "character_xin", "PLACEHOLDER -- the bone goes back, under her hands, now.", tag = 2 },
-        { "character_rowan", "PLACEHOLDER -- she minds being carried more than she minds the wound.", tag = 3 },
+        { "character_rowan", "PLACEHOLDER -- she minds being carried more than she minds the injury.", tag = 3 },
         { "character_xin", "PLACEHOLDER -- she asks to come, and says what she is for.", tag = 4 },
     },
 }

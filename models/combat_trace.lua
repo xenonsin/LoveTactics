@@ -148,7 +148,7 @@ end
 -- Open / record / close
 -- ---------------------------------------------------------------------------
 
--- "assassinate -> character_demon_champion", or nil for a fight with no named end. Here rather than at
+-- "assassinate -> character_demon_champion_tutorial", or nil for a fight with no named end. Here rather than at
 -- the call site because states/battle.lua is a couple of declarations from Lua 5.1's 200-local ceiling
 -- and cannot spare a local to unpack this into.
 function Trace.describeObjective(obj)

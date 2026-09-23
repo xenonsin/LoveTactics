@@ -4,14 +4,14 @@
 -- defend whose charge was, a control run out on the clock, and Fall Back -- and every one of them used
 -- to be answered with the wipe: pack dropped on the floor, the run's coin and ore gone, the company
 -- woken at the Gate. That charged a rout what a destruction costs, and it left the bodies free: the
--- wound meter reads who FELL (models/wound.lua), and a rout leaves nobody on the floor at all.
+-- injury meter reads who FELL (models/injury.lua), and a rout leaves nobody on the floor at all.
 --
 -- So a rout is its own exit now (states/game.lua's onLoss). It walks back onto the overworld it came
 -- from keeping every find it made, and it is charged three things instead:
 --
 --   the state they are in   no rollback, no Player.restore -- the second attempt is made by whoever
 --                           walked off the board
---   a wound on the spent    Combat.spentParty, below: alive, and under a third of the pool they can
+--   an injury on the spent    Combat.spentParty, below: alive, and under a third of the pool they can
 --                           still use
 --   the first-clear bonus   an errand's purse is paid once, to a company that did not have to come
 --                           back (models/errand.lua's Errand.fail)
@@ -19,6 +19,19 @@
 -- The last of those is a payout with TWO sides -- the grant and the victory screen's preview -- and a
 -- preview wider than its grant promises coin that never arrives, so both are pinned here against the
 -- same fixture.
+
+-- THE QUEST BLUEPRINTS ARE GONE, AND SO IS WHAT THEY WERE COVERING. data/quests was deleted
+-- with the seven house postings (92ff549d), which took companion recruitment, the market's openers,
+-- Saber's debut and every `slot_01` with it. The cases below had no data left to run against and
+-- were removed on 2026-09-23 rather than left red. Each one is listed so the hole is findable:
+--
+--   * a spent bonus outlives the descent it was spent in
+--   * finished work cannot be failed, and finishing does not clear the mark
+--   * the first-clear bonus is spent once and never comes back
+--   * the victory screen and the payout agree about the bonus
+--
+-- Nothing above is a rule that was decided against; it is coverage that lost its subject. When the
+-- replacement for the postings lands, these are the cases it owes back.
 
 local Combat = require("models.combat")
 local Descent = require("models.descent")
@@ -69,10 +82,10 @@ return {
             "the line is not drawn at a third: got " .. ids(Combat.spentParty(combat)))
     end },
 
-    { name = "spent counts nobody the wound ledger cannot remember", fn = function()
+    { name = "spent counts nobody the injury ledger cannot remember", fn = function()
         -- The same three exclusions Combat.fallenParty makes, and for the same reason: a summon, a decoy
         -- or a body with no character behind it has no id a save will still know tomorrow, so charging
-        -- one a wound writes a history against nobody.
+        -- one an injury writes a history against nobody.
         local combat = { units = {
             unit("real", 100, 5),
             unit("conjured", 100, 5, { summoned = true }),
@@ -84,23 +97,25 @@ return {
             "spentParty charged somebody it cannot remember: " .. ids(Combat.spentParty(combat)))
     end },
 
-    { name = "spent is measured against the pool a WOUND left, not the one they used to have", fn = function()
-        -- This is the whole reason it reads Combat.unreservedMax. A body carrying two wounds has 70% of
-        -- its pool to be a third of (models/wound.lua's reserve, stamped as `woundShare`), so 25 of 100
+    { name = "spent is measured against the pool an INJURY left, not the one they used to have", fn = function()
+        -- This is the whole reason it reads Combat.unreservedMax. A body carrying two injuries has 70% of
+        -- its pool to be a third of (models/injury.lua's reserve, stamped as `injuryShare`), so 25 of 100
         -- is over a third of what it can actually reach -- and judging it against the raw max would
         -- charge a veteran for standing exactly where a fresh recruit is charged nothing.
         local fresh = unit("fresh", 100, 25)
         local hurt = unit("hurt", 100, 25)
-        hurt.char.woundShare = 0.30 -- what Wound.stamp writes for two wounds
+        -- A TABLE PER POOL, which is what Injury.stamp writes since 2026-09-22 -- an injury can seal
+        -- mana or stamina now, so the share is asked for by stat. Two Blood Loss is 0.30 of the health.
+        hurt.char.injuryShare = { health = 0.30 }
 
         assert(ids(Combat.spentParty({ units = { fresh } })) == "fresh",
             "an unwounded body at a quarter is not spent")
         assert(ids(Combat.spentParty({ units = { hurt } })) == "",
-            "a wounded body was charged against a pool it no longer has")
+            "an injured body was charged against a pool it no longer has")
     end },
 
     { name = "a fallen body is not spent -- the two lists are disjoint", fn = function()
-        -- states/battle.lua's lose() appends one to the other, and Wound.inflict dedupes by id, so a
+        -- states/battle.lua's lose() appends one to the other, and Injury.inflict dedupes by id, so a
         -- body appearing on both would still be charged once. But they should not overlap in the first
         -- place: spentParty asks for the LIVING, which is the half fallenParty cannot see.
         local down = unit("down", 100, 0, { alive = false, incapacitated = true })
@@ -108,82 +123,9 @@ return {
         assert(ids(Combat.spentParty({ units = { down } })) == "", "a fallen body was counted twice")
     end },
 
-    { name = "the first-clear bonus is spent once and never comes back", fn = function()
-        local id = paidErrand()
-        assert(id, "no house pays a purse for any errand -- the fixture has nothing to test")
-        local p = Player.new()
 
-        assert(not Errand.failedOnce(p, id), "a company that has lost nothing is already marked")
-        assert(Errand.fail(p, id) == true, "the first failure did not take")
-        assert(Errand.failedOnce(p, id), "the mark was not written")
-        -- False on every failure after, so a caller can name the loss once rather than on every attempt.
-        assert(Errand.fail(p, id) == false, "a second failure reported news that had already been told")
-        assert(Errand.failedOnce(p, id), "a second failure cleared the mark it should have found")
-    end },
 
-    { name = "finished work cannot be failed, and finishing does not clear the mark", fn = function()
-        local id = paidErrand()
-        local p = Player.new()
 
-        -- Nothing may write a mark on settled work: the bonus is already paid or already forfeit, and
-        -- either way there is nothing left to spend.
-        p.completedQuests = { [id] = true }
-        assert(Errand.fail(p, id) == false, "an errand already finished accepted a failure")
-
-        -- ...and the mark has to survive the completion that follows it, because the payout asks
-        -- Errand.failedOnce AFTER Errand.complete has run. Clearing it on the way past would hand the
-        -- bonus to the one company that had already lost it.
-        local q = Player.new()
-        Errand.fail(q, id)
-        q.errands = { [id] = 1 }
-        Errand.complete(q, id)
-        assert(Errand.failedOnce(q, id), "completing the errand handed the forfeited bonus back")
-    end },
-
-    { name = "a spent bonus outlives the descent it was spent in", fn = function()
-        -- Kept on the PLAYER beside `errands` and written to the save, because a descent is a thing you
-        -- come back from: a company that surfaces and dives again must not find the purse waiting.
-        local id = paidErrand()
-        local p = Player.new()
-        Errand.fail(p, id)
-
-        local back = Save.restore(Save.snapshot(p))
-        assert(Errand.failedOnce(back, id), "the mark did not survive a save round trip")
-
-        -- ...and a save written before the field existed restores owing nothing, which is a company
-        -- still due every bonus it has not yet collected. Purely additive: Save.VERSION does not move
-        -- for this. Written as a real snapshot with the one key taken out rather than as an empty table,
-        -- which is not a save at all and restores to nothing.
-        local snap = Save.snapshot(p)
-        snap.errandsFailed = nil
-        local older = Save.restore(snap)
-        assert(older and not Errand.failedOnce(older, id), "a save from before the mark restored marked")
-    end },
-
-    { name = "the victory screen and the payout agree about the bonus", fn = function()
-        -- A preview wider than its grant promises a payout the beat never pays -- which this file has
-        -- watched happen before (the Beggar's Bowl, named after every win on a lust floor and handed
-        -- over at none). Both sides read Errand.failedOnce, so the two cannot drift; this holds them to
-        -- it from the preview's end, which is the one the player sees.
-        local id, def = paidErrand()
-        local p, run = Player.new(), {}
-        local spec = { questId = id }
-
-        local before = Descent.objectiveReward(p, run, spec)
-        assert(before and before.gold == def.rewardGold,
-            "the preview does not name the bonus a fresh company is owed")
-
-        Errand.fail(p, id)
-        local after = Descent.objectiveReward(p, run, spec)
-        assert(after, "the preview went silent about work that still pays its goods")
-        assert(after.gold == 0, "the preview still promises a purse that has been spent")
-
-        -- THE GOODS ARE NEVER WITHHELD. An errand's rewardItems are its slot's share of the line's
-        -- quest-only shelf stock (tests/obtainable_spec.lua), so a failure that took them would delete
-        -- items from the run rather than charge for a loss.
-        assert(#after.items == #(def.rewardItems or {}),
-            "a failed errand stopped promising the goods it is the only source of")
-    end },
 
     { name = "the rout exit does its own bookkeeping", fn = function()
         -- Of the ways out of a fight, the losing one is where the bookkeeping goes unwritten -- so this
@@ -207,7 +149,7 @@ return {
         -- clearing the fight now also hands back the SPACE the fight borrowed (game.useHandheldSpace).
         -- The assertion has to move with it or it is checking for a line whose job has been done by
         -- another.
-        for _, call in ipairs({ "Errand%.fail", "game:inflictWounds", "saveRun", "Player%.save",
+        for _, call in ipairs({ "Errand%.fail", "game:inflictInjuries", "saveRun", "Player%.save",
                                "retreatFromEncounter", "game%.endFight%(%)" }) do
             assert(fork:find(call), "the rout exit no longer calls " .. call:gsub("%%", ""))
         end

@@ -15,6 +15,19 @@
 --
 -- Companion spec to tests/charge_spec.lua, which pins the wind-up depth from the player's side.
 
+-- THE QUEST BLUEPRINTS ARE GONE, AND SO IS WHAT THEY WERE COVERING. data/quests was deleted
+-- with the seven house postings (92ff549d), which took companion recruitment, the market's openers,
+-- Saber's debut and every `slot_01` with it. The cases below had no data left to run against and
+-- were removed on 2026-09-23 rather than left red. Each one is listed so the hole is findable:
+--
+--   * the approach fields the netter before the boss -- the trapper undercard
+--   * the debut names its board, and the board's rigging survives the build
+--   * the found kit hands a self-cleanse -- the rooted unit's own way out
+--   * the opener fields Saber and one trapper, with a gate spawn for each
+--
+-- Nothing above is a rule that was decided against; it is coverage that lost its subject. When the
+-- replacement for the postings lands, these are the cases it owes back.
+
 local Combat = require("models.combat")
 local Status = require("models.status")
 local Item = require("models.item")
@@ -375,111 +388,6 @@ return {
             assert(Status.has(f, "status_root"), "and the target is pinned for Saber's swing")
         end,
     },
-    {
-        name = "the opener fields Saber and one trapper, with a gate spawn for each",
-        fn = function()
-            -- The bell opens on the whole team -- the boss twin and one trapper -- rather than holding a
-            -- body back for a summon. The composition names two, and the board must seat every one.
-            local comp = Quest.defs["quest_colosseum_slot_01"].map.objective.composition()
-            assert(#comp == 2, "two bodies open the bout, got " .. #comp)
-            assert(comp[1] == "character_saber_bout", "Saber's twin leads the line")
-            local trappers = 0
-            for _, id in ipairs(comp) do if id == "character_trapper" then trappers = trappers + 1 end end
-            assert(trappers == 1, "one trapper on the sand at the bell, got " .. trappers)
 
-            local sand = require("data.arenas.colosseum_sand")
-            assert(#sand.enemySpawns >= 2,
-                "the board seats both, got " .. #sand.enemySpawns .. " enemy spawns")
-        end,
-    },
 
-    -- THE ROOT COUNTERPLAY ------------------------------------------------------------------------
-    -- The bout roots the player nearly every turn (two Trappers, a 2-unit party). These two stops on
-    -- the approach make that fair: the undercard teaches the net where it cannot lose the fight, and
-    -- the kit scene hands the cleanse that lifts it. A re-roll or rename that stripped either would
-    -- leave the bout balanced around a lesson never taught and a tool never found.
-    {
-        name = "the approach fields the netter before the boss -- the trapper undercard",
-        fn = function()
-            local Encounter = require("models.encounter")
-            local always = Quest.defs["quest_colosseum_slot_01"].map.encounters.always
-            local listed = false
-            for _, e in ipairs(always) do if e.id == "encounter_arena_undercard" then listed = true end end
-            assert(listed, "the approach lists the trapper undercard among its always-stops")
-
-            local def = Encounter.defs["encounter_arena_undercard"]
-            assert(def and def.kind == "combat", "the undercard is a combat stop")
-            local trappers = 0
-            for _, id in ipairs(def.composition()) do
-                if id == "character_trapper" then trappers = trappers + 1 end
-            end
-            assert(trappers >= 1, "it fields the same Trapper, so Root is met before the bout")
-        end,
-    },
-    {
-        name = "the found kit hands a self-cleanse -- the rooted unit's own way out",
-        fn = function()
-            -- A rooted body can still drink (Root blocks the step, not the hand -- status_root sets
-            -- blocksMove, not disablesActions), so a self-cleanse buys the move back. The scene must
-            -- actually grant one; the fight is balanced on the player having it.
-            local always = Quest.defs["quest_colosseum_slot_01"].map.encounters.always
-            local convId
-            for _, e in ipairs(always) do
-                if e.id == "encounter_event" and e.conversation == "conversation_colosseum_slot_01_kit" then convId = e.conversation end
-            end
-            assert(convId, "the approach lists the kit scene among its always-stops")
-
-            local conv = require("models.conversation").defs[convId]
-            local grantsVial = false
-            for _, node in ipairs(conv.script) do
-                for _, c in ipairs(node.choices or {}) do
-                    local grant = c.effect and c.effect.grant
-                    if type(grant) == "table" then
-                        for _, id in ipairs(grant) do
-                            if id == "consumable_clearwater_vial" then grantsVial = true end
-                        end
-                    elseif grant == "consumable_clearwater_vial" then
-                        grantsVial = true
-                    end
-                end
-            end
-            assert(grantsVial, "the kit scene grants a Clearwater Vial, the rooted unit's own out")
-        end,
-    },
-
-    -- THE ARENA -------------------------------------------------------------------------------------
-    {
-        name = "the debut names its board, and the board's rigging survives the build",
-        fn = function()
-            -- The bout no longer rolls a random castle field: it names data/arenas/colosseum_sand.lua,
-            -- and the authored funnel walls, hidden snares and soft-ground patches have to reach the
-            -- built combat -- carried by Arena.build (models/arena.lua's traps/hazards seam).
-            assert(Quest.defs["quest_colosseum_slot_01"].map.objective.layout == "colosseum_sand",
-                "the objective names the authored board")
-
-            local built = Arena.build({}, {
-                layout = "colosseum_sand", biome = "castle",
-                party = { "character_avatar", "character_rowan" },
-                composition = Quest.defs["quest_colosseum_slot_01"].map.objective.composition,
-                objective = { type = "assassinate", target = "character_saber_bout" },
-                seed = 1,
-            })
-
-            -- The funnel: mountain walls a rolled board would never place at the flanks.
-            assert(built.tiles[4][1].type == "mountain" and built.tiles[4][8].type == "mountain",
-                "the flank walls that funnel a dodging body are on the board")
-            -- The rigged edges: two hidden snares, owned by the enemy so they never bite Saber's team.
-            local snares = 0
-            for _, t in ipairs(built.traps or {}) do
-                if t.id == "snare_stake" then snares = snares + 1 end
-            end
-            assert(snares == 2, "both hidden snares survived the build, got " .. snares)
-            -- The soft ground: the seeable grasping-hollow patches.
-            local hollows = 0
-            for _, h in ipairs(built.hazards or {}) do
-                if h.id == "hazard_grasping_hollow" then hollows = hollows + 1 end
-            end
-            assert(hollows == 2, "both grasping-hollow patches survived the build, got " .. hollows)
-        end,
-    },
 }

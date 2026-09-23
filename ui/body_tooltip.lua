@@ -1,5 +1,5 @@
 -- THE BODY CARD: what a roster member IS, on hover, wherever the campaign asks you to choose between
--- them -- their pools, what a wound has taken off the top, and their flat stats with the gear folded
+-- them -- their pools, what an injury has taken off the top, and their flat stats with the gear folded
 -- in.
 --
 -- IT DOES NOT LIST THE KIT. It used to, by name, and the list was the longest half of the card and the
@@ -18,25 +18,25 @@
 -- ground. So this assembles a block list and hands it over (`info.blocks`); what the player reads at
 -- the Gate is the same box, in the same hand, as what they read over a tile in a fight.
 --
--- THE WOUND IS DRAWN AS THE TOP OF THE HEALTH BAR THAT WILL NOT FILL, the same picture the overworld
--- strip paints (ui/party_status.lua) -- because that is what the mechanic IS (models/wound.lua), and a
+-- THE INJURY IS DRAWN AS THE TOP OF THE HEALTH BAR THAT WILL NOT FILL, the same picture the overworld
+-- strip paints (ui/party_status.lua) -- because that is what the mechanic IS (models/injury.lua), and a
 -- body who is at full health and still only three quarters of themselves is exactly the thing this
 -- card exists to say before somebody sends them down a stair.
 --
 --   BodyTooltip.draw(player, char, mx, my, maxRight)   -- anchored near (mx, my), clamped on screen
 
 local Character = require("models.character")
-local Combat = require("models.combat")     -- for the wounded ceiling, the way every other pool reads it
+local Combat = require("models.combat")     -- for the injured ceiling, the way every other pool reads it
 local Colors = require("ui.colors")
 local Class = require("models.class")
 local Theme = require("ui.theme")
 local TileTooltip = require("ui.tile_tooltip")
-local Wound = require("models.wound")
+local Injury = require("models.injury")
 
 local BodyTooltip = {}
 
 -- The card's width. Wider than a tile's box (210), because the widest rows here are a stat label
--- against a figure that carries its gear bonus with it -- "10 (+2)" -- and the wound statuses, which
+-- against a figure that carries its gear bonus with it -- "10 (+2)" -- and the injury statuses, which
 -- are named in full rather than abbreviated.
 BodyTooltip.WIDTH = 250
 
@@ -84,36 +84,86 @@ function BodyTooltip.blocks(player, char)
     if class then blocks[#blocks + 1] = { kind = "stat", label = "Class", value = class } end
 
     -- WHAT IS WRONG WITH THEM, ahead of everything they can do -- it is the one fact on this card that
-    -- changes who you send, and it is only ever read underground: a body standing in a town has had
-    -- every bone set already (models/wound.lua).
-    local wounds = Wound.count(player, char.id)
-    if wounds > 0 then
-        blocks[#blocks + 1] = { kind = "stat", label = "Wounds", value = tostring(wounds),
+    -- changes who you send.
+    --
+    -- THIS CARD IS WHERE THE INJURIES ARE NAMED, and that is a division of labour rather than an
+    -- accident. The Ward's rows say what you can DO about a body (set a bone, rest it) and deliberately
+    -- do not name the bone -- one press, the shallowest first, stated as a rule instead of asked as a
+    -- question. So the reading happens here and on the deployment picker, which are the two surfaces a
+    -- player is standing on when the question is "do I send this one".
+    --
+    -- ONE ROW PER KIND, carrying its name, how many of it, and what it is actually costing. A count
+    -- alone answered "how bad" and nothing else, which was the whole of the meter while every injury was
+    -- the same injury -- and is most of nothing now that a 3 can be a broken leg, a torn shoulder and a
+    -- rattled head.
+    local injuries = Injury.sorted(player, char.id)
+    if #injuries > 0 then
+        blocks[#blocks + 1] = { kind = "stat", label = "Injuries", value = tostring(#injuries),
             valueColor = Theme.accentWeapon }
-        -- ...AND WHAT THEY WILL FIGHT UNDER. A wound is a reserved pool at one, and a debuff on top of
-        -- it at two and again at three (models/wound.lua) -- none of which is in the stat rows below,
-        -- because those are the campaign figures and this is a status the battle stamps at the bell.
-        -- Read off Wound.combatEffects rather than restated here, so the card cannot promise a rung
-        -- the ladder no longer has.
+
+        -- WHAT EACH ONE IS PAYING, asked of the model with the CHAR in hand rather than read off the
+        -- blueprint: a stacked injury's badge carries the number left after the floor clamps it
+        -- (models/injury.lua's Injury.STAT_FLOOR), so a card quoting the authored figure would promise a
+        -- magnitude the bell will not stamp. Keyed by status id, which is what an effect names.
         local Status = require("models.status")
-        for _, effect in ipairs(Wound.combatEffects(player, char.id)) do
-            local def = Status.defs[effect.id] or {}
-            blocks[#blocks + 1] = { kind = "status", name = def.name or effect.id,
-                color = def.color or Theme.accentWeapon }
+        local paying = {}
+        for _, effect in ipairs(Injury.combatEffects(player, char.id, char)) do
+            local parts = {}
+            for stat, amount in pairs((effect.opts and effect.opts.statBonus) or {}) do
+                if amount ~= 0 then parts[#parts + 1] = string.format("%s %+d", stat, amount) end
+            end
+            table.sort(parts)
+            paying[effect.id] = table.concat(parts, ", ")
+        end
+
+        -- DEEPEST FIRST on the card, which is the reverse of the order a camp sets them in
+        -- (Injury.sorted is shallowest-first, for the field dressing). A reader wants the worst thing
+        -- about this body at the top; a field dressing wants the easiest thing to fix. Two questions,
+        -- one ordering, read from both ends.
+        local counted, order = {}, {}
+        for i = #injuries, 1, -1 do
+            local id = injuries[i].id
+            if not counted[id] then
+                counted[id] = 0
+                order[#order + 1] = injuries[i]
+            end
+            counted[id] = counted[id] + 1
+        end
+        for _, entry in ipairs(order) do
+            local def = entry.def
+            local n = counted[entry.id]
+            local name = (def.name or entry.id) .. (n > 1 and (" x" .. n) or "")
+            -- Blood Loss stamps no status, so its cost is the pool it seals and there is nothing in
+            -- `paying` to read. Quoted as a share rather than in hit points for the reason the model
+            -- gives: the reservation is a fraction of a ceiling that moves with level and gear.
+            local cost
+            for _, effect in ipairs(def.effects or {}) do cost = cost or paying[effect.id] end
+            if (not cost or cost == "") and def.reserve then
+                local shares = {}
+                for stat, share in pairs(def.reserve) do
+                    shares[#shares + 1] = string.format("%s -%d%%", stat, math.floor(share * 100 * n + 0.5))
+                end
+                table.sort(shares)
+                cost = table.concat(shares, ", ")
+            end
+            local badge = def.effects and def.effects[1] and Status.defs[def.effects[1].id]
+            blocks[#blocks + 1] = { kind = "status",
+                name = name .. ((cost and cost ~= "") and ("  " .. cost) or ""),
+                color = (badge and badge.color) or Theme.accentWeapon }
         end
     end
     -- THERE IS NO "AT THE INN" ROW any more, and nothing replaces it. It answered the second of the two
     -- questions above -- whether this body was available to be picked at all -- which was real while a
-    -- bed took somebody out of the company for a day a wound. Nobody is ever unavailable now
-    -- (models/wound.lua): the surface sets every bone the moment the company reaches it, so the only
+    -- bed took somebody out of the company for a day an injury. Nobody is ever unavailable now
+    -- (models/injury.lua): the surface sets every bone the moment the company reaches it, so the only
     -- question left is how broken they are underground and the rows above are the whole of it.
 
     for _, r in ipairs(RESOURCES) do
         local res = char.stats and char.stats[r.key]
         if type(res) == "table" and (res.max or 0) > 0 then
-            -- The CEILING, asked of the one function that knows what a wound takes off a pool
-            -- (Combat.unreservedMax reads `char.woundShare`, stamped from the player's ledger by
-            -- Wound.stamp). The bar then draws the difference as the locked tail at the far end.
+            -- The CEILING, asked of the one function that knows what an injury takes off a pool
+            -- (Combat.unreservedMax reads `char.injuryShare`, stamped from the player's ledger by
+            -- Injury.stamp). The bar then draws the difference as the locked tail at the far end.
             local ceiling = Combat.unreservedMax(char, r.key)
             local block = { kind = "bar", label = r.label, stat = r.key,
                 cur = res.current or 0, max = ceiling, color = r.color }
@@ -121,23 +171,27 @@ function BodyTooltip.blocks(player, char)
                 block.reserved = res.max - ceiling
                 block.fullMax = res.max
                 -- THE FIGURES ARE QUOTED AGAINST THE POOL'S TRUE SIZE, and the slice is named in
-                -- WOUNDS rather than in the health they took.
+                -- INJURIES rather than in the health they took.
                 --
                 -- Both halves of that were wrong, and wrong in the same direction -- the card quoted
-                -- a body against its own lowered ceiling, so a wounded member topped up at the Ward
-                -- read "56 / 56 (10 wounded)": full health, apparently, carrying ten of something
+                -- a body against its own lowered ceiling, so an injured member topped up at the Ward
+                -- read "56 / 56 (10 injured)": full health, apparently, carrying ten of something
                 -- the row above had just called one. Against the true max the same body reads
-                -- "56 / 66 (1 wound)" -- what they have, out of what they would have whole, and the
+                -- "56 / 66 (1 injury)" -- what they have, out of what they would have whole, and the
                 -- one fact that explains the gap.
                 --
-                -- It is also what models/wound.lua says the mechanic IS ("the pool is the size it
+                -- It is also what models/injury.lua says the mechanic IS ("the pool is the size it
                 -- always was, and part of it is not available to you"), it is what the party sheet
-                -- has always printed (ui/panels/party.lua reads Character.statTotal, which no wound
+                -- has always printed (ui/panels/party.lua reads Character.statTotal, which no injury
                 -- touches), and the bar under the numbers is unchanged: the locked tail is still
                 -- drawn from the health, because that is a width rather than a sentence.
-                if wounds > 0 then
+                -- `injuries` is the body's LIST of kinds (Injury.sorted), so the count is its length.
+                -- It names the number of injuries rather than the health they took, which is the half
+                -- of this note that was wrong for longest.
+                local n = #injuries
+                if n > 0 then
                     block.max = res.max
-                    block.reservedText = wounds .. (wounds == 1 and " wound" or " wounds")
+                    block.reservedText = n .. (n == 1 and " injury" or " injuries")
                 end
             end
             blocks[#blocks + 1] = block

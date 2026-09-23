@@ -23,8 +23,8 @@ local BOUND = {
     -- between the two files and both directions are asserted below, so dropping the verb here is what
     -- makes the park provable rather than merely done.
     reveal = true, drainParty = true, grantSealed = true,
-    -- Sets a bone off everybody carrying one (models/wound.lua). One of exactly two things underground
-    -- that sheds a wound -- the other is a Rest spent on Bind -- and both are taken instead of
+    -- Sets a bone off everybody carrying one (models/injury.lua). One of exactly two things underground
+    -- that sheds an injury -- the other is a Rest spent on Bind -- and both are taken instead of
     -- something else, which is the property the deleted Inn never had.
     mendWound = true,
 }
@@ -108,7 +108,7 @@ return {
             -- against ~30 draws a run was each one met seven times, and the Darkest Dungeon curio set
             -- this borrows from runs about twenty-five over a shorter run. The two above it are the
             -- shared pair that can set a bone (`ctx.mendWound`), which had to be shared rather than a
-            -- circle's: shedding a wound is the one outcome every floor of every circle may need.
+            -- circle's: shedding an injury is the one outcome every floor of every circle may need.
             local total = #Crossroads.SHARED
             for _, sin in ipairs(Descent.SINS) do total = total + #Crossroads.BY_SIN[sin.id] end
             assert(total == 23, ("%d dilemmas in all, not 23"):format(total))
@@ -181,7 +181,7 @@ return {
         end,
     },
     {
-        name = "a wager pays on a good roll and wounds on a bad one",
+        name = "a wager pays on a good roll and injuries on a bad one",
         fn = function()
             -- The old altar's case, rehomed onto the dilemma that replaced it: the silted crawl with
             -- something breathing at the end of it. Same shape, same two branches, and the assertion is
@@ -191,7 +191,7 @@ return {
             local hole = Crossroads.SHARED[2]
             local log, ctx = recorder(0.9) -- above the 0.55 gate -> it wakes
             hole.options[1].resolve(ctx)
-            assert(log.drained > 0 and log.sealed == 0, "a losing wager wounds the party and grants nothing")
+            assert(log.drained > 0 and log.sealed == 0, "a losing wager injuries the party and grants nothing")
             log, ctx = recorder(0.1) -- below it -> the find
             hole.options[1].resolve(ctx)
             assert(log.sealed == 1 and log.drained == 0, "a winning wager grants, and costs no blood")

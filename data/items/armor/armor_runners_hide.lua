@@ -1,4 +1,4 @@
--- RUNNER'S HIDE: the coat that makes you quick enough to bite twice.
+-- RUNNER'S HIDE: the coat that makes you quick enough not to be bitten twice.
 --
 -- IT WAS GOING TO BE THE HIDE THAT COSTS NO MOVEMENT, and that item cannot exist. docs/classes.md's
 -- cost table has no free rung and tests/armor_spec.lua enforces it: every coat is felt, and what
@@ -9,11 +9,17 @@
 --
 -- WHICH TURNED OUT TO BE THE BETTER ITEM ANYWAY. It buys SPEED, and speed is no longer just initiative:
 -- the pack's own teeth strike twice against a body two points slower (weapon_wolf_fangs.lua, Fire
--- Emblem's doubling re-scaled to this game's 0-9 range), and weapon_the_second_bite hands that same
--- rule to the player. The cast sits in two clumps -- the heavies at 3, the quick at 5 -- so one point
--- off a wolf's coat is exactly the point that carries a speed-5 body to 6 and puts the whole armoured
--- half of every warband inside doubling range. A coat that decides whether you hit once or twice is a
--- build piece; a coat that saves you a step was a convenience.
+-- Emblem's doubling re-scaled to this game's 0-9 range). The cast sits in two clumps -- the heavies at
+-- 3, the quick at 5 -- so one point off a wolf's coat is exactly the point that carries a speed-5 body
+-- to 6 and puts the whole armoured half of every warband inside doubling range. A coat that decides
+-- whether you get bitten once or twice is a build piece; a coat that saves you a step was a convenience.
+--
+-- IT USED TO BE HALF AN ARGUMENT ABOUT THE PLAYER'S OWN DOUBLING, and that half is gone: it read
+-- "weapon_the_second_bite hands that same rule to the player" back when that blade rolled the speed
+-- gap too. It is a BRAVE weapon now (`strikes = 2`, docs/weapons.md) -- it strikes twice whoever it is
+-- aimed at, so no coat buys it anything. The doubling rule is the pack's alone, which means this hide
+-- is bought to be doubled LESS rather than to double more, and that is the honest reading of a wolf's
+-- skin anyway. The initiative it buys is untouched, and so is every use of it.
 --
 -- It also reads as the animal, which the movement line never quite did. You do not take a wolf's hide
 -- and become untiring. You take it and become faster than the thing in front of you.

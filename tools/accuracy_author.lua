@@ -167,7 +167,6 @@ local NAMED = {
     -- BETTER, so it is the sin that should own the top of a skill column. Derived from `kind humanoid`
     -- these two came out at 5, which is Pride's apex being averagely good at fighting.
     character_the_peerless = { skill = 9, luck = 2, why = "Pride's apex: duels, and does not need luck" },
-    character_marginalia = { skill = 8, luck = 2, why = "Pride's mini sin: the same claim, one rank down" },
 }
 
 -- ---------------------------------------------------------------------------

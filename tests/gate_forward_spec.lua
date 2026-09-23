@@ -7,7 +7,7 @@
 -- and a bed you could not wait out -- a softlock reachable by ordinary play, at the exact moment the
 -- player was already losing.
 --
--- BOTH THE BED AND THE WAIT ARE DELETED (models/wound.lua). A wound is a condition of the expedition
+-- BOTH THE BED AND THE WAIT ARE DELETED (models/injury.lua). An injury is a condition of the expedition
 -- now and the surface ends it for free, so no body is ever unavailable, nothing is ever waiting for a
 -- morning, and the gap the two conditions had to cover between them does not exist to be opened.
 --
@@ -18,7 +18,7 @@
 -- way to shut the stair is an empty roster, which no route reaches.
 
 local Gate = require("models.gate")
-local Wound = require("models.wound")
+local Injury = require("models.injury")
 local Player = require("models.player")
 local Descent = require("models.descent")
 
@@ -35,8 +35,12 @@ local function company(n)
     return p
 end
 
+-- BLOOD LOSS BY NAME, not a roll. A fall deals one of seven kinds (models/injury.lua) and only this
+-- one reserves enough of the pool to reach Injury.FLOOR in a handful of falls -- five rolled kinds
+-- would leave the body somewhere in the middle, and the case below is specifically about the bottom
+-- rung. Naming it is what makes "the worst the ladder has" a state this file can actually construct.
 local function hurt(player, id, n)
-    for _ = 1, (n or 1) do Wound.inflict(player, { { id = id } }) end
+    for _ = 1, (n or 1) do Injury.inflict(player, { { id = id } }, "injury_blood_loss") end
 end
 
 return {
@@ -47,27 +51,27 @@ return {
             local run = Descent.new(p, 11)
             assert(Gate.canDescend(p, run), "an unpicked company takes the first four")
 
-            -- WOUNDED IS NOT UNAVAILABLE, and that is the whole choice the wound meter offers: a hurt
+            -- INJURED IS NOT UNAVAILABLE, and that is the whole choice the injury meter offers: a hurt
             -- body may still be sent, worse than they were. There is no longer any other kind of
             -- answer -- a body cannot be put anywhere that takes them out of the company.
             for _, char in ipairs(p.roster) do hurt(p, char.id, 3) end
-            assert(Gate.canDescend(p, run), "a company of walking wounded may still go down")
+            assert(Gate.canDescend(p, run), "a company of walking injured may still go down")
             assert(#Descent.party(run, p) == Descent.PARTY_MAX,
-                "and the expedition is still full: nothing strains a wounded body out of it")
+                "and the expedition is still full: nothing strains an injured body out of it")
         end,
     },
     {
         -- THE CASE THE OLD PAIR EXISTED FOR, asked of the one control that is left: the state where
         -- every single body is carrying the worst the ladder has. It used to shut the stair (they would
         -- all have been in beds); it must not now.
-        name = "a company at the bottom of the wound ladder still has a stair",
+        name = "a company at the bottom of the injury ladder still has a stair",
         fn = function()
             local p = company(7)
             local run = Descent.new(p, 12)
             for _, char in ipairs(p.roster) do hurt(p, char.id, 5) end
 
             for _, char in ipairs(p.roster) do
-                assert(Wound.healShare(p, char.id) == Wound.FLOOR,
+                assert(Injury.healShare(p, char.id) == Injury.FLOOR,
                     char.id .. " should be floored, so this case ran at the bottom rung")
             end
             assert(#Descent.party(run, p) > 0, "somebody is available to go down")

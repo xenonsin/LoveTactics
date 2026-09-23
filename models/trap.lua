@@ -61,6 +61,28 @@ local function ctxFor(combat, trap, victim)
             if not tgt then return nil end
             return Combat.curseItem(combat, tgt, id)
         end,
+        -- ...AND THE SAME VECTOR POINTED AT THE BODY RATHER THAN THE KIT (models/injury.lua). A pit
+        -- breaks a leg, a gas takes a lung -- and unlike every other thing a trap does, this one
+        -- outlives the fight.
+        --
+        -- IT RECORDS RATHER THAN CHARGES, which is the same split `battle.fallen` already keeps and the
+        -- reason it is not simply a call to Injury.inflict. An injury is keyed by character id on the
+        -- PLAYER, and the combat model has no player and must not grow one: Combat.unreservedMax is
+        -- asked about summons, enemies and duel rosters that have no player behind them at all. So the
+        -- trap writes an intent onto the combat object and states/game.lua's inflictInjuries drains it
+        -- on the way out, where the player is in scope -- which also means a trap in a duel or a draft
+        -- match records into a list nobody reads, and correctly costs nobody a bone.
+        --
+        -- Only a body with an id the save will still know tomorrow can carry one, which is the same
+        -- filter Injury.inflict applies -- stated here too so a summon standing on a pit records
+        -- nothing rather than recording a row that is silently dropped later.
+        injure = function(tgt, id)
+            local charId = tgt and tgt.char and tgt.char.id
+            if not charId then return nil end
+            combat.dealtInjuries = combat.dealtInjuries or {}
+            combat.dealtInjuries[#combat.dealtInjuries + 1] = { charId = charId, kind = id }
+            return charId
+        end,
         unitsNear = function(x, y, radius) return Combat.unitsNear(combat, x, y, radius) end,
     }
 end

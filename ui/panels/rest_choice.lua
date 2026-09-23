@@ -8,16 +8,16 @@
 --   RestChoice.new({ title=, onHeal=, onSharpen=, onStudy=, onBind=, onClose= })
 --
 -- BIND IS THE FOURTH AND IT IS NOT ALWAYS THERE. It sets a bone off every body carrying one
--- (models/wound.lua), and it is the only thing underground that does -- the surface used to have a
--- building for it and the price on that building is what took the building away. A wound is a condition
+-- (models/injury.lua), and it is the only thing underground that does -- the surface used to have a
+-- building for it and the price on that building is what took the building away. An injury is a condition
 -- of the expedition now, so the way to shed one mid-dive has to be a DECISION with an alternative, which
 -- is exactly the shape this panel already is: binding is taken instead of healing, sharpening or
 -- studying.
 --
 -- Passed as a callback rather than gated in here, so the row draws only when somebody is actually
--- carrying a wound (states/game.lua asks Wound.wounded before it hands one over). A whole company is
+-- carrying an injury (states/game.lua asks Injury.injured before it hands one over). A whole company is
 -- told that binding is not on offer by the row not being there, which is the same rule every other
--- conditional control in the game draws under -- and it keeps this panel free of the wound model.
+-- conditional control in the game draws under -- and it keeps this panel free of the injury model.
 --
 -- APPENDED RATHER THAN INSERTED, on purpose: the three that were always here keep their positions and
 -- their accents, so a player who has learned "Heal is the top one" is never wrong. The row that comes
@@ -69,10 +69,10 @@ function RestChoice.new(opts)
             desc = "Gain Honed Edge -- the front line opens every fight emboldened.",
             cb = opts.onSharpen })
     end
-    -- ...and the one that comes and goes. See the header: no wound in the company, no row.
+    -- ...and the one that comes and goes. See the header: no injury in the company, no row.
     if opts.onBind then
         self.options[#self.options + 1] = { label = "Bind",
-            desc = "Set one wound on everybody carrying one. The held-back part of their bar comes back.",
+            desc = "Set one injury on everybody carrying one. The held-back part of their bar comes back.",
             cb = opts.onBind }
     end
     self.focus = 1

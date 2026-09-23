@@ -4,6 +4,16 @@
 --
 -- Pure logic, headless. The board half runs on a real Combat, in the style of tests/trait_spec.lua.
 
+-- THE QUEST BLUEPRINTS ARE GONE, AND SO IS WHAT THEY WERE COVERING. data/quests was deleted
+-- with the seven house postings (92ff549d), which took companion recruitment, the market's openers,
+-- Saber's debut and every `slot_01` with it. The cases below had no data left to run against and
+-- were removed on 2026-09-23 rather than left red. Each one is listed so the hole is findable:
+--
+--   * completing a quest eats the meal through, and names what it spent
+--
+-- Nothing above is a rule that was decided against; it is coverage that lost its subject. When the
+-- replacement for the postings lands, these are the cases it owes back.
+
 local Meal = require("models.meal")
 local Trait = require("models.trait")
 local Combat = require("models.combat")
@@ -166,23 +176,6 @@ return {
             assert(Meal.blockReason(green, "meal_empty_chair") == "not on the menu yet")
             assert(not Meal.eat(green, "meal_empty_chair"))
             assert(green.meal == nil)
-        end,
-    },
-    {
-        name = "completing a quest eats the meal through, and names what it spent",
-        fn = function()
-            local Player = require("models.player")
-            local p = Player.new()
-            p.gold = 1000
-            assert(Meal.eat(p, "meal_morning_oats"))
-            local quest = Quest.get("quest_colosseum_slot_01")
-            assert(quest, "a real quest to finish")
-            local reward = Quest.complete(p, quest, nil)
-            assert(reward, "the quest paid out")
-            assert(reward.mealSpent == "meal_morning_oats",
-                "the payout names the supper it ate through")
-            assert(p.meal == nil, "and the company is hungry again")
-            assert(Meal.canEat(p, "meal_morning_oats"), "so the counter is open for the next run")
         end,
     },
     {

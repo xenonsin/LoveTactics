@@ -334,6 +334,17 @@ Balance.MAGNITUDE_WAIVERS = {
         .. " ability_culling_stroke, slot 1); this one carries its whole weight in the scaler."
         .. " Raising the base to the slot-7 target of 15 would price the UNBUILT swing at a fighter"
         .. " apex and the built one well past the top of the ladder -- a rebalance, not a re-tier.",
+    weapon_the_second_bite = "THE BRAVE RULE, and this is the one item in the game the ladder cannot"
+        .. " read (Item.strikes, docs/weapons.md). Its swing lands TWICE, so the number this pass is"
+        .. " measuring is half of what the weapon deals -- the dagger slot-15 target of 15 would price"
+        .. " a blade landing two blows of that, which is not a top-rung knife but a doubled one. The"
+        .. " cut has to be this deep because a swing is `weapon damage + the wielder's attack stat`"
+        .. " (Combat.dealDamage) and the rule repeats the whole of it: a rogue's attack stat alone is"
+        .. " 15 and grows past 25, so the damage line is the only lever the blueprint holds over the"
+        .. " doubling and it takes the entire cost. What keeps it from being strictly the best knife"
+        .. " anyway is that armour is subtracted from EACH strike (Combat.mitigatedDamage runs per"
+        .. " hit) -- savage against a robe, poor against plate. Raise this to its rung and the ladder"
+        .. " is honest about one weapon and wrong about the fight.",
     ability_bolas = "the throw is the delivery, not the purchase: the Poacher's whole shelf is paid out"
         .. " by the Root it lands (weapon_poachers_kris puts half its swing again through a Rooted body,"
         .. " utility_quarrys_end opens on the snare), so the weight itself is nearly nothing on purpose."
@@ -633,7 +644,7 @@ Balance.FROZEN = {
     -- on the grunt landing a specific blow and surviving a specific answer. It also declares
     -- `scaling = false`, so it is blueprint-exact wherever it appears and there is nowhere for a
     -- rescale to hide.
-    character_demon_grunt = "prologue: the parry lesson is written against these exact numbers",
+    character_demon_grunt_tutorial = "prologue: the parry lesson is written against these exact numbers",
 }
 
 function Balance.isFrozen(id) return Balance.FROZEN[id] ~= nil end

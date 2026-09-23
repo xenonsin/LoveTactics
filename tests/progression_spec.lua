@@ -4,6 +4,21 @@
 --
 -- The save specs write to a throwaway filename so a developer's real save is never touched.
 
+-- THE QUEST BLUEPRINTS ARE GONE, AND SO IS WHAT THEY WERE COVERING. data/quests was deleted
+-- with the seven house postings (92ff549d), which took companion recruitment, the market's openers,
+-- Saber's debut and every `slot_01` with it. The cases below had no data left to run against and
+-- were removed on 2026-09-23 rather than left red. Each one is listed so the hole is findable:
+--
+--   * Quest.complete always reports something that moved, even when nobody levels
+--   * Quest.complete grants a quest's items into the stash exactly once
+--   * Quest.complete grants gold and standing, and advances the sponsor, exactly once
+--   * Quest.complete reports where the company stands, and hands out no levels
+--   * Quest.sponsorProgress counts a vendor's finished quests; unknown vendors read zero
+--   * a house's opener is its own line's first slot, and it is reachable
+--
+-- Nothing above is a rule that was decided against; it is coverage that lost its subject. When the
+-- replacement for the postings lands, these are the cases it owes back.
+
 local Player = require("models.player")
 local Building = require("models.building") -- vendorUnlockPrestige: when a house's door opens
 local Vendor = require("models.vendor")
@@ -75,21 +90,6 @@ return {
 
             assert(Player.spendGold(p, 60) == true, "spending the exact balance is allowed")
             assert(p.gold == 0, "gold should be spent to zero")
-        end,
-    },
-    {
-        name = "Quest.sponsorProgress counts a vendor's finished quests; unknown vendors read zero",
-        fn = function()
-            local Quest = require("models.quest")
-            local p = Player.new()
-            assert(Quest.sponsorProgress(p, "colosseum") == 0, "unseen vendor should read 0")
-            p.completedQuests = {
-                quest_colosseum_slot_01 = true,
-                quest_cathedral_slot_01 = true, -- a different sponsor
-                quest_bastion_slot_01 = true, -- a different sponsor must not count toward the colosseum
-            }
-            assert(Quest.sponsorProgress(p, "colosseum") == 1, "only the colosseum's own quests count")
-            assert(Quest.sponsorProgress(p, "bastion") == 1, "each sponsor counts independently")
         end,
     },
     {
@@ -492,103 +492,6 @@ return {
             end
         end,
     },
-    -- ------------------------------------------- WHAT THE QUEST BOARD TOOK WITH IT
-    --
-    -- Six cases stood here and every one asked what the player may PICK today: whether
-    -- Quest.available dropped a finished quest and opened the next, whether it hid one behind a
-    -- sponsor gate, whether it copied requiredQuests and rewardItems onto its runtime entry, and
-    -- three about the Gate Below being hidden, then locked, then keyed.
-    --
-    -- Picking is what the board did. A descent seats work on its floors (models/errand.lua), so
-    -- Quest.available is gone and the Gate Below with it -- the ending is the Hollow Crown at the
-    -- bottom of a run, and tests/ending_spec.lua guards it now.
-    --
-    -- One rule they protected is worth writing down even with nowhere left to assert it: what
-    -- opened the endgame was the quest you FINISHED, never an item you were still holding, so
-    -- selling or re-equipping a trophy could not soft-lock the game.
-    {
-        name = "a house's opener is its own line's first slot, and it is reachable",
-        fn = function()
-            -- THIS CASE HAS BEEN REVERSED THREE TIMES and the current answer is the plainest of them.
-            --
-            -- It began as "a house's work waits for the house's door to open": a Bastion quest stayed off
-            -- the board until prestige 2, because a quest pointing at a locked door is an errand the
-            -- player cannot spend the reward of. That rule needed a house that is NOT open from the
-            -- start, and there is no longer any such thing on the prestige scale -- the seven doors carry
-            -- no `unlockPrestige` at all now, because the number is parked at 1 forever with the board
-            -- retired (Player.standing).
-            --
-            -- What replaced it inverts the dependency rather than retuning it. `slot_01` of a house's own
-            -- line IS the door: it is seated on a descent floor unasked, and running it opens the shop
-            -- (models/errand.lua's Errand.opener). So the first piece of work no longer waits for the
-            -- door -- it is the thing that opens it, which is the only arrangement where a shut house can
-            -- ever be opened by a player who has never been able to talk to it.
-            --
-            -- Pinned here because the failure is silent in exactly the way the old prestige gate was: an
-            -- opener that does not exist, or that belongs to another house, is a card that never turns
-            -- over and nothing errors.
-            local Errand = require("models.errand")
-            local Vendor = require("models.vendor")
-
-            for vendorId, vdef in pairs(Vendor.defs) do
-                if vdef.class then
-                    local opener = Errand.opener(vendorId)
-                    assert(opener, vendorId .. " has no opener, so its door can never be opened")
-                    assert(Quest.defs[opener], vendorId .. "'s opener is not a quest: " .. tostring(opener))
-                    assert(Quest.defs[opener].sponsor == vendorId,
-                        vendorId .. "'s opener belongs to " .. tostring(Quest.defs[opener].sponsor))
-                    assert(Quest.defs[opener].map and Quest.defs[opener].map.objective,
-                        opener .. " has no objective, so no floor can seat it")
-
-                    -- And it is SLOT ONE specifically, which is not the same as the head of the line:
-                    -- Errand.forVendor sorts by id, so a house whose line carries a story quest gets it
-                    -- sorted in by alphabet. The Colosseum's door was opening on its Champion's
-                    -- Challenge and the Crucible's on Ren's recruit, because "champions" and
-                    -- "apothecary" both precede "slot". Neither is the job a house posts to introduce
-                    -- itself, and a door on the wrong one is a shelf nobody reaches.
-                    assert(opener:match("_slot_01$"),
-                        vendorId .. "'s opener is " .. opener .. ", not its first slot")
-
-                    -- Running it opens the door and nothing else does.
-                    local shut, open = Player.new(), Player.new()
-                    shut.completedQuests, open.completedQuests = {}, { [opener] = true }
-                    assert(not Errand.doorOpen(shut, vendorId), vendorId .. " opens without its opener")
-                    assert(Errand.doorOpen(open, vendorId), vendorId .. " stays shut with its opener run")
-                end
-            end
-        end,
-    },
-    {
-        name = "Quest.complete grants gold and standing, and advances the sponsor, exactly once",
-        fn = function()
-            local p = playerAt(1)
-            p.gold = 0
-
-            local quest = Quest.get("quest_colosseum_slot_01")
-            assert(quest, "arena_debut should be available at prestige 1")
-
-            local before = Quest.sponsorProgress(p, "colosseum")
-            local reward = Quest.complete(p, quest)
-            assert(reward, "completing a fresh quest should pay out")
-            assert(p.gold == quest.rewardGold, "gold should be granted")
-            -- Campaign standing is a count of finished quests now. Prestige is gone: it was one number
-            -- doing two jobs, and both moved -- standing here, the world's difficulty onto the calendar
-            -- (models/calendar.lua).
-            assert(Player.questsCompleted(p) == 1, "finishing a quest is what advances standing")
-            assert(reward.standing == 1 and reward.standingBefore == 0,
-                "the reward reports standing either side, for the panel that used to draw a prestige bar")
-            assert(Player.hasCompleted(p, "quest_colosseum_slot_01"), "the quest should be marked completed")
-            assert(Quest.sponsorProgress(p, "colosseum") == before + 1,
-                "finishing the quest is what advances the Colosseum's standing")
-            assert(reward.sponsorQuests == before + 1, "the reward should report the sponsor's new quest count")
-
-            -- A second payout is refused: the objective tile could otherwise be re-cleared.
-            local gold, standing = p.gold, Player.questsCompleted(p)
-            assert(Quest.complete(p, quest) == nil, "a completed quest must not pay twice")
-            assert(p.gold == gold and Player.questsCompleted(p) == standing,
-                "the refused payout must grant nothing")
-        end,
-    },
 
     {
         -- The run's forging haul: the caches the party walked to PLUS the objective fight's own salvage
@@ -620,39 +523,6 @@ return {
         end,
     },
 
-    {
-        -- IT WAS IRA'S MAIL, off quest_colosseum_slot_10 with the nine slots in front of it faked into
-        -- completedQuests. That quest went with the retired board, and a general's relic does not come
-        -- off a quest any more -- it comes off the body standing on her circle's stair (models/descent
-        -- .lua's DROPS, pinned by tests/sin_drops_spec.lua).
-        --
-        -- What is left here is the rule that was always this case's real subject and is asserted nowhere
-        -- else: Quest.complete puts a quest's rewardItems in the stash, once, and a second clear of the
-        -- same quest pays nothing. The debut carries rewardItems, so it does the job.
-        name = "Quest.complete grants a quest's items into the stash exactly once",
-        fn = function()
-            local p = playerAt(5)
-            local quest = Quest.get("quest_colosseum_slot_01")
-            assert(quest, "the debut should resolve")
-
-            local function stashCount(id)
-                local n = 0
-                for _, item in ipairs(p.stash) do
-                    if item.id == id then n = n + 1 end
-                end
-                return n
-            end
-            assert(stashCount("weapon_ledgemans_axe") == 0, "the axe starts on nobody")
-
-            local reward = Quest.complete(p, quest)
-            assert(stashCount("weapon_ledgemans_axe") == 1, "finishing it drops the axe into the stash")
-            assert(reward.received and #reward.received > 0,
-                "and the summary names what was received, for the reward panel")
-
-            assert(Quest.complete(p, quest) == nil, "a second clear pays nothing")
-            assert(stashCount("weapon_ledgemans_axe") == 1, "and mints no second copy")
-        end,
-    },
     {
         name = "Player.grantItem stacks a consumable rather than filling the stash with singles",
         fn = function()
@@ -1054,34 +924,6 @@ return {
         end,
     },
     {
-        name = "Quest.complete reports where the company stands, and hands out no levels",
-        fn = function()
-            -- WAS "folds the roster's advancement into its reward table", and the absence is now the
-            -- contract. Completing a quest used to grant prestige, prestige levelled the whole roster
-            -- at once, and this table carried the list. A body earns its own level in the fighting now
-            -- (models/experience.lua), resolved at the end of every battle -- so by the time the
-            -- objective pays out, the levelling has happened and been announced where it was earned.
-            --
-            -- What the panel reads instead is the standing, which is what is asserted here: it is the
-            -- last of three things to have replaced the prestige bar and the only one still standing.
-            local p = playerAt(1)
-            local quest = Quest.get("quest_colosseum_slot_01")
-            assert(quest, "arena_debut should be available on the first day")
-            local fought = #p.roster
-
-            local reward = Quest.complete(p, quest)
-            assert(reward.advancement == nil,
-                "a quest hands out no levels -- they were earned in the fight and reported there")
-            assert(reward.prestige == nil, "and prestige is gone entirely, not merely unused")
-            assert(reward.days == nil,
-                "nor a campaign length: there is no deadline to be a fraction of")
-            assert(reward.standing == reward.standingBefore + 1,
-                "finishing one quest advances standing by exactly one")
-            assert(reward.recruited and #p.roster == fought + 1,
-                "and the bout's real reward still joined")
-        end,
-    },
-    {
         name = "a save round trip preserves level, the ledger, and re-bakes accumulated growth",
         fn = function()
             withScratchSave(function()
@@ -1152,29 +994,6 @@ return {
         end,
     },
 
-    {
-        -- A quest that levels nobody is the ORDINARY case, and always was -- so the reward table has to
-        -- carry something that moved, or half of all quests report nothing at all. That used to be a
-        -- prestige step filling a bar, then the day filling the same bar. Neither survives: what is left
-        -- is STANDING, which moves by exactly one on every quest that finishes and is what the town
-        -- reads anyway.
-        name = "Quest.complete always reports something that moved, even when nobody levels",
-        fn = function()
-            local p = playerAt(1)
-            local quest = Quest.get("quest_colosseum_slot_01")
-            assert(quest, "the fixture quest should be available")
-
-            local reward = Quest.complete(p, quest)
-
-            assert(reward.standing == reward.standingBefore + 1,
-                "standing moved by one, which is what the town reads")
-            assert(#(reward.advancement or {}) == 0,
-                "nobody levelled here -- levels are earned in the fighting, not at the payout")
-            -- The property that matters, stated plainly: there is always a reading that changed.
-            assert(reward.standing ~= reward.standingBefore,
-                "a completed quest must never report a company that stood entirely still")
-        end,
-    },
 
     {
         -- Every save written before per-class level crediting existed has no `growthBy`. Such a save

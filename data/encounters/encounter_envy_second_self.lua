@@ -18,9 +18,17 @@ return {
     -- It also gated Lust's own elites off Lust's own floors: converted from the retired calendar they
     -- asked for floors three and four, and Lust owns one and two.
     --
-    -- Which of a circle's floors a thing bills on is Descent.SINS' `elites` for the standing threat, and
-    -- `rung` for anything an author wants split across the approach and the seat.
+    -- WHICH of the two is `rung` below, and on an elite it is REQUIRED rather than optional: one elite,
+    -- one floor. A biome lock places a body in the stratum and then leaves it standing on both of that
+    -- stratum's stairs, which makes a landmark into traffic -- see models/encounter.lua's eligibility
+    -- note for the whole argument, and tests/elite_floor_spec.lua for the count that holds it.
+    --
+    -- Descent.SINS' `elites` is the SEPARATE question of which of a floor's candidates the floor is
+    -- ABOUT (billed at ELITE_NAMED_WEIGHT). The rung says where a thing may stand at all.
     condition = function(ctx) return ctx.biome == "desert" end,
+    -- RUNG 2 -- the seat, which is where Envy bills her -- and the heavier of the desert's two,
+    -- measured.
+    rung = 2,
     composition = function(ctx)
         local list = { "character_the_second_self", "character_mimic_of_ash" }
         return Band.fill(list, ctx, "character_glass_mote", { base = 2, per = 6 })

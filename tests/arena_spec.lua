@@ -2,6 +2,16 @@
 -- shape + spawn walkability, prestige-driven composition scaling, and the debug
 -- serialize round-trip. Pure logic only (no rendering), so it runs headless.
 
+-- THE QUEST BLUEPRINTS ARE GONE, AND SO IS WHAT THEY WERE COVERING. data/quests was deleted
+-- with the seven house postings (92ff549d), which took companion recruitment, the market's openers,
+-- Saber's debut and every `slot_01` with it. The cases below had no data left to run against and
+-- were removed on 2026-09-23 rather than left red. Each one is listed so the hole is findable:
+--
+--   * no quest's objective can field more than its difficulty allows, at any prestige
+--
+-- Nothing above is a rule that was decided against; it is coverage that lost its subject. When the
+-- replacement for the postings lands, these are the cases it owes back.
+
 local Arena = require("models.arena")
 
 -- A spec that always generates procedurally (unknown biome -> no curated match),
@@ -93,13 +103,18 @@ return {
     },
     {
         -- A spawn list hands out one point per body, which describes the board only while every body
-        -- is 1x1. The Ogre encounter is the counter-example that shipped broken: its 2x2 brute covered
+        -- is 1x1. The Ogre encounter was the counter-example that shipped broken: its 2x2 brute covered
         -- the points beside its anchor, and the escort seated on them opened the fight standing inside
-        -- it. Walked over many seeds and days, on the real blueprint, counting whole FOOTPRINTS.
-        name = "no body opens the fight standing inside another (the Ogre and its escort)",
+        -- it. Walked over many seeds and days, on a real blueprint, counting whole FOOTPRINTS.
+        --
+        -- IT IS THE WHITE WOLF'S PACK NOW. encounter_ogre went with the postings (92ff549d) and the
+        -- case needs the same shape rather than that particular body: a multi-tile lead with an escort
+        -- seated around it, on forest ground. She is 2x2 and opens with three wolves at her flanks,
+        -- which is exactly the seating that broke.
+        name = "no body opens the fight standing inside another (a 2x2 lead and its escort)",
         fn = function()
             local Character = require("models.character")
-            local ogre = require("data.encounters.encounter_ogre")
+            local pack = require("data.encounters.encounter_white_wolf")
 
             local function census(a, where)
                 local held = {}
@@ -129,7 +144,7 @@ return {
                 for day = 2, 12, 2 do
                     for seed = 1, 12 do
                         local a = Arena.build({ prestige = 3, day = day }, proceduralSpec({
-                            biome = biome, seed = seed, composition = ogre.composition,
+                            biome = biome, seed = seed, composition = pack.composition,
                         }))
                         census(a, string.format("%s day %d seed %d", biome, day, seed))
                     end
@@ -261,60 +276,6 @@ return {
             assert(Arena.clampComposition(short, 6) == short, "under the cap, nothing is copied")
             local allNamed = { "a", "b", "c", "d", "e", "f", "g", "h" }
             assert(#Arena.clampComposition(allNamed, 3) == 8, "distinct names outrank the ceiling")
-        end,
-    },
-    {
-        -- THE REGRESSION THIS EXISTS FOR: every objective sizes its enemies off prestige, prestige is a
-        -- lifetime total that New Game+ carries forward, and nothing used to bound the result -- the
-        -- `/2` quests reached 71 bodies by the campaign's ~138 prestige and 140 in a second run. The
-        -- ceiling has to hold at every prestige the game can actually reach, not just at the ones a
-        -- fixture happens to pick.
-        name = "no quest's objective can field more than its difficulty allows, at any prestige",
-        fn = function()
-            local Quest = require("models.quest")
-            local checked = 0
-            for id, def in pairs(Quest.defs) do
-                local objective = def.map and def.map.objective
-                if objective and objective.composition then
-                    local ctx = { quest = def, biome = def.map.biome }
-                    local cap = Arena.enemyCap(ctx)
-                    -- 1 (a fresh company) through 276 (a full New Game+ carry), stepped to keep the
-                    -- sweep cheap while still crossing every threshold a floor division can trip.
-                    for prestige = 1, 276, 5 do
-                        ctx.prestige = prestige
-                        local raw = Arena.resolveComposition(objective.composition, ctx)
-                        local cut = Arena.clampComposition(raw, cap)
-                        -- Distinct ids outrank the cap by design, so the bound is whichever is larger.
-                        local distinct, seen = 0, {}
-                        for _, cid in ipairs(raw) do
-                            if not seen[cid] then seen[cid] = true; distinct = distinct + 1 end
-                        end
-                        assert(#cut <= math.max(cap, distinct), string.format(
-                            "%s fields %d at prestige %d (cap %d)", id, #cut, prestige, cap))
-
-                        -- An assassinate target must still be standing on the board to be killed.
-                        local win = objective.win
-                        if win and win.type == "assassinate" and win.target then
-                            local present = false
-                            for _, cid in ipairs(cut) do
-                                if cid == win.target then present = true end
-                            end
-                            local authored = false
-                            for _, cid in ipairs(raw) do
-                                if cid == win.target then authored = true end
-                            end
-                            assert(present or not authored, string.format(
-                                "%s clamped away its assassinate target at prestige %d", id, prestige))
-                        end
-                    end
-                    checked = checked + 1
-                end
-            end
-            -- SEVEN postings, five prestige bands. It read `> 30` against the 42-quest ladder, and
-            -- `> 50` against the 92-quest board before that; the ladder went with the houses
-            -- (models/errand.lua) and what is left is one posting per class, so the floor moves
-            -- with the campaign rather than the sweep silently passing on a fraction of it.
-            assert(checked >= 7, "the sweep should cover every posting, saw " .. checked)
         end,
     },
 
@@ -559,8 +520,8 @@ return {
                     biome = "__test_void", seed = seed * 29,
                     party = { "character_avatar", "character_rowan" },
                     allies = { "character_survivor" },
-                    composition = function() return { "character_demon_imp", "character_demon_imp",
-                        "character_demon_imp" } end,
+                    composition = function() return { "character_demon_imp_tutorial", "character_demon_imp_tutorial",
+                        "character_demon_imp_tutorial" } end,
                     objective = { type = "defend", anchor = "rally", turns = 5,
                         protect = "character_survivor" },
                 })

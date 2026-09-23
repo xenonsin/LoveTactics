@@ -17,7 +17,7 @@
 -- that stage with it and nothing would say so. Edit either and the spec names the cell that disagrees.
 --
 -- Every cell is load-bearing (like data/arenas/tutorial_village.lua), and each terrain lever answers a
--- stage of the fight (see data/characters/character_demon_champion.lua):
+-- stage of the fight (see data/characters/character_demon_champion_tutorial.lua):
 --   * THE NECK (y4): a wall of `mountain` with a two-wide gap at x4-5 -- the only north-south passage,
 --     so the slow Champion must squeeze it (the stage-1 kite/brace beat). The flanking rock doubles
 --     as knockback walls: shove the Champion north when it stands at x3 or x6 and it slams into them for

@@ -82,6 +82,29 @@ local function eligible(def, ctx)
     --           stratum, so the only thing left to say is which floor OF that circle -- 1 for the
     --           approach, 2 for the seat. A depth on top of a biome lock is a second opinion, and it
     --           disagrees the moment the shuffle deals that circle at another depth.
+    --
+    -- AND ON AN ELITE THE RUNG IS NOT OPTIONAL: ONE ELITE, ONE FLOOR.
+    --
+    -- An elite is the one stop the descent asks a player to READ -- seen from across the board, priced
+    -- against the company, routed around, and come back for on the trip that can afford it (the Etrian
+    -- FOE job the rift kept when it took ordinary combat off the map, Descent.ELITE_WEIGHT). A thing met
+    -- once in a stratum is a landmark and "the floor with the Meandering Stag on it" is a sentence a
+    -- player can say; a thing standing on both floors of a circle is traffic, and the sentence goes away.
+    --
+    -- A biome lock alone cannot say it. A circle owns TWO floors, so `condition = biome` places a body in
+    -- a stratum and then leaves it eligible on both of that stratum's stairs -- which is what every elite
+    -- in the tree did until this rule landed. The rung is the other half of the placement, and it is the
+    -- half that makes the two floors of a circle different from each other.
+    --
+    -- Descent.SINS' `elites` is a separate question and the two must not be confused: the rung says which
+    -- floor an elite may stand on AT ALL, and the billing says which of that floor's candidates the floor
+    -- is ABOUT (weighted to Descent.ELITE_NAMED_WEIGHT). A billing that names an elite runged onto the
+    -- other floor is a silent no-op -- it weights an id that is not in the list -- so the two are held in
+    -- step by tests/elite_floor_spec.lua, which walks the fifteen floors and counts.
+    --
+    -- NOT ENFORCED HERE, and deliberately. A missing rung would have to fail closed (drop the elite) or
+    -- open (deal it twice), and both are a content decision made silently by a gate. The spec fails the
+    -- BUILD instead, and names the blueprint.
     if def.depth then
         local from, to = def.depth, nil
         if type(def.depth) == "table" then from, to = def.depth.from, def.depth.to end

@@ -3,7 +3,7 @@
 -- IT IS THE SPELL JOLT USED TO BE, lifted out whole so that Jolt could stop being two things at once.
 -- Jolt was the Arcanum's opening-shelf spell AND the village lesson's teaching cast, which meant its
 -- numbers answered to the choreography rather than to the shelf: the prologue's closing beat is tuned
--- to the exact weight of one cast (data/characters/character_demon_grunt.lua's health is "the SUM of
+-- to the exact weight of one cast (data/characters/character_demon_grunt_tutorial.lua's health is "the SUM of
 -- five authored blows", and this is one of them), so Jolt could never be priced as what it actually is
 -- -- a stun on a bolt, which is a large thing to carry. The moment the shelf ladder was read off power
 -- rather than off price it climbed, and the lesson broke.

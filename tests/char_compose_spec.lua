@@ -117,7 +117,7 @@ return {
     {
         name = "a demon/undead resolves by kind",
         fn = function()
-            local dl, dlid = resolve("character_demon_grunt")
+            local dl, dlid = resolve("character_demon_grunt_tutorial")
             assert(Char.kindOf(dl, dlid) == "demon", "demon_grunt is a demon")
             assert(Char.slugFor(dl, dlid) == "lorc/daemon-skull", "demon -> daemon skull")
             local mg, mgid = resolve("character_miller_ghost")
@@ -212,8 +212,8 @@ return {
         -- untouched and a former exemplar (the generic mage, no longer Elementalist's) falls back to class.
         name = "the discipline tier fires only for the exemplar, never a lookalike id",
         fn = function()
-            assert(slug("character_demon_champion") ~= "lorc/laurel-crown", "demon_champion is not the Champion")
-            assert(slug("character_demon_champion") == "delapouite/devil-mask", "it is its own demon body")
+            assert(slug("character_demon_champion_tutorial") ~= "lorc/laurel-crown", "demon_champion is not the Champion")
+            assert(slug("character_demon_champion_tutorial") == "delapouite/devil-mask", "it is its own demon body")
             assert(slug("character_mage") == "delapouite/wizard-face", "the generic mage is no discipline's exemplar")
             assert(Char.disciplineFor("champion") == "champion", "the exemplar maps to its discipline")
             assert(Char.disciplineFor("demon_champion") == nil, "a lookalike maps to nothing")

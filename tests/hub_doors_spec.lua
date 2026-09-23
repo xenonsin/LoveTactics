@@ -74,20 +74,33 @@ return {
         end,
     },
     {
-        -- ...AND NOTHING OUT HERE SPEAKS. The city drew a coach bubble from hub.draw for as long as it
-        -- had a stage to draw one for, and the widget is still in the tree -- the Gate's descend row
-        -- and the Ward's rows wear it (ui/coach_bubble.lua). What must not come back is the plaza
-        -- wearing one, so this pins the absence at the file that would have to import it.
-        name = "the city itself draws no coach bubble",
+        -- ...AND THE CITY SAYS EXACTLY ONE THING. The plaza's whole coach was cut (2026-09-21) and this
+        -- case pinned the silence; `ward_card` came back without the refusal (2026-09-23), so what is
+        -- worth pinning is no longer the absence but the COUNT. One bubble, on one card, on one
+        -- morning -- a second Locale.coach call out here is the corridor coming back one plate at a
+        -- time, and it would arrive as a line nobody argued for rather than as a visible reversal.
+        --
+        -- The refusal itself is pinned by the case above, which reads openPanel: a bubble that turns a
+        -- door down is a different failure from a second bubble, and they are asserted separately
+        -- because either can come back without the other.
+        name = "the city speaks once: one coach line, on the first morning's door",
         fn = function()
             local src = hubSource()
-            assert(not src:find("CoachBubble", 1, true),
-                "states/hub.lua is drawing a coach bubble again; the plaza coaches nothing")
-            -- ...and it asks the hint bag for nothing. The bag's own NAME survives in a comment
-            -- here, which is why this reads the call rather than the string: Locale.coach is the one
-            -- way a bubble's words are fetched, and the city makes no such call.
-            assert(not src:find("Locale.coach", 1, true),
-                "states/hub.lua is fetching a coach line; nothing out here speaks")
+            local _, calls = src:gsub("Locale%.coach%(", "")
+            assert(calls == 1,
+                "states/hub.lua fetches " .. calls .. " coach lines; the plaza says one thing")
+            assert(src:find('Locale.coach(CITY, "ward_card")', 1, true),
+                "...and the one it says is the first morning's mending")
+            -- IT IS GATED ON THE MORNING, not on the building being open. The Cathedral stands on the
+            -- plaza forever; what makes this the first morning is the stage the mending room reads too.
+            assert(src:find("if coachingMend() and not activePanel", 1, true),
+                "the plaza's bubble is no longer gated on the coached morning")
+            -- The three lines the bag still keeps for nobody. A host growing back for one of these is
+            -- the thing the count above is really guarding, named so the failure says which.
+            for _, id in ipairs({ "rift_card", "new_door", "board_card" }) do
+                assert(not src:find('"' .. id .. '"', 1, true),
+                    "states/hub.lua fields " .. id .. " again; that line is retired")
+            end
         end,
     },
     {

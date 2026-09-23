@@ -9,11 +9,11 @@
 -- `character_xin` on its first visit, and data/vendors/cathedral.lua names `character_xin` as this
 -- house's companion. The same healer was standing in two rooms.
 --
--- TWO WAYS OUT OF A WOUND, and the pair is the whole room (models/wound.lua's ward block):
---   * REST -- free, always, no gate and no purse test. The body lies up for Wound.REST_DESCENTS trips
---     per wound and is out of the company while it does, so the cost is paid in who walks down without
+-- TWO WAYS OUT OF AN INJURY, and the pair is the whole room (models/injury.lua's ward block):
+--   * REST -- free, always, no gate and no purse test. The body lies up for Injury.REST_DESCENTS trips
+--     per injury and is out of the company while it does, so the cost is paid in who walks down without
 --     them. A stay is served by DESCENDING (models/gate.lua's Gate.night).
---   * TREAT -- Wound.TREAT_COST in gold, and the bone is set before you leave the room.
+--   * TREAT -- Injury.TREAT_COST in gold, and the bone is set before you leave the room.
 -- The gold buys SPEED and never recovery. That is not decoration: it is the reason this room is allowed
 -- to exist at all, after two earlier versions of it were deleted for charging at the door.
 -- docs/the-count.md states the law -- a cost on recovery is a tax on NEEDING to recover -- and a free
@@ -50,7 +50,7 @@ return {
         -- Act 0 (models/combat.lua's spendScriptedFell) -- so this door opens on the first morning with
         -- only its mending on the desk, and the shelf joins it when somebody has climbed a priest rung.
         -- A player meets this counter holding exactly the problem it solves.
-        { answer = "mend", panel = "ward", gate = { wound = true } },
+        { answer = "mend", panel = "ward", gate = { injury = true } },
         -- ...AND THE RITE, which is the mending's twin with an item where the body goes
         -- (models/curse.lua). Same house, same two ways out, same law underneath: free and slow, or
         -- paid and now. It arrives the first time anything this company owns is hexed -- a trap in the

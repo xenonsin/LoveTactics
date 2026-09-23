@@ -37,8 +37,8 @@ return {
     -- one being moved off numbers nobody may move.
     composition = function(ctx)
         local p = ctx.depth or 1
-        local list = { "character_demon_imp", "character_demon_imp" }
-        for i = 1, math.floor((p - 1) / 3) do list[#list + 1] = "character_demon_imp" end
+        local list = { "character_demon_imp_tutorial", "character_demon_imp_tutorial" }
+        for i = 1, math.floor((p - 1) / 3) do list[#list + 1] = "character_demon_imp_tutorial" end
         return list
     end,
 
@@ -78,13 +78,13 @@ return {
         -- the survivors, later demons come round to flank and encircle.
         waves = {
             -- The melee grunt held out of the opening, now closing behind the imps from the tree line.
-            { at = 6, from = "back", composition = function() return { "character_demon_grunt" } end },
+            { at = 6, from = "back", composition = function() return { "character_demon_grunt_tutorial" } end },
             -- The party has stepped forward by now; this one comes in on their flank, whichever side
             -- that is -- a single imp, because the party holding this line is two bodies (the avatar
             -- and Rowan) and the wave's job is to pull one of them off the screen, not to break it.
-            { at = 10, from = "flank", composition = function() return { "character_demon_imp" } end },
+            { at = 10, from = "flank", composition = function() return { "character_demon_imp_tutorial" } end },
             -- The self-destruct demons the Champion later throws at you, taught here first: they charge
-            -- straight at the survivors and BURST when they die (data/characters/character_demon_bomblet.lua).
+            -- straight at the survivors and BURST when they die (data/characters/character_demon_bomblet_tutorial.lua).
             -- Intercept them -- pop them at range, shove them off, or CALL them onto yourself -- or lose to
             -- a blast. One or two, beside the Shout (Taunt) this stop grants, so the lesson reads without
             -- swamping the board -- which is what the wave said and not what it fielded: three at once,
@@ -97,16 +97,16 @@ return {
             -- which is an anchored survivor; a taunt is the only thing on the route that changes whose
             -- name is on that walk. Re-cut this wave and the gift together or not at all.
             { at = 14, from = "surround", composition = function(ctx)
-                local list = { "character_demon_bomblet", "character_demon_bomblet" }
-                if (ctx.depth or 1) >= 2 then list[#list + 1] = "character_demon_bomblet" end
+                local list = { "character_demon_bomblet_tutorial", "character_demon_bomblet_tutorial" }
+                if (ctx.depth or 1) >= 2 then list[#list + 1] = "character_demon_bomblet_tutorial" end
                 return list
             end },
             -- The encirclement closes: the late wave fans in from every open side at once. Three, not
             -- five: it is the last thing the stop asks, and it has to be a closing press the party can
             -- still answer while the bomblets before it are being cleaned up, not a second fight.
             { at = 20, from = "surround", composition = function(ctx)
-                local list = { "character_demon_imp", "character_demon_imp", "character_demon_imp" }
-                if (ctx.depth or 1) >= 2 then list[#list + 1] = "character_demon_grunt" end
+                local list = { "character_demon_imp_tutorial", "character_demon_imp_tutorial", "character_demon_imp_tutorial" }
+                if (ctx.depth or 1) >= 2 then list[#list + 1] = "character_demon_grunt_tutorial" end
                 return list
             end },
         },

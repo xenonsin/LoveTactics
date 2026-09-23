@@ -6,7 +6,7 @@
 -- says nothing at all to this one.
 --
 -- IT IS THE DESCENT'S OWN METER TURNED ON ONE BODY. What makes "push on or take the stair" a question is
--- that the company degrades as a dive runs long (models/wound.lua's opening). A body under this degrades
+-- that the company degrades as a dive runs long (models/injury.lua's opening). A body under this degrades
 -- faster than the three beside it, and the player watches one bar fall out of step with the others for
 -- the rest of the trip. That is a heavier thing than any number on this list, and it is priced as one.
 --

@@ -52,7 +52,7 @@ local prologue = {}
 -- Five imps, and the Demon Grunt the lesson walks on itself partway through (the tutorial's `spawn`,
 -- which is why it is absent from this composition). Imps rather than grunts for the teaching because
 -- an imp dies to exactly one sword blow and a pair of them to one Clear Out -- see
--- data/characters/character_demon_imp.lua, where those numbers are pinned. The grunt is the step up:
+-- data/characters/character_demon_imp_tutorial.lua, where those numbers are pinned. The grunt is the step up:
 -- it takes several blows, and the lesson deliberately ends with it still standing.
 local VILLAGE_MAP = {
     -- Paved, not wooded: this is one of the capital's own lanes, a street away from the breach. Art only on a
@@ -64,8 +64,8 @@ local VILLAGE_MAP = {
     objective = {
         name = "Hold the Street",
         composition = function()
-            return { "character_demon_imp", "character_demon_imp", "character_demon_imp",
-                     "character_demon_imp", "character_demon_imp" }
+            return { "character_demon_imp_tutorial", "character_demon_imp_tutorial", "character_demon_imp_tutorial",
+                     "character_demon_imp_tutorial", "character_demon_imp_tutorial" }
         end,
         win = { type = "killAll" },
     },
@@ -182,7 +182,7 @@ local FLIGHT_QUEST = {
                 -- weapon and the weapon changes (Combat.auraApplies). It was chosen over the charms
                 -- that sharpen a number because it pays out on the very next block rather than in
                 -- theory -- it makes adjacent kit strike as HOLY, and every demon on this route runs
-                -- holy -8 to -4 (character_demon_imp.lua, character_demon_champion.lua). The lesson
+                -- holy -8 to -4 (character_demon_imp_tutorial.lua, character_demon_champion_tutorial.lua). The lesson
                 -- and its proof are one step apart.
                 { id = "encounter_event", conversation = "conversation_flight_event_shrine" },
                 -- Stop 3: FORCED TARGETING -- the Shout, won on the one stop whose objective is other
@@ -194,7 +194,7 @@ local FLIGHT_QUEST = {
                 -- The stop is built around it and has been since before the ladder was re-cut: this
                 -- fight anchors the survivors AHEAD of the party's line, so the demons walk for them
                 -- rather than for you, and the bomblet wave at tick 14 charges them and bursts
-                -- (character_demon_bomblet). Two bodies cannot physically intercept everything that
+                -- (character_demon_bomblet_tutorial). Two bodies cannot physically intercept everything that
                 -- fans in from every open side -- the wave's own comment sizes itself against this
                 -- gift by name. Pulling the charge onto the wall is the answer, and the proof lands
                 -- eight ticks after the item does. Same reason the censer was chosen at stop 2: the
@@ -227,7 +227,7 @@ local FLIGHT_QUEST = {
                 -- actually FOR is the Champion at the end of the trail.
                 { id = "encounter_survivors_extract", loot = { "armor_salamander_hide" } },
                 -- Stop 6: the last chest before the gate, and ONE lesson -- RENEWAL, a status you
-                -- WANT. Everything Act 0 has taught about statuses so far is a wound (Burn, Stun,
+                -- WANT. Everything Act 0 has taught about statuses so far is an injury (Burn, Stun,
                 -- Bleed, Mark); this is the first one that helps, it lands on somebody else, and it
                 -- keeps working on its own without being cast again. It is also the only healing
                 -- ABILITY in Act 0 -- it used to be the shrine's gift, and it moved here when the
@@ -255,7 +255,7 @@ local FLIGHT_QUEST = {
             -- Its terrain answers the boss's three stages (the neck, the high ground, the treeline).
             layout = "demon_champion",
             -- ONE IMP AND ONE GRUNT, not two imps. An imp has 14 health for a stated reason -- it dies
-            -- to one stroke of the starting sword (character_demon_imp.lua argues the number) -- which
+            -- to one stroke of the starting sword (character_demon_imp_tutorial.lua argues the number) -- which
             -- makes a pair of them beside the Champion no call on the party's attention at all: two
             -- bodies, two strokes, and both attackers are back on the boss by round two. The grunt is
             -- 80 health and has to be dealt with, so it holds one of the party's two swords away from
@@ -266,9 +266,9 @@ local FLIGHT_QUEST = {
             -- Its claws burn (weapon_rending_claws.lua), so stop 5's Salamander Hide still answers what
             -- walks in here, which is what that gift was placed for.
             composition = function()
-                return { "character_demon_champion", "character_demon_imp", "character_demon_grunt" }
+                return { "character_demon_champion_tutorial", "character_demon_imp_tutorial", "character_demon_grunt_tutorial" }
             end,
-            win = { type = "assassinate", target = "character_demon_champion" },
+            win = { type = "assassinate", target = "character_demon_champion_tutorial" },
             -- THE CHAMPION STANDS ON THE WAY OUT. Clearing this does not end the leg: the tile it was
             -- holding becomes the road to the city and the company is put back on the map in front of
             -- it, exactly as a circle's guardian opens its stair (models/descent.lua's
@@ -414,15 +414,15 @@ local function buildBeats()
         overworld(FLIGHT_QUEST),
         -- THE CHAMPION FELLS ROWAN AT ITS LAST STAGE, and this is where that is collected on. The
         -- `fell` response on its relic puts her down by script at 33% (utility_demon_sigil.lua), the
-        -- objective's win writes the wound to the ledger (states/game.lua's inflictWounds), and the
+        -- objective's win writes the injury to the ledger (states/game.lua's inflictInjuries), and the
         -- company carries her into the Cathedral -- which is where Xin is, and why she comes.
         --
         -- ...AND THE PROLOGUE ENDS THERE. Xin is NOT recruited here.
         --
         -- She was, for one pass: a Cathedral scene stood between this leg and the hub, the company
         -- carried Rowan in, and the healer standing there left with them. It is deleted because the
-        -- wound it was built on stopped being instantaneous. Reaching the city used to set every bone
-        -- free (Wound.clear in hub.enter), so the only place a wound could be TALKED about was a scene
+        -- injury it was built on stopped being instantaneous. Reaching the city used to set every bone
+        -- free (Injury.clear in hub.enter), so the only place an injury could be TALKED about was a scene
         -- wedged in before the city existed -- and the scene had to do the whole job in four lines
         -- because there was no room that could.
         --
@@ -433,7 +433,7 @@ local function buildBeats()
         -- better reason and a room to have it in.
         --
         -- So Rowan stays hurt through the city gate now, which is the point rather than a regression:
-        -- the wound is what puts the Ward on the map and what the tutorial sends the player to.
+        -- the injury is what puts the Ward on the map and what the tutorial sends the player to.
         -- The Champion falls and the prologue ends with it: prologue.next past the last beat opens the
         -- hub, which is the SAME CITY the sweep was fought through -- there is no journey between the
         -- two. The first-visit staging is the hub's (states/hub.lua reads the hubIntro
@@ -518,7 +518,7 @@ end
 -- skipped prologue.
 --
 -- ONE BEAT PAST THE PROLOGUE, deliberately: the trip through the Inn's door is taken too, which is
--- where Xin joins and where Rowan's wound is set. That is not something Act 0 grants, it is the two
+-- where Xin joins and where Rowan's injury is set. That is not something Act 0 grants, it is the two
 -- clicks every played run makes on arriving, and the button is for reaching a company that can walk
 -- down the stair rather than one standing two clicks short of it. The tail of `skip` argues it in
 -- place, and states/menu.lua's card says it to whoever presses the button.
@@ -795,17 +795,22 @@ function prologue.skip(player)
 
     -- ...EXCEPT ROWAN, WHO IS CARRIED OUT OF THE LAST FIGHT. The Demon Champion fells her by script at
     -- its final stage (models/combat.lua's Combat.spendScriptedFell) and the objective's win writes it to
-    -- the ledger, so a company that skipped Act 0 has to arrive carrying the same wound -- and this is
+    -- the ledger, so a company that skipped Act 0 has to arrive carrying the same injury -- and this is
     -- not flavour the skip can decline. The WARD's card is hung on that mark (models/building.lua's
-    -- `unlockWound`), and XIN IS INSIDE THE WARD: a skip without this opens a city with no ward, no
+    -- `unlockInjury`), and XIN IS INSIDE THE WARD: a skip without this opens a city with no ward, no
     -- healer, and a party of two against an expedition of four, which is exactly the "broken city rather
     -- than a skipped prologue" this whole function exists to prevent.
     --
-    -- Through Wound.inflict rather than by writing the table, because inflict is what sets the one-way
-    -- `wounded` mark as well (Wound.everWounded), and the mark is what the door actually reads.
+    -- Through Injury.inflict rather than by writing the table, because inflict is what sets the one-way
+    -- `injured` mark as well (Injury.everInjured), and the mark is what the door actually reads.
     for _, char in ipairs(player.roster) do
         if char.id == "character_rowan" then
-            require("models.wound").inflict(player, { char })
+            -- BLOOD LOSS BY NAME, never a roll -- the same call the played prologue makes
+            -- (states/game.lua's objective branch). A fall deals one of seven kinds now, and the city
+            -- this skip is handing over has a Ward card hung on the mark and a coach line pointing at
+            -- the dark band on her bar. A skip that rolled her a Shattered Leg would open the same city
+            -- with the same room and nothing on the bar to point at.
+            require("models.injury").inflict(player, { char }, "injury_blood_loss")
         end
     end
 
@@ -816,8 +821,8 @@ function prologue.skip(player)
     -- Rowan came up with gets set. A skip that stops one door short lands a party of two, one of them
     -- hurt, against an expedition of four, so the skip takes those two clicks.
     --
-    -- THE WOUND IS STILL INFLICTED ABOVE AND THEN MENDED HERE, in that order, rather than never dealt:
-    -- `Wound.everWounded` is the one-way mark the mending is hung on (models/offer.lua's `wound` gate), and it
+    -- THE INJURY IS STILL INFLICTED ABOVE AND THEN MENDED HERE, in that order, rather than never dealt:
+    -- `Injury.everInjured` is the one-way mark the mending is hung on (models/offer.lua's `injury` gate), and it
     -- survives the mending. Skipping the inflict would shut the door on the room the company has just
     -- been through.
     --
@@ -832,7 +837,7 @@ function prologue.skip(player)
         local wardJoins = Conversation.pendingJoins
         for i = #wardJoins, 1, -1 do wardJoins[i] = nil end
     end
-    require("models.wound").mend(player, 1)
+    require("models.injury").mend(player, 1)
 
     -- ...and the city opens with nothing owed. begin() sets `hubIntro = "arrival"`, which plays Rowan's
     -- scene over the plaza and leaves the mending flagged as this company's first morning

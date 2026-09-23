@@ -152,10 +152,17 @@ return {
             local roster = {}
             for i = 1, 4 do roster[i] = Character.instantiate("character_knight") end
 
+            -- SEEDED, AND IT WAS NOT. `EncounterBattle.build` falls back to `Arena.randomSeed()`,
+            -- so this case used to deal itself a fresh arena and a fresh pack on every run and then
+            -- assert a WIN over them -- a coin flip dressed as a regression test, which came up tails
+            -- the day an unrelated rename moved the suite's RNG stream one call along. The case is
+            -- about the PLUMBING (build -> deploy -> resolve -> pay), not about the odds, so the
+            -- ground is pinned and the win means the chain held rather than that the dice were kind.
             local built = EncounterBattle.build({
                 encounter = { kind = "combat", id = "encounter_wolf", tier = 2 },
                 prestige = 4,
                 party = roster,
+                seed = 20260922,
             })
             assert(built.combat and built.arena, "the fight built")
             assert(#built.enemyUnits > 0, "with wolves on it")
@@ -234,7 +241,10 @@ return {
         fn = function()
             assert(EncounterBattle.cellEligible({ encounter = { kind = "combat", id = "encounter_wolf" } }),
                 "a wolf pack on the trail is walkable-off")
-            assert(EncounterBattle.cellEligible({ encounter = { kind = "elite", id = "encounter_elite" } }),
+            -- It named encounter_elite, which was the Phoenix and went with the human sweep
+            -- (92ff549d). cellEligible resolves the id through the registry, so the case needs a real
+            -- elite rather than a placeholder: the wood's own, which is a plain kill-them-all.
+            assert(EncounterBattle.cellEligible({ encounter = { kind = "elite", id = "encounter_white_wolf" } }),
                 "so is an elite, once you are far enough above it")
 
             assert(not EncounterBattle.cellEligible({ encounter = { kind = "objective", id = "encounter_wolf" } }),

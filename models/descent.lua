@@ -106,6 +106,37 @@ local Descent = {}
 -- standing behind her when you finally reach her, and a player reads their own progress off it without
 -- being told. It also means a fifteen-floor descent needed no new blueprints: every body here was
 -- already authored and already belongs to this house.
+--
+-- ...AND ALL SEVEN LIEUTENANTS ARE GONE (2026-09-22), to be re-authored. The Gralloch, the Suppliant,
+-- the Tally, Second Water, the Anvil, the Late Watch and Marginalia are deleted from disk, so every
+-- `minor.lead` below names the circle's own surviving stock instead -- the same stand-in the strata cut
+-- left in `minor.filler`, for the same reason it left one there: Descent.guardList reads `band.lead`
+-- unguarded, so a slot that is nil faults on seven of the fifteen floors rather than degrading.
+--
+-- AND THE STAND-IN IS THE CIRCLE'S BEST ORDINARY BODY, NOT ITS CHAFF. tests/gluttony_circle_spec.lua
+-- sweeps all seven circles and holds a `lead` to tier 2 or better -- "a floor's centrepiece is not
+-- chaff" -- which is the rule that stopped a Wild Shape from being seated here and which a swarm
+-- stand-in would trip. So each slot below takes the heaviest ROLLABLE body on its own ground, and the
+-- shape of the stair survives: `guardian.filler` names it, `minor.filler` stays the swarm, and
+-- guardList still builds general plus one heavier body plus swarm. What changed is only the FACE.
+--
+-- WHAT IT COSTS, STATED, so a replacement knows what it is buying back. A stand-in is one of that
+-- floor's own ordinary monsters standing where a lesser embodiment of the sin should be, so the tier's
+-- whole rule -- a mini sin's second phase is its general's first -- is fielded by nobody: the phase
+-- tables are on the naturals and the naturals are on no body. What still holds is the SIZE, because
+-- Descent.stairPlan solves every stair to its worth by walking the list it actually builds, so the ramp
+-- does not dip and the fights weigh what they weighed. Descent.DROPS' `minor` lists are untouched and
+-- still pay, because they pay a RANK and not a body.
+--
+-- SLOTH IS THE ONE THAT HAD NOTHING LEFT. The tundra's rollable cast is the ice elemental (tier 1) and
+-- the Long Winter, so its stand-in is its own ELITE and that floor bills the same threat twice (the same
+-- degradation Pride carries at `elites`). It is the loudest of the seven and the first to replace.
+--
+-- The naturals are untouched too and are the material a replacement is built from: utility_gralloch_hook,
+-- weapon_tallow_maw, weapon_petal_touch, weapon_briar_lash, weapon_beckoning_bough,
+-- utility_offered_nothing, weapon_cutpurse_nip, utility_the_reckoning, utility_second_wash,
+-- utility_cold_forge, utility_unkept_watch and utility_marginal_note are on disk with no body carrying
+-- them. `. content-report items` reports them as stranded, and that report is correct: they are.
 -- WHICH ELITE STANDS ON WHICH OF A CIRCLE'S FLOORS, named rather than drawn.
 --
 -- An elite is a floor's one standing threat -- the thing a short-handed company routes around and comes
@@ -119,9 +150,19 @@ local Descent = {}
 -- not. Etrian Odyssey's FOEs are fixed for the same reason, and the guardian band below is already this
 -- shape -- there is exactly one per floor and the circle chooses it, never a weight.
 --
--- APPROACH THEN SEAT. `spares` is what a circle holds back: Gluttony and Greed carry the beasts and the
--- water they inherited when the grounds moved, which is more than two floors can stand. Everything not
--- named here is still eligible -- this decides what a floor SEATS, not what may appear at all.
+-- APPROACH THEN SEAT. `spares` is what a circle holds back -- more than one elite can stand on a rung,
+-- and the billing is which of them the floor is ABOUT rather than which of them may appear.
+--
+-- IT IS THE SECOND HALF OF A PLACEMENT, NOT THE WHOLE OF ONE. Which floors an elite may stand on at all
+-- is the blueprint's own `rung`, and on an elite that field is required: one elite, one floor
+-- (models/encounter.lua's eligibility note has the argument). So a billing here names a candidate the
+-- rung has already put on that floor; a billing that names an elite runged onto the OTHER floor weights
+-- an id the floor cannot deal, which is a silent no-op. tests/elite_floor_spec.lua holds the two in step.
+--
+-- AND TWO FLOORS NOW STAND NO ELITE AT ALL -- Sloth's approach and Pride's seat, each a circle the
+-- 2026-09-22 cut left with a single elite. Both entries below say so where the hole is. A bare floor is
+-- what a depleted circle honestly looks like; the alternative was the same landmark on both of its
+-- stairs, which is the thing this rule exists to stop.
 Descent.SINS = {
     { id = "gluttony", name = "Gluttony", vendor = "hunters_lodge", biome = "forest",
         scene = "conversation_descent_gluttony",
@@ -130,14 +171,10 @@ Descent.SINS = {
         -- reads `health = 1`. Fielded here as a floor's centrepiece it spawned with one health at level
         -- 1 and 57 at level 17, while swinging for 62: a body that died to a stiff breeze and hit like a
         -- general. A blueprint used as both cargo and combatant has to be SPLIT, so the druid's bear
-        -- stays hers and this floor gets a body authored to stand on it (character_the_gralloch.lua).
-        --
-        -- The filler moved for the same reason. A guardian's escort should be the circle's own stock,
-        -- which the swamp now has.
-        -- ...and the lieutenant stands behind her, which is the invariant the mini sin was BUILT for:
-        -- the body that barred the stair two floors ago is at her shoulder when you reach her, so the
-        -- rule it taught you the slow way is standing next to the thing that has it in full.
-        guardian = { lead = "character_general_gluttony", filler = "character_the_gralloch" },
+        -- stays hers and this floor got a body authored to stand on it. That body was the Gralloch and
+        -- it is deleted with the other six (see the lieutenant note in this table's header); the escort
+        -- is the circle's own stock until a replacement is authored.
+        guardian = { lead = "character_general_gluttony", filler = "character_wolf_alpha" },
         -- SHE WILL NOT RISE WHILE THERE IS ANYTHING LEFT TO EAT: the floor must be picked clean.
         --
         -- AND IT IS THE TEACHING GATE NOW, since this circle opens the descent (Descent.INFERNO). That
@@ -146,16 +183,21 @@ Descent.SINS = {
         -- condition without also spending a lesson on what this one is. Every other circle's gate --
         -- the ward, the toll, the count, the open door -- is read against it.
         gate = { kind = "clear" },
-        -- THE CIRCLE'S OWN CHAFF WENT WITH ITS STRATUM (2026-09-22). The filler below is the
-        -- nearest surviving body on this ground, not a body authored for this circle -- it stands
-        -- here so the escort is not an empty list, and it is what a replacement replaces.
-        minor = { lead = "character_the_gralloch", filler = "character_hawk" },
-        -- NO `approach`, AND IT DEGRADES RATHER THAN BREAKING -- the same hole Pride carries at
-        -- `seat`. The Fen Mouth is gone, so rung 1 names nobody and every forest elite draws at
-        -- ELITE_WEIGHT; rung 2 still bills the Sated.
-        elites = { seat = "encounter_gluttony_the_sated",
-            spares = { "encounter_white_wolf", "encounter_meandering_stag",
-            "encounter_the_sow", "encounter_the_unseeing" } } },
+        -- NO LIEUTENANT. The Gralloch is gone; the pack's alpha stands in, which is the heaviest thing
+        -- the forest rolls that is not one of its elites. It is what a replacement replaces.
+        minor = { lead = "character_wolf_alpha", filler = "character_hawk" },
+        -- BOTH RUNGS BILLED, WHICH THE RUNG SPLIT IS WHAT MADE POSSIBLE. The Fen Mouth is gone, so rung
+        -- 1 named nobody and all five of the wood's elites drew at ELITE_WEIGHT on both of Gluttony's
+        -- floors. They are cut across the two stairs now by their own authored depths (the blueprints'
+        -- `rung`), and with two candidates standing on the approach rather than five there is no longer
+        -- any question which of them that floor is about: the White Wolf is the wood's exam, and "the
+        -- floor with the White Wolf on it" is a sentence a player can say.
+        --
+        -- `spares` is listed by the rung each one stands on, because a spare billed against the wrong
+        -- floor is a spare that never turns up there.
+        elites = { approach = "encounter_white_wolf", seat = "encounter_gluttony_the_sated",
+            spares = { "encounter_the_unseeing",                               -- rung 1
+                       "encounter_the_sow", "encounter_meandering_stag" } } },  -- rung 2
     -- ---------------------------------------------------------------------------
     -- LUST: THE CIRCLE THAT NEVER TAKES YOUR HEALTH. IT TAKES YOUR SAY OVER WHERE YOU ARE STANDING.
     -- ---------------------------------------------------------------------------
@@ -222,21 +264,24 @@ Descent.SINS = {
     -- and she decides what it does.
     { id = "lust", name = "Lust", vendor = "cathedral", biome = "castle",
         scene = "conversation_descent_lust",
-        guardian = { lead = "character_general_lust", filler = "character_the_suppliant" },
-        -- THE UNBIDDEN COMES WHEN SHE IS CALLED, and the Suppliant is who calls her -- so the ward is
-        -- a body, standing at its own end of the floor. Beat her, the ward breaks, the stair opens.
+        guardian = { lead = "character_general_lust", filler = "character_lamia" },
+        -- THE UNBIDDEN COMES WHEN SHE IS CALLED, and the body that calls her stands at its own end of
+        -- the floor: the ward is a body. Beat her, the ward breaks, the stair opens. Who that body is
+        -- is the lieutenant, and the lieutenant is gone -- so the ward is currently held by whatever
+        -- `minor.lead` names, which is the flock. It reads as nothing until a replacement is authored.
         --
         -- IT USED TO BE THE TEACHING GATE, back when this circle opened the descent. Gluttony's
         -- `clear` took that job with the first slot, and the ward is better off second: a gate that is
         -- a BODY somewhere else on the floor only reads as a rule once the player has met one that
         -- was not.
         gate = { kind = "ward" },
-        -- THE ESCORT IS THE CIRCLE'S OWN STOCK AGAIN. It was character_demon_imp -- the nearest
-        -- surviving body on this ground after the cut, standing here so the list was not empty. The
-        -- harpy is a body authored for this stratum, and it is the right escort for a mini sin whose
-        -- own rule is about what a company does with its turn: a body being shoved a tile at a time is
-        -- a body spending turns walking, and walking is not spending (trait_unasked).
-        minor = { lead = "character_the_suppliant", filler = "character_harpy" },
+        -- NO LIEUTENANT. The Suppliant is gone and a lamia stands in -- the animal whose whole rule is
+        -- holding, which is at least the right verb for a body barring a stair. The escort is untouched
+        -- and belongs here: the harpy is authored for this stratum, and it is the right escort for a
+        -- lieutenant whose own rule is about what a company does with its turn, since a body being
+        -- shoved a tile at a time is a body spending turns walking, and walking is not spending
+        -- (trait_unasked). The LEAD is a stand-in and reads as one.
+        minor = { lead = "character_lamia", filler = "character_harpy" },
         -- ...AND THE STRATUM HAS AN ELITE AGAIN. The Bride and the Beloved were the castle's only two
         -- and both went in the cut, which left `named` reading nil and BOTH floors of Lust drawing from
         -- an elite pool this ground did not have. The Eyrie seats the Matriarch on the stair floor.
@@ -250,9 +295,10 @@ Descent.SINS = {
         -- stated as POSITION -- a harpy decides where your body is, a lamia decides it does not get to
         -- be anywhere else -- and between them they field four of the five verbs at the top of this
         -- entry. The fifth, CHARM, headed the list and was fielded by nobody a floor could roll: the
-        -- Suppliant charms, and she is SEATED, one landing, once. So the circle's own headline rule,
-        -- and the counterplay this entry spends a paragraph on, existed in prose and in no fight a
-        -- company could learn from ([[prose-can-be-the-only-implementation]] is the shape).
+        -- only body carrying it was the Suppliant, and she was SEATED -- one landing, once. So the
+        -- circle's own headline rule, and the counterplay this entry spends a paragraph on, existed in
+        -- prose and in no fight a company could learn from ([[prose-can-be-the-only-implementation]] is
+        -- the shape). The Suppliant is deleted now and this line is the whole of Lust's charm.
         --
         -- The succubus line is that, three rungs of it, and what makes it a third animal rather than a
         -- third flock is that it bills ALLEGIANCE where the other two bill position. It also fields
@@ -271,29 +317,64 @@ Descent.SINS = {
         -- turns; go through the room and you feed her every step (trait_borrowed_blood).
         --
         -- BILLED NOWHERE, ON PURPOSE. Both rungs are already argued above and that argument is not
-        -- worth unpicking to seat a third: the Lady Chapel turns up at ELITE_WEIGHT on either floor,
-        -- which is the right rarity for the thing that is not what the stratum is ABOUT but is the
-        -- worst thing standing in it. The two ordinary stops (the Long Gallery, the Chapter House) roll
+        -- worth unpicking to seat a third: the Lady Chapel turns up at ELITE_WEIGHT, which is the right
+        -- rarity for the thing that is not what the stratum is ABOUT but is the worst thing standing in
+        -- it. Unbilled is not unplaced, though -- it stands on the SEAT floor beside the Eyrie (its own
+        -- `rung`), because one elite, one floor leaves no such thing as a piece that turns up on
+        -- either. The two ordinary stops (the Long Gallery, the Chapter House) roll
         -- at their own weights beside the Open Roof and the Cistern, taking the castle to four ordinary
         -- fights -- which is also the hole the 2026-09-22 human-body sweep left on this ground, closed
         -- with a fight that is not a company.
+        --
+        -- ...AND THE FOURTH VERB IS FIELDED NOW TOO, BY THE TWO BODIES THE BUILDING MADE. FIRE headed
+        -- the list above -- "wanting costs, whether or not you get there" -- and for as long as this
+        -- circle has existed it rode as a tag on the harpy's talons, which is fire arriving the
+        -- ordinary way: something hit you. Nothing on the ground charged a company for REACHING. That
+        -- is the same failure the list's other headline verb was in before the succubus line closed it
+        -- ([[prose-can-be-the-only-implementation]]), caught twice in one entry.
+        --
+        -- WHAT CLOSES IT IS AN ELEMENTAL, AND THE FICTION IS WHY THAT IS NOT A WANDERING BODY. The
+        -- blooding burns something OUT of a body (docs/story.md), and what it drives out does not go
+        -- anywhere -- it stays in the building. The heat stands in the lamp rooms (the Fire Elemental, which
+        -- burns whatever reaches for it, at any range, by any means) and the breath stands in the bell
+        -- loft (the Wind Elemental, which throws a body three tiles and cannot be moved by anything at all).
+        -- That is the test the old woodland Lust failed and these have to pass: a body on this stratum
+        -- is something the KEEP made.
+        --
+        -- AND THEY ARE THE FIRST TWO ON THE FLOOR THAT ARE NOT ABOUT POSITION -- or, in the Wind Elemental's
+        -- case, that are outside the conversation entirely. A Fire Elemental bills an INTENTION, so the
+        -- circle's standing counterplay (decide where the fight happens) buys nothing against it; a
+        -- Wind Elemental wears Unheld, so the other standing counterplay (cut the one doing it) still holds
+        -- and the walking-over is gone. Each one takes away one of the two answers this entry spends a
+        -- paragraph handing the player.
+        --
+        -- The Flue seats both at once and is the circle's fourth elite: fire is what wind has to pull
+        -- ON, so its escort of Fire Elementals is a fuel line rather than an honour guard, and it is the ONE
+        -- fight on this stratum where clearing the chaff first is correct. Billed nowhere, at
+        -- ELITE_WEIGHT, for the reason two paragraphs up -- and runged onto the APPROACH, where the Lady
+        -- Chapel is runged onto the seat: a fight that inverts the circle's own standing counterplay is
+        -- a lesson, and a lesson goes on the floor walked onto first. Six ordinary fights on the castle
+        -- now, and four elites across two floors rather than four on each.
         elites = { approach = "encounter_lust_the_drowned_stair",
                    seat = "encounter_lust_the_eyrie",
-                   spares = { "encounter_lust_the_lady_chapel" } } },
+                   spares = { "encounter_lust_the_lady_chapel", "encounter_lust_the_flue" } } },
     { id = "greed", name = "Greed", vendor = "undercroft", biome = "swamp",
         scene = "conversation_descent_greed",
-        guardian = { lead = "character_general_greed", filler = "character_the_tally" },
+        guardian = { lead = "character_general_greed", filler = "character_fen_lancer" },
         -- PAY AT THE STAIR. Priced as a SHARE of what is on the mule rather than as a flat purse, so
         -- greed taxes exactly what the company came down for and a fat bag costs more to walk past --
         -- which couples the two systems this mode is built on instead of standing beside them.
         gate = { kind = "toll", share = 0.25 },
-        -- THE CIRCLE'S OWN CHAFF WENT WITH ITS STRATUM (2026-09-22). The filler below is the
-        -- nearest surviving body on this ground, not a body authored for this circle -- it stands
-        -- here so the escort is not an empty list, and it is what a replacement replaces.
-        minor = { lead = "character_the_tally", filler = "character_slime" },
-        -- NO NAMED ELITE: the Gilt Wyrm and the Hoard are gone. The spares below are the swamp's
-        -- inherited water and they are all Greed has left to stand on either floor.
-        elites = { spares = { "encounter_fen_ooze", "encounter_the_undertow", "encounter_the_king_slime" } } },
+        -- NO LIEUTENANT. The Tally is gone; a fen lancer stands in, which is the heaviest thing the
+        -- water rolls short of the Undertow. It is what a replacement replaces.
+        minor = { lead = "character_fen_lancer", filler = "character_slime" },
+        -- BILLED AT LAST, AND THE RUNG SPLIT IS WHY. The Gilt Wyrm and the Hoard are gone, so both of
+        -- Greed's floors drew the same three pieces of inherited water at the same weight and neither
+        -- stair was ABOUT anything. Cut across the two rungs, the approach has exactly one candidate and
+        -- the seat has two, so naming them costs nothing and buys a floor its own face: the Fen Ooze is
+        -- the whole of the approach, and the Mere's set-piece is the heaviest thing the water has.
+        elites = { approach = "encounter_fen_ooze", seat = "encounter_the_undertow",
+            spares = { "encounter_the_king_slime" } } },  -- rung 2
     { id = "envy", name = "Envy", vendor = "alchemist", biome = "desert",
         scene = "conversation_descent_envy",
         -- THE SECOND OF THE TWO BROKEN LEADS. character_homunculus is the alchemist's SUMMON -- its own
@@ -302,12 +383,15 @@ Descent.SINS = {
         -- with 18 health at level 1. And the filler was character_homunculus_discard, which is CARGO: a
         -- `protect` objective with a holdGround posture, whose own header spends a paragraph on why it
         -- must never be fielded as a combatant. Both replaced by the circle's own stock.
-        guardian = { lead = "character_general_envy", filler = "character_second_water" },
+        guardian = { lead = "character_general_envy", filler = "character_glass_eater" },
         -- SHE DOES NOT COME OUT FOR A COMPANY WITH NOTHING. Envy wants what you have, so the gate is
         -- carrying something worth wanting -- which makes it the one gate a player can fail by having
         -- been sensible, and the one that rewards walking onto her floor rich.
         gate = { kind = "carry", n = 3 },
-        minor = { lead = "character_second_water", filler = "character_glass_mote" },
+        -- NO LIEUTENANT. Second Water is gone; the glass eater stands in -- the body whose stripping
+        -- fed her mirror, promoted for want of the thing it was feeding. It is what a replacement
+        -- replaces.
+        minor = { lead = "character_glass_eater", filler = "character_glass_mote" },
         elites = { approach = "encounter_envy_the_unwanted",
             seat = "encounter_envy_second_self" } },
     { id = "wrath", name = "Wrath", vendor = "colosseum", biome = "volcanic",
@@ -316,17 +400,19 @@ Descent.SINS = {
         -- two authored phases, and the worked example in trait_boss_phases. It was still the wrong
         -- occupant: a stratum's centrepiece should BE the sin one rank down, not an arena fighter who
         -- happens to be nearby. It stays the authoring pattern; it stops standing in for Ira.
-        guardian = { lead = "character_general_wrath", filler = "character_the_anvil" },
+        guardian = { lead = "character_general_wrath", filler = "character_forge_wretch" },
         -- UNAPPEASED UNTIL ENOUGH HAS BEEN SPILLED. A count of fights won on her floor, which is the
         -- gate a company clears by doing the thing it came to do -- so Wrath is the circle that asks
         -- for no detour, only for commitment.
         gate = { kind = "kills", n = 3 },
-        minor = { lead = "character_the_anvil", filler = "character_cinder_kin" },
+        -- NO LIEUTENANT. The Anvil is gone; a forge wretch stands in, which is the closest the pit has
+        -- to a body that is improved by being struck. It is what a replacement replaces.
+        minor = { lead = "character_forge_wretch", filler = "character_cinder_kin" },
         elites = { approach = "encounter_wrath_the_unquenched",
             seat = "encounter_wrath_rift_born" } },
     { id = "sloth", name = "Sloth", vendor = "bastion", biome = "tundra",
         scene = "conversation_descent_sloth",
-        guardian = { lead = "character_general_sloth", filler = "character_the_late_watch" },
+        guardian = { lead = "character_general_sloth", filler = "character_the_long_winter" },
         -- NOTHING. SHE IS ASLEEP AND THE STAIR STANDS OPEN.
         --
         -- The only gate that is a pure reading of its own sin, and the one to protect in review: the
@@ -335,27 +421,47 @@ Descent.SINS = {
         -- could have spent elsewhere -- which under an extraction descent is a real decision rather
         -- than a formality. Every other circle asks something; this one asks whether you want to.
         gate = { kind = "none" },
-        -- THE CIRCLE'S OWN CHAFF WENT WITH ITS STRATUM (2026-09-22). The filler below is the
-        -- nearest surviving body on this ground, not a body authored for this circle -- it stands
-        -- here so the escort is not an empty list, and it is what a replacement replaces.
-        minor = { lead = "character_the_late_watch", filler = "character_ice_elemental" },
-        -- NO `approach`: the Winter Hart is gone. The Long Winter still seats rung 2.
+        -- NO LIEUTENANT, AND NOTHING ORDINARY LEFT TO STAND IN. The Late Watch is gone and the tundra
+        -- rolls exactly two bodies -- an elemental at tier 1 and the Long Winter -- so the stand-in is
+        -- this circle's own ELITE and the stratum bills it twice. Loudest of the seven; replace first.
+        minor = { lead = "character_the_long_winter", filler = "character_ice_elemental" },
+        -- NO `approach`, AND NOW NOTHING STANDS ON THAT FLOOR AT ALL. The Winter Hart is gone, so the
+        -- Long Winter is the tundra's only elite -- and under one elite, one floor it can stand only on
+        -- the rung it is billed at (the blueprint's `rung`). Sloth's approach floor seats NO elite.
+        --
+        -- WHICH IS THE HONEST READING, AND IT IS WORTH PROTECTING FROM THE OBVIOUS FIX. What it replaced
+        -- was the same body standing on both of this circle's stairs, which is precisely the thing the
+        -- rule exists to stop: an elite met twice in a stratum is traffic. A floor with no standing
+        -- threat is a hole an AUTHOR fills; a floor billing the landmark two floors down is a hole
+        -- papered over. Pride carries the mirror of this at `seat`.
+        --
+        -- This circle is the loudest of the seven either way -- its whole rollable cast is an ice
+        -- elemental and this elite, which is also why `minor.lead` above is standing in for a
+        -- lieutenant. A second tundra elite closes both holes at once.
         elites = { seat = "encounter_sloth_long_winter" } },
     { id = "pride", name = "Pride", vendor = "arcanum", biome = "spire",
         scene = "conversation_descent_pride",
-        guardian = { lead = "character_general_pride", filler = "character_marginalia" },
+        guardian = { lead = "character_general_pride", filler = "character_gilded_sworn" },
         -- SHE WILL NOT FIGHT BENEATH HERSELF. A count of circles already sealed, so Pride refuses a
         -- company that came straight down without proving anything -- the one gate satisfied by the RUN
         -- rather than by the floor, and the reason her circle reads as the end of a road even when the
         -- shuffle deals it early.
         gate = { kind = "worth", n = 3 },
-        minor = { lead = "character_marginalia", filler = "character_gilded_sworn" },
-        -- NO `seat`, AND THE FALLBACK IS THE POINT. The Peerless was a human company and went with
-        -- the rest of them (2026-09-22); the spire has no second elite to promote in its place. The
-        -- reader is `rung == 2 and named.seat or named.approach`, so Pride's seat floor draws the
-        -- APPROACH elite until a spire elite is authored to stand there -- both floors billing the
-        -- same threat, which is the one thing the named-elite rule exists to avoid. It degrades
-        -- rather than breaking, and this comment is the marker for whoever authors the replacement.
+        -- NO LIEUTENANT. Marginalia is gone; the sworn stands in over the pages it outranks, which is
+        -- the rank rule fielding its own centrepiece. It is what a replacement replaces.
+        minor = { lead = "character_gilded_sworn", filler = "character_gilded_page" },
+        -- NO `seat`, AND NOTHING STANDS ON THAT FLOOR NOW. The Peerless was a human company and went
+        -- with the rest of them (2026-09-22); the spire has no second elite to promote in its place.
+        --
+        -- IT USED TO FALL BACK, AND THE FALL-BACK WAS THE BUG. The reader was `rung == 2 and named.seat
+        -- or named.approach`, so a circle with no seat billed its APPROACH elite on both floors -- "the
+        -- one thing the named-elite rule exists to avoid", as this comment said while doing it. One
+        -- elite, one floor removed the possibility from the data (the Gallery is runged onto the
+        -- approach and cannot be dealt on the seat) and Descent.floorPool's reader is explicit now, so
+        -- the seat floor is bare rather than doubled. Sloth carries the mirror of this at `approach`.
+        --
+        -- This comment is still the marker for whoever authors the replacement; what it is no longer is
+        -- a description of a floor quietly billing the wrong body.
         elites = { approach = "encounter_pride_the_gallery" } },
 }
 
@@ -667,7 +773,7 @@ Descent.FLOORS_PER_CIRCLE = 2
 -- SIX, and the number comes off the games this is modelled on rather than off the constants. The board
 -- is Dream Quest's (see models/overworld.lua's DIM_MAX note) and a Dream Quest level is six to ten
 -- fights before the stairs -- for a whole three-level run. The attrition is Darkest Dungeon's
--- (models/wound.lua), where a Short dungeon is four to six fights, a Medium seven to nine, and a Long
+-- (models/injury.lua), where a Short dungeon is four to six fights, a Medium seven to nine, and a Long
 -- ten to twelve -- and a Long is the opt-in, high-risk one you go HOME after. Hades runs fourteen
 -- chambers to a biome, but a chamber is forty seconds and a skirmish here is two minutes, so it is not
 -- the same unit. Wizardry (Descent.FLOORS_PER_CIRCLE) is what sets fifteen floors, not what fills one.
@@ -1058,9 +1164,15 @@ Descent.MIMIC_CHEST_CHANCE = require("models.mimic").CHANCE
 -- here would be a second copy to drift.
 Descent.ELITE_WEIGHT = 1.5
 
--- WHAT THE FLOOR'S OWN BILLED ELITE IS WEIGHTED AT, against ELITE_WEIGHT for everything else its circle
+-- WHAT THE FLOOR'S OWN BILLED ELITE IS WEIGHTED AT, against ELITE_WEIGHT for everything else THAT FLOOR
 -- could field. Ten to one and a half: the named one is what a floor is ABOUT, and a share rather than a
--- lock so a circle's spares still turn up now and then. See Descent.floorPool's elite branch.
+-- lock so the floor's spares still turn up now and then. See Descent.floorPool's elite branch.
+--
+-- "THAT FLOOR" RATHER THAN "ITS CIRCLE", and the distinction is the whole of what changed when one
+-- elite, one floor landed. The spares this share keeps legal are the ones RUNGED ONTO THIS STAIR
+-- (models/encounter.lua); the rest of the circle's elites are not in the list at all and no weight here
+-- can bring them back. So the share is now a choice among two or three rather than among five, which is
+-- what makes a billing worth having on a circle like Greed that never had one.
 Descent.ELITE_NAMED_WEIGHT = 10
 Descent.TEXTURE_SCALE = 0.2
 
@@ -1339,11 +1451,25 @@ function Descent.floorPool(ctx)
             -- stair. The elite is the second.
             --
             -- A SHARE RATHER THAN A LOCK. The named one is weighted far above the rest instead of being
-            -- the only one legal, so a circle's spares still turn up -- Gluttony and Greed inherited more
-            -- beasts and water than two floors can stand, and a wood where the White Wolf never appears
-            -- because it is not this floor's billing is a wood that is poorer for the rule.
+            -- the only one legal, so this floor's spares still turn up -- a wood where the Sow never
+            -- appears because she is not the seat's billing is a wood that is poorer for the rule.
+            --
+            -- WHAT IT IS NOT IS THE PLACEMENT. Which floors an elite may stand on at all is decided
+            -- before this function sees it, by the blueprint's own `rung`, and on an elite that is
+            -- required: one elite, one floor (models/encounter.lua). So the spares in this list belong
+            -- to THIS stair, never to the circle's other one -- the share picks among the two or three
+            -- runged here, and a billing naming a body runged onto the other floor weights an id that
+            -- is not in the list. tests/elite_floor_spec.lua walks the fifteen floors and counts.
             local named = sin and sin.elites
-            local mine = named and (rung == 2 and named.seat or named.approach)
+            local mine
+            -- SPELT OUT RATHER THAN `rung == 2 and named.seat or named.approach`, which is how this read
+            -- and which quietly did something else: a circle with no `seat` (Pride) fell through the
+            -- `and` to its APPROACH elite and billed the same body on both of its floors. Lua's and/or
+            -- cannot yield nil from the true branch, so the fallback was invisible at the call site and
+            -- the entry in Descent.SINS had to describe it in prose. An `if` says it once.
+            if named then
+                if rung == 2 then mine = named.seat else mine = named.approach end
+            end
             weight = Descent.ELITE_WEIGHT
             if mine then
                 weight = (e.id == mine) and Descent.ELITE_NAMED_WEIGHT or Descent.ELITE_WEIGHT
@@ -1828,15 +1954,18 @@ Descent.OPENING_CAP = 3
 -- Scoped to the opening floor because that is the floor whose company is known. Every minor stair below
 -- it is met by whatever the player has assembled, and re-pricing those is a separate argument.
 --
--- AND IT IS INERT TODAY, WHICH IS A MEASUREMENT AND NOT A REASON TO DELETE IT. This constant was
+-- IT WAS INERT, AND THE LIEUTENANT CUT IS EXACTLY THE CASE IT WAS WRITTEN FOR. This constant was
 -- written when the stair was sized by a body-count formula that gave ONE filler at floorLevel 1; the
 -- count is solved against a WORTH now (Descent.stairPlan, Descent.stairTarget), and the Gralloch over
--- hawks solves to seven on its own -- so the `math.max` below changes nothing on the floor it exists
--- for. It stays because it is a FLOOR, it can only ever raise, and the next circle to be seated first
--- or re-cast with cheaper filler is the case it was written for. See the numbers below before touching
--- it: the shape it was guarding against is real and has not gone anywhere.
+-- hawks solved to seven on its own -- so the `math.max` below changed nothing on the floor it exists
+-- for. The Gralloch is deleted (see the lieutenant note at the head of Descent.SINS) and the opening
+-- stair's lead is a hawk now, which is a fraction of his worth, so the solver's own answer may fall
+-- under this floor. That is the shape it was guarding against, arriving: it stays because it is a
+-- FLOOR, it can only ever raise, and it is the thing that keeps an unauthored stair from being one
+-- body. See the numbers below before touching it.
 --
--- MEASURED ON THE CURRENT OPENING FLOOR, against the pair Act 0 leaves (worth 460):
+-- MEASURED ON THE OPENING FLOOR BEFORE THE CUT, against the pair Act 0 leaves (worth 460). Kept as the
+-- record of what a SEATED lieutenant was worth, which is the target a replacement is authored toward:
 --
 --     stairTarget(1)                716   companyWorth(1) 651, at STAIR_MULTIPLE
 --     Gluttony's stair, as seated   801   the Gralloch over seven hawks -- 57% of the pair
@@ -2085,7 +2214,7 @@ function Descent.new(player, seed, startFloor)
         -- rather than dealing three new ones. Nil at every other moment of a run.
         landing = nil,
         -- WHAT THE COMPANY DROPPED WHERE IT FELL. The bodies always come back -- a wipe wakes the
-        -- company at the temple, whole and wounded (states/game.lua's onLoss) -- and what stays on the
+        -- company at the temple, whole and injured (states/game.lua's onLoss) -- and what stays on the
         -- floor is everything they were CARRYING.
         --
         -- Dark Souls' bloodstain, and it is the only thing standing between "climb out" and "die" being
@@ -2174,8 +2303,8 @@ Descent.OPENING_GOLD = 50
 --
 -- IT MEANT THE BOARD FOR ONE RELEASE, and the difference was invisible because the two numbers match.
 -- It mattered anyway: while this only capped the board, the whole roster walked down and the deployment
--- phase picked four per fight, so a wounded body was somebody who sits out rather than a quarter of the
--- company. models/wound.lua's FLOOR is priced for a company with NO bench underground -- its own header
+-- phase picked four per fight, so an injured body was somebody who sits out rather than a quarter of the
+-- company. models/injury.lua's FLOOR is priced for a company with NO bench underground -- its own header
 -- says so -- and that premise came back the moment the expedition became four.
 --
 -- IT CAPPED THE ROSTER BEFORE THAT, which is a third meaning and the one that broke. Four held, ever,
@@ -2199,7 +2328,7 @@ Descent.PARTY_MAX = 4
 -- save from before this existed) degrades to whoever is really there rather than to a hole in the line.
 -- A BODY LYING IN THE WARD IS NOT PICKABLE, and that filter IS the cost of the free path. Resting is
 -- free in gold and costs exactly this: the body is out of the company for the descents its term runs
--- (models/wound.lua's ward block), and an expedition is four. So a company that rests somebody goes down
+-- (models/injury.lua's ward block), and an expedition is four. So a company that rests somebody goes down
 -- short, or goes down with somebody worse -- which is the whole price, and it evaporates if this filter
 -- is not here. Strained out at the SOURCE rather than in the picker, so every caller agrees about who is
 -- available: the Gate's list, the default first-four, and a party picked before the stay began.
@@ -2208,10 +2337,10 @@ Descent.PARTY_MAX = 4
 -- made it punishing is gone: the Inn also charged at the door, so a company that could not pay was
 -- locked out of BOTH paths. Resting costs nothing now, so this filter prices a choice instead of a debt.)
 function Descent.party(run, player)
-    local Wound = require("models.wound")
+    local Injury = require("models.injury")
     local roster = {}
     for _, char in ipairs((player and player.roster) or {}) do
-        if Wound.resting(player, char.id) <= 0 then roster[#roster + 1] = char end
+        if Injury.resting(player, char.id) <= 0 then roster[#roster + 1] = char end
     end
 
     local picked = run and run.party
@@ -2643,28 +2772,60 @@ end
 -- thing it justified deleting, after FLOORS_PER_CIRCLE. Nothing new is claimed here that the mule did
 -- not claim first.
 --
--- IT IS A CAP ON THE HAUL, NOT ON THE STASH. The number this counts is Descent.carried -- the diff
--- between what the company is holding and what it walked in with (Player.atRisk) -- so the shelf at home
--- stays unbounded and always will. A company that climbs out banks everything and walks back down with
--- an empty ledger; the ceiling only ever bites on a trip that is going long, which is the trip it is
--- there to make a decision out of.
+-- IT IS A CAP ON THE BAG, NOT ON THE STASH. The number this counts is Descent.carried -- the size of
+-- the pack the company is actually carrying (models/player.lua) -- so the shelf at home stays unbounded
+-- and always will. A company that climbs out empties the bag onto that shelf and walks back down with
+-- whatever it chose to repack.
 --
--- TWENTY, AND IT IS A STARTING FIGURE RATHER THAN A DERIVATION. A floor pays roughly three to six
--- pieces at the current rates (Spoils.SEALED_CHANCE plus rolled loot over 3-4 fights), so twenty is
--- about four floors of finding -- deep enough that a short trip never sees it and a long one has to
--- start choosing. The old mule ran 8-20 slots and was bought up a ladder. Measure it with a real
--- descent before trusting it; `. board-report` cannot answer this one, because what it counts is stops
--- rather than what they pay.
-Descent.CARRY_MAX = 20
+-- IT USED TO COUNT THE DIFF, and the move is the whole of what the pack bought. The ceiling was
+-- measured against Player.atRisk -- what the trip had FOUND -- because there was no container to
+-- measure instead: the company carried its finds in nine-cell grids and an unbounded shelf it could
+-- somehow reach from floor nine. What the diff could never say is the thing the bag is for -- that a
+-- draught packed in town costs a slot a blade might have filled -- because a draught packed in town is
+-- not a find, and the diff correctly reads it as zero. One bag, one ceiling, one count.
+--
+-- THE DIFF IS NOT GONE. It is Descent.found below, and it has two readers who must never see this
+-- number: the stair takes a share of the HAUL, and the gullet bites on the HAUL. See that header.
+--
+-- TWENTY-EIGHT, AND THE EIGHT IS WHAT PROVISIONING COSTS. Twenty was the find budget alone -- a floor
+-- pays roughly three to six pieces (Spoils.SEALED_CHANCE plus rolled loot over 3-4 fights), so twenty
+-- was about four floors of finding, measured against a bag that carried nothing else. The bag carries
+-- the trip's supplies now, so the same four floors needs the same twenty slots PLUS whatever the
+-- company chose to bring: two stacks of draughts, a torch, a charm, room for a spare blade -- eight.
+-- The find budget is deliberately unmoved. What is new is not that the bag is tighter, it is that the
+-- PLAYER now decides how tight it is, and a company that packs nothing has exactly the four floors it
+-- had before. Measure it with a real descent before trusting it; `. board-report` cannot answer this
+-- one, because what it counts is stops rather than what they pay.
+--
+-- SLOTS, NOT QUANTITIES: a stack of five draughts is one slot, bounded by Item.maxStack. A cell in the
+-- pool column is a slot, so the container and the readout over it mean the same thing. Descent.found
+-- below still counts quantities, because the toll spends quantities -- the two questions were always
+-- different and only ever looked alike while one number answered both.
+Descent.CARRY_MAX = 28
 
--- HOW MANY FINDS ARE ON THE COMPANY RIGHT NOW: the run's own haul, never the kit it marched down with.
+-- HOW MUCH IS IN THE BAG: a count of the pack, and nothing derived.
 --
--- ASKED OF Player.atRisk rather than tallied at the grant, which is the same call the mule made and for
--- the same reason: no seam on the way in has to learn a rule. A chest, a fight's spoils, a crossroads
--- gift, a pile picked back up and anything added later all land in the same places and none of them has
--- to report. It is also the number the stair's toll spends (Descent.tollFor), so the ceiling and the
--- price cannot come to different answers about what "carrying" means.
-function Descent.carried(player, run)
+-- NOTHING LEFT TO DERIVE, which is why the paragraph this replaced is gone rather than reworded. It
+-- argued -- rightly -- that a tally kept at the grant would force every seam on the way in to learn a
+-- rule, and asked Player.atRisk instead. That argument is intact and it has simply moved: the seam is
+-- Player.stow, one function, and the pack IS the ledger. A chest, a fight's spoils, a crossroads gift
+-- and a pile picked back up all land in it without reporting to anybody.
+function Descent.carried(player)
+    return #((player and player.pack) or {})
+end
+
+-- WHAT THIS EXPEDITION FOUND: the diff against the entry snapshot, and it is not a leftover.
+--
+-- TWO READERS, AND THE SAME LAW BEHIND BOTH. The stair takes a SHARE OF THE HAUL and may never reach
+-- into the kit somebody marched down with (states/game.lua's payToll: "a stair that could reach into
+-- somebody's hand for their sword would be a robbery rather than a price"); and the gullet bites on
+-- the HAUL, because the haul is its ammunition (utility_still_hungry). Pricing either against
+-- Descent.carried above would charge a company for its own rations -- a toll quoted on draughts that
+-- it would then fail to take, since what payToll hands over is Player.takeAtRisk's finds.
+--
+-- SO THE TWO NUMBERS ARE NOT REDUNDANT AND MUST NOT BE COLLAPSED AGAIN. "How full is the bag" and
+-- "how much of this did we find" were the same question only while there was no bag.
+function Descent.found(player, run)
     local entry = run and run.entry
     if not (entry and player) then return 0 end
     local n = 0
@@ -2679,9 +2840,14 @@ end
 -- the upgrade rather than the stack. It is also what stops the one item that carries this from being
 -- farmed into an unbounded pack.
 --
--- WALKS THE WHOLE ROSTER AND THE STASH, the same reach those two take and right for the same reason:
--- the ceiling is a fact about what the COMPANY can carry out, not about which body is wearing the
--- thing, and which pocket it is in is not a decision anybody made.
+-- WALKS THE ROSTER AND THE PACK, the same reach those two take and right for the same reason: the
+-- ceiling is a fact about what the COMPANY can carry out, not about which body is wearing the thing,
+-- and which pocket it is in is not a decision anybody made.
+--
+-- IT USED TO WALK THE STASH, AND THAT WAS THIS WHOLE FEATURE'S LEAK sitting in the one place nobody
+-- would look for it: a bag left at home on the town shelf widened the ceiling of a company nine floors
+-- underground. The shelf is out of reach down there -- that is the law -- so a widener sitting on it
+-- cannot be carrying anything. The pack is where a bag the company actually brought is sitting.
 function Descent.haulBonus(player)
     local Character = require("models.character")
     local best = 0
@@ -2692,7 +2858,7 @@ function Descent.haulBonus(player)
     for _, char in ipairs((player and player.roster) or {}) do
         for _, item in ipairs(Character.eachItem(char)) do consider(item) end
     end
-    for _, item in ipairs((player and player.stash) or {}) do consider(item) end
+    for _, item in ipairs((player and player.pack) or {}) do consider(item) end
     return best
 end
 
@@ -2709,8 +2875,11 @@ end
 -- How many more the company could pick up before the bag is full. Never negative: a company that is
 -- somehow over the line (a cap lowered between saves, a bag put down) reads as full rather than as
 -- owing slots.
-function Descent.carryRoom(player, run)
-    return math.max(0, Descent.carryMax(player) - Descent.carried(player, run))
+--
+-- THE RUN IS NO LONGER ASKED FOR. The room left in a bag is a fact about the bag; it was a fact about
+-- the run only while the ceiling counted a diff.
+function Descent.carryRoom(player)
+    return math.max(0, Descent.carryMax(player) - Descent.carried(player))
 end
 
 -- ---------------------------------------------------------------------------
@@ -2758,7 +2927,7 @@ end
 -- unbanked winnings of the trip that just failed, which is the one thing a company can lose without
 -- ever going backwards.
 --
--- It exists because after the pivot a wipe cost literally nothing: not gear, not gold, not a wound, not
+-- It exists because after the pivot a wipe cost literally nothing: not gear, not gold, not an injury, not
 -- a mark (the tally is parked), and Descent.entryFloor put the company back on the floor they died on,
 -- whole, the same evening. "How deep do I dare go" had one answer, and it was "all the way, repeatedly".
 --
@@ -2905,7 +3074,7 @@ function Descent.newProfile(chars)
     profile.completedQuests = {}
     profile.standing = {}
     profile.deepest = 0
-    profile.wounds = {}
+    profile.injuries = {}
 
     -- THE HIRING PURSE, empty (models/voucher.lua). A company at the mouth has beaten no circle, so it
     -- has been handed nothing -- the one voucher it opens the game with is the sponsor's, and she plants
@@ -3485,6 +3654,11 @@ end
 -- 1.11x, because a drift is authored to be worth almost nothing to kill (its whole threat is a Charm on
 -- contact, which the muster ruler cannot see). A ramp whose shallow end no cast can reach is a ramp
 -- that reports a shortfall on every floor of the first circle and means nothing.
+--
+-- THAT ENVELOPE IS A RECORD, NOT A READING. Neither body in it is on disk -- the drifts went with the
+-- strata cut and the Suppliant with the lieutenants -- and the row above is kept because it is the
+-- argument for the ends being cut at all. Re-measure it when the seven replacements are seated; the
+-- shape it found does not depend on which bodies were standing there.
 --
 -- So the ends are cut to the envelope: every floor's target is inside what its own circle can field,
 -- and the ramp still climbs the whole way down. Widening it again is a CONTENT decision -- heavier
@@ -4272,7 +4446,7 @@ end
 -- player before they descend any more; see the note on Descent.gateCoached.
 --
 -- WHAT IT IS FOR, MECHANICALLY. Every other event in the loop is already priced and priced well: a wipe
--- drops the haul as a pack with a guard on it, takes most of the purse and wounds every head
+-- drops the haul as a pack with a guard on it, takes most of the purse and injuries every head
 -- (states/game.lua's onLoss). Healing is free, a bed is twenty-five a head. The one move that cost
 -- NOTHING was the voluntary climb-out -- it banked, it kept the mapped floor, and the city handed over a
 -- full restore on arrival -- so the optimal play was to walk back to the ascent tile after every fight,
@@ -4488,7 +4662,7 @@ end
 -- The company took the ascent stair.
 --
 -- THE EXEMPTION IS GONE. A wipe used to be excused this "because it already costs the haul, the purse
--- and a wound on every head, and charging the failure twice is the exact thing this design is built not
+-- and an injury on every head, and charging the failure twice is the exact thing this design is built not
 -- to do" -- and that sentence is exactly why the wipe is charged now that it costs none of those. The
 -- failure is still billed once; the bill just moved to the only meter left (Descent.COUNT_WIPE).
 --
@@ -4562,7 +4736,7 @@ function Descent.breachComposition(player, floorLevel)
 end
 
 -- Has this company ever come back up early? A ONE-WAY MARK ON THE PLAYER rather than a reading of the
--- live tally, and for the same reason the Inn's door is (models/wound.lua's Wound.everWounded): the
+-- live tally, and for the same reason the Inn's door is (models/injury.lua's Injury.everInjured): the
 -- count falls back to nought the moment the company descends again, so a readout that asked the ledger
 -- would come off the plaza the morning after it was earned, having taught nobody anything.
 --

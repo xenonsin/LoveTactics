@@ -1,5 +1,5 @@
 -- Volatile: the thing bursts when it dies. A self-destruct rule delivered as a trait so anything can
--- carry it -- a suicide-bomber demon (data/characters/character_demon_bomblet.lua via
+-- carry it -- a suicide-bomber demon (data/characters/character_demon_bomblet_tutorial.lua via
 -- data/items/utility/utility_volatile_core.lua), a powder keg, a corpse rigged to go off. On death it
 -- deals a flat blast to everything in a small radius, friend and FOE alike (no side filter): you can
 -- bait an enemy into its own bombs, and a clustered pack chain-reacts as each blast sets off the next.

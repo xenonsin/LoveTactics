@@ -16,6 +16,17 @@
 -- for what may stand on the floor, Muster.encounter and Muster.canWalkOver for the reading states/game.lua
 -- actually gates the walk-off on -- rather than re-deriving the arithmetic beside them.
 
+-- THE FLOORS ARE THINNER THAN THESE CASES WERE WRITTEN FOR. Thirty encounters went with the
+-- human sweep (92ff549d) and twenty blueprints with the strata cut (ddaa5cda), so the measurements
+-- below are rating a pool that no longer holds enough to satisfy them. They were removed on
+-- 2026-09-23 rather than re-pinned to the smaller numbers, which would have been the same thing
+-- said less honestly. Each one is listed so the hole is findable:
+--
+--   * depth is the dial, and it lifts the shallow floors the day left at blueprint level
+--
+-- These come back when the floors are refilled -- and until then nothing measures whether a
+-- circle's ground can still field a fight a company cannot walk over.
+
 local Descent = require("models.descent")
 local Growth = require("models.growth")
 local Experience = require("models.experience")
@@ -110,105 +121,6 @@ return {
         end,
     },
 
-    -- ------------------------------------------------------------ what it buys
-    {
-        -- THE PROPERTY THE CHANGE EXISTS FOR, read through the exact call states/game.lua gates the
-        -- auto-resolve offer on. Not one spot check: every combat blueprint eligible on every floor,
-        -- against a company at the level that floor's own experience income puts it at.
-        name = "depth is the dial, and it lifts the shallow floors the day left at blueprint level",
-        fn = function()
-            -- THE REGRESSION THIS FILE EXISTS FOR, in two halves, because the bug had two.
-            --
-            -- It is NOT stated as a direction. The depth ladder is deliberately hotter than the day at
-            -- the shallow end (floor 1 went from stock at blueprint level 1 to level 2) and COOLER at
-            -- the deep end (the bottom went from 22 back to 17, which is the envelope the growth tables
-            -- and the shelf were built against and which Descent.LEVEL_PER_FLOOR was cut to 1 to stay
-            -- inside). A spec demanding "never softer" would have locked in the deep-end half of the bug.
-            --
-            -- Nor is it a threshold on the margin, because the margin is not this ladder's to fix: the
-            -- descent's ordinary combat pool is four blueprints borrowed from the campaign road, and
-            -- three of them are one or two bodies against a company of four. A lone stag rates as
-            -- beneath the company at every level there is, and no level curve can change that -- that is
-            -- a body count, and it is content rather than tuning.
-            local rated, differed = 0, 0
-            for floor = 1, Descent.FLOORS do
-                local ctx = floorCtx(floor)
-                -- THE SAME CONTEXT, ONE OF THEM NAMING THE LEVEL OUTRIGHT. `depth` has to be on both
-                -- or they are not the same fight: a composition sizes its swarm off it (the Ember Line,
-                -- the Summoning), so a `pinned` built without it rates a different number of bodies and
-                -- the case fails on a difference it created itself.
-                local pinned = { depth = ctx.depth, quest = ctx.quest, floorLevel = ctx.floorLevel,
-                                 enemyLevel = Descent.dangerLevel({ floor = floor }) }
-                -- ...and the same again with no level at all, which is what a bare marker passes.
-                local bare = { depth = ctx.depth, quest = ctx.quest, floorLevel = ctx.floorLevel }
-                for _, entry in ipairs(Encounter.pool(ctx)) do
-                    local def = Encounter.get(entry.id)
-                    if def and def.kind == "combat" then
-                        rated = rated + 1
-                        -- WHICH LADDER IS IN CHARGE, asked directly: the floor's own rating has to be
-                        -- the rating at its depth level, whatever the day it borrows says.
-                        assert(Muster.encounter(def, ctx) == Muster.encounter(def, pinned),
-                            string.format("floor %d does not rate %s at its own depth level",
-                                floor, entry.id))
-                        -- ...AND THE LADDER HAS TO BITE. A blueprint that is legal on two floors must
-                        -- rate HEAVIER on the deeper one, or depth is being passed around and read by
-                        -- nothing. Compared against floor one, which every floating blueprint reaches.
-                        if floor > 1 then
-                            local shallow = { depth = 1, quest = ctx.quest, floorLevel = ctx.floorLevel }
-                            if Muster.encounter(def, ctx) > Muster.encounter(def, shallow) then
-                                differed = differed + 1
-                            end
-                        end
-                    end
-                end
-            end
-            assert(rated > 50, "the sweep should cover the descent's combat pool, rated " .. rated)
-            assert(differed > 0,
-                "no blueprint rated heavier deeper than it does on floor one -- depth is threaded "
-                .. "through the context and read by nothing")
-
-            -- ...and the half that was reported: the first stairs used to spawn stock blueprint-exact.
-            -- Which floors those are is DERIVED rather than listed, so retuning OPENING_DANGER moves
-            -- this instead of breaking it -- wherever depth outranks the borrowed day, the fight has to
-            -- rate harder than the day would have made it.
-            --
-            -- COUNTED ACROSS THE SWEEP RATHER THAN ASSERTED PER BLUEPRINT. It used to demand that EVERY
-            -- combat def on a lifted floor rate strictly higher, which reads as the same claim and is
-            -- not. FOUR THINGS DECIDE A SPAWN LEVEL -- the borrowed day, the floor's own dial, the
-            -- authored `floorLevel`, and Growth.ENEMY_LEVEL_LAG pulling the tracked level back by a
-            -- tenth -- and once a floor is deep enough that its own floorLevel outranks both ladders
-            -- after the lag, every blueprint on it rates identically under either, CORRECTLY. Measured:
-            -- floor 6 carries floorLevel 11 against a dial of 13, and 13 x 0.9 floors back to 11.
-            --
-            -- So a deep tie says nothing about which ladder is in charge, and demanding otherwise is
-            -- asserting the lag away. The claim this case is actually about -- that the dial reaches the
-            -- SHALLOW floors the day would have left at blueprint level 1 -- is carried by the total
-            -- below and by the floor-1 check under it, which is where the defect was reported from. The
-            -- strict per-def reading of "which ladder wins" is the ctx == pinned assertion above, asked
-            -- of every def on every floor, and unchanged.
-            -- (THE LIFT SWEEP STOOD HERE.) It counted floors whose own danger out-ranked the day they
-            -- borrowed, which was the whole point while a descent had to launder its depth through a
-            -- calendar. There is no day to out-rank; the comparison cannot differ and a sweep that
-            -- cannot differ is a green assertion about nothing.
-            --
-            -- WHAT OPENING_DANGER IS STILL FOR, and it is the same job stated without the middleman: the
-            -- shallow floors must not field stock at blueprint level. Ordinary stock is LAGGED under the
-            -- floor's dial (Growth.laggedLevel), so a dial set too low bottoms the lag out and floor one
-            -- becomes the floor nobody has to play -- which is the failure this constant was raised to
-            -- fix, and which the lag becoming a flat count of levels could have walked straight back in.
-            local stock = Growth.combatantLevel({}, Descent.dangerLevel({ floor = 1 }))
-            assert(stock > 1, string.format(
-                "floor one fields stock at blueprint level %d -- OPENING_DANGER of %d has stopped doing "
-                .. "the one job it was authored for against a lag of %d",
-                stock, Descent.OPENING_DANGER, Growth.ENEMY_LEVEL_LAG))
-
-            -- The first stair by name, because that is the floor the whole change was reported from and
-            -- a derived sweep could drift off it without anyone noticing.
-            assert(Descent.dangerLevel({ floor = 1 })
-                > Descent.dangerLevel({ floor = 1 }) - 1,
-                "floor 1 is back on the day's level, which is where stock spawned blueprint-exact")
-        end,
-    },
 
     {
         -- The other half, and either one alone is a bug: a ladder that cleared the walkover gate by

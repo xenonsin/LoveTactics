@@ -8,9 +8,9 @@
 -- neither touches the pool itself -- so a company could be very deep and still be fielding bodies that
 -- simply do not die. This is the one that makes a floor-twelve fight frightening rather than tedious.
 --
--- IT READS CLEAN BESIDE A WOUND, which is worth stating because the two look alike and are not. A wound
--- RESERVES a share of the pool and cannot be healed into (models/wound.lua); this HALVES the pool the
--- reservation is taken from. They stack the way two different subtractions stack, and a wounded body
+-- IT READS CLEAN BESIDE AN INJURY, which is worth stating because the two look alike and are not. An injury
+-- RESERVES a share of the pool and cannot be healed into (models/injury.lua); this HALVES the pool the
+-- reservation is taken from. They stack the way two different subtractions stack, and an injured body
 -- under this is in real trouble -- which is the correct reading of carrying both.
 return {
     name = "The Hollow",

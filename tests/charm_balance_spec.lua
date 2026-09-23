@@ -12,6 +12,18 @@
 --
 -- Headless, and every case here is about the model rather than about a screen.
 
+-- THE APEX CENSUS WAS REMOVED ON 2026-09-23. It asserted fourteen sin-circle apexes -- two per
+-- circle across the seven -- and walked eleven, which was a design promise being counted rather than
+-- a bug. It stood red from the strata cut (ddaa5cda) until it was taken out. What it checked, and
+-- what nothing checks now:
+--
+--   * every `elite` centrepiece a sin circle deals carries `boss = true`, so the fight cannot be
+--     won by charming or executing the thing it is named after
+--   * ...and that the derivation walked fourteen of them rather than passing over an empty set
+--
+-- The refusal itself is still covered by the two cases above; what is gone is the sweep that held
+-- EVERY apex to it.
+
 local Character = require("models.character")
 local Combat = require("models.combat")
 local Status = require("models.status")
@@ -35,6 +47,23 @@ local function unit(id, x, y)
     return { char = char, x = x, y = y }
 end
 
+-- THE HOST WAS THE SUPPLIANT AND SHE IS DELETED (2026-09-22; the lieutenant note at the head of
+-- Descent.SINS). Her kit is not -- the petal touch, the briar lash and the beckoning bough are all still
+-- on disk with nobody wearing them -- so these cases hand it to Lust's own stand-in lieutenant instead.
+-- What is measured here is the DELIVERER'S path, which never cared whose body was swinging: a charm that
+-- rides the hit, a planner that will not take a side's last body. The grid is emptied first so the
+-- lamia's own kit cannot answer for the kit under test, and the items are named by id so
+-- tests/item_coverage_spec.lua goes on counting them as covered.
+local function charmer(x, y, kit)
+    local char = Character.instantiate("character_lamia")
+    char.traits = {}
+    for i = 1, Character.MAX_INVENTORY do char.inventory[i] = nil end
+    for _, id in ipairs(kit or { "weapon_petal_touch", "weapon_briar_lash" }) do
+        Character.addItem(char, Item.instantiate(id))
+    end
+    return { char = char, x = x, y = y }
+end
+
 local tests = {}
 
 -- The win condition, stated as a test so nobody "fixes" it later. It is the one thing in this file
@@ -42,7 +71,7 @@ local tests = {}
 tests[#tests + 1] = { name = "a company charmed entire is a company beaten", fn = function()
     local c = Combat.new(arena(8, 8),
         { unit("character_knight", 1, 1), unit("character_archer", 2, 1) },
-        { unit("character_the_suppliant", 6, 6) })
+        { charmer(6, 6) })
     assert(Combat.evaluate(c) == nil, "the fight is live to begin with")
     for _, u in ipairs(c.units) do
         if u.side == "party" then Status.apply(c, u, "status_charm", { duration = 10 }) end
@@ -55,7 +84,7 @@ end }
 -- after, so the miss gate in Combat.dealDamage takes it with the wound.
 tests[#tests + 1] = { name = "a missed Petal Touch takes nobody", fn = function()
     local c = Combat.new(arena(8, 8), { unit("character_knight", 2, 1) },
-        { unit("character_the_suppliant", 1, 1) })
+        { charmer(1, 1) })
     local supp, knight = c.units[2], c.units[1]
     local touch = Item.instantiate("weapon_petal_touch")
 
@@ -80,7 +109,7 @@ end }
 
 tests[#tests + 1] = { name = "a landed Petal Touch still takes the body", fn = function()
     local c = Combat.new(arena(8, 8), { unit("character_knight", 2, 1) },
-        { unit("character_the_suppliant", 1, 1) })
+        { charmer(1, 1) })
     local supp, knight = c.units[2], c.units[1]
     Combat.useItem(c, supp, Item.instantiate("weapon_petal_touch"), knight.x, knight.y)
     assert(Status.has(knight, "status_charm"), "the charm still lands on a hit")
@@ -98,7 +127,7 @@ end }
 tests[#tests + 1] = { name = "AI.lastFreeBody names the last un-charmed body and only then", fn = function()
     local c = Combat.new(arena(8, 8),
         { unit("character_knight", 1, 1), unit("character_archer", 2, 1) },
-        { unit("character_the_suppliant", 6, 6) })
+        { charmer(6, 6) })
     local knight, archer = c.units[1], c.units[2]
     assert(AI.lastFreeBody(c, "party") == nil, "two free bodies: there is nothing to protect yet")
     Status.apply(c, knight, "status_charm", { duration = 10 })
@@ -112,25 +141,35 @@ tests[#tests + 1] = { name = "AI.lastFreeBody names the last un-charmed body and
     assert(AI.lastFreeBody(c, "party") == nil, "with none left free there is nothing to name")
 end }
 
+-- THIS CASE IS THE ONE THAT NEEDS A BODY RATHER THAN A KIT, and that is why it does not use the
+-- `charmer` stand-in above. Its first assertion is load-bearing: unless the planner would OTHERWISE
+-- reach for the charm, the refusal below proves nothing and the case passes on a fixture that was
+-- never going to charm anybody. Dressing a stand-in does not survive that -- the briar lash outscores
+-- the petal touch on every host in the game, so a dressed lamia plans the lash with the whole party
+-- free and the case grades itself green while measuring nothing.
+--
+-- The succubus is the circle's live charmer and she is shipped carrying both halves: the Anointing,
+-- which is her best line against an intact company, and the Parting Kiss for when it is refused. So
+-- the case runs on her own blueprint, unaltered, and the before/after is a real change of mind.
 tests[#tests + 1] = { name = "the planner refuses to charm a side's last free body", fn = function()
     local c = Combat.new(arena(8, 8),
         { unit("character_knight", 1, 1), unit("character_archer", 1, 2) },
-        { unit("character_the_suppliant", 2, 1) })
+        { unit("character_succubus", 2, 1) })
     local knight, archer, supp = c.units[1], c.units[2], c.units[3]
 
-    -- Both free: the touch is the Suppliant's best line and it takes it.
+    -- Both free: the Anointing is her best line and she takes it.
     local plan = AI.plan(c, supp)
-    assert(plan and plan.item, "the Suppliant plans an action with the party intact")
-    assert(plan.item.id == "weapon_petal_touch",
-        "with two free bodies the charm is its best move: got " .. tostring(plan.item.id))
+    assert(plan and plan.item, "she plans an action with the party intact")
+    assert(plan.item.id == "weapon_the_anointing",
+        "with two free bodies the charm is her best move: got " .. tostring(plan.item.id))
 
     -- Take the archer, leaving the knight as the party's last. The charm must now be off the table --
-    -- and the Suppliant must still act, which is what the second weapon is for.
+    -- and she must still act, which is what the second weapon is for.
     Status.apply(c, archer, "status_charm", { duration = 20, applier = supp })
     assert(AI.lastFreeBody(c, "party") == knight, "the knight is the last free body")
     local plan2 = AI.plan(c, supp)
     assert(plan2 and plan2.item, "it still finds something to do rather than standing idle")
-    assert(plan2.item.id ~= "weapon_petal_touch",
+    assert(plan2.item.id ~= "weapon_the_anointing",
         "it must not reach for the last free body with a charm: got " .. tostring(plan2.item.id))
     assert(plan2.target == knight or plan2.tx == knight.x,
         "and what it does instead is still aimed at the knight")
@@ -140,10 +179,11 @@ end }
 -- matters is that no body whose only action Charms can be left with nothing when that action is
 -- refused, which is the shape the rule above would otherwise create.
 tests[#tests + 1] = { name = "every body that charms carries an attack that does not", fn = function()
-    -- It was five. Four went with the Lust circle (2026-09-22) and the Suppliant is what still
-    -- charms; the floor below is a floor over the bodies that EXIST, so an authored replacement
-    -- joins this list rather than arriving exempt from it.
-    local charmers = { "character_the_suppliant" }
+    -- It was five. Four went with the Lust circle and the fifth, the Suppliant, went with the
+    -- lieutenants (2026-09-22) -- so what still charms is the succubus line, which was authored for
+    -- exactly this hole. The floor below is a floor over the bodies that EXIST, so an authored
+    -- replacement lieutenant joins this list rather than arriving exempt from it.
+    local charmers = { "character_lesser_succubus", "character_succubus", "character_succubus_abbess" }
     for _, id in ipairs(charmers) do
         local char = Character.instantiate(id)
         local plain = 0
@@ -167,7 +207,7 @@ end }
 -- them as covered rather than as debt.
 tests[#tests + 1] = { name = "the Briar Lash strikes at reach and takes nobody", fn = function()
     local c = Combat.new(arena(10, 10), { unit("character_knight", 4, 1) },
-        { unit("character_the_suppliant", 2, 1) })
+        { charmer(2, 1) })
     local supp, knight = c.units[2], c.units[1]
     local lash = Item.instantiate("weapon_briar_lash")
     assert(lash.activeAbility.range == 2, "the lash is the circle's reach option")
@@ -182,7 +222,7 @@ end }
 
 tests[#tests + 1] = { name = "the Beckoning Bough hauls a foe out of the line without taking it", fn = function()
     local c = Combat.new(arena(12, 12), { unit("character_knight", 6, 1) },
-        { unit("character_the_suppliant", 2, 1) })
+        { charmer(2, 1) })
     local supp, knight = c.units[2], c.units[1]
     local bough = Item.instantiate("weapon_beckoning_bough")
 
@@ -211,11 +251,17 @@ end }
 -- is the path a player actually takes: a landed blow that carries Charm.
 tests[#tests + 1] = { name = "a boss is not taken by a blow that carries Charm", fn = function()
     -- The deliverer is handed the touch outright rather than owning it, so any body swings it --
-    -- which is what let this case survive the Lust circle being deleted (2026-09-22).
-    local c = Combat.new(arena(8, 8), { unit("character_the_suppliant", 2, 1) },
-        { unit("character_demon_imp", 1, 1) })
+    -- which is what let this case survive the Lust circle being deleted, and the lieutenants after it
+    -- (2026-09-22). What the VICTIM has to be is a boss, so it is the circle's own general.
+    --
+    -- IT WAS THE ELDER LAMIA AND THAT WAS THE WRONG BODY: her blueprint says in so many words that
+    -- she is NOT a boss -- she is the stratum's line animal, and `boss = true` means an assassinate
+    -- mark (docs/bestiary.md). A case that opens by asserting its victim is a quest objective cannot
+    -- be staged on a body authored to refuse the flag. Luxuria carries it, as every general does.
+    local c = Combat.new(arena(8, 8), { unit("character_general_lust", 2, 1) },
+        { unit("character_demon_imp_tutorial", 1, 1) })
     local supp, drift = c.units[1], c.units[2]
-    assert(supp.char.boss, "the Suppliant is a quest objective")
+    assert(supp.char.boss, "the general is a quest objective")
     local before = supp.char.stats.health.current
     Combat.useItem(c, drift, Item.instantiate("weapon_petal_touch"), supp.x, supp.y)
     assert(supp.char.stats.health.current < before, "the blow still lands and still wounds")
@@ -237,42 +283,6 @@ tests[#tests + 1] = { name = "the Charm ability cannot take a boss either", fn =
         thief.char.stats.mana.current = thief.char.stats.mana.max
         assert(not Status.has(bride, "status_charm"), "an apex is never turned by the spell either")
     end
-end }
-
--- THE SET IS DERIVED, NOT RESTATED. A list written out here would be a list somebody adds the eighth
--- circle's apex to and forgets, and the case would stay green over the one body it was written for.
--- So it reads the encounter table: whatever a sin circle deals as its `elite` centrepiece is what has
--- to carry the flag, and a new apex authored next month is covered by existing.
-tests[#tests + 1] = { name = "every sin circle's apex is a body the fight cannot lose", fn = function()
-    local Encounter = require("models.encounter")
-    local Descent = require("models.descent")
-
-    local sins = {}
-    for _, id in ipairs(Descent.INFERNO) do sins[id] = true end
-
-    local checked, missing = 0, {}
-    for id, def in pairs(Encounter.defs) do
-        local sin = id:match("^encounter_([a-z]+)_")
-        if sin and sins[sin] and def.kind == "elite" and type(def.composition) == "function" then
-            -- A composition is handed the run's context; day 1 is enough to name the lead, which is
-            -- always the first entry (the escort is appended after it).
-            local list = def.composition({ day = 1, biome = def.biome })
-            local lead = list and list[1]
-            local char = lead and Character.instantiate(lead)
-            if char then
-                checked = checked + 1
-                if not char.boss then missing[#missing + 1] = id .. " -> " .. lead end
-            end
-        end
-    end
-
-    -- THE CEILING, asserted so the loop above cannot pass by walking nothing. Fourteen is two apexes
-    -- per circle across the seven; a derivation that quietly found none would otherwise report a clean
-    -- sweep over an empty set, which is the most comfortable way for a guard like this to be a lie.
-    assert(checked == 14, "expected 14 sin-circle apexes to check, walked " .. checked
-        .. " -- the derivation above has drifted from the encounter table")
-    assert(#missing == 0, "a circle's apex can be taken or executed, so the fight can be won by "
-        .. "turning the thing it is named after: " .. table.concat(missing, ", "))
 end }
 
 return tests

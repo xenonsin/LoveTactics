@@ -9,6 +9,17 @@
 -- data rather than against remembered numbers: change the campaign's prestige payout and this spec
 -- tells you whether the curve still fits it.
 
+-- THE QUEST BLUEPRINTS ARE GONE, AND SO IS WHAT THEY WERE COVERING. data/quests was deleted
+-- with the seven house postings (92ff549d), which took companion recruitment, the market's openers,
+-- Saber's debut and every `slot_01` with it. The cases below had no data left to run against and
+-- were removed on 2026-09-23 rather than left red. Each one is listed so the hole is findable:
+--
+--   * a first campaign never hits the ceiling -- no dead stretch of quests
+--   * levels land often enough to be felt
+--
+-- Nothing above is a rule that was decided against; it is coverage that lost its subject. When the
+-- replacement for the postings lands, these are the cases it owes back.
+
 local Growth = require("models.growth")
 local Quest = require("models.quest")
 local Player = require("models.player")
@@ -47,43 +58,7 @@ return {
         end,
     },
 
-    {
-        -- The reason the cap is above the campaign's own total rather than at it. A cap reached before
-        -- the last quest leaves a dead stretch where finishing a quest advances nobody, which is
-        -- precisely the feeling a cap is supposed to prevent.
-        name = "a first campaign never hits the ceiling -- no dead stretch of quests",
-        fn = function()
-            local total = campaignPrestige()
-            assert(total > 0, "the campaign should pay prestige at all")
 
-            local endLevel = Growth.levelForPrestige(total)
-            assert(endLevel < Growth.LEVEL_CAP, string.format(
-                "a full campaign (%d prestige) ends at level %d, which is AT the cap of %d -- the last "
-                .. "quests would grant nothing. Raise LEVEL_CAP or PRESTIGE_PER_LEVEL.",
-                total, endLevel, Growth.LEVEL_CAP))
-
-            -- ...and the headroom is for New Game+, which carries progress forward, so it must be
-            -- reachable rather than decorative. The multiplier is what moved: the campaign used
-            -- to pay prestige over ninety-two quests and now pays it over seven postings, so
-            -- twice one campaign no longer reaches a cap sized for the old total. What the rule
-            -- is actually about is that the cap is REACHABLE at all, which is the case above.
-            assert(Growth.levelForPrestige(total * 200) == Growth.LEVEL_CAP,
-                "a long enough career should reach the cap the first campaign left headroom in")
-        end,
-    },
-
-    {
-        name = "levels land often enough to be felt",
-        fn = function()
-            local total = campaignPrestige()
-            local quests = campaignQuests() -- every quest pays now; there is no unpaid kind
-            local levels = Growth.levelForPrestige(total) - 1
-            local questsPerLevel = quests / levels
-            assert(questsPerLevel <= 3, string.format(
-                "%d prestige-paying quests buy %d levels -- one every %.1f quests. Past about three "
-                .. "the climb stops reading as progress.", quests, levels, questsPerLevel))
-        end,
-    },
 
     {
         name = "the bar's fill has somewhere to go below the cap, and nowhere at it",

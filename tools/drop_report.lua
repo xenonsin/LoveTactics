@@ -63,10 +63,27 @@ local QUEUE_REACH = 6
 -- a card.
 local TARGET_LIST = 5
 
--- The calendar the sweep walks. Six stops rather than forty: a `condition` gates on biome and a weight
--- gates on day, and no blueprint in the tree changes which BODIES it names more than once across a
--- decade of days -- it changes how many. Cheap enough to widen if one ever does.
-local DAYS = { 1, 5, 10, 20, 30, 40 }
+-- THE SWEEP'S OTHER TWO AXES, AND BOTH OF THEM ARE THE RIFT'S OWN UNITS.
+--
+-- This was a CALENDAR -- six stops out of forty days -- and the calendar is deleted. Eligibility gates on
+-- `depth` and `rung` now (models/encounter.lua), and a ctx carrying neither answers 1 to both: every
+-- depth-gated blueprint was being asked about the mouth of the rift and nothing else.
+--
+-- THE RUNG IS THE HALF THAT MATTERS TO THIS TOOL, and it is what makes the axis load-bearing rather than
+-- tidy. Under one elite, one floor every circle elite names which of its circle's two floors it stands
+-- on, so a sweep pinned at rung 1 places the approach elites and calls every SEAT elite unplaced --
+-- which would quietly strike the Sated, the Eyrie, the Undertow and the rest out of the census, take
+-- their bodies with them, and blank the "Dropped by" column the wiki builds off this measurement. A
+-- reachability report that cannot see half the landmarks in the game is worse than none.
+--
+-- Depth is swept at the fifteen real floors rather than at six sampled days, because there are only
+-- fifteen and the cost is a pool call each.
+local DEPTHS = (function()
+    local out = {}
+    for floor = 1, Descent.FLOORS do out[floor] = floor end
+    return out
+end)()
+local RUNGS = { 1, 2 }
 
 local function sortedKeys(t)
     local out = {}
@@ -128,19 +145,22 @@ local function census()
     local grounds = biomes()
     grounds[#grounds + 1] = false -- the ungated sweep, run with no biome in the context
 
-    for _, day in ipairs(DAYS) do
-        for _, ground in ipairs(grounds) do
-            local biome = ground or nil
-            local ctx = { day = day, prestige = day, biome = biome }
-            -- Encounter.pool applies each blueprint's own minPrestige and condition, so an encounter
-            -- that never passes anywhere never contributes a body -- which is the measurement.
-            local ok, pool = pcall(Encounter.pool, ctx)
-            if ok and pool then
-                for _, entry in ipairs(pool) do
-                    local def = Encounter.get(entry.id)
-                    local list = def and resolve(def, ctx)
-                    for _, charId in ipairs(list or {}) do
-                        if type(charId) == "string" then record(charId, biome, entry.id) end
+    for _, depth in ipairs(DEPTHS) do
+        for _, rung in ipairs(RUNGS) do
+            for _, ground in ipairs(grounds) do
+                local biome = ground or nil
+                local ctx = { depth = depth, rung = rung, biome = biome, prestige = depth }
+                -- Encounter.pool applies each blueprint's own depth band, rung and condition, so an
+                -- encounter that never passes anywhere never contributes a body -- which is the
+                -- measurement.
+                local ok, pool = pcall(Encounter.pool, ctx)
+                if ok and pool then
+                    for _, entry in ipairs(pool) do
+                        local def = Encounter.get(entry.id)
+                        local list = def and resolve(def, ctx)
+                        for _, charId in ipairs(list or {}) do
+                            if type(charId) == "string" then record(charId, biome, entry.id) end
+                        end
                     end
                 end
             end

@@ -49,6 +49,10 @@ return {
     kind = "elite",
     weight = 1, -- rarest thing on the floor: the body a stratum is remembered for
     condition = function(ctx) return ctx.biome == "castle" end,
+    -- RUNG 2, beside the Eyrie. Heaviest of the castle's four measured, and the floor where "cut
+    -- the one doing it" -- this circle's standing law, free advice everywhere else -- finally has
+    -- to be paid for. One elite, one floor: see models/encounter.lua's eligibility note.
+    rung = 2,
     composition = function(ctx)
         -- Her and one rung below her, then the congregation. The ladder the player climbed to get here,
         -- standing on one board.

@@ -130,11 +130,36 @@ The codebase is organized into layers loaded via `require()`. See
   function's header argues in full. A stair whose guard fell stays open, so a company **re-enters at the
   deepest floor it has mapped** (`Descent.entryFloor`) rather than re-walking cleared ground.
 
-  So a trip is not a run: you go down, attrit, and come back up to the **Ward** to rest a wound off (in
-  descents, free) or buy it off (40g), and to the **Touchstone** to have what you found named. Wounds
-  outlive the trip and the roster is unbounded, so a bad trip costs **a body on the bench**, never a
-  bill — the law in [docs/the-count.md](docs/the-count.md). What a company carries down is what the four
-  who walk down have in their grids; the stash stays in town.
+  So a trip is not a run: you go down, attrit, and come back up to the **Ward** to rest an injury off
+  (in descents, free) or buy it off (40g), and to the **Touchstone** to have what you found named. An
+  injury is one of **seven named kinds**, dealt off the save's own seed when a body is carried out -- a
+  sealed share of a pool, a broken leg, a torn shoulder, a rattled head -- and they STACK, floored per
+  stat so a veteran can be ruined and never made inert. Nothing in a fight lifts one: every badge is
+  authored uncleansable, which closed a live hole where a Cure stripped the campaign's own attrition
+  meter. See [docs/injuries.md](docs/injuries.md). Injuries outlive the trip and the roster is
+  unbounded, so a bad trip costs **a body on the bench**, never a bill — the law in
+  [docs/the-count.md](docs/the-count.md). What a company carries down is what the four
+  who walk down have in their grids **and what is in the PACK** (`player.pack`); the stash stays in town.
+
+  **THE BAG IS THE ONLY CONTAINER UNDERGROUND, AND IT IS WHERE EVERY FIND LANDS.** The law above was
+  written before there was one, and it was enforced in exactly one place -- the Use panel -- while the
+  Loadout screen went on showing the whole town shelf as a live drag source on floor nine. It is a real
+  container now, packed at the Armory or at the Gate (`ui/panels/party.lua`'s `pool` opt puts a
+  **Stash | Pack** switch over the column; underground the switch is not drawn, because there is
+  nothing to switch to). `Player.stow` is the ONE seam that routes a grant -- a chest, a fight's
+  spoils, a lift off a pocket, a pile picked back up -- so no other seam on the way in learns a rule;
+  `Player.packOpen` is the flag, and it reads `descentRun.entry` rather than `descentRun`, because the
+  run is seated the moment you walk onto the Gate screen and a company packing a bag there is still
+  standing in the city. Both exits empty it onto the shelf (`Player.unpack`).
+
+  **AND IT MADE ONE NUMBER INTO TWO, WHICH MUST NOT BE COLLAPSED AGAIN.** `Descent.carried` counts the
+  BAG -- slots, rations included, against `Descent.carryMax` (**28**: twenty of finding plus eight of
+  supplies) -- and is what the chest refusal and the *"Carrying n / max"* readout ask. `Descent.found`
+  is the old diff against the entry snapshot -- quantities -- and is what the stair's toll
+  (`Descent.tollFor`) and Still Hungry's bite ask. A toll priced against the bag would quote a share of
+  the company's own draughts and then fail to take them, since `Player.takeAtRisk` only ever hands over
+  finds: *a stair that could reach into somebody's hand for their sword would be a robbery rather than
+  a price*. `tests/pack_spec.lua` holds both halves.
 
   **A wipe costs the HAUL, and the haul is not gone — it is lying where you fell.** `Descent.dropPack`
   puts the trip's finds (`Player.atRisk`'s diff against the company as it walked in) on the tile the
@@ -225,7 +250,7 @@ The codebase is organized into layers loaded via `require()`. See
   `data/curses/`, [docs/curses.md](docs/curses.md)). It is the mirror of *broken*: broken means the piece
   stops working and the Forge fixes it for gold; cursed means the piece works **against** you and the
   Cathedral's rite lifts it — free but costing two trips with the piece on the altar, or `Curse.fee` in
-  gold to skip them, which is `models/wound.lua`'s law with an item where the body goes. A blueprint here
+  gold to skip them, which is `models/injury.lua`'s law with an item where the body goes. A blueprint here
   declares the fields an ITEM declares (`bonus`, `resist`, `maxBonus`, `rules`, `traits`, `openingBoon`),
   so it folds in beside the piece at `Combat.applyUnitPassives` with no new balance surface; its one
   field of its own is `binds`, which makes `Item.isBound` answer true and thereby reuses every refusal in

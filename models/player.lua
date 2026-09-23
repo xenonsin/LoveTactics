@@ -168,12 +168,44 @@ end
 -- battle state points at this very table), and the Loadout panel moves items between it and a
 -- character's grid.
 
--- Put `item` in the stash. A stackable item merges into an existing stack of the same id first, so
--- a run of stolen potions collapses into one entry rather than filling the list.
-function Player.addToStash(player, item)
-    player.stash = player.stash or {}
+-- THE PACK: what the company is carrying RIGHT NOW, and underground it is the only bag they have.
+--
+-- The stash above is the town's shelf and it stays in town -- the law CLAUDE.md states and the Gate
+-- prints on its own screen. What that law had no container for was the OTHER half of it: a company
+-- that can only bring what fits in four 3x3 grids is a company choosing between a build and a potion,
+-- because the grid is the build (ui/adjacency_links.lua) and every draught in it costs an adjacency.
+-- So the bag is a thing of its own, packed at the Gate, and it is where every find of the trip lands.
+--
+-- IT HAS A BOTTOM, which the stash pointedly does not (Descent.carryMax). That is not a second rule
+-- bolted on: the ceiling already existed and already refused chests, it simply had nothing to measure
+-- but a diff. It measures a container now, and the difference the player feels is that the draughts
+-- they chose to bring are sitting in the slots the next chest wanted.
+--
+-- ...AND IT IS NOT THE PILE A WIPE LEAVES BEHIND, which is also called a pack and always has been
+-- (Descent.dropPack). In the fiction they are one object -- the company's bag, and the company's bag
+-- lying on the floor where they fell -- so the word is not worth splitting, and `kind = "pack"` rides
+-- inside every saved board in player.floors where a rename would orphan every pile in every save.
+
+-- IS THE PACK OPEN? True exactly when the company is standing on a floor of a trip that has begun.
+--
+-- `descentRun.entry` IS THE TEST, and it is not a new fact to keep: the rollback point is nil at one
+-- moment only -- the mouth of the stair, where states/gate.lua clears it -- and set for every floor
+-- after. So a company standing at the Gate with a half-packed bag is in TOWN, and a purchase made
+-- there goes on the shelf like every other purchase.
+--
+-- NOT `player.descentRun`, which is seated the moment you walk onto the Gate screen and would call the
+-- plaza underground; and not `player.activeRun`, which the prologue and every campaign quest set.
+function Player.packOpen(player)
+    local run = player and player.descentRun
+    return (run and run.entry) ~= nil
+end
+
+-- The stack-merge body, over whichever list it is handed. Lifted out of Player.addToStash when the
+-- pack arrived so that ONE merge rule serves both containers: a +1 potion is a different item from a
+-- +0 one in the bag for exactly the reason it is on the shelf.
+function Player.addToList(list, item)
     if Item.isStackable(item) then
-        for _, existing in ipairs(player.stash) do
+        for _, existing in ipairs(list) do
             -- Same blueprint AND same upgrade level: a +1 potion is a different item than a +0 one, so
             -- a refined stack never absorbs (or is absorbed by) an unrefined one.
             if existing.id == item.id and (existing.level or 0) == (item.level or 0)
@@ -188,14 +220,83 @@ function Player.addToStash(player, item)
             end
         end
     end
-    player.stash[#player.stash + 1] = item
+    list[#list + 1] = item
     return true
+end
+
+-- Put `item` on the town's shelf. NAMED FOR WHAT IT SAYS rather than for what it checks, which is why
+-- it did not simply grow a branch when the pack arrived: a caller that means "the shelf at home" --
+-- the Cathedral finishing a rite, the Touchstone handing a read piece back, the city counter -- means
+-- it, and an addToStash that could quietly put the thing in a bag on floor nine would be a lie in a
+-- name that seven call sites rely on.
+function Player.addToStash(player, item)
+    player.stash = player.stash or {}
+    return Player.addToList(player.stash, item)
+end
+
+-- ...and the same into the bag the company is carrying.
+function Player.addToPack(player, item)
+    player.pack = player.pack or {}
+    return Player.addToList(player.pack, item)
+end
+
+-- PUT THIS WHERE THE COMPANY CAN REACH IT: the pack underground, the shelf in town.
+--
+-- ONE SEAM, and every grant goes through it for the reason Player.atRisk and Descent.carried both
+-- give in their own headers -- no seam on the way in has to learn a rule. A chest, a fight's spoils, a
+-- general's own piece, a lift off a pocket, a cart's purchase on the road and a pile picked back up
+-- all call this, and not one of them has to know which container is open or ask where it is standing.
+function Player.stow(player, item)
+    if Player.packOpen(player) then return Player.addToPack(player, item) end
+    return Player.addToStash(player, item)
+end
+
+-- THE SAME ANSWER AS A TABLE, for the one caller that cannot ask a function: combat holds the
+-- destination BY REFERENCE and appends to it directly (Combat.steal, wired in states/game.lua), so a
+-- lift by a thief with a full grid has somewhere to go that survives the fight. It is the list Player.stow
+-- would have chosen, handed over instead of called -- so the pickpocket and the chest land in the same
+-- container without combat having to know there are two.
+function Player.carryList(player)
+    if not player then return nil end
+    if Player.packOpen(player) then
+        player.pack = player.pack or {}
+        return player.pack
+    end
+    player.stash = player.stash or {}
+    return player.stash
+end
+
+-- EMPTY THE BAG ONTO THE SHELF, and hand back how many pieces made the trip.
+--
+-- CALLED ON BOTH EXITS, and the symmetry is the same one states/game.lua argues for the floor stack: if
+-- climbing out unpacked the bag and dying did not, a company that fell would find its rations sealed in
+-- a container it could not open in town -- a price on having lost, which docs/the-count.md forbids by
+-- name. On the wipe path the finds have already been lifted onto the pile (Player.takeAtRisk), so what
+-- is left in here is exactly what the company packed, and it goes home.
+--
+-- THROUGH addToStash RATHER THAN stow, deliberately: this runs as the trip closes and the answer must
+-- be the shelf whichever side of the flag the caller has got to. A drain that could put the bag back in
+-- the bag would be a loop with no way out of it.
+function Player.unpack(player)
+    local pack = player and player.pack
+    if not pack then return 0 end
+    local n = 0
+    for i = 1, #pack do
+        Player.addToStash(player, pack[i])
+        pack[i] = nil
+        n = n + 1
+    end
+    return n
 end
 
 -- Instantiate `itemId` and put it in the stash. The one path by which the player is GIVEN an item
 -- rather than buying it: a quest's `rewardItems` (models/quest.lua), a chest, an event choice. This
 -- keeps it the single place a "received an item" notification can hook (Player.onItemGranted),
 -- without a purchase or an inventory reshuffle -- which go through addToStash -- ever firing it.
+--
+-- WHERE IT LANDS IS Player.stow's QUESTION, NOT THIS ONE. A quest reward handed over in town goes on
+-- the shelf and a chest opened on floor nine goes in the bag, and neither this function nor any of its
+-- callers has to know which -- which is the whole of "no seam on the way in has to learn a rule".
 -- Returns the instance, so a caller can name it in a reward summary.
 --
 -- `Player.onItemGranted` is an optional observer (item -> ()) the UI layer sets once at startup
@@ -206,7 +307,7 @@ Player.onItemGranted = nil
 -- still hand over a +0 piece; what passes one is a drop that knows which floor it fell on.
 function Player.grantItem(player, itemId, level)
     local item = Item.instantiate(itemId, nil, level)
-    Player.addToStash(player, item)
+    Player.stow(player, item)
     -- Unseen until looked at: the Armory dots it so a reward found mid-quest is still findable in a
     -- sixty-row stash an hour later. See Player.markNew.
     Player.markNew(player, Player.NEW_STASH, itemId)
@@ -291,11 +392,22 @@ end
 --
 -- The screens still say so out loud (ui/panels/party.lua): a refusal with no sentence attached reads as
 -- a dropped input rather than a rule.
+-- THE FUNNEL ITSELF, over whichever list it is handed. Split out when the pack arrived, and the
+-- paragraph above is the whole reason it was split rather than copied: a second body carrying a second
+-- copy of the husk guard is a guard that can fall out of step with itself, which is the one thing that
+-- argument says a delay cannot survive. One body, two containers, one refusal.
+function Player.takeFromList(list, index)
+    if not list or not list[index] then return nil end
+    if require("models.identify").isUnidentified(list[index]) then return nil end
+    return table.remove(list, index)
+end
+
 function Player.takeFromStash(player, index)
-    local stash = player.stash
-    if not stash or not stash[index] then return nil end
-    if require("models.identify").isUnidentified(stash[index]) then return nil end
-    return table.remove(stash, index)
+    return Player.takeFromList(player and player.stash, index)
+end
+
+function Player.takeFromPack(player, index)
+    return Player.takeFromList(player and player.pack, index)
 end
 
 -- How many of `itemId` the company already holds, counted the way the player would count it: every
@@ -311,7 +423,15 @@ end
 function Player.ownedCount(player, itemId)
     if not (player and itemId) then return 0, 0, 0 end
     local stashed, worn = 0, 0
+    -- BOTH LOOSE LISTS COUNT AS ONE FIGURE. The question every caller is asking is "do I already own
+    -- one of these" -- the shop before it sells you a second, the road cart before it does -- and which
+    -- of the two containers a spare is lying in is not part of that answer. The bag is the one that
+    -- matters underground, where the cart is: a company told it has three on the shelf, nine floors
+    -- from the shelf, has been told about somebody else's property.
     for _, item in ipairs(player.stash or {}) do
+        if item and item.id == itemId then stashed = stashed + (item.quantity or 1) end
+    end
+    for _, item in ipairs(player.pack or {}) do
         if item and item.id == itemId then stashed = stashed + (item.quantity or 1) end
     end
     for _, char in ipairs(player.roster or {}) do
@@ -375,7 +495,7 @@ end
 -- you were.
 --
 -- Also scrubs the two ledgers that name a body by id and would otherwise keep naming a body that is
--- gone: `lastDeployed` (the deployment phase's opening pick) and `wounds`. `completedQuests` is
+-- gone: `lastDeployed` (the deployment phase's opening pick) and `injuries`. `completedQuests` is
 -- deliberately untouched -- her recruit quest still happened.
 --
 -- `opts.withKit` LEAVES THE GEAR ON THE BODY, and it exists for the one caller that is not a departure:
@@ -415,7 +535,7 @@ function Player.release(player, charId, opts)
     end
     player.lastDeployed = kept
 
-    if player.wounds then player.wounds[charId] = nil end
+    if player.injuries then player.injuries[charId] = nil end
 
     return true
 end
@@ -483,6 +603,10 @@ function Player.new()
         roster = roster,
         lastDeployed = {}, -- char ids fielded last battle; the deployment phase's opening pick (Player.noteDeployed)
         stash = {}, -- unequipped items; unbounded (see Player.addToStash)
+        -- WHAT THE COMPANY IS CARRYING: the bag packed at the Gate, and underground the only one they
+        -- have (see Player.packOpen). Bounded, where the shelf above is not (Descent.carryMax). Empty
+        -- in town on a fresh company and emptied onto the shelf every time one climbs out.
+        pack = {},
         completedQuests = {}, -- quest id -> true; keeps finished quests off the board AND is a vendor's standing (Quest.sponsorProgress)
         -- (THE POSTINGS IN HAND STOOD HERE.) Spent on taking one and put back on finishing it;
         -- deleted with the Bounty Board. A save written while it existed carries a `bounties`
@@ -535,16 +659,20 @@ function Player.new()
         -- gets that deep (models/descent.lua's Descent.strandPacks). Empty for a company that has never
         -- lost anything, which is what a lucky one reads as too.
         lostPacks = {},
-        -- What each body is still carrying from a fight it went down in, as { [charId] = count }
-        -- (models/wound.lua). Caps the healing anything underground can do, and empties the moment the
-        -- company is standing in a town -- a wound lasts the expedition it was taken on and no longer.
-        wounds = {},
-        -- ...and whether anybody ever has been, which the ledger above cannot answer once the company
-        -- has walked up the stair. What reads it is the one-time coach that teaches the mark on the bar
-        -- (states/game.lua's inflictWounds). One-way, so the lesson is taught exactly once ever.
-        wounded = false,
+        -- What each body is still carrying from a fight it went down in, as
+        -- { [charId] = { "injury_blood_loss", ... } } (models/injury.lua). A LIST of named kinds, not a
+        -- count -- it was a count until 2026-09-22, and models/save.lua reads the old shape as that many
+        -- Blood Loss. Caps the healing anything underground can do, and only the Ward empties it.
+        injuries = {},
+        -- ...and whether anybody ever has been, which the ledger above cannot answer once the bones are
+        -- set. What reads it is the one-time coach that teaches the mark on the bar (states/game.lua's
+        -- inflictInjuries). One-way, so the lesson is taught exactly once ever.
+        injured = false,
+        -- ...and the same for the SECOND lesson: the first injury that carries a badge rather than a
+        -- band. Two one-time lessons, two ledgers -- see models/injury.lua's Injury.everBadged.
+        injuredBadge = false,
         -- THE OTHER THING THE CATHEDRAL FIXES (models/curse.lua). `cursed` is the same one-way mark as
-        -- `wounded` above, for the same reason: it gates the rite's line on the Cathedral's desk, and a
+        -- `injured` above, for the same reason: it gates the rite's line on the Cathedral's desk, and a
         -- gate that read a live count would take the room off the desk the moment the last hex was
         -- lifted -- which is the moment the player has just learned what the room is.
         cursed = false,
@@ -831,36 +959,36 @@ end
 
 -- Refill every roster member's resource stats to full. Health and mana carry across the
 -- battles *within* a quest -- attrition over a run is the point -- but reaching a town rests the whole
--- company. Called from states/hub.lua and states/gate.lua on entry. A wound is NOT cleared beside it
--- any more (the Ward does that now), so the refill fills against the wounded ceiling rather than
+-- company. Called from states/hub.lua and states/gate.lua on entry. An injury is NOT cleared beside it
+-- any more (the Ward does that now), so the refill fills against the injured ceiling rather than
 -- through it -- which is the honest reading: a body that is still hurt still reads as hurt. So a
 -- quest won or lost always leaves the party whole and this is why models/save.lua need not persist
 -- current resources.
 function Player.restore(player)
-    local Wound = require("models.wound")
+    local Injury = require("models.injury")
     -- The reserve, re-stamped onto the bodies before anything reads a ceiling. A save/load rebuilds
-    -- every roster member from its blueprint, so `char.woundShare` has to be written back from the
+    -- every roster member from its blueprint, so `char.injuryShare` has to be written back from the
     -- player's ledger somewhere -- and this function already runs at every point a company is made
-    -- whole, which is exactly the set of moments the stamp can be stale at. See Wound.stamp.
-    Wound.stamp(player)
+    -- whole, which is exactly the set of moments the stamp can be stale at. See Injury.stamp.
+    Injury.stamp(player)
     for _, char in ipairs(player.roster or {}) do
-        -- A WOUND IS A CAP ON THIS REFILL, and this is the only seam it has (models/wound.lua). Health
-        -- alone -- mana and stamina come back whole, because a wound is an injury rather than
+        -- AN INJURY IS A CAP ON THIS REFILL, and this is the only seam it has (models/injury.lua). Health
+        -- alone -- mana and stamina come back whole, because an injury is damage rather than
         -- exhaustion, and taking the caster's pool would silently disarm them instead of hurting them.
         --
         -- THE TWO TOWN CALLERS SEE NO CAP AT ALL, and that is not this function being bypassed: both
-        -- Wound.healShare caps this, and the town no longer clears the ledger on the way in, so
+        -- Injury.healShare caps this, and the town no longer clears the ledger on the way in, so
         -- here the ledger is empty and every share is 1. The cap is for the callers that are still
         -- underground or mid-fight -- a battle retry, a body rebuilt from a resumed save -- which is
-        -- exactly the set of moments a wound is supposed to still be true.
-        local share = Wound.healShare(player, char.id)
+        -- exactly the set of moments an injury is supposed to still be true.
+        local share = Injury.healShare(player, char.id)
         for _, stat in ipairs(Character.RESOURCE_STATS) do
             local resource = char.stats[stat]
             if type(resource) == "table" then
-                -- A CEILING, not a floor -- it both fills up to the wounded line and clamps down to
-                -- it. Filling only was tried and is subtly wrong: a wounded body that happened to end
+                -- A CEILING, not a floor -- it both fills up to the injured line and clamps down to
+                -- it. Filling only was tried and is subtly wrong: an injured body that happened to end
                 -- a run whole would sit at full health with a scar drawn across a bar it had already
-                -- filled past, which says the injury is real and then shows it is not. The wound is a
+                -- filled past, which says the injury is real and then shows it is not. The injury is a
                 -- fact about the body, and the hub is where it gets looked at.
                 if stat == "health" and share < 1 then
                     resource.current = math.max(1, math.floor((resource.max or 0) * share))
@@ -881,7 +1009,7 @@ end
 -- Overworld's guaranteedEntry), so a run's attrition was one-way and no board ever offered a refund.
 -- Fixing that was right; it landed on a FULL refund at a guaranteed density, which is the other end --
 -- one camp per two and a half fights, each one erasing everything the fights before it cost. The only
--- durable price of an overworld fight was then a body actually going down (models/wound.lua), so any
+-- durable price of an overworld fight was then a body actually going down (models/injury.lua), so any
 -- fight the company could win was free, and "should I take this detour" had one answer.
 --
 -- A SHARE OF MISSING rather than a flat amount, for two reasons. It scales with the company without
@@ -894,10 +1022,10 @@ Player.CAMP_SHARE = 0.5
 -- Give back `Player.CAMP_SHARE` of every roster member's missing resources. The road's refund, as
 -- against Player.restore's hub refill.
 --
--- Wounds cap this the same way they cap the hub, and for the same reason -- a wounded body's ceiling is
--- the wounded line, not its max -- so a camp can never top someone past what the hub itself would give
--- them. Health alone answers to the wound; mana and stamina refill against their true max, because a
--- wound is an injury rather than exhaustion (see Player.restore).
+-- Injuries cap this the same way they cap the hub, and for the same reason -- an injured body's ceiling is
+-- the injured line, not its max -- so a camp can never top someone past what the hub itself would give
+-- them. Health alone answers to the injury; mana and stamina refill against their true max, because a
+-- injury is damage rather than exhaustion (see Player.restore).
 --
 -- Rounds UP, so a camp always moves a bar it is shown moving. The rest reveal animates from a snapshot
 -- taken before this runs (states/game.lua's restHeal), and a member one point down who healed zero would
@@ -905,16 +1033,16 @@ Player.CAMP_SHARE = 0.5
 --
 -- Returns nothing: the caller reads the live stats, and the panel took its "before" already.
 function Player.camp(player, share)
-    local Wound = require("models.wound")
+    local Injury = require("models.injury")
     share = share or Player.CAMP_SHARE
     for _, char in ipairs(player.roster or {}) do
-        local wound = Wound.healShare(player, char.id)
+        local injury = Injury.healShare(player, char.id)
         for _, stat in ipairs(Character.RESOURCE_STATS) do
             local resource = char.stats[stat]
             if type(resource) == "table" then
                 local ceiling = resource.max or 0
-                if stat == "health" and wound < 1 then
-                    ceiling = math.max(1, math.floor(ceiling * wound))
+                if stat == "health" and injury < 1 then
+                    ceiling = math.max(1, math.floor(ceiling * injury))
                 end
                 local cur = resource.current or ceiling
                 if cur < ceiling then
@@ -929,7 +1057,7 @@ end
 -- Consumables (out-of-combat use; the overworld "Use Items" panel)
 -- ---------------------------------------------------------------------------
 --
--- Between battles a run's wounds carry (see Player.restore's note on attrition), and the only free
+-- Between battles a run's injuries carry (see Player.restore's note on attrition), and the only free
 -- heal before the hub is a Rest tile. A restorative draught is the paid alternative: drink one on the
 -- overworld to spend a flask from the satchel and top a member's pool back up. It pours the SAME
 -- magnitude the item pours in combat (Combat.restorativeStat / Combat.restoreResource -- the one
@@ -979,10 +1107,16 @@ function Player.useConsumableOn(char, item)
     return restored, stat
 end
 
--- Every restorative draught the company can reach out of combat, gathered from each member's grid
--- and the shared stash into one list for the overworld panel. Each entry is
--- { item = <instance>, where = "grid" | "stash", char = <member or nil> } -- `char` names the grid the
--- flask sits in (nil for the stash) so an emptied stash stack can be dropped from the list. Order is
+-- Every restorative draught the company can reach out of combat, gathered from each member's grid,
+-- the PACK they are carrying and the shared stash into one list for the overworld panel. Each entry is
+-- { item = <instance>, where = "grid" | "pack" | "stash", char = <member or nil> } -- `char` names the
+-- grid the flask sits in (nil for the two loose lists) and `where` says which list an emptied stack has
+-- to be cleared from.
+--
+-- THE PACK IS SWEPT BEFORE THE SHELF AND IS NEVER NARROWED AWAY, which is the whole point of packing
+-- one: a draught chosen at the Gate has to be drinkable on floor nine, or provisioning is a screen that
+-- takes things away from you. `opts.stash = false` leaves the town's shelf in town and says nothing
+-- about the bag. Order is
 -- roster order then stash, each in grid/list order: stable, so the list doesn't reshuffle under the
 -- cursor between opens. A depleted stack (quantity 0) is skipped, as combat's out-of-stock gate does.
 --
@@ -1012,6 +1146,9 @@ function Player.partyRestoratives(player, opts)
     for _, char in ipairs(bodies) do
         for _, item in ipairs(Character.eachItem(char)) do consider(item, "grid", char) end
     end
+    -- THE BAG, always. It is the company's own and it came down with them, so there is no `opts` that
+    -- takes it away -- unlike the shelf below, which is a place rather than a thing they are holding.
+    for _, item in ipairs((player and player.pack) or {}) do consider(item, "pack") end
     -- THE STASH IS IN TOWN AND STAYS THERE when `opts.stash` is false. That is the whole of what makes a
     -- trip provisioned rather than merely survived: a company underground can reach what it chose to
     -- carry, and the shelf it left behind is a walk up the stair away.
@@ -1025,14 +1162,23 @@ function Player.partyRestoratives(player, opts)
 end
 
 -- Use one gathered restorative `entry` (from Player.partyRestoratives) on `char`. Applies the draught,
--- decrements the stack, and clears an emptied one from its source: a spent stash stack is removed from
--- the list, while a spent GRID stack keeps its cell (combat leaves a depleted consumable in place so a
--- restock merges back into it -- the loadout is where a player would clear it). Returns (amount, stat).
+-- decrements the stack, and clears an emptied one from its source: a spent stack in either LOOSE list
+-- is removed from that list, while a spent GRID stack keeps its cell (combat leaves a depleted
+-- consumable in place so a restock merges back into it -- the loadout is where a player would clear
+-- it). Returns (amount, stat).
+--
+-- THE PACK IS ONE OF THE TWO LOOSE LISTS and testing only for "stash" was a real leak while it was:
+-- the last draught out of the bag left a zero-quantity stack sitting in a slot forever, holding room
+-- against a ceiling (Descent.carried counts slots) that a chest would later refuse to open for.
 function Player.consumeRestorative(player, entry, char)
     local amount, stat = Player.useConsumableOn(char, entry.item)
-    if entry.item.quantity <= 0 and entry.where == "stash" then
-        for i, it in ipairs(player.stash or {}) do
-            if it == entry.item then table.remove(player.stash, i) break end
+    if entry.item.quantity <= 0 then
+        local list = (entry.where == "stash" and player.stash)
+                  or (entry.where == "pack" and player.pack)
+        if list then
+            for i, it in ipairs(list) do
+                if it == entry.item then table.remove(list, i) break end
+            end
         end
     end
     return amount, stat
@@ -1140,7 +1286,7 @@ local function roadCtx(player, caster, target)
         player = player,
         caster = caster,
         target = target or caster,
-        -- Pour into a pool, capped at the ceiling a wound may have lowered (Combat.unreservedMax, the
+        -- Pour into a pool, capped at the ceiling an injury may have lowered (Combat.unreservedMax, the
         -- one cap). Returns what actually landed, so a caller can say "+6 health" and mean it.
         restore = function(char, stat, amount)
             return Combat.restoreResource(char or target or caster, stat, amount or 0)
@@ -1196,7 +1342,7 @@ end
 -- ---------------------------------------------------------------------------
 
 -- NOTHING. That is the whole of it, and it is worth a heading of its own because a share used to live
--- here: Player.WIPE_LOSS, three quarters of a run's forging stock, plus a dropped pack and a wound on
+-- here: Player.WIPE_LOSS, three quarters of a run's forging stock, plus a dropped pack and an injury on
 -- every head. All three are deleted.
 --
 -- WHY. docs/the-count.md prices a NEED at nothing and a DECISION at a mark, and then charged the
@@ -1226,10 +1372,16 @@ end
 -- gives below: no grant seam on the way in has to learn a new rule. A chest, a fight's spoils, an
 -- event's gift and anything added later all land in the same places and none of them has to report.
 --
--- GRIDS ARE CREDITED FIRST, then the stash, and that ordering is the whole of "leave the grid". The
--- entry allowance for an id is spent on what bodies are WEARING before it is spent on the stash, so a
--- second iron sword found on floor three is the one at risk and the one a knight marched in with is
--- not. They are the same item, so which instance carries the mark is arbitrary -- what is not arbitrary
+-- GRIDS ARE CREDITED FIRST, then the stash, then the PACK, and that ordering is the whole of "leave
+-- the grid". The entry allowance for an id is spent on what bodies are WEARING before it is spent on
+-- anything loose, so a second iron sword found on floor three is the one at risk and the one a knight
+-- marched in with is not.
+--
+-- THE PACK IS CREDITED LAST BECAUSE THAT IS WHERE A FIND SITS (Player.stow). The bag is the only
+-- container a grant lands in underground, so whatever the allowance fails to cover ends up marked on
+-- the pack's own copy -- which is the copy a wipe should take. The stash is spent before it and costs
+-- nothing to spend: underground nothing lands on the shelf, so its contents are identical to entry and
+-- its allowance is always fully covered. They are the same item, so which instance carries the mark is arbitrary -- what is not arbitrary
 -- is that the count comes out of the loose pile rather than out of somebody's hand.
 --
 -- KEYED BY ID AND LEVEL, because a forged piece and its base are not the same thing to a player, and
@@ -1265,6 +1417,16 @@ function Player.atRisk(player, before)
         if char.id then placed[char.id] = cells end
     end
     for _, it in ipairs(before.stash or {}) do
+        if it and it.id and not Item.isBound(it) then
+            was[key(it)] = (was[key(it)] or 0) + (it.quantity or 1)
+        end
+    end
+    -- ...AND WHAT WAS IN THE BAG WHEN THEY WALKED DOWN, which is the whole of "the provisions survive a
+    -- wipe". A draught packed at the Gate draws an allowance here exactly as a blade on the shelf does,
+    -- so pass two can never mark it -- and the law it holds ("nothing the company owned when it walked
+    -- in is ever taken") is the same law, now held over a container that did not exist when it was
+    -- written.
+    for _, it in ipairs(before.pack or {}) do
         if it and it.id and not Item.isBound(it) then
             was[key(it)] = (was[key(it)] or 0) + (it.quantity or 1)
         end
@@ -1313,6 +1475,7 @@ function Player.atRisk(player, before)
         for cell = 1, Character.MAX_INVENTORY do consider((char.inventory or {})[cell]) end
     end
     for _, it in ipairs(player.stash or {}) do consider(it) end
+    for _, it in ipairs(player.pack or {}) do consider(it) end
     return out
 end
 
@@ -1356,20 +1519,26 @@ function Player.takeAtRisk(player, before)
             end
         end
     end
-    -- Backwards, so removing an entry cannot move one this loop has not reached yet.
-    local stash = (player and player.stash) or {}
-    for i = #stash, 1, -1 do
-        local it = stash[i]
-        if it and risk[it] then
-            local part = surplus(it)
-            if part then
-                out[#out + 1] = part
-            else
-                table.remove(stash, i)
-                out[#out + 1] = it
+    -- Backwards, so removing an entry cannot move one this loop has not reached yet. The stash and the
+    -- pack are emptied on identical terms -- one list, one rule -- because which of the two a marked
+    -- copy is sitting in is a fact about where the company was standing when it picked the thing up,
+    -- and not a fact about whether it is theirs.
+    local function drain(list)
+        for i = #list, 1, -1 do
+            local it = list[i]
+            if it and risk[it] then
+                local part = surplus(it)
+                if part then
+                    out[#out + 1] = part
+                else
+                    table.remove(list, i)
+                    out[#out + 1] = it
+                end
             end
         end
     end
+    drain((player and player.stash) or {})
+    drain((player and player.pack) or {})
     return out
 end
 

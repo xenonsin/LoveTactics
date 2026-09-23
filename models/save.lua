@@ -310,7 +310,7 @@ end
 -- player save doesn't): mid-run attrition is the point, and without it Continue would be a free heal --
 -- reload before a hard fight and the party is whole again. The values ride on the RUN, not the character
 -- snapshot, so a real return to the hub still restores everyone (Player.restore); only a resume keeps the
--- wounds. Applied back in states/game.lua's resume path, which -- being a resume, not a hub visit -- is the
+-- injuries. Applied back in states/game.lua's resume path, which -- being a resume, not a hub visit -- is the
 -- one entry that does not refill them.
 
 -- Live `run` (grid + map widget references on player.activeRun) -> plain data. Nil if there is no run.
@@ -465,6 +465,12 @@ function Save.snapshot(player)
     local stash = {}
     for i, item in ipairs(player.stash or {}) do stash[i] = snapshotItem(item) end
 
+    -- WHAT THE COMPANY IS CARRYING (models/player.lua's Player.addToPack). Through the same helper as
+    -- the stash, so a husk found on floor nine comes back sealed -- which matters more here than it
+    -- does on the shelf, because the pack is where an unread piece lives for the whole trip.
+    local pack = {}
+    for i, item in ipairs(player.pack or {}) do pack[i] = snapshotItem(item) end
+
     -- WHAT THE TOUCHSTONE IS HOLDING (models/identify.lua). Unnamed pieces the player sold, kept for
     -- buying back, and they have to persist for the same reason the stash does: a buy-back the player
     -- can only reach before the next save is not an offer, it is a trap. Snapshotted through the same
@@ -493,11 +499,17 @@ function Save.snapshot(player)
     for vendorId, n in pairs(player.standing or {}) do
         if (tonumber(n) or 0) > 0 then standing[vendorId] = n end
     end
-    local wounds = {}
-    for charId, n in pairs(player.wounds or {}) do
-        if (tonumber(n) or 0) > 0 then wounds[charId] = n end
+    -- WHAT EACH BODY IS CARRYING, as a list of blueprint ids (models/injury.lua). It was a COUNT until
+    -- 2026-09-22 and the loader below still reads one -- see the note there.
+    local injuries = {}
+    for charId, list in pairs(player.injuries or {}) do
+        if type(list) == "table" and #list > 0 then
+            local copy = {}
+            for i, id in ipairs(list) do copy[i] = id end
+            injuries[charId] = copy
+        end
     end
-    -- (`atInn` -- who was in a bed at the Inn -- is gone with the building. A wound is a condition of the
+    -- (`atInn` -- who was in a bed at the Inn -- is gone with the building. An injury is a condition of the
     -- expedition now and the surface sets it for free, so no body is ever lodged anywhere. An old save
     -- carrying the table simply drops it on the way through; nothing reads it.)
     local completedQuests = {}
@@ -556,7 +568,7 @@ function Save.snapshot(player)
     end
 
     -- EVERY CLASS THIS COMPANY HAS EVER STOOD IN (models/class.lua's Class.taken). It is what puts a
-    -- class's HOUSE on the plaza, and it has to be sticky for exactly the reason Wound.everWounded is:
+    -- class's HOUSE on the plaza, and it has to be sticky for exactly the reason Injury.everInjured is:
     -- changing class is free and reversible, so a live reading would take the Colosseum off the square
     -- the moment the last fighter was moved to knight, and the city would be the only thing in this game
     -- that shrinks. Additive, so Save.VERSION does NOT move -- an older save loads with nothing marked
@@ -697,7 +709,7 @@ function Save.snapshot(player)
         --               nothing to tell one from another and nothing to keep a list of.
         --   bonds       { [charId] = duplicates taken }, which is the level that body's bound relic
         --               stands at (Summon.relicLevel). Keyed by ID rather than by roster instance, the
-        --               same call `wounds` makes and for the same reason: the id survives the roster
+        --               same call `injuries` makes and for the same reason: the id survives the roster
         --               being rebuilt out of this file.
         --   pulls       how many vouchers have been spent, ever. Half of the pull seed -- see
         --               Voucher.peek for why a pull is seeded differently to everything else in the game.
@@ -730,19 +742,24 @@ function Save.snapshot(player)
         standing = standing,
         deepest = player.deepest or 0,
         -- What each body is still carrying from a fight it went down in, as { [charId] = count }
-        -- (models/wound.lua). Persisted rather than derived because a save can be written mid-dive:
+        -- (models/injury.lua). Persisted rather than derived because a save can be written mid-dive:
         -- the ledger no longer outlives the expedition -- the surface clears it -- but it very much
         -- outlives the app being closed on floor nine, and a resume that handed the company back whole
         -- would make quitting the cheapest bandage in the game.
-        wounds = wounds,
-        -- ...and whether anybody ever has been (models/wound.lua's Wound.everWounded), which the ledger
+        injuries = injuries,
+        -- ...and whether anybody ever has been (models/injury.lua's Injury.everInjured), which the ledger
         -- above stops being able to answer the moment the company walks up the stair. What reads it is
         -- the one-time coach that teaches the mark. Purely additive, so Save.VERSION does not move: an
-        -- older save restores unmarked, and the first wound taken after loading writes it.
-        wounded = player.wounded or nil,
+        -- older save restores unmarked, and the first injury taken after loading writes it.
+        injured = player.injured or nil,
+        -- ...and the SECOND one-way mark, which arms the second coach line: has anybody ever taken an
+        -- injury that carries a BADGE rather than a band (models/injury.lua's Injury.everBadged). Its
+        -- own field for the reason `injured` has one -- two one-time lessons need two ledgers, or the
+        -- second is spent on the first injury, which is scripted and has no badge.
+        injuredBadge = player.injuredBadge or nil,
         -- ...and the same one-way mark for the OTHER thing the Cathedral fixes: whether anything this
         -- company owns has ever been hexed (models/curse.lua's Curse.everCursed). It gates the rite's
-        -- line on the desk, and it has to be sticky for the reason Wound.everWounded is -- a door that
+        -- line on the desk, and it has to be sticky for the reason Injury.everInjured is -- a door that
         -- vanished the moment the last curse was lifted would take the room away at exactly the instant
         -- the player finished learning what it was for. Additive: Save.VERSION does not move, and an
         -- older save restores having never been cursed, which is true of it.
@@ -753,7 +770,7 @@ function Save.snapshot(player)
         -- Losing it would delete the player's gear, which is the one thing a curse system must never do.
         rites = rites,
         -- ...and whether this company has ever come back up the stair early. The same shape and the
-        -- same reason as `wounded` above: a one-way mark rather than a ledger reading, because
+        -- same reason as `injured` above: a one-way mark rather than a ledger reading, because
         -- Iselle's tally falls back to nought the moment they descend again and the readout it gates
         -- must not come off the plaza the morning after it was earned (models/descent.lua).
         climbedOut = player.climbedOut or nil,
@@ -857,6 +874,10 @@ function Save.snapshot(player)
         lastDeployed = lastDeployed,
         roster = roster,
         stash = stash,
+        -- THE PACK, nil when it is empty -- the `floors` rule at the foot of this table, and for its
+        -- reason: a company that has never packed a bag should not carry the field at all. Purely
+        -- additive, so Save.VERSION does not move.
+        pack = next(pack) and pack or nil,
         touchstoneShelf = touchstoneShelf,
         -- THE DESCENT THIS COMPANY IS IN THE MIDDLE OF (models/descent.lua). The floor stack, the
         -- shuffled circles, every board it has mapped and whatever it dropped down there. Nil until the
@@ -893,7 +914,7 @@ end
 --
 -- `models.identify` is required lazily rather than at the top of the file, and that is a cycle rather
 -- than a style choice: identify -> player -> save. Same reason models/building.lua reaches for Errand
--- and Wound inside its own functions.
+-- and Injury inside its own functions.
 --
 -- A blueprint that stopped being sealable since the save was written (its type changed, it became bound,
 -- its price was removed) restores READ rather than vanishing. Identify.sealed answers nil there, and
@@ -1054,6 +1075,17 @@ function Save.restore(snap)
         end
     end
 
+    -- The pack, on the same path and behind the same id guard: a piece whose blueprint left the game
+    -- drops out of the bag rather than crashing the load, exactly as one on the shelf does. An older
+    -- save carries no `pack` at all and restores with an empty one -- a company that walked in with
+    -- only its grids, which is true of every save written before the bag existed.
+    local pack = {}
+    for _, itemSnap in ipairs(snap.pack or {}) do
+        if known(Item.defs, itemSnap.id) then
+            pack[#pack + 1] = restoreItem(itemSnap)
+        end
+    end
+
     -- The Touchstone's shelf: pieces sold unnamed and still buyable back (models/identify.lua). Same
     -- restore path as the stash, so a shelved husk comes back sealed rather than in the clear, and the
     -- same id guard, so a piece whose blueprint left the game drops instead of crashing the load.
@@ -1089,18 +1121,50 @@ function Save.restore(snap)
         -- ever spend and no shop can ever show.
         if require("models.vendor").get(vendorId) then standing[vendorId] = tonumber(n) or 0 end
     end
-    local wounds = {}
-    for charId, n in pairs(snap.wounds or {}) do
-        -- A character blueprint that vanished from data drops its wounds with it, the same rule the
-        -- standing above follows: nothing should carry an injury that no body can be mended of.
-        if require("models.character").defs[charId] then wounds[charId] = tonumber(n) or 0 end
+    -- A character blueprint that vanished from data drops its injuries with it, the same rule the
+    -- standing above follows: nothing should carry an injury that no body can be mended of.
+    --
+    -- AND AN OLD SAVE'S COUNT BECOMES THAT MANY BLOOD LOSS. Before 2026-09-22 a body's row was a number
+    -- and every injury was the same injury: 15% of the health pool, no badge. data/injuries/blood_loss
+    -- IS that injury, kept whole as one kind of seven, so three becomes three Blood Loss and the company
+    -- comes out of the load screen reserved exactly as deep as it went in.
+    --
+    -- NOT RE-ROLLED, deliberately. Dealing the seven across an existing ledger would be honest about the
+    -- new system and dishonest about the save: a body that was 45% short would come back with a broken
+    -- leg it never got, and the player would watch their company change while a progress bar filled.
+    -- A conversion says what the old number MEANT; it does not re-play the trips that wrote it.
+    --
+    -- An unknown id is dropped the same way an unknown body is -- a blueprint deleted from
+    -- data/injuries/ must not leave a row nothing can name, price or mend.
+    local injuries = {}
+    local Injury = require("models.injury")
+    -- `snap.wounds` is the pre-rename key and is read here rather than migrated away: the field was
+    -- renamed with the mechanic on 2026-09-22, and a save written the day before must not quietly lose
+    -- every bone the company was carrying. Same fallback, same line, for `injured` below.
+    for charId, row in pairs(snap.injuries or snap.wounds or {}) do
+        if require("models.character").defs[charId] then
+            if type(row) == "table" then
+                local list = {}
+                for _, id in ipairs(row) do
+                    if Injury.defs[id] then list[#list + 1] = id end
+                end
+                if #list > 0 then injuries[charId] = list end
+            else
+                local n = tonumber(row) or 0
+                if n > 0 then
+                    local list = {}
+                    for _ = 1, n do list[#list + 1] = "injury_blood_loss" end
+                    injuries[charId] = list
+                end
+            end
+        end
     end
     -- (An older save's `atInn` -- who was lying in a bed at the Inn -- is read past and dropped. The
     -- building is gone and no body is ever lodged, so restoring the table would only carry a fact
     -- nothing can act on.)
     -- The hiring purse (models/voucher.lua). Vouchers carry one number and are rebuilt rather than
     -- copied through, so a hand-edited save cannot put a table in the list; bonds are filtered against
-    -- the blueprints exactly as wounds are one block up.
+    -- the blueprints exactly as injuries are one block up.
     -- THE PURSE IS A COUNT, and a save written while it was a LIST of graded tokens folds into one:
     -- however many tickets it was holding is however many it still holds. Reading the old shape here
     -- rather than bumping Save.VERSION keeps every other field on that save loadable, which is the same
@@ -1232,7 +1296,7 @@ function Save.restore(snap)
         -- THE HIRING PURSE. Absent on a save from before the hall dealt this way, and an empty purse
         -- reads as a company that has never pulled -- which is what it is.
         --
-        -- `bonds` is filtered against the blueprints the same way `wounds` is, one block up: a character
+        -- `bonds` is filtered against the blueprints the same way `injuries` is, one block up: a character
         -- that vanished from data drops its bonds with it rather than leaving a ledger naming somebody
         -- the game can no longer build.
         --
@@ -1250,8 +1314,11 @@ function Save.restore(snap)
         bounties = bounties,          -- ...and a save from before the board holds no postings, which reads as none
         standing = standing,          -- absent on a save from before the descent; an empty table reads the same
         deepest = snap.deepest or 0,  -- ...and a company that has never been down has no record to beat
-        wounds = wounds,              -- ...nor any bones to set
-        wounded = snap.wounded == true, -- ...and no history of any, which is what an older save reads as
+        injuries = injuries,              -- ...nor any bones to set
+        injured = (snap.injured == true) or (snap.wounded == true), -- ...and no history of any, which is what an older save reads as
+        -- An older save has never seen a badge, because there were none to see: every injury it wrote
+        -- was the band. False is the honest reading, and it means the second lesson is still owed.
+        injuredBadge = snap.injuredBadge == true,
         cursed = snap.cursed == true,   -- ...nor of anything hexed, same one-way mark (models/curse.lua)
         rites = rites,                  -- ...and nothing left on the Cathedral's altar, which is true of it
         climbedOut = snap.climbedOut == true, -- ...and has never turned back, which is what one reads as too
@@ -1344,6 +1411,7 @@ function Save.restore(snap)
         lastDeployed = lastDeployed,
         roster = roster,
         stash = stash,
+        pack = pack,
         touchstoneShelf = touchstoneShelf,
         -- The descent in progress, rebuilt from plain data (see the note in Save.snapshot). Nil for a
         -- company that has never gone down, and for every save written before there was a stair.

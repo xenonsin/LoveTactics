@@ -400,7 +400,7 @@ return {
         -- `bound` and carries trait_boss_phases). Every drop must still be a real, unbound item.
         name = "a bound relic is never dropped, even by the body carrying it",
         fn = function()
-            local units = realRoster("character_demon_champion", 1)
+            local units = realRoster("character_demon_champion_tutorial", 1)
             for _ = 1, 300 do
                 local s = Spoils.roll({ enemyUnits = units, day = 5, kind = "elite" })
                 for _, id in ipairs(s.loot) do
@@ -794,7 +794,7 @@ return {
             -- ...and off a real roll, which reads the same pool through a different door. Rolled
             -- against bodies that ACTUALLY CARRY creature kit as well as against chaff: the door that
             -- leaked reads the dead body's own grid, and a bandit's grid could never have exercised it.
-            for _, who in ipairs({ "character_bandit", "character_demon_champion", "character_wolf_grunt" }) do
+            for _, who in ipairs({ "character_bandit", "character_demon_champion_tutorial", "character_wolf_grunt" }) do
                 assert(Character.defs[who], who .. " is gone -- this case names it deliberately")
                 for _ = 1, 150 do
                     for _, got in ipairs(Spoils.roll({

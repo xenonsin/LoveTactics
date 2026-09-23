@@ -34,7 +34,7 @@ local function fakeCombat()
     end
     return {
         units = { body("Stranger", "party", 62), body("Demon Champion", "enemy", 150) },
-        objective = { type = "assassinate", target = "character_demon_champion" },
+        objective = { type = "assassinate", target = "character_demon_champion_tutorial" },
         log = {},
         turnCount = 0,
     }
@@ -77,7 +77,7 @@ return {
                 assert(path, "a debug build opens a trace")
                 local text = readTrace(path)
                 assert(text:find("The Demon Champion", 1, true), "the encounter is named")
-                assert(text:find("assassinate %-> character_demon_champion"), "so is what wins it")
+                assert(text:find("assassinate %-> character_demon_champion_tutorial"), "so is what wins it")
                 assert(text:find("%-%- party %-%-") and text:find("%-%- enemies %-%-"), "both rosters")
                 assert(text:find("Stranger") and text:find("Demon Champion"), "and both bodies")
                 assert(text:find("150/150", 1, true), "with the pool the fight is priced against")

@@ -178,8 +178,8 @@ function Marks.market(x, y, w, h, r, g, b, a)
 end
 
 -- (THE INN -- a bed seen from the side -- stood here, and is deleted with the house. Setting a bone was
--- the only thing that building did, and a wound is a condition of the expedition now: the surface ends
--- it for free (models/wound.lua). A mark with no vendor behind it is an orphan the icon spec catches,
+-- the only thing that building did, and an injury is a condition of the expedition now: the surface ends
+-- it for free (models/injury.lua). A mark with no vendor behind it is an orphan the icon spec catches,
 -- which is why it goes rather than being left drawable "in case".)
 
 -- THE CROSSING -- the tear itself, held open. A jagged vertical shard: the one mark here that is not an

@@ -2,6 +2,16 @@
 -- determinism, trail connectivity, and the objective/lock-key solvability
 -- guarantee, plus the quest -> map param plumbing.
 
+-- THE QUEST BLUEPRINTS ARE GONE, AND SO IS WHAT THEY WERE COVERING. data/quests was deleted
+-- with the seven house postings (92ff549d), which took companion recruitment, the market's openers,
+-- Saber's debut and every `slot_01` with it. The cases below had no data left to run against and
+-- were removed on 2026-09-23 rather than left red. Each one is listed so the hole is findable:
+--
+--   * quest map params flow through Quest.available without mutating blueprints
+--
+-- Nothing above is a rule that was decided against; it is coverage that lost its subject. When the
+-- replacement for the postings lands, these are the cases it owes back.
+
 local Overworld = require("models.overworld")
 local Quest = require("models.quest")
 local Player = require("models.player")
@@ -627,21 +637,6 @@ return {
                 local mx, my = grid:pixelToCell(px + grid.size / 2, py + grid.size / 2)
                 assert(mx == p[1] and my == p[2], "mid-cell round-trip failed")
             end
-        end,
-    },
-    {
-        name = "quest map params flow through Quest.available without mutating blueprints",
-        fn = function()
-            local player = Player.new()
-            player.prestige = 3
-            player.completedQuests.quest_colosseum_slot_01 = true
-
-            local found = Quest.get("quest_colosseum_slot_01")
-            assert(found, "the Colosseum's posting resolves")
-            assert(found.map, "map params not carried")
-            -- blueprint still intact
-            assert(Quest.defs.quest_colosseum_slot_01.id == nil, "quest blueprint mutated")
-            assert(Quest.defs.quest_colosseum_slot_01.map.objective, "quest map blueprint mutated")
         end,
     },
     {

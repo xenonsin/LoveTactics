@@ -22,6 +22,7 @@ Keyword.defs = Registry.load("data/keywords", "data.keywords")
 -- glossary that repeated them would say the same thing twice on the same hover.
 local ABILITY_FIELDS = {
     { field = "aoe", id = "keyword_aoe" },
+    { field = "strikes", id = "keyword_brave" },
     { field = "frenzy", id = "keyword_frenzy" },
     { field = "lifesteal", id = "keyword_lifesteal" },
     { field = "requiresSight", id = "keyword_requires_sight" },
@@ -55,6 +56,9 @@ local WAIT_FIELDS = {
 local function declared(field, value)
     if value == nil or value == false then return false end
     if field == "minRange" then return value > 1 end
+    -- `strikes = 1` is every weapon in the game and no flurry at all -- the same shape as minRange 1
+    -- above. Only a blade that lands more than once has bought anything worth a word.
+    if field == "strikes" then return value > 1 end
     if field == "frenzy" or field == "lifesteal" or field == "zone" then return value > 0 end
     return true
 end

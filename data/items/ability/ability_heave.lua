@@ -40,7 +40,7 @@
 -- the talking.
 --
 -- The Demon Champion is one USER of this, not its owner: its AI throws an adjacent Bomblet at your line
--- (data/characters/character_demon_champion.lua). It is a normal, grantable ability everywhere else.
+-- (data/characters/character_demon_champion_tutorial.lua). It is a normal, grantable ability everywhere else.
 local Curve = require("models.curve")
 
 return {

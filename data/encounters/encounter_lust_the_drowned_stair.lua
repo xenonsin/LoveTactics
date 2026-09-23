@@ -26,6 +26,10 @@ return {
     kind = "elite",
     weight = 1, -- rarest thing on the floor: the body a stratum is remembered for
     condition = function(ctx) return ctx.biome == "castle" end,
+    -- RUNG 1 -- the approach, which is where Lust bills it. The coils only PRICE a company's turns
+    -- where the Matriarch's cry takes them outright, so the cheaper rule stands on the floor walked
+    -- onto first. One elite, one floor: see models/encounter.lua's eligibility note.
+    rung = 1,
     composition = function(ctx)
         local list = { "character_elder_lamia" }
         return Band.fill(list, ctx, "character_lamia", { base = 2, per = 5 })

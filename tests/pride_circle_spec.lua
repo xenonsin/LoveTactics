@@ -2,7 +2,11 @@
 --
 -- The tier's design rule, pinned as it is for every other circle: A MINI SIN'S SECOND PHASE IS ITS
 -- GENERAL'S FIRST. Sublimitas's Codex Unanswered deflects every spell she can pay for, on a ten-tick
--- cooldown; Marginalia deflects the FIRST one and no others, and then closes its rank instead.
+-- cooldown; the Marginal Note deflects the FIRST one and no others, and then closes its rank instead.
+--
+-- THE BODY THAT WORE THE NOTE IS GONE. Marginalia was deleted with the other six lieutenants
+-- (2026-09-22, Descent.SINS' header) and the note is not, so the rule above is pinned on the ITEM alone
+-- and the case that sized the blueprint is written out as a contract at the foot of this file.
 --
 -- The circle's own design property: POWER IS ADJACENCY. Both halves of the rank rule are measured live
 -- off the board (Trait.liveBonus), so a Pride body is genuinely bipolar rather than merely buffed -- and
@@ -19,11 +23,18 @@ local unit = Fixture.unit
 
 return {
     {
-        name = "Pride's stair is held by its own mini sin",
+        -- MARGINALIA IS DELETED AND THIS CASE IS THE MARKER. The slot holds the gilded sworn as a
+        -- stand-in over the pages it outranks (see the lieutenant note at the head of Descent.SINS),
+        -- which is at least the rank rule fielding its own centrepiece. It is named here on purpose:
+        -- seating a replacement reddens this case, and whoever does it owes the contract at the foot of
+        -- this file.
+        name = "Pride's lieutenant slot is filled, and by a stand-in that says so",
         fn = function()
             local sin
             for _, s in ipairs(Descent.SINS) do if s.id == "pride" then sin = s end end
-            assert(sin and sin.minor.lead == "character_marginalia", "Marginalia holds the floor")
+            assert(sin and sin.minor.lead == "character_gilded_sworn", "the sworn stands in for Marginalia")
+            assert(Character.defs[sin.minor.lead], "and whatever stands there is a body that loads")
+            assert(not Character.defs["character_marginalia"], "Marginalia is gone")
             assert(sin.guardian.filler == sin.minor.lead, "and fills out Sublimitas's own stair")
         end,
     },
@@ -148,19 +159,15 @@ return {
             assert(summons, "the phase adds neighbours, which in this circle IS power")
         end,
     },
-    {
-        name = "Marginalia sits between its line body and its general",
-        fn = function()
-            local mini = Character.defs["character_marginalia"]
-            local subl = Character.defs["character_general_pride"]
-            assert(mini.boss and mini.referenceLevel, "a centrepiece that scales toward the shallows")
-            assert(mini.stats.health > Character.defs["character_gilded_sworn"].stats.health,
-                "it outweighs its circle's line body")
-            local share = mini.stats.health / subl.stats.health
-            assert(share > 0.6 and share < 0.85, string.format(
-                "Marginalia is %.0f%% of Sublimitas; the tier sits between 60%% and 85%%", share * 100))
-        end,
-    },
+    -- THE CASE THAT SIZED MARGINALIA IS GONE WITH THE BODY, and this is what it said so the replacement
+    -- can be held to it:
+    --
+    --     boss = true and a referenceLevel        a centrepiece that scales toward the shallows
+    --     health above character_gilded_sworn      it outweighs its circle's line body
+    --     health 60-85% of Sublimitas's            and stands below the sin whose stair it holds
+    --
+    -- The same band tests/wrath_circle_spec.lua argues out in full. Note the middle term is now the body
+    -- STANDING IN for the slot, so a replacement must clear its own stand-in.
 
     -- ------------------------------------------------------------ the mythic tops the rank up
     {

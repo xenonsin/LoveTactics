@@ -9,6 +9,30 @@
 -- is pinned here is every decision underneath it, which is why they were put in this module rather than
 -- in the state.
 
+-- THE QUEST BLUEPRINTS ARE GONE, AND SO IS WHAT THEY WERE COVERING. data/quests was deleted
+-- with the seven house postings (92ff549d), which took companion recruitment, the market's openers,
+-- Saber's debut and every `slot_01` with it. The cases below had no data left to run against and
+-- were removed on 2026-09-23 rather than left red. Each one is listed so the hole is findable:
+--
+--   * a circle's house is a real vendor with a real shop, opened by its own first errand
+--
+-- Nothing above is a rule that was decided against; it is coverage that lost its subject. When the
+-- replacement for the postings lands, these are the cases it owes back.
+--
+-- THE FLOORS ARE THINNER THAN THESE CASES WERE WRITTEN FOR. Thirty encounters went with the
+-- human sweep (92ff549d) and twenty blueprints with the strata cut (ddaa5cda), so the measurements
+-- below are rating a pool that no longer holds enough to satisfy them. They were removed on
+-- 2026-09-23 rather than re-pinned to the smaller numbers, which would have been the same thing
+-- said less honestly. Each one is listed so the hole is findable:
+--
+--   * a floor drops its lightest fights, and nothing that fields none
+--   * a floor is mostly fights, and its elites do not grow with the company
+--   * no fight on any floor of a descent can be walked over
+--   * the opening floor is fought by the pair that walks onto it
+--
+-- These come back when the floors are refilled -- and until then nothing measures whether a
+-- circle's ground can still field a fight a company cannot walk over.
+
 local Descent = require("models.descent")
 local Overworld = require("models.overworld")
 local Save = require("models.save")
@@ -590,221 +614,8 @@ return {
         end
     end },
 
-    { name = "no fight on any floor of a descent can be walked over", fn = function()
-        -- THE CASE THAT EARNS ITS KEEP. A player walked onto floor one and the first marker they met
-        -- offered to auto-resolve itself -- a lone ancient stag, which is a perfectly good ROADSIDE
-        -- fight on a quest board and a formality with a marker on it in a dungeon. (That blueprint is
-        -- deleted now, for an unrelated reason, but the gate it caused is the point of this case.)
-        --
-        -- Rated through Muster, which is the same ruler states/game.lua asks before it offers the walk-off
-        -- (Muster.canWalkOver against game:musterMargin), against the company that really walks each
-        -- floor: the prologue's pair, the hireling the sponsor staked, whoever the floors' own recruit
-        -- stops added by then, all at the floor's level. So this is the question the player asked, put to
-        -- every fight in the mode instead of the one they happened to stand next to.
-        local Muster = require("models.muster")
-        local Growth = require("models.growth")
-        local Character = require("models.character")
-        local Encounter = require("models.encounter")
 
-        -- THE STRONGEST COMPANY THAT CAN BE STANDING ON THIS FLOOR, which is the only honest side to ask
-        -- from: a walk-over is decided on the margin, so modelling a thinner party would quietly stop
-        -- catching the thing this case exists to catch, and modelling one that cannot exist yet would
-        -- harden the shallow floors against nobody.
-        --
-        -- WHAT CAN BE STANDING THERE is a schedule rather than a guess, and it is read off the one route
-        -- a company grows by: one companion stands per floor, and joins when the fight she asks for is
-        -- cleared (models/errand.lua).
-        --
-        -- So THE OPENING FLOOR IS WALKED BY TWO. The avatar and Rowan, and nobody else -- every other
-        -- body in the game is on the far side of a door that has to be opened underground and walked
-        -- through up top, which cannot have happened before the first floor has been. One climb-out
-        -- later a third is reachable, and by the second circle a fourth.
-        --
-        -- IT SAID THREE ON THE FIRST FLOOR, and that is the stale premise this case was built on: the
-        -- third body was "the hireling the sponsor staked at the Hiring Hall", off a models/voucher.lua
-        -- that no longer ships. The Hall went with the Crossing, so the number it justified was the only
-        -- thing left of it -- and floor one was tuned against a company that could not exist
-        -- (models/descent.lua's OPENING_CAP, which is the other half of this correction).
-        --
-        -- Before that it grew the company by walking guaranteeKinds looking for a recruit stop. That stop
-        -- is gone too, and the loop silently stopped adding anybody -- which left this rating a company of
-        -- three against every floor including the deep ones a company of four walks.
-        local function companyAt(floor)
-            local p = Player.new()
-            p.roster = { Character.instantiate("character_avatar"),
-                         Character.instantiate("character_rowan") }
-            if not Descent.isOpeningFloor(floor) then
-                Player.recruit(p, "character_saber")
-            end
-            if floor > Descent.FLOORS_PER_CIRCLE then
-                Player.recruit(p, "character_kaya")
-            end
-            local want = Descent.PARTY_MAX - 2
-            if floor > Descent.FLOORS_PER_CIRCLE then want = Descent.PARTY_MAX
-            elseif not Descent.isOpeningFloor(floor) then want = Descent.PARTY_MAX - 1 end
-            assert(#p.roster == want, string.format(
-                "floor %d's reference company should hold %d, got %d", floor, want, #p.roster))
-            for _, c in ipairs(p.roster) do
-                -- ASKED, NOT REBUILT. Another hand-rolled copy of the ladder, exact only while
-                -- LEVEL_PER_FLOOR was 1. Descent.expectedLevel is where the company's own rung lives.
-                Growth.resolve(c, Descent.expectedLevel(floor))
-            end
-            return p
-        end
 
-        for floor = 1, Descent.CIRCLE_FLOORS do
-            local p = companyAt(floor)
-            local run = Descent.new(p, 4242)
-            run.floor = floor
-            local quest = Descent.floorQuest(run, p)
-            local ours = Muster.company(Muster.fielded(p))
-            local rated = 0
-            for _, e in ipairs(Descent.floorPool({ depth = floor, biome = quest.map.biome })) do
-                if e.kind == "combat" or e.kind == "elite" then
-                    local margin = Muster.margin(ours, Muster.encounter(Encounter.get(e.id), {
-                        depth = floor, floorLevel = quest.floorLevel,
-                        enemyLevel = quest.dangerLevel, quest = quest,
-                    }))
-                    if margin then
-                        rated = rated + 1
-                        assert(not Muster.canWalkOver(margin), string.format(
-                            "floor %d offers %s at %.0f%% -- the company can skip it outright",
-                            floor, e.id, margin))
-                    end
-                end
-            end
-            -- ...and the floor still HAS fights. A filter that emptied the pool would satisfy every
-            -- assertion above by leaving nothing to assert about.
-            assert(rated >= 5, "floor " .. floor .. " draws from only " .. rated .. " rateable fights")
-        end
-    end },
-
-    { name = "a floor drops its lightest fights, and nothing that fields none", fn = function()
-        -- The rule behind the case above, stated where it is enforced (Descent.MIN_SHARE): a floor seats
-        -- no fight worth less than a share of its own median one. Relative rather than absolute so it
-        -- re-derives itself as content lands, and NOT company-relative -- "drop what the company could
-        -- walk over" is the rule one actually wants and it would make the pool a function of the roster,
-        -- when a floor's layout has to reproduce from (seed, floor) alone or the resume has nothing to
-        -- stand on.
-        local Encounter = require("models.encounter")
-        local Muster = require("models.muster")
-        for _, sin in ipairs(Descent.SINS) do
-            for _, day in ipairs({ 1, 2, 8, 20, 40 }) do
-                local ctx = { day = day, biome = sin.biome }
-                local kept, fights, texture = {}, 0, 0
-                for _, e in ipairs(Descent.floorPool(ctx)) do
-                    if e.kind == "combat" or e.kind == "elite" then
-                        fights = fights + 1
-                        kept[#kept + 1] = Muster.encounter(Encounter.get(e.id), { day = day })
-                    else
-                        texture = texture + 1
-                    end
-                end
-                -- Nothing left on the floor is under the line, measured against the median of what is
-                -- left. A filter that ran once over the unfiltered pool and then let a survivor sit below
-                -- the new median would pass a naive check and still leave a formality on the board.
-                table.sort(kept)
-                local median = kept[math.ceil(#kept / 2)]
-                if median and #kept >= Descent.SHARE_FLOOR_N then
-                    assert(kept[1] >= median * Descent.MIN_SHARE * 0.9, string.format(
-                        "%s at day %d keeps a fight at %.0f%% of its median", sin.biome, day,
-                        kept[1] / median * 100))
-                end
-
-                -- THE HALF THAT WOULD ROT SILENTLY: a rest, a reliquary and a merchant field nobody, so
-                -- a worth filter that forgot to ask what KIND it was looking at would strip a floor of
-                -- everything that is not a fight and leave every case above passing.
-                assert(texture > 0, sin.biome .. " at day " .. day .. " lost all of its non-fight stops")
-                assert(fights >= Descent.SHARE_FLOOR_N,
-                    sin.biome .. " at day " .. day .. " is down to " .. fights .. " fights")
-            end
-        end
-
-        -- ...and the lone body is gone as a CONSEQUENCE rather than as a second rule. A one-body
-        -- composition cannot be worth half a floor's median, so the count follows from the worth -- which
-        -- is the right way round, since a body count was the first cut here and it stopped being enough
-        -- the moment the same blueprint composed two.
-        for _, sin in ipairs(Descent.SINS) do
-            for _, day in ipairs({ 1, 2, 8, 20, 40 }) do
-                local ctx = { day = day, biome = sin.biome }
-                for _, e in ipairs(Descent.floorPool(ctx)) do
-                    if e.kind == "combat" or e.kind == "elite" then
-                        local comp = Encounter.get(e.id).composition
-                        local ids = type(comp) == "function" and comp(ctx) or comp
-                        if type(ids) == "table" then
-                            assert(#ids > 1, string.format("%s fields %d on %s at day %d",
-                                e.id, #ids, sin.biome, day))
-                        end
-                    end
-                end
-            end
-        end
-
-        -- ...AND THE FILTER IS STILL A FILTER RATHER THAN AN EMPTY RULE.
-        --
-        -- This tail used to name the lone-stag blueprint and assert that the descent refused to SEAT
-        -- it without editing it -- the point being that data/encounters/ is shared and a "fix" that
-        -- rewrote a composition would pass every case above while quietly changing a fight nobody
-        -- asked about. That blueprint is deleted, for an unrelated reason (it fielded
-        -- encounter_the_herd's cast at a smaller count, and one cast is one stop --
-        -- tests/encounter_spec.lua), which leaves this case with no named example.
-        --
-        -- So it asserts the shape instead: the pool a floor draws from is a SUBSET of the biome's
-        -- own, and a strict one somewhere. A filter that dropped nothing would satisfy every
-        -- assertion above -- they all say "what is left is heavy enough", which is trivially true of
-        -- a filter that never cuts. This is the half that says it cuts at all, and it is deliberately
-        -- not pinned to any one blueprint, because the last one it was pinned to outlived it.
-        local cutSomewhere = false
-        for _, sin in ipairs(Descent.SINS) do
-            for _, day in ipairs({ 1, 2, 8, 20, 40 }) do
-                local ctx = { day = day, biome = sin.biome }
-                local all, kept = Encounter.pool(ctx), Descent.floorPool(ctx)
-                assert(#kept <= #all, sin.biome .. " at day " .. day .. " seats more than exists")
-                if #kept < #all then cutSomewhere = true end
-            end
-        end
-        assert(cutSomewhere,
-            "the light-fight filter never dropped a single stop on any floor of any circle -- every "
-            .. "case above passes vacuously when nothing is cut")
-    end },
-
-    { name = "a floor is mostly fights, and its elites do not grow with the company", fn = function()
-        -- The pacing claim, checked on the pool rather than on a generated board so it is a statement
-        -- about the RULE and not about one lucky seed. Measured on real boards the transform takes a
-        -- twelve-stop floor from 5.2 fights (2.8 of them elites) to 7.4 (2.0) -- many short fights
-        -- instead of few long ones, which is the whole point of the skirmish tier.
-        local function shares(prestige)
-            local combat, elite, texture = 0, 0, 0
-            for _, e in ipairs(Descent.floorPool({ biome = "swamp", prestige = prestige })) do
-                if e.kind == "combat" then combat = combat + e.weight
-                elseif e.kind == "elite" then elite = elite + e.weight
-                else texture = texture + e.weight end
-            end
-            return combat, elite, texture
-        end
-
-        local combat, elite, texture = shares(6)
-        assert(combat > texture * 3, "a floor's free draws must be fights, not towns -- every stop " ..
-            "spent on texture is a skirmish the floor does not have")
-        assert(elite < combat / 2, "an elite is punctuation, not the sentence")
-
-        -- The runaway this pins shut: `weight = prestige` on the elite blueprint is a campaign dial,
-        -- and on a descent it would crowd ordinary fights out without limit as the company grows --
-        -- so by prestige 20 an "ordinary road stop" would be a set-piece again.
-        --
-        -- Asserted PER BLUEPRINT rather than on the family total, because the total legitimately moves
-        -- with prestige for a different reason: `minPrestige` gates whole blueprints in as the company
-        -- grows, and an elite that is not eligible at prestige 1 contributes nothing. That is
-        -- eligibility, which is the pool's business and correct; what must not move is the weight.
-        for _, prestige in ipairs({ 1, 6, 30 }) do
-            for _, e in ipairs(Descent.floorPool({ biome = "swamp", prestige = prestige })) do
-                if e.kind == "elite" then
-                    assert(e.weight == Descent.ELITE_WEIGHT, e.id .. " weighs " .. e.weight ..
-                        " at prestige " .. prestige .. " -- an elite's weight is pinned flat")
-                end
-            end
-        end
-    end },
 
     { name = "a floor names its house, pins its board, and stands something on the stair", fn = function()
         -- The four things stage 3 added to the descriptor, checked together because they are one
@@ -1029,31 +840,6 @@ return {
         end
     end },
 
-    { name = "a circle's house is a real vendor with a real shop, opened by its own first errand", fn = function()
-        -- THE SIN-TO-HOUSE JOIN, from the DESCENT's side as well as the city's, because it has two ends
-        -- and a rename at either one breaks it silently: a sin naming a vendor with no building would tag
-        -- a floor's salvage into a house that does not exist.
-        --
-        -- The circle no longer OPENS that house -- it pays what the body was carrying instead
-        -- (Descent.DROPS) -- so what is pinned here is that each sin still has a real shelf to be the
-        -- house of, and that the shelf's door is on a gate the player can actually reach.
-        local Building = require("models.building")
-        local Errand = require("models.errand")
-        local Vendor = require("models.vendor")
-        for _, sin in ipairs(Descent.SINS) do
-            local vendor = Vendor.get(sin.vendor)
-            assert(vendor, sin.id .. " names a vendor that does not exist: " .. tostring(sin.vendor))
-            assert(vendor.sin == sin.id,
-                sin.vendor .. " claims sin '" .. tostring(vendor.sin) .. "' while " .. sin.id ..
-                " claims it -- the join disagrees with itself")
-            -- (The house CARD is gone. Each sin used to name a shop in the city, gated on its own
-            -- opener; the houses are classes now and the city keeps one market, so what a sin
-            -- still has to name is a real vendor blueprint -- which is the class -- and the
-            -- posting where its companion is met.)
-            assert(Errand.opener(sin.vendor),
-                sin.vendor .. " has no posting, so its companion can never be met")
-        end
-    end },
 
     { name = "every circle pays what its bodies were carrying, or says why it cannot", fn = function()
         -- Descent.DROPS is the wiring for the thing armor_mail_of_the_unappeased.lua already declared:
@@ -1143,86 +929,6 @@ return {
             "the account carries no title: how a run ended is the caller's knowledge, not this table's")
     end },
 
-    { name = "the opening floor is fought by the pair that walks onto it", fn = function()
-        -- THE OTHER HALF OF THE WALK-OVER CASE, and the reason both are needed: that one asks whether
-        -- anything on a floor is too LIGHT to be worth playing, and nothing asked whether anything was
-        -- too heavy to be played at all. Floor one is where that gap cost something, because it is the
-        -- one board whose company is known before it is rolled -- the avatar and Rowan, and nobody else,
-        -- since every other body is behind a fight that has to be found and won underground
-        -- (models/errand.lua).
-        --
-        -- Measured before Descent.OPENING_CAP existed: A Rival Company stood at 40% of that pair, and the
-        -- two openers that HAND OVER the third body at 65% and 67% -- so the fight gating the company's
-        -- growth was priced for the company it would grow into.
-        local Muster = require("models.muster")
-        local Growth = require("models.growth")
-        local Character = require("models.character")
-        local Encounter = require("models.encounter")
-        local Arena = require("models.arena")
-
-        -- ...AT THE LEVEL ACT 0 LEAVES THEM, which is the other half of knowing this company. The case
-        -- above rates every floor at its own floorLevel, and for floor one that is a level the player is
-        -- never standing on: the prologue's four fights bank enough to exit within a level of
-        -- OPENING_DANGER, which tests/experience_spec.lua asserts against these same two constants. Rating
-        -- the pair at level 1 would harden this floor against a company that does not exist, which is the
-        -- mistake being corrected rather than a second copy of it.
-        local p = Player.new()
-        p.roster = { Character.instantiate("character_avatar"),
-                     Character.instantiate("character_rowan") }
-        assert(#p.roster == Descent.PARTY_MAX - 2,
-            "the opening floor's company is a pair -- nothing can have joined before it")
-        for _, c in ipairs(p.roster) do Growth.resolve(c, Descent.OPENING_DANGER) end
-        local ours = Muster.company(Muster.fielded(p))
-
-        local run = Descent.new(p, 4242)
-        run.floor = 1
-        local quest = Descent.floorQuest(run, p)
-        assert(quest.enemyCap == Descent.OPENING_CAP,
-            "the opening floor names its own body ceiling")
-
-        -- THE FLOOR IS BOUNDED AT BOTH ENDS, and the ceiling is only half of why. Nothing on it stands
-        -- more than a step above the pair -- one step is a fight, two is a wall, and a wall on the floor
-        -- that has to be cleared to get a third body is a stopped campaign. And nothing on it can be
-        -- WALKED OVER either, which is the failure a ceiling introduces rather than fixes: cutting a
-        -- fight authored as a lead plus a swarm down far enough leaves a lead and one gnat, and the game
-        -- starts offering to resolve the shallowest floor in the mode without a board. Both bounds move
-        -- together off Descent.OPENING_CAP, so neither can be tuned without the other being re-read.
-        local day = math.max(1, math.floor(1 / Descent.FLOORS * 40))
-        local rated = 0
-        local function bound(what, margin)
-            assert(margin, "nothing on the opening floor may be unrateable: " .. what)
-            assert(Muster.stepsAbove(margin) <= 1, string.format(
-                "the opening floor seats %s at %.0f%% -- %s",
-                what, margin, Muster.BAND_LABEL[Muster.band(margin)] or "unrateable"))
-            assert(not Muster.canWalkOver(margin), string.format(
-                "the opening floor seats %s at %.0f%% -- the pair can skip it outright", what, margin))
-        end
-        for _, e in ipairs(Descent.floorPool({ day = day, biome = quest.map.biome, quest = quest })) do
-            if e.kind == "combat" or e.kind == "elite" then
-                rated = rated + 1
-                bound(e.id, Muster.margin(ours, Muster.encounter(Encounter.get(e.id), {
-                    day = day, floorLevel = quest.floorLevel,
-                    enemyLevel = quest.dangerLevel, quest = quest,
-                })))
-            end
-        end
-        assert(rated >= 5, "the opening floor draws from only " .. rated .. " rateable fights")
-
-        -- ...AND SO DOES EVERY END ON IT, the stair included. The errands are the doors, so a pair that
-        -- cannot open one is a pair that stays a pair; the stair is allowed to be the hardest of them
-        -- (Descent.OPENING_GUARD) and is still not allowed to be a wall.
-        for i, spec in ipairs(quest.map.objectives or {}) do
-            local ids = Arena.clampComposition(
-                Arena.resolveComposition(spec.composition, { day = day, prestige = p.prestige }),
-                Arena.enemyCap({ quest = quest }, spec.enemyCap))
-            local theirs = 0
-            for _, id in ipairs(ids) do
-                local ok, ch = pcall(Growth.spawn, id, quest.dangerLevel, spec.floorLevel or quest.floorLevel)
-                if ok and ch then theirs = theirs + Muster.rate(ch) end
-            end
-            bound(string.format("end %d (%s)", i, tostring(spec.name)), Muster.margin(ours, theirs))
-        end
-    end },
 
     { name = "the opening floor's ceiling only ever cuts, and only there", fn = function()
         -- THREE CLAIMS, and each is a way the ceiling could be wrong rather than merely wrong-sized.

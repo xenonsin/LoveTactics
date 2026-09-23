@@ -15,7 +15,7 @@ local Offer = require("models.offer")
 local Player = require("models.player")
 local Character = require("models.character")
 local Class = require("models.class")
-local Wound = require("models.wound")
+local Injury = require("models.injury")
 local Descent = require("models.descent")
 
 -- A house, found by the room it holds rather than named, so moving a room to another house is a
@@ -67,7 +67,7 @@ return {
         -- THE BUG THIS PINS SHIPPED, briefly: `want and is or not is` is the obvious way to write a
         -- boolean gate and it is wrong in Lua whenever `is` is false -- it falls through to the `or`
         -- arm and answers TRUE. Both boolean gates read as OPEN on a fresh save, and the Cathedral and
-        -- the Crucible stood on the plaza on the first morning offering a room for a wound nobody had.
+        -- the Crucible stood on the plaza on the first morning offering a room for an injury nobody had.
         name = "a boolean gate is shut when its condition does not hold",
         fn = function()
             local _, cathedral = houseHolding("mend")
@@ -78,11 +78,11 @@ return {
                 "nobody has been carried up broken, so there is nothing to mend")
 
             local hurt = Player.new()
-            Wound.inflict(hurt, { { id = "character_rowan" } })
-            assert(Offer.openSet(hurt, cathedral).mend, "a wound opens the mending")
+            Injury.inflict(hurt, { { id = "character_rowan" } })
+            assert(Offer.openSet(hurt, cathedral).mend, "an injury opens the mending")
 
             -- One-way: the mark outlives the mending, so the room stays on the desk.
-            Wound.mend(hurt, 9)
+            Injury.mend(hurt, 9)
             assert(Offer.openSet(hurt, cathedral).mend,
                 "setting the bone must not take the room away again")
         end,
@@ -93,10 +93,10 @@ return {
             local p = Player.new()
             assert(Offer.open(p, nil), "no gate is open")
             assert(Offer.open(p, {}), "an empty gate is open")
-            -- trips alone holds, wound does not, so the pair must not.
+            -- trips alone holds, injury does not, so the pair must not.
             p.runsStarted = 4
             assert(Offer.open(p, { trips = 1 }), "four trips is past one")
-            assert(not Offer.open(p, { trips = 1, wound = true }),
+            assert(not Offer.open(p, { trips = 1, injury = true }),
                 "every key in a gate must hold")
             assert(not pcall(Offer.open, p, { notARealGate = true }),
                 "an unknown gate key is a blueprint typo and must raise, not read as open")
@@ -134,13 +134,13 @@ return {
         -- is up to the drops, and the drops do not know the door exists.
         name = "an `any` gate holds on the event or on the backstop, and needs one of them",
         fn = function()
-            local gate = { any = { { wound = true }, { trips = 5 } } }
+            local gate = { any = { { injury = true }, { trips = 5 } } }
 
             local nobody = Player.new()
             assert(not Offer.open(nobody, gate), "neither arm holds, so the room is shut")
 
             local hurt = Player.new()
-            Wound.inflict(hurt, { { id = "character_rowan" } })
+            Injury.inflict(hurt, { { id = "character_rowan" } })
             assert(Offer.open(hurt, gate), "the event arm alone opens it")
 
             local patient = Player.new()
@@ -148,7 +148,7 @@ return {
             assert(Offer.open(patient, gate), "the backstop alone opens it")
 
             -- It still ANDs with its siblings: `any` is one key among however many.
-            assert(not Offer.open(patient, { any = { { wound = true } }, trips = 99 }),
+            assert(not Offer.open(patient, { any = { { injury = true } }, trips = 99 }),
                 "a satisfied `any` must not excuse the other keys in the same gate")
 
             -- And the shipped rooms that use it really do carry both arms, or the backstop is prose.
@@ -195,7 +195,7 @@ return {
     },
     {
         -- A DOOR AND ITS ROOMS ARE TWO QUESTIONS, and the Cathedral is where they part: the card has to
-        -- arrive on a wound -- a deed -- while the mending behind it is the room that deed opened, and
+        -- arrive on an injury -- a deed -- while the mending behind it is the room that deed opened, and
         -- the shelf beside it has never been gated on anything at all.
         --
         -- THE SHELF USED TO BE THE THIRD ANSWER HERE, shut until somebody held a priest level. That is
@@ -212,8 +212,8 @@ return {
             local cathedralId, cathedral = houseHolding("mend")
 
             local hurt = Player.new()
-            Wound.inflict(hurt, { { id = "character_rowan" } })
-            assert(not locked(hurt, cathedralId), "a wound stands the door open")
+            Injury.inflict(hurt, { { id = "character_rowan" } })
+            assert(not locked(hurt, cathedralId), "an injury stands the door open")
             assert(Offer.openSet(hurt, cathedral).shelf, "...and the shop is behind it, as it always is")
 
             -- ...and NOT the other way round, which is the half the quiet flag buys. Nobody hurt: the
@@ -271,7 +271,7 @@ return {
         fn = function()
             local _, cathedral = houseHolding("mend")
             local hurt = Player.new()
-            Wound.inflict(hurt, { { id = "character_rowan" } })
+            Injury.inflict(hurt, { { id = "character_rowan" } })
 
             local ctx = Counter.context(hurt, cathedral)
             assert(ctx.offers and ctx.offers.mend, "the desk's context knows the mending is open")
@@ -402,7 +402,7 @@ return {
             assert(def.intro and def.grants, "...and it is still the scene that hands over its companion")
 
             local player = Player.new()
-            Wound.inflict(player, { { id = "character_rowan" } })
+            Injury.inflict(player, { { id = "character_rowan" } })
             local cathedral = cardFor(player, cathedralId)
 
             -- The desk answers `mend` once and then walks out, and every room hands straight back --
@@ -463,7 +463,7 @@ return {
         -- lines makes the player open all four to find out which one has anything in it.
         --
         -- AND THE MARK MUST BE ABLE TO GO OUT, which is the half that decides whether any of this is
-        -- worth drawing. `unattended` rather than `wounded`: a body already lying up is being dealt
+        -- worth drawing. `unattended` rather than `injured`: a body already lying up is being dealt
         -- with, and a room that went on flagging it would be asking for a decision already made.
         name = "a room is marked while it has something in it, and the mark goes out when it is dealt with",
         fn = function()
@@ -475,12 +475,12 @@ return {
                 "nobody is hurt, so the mending has nothing waiting in it")
 
             local hurt = Player.new()
-            Wound.inflict(hurt, { { id = "character_rowan" } })
+            Injury.inflict(hurt, { { id = "character_rowan" } })
             assert(Offer.newsSet(hurt, cathedral).mend, "a body nobody has seen to marks the room")
 
-            -- Lying up is an ANSWER to a wound, not a wound ignored: the stay is served by descending
-            -- (models/wound.lua), so the room stops asking the moment the player has decided.
-            Wound.rest(hurt, "character_rowan")
+            -- Lying up is an ANSWER to an injury, not an injury ignored: the stay is served by descending
+            -- (models/injury.lua), so the room stops asking the moment the player has decided.
+            Injury.rest(hurt, "character_rowan")
             assert(not Offer.newsSet(hurt, cathedral).mend,
                 "a body already resting is being dealt with -- a mark that cannot go out is noise")
         end,
@@ -517,7 +517,7 @@ return {
         name = "a shut room never carries a mark, and no house marks a line it would not print",
         fn = function()
             local hurt = Player.new()
-            Wound.inflict(hurt, { { id = "character_rowan" } })
+            Injury.inflict(hurt, { { id = "character_rowan" } })
 
             assert(Offer.news(hurt, { answer = "mend", panel = "ward", open = true }),
                 "the ward has a body waiting in it")
@@ -540,7 +540,7 @@ return {
         name = "a house's plate is the OR over the marks on its own desk",
         fn = function()
             local hurt = Player.new()
-            Wound.inflict(hurt, { { id = "character_rowan" } })
+            Injury.inflict(hurt, { { id = "character_rowan" } })
 
             local marked = 0
             for id, def in pairs(Building.defs) do
@@ -550,7 +550,7 @@ return {
                     id .. "'s plate and its desk disagree about whether anything is waiting")
                 if any then marked = marked + 1 end
             end
-            assert(marked == 1, "one wound lights exactly the house that mends it, got " .. marked)
+            assert(marked == 1, "one injury lights exactly the house that mends it, got " .. marked)
         end,
     },
     {
@@ -566,7 +566,7 @@ return {
             local Conversation = require("models.conversation")
             local id, cathedral = houseHolding("mend")
             local hurt = Player.new()
-            Wound.inflict(hurt, { { id = "character_rowan" } })
+            Injury.inflict(hurt, { { id = "character_rowan" } })
 
             local scene = Conversation.resolve(Conversation.defs[cathedral.counter],
                 Counter.context(hurt, cathedral))
@@ -585,14 +585,14 @@ return {
             assert(leave and not leave.news, "and the way out never does")
 
             -- Seen to, asked again: the same desk, no dot.
-            Wound.rest(hurt, "character_rowan")
+            Injury.rest(hurt, "character_rowan")
             local after = Conversation.resolve(Conversation.defs[cathedral.counter],
                 Counter.context(hurt, cathedral))
             for _, node in ipairs(after.script) do
                 if node.id == Counter.DESK then
                     for _, choice in ipairs(node.choices or {}) do
                         assert(not choice.news, "'" .. tostring(choice.answer)
-                            .. "' still wears a dot after the wound was answered")
+                            .. "' still wears a dot after the injury was answered")
                     end
                 end
             end

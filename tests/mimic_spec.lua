@@ -369,9 +369,14 @@ return {
         local def = Item.defs[Mimic.TROPHY.id]
         assert((def.haulBonus or 0) > 0, "the trophy's own half does nothing on the road")
 
-        -- IN THE PACK. The ceiling is a fact about the COMPANY, so which pocket it is in is not a
-        -- decision anybody made -- the same reach Trap.detectRadiusFor and Player.visionBonus take.
-        Player.addToStash(player, Item.instantiate(Mimic.TROPHY.id))
+        -- IN THE PACK, and that is now literal rather than a figure of speech. The ceiling is a fact
+        -- about the COMPANY, so which pocket it is in is not a decision anybody made -- the same reach
+        -- Trap.detectRadiusFor and Player.visionBonus take.
+        --
+        -- IT USED TO BE THE STASH, AND THAT WAS THE BUG: a bag on the town shelf widened the ceiling of
+        -- a company nine floors away from the shelf. The shelf is out of reach down there, so a widener
+        -- sitting on it is not being carried by anybody (models/descent.lua's Descent.haulBonus).
+        Player.addToPack(player, Item.instantiate(Mimic.TROPHY.id))
         local widened = Descent.CARRY_MAX + def.haulBonus
         assert(Descent.carryMax(player) == widened,
             "the bag in the packs did not widen the ceiling: " .. Descent.carryMax(player))
@@ -384,13 +389,20 @@ return {
 
         -- BEST, NOT SUM: two bags are not twice the bag. Without this the one item in the game that
         -- widens the ceiling would be farmable into an unbounded pack.
-        Player.addToStash(player, Item.instantiate(Mimic.TROPHY.id))
+        Player.addToPack(player, Item.instantiate(Mimic.TROPHY.id))
         assert(Descent.carryMax(player) == widened, "two bags stacked into a bigger ceiling")
+
+        -- ...AND A THIRD LEFT AT HOME WIDENS NOTHING, which is the leak stated as an assertion rather
+        -- than only in a comment: the shelf is unreachable underground, so what is on it cannot be
+        -- adding to what the company can carry out.
+        local homebody = Player.new()
+        Player.addToStash(homebody, Item.instantiate(Mimic.TROPHY.id))
+        assert(Descent.carryMax(homebody) == Descent.CARRY_MAX,
+            "a bag left on the town shelf is still widening the ceiling nine floors down")
 
         -- AND THE ROOM MOVES WITH IT, which is the half a player actually meets: the refusal that keeps
         -- a chest shut reads this, and so does the "Carrying n / max" line that warns about it.
-        local run = Descent.new(player, 1)
-        assert(Descent.carryRoom(player, run) == Descent.carryMax(player) - Descent.carried(player, run),
+        assert(Descent.carryRoom(player) == Descent.carryMax(player) - Descent.carried(player),
             "the ceiling widened and the room did not")
     end },
 
@@ -424,25 +436,40 @@ return {
             assert(why and why.text == def.activeAbility.counterEmpty,
                 "an empty gullet does not say why it is greyed: " .. tostring(why and why.text))
 
-            -- ...AND IT FILLS WITH THE TRIP. Six finds in the packs, six behind the bite.
-            for _ = 1, 6 do Player.addToStash(player, Item.instantiate("weapon_iron_sword")) end
+            -- ...AND IT FILLS WITH THE TRIP. Six finds in the bag, six behind the bite.
+            --
+            -- THROUGH Player.stow, which is what a real find does: the run has an entry snapshot, so
+            -- the pack is open and this lands there rather than on the town shelf. The gullet reads
+            -- Descent.found -- the DIFF -- so it would see these wherever they landed; routing them
+            -- properly is what keeps the fixture honest about the game it is describing.
+            for _ = 1, 6 do Player.stow(player, Item.instantiate("weapon_iron_sword")) end
             assert(def.activeAbility.counter(nil, item) == 6,
                 "six finds read as " .. def.activeAbility.counter(nil, item))
 
             -- CAPPED, so the two halves of the item cannot compound: `haulBonus` widens the ceiling,
             -- and an uncapped bite would be feeding its own damage off its own reward.
-            for _ = 1, 20 do Player.addToStash(player, Item.instantiate("weapon_iron_dagger")) end
+            for _ = 1, 20 do Player.stow(player, Item.instantiate("weapon_iron_dagger")) end
             local capped = def.activeAbility.counter(nil, item)
-            assert(capped < Descent.carried(player, player.descentRun),
+            assert(capped < Descent.found(player, player.descentRun),
                 "a bag of twenty-six put all of it behind one blow")
             assert(capped == 6, "the cap reads " .. capped)
+
+            -- IT BITES FOR THE HAUL AND NOT FOR THE BAG, which is the one thing the pack could have
+            -- quietly broken. Descent.carried counts rations too, so a gullet pointed at it would be
+            -- fed by whatever the player packed at the Gate before the first fight -- a different item.
+            local packed = Item.instantiate("consumable_healing_potion")
+            Player.addToPack(player, packed)
+            local before = def.activeAbility.counter(nil, item)
+            Player.addToPack(player, Item.instantiate("consumable_healing_potion"))
+            assert(def.activeAbility.counter(nil, item) == before,
+                "packing rations fed the gullet, so it is reading the bag rather than the haul")
 
             -- ...AND IT DOES NOT SPEND THE HAUL. The Gleaning Rod empties itself; this reads. Eating the
             -- company's finds would be the game destroying loot in front of the player, which is the
             -- exact thing the chest code refuses to do one file over.
-            local before = Descent.carried(player, player.descentRun)
+            local held = Descent.found(player, player.descentRun)
             def.activeAbility.counter(nil, item)
-            assert(Descent.carried(player, player.descentRun) == before, "reading the gullet ate the haul")
+            assert(Descent.found(player, player.descentRun) == held, "reading the gullet ate the haul")
         end)
         Player.active = restore
         assert(ok, err)

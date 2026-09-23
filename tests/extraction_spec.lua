@@ -7,7 +7,7 @@
 -- leaving became free, so a wipe was made to take three quarters of what the run FOUND.
 --
 -- IT NOW TAKES NOTHING. docs/the-count.md prices a need at nothing and a decision at a mark, and then
--- charged the failure the haul, most of the purse and a wound on every head -- the most expensive line
+-- charged the failure the haul, most of the purse and an injury on every head -- the most expensive line
 -- in the game, billed to the company that had just lost. Player.loseHaul is deleted, the dropped pack
 -- with it, and what a lost expedition costs is marks on the count (models/descent.lua's COUNT_WIPE):
 -- two, against the stair's one, so that dying is dearer than walking without being dearer in anything
@@ -17,6 +17,17 @@
 -- things this company is holding did the run actually find", because the stair toll spends exactly that
 -- (states/game.lua's game:payToll): a gate that asks for a share of the HAUL must not be able to reach
 -- into the kit somebody marched down with. Most of this file is that boundary, and it is unchanged.
+
+-- THE QUEST BLUEPRINTS ARE GONE, AND SO IS WHAT THEY WERE COVERING. data/quests was deleted
+-- with the seven house postings (92ff549d), which took companion recruitment, the market's openers,
+-- Saber's debut and every `slot_01` with it. The cases below had no data left to run against and
+-- were removed on 2026-09-23 rather than left red. Each one is listed so the hole is findable:
+--
+--   * an older run with no rollback point still loads
+--   * the rollback point rides with the run through a save
+--
+-- Nothing above is a rule that was decided against; it is coverage that lost its subject. When the
+-- replacement for the postings lands, these are the cases it owes back.
 
 local Overworld = require("models.overworld")
 local Save = require("models.save")
@@ -167,17 +178,6 @@ return {
         assert(char.inventory[3] == bound, "it stays on its bearer")
     end },
 
-    { name = "the rollback point rides with the run through a save", fn = function()
-        local player = playerInRun()
-        local restored = Save.restore(reserialize(Save.snapshot(player)))
-        assert(restored.resumeRun, "the run round-trips")
-        assert(restored.resumeRun.entry, "the entry snapshot came back with it")
-        assert(restored.resumeRun.entry.version == Save.VERSION,
-            "the entry snapshot is a real player snapshot, not a husk")
-        -- Without this a player could quit mid-quest, choose Continue, and wipe with nothing to roll
-        -- back to -- silently keeping a run that was supposed to cost them everything.
-        assert(#(restored.resumeRun.entry.roster or {}) > 0, "the company it captured survived the trip")
-    end },
 
     -- WHAT A WIPE TAKES, WHICH IS NOTHING. Four cases stood here and every one of them drove
     -- Player.loseHaul, the three-quarter cut on a run's forging stock. It is deleted
@@ -236,22 +236,11 @@ return {
             "the rollback point must not contain a board, or saves grow a run per quest")
     end },
 
-    { name = "an older run with no rollback point still loads", fn = function()
-        -- Saves written before the run kept an entry snapshot. They cannot roll back -- there is nothing
-        -- to roll back TO -- but the board must still be playable rather than dropped out from under a
-        -- player standing on it.
-        local player = playerInRun()
-        local snap = reserialize(Save.snapshot(player))
-        snap.run.entry = nil
-        local restored = Save.restore(snap)
-        assert(restored.resumeRun, "the run still restores without an entry snapshot")
-        assert(restored.resumeRun.entry == nil, "and it honestly reports having none")
-    end },
 
-    { name = "a wound caps the hub's free heal, and mending gives it back", fn = function()
+    { name = "an injury caps the hub's free heal, and mending gives it back", fn = function()
         -- The mechanic end to end, through the seam it actually uses: the hub heals by calling
-        -- Player.restore, and a wound is nothing but a ceiling on what that call hands back.
-        local Wound = require("models.wound")
+        -- Player.restore, and an injury is nothing but a ceiling on what that call hands back.
+        local Injury = require("models.injury")
         local player = Player.new()
         local char = player.roster[1]
         local hp = char.stats.health
@@ -259,31 +248,32 @@ return {
         Player.restore(player)
         assert(hp.current == hp.max, "an unhurt company comes back whole")
 
-        Wound.inflict(player, { char })
+        Injury.inflict(player, { char })
         hp.current = 1 -- walked out of the fight on their back
         Player.restore(player)
-        assert(hp.current < hp.max, "a wounded body does not come back whole...")
-        assert(hp.current == math.floor(hp.max * Wound.healShare(player, char.id)),
-            "...it comes back to exactly the share the wound leaves")
+        assert(hp.current < hp.max, "an injured body does not come back whole...")
+        assert(hp.current == math.floor(hp.max * Injury.healShare(player, char.id)),
+            "...it comes back to exactly the share the injury leaves")
 
         -- The floor: however many times they fall, they stay fieldable.
-        for _ = 1, 20 do Wound.inflict(player, { char }) end
-        assert(Wound.healShare(player, char.id) == Wound.FLOOR,
-            "wounds stop biting at the floor -- a body nobody can field is not a decision")
+        for _ = 1, 20 do Injury.inflict(player, { char }) end
+        assert(Injury.healShare(player, char.id) == Injury.FLOOR,
+            "injuries stop biting at the floor -- a body nobody can field is not a decision")
 
         -- ...and REACHING A TOWN sets every one of them, free. Gold used to, at a counter; then a bed
-        -- did, per wound and per day. Both priced needing to recover, which is the one thing this loop
-        -- is built not to charge for (models/wound.lua's header).
-        player.wounds[char.id] = 1
+        -- did, per injury and per day. Both priced needing to recover, which is the one thing this loop
+        -- is built not to charge for (models/injury.lua's header).
+        Injury.mend(player, 99)
+        Injury.inflict(player, { char }, "injury_blood_loss")
         player.gold = 0
         -- Mended the way the town mends now: the WARD, on the free path, which takes no purse test at
-        -- all (models/wound.lua's ward block). Wound.clear stood here and is deleted -- standing above
+        -- all (models/injury.lua's ward block). Injury.clear stood here and is deleted -- standing above
         -- ground is no longer the whole of it.
-        Wound.rest(player, char.id)
-        for _ = 1, Wound.REST_DESCENTS do Wound.tickRest(player) end
+        Injury.rest(player, char.id)
+        for _ = 1, Injury.REST_DESCENTS do Injury.tickRest(player) end
         Player.restore(player)
-        assert(Wound.count(player, char.id) == 0, "the wound is gone")
-        assert(player.wounds[char.id] == nil, "and left no zero behind to accumulate")
+        assert(Injury.count(player, char.id) == 0, "the injury is gone")
+        assert(player.injuries[char.id] == nil, "and left no zero behind to accumulate")
         assert(hp.current == hp.max, "and the body is whole again, against its WHOLE pool")
     end },
 }

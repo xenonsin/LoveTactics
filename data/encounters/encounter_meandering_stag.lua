@@ -49,9 +49,17 @@ return {
     -- It also gated Lust's own elites off Lust's own floors: converted from the retired calendar they
     -- asked for floors three and four, and Lust owns one and two.
     --
-    -- Which of a circle's floors a thing bills on is Descent.SINS' `elites` for the standing threat, and
-    -- `rung` for anything an author wants split across the approach and the seat.
+    -- WHICH of the two is `rung` below, and on an elite it is REQUIRED rather than optional: one elite,
+    -- one floor. A biome lock places a body in the stratum and then leaves it standing on both of that
+    -- stratum's stairs, which makes a landmark into traffic -- see models/encounter.lua's eligibility
+    -- note for the whole argument, and tests/elite_floor_spec.lua for the count that holds it.
+    --
+    -- Descent.SINS' `elites` is the SEPARATE question of which of a floor's candidates the floor is
+    -- ABOUT (billed at ELITE_NAMED_WEIGHT). The rung says where a thing may stand at all.
     condition = function(ctx) return ctx.biome == "forest" end,
+    -- RUNG 2 -- the seat, and the argument above is the whole of it: the last thing the wood has. A
+    -- company that has to corner something should have walked the approach first.
+    rung = 2,
     composition = function(ctx)
         local list = { "character_meandering_stag" }
         -- THREE AT THE OPEN, growing shallowly. Muster.encounter rates a fight by summing its opening

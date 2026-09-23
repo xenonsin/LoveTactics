@@ -43,19 +43,19 @@ return {
         -- the company rather than about the campaign, each opens a building, and each is a field nothing
         -- else in the save would notice going missing -- a door that quietly stopped opening after a
         -- quit-and-continue is exactly the failure that has no other symptom.
-        name = "the depth record and the wound mark round-trip",
+        name = "the depth record and the injury mark round-trip",
         fn = function()
             local Descent = require("models.descent")
-            local Wound = require("models.wound")
+            local Injury = require("models.injury")
 
             local player = Player.new()
             Descent.reached(player, 6)
-            Wound.inflict(player, { { id = "character_rowan" } })
+            Injury.inflict(player, { { id = "character_rowan" } })
 
             local restored = Save.restore(Save.snapshot(player))
             assert(Descent.deepest(restored) == 6,
                 "the depth record survives, got " .. tostring(Descent.deepest(restored)))
-            assert(Wound.everWounded(restored), "the wound mark survives")
+            assert(Injury.everInjured(restored), "the injury mark survives")
             -- THE HIRING PURSE WAS ASSERTED HERE, and it is gone with the Crossing: a staked voucher, a
             -- count of tokens, and the rigged opening pull that named the body the story picked. The
             -- save still CARRIES those fields so an old file loads, but nothing writes them any more,
@@ -64,32 +64,32 @@ return {
             -- ...and mending does not un-mark it. The ledger empties at the Ward; the FACT that
             -- somebody was once carried out does not, or the one-time coach that teaches the mark would
             -- be taught again on the next dive -- and the WARD'S OWN DOOR is hung on the same mark
-            -- (models/building.lua's unlockWound), so a mark that cleared would take the room with it.
-            for _, entry in ipairs(Wound.wounded(restored)) do
-                Wound.rest(restored, entry.char.id)
+            -- (models/building.lua's unlockInjury), so a mark that cleared would take the room with it.
+            for _, entry in ipairs(Injury.injured(restored)) do
+                Injury.rest(restored, entry.char.id)
             end
-            for _ = 1, 9 do Wound.tickRest(restored) end
+            for _ = 1, 9 do Injury.tickRest(restored) end
             local again = Save.restore(Save.snapshot(restored))
-            assert(#Wound.wounded(again) == 0, "the ledger is clear")
-            assert(Wound.everWounded(again), "and the mark is one-way")
+            assert(#Injury.injured(again) == 0, "the ledger is clear")
+            assert(Injury.everInjured(again), "and the mark is one-way")
         end,
     },
     {
         -- A SAVE FROM BEFORE ANY OF THIS reads as a company that has never gone down, never been hurt
         -- and had nothing staked -- which is exactly what it is. Purely additive, so Save.VERSION does
         -- not move, which means this is the only thing standing between an old save and a crash.
-        name = "an older save loads with no depth, no wound history and an empty purse",
+        name = "an older save loads with no depth, no injury history and an empty purse",
         fn = function()
             local Descent = require("models.descent")
-            local Wound = require("models.wound")
+            local Injury = require("models.injury")
 
             local snap = Save.snapshot(Player.new())
-            snap.deepest, snap.wounded, snap.staked = nil, nil, nil
+            snap.deepest, snap.injured, snap.staked = nil, nil, nil
             snap.vouchers, snap.bonds, snap.pulls, snap.pity = nil, nil, nil, nil
 
             local restored = Save.restore(snap)
             assert(Descent.deepest(restored) == 0, "no record to beat")
-            assert(not Wound.everWounded(restored), "nor any bones ever set")
+            assert(not Injury.everInjured(restored), "nor any bones ever set")
             assert(next(restored.bonds or {}) == nil, "nor anybody pulled twice")
             assert(restored.pulls == 0 and restored.pity == 0, "and the pull ledger reads as unused")
             assert(restored.staked == false,

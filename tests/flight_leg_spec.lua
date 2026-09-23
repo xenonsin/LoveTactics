@@ -33,7 +33,7 @@ return {
                 biome = "__test_void", seed = 77,
                 party = { "character_rowan", "character_mage" },
                 allies = { "character_survivor" },
-                composition = function() return { "character_demon_imp", "character_demon_imp" } end,
+                composition = function() return { "character_demon_imp_tutorial", "character_demon_imp_tutorial" } end,
                 objective = { type = "defend", anchor = "center", turns = 5, protect = "character_survivor" },
             })
             local surv
@@ -73,7 +73,7 @@ return {
             end
             -- Turn 1 opens with no melee grunt already in the survivors' faces (it arrives as a wave).
             for _, id in ipairs(defend.composition({ prestige = 1 })) do
-                assert(id ~= "character_demon_grunt", "the grunt is held out of the opening composition")
+                assert(id ~= "character_demon_grunt_tutorial", "the grunt is held out of the opening composition")
             end
         end,
     },
@@ -84,7 +84,7 @@ return {
                 biome = "__test_void", seed = 77,
                 party = { "character_rowan", "character_mage" },
                 allies = { "character_caravan_driver" },
-                composition = function() return { "character_demon_imp" } end,
+                composition = function() return { "character_demon_imp_tutorial" } end,
                 objective = { type = "reach", region = "far", protect = "character_caravan_driver" },
             })
             local driver
@@ -149,7 +149,7 @@ return {
             local obj = {
                 type = "defend",
                 protect = "character_survivor",
-                waves = { { at = 10, composition = function() return { "character_demon_imp" } end } },
+                waves = { { at = 10, composition = function() return { "character_demon_imp_tutorial" } end } },
             }
             local c = Combat.new(flatArena(8, 8, obj),
                 { unit("character_rowan", 1, 1), unit("character_survivor", 2, 2) },
@@ -357,7 +357,7 @@ return {
         fn = function()
             local surv = Character.instantiate("character_survivor")
             assert(surv and surv.archetype == "holdGround", "the survivor is rooted where it stands")
-            local champ = Character.instantiate("character_demon_champion")
+            local champ = Character.instantiate("character_demon_champion_tutorial")
             assert(champ and champ.boss == true, "the champion is a boss (immune to instant execution)")
         end,
     },
@@ -389,7 +389,7 @@ return {
             -- The first chest hands over the teaching kit; the mini-boss is the champion, won by assassinate.
             assert(map.encounters.always[1].loot[1] == "weapon_iron_bow", "the first chest gives the bow kit")
             assert(map.objective.win.type == "assassinate"
-                and map.objective.win.target == "character_demon_champion",
+                and map.objective.win.target == "character_demon_champion_tutorial",
                 "the leg ends on the Demon Champion, felled by assassinate")
         end,
     },

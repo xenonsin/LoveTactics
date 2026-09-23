@@ -7,7 +7,7 @@
 
 local Player = require("models.player")
 local Character = require("models.character")
-local Wound = require("models.wound")
+local Injury = require("models.injury")
 local Item = require("models.item")
 local Overworld = require("models.overworld")
 local Save = require("models.save")
@@ -76,19 +76,19 @@ return {
         end,
     },
     {
-        name = "a camp never tops a body past the line its wounds allow",
+        name = "a camp never tops a body past the line its injuries allow",
         fn = function()
             local p = company(1, 100, 10)
             p.roster[1].id = "wounded_one"
             -- Two separate calls, i.e. two bad fights. One call dedupes by id (a body that goes down
             -- twice in one battle has had one bad fight), which is why this is not a single call.
-            Wound.inflict(p, { p.roster[1] })
-            Wound.inflict(p, { p.roster[1] })
-            local ceiling = math.floor(100 * Wound.healShare(p, "wounded_one"))
+            Injury.inflict(p, { p.roster[1] })
+            Injury.inflict(p, { p.roster[1] })
+            local ceiling = math.floor(100 * Injury.healShare(p, "wounded_one"))
             for _ = 1, 12 do Player.camp(p) end
             assert(hp(p, 1) <= ceiling,
-                string.format("a camp must honour the wound cap (%d), got %d", ceiling, hp(p, 1)))
-            assert(ceiling < 100, "the fixture is wrong if two wounds do not cap below full")
+                string.format("a camp must honour the injury cap (%d), got %d", ceiling, hp(p, 1)))
+            assert(ceiling < 100, "the fixture is wrong if two injuries do not cap below full")
         end,
     },
     {

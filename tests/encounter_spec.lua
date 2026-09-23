@@ -45,8 +45,11 @@ return {
     {
         name = "encounter registry discovers def files by filename",
         fn = function()
+            -- It named encounter_elite, which was the Phoenix and went with the human sweep
+            -- (92ff549d). Any two real files prove discovery; these are one of each kind, so a
+            -- registry that somehow found only the combats would still be caught.
             assert(Encounter.defs.encounter_boar, "boar missing")
-            assert(Encounter.defs.encounter_elite, "elite missing")
+            assert(Encounter.defs.encounter_white_wolf, "white wolf missing")
         end,
     },
     {
@@ -63,10 +66,26 @@ return {
         end,
     },
     {
+        -- NO SHIPPED BLUEPRINT CARRIES A FUNCTION WEIGHT ANY MORE, and that is why this case injects
+        -- one. The Phoenix was the only `weight = function(ctx)` in the data and it went with the human
+        -- sweep (92ff549d), which left `weightOf`'s function branch live in models/encounter.lua with
+        -- nothing exercising it -- a code path that can rot silently and a ceiling nobody re-derives.
+        -- The saturating shape is the rule worth keeping, so it is restated here as a fixture and
+        -- registered for the length of the case: the Phoenix's own `min(3, depth)`, verbatim.
+        --
+        -- The pool-share assertion at the foot still reads the REAL pool, so what an elite is worth
+        -- against the wood's ordinary fights is measured on shipped data and not on this fixture.
         name = "dynamic weight scales with depth, and then stops",
         fn = function()
+            local id = "encounter__weight_probe"
+            Encounter.defs[id] = {
+                name = "Weight Probe", kind = "elite", depth = 1, biome = "forest",
+                weight = function(ctx) return math.min(3, ctx.depth or 1) end,
+                composition = function() return { "character_boar" } end,
+            }
+            local ok, err = pcall(function()
             local function eliteAt(p)
-                return has(Encounter.pool({ depth = p, biome = "forest" }), "encounter_elite")
+                return has(Encounter.pool({ depth = p, biome = "forest" }), id)
             end
             local e2, e3 = eliteAt(2), eliteAt(3)
             assert(e2 and e2.weight == 2, "elite weight should track prestige while it climbs (2)")
@@ -94,6 +113,9 @@ return {
             assert(elite < ordinary / 2,
                 string.format("elites must stay the exception on the road (elite %d vs combat %d)",
                     elite, ordinary))
+            end)
+            Encounter.defs[id] = nil
+            assert(ok, err)
         end,
     },
     {

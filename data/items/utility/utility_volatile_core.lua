@@ -1,4 +1,4 @@
--- The hollow a Bomblet is bred around (data/characters/character_demon_bomblet.lua). A bound relic that
+-- The hollow a Bomblet is bred around (data/characters/character_demon_bomblet_tutorial.lua). A bound relic that
 -- carries the one rule that makes a suicide bomber a suicide bomber: trait_volatile
 -- (data/traits/trait_volatile.lua) -- when the bearer dies, it bursts. Delivered as a grid item (the
 -- reliable way a trait reaches a unit -- models/trait.lua), bound so it is never lifted off.

@@ -9,6 +9,10 @@ return {
     sprite = "assets/chars/warlord.png",
     stats = {
         health = 155, mana = 20, stamina = 25,
+        -- Authored 2026-09-22 for the reason the Champion's is (see that blueprint): a body with no
+        -- `staminaRegen` is a body Burst Lung cannot touch, because an injury's cut is measured
+        -- against a base that is not there.
+        staminaRegen = 2,
         damage = 28, magicDamage = 8,
         defense = 11, magicDefense = 10,
         movement = 4,

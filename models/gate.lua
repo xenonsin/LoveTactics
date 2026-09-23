@@ -7,17 +7,17 @@
 -- kept failing to be (see models/descent.lua's Descent.account on why that button was hollow).
 --
 -- WHAT IT HAS IS NO LONGER A COUNTER. Coming up the stair IS the treatment: the surface sets every bone
--- the dive broke -- no longer: the Ward sets them now (models/wound.lua), and what this
+-- the dive broke -- no longer: the Ward sets them now (models/injury.lua), and what this
 -- screen's enter and from the city's). So a company that walks out of a floor at half strength is whole
 -- the moment it is standing in a town, and the only thing that follows it up is the count.
 --
 -- THREE THINGS WERE PROSE OR A TOLL AND ARE NEITHER NOW, which is worth recording because each read for
 -- a long time as something the game had:
 --
---   the inn      wounds, as a BED: you left a body here, paid per wound at the door, and they mended a
---                wound a day while they were out of the company. It is gone, building and all, and
---                models/wound.lua's header holds the argument -- a price on recovery only ever lands on
---                the player who needed to recover, and a wipe wounds the whole expedition by
+--   the inn      injuries, as a BED: you left a body here, paid per injury at the door, and they mended a
+--                injury a day while they were out of the company. It is gone, building and all, and
+--                models/injury.lua's header holds the argument -- a price on recovery only ever lands on
+--                the player who needed to recover, and a wipe injuries the whole expedition by
 --                construction, so the company that could least afford the bill was the one always
 --                handed it. What paces the campaign instead is Descent.count, which cannot lock
 --                anybody out.
@@ -43,9 +43,9 @@ local Gate = {}
 
 -- WHAT A NIGHT IS, in one place, so the one thing that causes one does not spell it out inline.
 --
--- IT USED TO BE THREE CALLS AND IS ONE. A night spent the day, mended a wound off everybody lying in an
+-- IT USED TO BE THREE CALLS AND IS ONE. A night spent the day, mended an injury off everybody lying in an
 -- Inn bed, and walked out whoever that finished. The Inn is gone (see the header) and with it the only
--- reason a night had to touch the wound ledger at all -- a dive's wounds end when the company reaches
+-- reason a night had to touch the injury ledger at all -- a dive's injuries end when the company reaches
 -- the surface, not when it sleeps -- so what is left is the day itself.
 --
 -- KEPT AS A NAMED BEAT rather than folded back into its one caller, because "a night passes" is a fact
@@ -60,7 +60,7 @@ function Gate.night(player)
     if not player then return end
     -- ...AND THE CATHEDRAL SERVES ITS TERMS, both of them, on this one beat.
     --
-    -- A rest is priced in DESCENTS rather than in calendar days (models/wound.lua's ward block argues
+    -- A rest is priced in DESCENTS rather than in calendar days (models/injury.lua's ward block argues
     -- why: the calendar is nearly inert in a mode that reads its danger off the floor ladder), and
     -- walking into the stair is the one moment a descent begins -- so this is where a stay ticks.
     --
@@ -73,7 +73,7 @@ function Gate.night(player)
     -- clean lands in the stash and is found there, where the WARD's return is a name the stair screen
     -- puts on a line. Returns who walked out of the ward, for a caller that wants to say so.
     require("models.curse").tickRites(player)
-    return require("models.wound").tickRest(player)
+    return require("models.injury").tickRest(player)
 end
 
 -- ---------------------------------------------------------------------------

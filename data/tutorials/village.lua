@@ -159,9 +159,9 @@ return {
         -- something from step 2 onward.
         { line = "strike", coach = "strike_hint", actor = "character_avatar", nudge = "nudge",
           calm = true,
-          gate = { kind = "attack", target = "character_demon_imp", item = "weapon_iron_sword",
+          gate = { kind = "attack", target = "character_demon_imp_tutorial", item = "weapon_iron_sword",
                    cells = { { x = 4, y = 5 } }, approach = { { x = 4, y = 6 } } },
-          anchor = { kind = "unit", char = "character_demon_imp" } },
+          anchor = { kind = "unit", char = "character_demon_imp_tutorial" } },
 
         -- Advance to the one tile that touches both surviving imps at once, and collect the ability
         -- that makes that worth doing: `grant` puts Clear Out in the avatar's grid the moment this step
@@ -191,22 +191,33 @@ return {
         -- one if the grunt is genuinely one stroke from death when they swing -- not two, and not
         -- already dead. tests/tutorial_spec.lua pins the whole sum:
         --
-        --   74  the grunt walks on and charges the avatar
-        --   -14 its swing is PARRIED by the avatar's iron sword (data/traits/trait_parry.lua)
+        --   80  the grunt walks on and charges the avatar
+        --   -18 its swing is PARRIED by the avatar's iron sword (data/traits/trait_parry.lua)
         --   -18 Rowan's mace -- which also SHOVES it two tiles clear (see below)
-        --   = 42 ...and now it is standing three tiles off, with a turn of its own coming
-        --   -14 the Jolt, thrown across that gap -- and with it a Stun, +5 on its initiative
-        --   = 28
+        --   = 44 ...and now it is standing three tiles off, with a turn of its own coming
+        --   -20 the Jolt, thrown across that gap -- and with it a Stun, +5 on its initiative
+        --   = 24
         --   -22 Rowan's second blow, on a turn the stun just bought her: 18 from the mace, and 4
         --       more because this shove has nowhere to go and slams it into the top of the board
         --       (Combat.knockback bills a collision at the weapon's own power)
-        --   = 6 ...and a 14-damage sword stroke ends it. The player's click wins the battle.
+        --   = 2 ...and an 18-damage sword stroke ends it. The player's click wins the battle.
         --
-        -- The Jolt used to bill 6 here and the grunt used to open at 66. The avatar's magicDamage came
-        -- up to match its Damage (data/characters/character_avatar.lua) and the spell went with it; the
-        -- grunt's pool followed, because that pool IS this column (see its header). Everything the
-        -- lesson actually turns on is untouched -- 28 before Rowan's second blow, 6 left for the
-        -- player's -- so the beat plays out beat-for-beat as it did.
+        -- THE LAST LINE IS THE WHOLE MARGIN, AND IT IS TWO POINTS WIDE ON PURPOSE. Two is not slack
+        -- left over, it is what is left after buying the strongest avatar this beat has room for --
+        -- character_demon_grunt_tutorial.lua's stats block argues that trade in full and names its
+        -- ceiling (tests/bestiary_spec.lua holds a tier-2 body to 80 health, so the grunt cannot buy
+        -- the window back). What it costs is that Rowan lands 22 against the 24 standing in front of
+        -- her: two points more anywhere in her column and she takes the kill the player is owed.
+        --
+        -- So if a later edit reddens tutorial_spec here, the fix is not in this comment and not in the
+        -- grunt's pool. Re-measure the grid, and read that block before moving anything.
+        --
+        -- This column has been re-copied by hand three times and drifted every time -- it read 74 /
+        -- -14 / -14 / 6 while the sword was billing 18 and the Jolt 20, and it stayed green throughout,
+        -- because the spec asserts the inequalities the beat needs rather than these numbers. That is
+        -- the right thing for it to assert. It does mean this column is prose, so treat it as a reading
+        -- of the arithmetic and not as the arithmetic itself -- the probe in tutorial_spec is the
+        -- arithmetic.
         --
         -- Which is why the grunt and Rowan are both scripted through this stretch rather than left
         -- to the AI: a wandering ally or an extra swing anywhere in that column and the grunt either
@@ -270,7 +281,7 @@ return {
           -- cell a beat early, the grunt was never driven back, and every step after it was aimed at
           -- a body standing somewhere else. A seat ahead of the whole board says "acts next" outright;
           -- the next rebase normalizes it away.
-          spawn = { { char = "character_demon_grunt", x = 6, y = 1, initiative = -1 } },
+          spawn = { { char = "character_demon_grunt_tutorial", x = 6, y = 1, initiative = -1 } },
           -- ...and the board says so THREE steps out, from the moment the avatar's turn opens, rather
           -- than on the one click before it (Tutorial.spawnTelegraph). The muster marker -- the same
           -- pulsing box and inward arrow a timed wave gets -- sits on (6,1) from "advance" onward, so
@@ -294,9 +305,9 @@ return {
         -- Jolt the grunt. Named by blueprint id with NO cells -- it walked in on its own script and
         -- the lesson pins the body, not the tile.
         { line = "jolt", coach = "jolt_hint", actor = "character_avatar", nudge = "nudge",
-          gate = { kind = "attack", item = "ability_minor_shock", target = "character_demon_grunt",
+          gate = { kind = "attack", item = "ability_minor_shock", target = "character_demon_grunt_tutorial",
                    approach = {} },
-          anchor = { kind = "unit", char = "character_demon_grunt" } },
+          anchor = { kind = "unit", char = "character_demon_grunt_tutorial" } },
 
         -- ...and collect what the Jolt bought. A Stun adds ticks to the target's initiative
         -- (data/status/status_stun.lua), so the grunt's card visibly slides DOWN the turn order and
@@ -318,9 +329,9 @@ return {
         -- was standing on a moment ago, directly beneath it, with Rowan behind at (6,3) and the near
         -- side left open. One step from where the Clear Out left the avatar, then the blow, in one click.
         { line = "finish", coach = "finish_hint", actor = "character_avatar", nudge = "nudge",
-          gate = { kind = "attack", target = "character_demon_grunt", item = "weapon_iron_sword",
+          gate = { kind = "attack", target = "character_demon_grunt_tutorial", item = "weapon_iron_sword",
                    approach = { { x = 6, y = 2 } } },
-          anchor = { kind = "turn", char = "character_demon_grunt" } },
+          anchor = { kind = "turn", char = "character_demon_grunt_tutorial" } },
     },
 
     -- Hand-driven turns, popped one per turn of the unit they belong to. Keyed by SCRIPT KEY rather

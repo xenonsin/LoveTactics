@@ -191,8 +191,8 @@ local function playVillage(stopAt)
         { layout = ARENA, biome = "forest",
           party = { "character_avatar", "character_rowan" },
           composition = function()
-              return { "character_demon_imp", "character_demon_imp", "character_demon_imp",
-                       "character_demon_imp", "character_demon_imp" }
+              return { "character_demon_imp_tutorial", "character_demon_imp_tutorial", "character_demon_imp_tutorial",
+                       "character_demon_imp_tutorial", "character_demon_imp_tutorial" }
           end })
     local party, enemies = {}, {}
     for _, u in ipairs(arena.party) do
@@ -671,7 +671,7 @@ return {
             -- hold the win open for exactly the one beat it takes to field the body.
             local lastKill
             for i, step in ipairs(def.steps) do
-                if step.gate.kind == "attack" and step.gate.target == "character_demon_imp" then
+                if step.gate.kind == "attack" and step.gate.target == "character_demon_imp_tutorial" then
                     lastKill = i
                 end
                 -- The Clear Out clears the pair; it names no victim, so find it by the ability instead.
@@ -691,7 +691,7 @@ return {
             -- ...and the steps that follow need that body alive, which is what makes the wait worth it.
             local needsIt = false
             for i = spawning, #def.steps do
-                if def.steps[i].gate.target == "character_demon_grunt" then needsIt = true end
+                if def.steps[i].gate.target == "character_demon_grunt_tutorial" then needsIt = true end
             end
             assert(needsIt, "nothing after the reinforcement ever asks the player to fight it")
         end,
@@ -922,7 +922,7 @@ return {
 
             assert(t.index == 5, "the lesson stalled before the grunt's beat, at step " .. t.index)
             for _, u in ipairs(combat.units) do
-                assert(not (u.alive and u.char.id == "character_demon_imp"),
+                assert(not (u.alive and u.char.id == "character_demon_imp_tutorial"),
                     "an imp is still standing when the grunt is due, at ("
                     .. u.x .. "," .. u.y .. ") -- the mentor's flank was never cleared")
             end
@@ -976,7 +976,7 @@ return {
             -- shoved below both of them, and the two turns that buys are the two that kill it.
             -- Pinned as a consequence of the order above -- two party turns between its turn and its
             -- death -- because that is the thing the player actually sees.
-            local grunt = livingById(combat, "character_demon_grunt")
+            local grunt = livingById(combat, "character_demon_grunt_tutorial")
             assert(not grunt, "the grunt outlived the lesson")
             for _, u in ipairs(combat.units) do
                 assert(u.alive or u.side == "enemy", "the lesson cost the player a unit: " .. u.char.id)
@@ -999,7 +999,7 @@ return {
             -- it was doing nothing, and the badge is the one that can be checked.
             local t, combat = playVillage(6)
             assert(t.index == 6, "the lesson did not reach the Jolt, stopping at " .. t.index)
-            local grunt, avatar = livingById(combat, "character_demon_grunt"),
+            local grunt, avatar = livingById(combat, "character_demon_grunt_tutorial"),
                                   livingById(combat, "character_avatar")
             assert(grunt and avatar, "the Jolt's beat is missing one of the two bodies it is about")
             local plan = scriptedPlan(combat, t, grunt, true)
@@ -1041,8 +1041,8 @@ return {
             -- points at before the player ever swings.
             local t = Tutorial.new(TUTORIAL)
             local step = Tutorial.step(t)
-            assert(step and step.gate.target == "character_demon_imp", "step 1 names a target")
-            Tutorial.reconcile(t, function(id) return id ~= "character_demon_imp" end)
+            assert(step and step.gate.target == "character_demon_imp_tutorial", "step 1 names a target")
+            Tutorial.reconcile(t, function(id) return id ~= "character_demon_imp_tutorial" end)
             assert(t.index == 2 and not t.abandoned,
                 "with its target gone the strike step is skipped, not left hanging")
         end,
@@ -1231,7 +1231,7 @@ return {
             -- thing anyone ever does in this game is chip at something), and the closing Clear Out must
             -- kill both (or the lesson ends with the player standing between two live demons). Those
             -- are three blueprints agreeing across three files, so they are checked rather than
-            -- commented -- see data/characters/character_demon_imp.lua.
+            -- commented -- see data/characters/character_demon_imp_tutorial.lua.
             local tiles = {}
             for y = 1, 8 do
                 tiles[y] = {}
@@ -1241,7 +1241,7 @@ return {
             end
             local combat = Combat.new({ cols = 8, rows = 8, tiles = tiles },
                 { { char = Character.instantiate("character_avatar"), x = 1, y = 1 } },
-                { { char = Character.instantiate("character_demon_imp"), x = 1, y = 2 } })
+                { { char = Character.instantiate("character_demon_imp_tutorial"), x = 1, y = 2 } })
             local avatar, imp = combat.units[1], combat.units[2]
             local health = imp.char.stats.health.current
 
@@ -1315,7 +1315,7 @@ return {
             local combat = Combat.new({ cols = 8, rows = 8, tiles = tiles },
                 { { char = Character.instantiate("character_avatar"), x = 5, y = 5 },
                   { char = Character.instantiate("character_rowan"), x = 6, y = 4 } },
-                { { char = Character.instantiate("character_demon_grunt"), x = 5, y = 4 } })
+                { { char = Character.instantiate("character_demon_grunt_tutorial"), x = 5, y = 4 } })
             local avatar, rowan, grunt = combat.units[1], combat.units[2], combat.units[3]
 
             local sword = Item.instantiate("weapon_iron_sword")
