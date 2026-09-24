@@ -447,6 +447,14 @@ Grade.TRAIT_GRADE = {
     trait_eats_what_is_cut =            0.5,  -- It Eats What You Cut Off -- the Chimera eats its heads
     trait_unfed =                       0.5,  -- Unfed -- a turn with nothing to do comes round sooner
 
+    -- THE WYVERNS (2026-09-23). Tailwind is conditional Avoid a body has to keep earning by standing
+    -- apart -- worth real survival, and nothing at all once anybody closes -- so it sits at a charm's
+    -- defensive middle. Plummet is a Running Shot rider on the melee side, a quarter of Damage behind a
+    -- three-tile run. Lead the Wind is an aura rule on one creature and sits at the reactive-rule floor.
+    trait_tailwind =                    2.0,  -- Tailwind -- Avoid while no foe is beside you
+    trait_plummet =                     1.5,  -- Plummet -- a quarter of Damage after a three-tile run
+    trait_lead_the_wind =               0.5,  -- Lead the Wind -- the Alpha Wyvern's flight
+
     -- ADOPTED FROM THE SEED, not individually weighed. These are the classifier's own numbers, taken
     -- as authored on the designer's instruction rather than argued one by one. They are real weights
     -- and the grader treats them as such -- but Grade.TRAIT_ADOPTED below keeps the provenance, because

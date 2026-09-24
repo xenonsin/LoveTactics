@@ -448,6 +448,12 @@ local CHARACTER_SILHOUETTE = {
     chimera_goat = "skoll/goat",
     chimera_serpent = "delapouite/rattlesnake",
 
+    -- THE WYVERNS (Gluttony's seat). Three dragon heads for a two-legged dragon, one per rung -- the
+    -- Wyrm already holds the spiked one.
+    wyvern = "lorc/dragon-head",
+    wyvern_alpha = "faithtoken/dragon-head",
+    the_highwing = "lorc/dragon-spiral",
+
     -- ...AND THE THIRD ELEMENTAL THE KEEP MADE. The other two need nothing here and must not get it:
     -- character_fire_elemental and character_wind_elemental carry their element word in the id, so
     -- `elementOf` seats them on ELEMENT_SILHOUETTE and ELEMENT_TINT exactly as it always has -- and

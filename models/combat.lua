@@ -993,6 +993,10 @@ function Combat.abilityRange(combat, unit, ab, x, y)
         local bonus = unit.rules.abilityRange
         if type(bonus) == "number" then range = range + bonus end
     end
+    -- A status may LEND reach (`statBonus = { range = n }`): the Highwing's High Wind puts its Wind Shear
+    -- a tile further out while it rides high. Read here, the one reader, so the tell, the planner and the
+    -- swing agree.
+    if unit then range = range + Status.statBonus(unit, "range") end
     -- A range-cutting debuff (Blind) shortens the reach, but never below 1: a blinded unit is groping
     -- in the dark, not disarmed, so it can still strike an adjacent foe.
     if unit then range = range - Status.rangeMalus(unit) end
@@ -2176,7 +2180,15 @@ Combat.FREE_ACTIONS_PER_TURN = 1
 -- "the element on this thing" and a walk of a hash set is a walk in whatever order the interpreter
 -- feels like today. A `pairs` order that shifts when an unrelated file is required is a seeded fight
 -- that stops replaying (tests/determinism_spec.lua), which is a very expensive way to find out.
-Combat.ELEMENTS = { "fire", "ice", "lightning", "water", "dark", "holy", "acid", "poison" }
+--
+-- WIND IS THE NINTH, and it is APPENDED rather than slotted in by kind, because this order is the walk
+-- Combat.strikeElement makes and a reorder would change which element a warded body hands its blade in
+-- seeded fights already recorded. It was a tag before it was an element -- the Whirlwind and the Gyre
+-- have cut `wind` + `slash` since they were written -- so what joining the set changes is only what
+-- the set is read for: a Resonant Grip remembers a wind cast, and a body with an innate answer to wind
+-- is answered. `resist = { wind = n }` needed nothing: resist is looked up per TAG (mitigatedDamage),
+-- set or no set. Made one by the wyvern line (data/characters/character_wyvern.lua), 2026-09-23.
+Combat.ELEMENTS = { "fire", "ice", "lightning", "water", "dark", "holy", "acid", "poison", "wind" }
 
 Combat.ELEMENT_TAGS = {}
 for _, t in ipairs(Combat.ELEMENTS) do Combat.ELEMENT_TAGS[t] = true end
@@ -6846,10 +6858,18 @@ end
 -- What `unit` is worth to hit, before the attacker's side of the exchange. Gear and statuses reach
 -- `speed` and `luck` through flatStat exactly as they reach `defense`, so a charm that grants +luck
 -- and a status that drains it both work with no plumbing of their own.
+--
+-- `avoid` IS ALSO A STAT OF ITS OWN, read through flatStat like any other -- nothing on a character
+-- sheet declares it, so it is 0 for every body until a status lends it (`statBonus = { avoid = n }`, the
+-- Highwing's High Wind) or a live trait claims it off the board (`live` -> `{ avoid = n }`, a wyvern's
+-- Tailwind while nothing stands beside it). It is not luck: luck also blunts crits, and a body that is
+-- hard to reach is not thereby hard to hit badly. It stands beside the ground's term rather than inside
+-- it, because the ground's avoid is forfeited by a flier and this is what a flier has instead.
 function Combat.avoid(combat, unit)
     if not unit then return 0 end
     return flatStat(unit, "speed") * 2
         + flatStat(unit, "luck")
+        + flatStat(unit, "avoid")
         + Combat.terrainAvoid(combat, unit.x, unit.y, unit)
 end
 
@@ -12608,9 +12628,11 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
         -- caster, and a helper that made every one of them pass `fx.user` would be noise on all of
         -- them to serve the two (the Muster Rift, the Backward Glance) that move another body.
         -- Springs the arrival tile exactly as any other teleport does.
-        teleport = function(tgt, x, y)
+        -- `opts` reaches Combat.teleportUnit as for the caster's own blink -- `glide` so a body CARRIED
+        -- (a wyvern's Stoop, Bear Away) is seen crossing rather than vanishing.
+        teleport = function(tgt, x, y, opts)
             if not tgt then return false end
-            return Combat.teleportUnit(combat, tgt, x, y)
+            return Combat.teleportUnit(combat, tgt, x, y, opts)
         end,
         -- Pin the target in front and drive it (and the caster behind it) `distance` tiles ahead,
         -- trampling anyone in the lane (Charge).

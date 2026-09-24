@@ -198,7 +198,7 @@ Descent.SINS = {
         elites = { approach = "encounter_white_wolf", seat = "encounter_gluttony_the_sated",
             spares = { "encounter_the_unseeing", "encounter_the_larder",       -- rung 1
                        "encounter_the_sow", "encounter_meandering_stag",        -- rung 2
-                       "encounter_the_chimera" } } },                           -- rung 2
+                       "encounter_the_high_glade", "encounter_the_chimera" } } },  -- rung 2
     -- ---------------------------------------------------------------------------
     -- LUST: THE CIRCLE THAT NEVER TAKES YOUR HEALTH. IT TAKES YOUR SAY OVER WHERE YOU ARE STANDING.
     -- ---------------------------------------------------------------------------

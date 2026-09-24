@@ -5,6 +5,10 @@
 --
 -- A web still catches it (hazard_web reads no flight), settled on review: a web catches birds, and its
 -- planner routes round hostile ground anyway.
+--
+-- SHARED WITH THE WYVERN LINE (character_wyvern, _alpha, the_highwing), on review: one creature item for
+-- the tag, not a second copy per animal. The id keeps the manticore's name because it was here first; the
+-- item's own name has only ever said "Wings".
 return {
     name = "Wings",
     description = "Flies: every tile costs 1 to cross, but it gains nothing from the ground it is over.",
