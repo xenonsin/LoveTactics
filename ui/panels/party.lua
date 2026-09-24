@@ -230,9 +230,9 @@ end
 -- first and then by name.
 --
 -- The other half of the pair, and deliberately a different question from the class above. The class is
--- what the player chose and is what stat growth is taken from; this is what the body has actually been
--- swinging, read off cumulative technique (Class.classLevel). A body declared knight while casting
--- mage gear shows "Knight" on its title line and a Mage level in this list, and both are true.
+-- what the player chose and is what stat growth is taken from; this is every class the body has ever
+-- stood in, read off cumulative technique (Class.classLevel). A body that stood in mage and has since
+-- changed to knight shows "Knight" on its title line and a Mage level in this list, and both are true.
 --
 -- `held`/`needed` are the position within the CURRENT rung, so a bar can be drawn without the caller
 -- redoing the ladder's arithmetic. At the cap `needed` is zero, which is a bar that is full rather than
@@ -2270,11 +2270,7 @@ function Party:drawTechnique(char, x, y)
         for _, amount in pairs(char.technique or {}) do
             if (amount or 0) > 0 then earned = true end
         end
-        local per, share = Class.TECHNIQUE_PER_ACTION, Class.TECHNIQUE_DECLARED_SHARE
-        local none = share > 0
-            and string.format("None yet -- each action earns %d technique: %d for their class, %d for "
-                .. "the class of the item used.", per, share, per - share)
-            or string.format("None yet -- each action earns %d technique for the class of the item used.", per)
+        local none = "None yet -- " .. Class.techniqueRule(Growth.classOf(char))
         Theme.set(Theme.muted, 0.8)
         love.graphics.printf(earned
             and "Spent out -- every house here is already forged into something."
@@ -2625,12 +2621,12 @@ end
 -- unpack from context: it is not gold, it is not experience, and it is earned and spent in two entirely
 -- different places (a battle, and the Forge). Three short paragraphs, in the order a player meets them.
 local TECHNIQUE_NOTE = {
-    "Practice, banked per house. Every action a member takes teaches the house whose gear they used -- "
-        .. "capped per battle, so no one long fight buys a discipline.",
+    "Practice, banked per class. Every action a member takes teaches the class they are standing in, "
+        .. "whatever gear they used. Capped per battle, so no one long fight buys a class.",
     "It is what the Forge bills to raise an item a rung, and the bill is paid by whichever member holds "
-        .. "the most of that house -- not by whoever happens to be carrying the item.",
-    "What a member has been casting lately is also what its next level-up is made of. The line under "
-        .. "their name names the house leading that; point at it to see what the level buys.",
+        .. "the most of that class -- not by whoever happens to be carrying the item. Gear of a class "
+        .. "nobody has unlocked cannot be forged.",
+    "The class a member stands in is also what its level-ups are made of. Change it in the Roll.",
 }
 
 function Party:drawTechniqueTooltip()

@@ -123,6 +123,8 @@ return {
             assert(id, "no unceilinged upgradable stock to test the free rung on")
             local item = Item.instantiate(id, 1, 0)
             p.roster[1].inventory[1] = item
+            -- Trained, so the class is open (Forge.untrained): a gift waives the price, never the unlock.
+            p.roster[2] = require("tests.support.fixture").trainedIn(item.class)
 
             -- The same rung SOLD is a real bill, which is what makes "free" mean something here.
             local billed = Forge.upgradeCost(p, item)
@@ -148,6 +150,7 @@ return {
             local id = unceiledItemId()
             local item = Item.instantiate(id, 1, 4)
             p.roster[1].inventory[1] = item
+            p.roster[2] = require("tests.support.fixture").trainedIn(item.class)
             local fresh = assert(Forge.grant(p, item))
             assert(fresh.level == 5, "a grant steps exactly one rung; got +" .. tostring(fresh.level))
         end,

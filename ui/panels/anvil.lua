@@ -91,9 +91,10 @@ local ROOM_COPY = {
 -- The refusal in words. `locked` is the only one with anything to say -- it names the class the ceiling
 -- is measured on and the house that teaches it, exactly as the bench's own lock line does
 -- (ForgePanel:ceilingReason), because "you have not climbed far enough" is useless without "in what".
-local function refusalText(item, copy)
+local function refusalText(item, copy, reason)
     local class = Item.classOf(item)
     if not class then return copy.deaf end
+    if reason == "untrained" then return Forge.untrainedText(class) end
     local name = Item.classDisplayName(class) or class
     local vendorId = Forge.houseVendorFor(class)
     local house = vendorId and (Vendor.get(vendorId) or {}).name
@@ -105,6 +106,7 @@ end
 local function tailFor(reason)
     if reason == "max level" then return "fully forged", "max" end
     if reason == "locked" then return "standing", "locked" end
+    if reason == "untrained" then return "untrained", "locked" end
     if reason then return "not forgeable", "locked" end
     return "one rung, free", nil
 end
@@ -489,7 +491,7 @@ function Anvil:drawDetail()
         love.graphics.setColor(SHORT[1], SHORT[2], SHORT[3])
         love.graphics.printf(row.reason == "max level"
             and ((row.item.name or "It") .. " has no rung left to take.")
-            or refusalText(row.item, self.copy), x, self.boxY + BOX_H - 168, w, "left")
+            or refusalText(row.item, self.copy, row.reason), x, self.boxY + BOX_H - 168, w, "left")
     end
 end
 

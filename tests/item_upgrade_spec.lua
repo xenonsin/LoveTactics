@@ -17,6 +17,9 @@ local function bank(player, key, amount)
     local char = player.roster[1]
     char.technique = { [key] = amount }
     char.techniqueSpent = {}
+    -- A second body trained into the class, so the company has UNLOCKED it (Forge.untrained) without
+    -- holding any of the bank this case is about.
+    player.roster[2] = require("tests.support.fixture").trainedIn(key)
     return char
 end
 
@@ -297,11 +300,14 @@ return {
             local plain = Player.new()
             plain.gold = 0
             plain.materials = setmetatable({}, { __index = function() return 99 end })
+            -- A ROOT class, and the lowest id rather than the first `pairs` hands back: an earned
+            -- class's recipe is refused as `untrained` before the ledger is ever read
+            -- (Forge.untrained), so which of the two this drew decided the case by hash order.
             local plainId
             for id, def in pairs(Item.defs) do
-                if def.type == "consumable" and def.price and not def.discipline and def.class
-                    and Item.isUpgradable(Item.instantiate(id)) then
-                    plainId = plainId or id
+                if def.type == "consumable" and def.price and Class.isRoot(def.class)
+                    and Item.isUpgradable(Item.instantiate(id)) and (not plainId or id < plainId) then
+                    plainId = id
                 end
             end
             if plainId then

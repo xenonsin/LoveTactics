@@ -312,14 +312,29 @@ an assigned identity: there is no title and no resolver. What you become is stil
 cast (`models/growth.lua`); a discipline you have unlocked is a set of items on a shelf, and the
 character those items grow you into stays emergent.
 
-**A discipline is its own growth path.** Each has a `data/growth/<id>.lua` table of its own, and a
-discipline item tallies the *discipline* rather than its parent class(es)
-(`Discipline.growthClasses`). So a build leaning on Ninja stock grows into a ninja — a rogue/mage blend
-neither base table expresses — and a Barbarian grows harder-hitting and thinner-skinned than the
-fighter it branches from. This is still emergent, not assigned: you grow toward a discipline only by
-*casting its gear*, which you can only do once its gate is cleared and its stock is on the shelf. The
-unlock earns the path; use walks it. (This supersedes the earlier rule where a discipline item grew
-both parent classes — it could, before every discipline had a table of its own.)
+**A discipline is its own growth path.** Each has a `data/growth/<id>.lua` table of its own, so a body
+standing in Ninja grows into a ninja — a rogue/mage blend neither base table expresses — and a Barbarian
+grows harder-hitting and thinner-skinned than the fighter it branches from.
+
+**YOU LEARN THE CLASS YOU ARE STANDING IN** (`Class.techniqueFor`, settled 2026-09-24). Every action
+banks its whole award into the body's declared class — whatever is in its hand, with no exceptions. A
+Ninja swinging a rogue dagger climbs Ninja; to climb rogue, stand in rogue. (An exception for a class's
+own roots was built and removed the same day: one rule a tutorial can state in a sentence was worth
+more than keeping a crossing's parents climbable from inside it.) This is FFT's JP taken whole, and it
+replaced a split (one to the hands' class, one to the badge) that had two holes:
+
+- **A drop could climb a class nobody had unlocked.** A Ninja blade off floor four banked ninja on
+  whoever swung it, so the rift handed over both the gear and the ladder the unlock was meant to gate.
+- **Once unlocked, a class was climbed without standing in it.** A knight carrying Ninja gear banked half
+  of every action as Ninja, so the declaration picked a growth table and little else.
+
+**Items still work for anyone** — the rule decides what an action *teaches*, never what it does, so a
+found piece is full strength in any hand from the floor it drops on. What a piece of a shut class
+cannot do is be **forged**: the bench refuses it as `untrained` until somebody on the roster has
+unlocked its class (`Forge.untrained`). The drop is a head start on the gear; the unlock hands over its
+depth. So changing class is choosing what you learn next, and unlocking one wakes every piece of it the
+company has been carrying. (It supersedes, in turn, "you grow toward a discipline only by casting its
+gear" and the older rule where a discipline item grew both parent classes.)
 
 But a discipline is more than a sharper price list. **Each one owns a unique mechanic** — Elementalist's
 sigils, the Ninja's elemental blink, the Necromancer's raised dead. That mechanic does not live in a

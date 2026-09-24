@@ -361,11 +361,10 @@ return {
             -- fights are not meant to buy one outright. Two houses standing CLEAR of the other five is
             -- the claim that survives the re-cut -- it is about where the technique went.
             --
-            -- Clear, not alone. A body's actions divide across every castable house on its grid and
-            -- the badge takes TECHNIQUE_DECLARED_SHARE of each, so four houses see something; what the
-            -- two it actually fought in get is a different order of magnitude. Asserting "exactly two
-            -- were touched at all" measures the SPLIT rather than the commitment, and the split is
-            -- Combat.awardTechnique working correctly.
+            -- Clear, not alone. Every action banks into the class a body stands in, whatever is in
+            -- hand (Class.techniqueFor), so today only the
+            -- two declared houses see anything -- but "exactly two were touched" would pin that rule's
+            -- current reach rather than the commitment, which is the claim.
             local ranked = {}
             for vendor, amount in pairs(banked) do ranked[#ranked + 1] = { vendor, amount } end
             table.sort(ranked, function(a, b)

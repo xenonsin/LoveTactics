@@ -38,7 +38,7 @@ be confused because they are not even the same kind of thing:
 |---|---|---|
 | **The day** | ~~How long there is~~ — how many nights have passed. Spent at the stair, and nowhere else since the Inn was deleted. Not a currency: nothing is bought with it and nothing waits for it | `models/calendar.lua` |
 | **Experience** | How strong a body is. Earned by acting and by felling, per character | `models/experience.lua` |
-| **A class level** | What a body has got GOOD at, per class. Cumulative technique, banked by swinging that class's gear. Opens the shelf, the disciplines and the forge, and scales what the gear does | `Discipline.classLevel` |
+| **A class level** | What a body has got GOOD at, per class. Cumulative technique, banked by acting while standing in that class (`Class.techniqueFor`). Opens the shelf, the disciplines and the forge, and scales what the gear does | `Discipline.classLevel` |
 | **Standing** | How far into the campaign you are. ~~A count of finished quests~~ — total class levels across the roster | `Player.standing` |
 
 The split is the whole re-premise. Under prestige, *how far in* and *how strong* were the same number,
@@ -394,8 +394,8 @@ is in the code.
   weapons, armor, utility, plus mending and breaking — and the **Arcanum's study** works what is
   written down: abilities per instance, consumable recipes per type. A vendor sells and buys back,
   nothing else.
-- **Technique is earmarked.** Banked per house per character by playing that house's gear, spent at the
-  Forge to buy depth. Gold buys breadth. *This is why walking a ground cannot pay technique* — the
+- **Technique is earmarked.** Banked per house per character by standing in that house, whatever gear is in hand, spent at the Forge to buy depth. A class nobody has
+  unlocked cannot be forged at all (`Forge.untrained`). Gold buys breadth. *This is why walking a ground cannot pay technique* — the
   earmark ("ninja technique comes only from ninja play") is the entire justification for a second
   currency, so a day of hauling ore pays ore.
 - **Materials tag where you went.** Craft stock by the item's own quality, house stock by the houses

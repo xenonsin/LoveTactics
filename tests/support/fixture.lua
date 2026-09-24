@@ -178,6 +178,20 @@ function Fixture.give(char, id)
     return item
 end
 
+--- A body TRAINED to unlock earned class `class`: every root it asks for banked up to the rung it
+--- asks, and nothing in `class` itself. Seat it on a roster and the company counts as having unlocked
+--- the class (Class.isUnlocked), which is what the Forge asks before it will work that class's gear
+--- (Forge.untrained). Holding no technique in `class`, it never changes who a bill is charged to.
+function Fixture.trainedIn(class)
+    local Class = require("models.class")
+    local body = Character.instantiate("character_knight")
+    body.technique, body.techniqueSpent = {}, {}
+    for parent, need in pairs((Class.defs[class] or {}).requires or {}) do
+        body.technique[parent] = Class.classLevelCost(need)
+    end
+    return body
+end
+
 --- Use `item` (an instance, or an id already in the attacker's grid) from `attacker` at `target`'s
 --- tile, opening the turn first. Returns Combat.useItem's ok plus its result table -- the single
 --- most common shape in an item test, which is otherwise four lines of ceremony.

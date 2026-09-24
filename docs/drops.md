@@ -15,6 +15,12 @@ whose.
 > list is for.** What it is for now is *early* and *free*: the rift pays gear at depths well below the
 > rung the company has climbed to, and it pays it for nothing.
 >
+> **A head start on the GEAR, never on the CLASS.** A found piece of a class nobody has unlocked is full
+> strength in any hand, but swinging it teaches the class the bearer is standing in, not the piece's
+> (`Class.techniqueFor`), and the bench will not forge it until the class is unlocked (`Forge.untrained`).
+> So a deep drop from a shut class is a promise that its unlock pays off, not a way around it — see
+> [classes.md](classes.md#disciplines).
+>
 > Read the census below as a **legibility** measure rather than a coverage one. The question is still
 > whether a body is known for something; it is no longer whether the item exists at all. The one place
 > the old stakes survive is the [rift-only pieces](#rift-only-pieces) — those are still the only road.

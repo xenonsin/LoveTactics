@@ -12052,14 +12052,10 @@ end
 -- So what accrues stays ambient (the summary reports it at the end of the fight, the party sheet reads
 -- it between them) and only the crossing speaks. That is FFT's job level and Fire Emblem's level-up:
 -- neither game floats its currency per hit, and neither shows the accrual during one.
--- SPLIT BETWEEN THE HANDS AND THE BADGE. An action banks against the class of the thing in the hand,
--- as it always has -- and when the body is standing in a DIFFERENT class, that class takes
--- Class.TECHNIQUE_DECLARED_SHARE out of the same award (FFT's rule; see the constant for the argument
--- and for why it is a split rather than a bonus). A body swinging its own house's gear is unaffected in
--- every respect, which is what keeps the ladder anchored where it was authored.
---
--- Each half is capped independently, because the cap is per house across the whole field -- so a capped
--- hand does not stop the badge earning, and either half alone still arms the floater.
+-- ONE HOUSE PER ACTION, AND IT IS THE BADGE'S. The whole award goes to the class the body is standing
+-- in, whatever the hands hold (Class.techniqueFor, which argues it). It used to be split between the
+-- hands and the badge, and that split is what let a dropped Ninja blade climb a class nobody had
+-- unlocked.
 -- ---------------------------------------------------------------------------
 -- WHAT THIS FIGHT IS WORTH, against what the company has become
 -- ---------------------------------------------------------------------------
@@ -12119,7 +12115,7 @@ function Combat.awardTechnique(combat, unit, item)
     -- of houses, and an ordered list is what both the display and a stable reading want anyway.
     combat.techniqueByActor = combat.techniqueByActor or {}
 
-    -- The rungs this ACTION pushed a house over, hands before badge -- the whole of what the board is
+    -- The rungs this ACTION pushed a house over -- the whole of what the board is
     -- allowed to say about technique. Read either side of the bank rather than derived from the
     -- amount: the ladder is triangular and a body can be handed technique from anywhere (a scripted
     -- grant, a restored save), so "did this cross" is a question only the two levels can answer.
@@ -12171,17 +12167,10 @@ function Combat.awardTechnique(combat, unit, item)
         return amount
     end
 
-    local declared = Growth.classOf(unit.char)
-    local share = (declared ~= key) and Class.TECHNIQUE_DECLARED_SHARE or 0
-
-    -- The hands bank first so that when one action crosses TWO rungs, the stack reads top-down with
-    -- the house the player just SWUNG at the top and the badge under it. Both halves are capped
-    -- independently, so either can cross on its own.
-    local hands = bank(key, Class.TECHNIQUE_PER_ACTION - share)
-    local badge = bank(declared, share)
+    local banked = bank(Class.techniqueFor(Growth.classOf(unit.char), key), Class.TECHNIQUE_PER_ACTION)
 
     if #crossings > 0 then combat.techniqueCrossing = { unit = unit, rungs = crossings } end
-    return hands + badge
+    return banked
 end
 
 -- Perform an item action: validate range + target kind + resource cost, spend the cost,

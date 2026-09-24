@@ -471,11 +471,11 @@ end
 -- she", and the answer to that question is exactly what a class system is for. Standing the body in
 -- one makes growth a decision rather than a readout of one.
 --
--- WHAT DID NOT MOVE WITH IT is the class LEVEL (Class.classLevel), which still follows the items
--- actually used -- Combat.awardTechnique banks against the class of the thing in the hand. The two
--- readings are deliberately different questions: the badge says how this body grows, the hands say what
--- it has got good at. A body declared knight while casting mage gear takes knight growth and mage class
--- levels, and holds both.
+-- AND THE CLASS LEVEL FOLLOWED IT. It used to follow the items actually used -- "the badge says how
+-- this body grows, the hands say what it has got good at" -- and that let a dropped piece climb a class
+-- nobody had unlocked. Technique now banks into the class this function names and nowhere else
+-- (Class.techniqueFor). A body declared knight
+-- while casting mage gear takes knight growth AND knight levels; to learn mage it has to stand in mage.
 --
 -- Falls back to the innate class, then to NEUTRAL_CLASS, so an enemy minted by Growth.spawn with no
 -- declaration at all grows exactly as it did before.

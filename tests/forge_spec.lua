@@ -245,6 +245,45 @@ return {
         end,
     },
     {
+        -- A FOUND PIECE OF A SHUT CLASS IS FULL STRENGTH AND CANNOT BE MADE BETTER. The drop is a head
+        -- start on the gear; the unlock is what hands over its depth (Forge.untrained, and
+        -- Class.techniqueFor for why nobody could have banked the bill anyway). Pinned with technique
+        -- ON HAND, because that is the save-carried case the refusal is stated for: a bank left over
+        -- from the old split rule must not buy depth in a class nobody has unlocked.
+        name = "an earned class's gear is not forged until somebody has unlocked the class",
+        fn = function()
+            local id, def = anyDisciplineItem()
+            local p = Player.new()
+            p.gold = 100000
+            p.materials = setmetatable({}, { __index = function() return 9999 end })
+            local holder = Character.instantiate("character_knight")
+            holder.technique, holder.techniqueSpent = { [def.class] = 100000 }, {}
+            p.roster = { holder }
+            local item = Item.instantiate(id, 1, 0)
+
+            assert(not Class.isUnlocked(p, def.class), "the fixture company must not have unlocked it")
+            local cost = Forge.upgradeCost(p, item)
+            assert(cost.untrained, "the bill says the class is shut, so the panel can grey the row")
+            local ok, why = Forge.upgrade(p, item)
+            assert(ok == nil and why == "untrained", "the bench refuses: " .. tostring(why))
+            local _, batchWhy = Forge.upgradeTo(p, item, 3)
+            assert(batchWhy == "untrained", "and so does a batch: " .. tostring(batchWhy))
+            assert(Forge.grantRefusal(p, item) == "untrained", "and a free rung on the road")
+
+            -- Somebody on the roster trains into it, and the same bank forges the same piece.
+            p.roster[2] = require("tests.support.fixture").trainedIn(def.class)
+            assert(Class.isUnlocked(p, def.class), "the trained body unlocks it for the company")
+            assert(not Forge.upgradeCost(p, item).untrained, "the bill opens")
+            local fresh = Forge.upgrade(p, item)
+            assert(fresh and fresh.level == 1, "and the rung is bought")
+
+            -- A root is never shut: every body holds the seven from the first morning.
+            for _, root in ipairs(Class.roots()) do
+                assert(not Forge.untrained(Player.new(), root), root .. " reads as untrained")
+            end
+        end,
+    },
+    {
         name = "technique is billed to the strongest holder alone -- four part-timers cannot pool it",
         fn = function()
             local p = richPlayer()
@@ -256,6 +295,9 @@ return {
             -- and a one-character roster cannot express it. Player.new() starts with the avatar alone.
             p.roster[2] = p.roster[2] or require("models.character").instantiate("character_knight")
             assert(p.roster[2], "this test needs two roster bodies")
+            -- ...and a third who has UNLOCKED the class and holds none of it, so the company is trained
+            -- (Forge.untrained) without the unlock touching whose bank the bill reads.
+            p.roster[3] = require("tests.support.fixture").trainedIn(def.class)
 
             -- Split the bill's worth across two characters: each falls short, so the forge refuses --
             -- even though the roster TOTAL is more than enough. This is the whole point of the rule.

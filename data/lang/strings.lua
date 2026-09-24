@@ -431,7 +431,7 @@ return {
     ["line.conversation_tutorial_notes.3"] = { en = "Tactics", ja = "" },  -- TODO
     ["line.conversation_tutorial_notes.4"] = { en = "Characters can be taught to fight on their own using tactics.\n\nTactics are prioritized and evaluated from top to bottom and are used when the character is set to auto mode.", ja = "" },  -- TODO
     ["line.conversation_tutorial_notes.5"] = { en = "Classes", ja = "" },  -- TODO
-    ["line.conversation_tutorial_notes.6"] = { en = "Leveling up increases the stats determined by your chosen class. You are free to change classes at any time.\n\nYour class level increases when you use actions in combat. Using an action that's the same class increases your class technique by 2, using an action that's not the same class increases your class technique by 1, and the action's class technique by 1.\n\nClass level unlocks abilities from trainers and new classes, while the technique can be spent to upgrade your items.", ja = "" },  -- TODO
+    ["line.conversation_tutorial_notes.6"] = { en = "Leveling up increases the stats determined by your chosen class. You are free to change classes at any time.\n\nYour class level increases when you use actions in combat. Using any action increases your class technique by 2.\n\nClass level unlocks abilities from trainers and new classes, while the technique can be spent to upgrade items of unlocked classes.", ja = "" },  -- TODO
     ["line.conversation_tutorial_notes.7"] = { en = "A to continue", ja = "" },  -- TODO
     ["line.conversation_tutorial_notes.8"] = { en = "Tap to continue", ja = "" },  -- TODO
     ["line.conversation_tutorial_notes.9"] = { en = "Click, or press Enter to continue", ja = "" },  -- TODO

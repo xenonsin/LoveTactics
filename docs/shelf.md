@@ -378,7 +378,7 @@ outright now.
 > under ten, and the difference now is that the thing being counted is not work at all.
 
 **A class is climbed by a BODY, not bought by a company.** `Discipline.classLevel` reads cumulative
-technique — two a swing, banked by whoever is holding that class's gear — so what opens a rung is having
+technique — two an action, banked into the class the body is standing in (`Class.techniqueFor`) — so what opens a rung is having
 played the class, and the shelf reads the roster's best holder (`Quest.shelfRung`). Specializing one
 character opens the deep end; spreading the same tally over four does not, which is the same reading the
 forge ceiling and every other company-facing question about the ladder take.

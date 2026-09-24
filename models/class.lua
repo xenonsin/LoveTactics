@@ -583,27 +583,45 @@ end
 -- number. That earmarking is the whole reason this is a second currency rather than a discount.
 Class.TECHNIQUE_PER_ACTION = 2
 
--- WHAT THE CLASS A BODY IS STANDING IN TAKES OUT OF EVERY ACTION, whatever its hands are holding.
+-- WHICH HOUSE ONE ACTION BANKS INTO: the class a body is STANDING in. Nothing else, whatever is in
+-- its hand.
 --
--- FFT'S RULE, and the reason the badge is a decision rather than a label. There, the JP an action earns
--- goes to the job the unit is standing in, and every other unlocked job gets a quarter of it -- so
--- changing job changes where the climb goes, which is the entire weight of that screen. Ours banked
--- purely off the item's own house, which left the declaration reading nothing but a growth table: a
--- second commitment beside the technique ladder, and the free one.
+-- FFT'S JP, taken whole. The award goes to the job the unit is standing in, so changing job IS
+-- changing what you learn, and that is the entire weight of the screen. It used to be split -- one to
+-- the hands' house, one to the badge -- which left two holes the declaration could not close:
 --
--- OUT OF THE SAME AWARD, NEVER ON TOP OF IT. CLASS_LEVEL_STEP above is anchored on a committed descent
--- banking about 596 -- "one class is a descent and a quarter" -- and an additive bonus would
--- pay a body carrying somebody else's gear MORE per action than one carrying its own, which is both
--- backwards and a move on every number that anchor holds. A split conserves it exactly: a body standing
--- in the house it is swinging banks the full 2 into it, precisely as before, and a body swinging
--- somebody else's splits the same 2 between the hands and the badge.
+--   * A DROP COULD CLIMB A CLASS NOBODY HAD UNLOCKED. A Ninja blade found on floor four banked ninja on
+--     whoever swung it, so the rift handed over the gear AND the ladder the unlock was supposed to gate,
+--     and the unlock was reduced to a shelf the company had already outgrown.
+--   * ONCE UNLOCKED, A CLASS WAS CLIMBED WITHOUT STANDING IN IT. A knight carrying Ninja gear banked half
+--     of every action as Ninja, so a declaration picked a growth table and very little else.
 --
--- One, not FFT's quarter, because the award is only 2 and a ladder authored in whole numbers should not
--- start carrying halves. So the cost of not committing is half your climb in the house you are actually
--- using, and the reward for declaring what you are climbing TOWARD is that it climbs off whatever you
--- happen to hold -- which is what makes standing in the far parent of a crossing a real play rather
--- than a slower version of grinding it directly.
-Class.TECHNIQUE_DECLARED_SHARE = 1
+-- NO EXCEPTION FOR A CLASS'S OWN ROOTS, and that was tried first (2026-09-24) and taken out the same
+-- day. A Ninja swinging a rogue dagger banks ninja: one rule a tutorial can state in a sentence beats a
+-- rule that keeps a crossing's parents climbable from inside it. To climb rogue, stand in rogue.
+--
+-- ITEMS STILL WORK FOR ANYONE (models/item.lua: anyone can carry anything). What this decides is what an
+-- action TEACHES, never what it does; a found piece is full strength in any hand from the floor it
+-- drops on. What it cannot do until somebody is trained in its class is be forged (Forge.untrained) --
+-- which follows from this rule anyway, since nobody can bank the technique that pays the bill.
+--
+-- The award is whole either way (TECHNIQUE_PER_ACTION), so CLASS_LEVEL_STEP's anchor holds unchanged.
+-- Nil when the item belongs to no known class (a natural weapon): an untagged action teaches nothing.
+function Class.techniqueFor(declared, itemClass)
+    if not (itemClass and Class.defs[itemClass]) then return nil end
+    return declared
+end
+
+-- THE RULE ABOVE AS ONE SENTENCE, for `id` -- the class a body is standing in, or the class a player is
+-- looking at in the Roll. ONE GLOSS FOR ONE MECHANIC: the class editor and the party sheet both teach it
+-- and both print this, so the two can never state two rules. Read off the constant, so a retune moves
+-- the sentence with it, and the class named rather than "this class", because a name is something a
+-- player can plan against.
+function Class.techniqueRule(id)
+    local name = Class.displayName(id) or id or "this class"
+    return string.format("Each action earns %d technique for %s, whatever item is used.",
+        Class.TECHNIQUE_PER_ACTION, name)
+end
 
 -- The ceiling on what ONE battle can bank in a single discipline. The anti-grind clause, and the
 -- reason this does not reopen the door models/growth.lua deliberately shut ("no way to grind away a

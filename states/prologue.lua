@@ -615,10 +615,8 @@ prologue.SKIP_ACTIONS_PER_FIGHT = 10
 -- reached a houses board with all seven doors shut and no way to open one short of a descent -- the
 -- opposite of what the button is for.
 --
--- PAID THE WAY A FIGHT PAYS IT (Combat.awardTechnique): every action banks TECHNIQUE_PER_ACTION, split
--- between the house of the thing in the hand and the body's DECLARED house, which takes
--- TECHNIQUE_DECLARED_SHARE of it -- all of it when the two are the same. So the badge rides every
--- action and a body's technique concentrates where it is declared, which is why the company reaches the
+-- PAID THE WAY A FIGHT PAYS IT (Combat.awardTechnique): every action banks TECHNIQUE_PER_ACTION into
+-- the body's DECLARED house, whatever is in hand (Class.techniqueFor). So a body's technique lands where it is declared, which is why the company reaches the
 -- city holding the Bastion (Rowan, declared knight, and the avatar's starting sword is the Bastion's
 -- shelf too) and the Colosseum (the avatar's own badge, fighter by Growth.NEUTRAL_CLASS) and not the
 -- other five, and it no longer even brushes them: the sweep used to hand over one opener per class and
@@ -667,9 +665,7 @@ local function bankTechnique(player, fights)
             for i, key in ipairs(keys) do
                 -- The even split, with the remainder on the first houses rather than lost to floor().
                 local actions = math.floor(budget / #keys) + ((i <= budget % #keys) and 1 or 0)
-                local share = (declared ~= key) and Class.TECHNIQUE_DECLARED_SHARE or 0
-                bank(key, actions * (Class.TECHNIQUE_PER_ACTION - share))
-                bank(declared, actions * share)
+                bank(Class.techniqueFor(declared, key), actions * Class.TECHNIQUE_PER_ACTION)
             end
         end
     end

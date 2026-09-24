@@ -189,6 +189,32 @@ function Forge.hexRefusal(item)
     return nil
 end
 
+-- IS `class` AN EARNED CLASS NOBODY ON THE ROSTER HAS UNLOCKED? Then its gear cannot be forged.
+--
+-- A found piece is full strength in any hand (anyone can carry anything), and that is what keeps a drop
+-- worth picking up: a Ninja blade off floor four is a real blade today. What it cannot be is made BETTER
+-- until somebody is trained as a Ninja -- the depth half of the piece waits on the unlock, which is what
+-- gives an unlock something to hand over besides a shelf.
+--
+-- Mostly implied already, since nobody can bank the technique that pays the bill without standing in
+-- the class (Class.techniqueFor). Stated anyway, for two reasons: a save carries technique banked under
+-- the old split rule, and "not enough technique" is the wrong thing to tell a player whose problem is
+-- that the class is shut. A root is never untrained -- every body holds the seven from the first morning.
+--
+-- NOT a ceiling. Forge.ceilingFor is read by the balance tools against a fake player that unlocks
+-- nothing, and folding this into it would silently flatten every earned class they measure.
+function Forge.untrained(player, class)
+    return class ~= nil and Class.isEarned(class) and not Class.isUnlocked(player, class)
+end
+
+-- What a bench says about an untrained piece -- one sentence, so the Forge and the Anvil cannot word
+-- the same refusal two ways. It names the unlock rather than the technique, because the unlock is what
+-- is missing.
+function Forge.untrainedText(class)
+    local name = Class.displayName(class) or class or "that class"
+    return "Nobody is trained as a " .. name .. " yet. Unlock the class to forge its gear."
+end
+
 -- ---------------------------------------------------------------------------
 -- The ceiling
 -- ---------------------------------------------------------------------------
@@ -373,6 +399,9 @@ function Forge.upgradeCost(player, item)
         materials = materialsFor(target, item.price, Item.classOf(item)),
         locked = target > ceiling,
         ceiling = ceiling,
+        -- ...AND WHETHER ITS CLASS IS SHUT (Forge.untrained). On the bill for the same reason as the hex
+        -- below: the panel greys the row off this table, so the refusal has to be readable here.
+        untrained = Forge.untrained(player, Item.classOf(item)),
         -- ...AND WHETHER A HEX IS SITTING ON IT (Forge.hexRefusal). Carried on the bill rather than
         -- only refused at the commit, because the panel draws its rows off THIS table -- a piece that
         -- priced normally and then refused at the press is the exact "greyed for one reason, refused
@@ -386,13 +415,14 @@ end
 -- materials, spend them, and return a FRESH instance at the new level (the caller swaps it into the
 -- grid or stash it came from -- baking a clean instance from the blueprint is why the level math never
 -- double-applies). Returns the new item, or nil + a reason:
---   "not forgeable" | "cursed" | "max level" | "locked" | "gold" | "technique" | "materials"
+--   "not forgeable" | "cursed" | "max level" | "untrained" | "locked" | "gold" | "technique" | "materials"
 function Forge.upgrade(player, item)
     if not Forge.canWork(item) then return nil, "not forgeable" end
     local hexed = Forge.hexRefusal(item)
     if hexed then return nil, hexed end
     local cost = Forge.upgradeCost(player, item)
     if not cost then return nil, "max level" end
+    if cost.untrained then return nil, "untrained" end
     if cost.locked then return nil, "locked" end
     if player.gold < cost.gold then return nil, "gold" end
     if cost.technique > 0 and cost.techniqueHeld < cost.technique then return nil, "technique" end
@@ -457,6 +487,7 @@ function Forge.costTo(player, item, target)
         locked = blockedAt ~= nil,
         blockedAt = blockedAt,
         ceiling = ceiling,
+        untrained = Forge.untrained(player, class),
     }
 end
 
@@ -481,6 +512,7 @@ function Forge.upgradeTo(player, item, target)
 
     local cost = Forge.costTo(player, item, target)
     if not cost then return nil, "max level" end
+    if cost.untrained then return nil, "untrained" end
     if cost.locked then return nil, "locked" end
     if player.gold < cost.gold then return nil, "gold" end
     if cost.technique > 0 and cost.techniqueHeld < cost.technique then return nil, "technique" end
@@ -648,6 +680,7 @@ function Forge.grantRefusal(player, item)
     if hexed then return hexed end
     local target = (item.level or 0) + 1
     if target > Item.MAX_LEVEL then return "max level" end
+    if Forge.untrained(player, Item.classOf(item)) then return "untrained" end
     if target > Forge.ceilingFor(player, item) then return "locked" end
     return nil
 end
@@ -689,6 +722,7 @@ function Forge.recipeCost(player, itemId)
         materials = materialsFor(target, def.price, def.class),
         locked = target > ceiling,
         ceiling = ceiling,
+        untrained = Forge.untrained(player, def.class),
     }
 end
 
@@ -706,6 +740,7 @@ function Forge.refineRecipe(player, itemId)
     end
     local cost = Forge.recipeCost(player, itemId)
     if not cost then return nil, "max level" end
+    if cost.untrained then return nil, "untrained" end
     if cost.locked then return nil, "locked" end
     if player.gold < cost.gold then return nil, "gold" end
     if cost.technique > 0 and cost.techniqueHeld < cost.technique then return nil, "technique" end

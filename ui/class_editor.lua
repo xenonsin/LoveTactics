@@ -1096,27 +1096,21 @@ end
 
 -- WHAT STANDING HERE DOES TO THE CLIMB, which is the other half of the choice and the half that used
 -- to be invisible. Growth is slow and cumulative; this is the rule that makes the badge matter to the
--- next action (Class.TECHNIQUE_DECLARED_SHARE, and Combat.awardTechnique for the split itself).
+-- next action (Class.techniqueFor): standing in a class is the only way to learn it.
 --
 -- IT IS SAID IN THE NUMBERS IT IS ACTUALLY MADE OF, in plain words. "Your declared class earns
--- technique faster" is a sentence a player cannot plan against; "each action earns 2: 1 for this class,
--- 1 for the class of the item used" is one they can. The figures are read off the constants rather than
--- typed, so a retune moves the sentence with the rule instead of leaving prose that used to be true.
+-- technique faster" is a sentence a player cannot plan against; "each action earns 2 technique for
+-- Ninja" is one they can. The figures are read off the constant rather than typed, so a retune moves
+-- the sentence with the rule instead of leaving prose that used to be true.
 --
 -- Yields when the pane is short, exactly as the lineage strip above it does: what a class GROWS and
 -- where this body STANDS are the two readouts the decision cannot be made without, and this is the
 -- explanation that goes with them.
 function ClassEditor:drawTechniqueRule(row, x, y, w)
     local small = self.fonts.small
-    local per, share = Class.TECHNIQUE_PER_ACTION, Class.TECHNIQUE_DECLARED_SHARE
-    if share <= 0 then return y end
-
-    -- The split first, then the case where both halves land on the same class, because that case is
-    -- the one a player reads as an exception unless it is stated. Both sentences are arithmetic on the
-    -- same two constants -- no metaphor for the player to translate before they can plan.
-    local text = string.format(
-        "Each action earns %d technique: %d for this class, %d for the class of the item used. "
-        .. "Using this class's own items earns all %d here.", per, share, per - share, per)
+    -- The rule for THIS row's class, named, in the same sentence the party sheet prints
+    -- (Class.techniqueRule).
+    local text = Class.techniqueRule(row.id)
 
     local _, lines = small:getWrap(text, w)
     local h = small:getHeight() * math.max(1, #lines)

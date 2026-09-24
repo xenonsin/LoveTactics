@@ -41,7 +41,7 @@ return {
         { "character_rowan", "Tactics", tag = 3, id = "tactics_title" },
         { "character_rowan", "Characters can be taught to fight on their own using tactics.\n\nTactics are prioritized and evaluated from top to bottom and are used when the character is set to auto mode.", tag = 4, id = "tactics_body" },
         { "character_rowan", "Classes", tag = 5, id = "classes_title" },
-        { "character_rowan", "Leveling up increases the stats determined by your chosen class. You are free to change classes at any time.\n\nYour class level increases when you use actions in combat. Using an action that's the same class increases your class technique by 2, using an action that's not the same class increases your class technique by 1, and the action's class technique by 1.\n\nClass level unlocks abilities from trainers and new classes, while the technique can be spent to upgrade your items.", tag = 6, id = "classes_body" },
+        { "character_rowan", "Leveling up increases the stats determined by your chosen class. You are free to change classes at any time.\n\nYour class level increases when you use actions in combat. Using any action increases your class technique by 2.\n\nClass level unlocks abilities from trainers and new classes, while the technique can be spent to upgrade items of unlocked classes.", tag = 6, id = "classes_body" },
         { "character_rowan", "Relics", tag = 10, id = "relics_title" },
         { "character_rowan", "Relics are bonuses that affect the whole party that only last until you leave the rift.", tag = 11, id = "relics_body" },
         { "character_rowan", "Injuries", tag = 12, id = "injury_title" },

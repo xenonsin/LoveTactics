@@ -226,6 +226,9 @@ return {
             for id, n in pairs(cost.materials) do p.materials[id] = n end
             p.roster[1].technique = { [cost.techniqueId] = cost.technique }
             p.roster[1].techniqueSpent = {}
+            -- Whichever house `pairs` handed back, the company is trained into it (Forge.untrained);
+            -- for a root this body is a spare, since a root is never shut.
+            p.roster[2] = require("tests.support.fixture").trainedIn(item.class)
             local newItem = Forge.upgrade(p, item)
             assert(newItem, "the first rung is open with no quests done")
             assert((newItem.level or 0) == (item.level or 0) + 1, "level should rise by one")

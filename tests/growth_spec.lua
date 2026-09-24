@@ -505,15 +505,15 @@ return {
         end,
     },
     {
-        name = "a party member's weapon strike banks its item's house; an enemy's does not",
+        name = "a party member's weapon strike banks the class it stands in; an enemy's does not",
         fn = function()
             local c = Combat.new(arena(6, 6), { unit("character_rowan", 2, 2) }, { unit("character_bandit", 3, 2) })
             local knight, bandit = c.units[1], c.units[2]
 
-            -- Deliberately an OFF-CLASS weapon: a knight swinging a Colosseum hammer. This is the case
-            -- the split exists for -- the hands and the badge disagree, so the award goes two ways
-            -- (Class.TECHNIQUE_DECLARED_SHARE). With a knight-class weapon in a knight's hands the
-            -- whole rule collapses to one house and the test would pass by coincidence.
+            -- Deliberately an OFF-CLASS weapon: a knight swinging a Colosseum hammer. The hands and the
+            -- badge disagree, and the badge takes the whole award (Class.techniqueFor). With a
+            -- knight-class weapon in a knight's hands the two agree and the test would pass by
+            -- coincidence.
             local hammer = Item.instantiate("weapon_iron_hammer")
             Character.addItem(knight.char, hammer)
             assert(hammer.class == "fighter", "the hammer is a fighter weapon")
@@ -522,11 +522,10 @@ return {
             openTurn(c, knight)
             local ok = Combat.useItem(c, knight, hammer, bandit.x, bandit.y)
             assert(ok, "the strike should resolve")
-            assert(knight.char.technique and knight.char.technique.fighter
-                == Class.TECHNIQUE_PER_ACTION - Class.TECHNIQUE_DECLARED_SHARE,
-                "the hands bank what is left of the award under the WEAPON's house")
-            assert(knight.char.technique.knight == Class.TECHNIQUE_DECLARED_SHARE,
-                "and the class the body is STANDING in takes the rest, off gear that is not its own")
+            assert(knight.char.technique and knight.char.technique.knight == Class.TECHNIQUE_PER_ACTION,
+                "the class the body is STANDING in takes the whole award, off gear that is not its own")
+            assert(not knight.char.technique.fighter,
+                "and the weapon's house learns nothing: a body cannot climb a class it is not in")
 
             -- The bandit striking back (AI-controlled) must not accrue anything on its transient char.
             local bWeapon = Combat.defaultWeapon(bandit.char)
@@ -579,25 +578,16 @@ return {
             assert(#c.techniqueByActor[1].houses == 1,
                 "a body swinging its own house splits nothing off, so it banks under one house")
 
-            -- PLAIN CLASS STOCK banks too -- the opening-campaign case that used to bank and float
-            -- nothing at all, since only 233 of 638 item files declare a discipline and disciplines are
-            -- locked content. A discipline item still banks its discipline rather than its class.
-            --
-            -- It is also OFF-HOUSE for this body, so it is the split: the action still costs one
-            -- action's worth, the hands take what is left after the badge's share, and the badge takes
-            -- the rest. See Class.TECHNIQUE_DECLARED_SHARE.
-            local hands = Class.TECHNIQUE_PER_ACTION - Class.TECHNIQUE_DECLARED_SHARE
+            -- An OFF-HOUSE cast -- gear of a class this body is not standing in -- still banks one action's worth, all of it under the class it IS standing in
+            -- (Class.techniqueFor). The hands' house learns nothing.
+            assert(Class.techniqueFor(classId, offHouse) == classId, "the probe pair is genuinely off-house")
             assert(Combat.awardTechnique(c, knight, { class = offHouse })
-                == Class.TECHNIQUE_PER_ACTION, "a plain class cast still banks one action's worth")
-            assert(knight.char.technique[offHouse] == hands, "the hands take their share onto the ledger")
-            assert(knight.char.technique[classId] == first + Class.TECHNIQUE_DECLARED_SHARE,
-                "and the class this body is standing in takes the rest, whatever it is holding")
-            -- The split is reported by the body's own ledger row rather than by anything floating: the
-            -- hands' house is listed first, which is the order a crossing would stack in.
-            local houses = c.techniqueByActor[1].houses
-            assert(#houses == 2 and houses[1].key == classId and houses[2].key == offHouse,
-                "both halves land on the one body's row, in the order they were banked")
-            assert(c.techniqueCrossing == nil, "and a split action still crosses nothing on its own")
+                == Class.TECHNIQUE_PER_ACTION, "an off-house cast still banks one action's worth")
+            assert(not knight.char.technique[offHouse], "the hands' house takes nothing")
+            assert(knight.char.technique[classId] == first + Class.TECHNIQUE_PER_ACTION,
+                "the class this body is standing in takes it all, whatever it is holding")
+            assert(#c.techniqueByActor[1].houses == 1, "so the body's ledger row still names one house")
+            assert(c.techniqueCrossing == nil, "and an ordinary action crosses nothing on its own")
 
             -- Run one key's battle ledger to the cap: banking stops while play carries on. The cap now
             -- bounds the level-up reading too, since they are one number.
@@ -612,8 +602,9 @@ return {
             assert(knight.char.technique[classId] == Class.TECHNIQUE_PER_BATTLE,
                 "the ledger never exceeds what the fight was allowed to pay")
 
-            -- The cap is PER KEY, so a capped discipline does not stop a different house banking. A
-            -- THIRD id, so this is asking about a house neither of the two above has touched.
+            -- The cap is PER KEY, so a capped class does not stop a different house banking. A THIRD
+            -- id, stood in, so this is asking about a house neither of the two above has touched.
+            knight.char.declaredClass = thirdHouse
             assert(Combat.awardTechnique(c, knight, { class = thirdHouse }) > 0,
                 "another house still banks after the first has capped")
 
@@ -640,9 +631,9 @@ return {
                 { unit("character_bandit", 5, 2) })
             local rowan, saber = c.units[1], c.units[2]
 
-            -- Declared rather than left to the blueprints, because the split reads the class a body is
-            -- STANDING in (Class.TECHNIQUE_DECLARED_SHARE) and this case is about the ledger's shape,
-            -- not about what two character files happen to say.
+            -- Declared rather than left to the blueprints, because the award reads the class a body is
+            -- STANDING in (Class.techniqueFor) and this case is about the ledger's shape, not about
+            -- what two character files happen to say.
             rowan.char.declaredClass, saber.char.declaredClass = "knight", "rogue"
 
             Combat.awardTechnique(c, rowan, { class = "knight" })
@@ -655,20 +646,15 @@ return {
             assert(ledger[1].char == rowan.char and ledger[1].name == rowan.char.name,
                 "in the order they first banked, each carrying the name the panel prints")
 
-            local knight, fighter
+            local knight
             for _, house in ipairs(ledger[1].houses) do
                 if house.key == "knight" then knight = house end
-                if house.key == "fighter" then fighter = house end
             end
-            assert(#ledger[1].houses == 2, "a body's houses are one row each, not one per cast")
+            assert(#ledger[1].houses == 1, "a body's houses are one row each, not one per cast")
 
-            -- Two whole knight casts plus the share the badge took out of the fighter one, against what
-            -- was left of that cast for the hands. The old reading here was "knight is twice fighter",
-            -- which was the same claim under a rule where the badge took nothing.
-            assert(knight.amount == 2 * Class.TECHNIQUE_PER_ACTION + Class.TECHNIQUE_DECLARED_SHARE,
-                "the declared house totals its own casts plus its share of the off-house one")
-            assert(fighter.amount == Class.TECHNIQUE_PER_ACTION - Class.TECHNIQUE_DECLARED_SHARE,
-                "and the off-house row carries only what the hands kept")
+            -- All three of Rowan's casts, the fighter one included, land on the class she stands in.
+            assert(knight.amount == 3 * Class.TECHNIQUE_PER_ACTION,
+                "the declared house totals every cast, its own gear and the off-house piece alike")
             assert(#ledger[2].houses == 1 and ledger[2].houses[1].key == "rogue",
                 "the second body carries only what it earned")
 
@@ -681,52 +667,44 @@ return {
         -- `techniqueCrossing`, floated by states/battle.lua). An ordinary action banks and stays
         -- silent; a rung crossing is the event. Both directions are pinned here, because the whole
         -- point of the change is what does NOT happen fifteen times a fight.
-        name = "banking arms the board only on a rung crossing, and stacks two of them hands-first",
+        name = "banking arms the board only on a rung crossing, and only the declared class climbs",
         fn = function()
-            local hands = Class.TECHNIQUE_PER_ACTION - Class.TECHNIQUE_DECLARED_SHARE
+            local per = Class.TECHNIQUE_PER_ACTION
             local c = Combat.new(arena(8, 8), { unit("character_rowan", 2, 2) },
                 { unit("character_bandit", 5, 2) })
             local rowan = c.units[1]
-            rowan.char.declaredClass = "knight"
+            -- Stood in a CROSSING and swinging one of its parents' gear -- the case most tempting to
+            -- carve out, and deliberately not carved out (Class.techniqueFor).
+            rowan.char.declaredClass = "ninja"
 
-            -- One short of the ladder's first rung in the house being SWUNG, so the very next action
-            -- steps it; the badge's house is left at nothing, so this crossing is a single line.
-            rowan.char.technique = { rogue = Class.classLevelCost(1) - hands, knight = 0 }
+            -- One short of the ladder's first rung in the house she STANDS in, so the very next
+            -- action steps it.
+            rowan.char.technique = { ninja = Class.classLevelCost(1) - per }
 
             Combat.awardTechnique(c, rowan, { class = "rogue" })
             local crossing = c.techniqueCrossing
             assert(crossing and crossing.unit == rowan, "the crossing arms on the body that earned it")
             assert(#crossing.rungs == 1, "one rung crossed, one line")
-            assert(crossing.rungs[1].key == "rogue" and crossing.rungs[1].level == 1,
+            assert(crossing.rungs[1].key == "ninja" and crossing.rungs[1].level == 1,
                 "naming the house and the rung reached -- which is what the floater prints")
-            assert(Class.classLevel(rowan.char, "rogue") == 1, "and the ladder agrees it was reached")
+            assert(Class.classLevel(rowan.char, "ninja") == 1, "and the ladder agrees it was reached")
+            assert(not rowan.char.technique.rogue, "a parent's gear teaches the class she stands in")
 
             -- The same step is stamped on the body's ledger row, so a crossing earned by the KILLING
             -- BLOW -- which the board can no longer float, the summary owning the frame by then -- is
             -- still named, on the summary panel's house row (ui/panels/battle_summary.lua).
             assert(c.techniqueByActor[1].rungs[1].level == 1, "the crossing rides the body's own row")
 
-            -- Banking on past a crossed rung: silent again, because rung 2 is another 46 away. This is
-            -- the ordinary case and the one the old per-action floater spoke over.
+            -- Banking on past a crossed rung: silent again. This is the ordinary case and the one the
+            -- old per-action floater spoke over.
             Combat.awardTechnique(c, rowan, { class = "rogue" })
             assert(c.techniqueCrossing == nil, "banking past a crossing says nothing again")
 
-            -- BOTH HALVES CROSSING ON ONE ACTION -- the hands and the badge each left one short. The
-            -- swung house heads the stack, since the lines are drawn top-down from what was in hand.
-            local d = Combat.new(arena(8, 8), { unit("character_rowan", 2, 2) },
-                { unit("character_bandit", 5, 2) })
-            local body = d.units[1]
-            body.char.declaredClass = "knight"
-            body.char.technique = {
-                rogue  = Class.classLevelCost(1) - hands,
-                knight = Class.classLevelCost(1) - Class.TECHNIQUE_DECLARED_SHARE,
-            }
-
-            Combat.awardTechnique(d, body, { class = "rogue" })
-            local both = d.techniqueCrossing
-            assert(both and #both.rungs == 2, "two rungs crossed in one action, two lines")
-            assert(both.rungs[1].key == "rogue" and both.rungs[2].key == "knight",
-                "the house in the hands heads the stack and the badge sits under it")
+            -- And the drop case: a rogue swinging a Ninja piece learns rogue, so a found piece of a class
+            -- the company has not unlocked cannot climb it.
+            assert(Class.techniqueFor("rogue", "ninja") == "rogue", "a root does not learn its crossing")
+            assert(Class.techniqueFor("thief", "rogue") == "thief", "a subclass does not climb its root")
+            assert(Class.techniqueFor("knight", nil) == nil, "an untagged item teaches nothing")
         end,
     },
     {

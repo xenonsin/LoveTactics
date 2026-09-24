@@ -238,6 +238,7 @@ end
 -- "30 Knight" -- and only classless stock still shows a plain "160g".
 local function costTail(cost)
     if not cost then return "fully forged", "max" end
+    if cost.untrained then return "untrained", "locked" end
     if cost.locked then return "standing", "locked" end
     if cost.technique > 0 then
         return cost.technique .. " " .. keyLabel(cost.techniqueId), nil
@@ -512,6 +513,7 @@ function ForgePanel:refusal(reason, item)
         return "Not enough technique. Fight with " .. name .. " gear to bank more."
     end
     if reason == "materials" then return "Not enough materials." end
+    if reason == "untrained" then return Forge.untrainedText(Item.classOf(item)) end
     if reason == "locked" then return self:ceilingReason(item) end
     if reason == "max level" then return (item.name or "That") .. " is at maximum level." end
     return "It cannot be forged."
@@ -1270,7 +1272,7 @@ function ForgePanel:drawBill(row, cost, x, y, w, batch, aim, level)
     -- and nothing on screen ever said so.
     local bw, bh = 224, 46
     local bx = x + w - bw
-    local blocked = cost.locked
+    local blocked = cost.locked or cost.untrained
     local live = affordable and not blocked
     self.forgeRect = { x = bx, y = y - 2, w = bw, h = bh }
 
@@ -1295,7 +1297,8 @@ function ForgePanel:drawBill(row, cost, x, y, w, batch, aim, level)
     Theme.set(Theme.muted, 0.8)
     -- The key that presses this button, under its label -- and nothing there on a finger, which
     -- presses it by touching it (input_mode.lua's pick).
-    local sub = blocked and "beyond your standing"
+    local sub = cost.untrained and "untrained"
+        or blocked and "beyond your standing"
         or (not affordable and "short on stock")
         or InputMode.pick("A", "", "Enter")
     love.graphics.printf(sub, bx, y + 26, bw, "center")
@@ -1303,7 +1306,8 @@ function ForgePanel:drawBill(row, cost, x, y, w, batch, aim, level)
     if blocked then
         love.graphics.setFont(self.smallFont)
         love.graphics.setColor(SHORT[1], SHORT[2], SHORT[3])
-        love.graphics.printf(self:ceilingReason(row.item), x, y + chipH + 8, w - bw - 12, "left")
+        love.graphics.printf(cost.untrained and Forge.untrainedText(Item.classOf(row.item))
+            or self:ceilingReason(row.item), x, y + chipH + 8, w - bw - 12, "left")
     end
 end
 
