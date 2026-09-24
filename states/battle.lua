@@ -836,6 +836,8 @@ local function finishBattle(result)
     -- immediate handoff -- closes its file with a result and a standing count rather than trailing off
     -- mid-turn. A release build and an untraced fight both no-op.
     CombatTrace.close(result)
+    -- Whatever a velvet slime is still wearing goes home, won or lost (Combat.strip's loan).
+    Combat.returnStripped(battle.combat)
 
     if battle.session then
         local cb = result == "win" and battle.onWin or battle.onLoss

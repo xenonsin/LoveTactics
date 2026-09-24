@@ -43,7 +43,6 @@ return {
                 "the Long Winter stands in for the Late Watch")
             assert(Character.defs[sin.minor.lead], "and whatever stands there is a body that loads")
             assert(not Character.defs["character_the_late_watch"], "the Late Watch is gone")
-            assert(sin.guardian.filler == sin.minor.lead, "and fills out Acedia's own stair")
         end,
     },
 

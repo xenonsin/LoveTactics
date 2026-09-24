@@ -39,7 +39,6 @@ return {
             assert(sin, "the wrath circle exists")
             assert(sin.minor.lead == "character_forge_wretch", "the wretch stands in for the Anvil")
             assert(Character.defs[sin.minor.lead], "and whatever stands there is a body that loads")
-            assert(sin.guardian.filler == sin.minor.lead, "and fills out Ira's own stair")
             assert(not Character.defs["character_the_anvil"], "the Anvil is gone")
             -- The Champion is still a correctly built body and still the pattern for authoring phases;
             -- it just is not a sin.

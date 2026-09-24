@@ -6,7 +6,7 @@
 -- WHY A SEPARATE ANIMAL from the wolf (data/traits/trait_wolf_companion.lua): the wolf is a body that
 -- fights beside you; the hawk is a SPOTTER. It fields the setup the rest of the shelf pays off -- a
 -- Marked foe is one the Marksman's Lens shoots harder, the Executioner's Eye stacks control onto, and
--- the whole party's follow-up lands into. The bird's own blows are an afterthought (character_hawk is
+-- the whole party's follow-up lands into. The bird's own blows are an afterthought (character_falconers_hawk is
 -- fragile and hits soft); what it is FOR is that first mark, handed to you free of a turn or a cast.
 --
 -- Summoned `noClaim` (models/trait.lua), so it does not lock a granting active -- the glove is a pure
@@ -23,7 +23,7 @@ return {
     onCombatStart = function(ctx)
         local x, y = ctx.openTileNear(ctx.unit.x, ctx.unit.y)
         if x then
-            ctx.unit.hawkCompanion = ctx.summon("character_hawk", x, y, { noClaim = true })
+            ctx.unit.hawkCompanion = ctx.summon("character_falconers_hawk", x, y, { noClaim = true })
         end
         -- Stoop on the closest quarry: the nearest living foe, marked at the opening.
         local best, bestDist

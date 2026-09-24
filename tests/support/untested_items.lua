@@ -149,7 +149,6 @@ return {
     "utility_deadhand_grip",
     "utility_distant_sigil",
     "utility_duelists_poise",
-    "utility_falconers_glove",
     "utility_focus_stone",
     "utility_forty_one_marks",
     "utility_greyveil_cloak",

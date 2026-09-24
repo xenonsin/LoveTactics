@@ -22,6 +22,10 @@
 # FOUR FOLDERS, NOT ONE, because the wiki is not only the shelves any more. data/characters/ is the
 # bestiary, data/races/ decides which page a body lands on, and data/encounters/ is what the rift's
 # floors and the whole placement measurement are read out of -- an edit to any of them moves pages.
+#
+# AND SIX MORE FOR THE STATUS PAGE. data/status/ is the page itself; the other five are read by source
+# scan for who applies, ends or wards a status (traits fold into the items that carry them, and a
+# ground, a trap, a curse or an injury is named on the entry it lands).
 # The list is deliberately short of the transitive truth (the renderer reads seventy-odd files through
 # the models); the post-commit hook is the backstop for everything else, because it fires on any .lua
 # at all and its generated diff is the gate.
@@ -42,6 +46,7 @@ payload="$(printf '%s' "$payload" | tr '\\' '/' | tr -s '/')"
 
 case "$payload" in
     *data/items/*|*data/characters/*|*data/races/*|*data/encounters/*|*wiki_gen.lua*) ;;
+    *data/status/*|*data/traits/*|*data/hazards/*|*data/traps/*|*data/curses/*|*data/injuries/*) ;;
     *) exit 0 ;;
 esac
 

@@ -1780,6 +1780,19 @@ end
 -- caller passes nothing and gets a fully opened battle, exactly as before.
 function Combat.new(arena, partyUnits, enemyUnits, opts)
     opts = opts or {}
+    -- Anything a velvet slime was still holding when the last fight ended goes home before this one is
+    -- built (Character.restoreStripped) -- the net under every exit Combat.returnStripped did not see.
+    for _, list in ipairs({ partyUnits or {}, enemyUnits or {} }) do
+        for _, spec in ipairs(list) do
+            Character.restoreStripped(spec.char)
+            -- ...and anything worn ON LOAN -- another body's piece in this grid -- comes off. Nothing
+            -- in the party wears a loan today; this keeps a future one from ever being kept by accident.
+            for i = 1, Character.MAX_INVENTORY do
+                local it = spec.char and spec.char.inventory[i]
+                if it and it.onLoan then spec.char.inventory[i] = nil end
+            end
+        end
+    end
     local combat = {
         arena = arena,
         objective = (arena and arena.objective) or { type = "killAll" },
@@ -6086,12 +6099,26 @@ end
 -- differently: the pinned drive walks the TARGET and follows it, and there is no target here to walk.
 -- Uses footprintCanShift rather than canShoveInto, so a wide charger runs the lane as one body (the
 -- lockstep form has to refuse a wide charger; this one does not).
-local function chargeLane(combat, user, dx, dy, distance)
+local function chargeLane(combat, user, dx, dy, distance, trample)
     local oX, oY = user.x, user.y
+    local trampled
     local moved = 0
     for _ = 1, (distance or 1) do
         if not user.alive then break end -- a hazard or trap in the lane may end the run mid-stride
         local ok, blocker = footprintCanShift(combat, user, dx, dy)
+        if not ok and trample then
+            -- A HEAVE BULLDOZES rather than brushing past: the body in the lane takes the caster's blow
+            -- and is driven a tile AHEAD. A sideways shove -- the rush's way, below -- cannot clear a lane
+            -- as wide as a four-tile body, whose other row is exactly where the shove would put it.
+            if not (blocker and blocker.alive) then break end
+            trampled = trampled or {}
+            if not trampled[blocker] then trampled[blocker] = true; trample(blocker) end -- one blow a body
+            if blocker.alive then
+                Combat.knockback(combat, user, blocker, 1, { dest = { x = blocker.x + dx, y = blocker.y + dy } })
+            end
+            ok = footprintCanShift(combat, user, dx, dy)
+            if not ok then break end
+        end
         if not ok then
             if not laneClears(combat, blocker, dx, dy) then break end
             local px, py = -dy, dx
@@ -6124,12 +6151,23 @@ end
 -- that empty lane itself. The second half is what makes Charge a way to MOVE as well as a way to
 -- displace: aim a foe to bury it in a corner, aim open ground to cross three tiles of it on an action
 -- rather than on your move. Returns the number of tiles advanced.
-function Combat.chargeInto(combat, user, tx, ty, distance)
+--
+-- `opts.lane` never pins: whatever stands on the aimed tile is a bystander in the lane like any other
+-- (a four-tile body cannot drive anything -- see Combat.charge -- so Settle runs the lane over it).
+-- `opts.trample(body)` is the caster's own blow on a body in the lane, which is then driven a tile AHEAD
+-- rather than shoved aside (chargeLane). The direction is read from the
+-- body's NEAREST cell to the aimed tile rather than its corner, so a wide body heaves the way it was
+-- pointed from any side of it.
+function Combat.chargeInto(combat, user, tx, ty, distance, opts)
     if not (user and user.alive and tx and ty) then return 0 end
-    local dx, dy = signDominant(tx - user.x, ty - user.y)
+    local fromX, fromY = user.x, user.y
+    if opts and opts.lane then fromX, fromY = Combat.nearestCell(tx, ty, user) end
+    local dx, dy = signDominant(tx - fromX, ty - fromY)
     if dx == 0 and dy == 0 then return 0 end
     local pinned = Combat.unitAt(combat, tx, ty)
-    if pinned and pinned ~= user then return Combat.charge(combat, user, pinned, distance) end
+    if pinned and pinned ~= user and not (opts and opts.lane) then
+        return Combat.charge(combat, user, pinned, distance)
+    end
     -- An anchored charger (Root) has no rush in it. Combat.charge makes this check in both directions;
     -- here only the charger can be planted, because there is nobody in front of it to drive.
     if Status.blocksForcedMove(user) then
@@ -6137,7 +6175,7 @@ function Combat.chargeInto(combat, user, tx, ty, distance)
             string.format("%s is rooted, and the charge goes nowhere.", unitName(user)), user)
         return 0
     end
-    return chargeLane(combat, user, dx, dy, distance)
+    return chargeLane(combat, user, dx, dy, distance, opts and opts.trample)
 end
 
 -- Where a charge aimed at (tx, ty) would leave the CHARGER, without moving anything -- Combat.chargeInto's
@@ -7131,7 +7169,12 @@ function Combat.mitigatedDamage(target, base, tags, opts)
     -- Status-driven vulnerabilities ADD damage for matching tags (e.g. Wet -> +lightning). Folded in
     -- here, the shared damage core, so both real hits and the damage preview see the amplification.
     local vuln = Status.vulnerability(target, tags)
-    return math.max(damageFloor(base), math.floor(base - defense - resist + vuln + 0.5))
+    local dmg = math.max(damageFloor(base), math.floor(base - defense - resist + vuln + 0.5))
+    -- A body the blow only half reaches (On the Wing) takes a share of what armour left, never less
+    -- than the floor: Status.damageTakenScale, last, so armour keeps its meaning under it.
+    local scale = Status.damageTakenScale(target)
+    if scale ~= 1 then dmg = math.max(damageFloor(base), math.floor(dmg * scale + 0.5)) end
+    return dmg
 end
 
 -- A structured, render-agnostic breakdown of the very arithmetic Combat.mitigatedDamage just
@@ -7213,6 +7256,11 @@ function Combat.damageBreakdown(target, base, tags, opts, baseParts, dmg)
         -- resistance (Wet under fire). Same signed row either way -- the label just stops lying.
         if vuln ~= 0 then add(vuln > 0 and "Vulnerability" or "Resistance", vuln, false, true) end
         mitigated = base - defense - resist + vuln
+    end
+    -- The wing's share (Combat.mitigatedDamage), named so the rows above do not appear to sum wrong.
+    local takenScale = Status.damageTakenScale(target)
+    if takenScale ~= 1 and not (opts and opts.raw) then
+        add(string.format("Only x%g reaches it", takenScale), nil)
     end
     add("Damage", dmg, true)
     -- Say so when mitigation would have driven the blow below the floor -- otherwise the rows sum to
@@ -7658,6 +7706,30 @@ function Combat.devour(combat, eater, body, opts)
     -- the effect also runs under the forecast, and a hover must never hand her a power.
     require("models.palate").take(combat, eater, body)
     return body
+end
+
+-- REJOIN: a moss sloughling gives itself back to the body it came from (data/items/ability/
+-- ability_rejoin.lua). The mirror of Combat.devour's `absorb`, run the other way round: the PIECE acts,
+-- the maker gains. Its remaining health goes home -- never above the maker's ceiling, because a piece is
+-- health that was lent out, not health that was found -- and the piece leaves no corpse.
+--
+-- The maker is healed BEFORE the piece is taken off the board, so anything listening for the loss of a
+-- summon (trait_come_apart, via Trait.onSummonLost) reads the maker as already whole again.
+function Combat.rejoin(combat, piece)
+    local maker = piece and piece.summoner
+    if not (combat and maker and maker.alive and piece.alive and piece.char) then return nil end
+    if Combat.cellGap(piece.x, piece.y, maker) ~= 1 then return nil end
+    local amount = math.max(0, piece.char.stats.health.current or 0)
+    local hp = maker.char.stats.health
+    hp.current = math.min(hp.max, hp.current + amount)
+    Combat.logEvent(combat, "action",
+        string.format("%s rejoins %s.", unitName(piece), unitName(maker)), piece)
+    piece.noRevive = true
+    piece.char.stats.health.current = 0
+    killUnit(combat, piece)
+    piece.corpse = false
+    piece.devoured = true
+    return maker
 end
 
 -- THE WATER RISES: turn a shallow tile into a deep one, and take whatever was standing in it.
@@ -8952,6 +9024,28 @@ end
 -- life can't be healed back into). Returns the amount actually healed. Reached through `fx.heal`
 -- inside an ability effect.
 function Combat.applyHeal(combat, target, amount)
+    -- A body that is already FULL and wears the Sated charm (`passesHeals`) sends the heal on to the most
+    -- hurt ally standing beside it. The ally is below full by construction, so the hand-off cannot loop.
+    if (amount or 0) > 0 and target and target.alive and target.char and Trait.flag(target, "passesHeals") then
+        local hp = target.char.stats.health
+        if hp.current >= hp.max then
+            local best, want
+            for _, u in ipairs(combat.units or {}) do
+                if u ~= target and u.alive and not u.incapacitated and u.side == target.side
+                    and Combat.unitGap(target, u) == 1 then
+                    local h = u.char.stats.health
+                    local missing = h.max - h.current
+                    if missing > 0 and (not want or missing > want) then best, want = u, missing end
+                end
+            end
+            if best then
+                Combat.logEvent(combat, "action",
+                    string.format("%s is sated, and passes it to %s.", unitName(target), unitName(best)),
+                    { target, best })
+                return Combat.applyHeal(combat, best, amount)
+            end
+        end
+    end
     -- An UNCLOSING WOUND refuses the heal outright. Sat at the top of the one funnel every heal in the
     -- game runs through -- a spell, a potion, a Regeneration tick, a lifesteal drink, a Sanctified
     -- Presence -- so nothing has to learn the rule twice and nothing can route around it.
@@ -9782,6 +9876,8 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
         -- Inert, but it answers with the BODY, so the effect goes on to its heal and its Gorged and the
         -- planner sees what eating would pay (see ability_devour's note on why that is the payload).
         devour = function(body) touchesBoard() return body end,
+        spendStacks = function() return true end,
+        rejoin = function() touchesBoard() return true end,
     }
     if ab.effect then pcall(ab.effect, fx) end
     -- THE POURED MEASURE'S RETURN, on the caster's own bar, so the forecast counts the health the
@@ -10246,6 +10342,8 @@ function Combat.abilityOutput(unit, item)
         bounty = function(amount) out.bounty = (out.bounty or 0) + (amount or 0); return 0 end,
         consumeCorpse = function() return false end,
         devour = function() return nil end,
+        spendStacks = function() return true end,
+        rejoin = function() return nil end,
     }
     pcall(ab.effect, fx)
     return out
@@ -10298,14 +10396,14 @@ function Combat.abilityTargets(combat, unit, item)
             local valid = false
             -- An untargetable foe (Invisible) can't be picked; a friendly cast ignores the status,
             -- so an ally can still heal or buff someone the enemy has lost sight of.
-            if ab.target == "enemy" then valid = other.side ~= unit.side and not Status.untargetable(other)
+            if ab.target == "enemy" then valid = other.side ~= unit.side and not Status.untargetable(other, combat)
             elseif ab.target == "ally" then valid = other.side == unit.side -- includes self
             elseif ab.target == "self" then valid = other == unit
             -- An occupiable AoE (e.g. Rain of Arrows) aims at a cell, so it can be centred right on
             -- a foe -- surface those foes as targets so the enemy AI plans the volley like a strike.
             -- A point placement (a trap: tile-target but no aoe/allowOccupied) stays unplannable here.
             elseif ab.target == "tile" and ab.aoe and ab.allowOccupied then
-                valid = other.side ~= unit.side and not Status.untargetable(other) end
+                valid = other.side ~= unit.side and not Status.untargetable(other, combat) end
             -- A sight-gated ability can't reach a target it has no clear line to (terrain cover).
             if valid and ab.requiresSight and not waivesSight
                 and not Combat.unitsSighted(combat, unit, other) then
@@ -11064,8 +11162,12 @@ end
 -- same way a one-pool cast is, because everything below iterates rather than reading `cost.stat`.
 function Combat.abilityCosts(unit, ab)
     local mult = Status.costMultiplier(unit)
+    local add = Status.costAdd(unit)
     local out = Item.costs(ab)
-    for _, c in ipairs(out) do c.amount = math.floor(c.amount * mult + 0.5) end
+    for _, c in ipairs(out) do
+        c.amount = math.floor(c.amount * mult + 0.5)
+        if c.amount > 0 then c.amount = c.amount + add end
+    end
     return out
 end
 
@@ -11556,6 +11658,194 @@ function Combat.steal(combat, thief, victim)
         end
     end
     return item
+end
+
+-- STRIP: take pieces of `victim`'s gear off them for the rest of THIS fight (the velvet slimes, Lust's
+-- slime line -- data/items/utility/utility_velvet_body.lua). Armour first, then weapons, then the rest;
+-- never a `noSteal` body part or a `bound` relic, and never through a Jealous Resin (`wardsTheft`).
+--
+-- WHAT IT IS NOT IS A THEFT. Combat.steal moves an item for good and an enemy thief with a full grid
+-- destroys it; a strip is a LOAN the fight takes out. The owner's own character carries a ledger of
+-- every piece taken (`char.stripped`), and Combat.returnStripped / Character.restoreStripped put it
+-- back on the holder's death, at finishBattle, at the next Combat.new and before any save -- so a
+-- company can lose a fight in its underclothes and walk out of it dressed.
+--
+-- `holder` WEARS what it takes: the piece goes into its grid and is folded like its own kit, which is
+-- the slime's whole joke. With `opts.discard` (the Velvet Glove) nobody wears it -- it is simply off.
+-- Returns the list of pieces taken (possibly empty).
+local STRIP_ORDER = { armor = 1, weapon = 2, utility = 3 }
+
+local function detachTraits(unit, item)
+    if not (unit and unit.traits) then return end
+    local keep = {}
+    for _, t in ipairs(unit.traits) do
+        if t.item ~= item then keep[#keep + 1] = t end
+    end
+    unit.traits = keep
+end
+
+local function attachTraits(unit, item)
+    unit.traits = unit.traits or {}
+    for _, id in ipairs(Curse.traitsOn(item)) do
+        unit.traits[#unit.traits + 1] = Trait.instantiate(id, item)
+    end
+end
+
+function Combat.strip(combat, holder, victim, opts)
+    opts = opts or {}
+    local taken = {}
+    if not (combat and victim and victim.alive and victim.char) then return taken end
+    if Trait.flag(victim, "wardsTheft") then
+        Combat.logEvent(combat, "action", string.format("%s cannot get anything off %s.",
+            unitName(holder or victim), unitName(victim)), { holder, victim })
+        return taken
+    end
+    for _ = 1, opts.count or 1 do
+        local best, bestCell, bestRank
+        for i = 1, Character.MAX_INVENTORY do
+            local item = victim.char.inventory[i]
+            local rank = item and STRIP_ORDER[item.type]
+            if rank and opts.only and item.type ~= opts.only then rank = nil end
+            if rank and not item.noSteal and not item.bound and (not bestRank or rank < bestRank) then
+                best, bestCell, bestRank = item, i, rank
+            end
+        end
+        if not best then break end
+        victim.char.inventory[bestCell] = nil
+        detachTraits(victim, best)
+        victim.char.stripped = victim.char.stripped or {}
+        victim.char.stripped[#victim.char.stripped + 1] = { item = best, cell = bestCell }
+        local worn = false
+        -- A piece worn by somebody who is not its owner is ON LOAN, and says so on the instance: a save
+        -- never writes one into the wrong grid (models/save.lua) and the next Combat.new takes it off.
+        if holder and holder.alive and not opts.discard and Character.addItem(holder.char, best) then
+            best.onLoan = true
+            attachTraits(holder, best)
+            worn = true
+        end
+        combat.stripped = combat.stripped or {}
+        combat.stripped[#combat.stripped + 1] = { item = best, owner = victim, holder = worn and holder or nil }
+        taken[#taken + 1] = best
+        Combat.logEvent(combat, "action", string.format(worn and "%s takes %s off %s, and wears it."
+            or "%s strips %s off %s.", unitName(holder or victim), best.name or "a piece", unitName(victim)),
+            { holder, victim })
+    end
+    if #taken > 0 then
+        applyUnitPassives(victim)
+        if holder and holder.alive then applyUnitPassives(holder) end
+    end
+    return taken
+end
+
+-- Hand a stripped piece from one holder to another (the Velvet Queen's wardrobe, shared out among the
+-- pieces she comes apart into). The owner's ledger is untouched: it is still the same loan.
+function Combat.passStripped(combat, from, to)
+    local moved = 0
+    for _, entry in ipairs(combat and combat.stripped or {}) do
+        if entry.holder == from and to and to.alive then
+            Character.removeItem(from.char, entry.item)
+            detachTraits(from, entry.item)
+            if Character.addItem(to.char, entry.item) then attachTraits(to, entry.item) end
+            entry.holder = to
+            moved = moved + 1
+            if moved >= 1 then break end
+        end
+    end
+    if moved > 0 then applyUnitPassives(to) end
+    return moved
+end
+
+-- GIVE IT BACK: every piece `holder` is wearing (or, with no holder, every piece this fight took) goes
+-- home to its owner, into the cell it came out of where that is free. Called by the velvet body when it
+-- dies and by finishBattle for whatever is still out.
+function Combat.returnStripped(combat, holder)
+    if not combat then return 0 end
+    local keep, back, touched = {}, 0, {}
+    for _, entry in ipairs(combat.stripped or {}) do
+        if holder == nil or entry.holder == holder then
+            if entry.holder then
+                Character.removeItem(entry.holder.char, entry.item)
+                detachTraits(entry.holder, entry.item)
+            end
+            entry.item.onLoan = nil
+            local owner = entry.owner
+            Character.restoreStripped(owner.char, entry.item)
+            if owner.alive then attachTraits(owner, entry.item) end
+            touched[owner] = true
+            back = back + 1
+            Combat.logEvent(combat, "action", string.format("%s is back on %s.",
+                entry.item.name or "A piece", unitName(owner)), { owner })
+        else
+            keep[#keep + 1] = entry
+        end
+    end
+    combat.stripped = keep
+    for owner in pairs(touched) do if owner.alive then applyUnitPassives(owner) end end
+    -- At the end of a fight (no holder named), anything still ON LOAN in anybody's grid -- a Copycat's
+    -- borrowed weapon (data/traits/trait_copycat.lua) -- comes out, so it never reaches the loadout.
+    if holder == nil then
+        for _, u in ipairs(combat.units or {}) do
+            for i = 1, Character.MAX_INVENTORY do
+                local it = u.char and u.char.inventory[i]
+                if it and it.onLoan then u.char.inventory[i] = nil end
+            end
+        end
+    end
+    return back
+end
+
+-- MIMICRY: `unit` becomes a slime copy of `source` (Envy's line, data/traits/trait_mimicry.lua). It takes
+-- the source's fighting numbers -- damage, magic, defences, skill, speed, movement, luck -- and a copy of
+-- the source's first weapon, and keeps its OWN health and its own bound body, so the immunity and the
+-- adaptation stay the slime's. Once per body. Returns true when it took.
+local MIMIC_STATS = { "damage", "magicDamage", "defense", "magicDefense", "skill", "luck", "speed", "movement" }
+
+function Combat.mimic(combat, unit, source)
+    if not (unit and unit.alive and source and source.char and unit.char) or unit.mimicked then return false end
+    unit.mimicked = source
+    for _, stat in ipairs(MIMIC_STATS) do
+        local v = source.char.stats[stat]
+        if type(v) == "number" then unit.char.stats[stat] = v end
+    end
+    for _, item in ipairs(Character.eachItem(source.char)) do
+        if item.type == "weapon" and not item.bound and not item.noCopy then
+            local copy = Item.instantiate(item.id)
+            if Character.addItem(unit.char, copy) then
+                unit.char.defaultAction = item.id
+                attachTraits(unit, copy)
+            end
+            break
+        end
+    end
+    unit.char.name = string.format("%s (%s)", unit.char.name or "Slime", unitName(source))
+    applyUnitPassives(unit)
+    Combat.logEvent(combat, "action", string.format("The slime takes %s's shape.", unitName(source)),
+        { unit, source })
+    return true
+end
+
+-- LEND `unit` a fresh copy of `itemId` for this fight (the Copycat, data/traits/trait_copycat.lua). The
+-- piece is ON LOAN -- a save never writes it and Combat.returnStripped sweeps it at the end of the fight --
+-- and `marks` are stamped on it so the granting rule can recognise its own loan. Nil when there is no cell.
+function Combat.lendItem(combat, unit, itemId, marks)
+    if not (unit and unit.alive and unit.char and Item.defs[itemId]) then return nil end
+    local item = Item.instantiate(itemId)
+    item.onLoan = true
+    for k, v in pairs(marks or {}) do item[k] = v end
+    if not Character.addItem(unit.char, item) then return nil end
+    attachTraits(unit, item)
+    applyUnitPassives(unit)
+    Combat.logEvent(combat, "action", string.format("%s copies %s.", unitName(unit), item.name or "a weapon"), unit)
+    return item
+end
+
+-- Take a loan back off `unit` (a Copycat's weapon, once it has been used).
+function Combat.recallLoan(combat, unit, item)
+    if not (unit and unit.char and item) then return false end
+    if not Character.removeItem(unit.char, item) then return false end
+    detachTraits(unit, item)
+    applyUnitPassives(unit)
+    return true
 end
 
 -- HEX ONE PIECE OF `victim`'s KIT (models/curse.lua). Returns the item and the curse id, or nil plus a
@@ -12807,8 +13097,8 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
         -- The same rush aimed at a TILE: drive whoever stands there, or run the empty lane yourself
         -- (Combat.chargeInto). What the Charge ability casts through, and why it doubles as a way to
         -- move -- fx.charge above needs a body, and open ground is exactly what it cannot be pointed at.
-        chargeInto = function(x, y, distance)
-            return Combat.chargeInto(combat, unit, x, y, distance)
+        chargeInto = function(x, y, distance, opts)
+            return Combat.chargeInto(combat, unit, x, y, distance, opts)
         end,
         -- WHERE A RUSH WOULD COME TO REST, moving nobody (Combat.chargeTile, chargeInto's pure twin).
         -- Read-only, so all three fx tables can answer it truthfully and an effect that asks "will this
@@ -12947,6 +13237,13 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
         -- Take a body off the field whole -- a corpse, a downed body, or one of the caster's own
         -- (Combat.devour). Returns the body, or nil when it was not one the caster may eat.
         devour = function(body, opts) return Combat.devour(combat, unit, body, opts) end,
+        -- Spend `n` stacks of a stacking status off `tgt` (a meal of the Sated's Full, which Retch and
+        -- Settle are paid in), removing the badge when the last one goes. False when there were not
+        -- that many to spend. The previews answer true and move nothing.
+        spendStacks = function(tgt, id, n)
+            return Status.spendStacks(combat, tgt or unit, id, n)
+        end,
+        rejoin = function() return Combat.rejoin(combat, unit) end,
     }
 
     -- Log the action itself before its effect runs, so the cast heads the sub-events it spawns

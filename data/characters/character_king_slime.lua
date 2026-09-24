@@ -103,6 +103,8 @@ return {
         "armor_iron_plate",
         "armor_quicksilver_mantle",
         "weapon_frostfall_hammer",
+        -- GREED'S RULE WORN (2026-09-24): his purse, and his interest charged to somebody else.
+        "utility_compound_purse", "utility_usurers_scale",
     },
     -- Basic tactics (models/ai.lua): a slime still has no plan, and a crowned one has no plan either.
     -- It presses the body closest to falling, which is the only thing about it that reads as intent --

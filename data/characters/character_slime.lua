@@ -104,6 +104,8 @@ return {
         "armor_salamander_hide", "armor_rimecloth", "armor_stormcloth",
         "utility_resonance_prism",
         "armor_spike_mail",
+        -- GREED'S RULE WORN (2026-09-24): the slime compounds, and so does whoever carries its coin.
+        "utility_ledger_coin",
     },
     -- Basic tactics (models/ai.lua). It still has no plan -- the posture's own approach, walk at the
     -- nearest thing and lean on it -- plus exactly one rule, and that rule is not a second puzzle

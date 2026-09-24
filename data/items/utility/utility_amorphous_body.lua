@@ -27,7 +27,7 @@
 -- is a reaction and reads as one.
 return {
     name = "Amorphous Body",
-    description = "Blades, points and blows are voided. Takes on the element of whatever gets through.",
+    description = "Voids blades, points and blows. Takes on elements, and gains Interest.",
     flavor = "You can put a sword through it. You have simply put a sword through it.",
     sprite = "assets/items/amorphous_body.png",
     type = "utility",
@@ -36,5 +36,7 @@ return {
     bound = true,
     noSteal = true, -- a creature's body is not loot
     immune = { physical = true, slash = true, pierce = true, impact = true },
-    traits = { "trait_adaptive" },
+    -- GREED'S RULE (2026-09-24): the swamp's slimes compound -- each turn alive, more Damage and a
+    -- fuller purse when they fall (trait_interest). Every circle's slime line carries one of its own.
+    traits = { "trait_adaptive", "trait_interest" },
 }

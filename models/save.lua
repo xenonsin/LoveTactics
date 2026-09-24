@@ -163,10 +163,14 @@ end
 -- keyed map of cell -> item rather than a list, preserving exact placement. Adjacency
 -- auras depend on where an item sits, so placement is gameplay state, not cosmetics.
 local function snapshotCharacter(char)
+    -- A piece a velvet slime is holding mid-fight goes home before the grid is written, so a save can
+    -- never record a company without it (Character.restoreStripped).
+    Character.restoreStripped(char)
     local inventory = {}
     for cell = 1, Character.MAX_INVENTORY do
         local item = char.inventory[cell]
-        if item then inventory[cell] = snapshotItem(item) end
+        -- A piece on loan (Combat.strip) belongs to somebody else and is never written here.
+        if item and not item.onLoan then inventory[cell] = snapshotItem(item) end
     end
 
     local snap = { id = char.id, inventory = inventory }

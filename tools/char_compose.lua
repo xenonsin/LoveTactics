@@ -460,6 +460,11 @@ local CHARACTER_SILHOUETTE = {
     sabertooth = "lorc/saber-tooth",
     the_longfang = "delapouite/tiger-head",
 
+    -- THE FLIGHT (Gluttony's approach). The griffin gets the one griffin in the set; the Falconer's Glove's
+    -- bird is split from the wood's hawk and may not be one picture with it (the two bears' rule above).
+    griffin = "delapouite/griffin-symbol",
+    falconers_hawk = "lorc/eagle-emblem",
+
     -- ...AND THE THIRD ELEMENTAL THE KEEP MADE. The other two need nothing here and must not get it:
     -- character_fire_elemental and character_wind_elemental carry their element word in the id, so
     -- `elementOf` seats them on ELEMENT_SILHOUETTE and ELEMENT_TINT exactly as it always has -- and
@@ -527,6 +532,25 @@ local CHARACTER_SILHOUETTE = {
     king_slime = "lorc/burst-blob",   -- a blob mid-burst, which is the only thing it does that a
                                       -- common slime does not (data/traits/trait_split.lua) -- and it
                                       -- is faceless, so the pair differ in shape and not only in size
+    -- THE WOOD'S SLIMES (character_moss_slime): the honest puddle, since the Tallow Hound that held it
+    -- is gone, and the Moss King mid-burst in a different blob so it never reads as the fen's King.
+    moss_slime = "delapouite/slime",
+    moss_king_slime = "lorc/goo-explosion",
+    moss_sloughling = "lorc/goo-spurt",
+    -- LUST'S SLIMES: the one that takes your clothes, and the one wearing everybody's.
+    velvet_slime = "aussiesim/card-queen-hearts",
+    velvet_queen = "lorc/crowned-heart",
+    -- THE LAST FOUR SLIME LINES: Wrath, Sloth (three and their King), Envy, Pride.
+    cinder_slime = "lorc/burning-blobs",
+    caldera_king = "lorc/volcano",
+    rime_slime = "lorc/frostfire",
+    frost_slime = "delapouite/ice-golem",
+    snowdrift_slime = "lorc/snowman",
+    glacier_king = "lorc/icebergs",
+    mimic_slime = "lorc/gooey-eyed-sun",
+    many_faced_king = "lorc/duality-mask",
+    crystal_slime = "lorc/crystal-bars",
+    apex_crystal = "lorc/crystal-eye",       -- a piece coming off, which is all it is
 }
 
 -- Reverse index: the character key a discipline names as its `exemplar` -> the discipline id. Built from

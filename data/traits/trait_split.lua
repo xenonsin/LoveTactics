@@ -42,7 +42,14 @@ return {
         if not unit then return end
         local id = ctx.param("spawn", "character_slime")
         local born = 0
-        for _ = 1, ctx.param("count", 3) do
+        local pieces = {}
+        -- `spawns` names a body per piece (the Glacier King comes apart into one of each Sloth slime);
+        -- `pieceStatus`/`pieceMagnitude` start every piece wearing something (the Caldera King's pieces
+        -- are already Seething).
+        local spawns = ctx.param("spawns", nil)
+        local pieceStatus = ctx.param("pieceStatus", nil)
+        for n = 1, ctx.param("count", 3) do
+            if spawns then id = spawns[((n - 1) % #spawns) + 1] end
             -- One free tile at a time: each piece occupies the one before it, so the next call finds
             -- the next square of the ring. `nil` means the body died hemmed in, and a King cut down in
             -- a corridor leaves fewer pieces than one cut down in the open -- which is a real reason
@@ -55,7 +62,36 @@ return {
             })
             -- A piece can fail to draw breath -- it arrives on its tile like anything else, and the
             -- trap or the fire under it is still there (models/summon.lua says so outright).
-            if piece and piece.alive then born = born + 1 end
+            if piece and piece.alive then
+                born = born + 1
+                pieces[#pieces + 1] = piece
+                if pieceStatus then
+                    ctx.applyStatus(piece, pieceStatus, { magnitude = ctx.param("pieceMagnitude", 1) })
+                end
+            end
+        end
+        -- GREED'S KING SHARES HIS ACCOUNT (data/status/status_interest.lua): what he had banked -- the
+        -- growth and the purse -- is divided among the pieces instead of paid out, so the gold is still
+        -- owed and now it is walking about in three places. Marked `passed` so his own death pays nothing.
+        local Status = require("models.status")
+        local acct = Status.get(unit, "status_interest")
+        if acct and #pieces > 0 then
+            acct.passed = true
+            local n = #pieces
+            for i, piece in ipairs(pieces) do
+                local s = Status.get(piece, "status_interest")
+                if not s then
+                    ctx.applyStatus(piece, "status_interest")
+                    s = Status.get(piece, "status_interest")
+                    if s then s.step, s.gold, s.cap, s.turns, s.purse = acct.step, acct.gold, acct.cap, 0, 0 end
+                end
+                if s then
+                    s.magnitude = (s.magnitude or 0) + math.floor((acct.magnitude or 0) / n)
+                    local share = math.floor((acct.purse or 0) / n)
+                    if i == 1 then share = share + (acct.purse or 0) - share * n end
+                    s.purse = (s.purse or 0) + share
+                end
+            end
         end
         if born > 0 then
             ctx.log("action", string.format("%s comes apart into %d.",

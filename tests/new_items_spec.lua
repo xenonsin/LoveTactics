@@ -386,7 +386,7 @@ return {
             -- The hawk opens at (2,4), crosses to (4,4) beside a bandit, rakes it, and is back on its
             -- perch -- Shadow Strike's return-to-origin, on a body that cannot afford to stay.
             local c = Combat.new(arena(10, 10),
-                { unit("character_hawk", 2, 4) },
+                { unit("character_falconers_hawk", 2, 4) },
                 { unit("character_bandit", 5, 4) })
             local hawk, bandit = c.units[1], c.units[2]
             openTurn(c, hawk)
@@ -404,7 +404,7 @@ return {
         name = "a hawk that never left its perch rakes from where it stands",
         fn = function()
             local c = Combat.new(arena(10, 10),
-                { unit("character_hawk", 4, 4) },
+                { unit("character_falconers_hawk", 4, 4) },
                 { unit("character_bandit", 5, 4) })
             local hawk, bandit = c.units[1], c.units[2]
             openTurn(c, hawk)

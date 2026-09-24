@@ -324,6 +324,41 @@ end
 -- Remove `item` (identity match) from the grid, emptying its cell. Returns true if it was there.
 -- The counterpart to Character.addItem, used when an item leaves a character entirely -- stolen by
 -- a pickpocket, or moved out to the player's stash.
+-- PUT BACK WHAT A VELVET SLIME TOOK (Combat.strip). A strip moves a piece out of the owner's grid for
+-- the length of ONE fight and writes where it came from into `char.stripped`, a ledger on the owner's
+-- own (persistent) character. This is the net under every way a fight can end: Combat.returnStripped
+-- runs on the slime's death and at finishBattle, but the ledger is also restored at the next
+-- Combat.new and before every save snapshot, so a crash, a quit or an exit nobody thought of can never
+-- leave a company one sword short. Nothing a slime strips is ever lost. Idempotent.
+function Character.restoreStripped(char, only)
+    local ledger = char and char.stripped
+    if not ledger then return end
+    local left = {}
+    for _, entry in ipairs(ledger) do
+        local item = entry.item
+        -- The owner is taking back their own piece, so it is no longer on loan to anybody.
+        if not (only and item ~= only) then item.onLoan = nil end
+        if only and item ~= only then
+            left[#left + 1] = entry
+        else
+            local home = false
+            for i = 1, Character.MAX_INVENTORY do
+                if char.inventory[i] == item then home = true break end
+            end
+            if not home then
+                if entry.cell and char.inventory[entry.cell] == nil then
+                    char.inventory[entry.cell] = item
+                    home = true
+                else
+                    home = Character.addItem(char, item) and true or false
+                end
+            end
+            if not home then left[#left + 1] = entry end
+        end
+    end
+    char.stripped = (#left > 0) and left or nil
+end
+
 function Character.removeItem(char, item)
     for i = 1, Character.MAX_INVENTORY do
         if char.inventory[i] == item then

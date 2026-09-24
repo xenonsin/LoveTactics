@@ -12,7 +12,7 @@
 -- promise data/characters/character_demon_bomblet_tutorial.lua makes about its 12 and for the same reason.
 return {
     name = "Sovereign Mass",
-    description = "Blades, points and blows are voided. Takes on elements, and divides into three when it falls.",
+    description = "Voids blades, points and blows. Takes on elements, compounds each turn, and divides when it falls.",
     flavor = "There was never a king in it. There was only ever more of it.",
     sprite = "assets/items/sovereign_mass.png",
     type = "utility",
@@ -21,5 +21,8 @@ return {
     bound = true,
     noSteal = true, -- a creature's body is not loot
     immune = { physical = true, slash = true, pierce = true, impact = true },
-    traits = { "trait_adaptive", "trait_split" },
+    -- Split BEFORE Interest: Comes Apart hands the King's account to his pieces and marks it passed,
+    -- so his own death pays nothing twice. He banks double what a slime does (trait_interest).
+    traits = { "trait_adaptive", "trait_split", "trait_interest" },
+    traitParams = { interestStep = 3, interestGold = 8 },
 }

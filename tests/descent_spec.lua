@@ -362,12 +362,10 @@ return {
                         tostring(id) .. "' is not a character blueprint")
                 end
             end
-            -- THE LIEUTENANT IS THE GENERAL'S OWN HONOUR GUARD, PROMOTED. Not decoration: it is what
-            -- lets a player read their progress off the board -- the body that barred a stair two floors
-            -- ago is standing behind her when they reach her -- and it is why fifteen floors needed no
-            -- new blueprints. If the two ever drift apart, that reading is gone and nothing else says so.
-            assert(sin.minor.lead == sin.guardian.filler,
-                sin.id .. "'s lieutenant is no longer the body that fills out her own stair")
+            -- THE LIEUTENANT WAS THE GENERAL'S OWN HONOUR GUARD, and this case used to hold the two in
+            -- step (`minor.lead == guardian.filler`). That rule was removed on 2026-09-24 when the Sated
+            -- took Gluttony's first stair and Gula kept her alpha: a stair's boss and a general's escort
+            -- are authored separately now. Each still has to be a body that loads, above.
         end
     end },
 

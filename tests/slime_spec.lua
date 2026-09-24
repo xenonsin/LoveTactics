@@ -514,4 +514,324 @@ return {
             end
         end,
     },
+
+    -- ----- 3. the wood's slimes: the same question, asked softly on the floor a descent opens on -----
+    {
+        name = "a moss slime RESISTS steel rather than voiding it, and an element still lands whole",
+        fn = function()
+            -- The opening stair cannot be walked past, so a pair with no element must be able to hurt
+            -- what stands on it -- slowly. Both relics resist steel and neither voids it.
+            for _, rid in ipairs({ "utility_mossy_body", "utility_moss_crown" }) do
+                local r = Item.defs[rid]
+                assert(r and r.bound and not r.immune, rid .. " must resist, never void")
+                assert((r.resist.slash or 0) > 0 and (r.resist.impact or 0) > 0, rid .. " resists steel")
+            end
+            for _, id in ipairs({ "character_moss_slime", "character_moss_king_slime" }) do
+                local c, slime = fightWith(id)
+                assert(not (slime.immune and (slime.immune.slash or slime.immune.impact)),
+                    id .. " is immune to steel, which walls the opening stair")
+                -- 25 is about what a floor-one blow weighs before mitigation (Rowan's iron mace).
+                for _, probe in ipairs({ { "a sword", SWORD }, { "a mace", MACE }, { "an arrow", ARROW } }) do
+                    assert(Combat.mitigatedDamage(slime, 25, probe[2]) > 1, probe[1] .. " cannot hurt " .. id)
+                end
+                local steel = Combat.mitigatedDamage(slime, 25, MACE)
+                local fire = Combat.mitigatedDamage(slime, 25, FIREBALL)
+                assert(steel <= fire * 0.6, id .. ": steel must land for well under what an element does ("
+                    .. steel .. " vs " .. fire .. ")")
+                Combat.dealFlatDamage(c, slime, 20, FIREBALL, "test")
+                assert(Status.has(slime, "status_immune_fire"), id .. " still adapts to what it is shown")
+            end
+        end,
+    },
+    {
+        name = "the Moss King comes apart into MOSS slimes, never fen ones",
+        fn = function()
+            local c = Combat.new(arena(12, 12),
+                { unit("character_bandit", 1, 1) },
+                { unit("character_moss_king_slime", 6, 6) })
+            Combat.dealFlatDamage(c, c.units[2], 9999, FIREBALL, "test")
+            local moss, fen = 0, 0
+            for _, u in ipairs(c.units) do
+                if u.alive and u.char.id == "character_moss_slime" then moss = moss + 1 end
+                if u.alive and u.char.id == "character_slime" then fen = fen + 1 end
+            end
+            assert(moss == 3 and fen == 0, "split into " .. moss .. " moss and " .. fen .. " fen slimes")
+            assert(Combat.evaluate(c) == nil, "a killAll still has to put the pieces down")
+        end,
+    },
+    {
+        name = "the Moss King is an elite on the wood's first floor, and the moss slimes roll on both",
+        fn = function()
+            local king = Encounter.defs.encounter_the_moss_king
+            assert(king and king.kind == "elite" and king.rung == 1, "an elite, runged onto the approach")
+            assert(king.condition({ biome = "forest" }) and not king.condition({ biome = "swamp" }),
+                "in the wood only")
+            local comp = king.composition({ depth = 1 })
+            assert(comp[1] == "character_moss_king_slime", "he leads it")
+            assert(#comp >= 3, "with at least two of his court to eat")
+            local gluttony
+            for _, s in ipairs(Descent.SINS) do if s.id == "gluttony" then gluttony = s end end
+            assert(gluttony.minor.lead ~= "character_moss_king_slime", "he does not hold the stair")
+            local seen = false
+            for _, id in ipairs(gluttony.elites.spares) do seen = seen or id == "encounter_the_moss_king" end
+            assert(seen, "Gluttony bills him among its rung-1 spares")
+            local def = Encounter.defs.encounter_the_moss_slimes
+            assert(def and def.rung == nil, "the moss slimes stand on both of the wood's floors")
+            assert(def.condition({ biome = "forest" }) and not def.condition({ biome = "swamp" }),
+                "and only in the wood; the fen keeps its own")
+        end,
+    },
+
+    -- ----- 4. Gluttony's slime rule: Coalesce -----
+    {
+        name = "Coalesce: a moss slime swallows its kin and takes all of its health into itself",
+        fn = function()
+            local c = Combat.new(arena(10, 10),
+                { unit("character_bandit", 10, 10) },
+                { unit("character_moss_slime", 4, 4), unit("character_moss_slime", 5, 4) })
+            local eater, meal = c.units[2], c.units[3]
+            local hp = eater.char.stats.health
+            local maxBefore, mealHp = hp.max, 20
+            meal.char.stats.health.current = mealHp
+            Combat.useItem(c, eater, itemNamed(eater.char, "ability_coalesce"), eater.x, eater.y)
+            assert(not meal.alive and meal.devoured, "the kin is eaten, not killed")
+            assert(not meal.corpse, "and leaves nothing lying there")
+            assert(hp.max == maxBefore + mealHp, "its ceiling grows by what the meal had left: "
+                .. hp.max .. " vs " .. (maxBefore + mealHp))
+            assert(hp.current == hp.max, "and it is full")
+            assert(Status.has(eater, "status_gorged"), "a slime that has just eaten is Gorged")
+        end,
+    },
+    {
+        name = "Coalesce eats only moss slimes: never a foe, never another beast, never the King",
+        fn = function()
+            local c = Combat.new(arena(10, 10),
+                { unit("character_bandit", 5, 5) },
+                { unit("character_moss_slime", 4, 5), unit("character_wolf_grunt", 3, 5),
+                  unit("character_moss_king_slime", 4, 4) })
+            local eater = c.units[2]
+            local maxBefore = eater.char.stats.health.max
+            Combat.useItem(c, eater, itemNamed(eater.char, "ability_coalesce"), eater.x, eater.y)
+            for _, u in ipairs(c.units) do assert(u.alive, u.char.id .. " was eaten") end
+            assert(eater.char.stats.health.max == maxBefore, "nothing edible, nothing gained")
+        end,
+    },
+    {
+        name = "the planner coalesces: with its kin beside it and no foe near, a moss slime eats",
+        fn = function()
+            local c = Combat.new(arena(12, 9),
+                { unit("character_bandit", 12, 9) },
+                { unit("character_moss_slime", 2, 2), unit("character_moss_slime", 3, 2) })
+            local plan = Combat.planEnemyAction(c, c.units[2])
+            assert(plan and plan.item and plan.item.id == "ability_coalesce",
+                "it plans to eat: " .. tostring(plan and (plan.reason or (plan.item and plan.item.id))))
+        end,
+    },
+    {
+        name = "gather: a moss slime walks toward its kin, not toward the fight",
+        fn = function()
+            local AI = require("models.ai")
+            assert(AI.POSTURES.gather and AI.POSTURES.gather.move == "gather", "the posture exists")
+            assert(Character.defs.character_moss_slime.archetype == "gather", "the moss slime wears it")
+            assert(Character.defs.character_moss_king_slime.archetype == "gather", "and so does its King")
+            -- Foe off to the left, kin off to the right: it goes right.
+            local c = Combat.new(arena(16, 5),
+                { unit("character_bandit", 1, 3) },
+                { unit("character_moss_slime", 8, 3), unit("character_moss_slime", 15, 3) })
+            local me = c.units[2]
+            local plan = Combat.planEnemyAction(c, me)
+            local dest = plan and (plan.move or plan.dest)
+            assert(dest and dest.x > me.x, "it walks toward its kin: " .. tostring(dest and dest.x))
+        end,
+    },
+
+    -- ----- 5. the drops: what came apart comes back together, worn -----
+    {
+        name = "each moss body drops its own pieces, and only its own",
+        fn = function()
+            local slime = Character.defs.character_moss_slime.drops
+            assert(#slime == 1 and slime[1] == "armor_mosswrap", "the moss slime drops the Mosswrap")
+            local king = Character.defs.character_moss_king_slime.drops
+            assert(#king == 2 and king[1] == "utility_crown_of_the_court" and king[2] == "utility_moss_heart",
+                "the Moss King drops his Crown and his Heart")
+            for _, id in ipairs({ "armor_mosswrap", "utility_crown_of_the_court", "utility_moss_heart" }) do
+                assert(Item.defs[id].unstocked, id .. " is the body's own, never sold")
+            end
+        end,
+    },
+    {
+        name = "Rejoin: a sloughling beside its maker gives its health back, never past the ceiling",
+        fn = function()
+            local c = Combat.new(arena(10, 10),
+                { unit("character_bandit", 3, 3) }, { unit("character_bandit", 9, 9) })
+            local me = c.units[1]
+            local Summon = require("models.summon")
+            local piece = Summon.spawn(c, me, "character_moss_sloughling", 4, 3, { stats = { health = 10 } })
+            assert(piece and piece.summoner == me, "the piece knows whose it is")
+            local hp = me.char.stats.health
+            hp.current = hp.max - 6
+            Combat.useItem(c, piece, itemNamed(piece.char, "ability_rejoin"), piece.x, piece.y)
+            assert(not piece.alive and piece.devoured, "it goes home and is gone")
+            assert(hp.current == hp.max, "its 10 health heals the 6 missing and no more")
+        end,
+    },
+    {
+        name = "Slough: the Mosswrap sheds one sloughling, once, when struck below half",
+        fn = function()
+            local worn = Character.instantiate("character_bandit")
+            Character.addItem(worn, Item.instantiate("armor_mosswrap"))
+            local c = Combat.new(arena(10, 10),
+                { { char = worn, x = 3, y = 3 } }, { unit("character_bandit", 9, 9) })
+            local me = c.units[1]
+            local function pieces()
+                local n = 0
+                for _, u in ipairs(c.units) do
+                    if u.alive and u.char.id == "character_moss_sloughling" then n = n + 1 end
+                end
+                return n
+            end
+            local hp = me.char.stats.health
+            Combat.dealFlatDamage(c, me, 1, {}, "test")
+            assert(pieces() == 0, "a scratch above half sheds nothing")
+            hp.current = math.floor(hp.max * 0.4) -- defence would eat a measured blow; set it, then scratch
+            Combat.dealFlatDamage(c, me, 1, {}, "test")
+            assert(pieces() == 1, "struck below half: one piece sloughs off, got " .. pieces())
+            Combat.dealFlatDamage(c, me, 1, {}, "test")
+            assert(pieces() == 1, "and only once a battle")
+        end,
+    },
+    {
+        name = "the Crown of the Court calls two sloughlings that are the wearer's own",
+        fn = function()
+            local c = Combat.new(arena(10, 10),
+                { unit("character_bandit", 3, 3) }, { unit("character_bandit", 9, 9) })
+            local me = c.units[1]
+            local crown = Item.instantiate("utility_crown_of_the_court")
+            Character.addItem(me.char, crown)
+            me.char.stats.stamina.current = me.char.stats.stamina.max
+            Combat.useItem(c, me, crown, me.x, me.y)
+            local n = 0
+            for _, u in ipairs(c.units) do
+                if u.alive and u.char.id == "character_moss_sloughling" then
+                    n = n + 1
+                    assert(u.summoner == me and u.side == me.side, "the court is the wearer's")
+                end
+            end
+            assert(n == 2, "two stand up, got " .. n)
+        end,
+    },
+    {
+        name = "Come Apart: the Moss Heart turns a felling blow into 1 health and three pieces, once",
+        fn = function()
+            local worn = Character.instantiate("character_bandit")
+            Character.addItem(worn, Item.instantiate("utility_moss_heart"))
+            local c = Combat.new(arena(10, 10),
+                { { char = worn, x = 5, y = 5 } }, { unit("character_bandit", 9, 9) })
+            local me = c.units[1]
+            Combat.dealFlatDamage(c, me, 99999, {}, "test")
+            assert(me.alive and me.char.stats.health.current == 1, "it is standing, at 1")
+            local n = 0
+            for _, u in ipairs(c.units) do
+                if u.alive and u.char.id == "character_moss_sloughling" and u.summoner == me then n = n + 1 end
+            end
+            assert(n == 3, "three pieces spilled out, got " .. n)
+            Combat.dealFlatDamage(c, me, 99999, {}, "test")
+            assert(not me.alive or me.incapacitated, "the second felling blow fells it")
+        end,
+    },
+    {
+        name = "the Moss King's pieces are moss slimes, so they can eat each other back together",
+        fn = function()
+            local c = Combat.new(arena(12, 12),
+                { unit("character_bandit", 1, 1) },
+                { unit("character_moss_king_slime", 6, 6) })
+            Combat.dealFlatDamage(c, c.units[2], 9999, FIREBALL, "test")
+            local pieces = {}
+            for _, u in ipairs(c.units) do
+                if u.alive and u.char.id == "character_moss_slime" then pieces[#pieces + 1] = u end
+            end
+            local a, b = pieces[1], pieces[2]
+            assert(a and b and itemNamed(a.char, "ability_coalesce"), "the pieces carry Coalesce")
+            -- Where the split drops them is Combat.openTileNear's business; stand them side by side.
+            a.x, a.y, b.x, b.y = 10, 10, 11, 10
+            local before = a.char.stats.health.max
+            Combat.useItem(c, a, itemNamed(a.char, "ability_coalesce"), a.x, a.y)
+            assert(not b.alive and b.devoured, "a piece swallows a piece")
+            assert(a.char.stats.health.max > before, "and grows by it")
+        end,
+    },
+    -- ----- 6. Greed's slime rule: Interest -----
+    {
+        name = "Interest: a swamp slime gains Damage each of its turns, and banks a purse it pays on death",
+        fn = function()
+            local c, slime = fightWith("character_slime")
+            local st = Status.get(slime, "status_interest")
+            assert(st, "the account is open at the bell")
+            local base = slime.char.stats.damage + Status.statBonus(slime, "damage")
+            Status.onTurnStart(c, slime)
+            Status.onTurnStart(c, slime)
+            assert(Status.statBonus(slime, "damage") >= 4, "two turns, +2 each")
+            assert(st.purse == 8, "and 4 gold a turn in the purse, got " .. tostring(st.purse))
+            for _ = 1, 10 do Status.onTurnStart(c, slime) end
+            assert(st.turns == 6, "it stops compounding at its cap")
+            local before = c.bounty or 0
+            Combat.dealFlatDamage(c, slime, 9999, FIREBALL, "test")
+            assert((c.bounty or 0) - before == st.purse, "its death banks the purse on the fight")
+            assert(base, "fixture")
+        end,
+    },
+    {
+        name = "the King Slime compounds double, and his pieces inherit his account instead of paying it",
+        fn = function()
+            local c = Combat.new(arena(12, 12), { unit("character_bandit", 1, 1) },
+                { unit("character_king_slime", 6, 6) })
+            local king = c.units[2]
+            local st = Status.get(king, "status_interest")
+            Status.onTurnStart(c, king)
+            Status.onTurnStart(c, king)
+            assert(st.purse == 16, "8 gold a turn, got " .. tostring(st.purse))
+            Combat.dealFlatDamage(c, king, 9999, FIREBALL, "test")
+            assert((c.bounty or 0) == 0, "his own death pays nothing -- the account went to the pieces")
+            local owed = 0
+            for _, u in ipairs(c.units) do
+                if u.alive and u.char.id == "character_slime" then
+                    owed = owed + (Status.get(u, "status_interest").purse or 0)
+                end
+            end
+            assert(owed == 16, "the pieces carry all 16 between them, got " .. owed)
+        end,
+    },
+    {
+        name = "Greed's drops: the Ledger Coin grows, the Purse pays each turn, the Scale writes a debt",
+        fn = function()
+            assert(itemNamed({ inventory = {} }, "x") == nil, "fixture")
+            local slimeDrops, kingDrops = {}, {}
+            for _, id in ipairs(Character.defs.character_slime.drops) do slimeDrops[id] = true end
+            for _, id in ipairs(Character.defs.character_king_slime.drops) do kingDrops[id] = true end
+            assert(slimeDrops.utility_ledger_coin, "the slime drops the Ledger Coin")
+            assert(kingDrops.utility_compound_purse and kingDrops.utility_usurers_scale, "the King his two")
+
+            local worn = Character.instantiate("character_bandit")
+            Character.addItem(worn, Item.instantiate("utility_ledger_coin"))
+            Character.addItem(worn, Item.instantiate("utility_usurers_scale"))
+            local purse = Character.instantiate("character_bandit")
+            Character.addItem(purse, Item.instantiate("utility_compound_purse"))
+            local c = Combat.new(arena(10, 10),
+                { { char = worn, x = 4, y = 4 }, { char = purse, x = 1, y = 1 } },
+                { unit("character_knight", 5, 4) })
+            local me, banker, foe = c.units[1], c.units[2], c.units[3]
+            for _ = 1, 8 do Status.onTurnStart(c, me) end
+            assert(Status.statBonus(me, "damage") == 6, "the coin: +1 a turn, capped at +6")
+            Status.onTurnStart(c, banker)
+            Status.onTurnStart(c, banker)
+            assert((c.bounty or 0) == 6, "the purse banks 3 a turn on the fight, got " .. tostring(c.bounty))
+            local sword = itemNamed(me.char, "weapon_iron_sword")
+            Combat.useItem(c, me, sword, foe.x, foe.y)
+            local owed = Status.get(foe, "status_owed")
+            assert(owed and owed.magnitude == 1, "a landed hit writes one stack of Owed")
+            -- One action a turn, so the second hit is the trait's own re-application.
+            for _ = 1, 8 do Status.apply(c, foe, "status_owed", { magnitude = 1 }) end
+            assert(owed.magnitude == 6, "each hit adds a stack, up to six: " .. owed.magnitude)
+        end,
+    },
 }

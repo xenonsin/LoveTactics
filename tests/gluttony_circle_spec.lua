@@ -11,6 +11,7 @@
 local Character = require("models.character")
 local Combat = require("models.combat")
 local Descent = require("models.descent")
+local Encounter = require("models.encounter")
 local Growth = require("models.growth")
 local Item = require("models.item")
 local Fixture = require("tests.support.fixture")
@@ -58,23 +59,20 @@ return {
         end,
     },
     {
-        -- THE GRALLOCH IS DELETED AND THIS CASE IS THE MARKER. Gluttony's lieutenant slot holds the
-        -- pack's alpha as a stand-in (see the lieutenant note at the head of Descent.SINS), which is
-        -- ordinary forest traffic and not a lesser embodiment of anything. The stand-in is named here on
-        -- purpose: seating a replacement reddens this case, and whoever does it owes the contract written
-        -- out where the sizing case used to be, below.
-        name = "Gluttony's lieutenant slot is filled, and by a stand-in that says so",
+        -- THE SATED HOLDS THE FIRST STAIR (2026-09-24, "have the sated be the floor 1 boss"), in the seat
+        -- the deleted Gralloch left and the pack's alpha stood in for. It is not Gula's honour guard: that
+        -- rule went the same day, and her fight keeps the alpha. Its roaming elite encounter went with the
+        -- move, and the seat's billing passed to the Chimera.
+        name = "the Sated holds Gluttony's first stair with its hawks, and Gula keeps the alpha",
         fn = function()
             local sin = sinNamed("gluttony")
             assert(sin, "the gluttony circle exists")
-            assert(sin.minor.lead == "character_wolf_alpha", "the alpha stands in for the Gralloch")
-            assert(Character.defs[sin.minor.lead], "and whatever stands there is a body that loads")
+            assert(sin.minor.lead == "character_the_sated", "the Sated holds the first stair")
+            assert(sin.minor.filler == "character_hawk", "with its larder around it")
+            assert(sin.guardian.filler == "character_wolf_alpha", "and Gula keeps the alpha at her shoulder")
             assert(not Character.defs["character_the_gralloch"], "the Gralloch is gone")
-            -- The invariant tests/descent_spec.lua pins across every circle survives the cut, because a
-            -- stand-in fills both slots exactly as a lieutenant did: the body that barred the stair two
-            -- floors ago is at her shoulder when you reach her. What is missing is that it be a SIN.
-            assert(sin.guardian.filler == sin.minor.lead,
-                "whatever holds the approach fills out its own general's stair")
+            assert(sin.elites.seat == "encounter_the_chimera", "the Chimera is the seat's billed elite")
+            assert(not Encounter.get("encounter_gluttony_the_sated"), "the Sated does not also roam the seat")
         end,
     },
 
@@ -181,28 +179,20 @@ return {
 
     -- ------------------------------------------------------------ the apex
     {
-        name = "the Sated is a four-tile body that gets weaker as it is cut",
+        -- REWORKED 2026-09-23 ("The Sated and the Flight"): the phase table that shed stats off its health
+        -- bar is gone -- round one's note was "just like lose more mechanic". Its weight is a count of
+        -- meals now, and tests/sated_flight_spec.lua holds how the count moves. What stays true here is
+        -- the shape: four tiles, and nothing of it read off its health.
+        name = "the Sated is a four-tile body whose weight is meals, not a phase table",
         fn = function()
             local def = Character.defs.character_the_sated
             assert(def.footprint and def.footprint.w == 2 and def.footprint.h == 2,
                 "the apex stands on four tiles")
             local hide = Item.defs.utility_distended_hide
-            assert(hide and hide.phases, "and carries a phase table")
-
-            -- Every magnitude in it is NEGATIVE. That is the whole conceit and the thing most likely to
-            -- be "fixed" by somebody reading it as a typo.
-            local drops = 0
-            for _, phase in ipairs(hide.phases) do
-                for _, r in ipairs(phase.responses or {}) do
-                    if r.kind == "bonus" then
-                        assert(r.amount < 0, string.format(
-                            "the Sated's phases must TURN IT DOWN -- %s %+d is an escalation, which is "
-                            .. "Wrath's rule, not Gluttony's", r.stat, r.amount))
-                        drops = drops + 1
-                    end
-                end
-            end
-            assert(drops >= 3, "it should shed real numbers, not one token point")
+            assert(hide and not hide.phases, "no phase table: nothing about it is read off its health")
+            local meals = false
+            for _, t in ipairs(hide.traits or {}) do if t == "trait_three_meals" then meals = true end end
+            assert(meals, "the hide carries Three Meals")
         end,
     },
 
@@ -272,7 +262,7 @@ return {
             for _, id in ipairs({ "character_the_sated", "character_manticore", "character_wyvern",
                                   "character_wyvern_alpha", "character_the_highwing",
                                   "character_chimera", "character_sabertooth",
-                                  "character_the_longfang" }) do
+                                  "character_the_longfang", "character_griffin" }) do
                 local base = Character.instantiate(id)
                 local grown = Growth.spawn(id, 20)
                 assert(grown.stats.health.max >= base.stats.health.max,

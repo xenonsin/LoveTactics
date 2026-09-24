@@ -90,6 +90,27 @@ end
 
 local sections = bestiarySections()
 
+-- The Statuses page, split back into its entries: statusId -> the text from its <a> to the next one.
+local function statusSections()
+    local out, id, buf = {}, nil, nil
+    local function flush() if id then out[id] = table.concat(buf, "\n") end end
+    for line in ((byName["Statuses"] or "") .. "\n"):gmatch("([^\n]*)\n") do
+        local sid = line:match('^<a name="(status_[%w_]+)"')
+        if sid then flush(); id, buf = sid, {} elseif buf then buf[#buf + 1] = line end
+    end
+    flush()
+    return out
+end
+
+-- An item's own table row, found by the anchor its name cell carries.
+local function itemRow(itemId)
+    local def = Item.defs[itemId]
+    local page = byName["Items-" .. tostring(def.class or "unclassed"):gsub("_(%a)", function(c)
+        return "-" .. c:upper() end):gsub("^%a", string.upper)]
+    if not page then return nil end
+    return page:match('[^\n]*<a name="' .. itemId .. '"[^\n]*')
+end
+
 -- Every `id` fenced in backticks, across every page. The item cell prints the blueprint id as the
 -- row's last line, which is what makes a row addressable at all.
 local function fencedIds(body)
@@ -528,6 +549,66 @@ return {
             close()
             assert(floors == Descent.FLOORS,
                 "walked " .. floors .. " floor sections against " .. Descent.FLOORS)
+        end,
+    },
+
+    {
+        -- EVERY STATUS HAS AN ENTRY, the same silent failure as an item landing in no bucket: an id
+        -- with no <a> is a status every item cell links at and no page carries.
+        name = "every status in the game has exactly one entry on the Statuses page",
+        fn = function()
+            local Status = require("models.status")
+            local entries = statusSections()
+            local onDisk, count = 0, 0
+            for sid, def in pairs(Status.defs) do
+                onDisk = onDisk + 1
+                assert(entries[sid], sid .. " has no entry on the Statuses page")
+                assert(entries[sid]:find("### " .. (def.name or sid):gsub("|", "\\|"), 1, true),
+                    sid .. "'s entry is not titled " .. tostring(def.name))
+            end
+            for _ in pairs(entries) do count = count + 1 end
+            assert(count == onDisk, count .. " status entries against " .. onDisk .. " blueprints")
+            for _, host in ipairs({ "_Sidebar", "Home" }) do
+                assert(byName[host]:find("(Statuses)", 1, true), "Statuses is not linked from " .. host)
+            end
+        end,
+    },
+
+    {
+        -- BOTH DIRECTIONS, checked against the FIELDS rather than the source scan the generator uses,
+        -- so the scan cannot grade itself: a piece that `inflicts` a status, opens the fight in one or
+        -- wards one must link it from its own row, and that status's entry must link the piece back.
+        name = "an item that inflicts, opens with or wards a status links it, and is linked back",
+        fn = function()
+            local Status = require("models.status")
+            local entries = statusSections()
+            local checked = 0
+            for itemId, def in pairs(Item.defs) do
+                local named = {}
+                local ab = def.activeAbility
+                if type(ab) == "table" and type(ab.inflicts) == "table"
+                    and type(ab.inflicts.id) == "string" then
+                    named[ab.inflicts.id] = true
+                end
+                if type(def.openingBoon) == "table" and type(def.openingBoon.id) == "string" then
+                    named[def.openingBoon.id] = true
+                end
+                for _, sid in ipairs(def.statusImmunity or {}) do named[sid] = true end
+                for sid in pairs(named) do
+                    if Status.defs[sid] then
+                        local row = itemRow(itemId)
+                        assert(row, itemId .. " has no row to link " .. sid .. " from")
+                        assert(row:find("(Statuses#" .. sid .. ")", 1, true),
+                            itemId .. "'s row does not link " .. sid)
+                        assert(entries[sid]:find("#" .. itemId .. ")", 1, true),
+                            sid .. "'s entry does not link back to " .. itemId)
+                        checked = checked + 1
+                    end
+                end
+            end
+            -- Most of the catalogue lands its statuses inside an effect function, which only the
+            -- generator's source scan reads; the fields are the ~20 a spec can check from outside.
+            assert(checked >= 15, "expected to walk the items' statuses, walked " .. checked)
         end,
     },
 }

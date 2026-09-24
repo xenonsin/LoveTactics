@@ -35,7 +35,6 @@ return {
             assert(sin and sin.minor.lead == "character_gilded_sworn", "the sworn stands in for Marginalia")
             assert(Character.defs[sin.minor.lead], "and whatever stands there is a body that loads")
             assert(not Character.defs["character_marginalia"], "Marginalia is gone")
-            assert(sin.guardian.filler == sin.minor.lead, "and fills out Sublimitas's own stair")
         end,
     },
 

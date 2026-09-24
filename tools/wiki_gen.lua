@@ -39,6 +39,7 @@ local Spoils = require("models.spoils")
 local Character = require("models.character")
 local Race = require("models.race")
 local Descent = require("models.descent")
+local Status = require("models.status")
 
 local M = {}
 
@@ -79,6 +80,7 @@ local COLUMNS = {
     { key = "stats",  head = "Stats" },
     { key = "use",    head = "Use" },
     { key = "traits", head = "Traits" },
+    { key = "statuses", head = "Statuses" },
     { key = "hands",  head = "Hands",  align = ":--:" },
     { key = "stack",  head = "Stack",  align = ":--:" },
     { key = "tags",   head = "Tags" },
@@ -176,6 +178,208 @@ local function itemLinks(ids)
     end
     if #parts == 0 then return nil end
     return table.concat(parts, " · ")
+end
+
+-- ---------------------------------------------------------------------------
+-- the status index: who names which status, and in what role
+-- ---------------------------------------------------------------------------
+--
+-- WHY THE SOURCE IS READ AND NOT THE BLUEPRINT TABLE. Most of what a piece does to a status lives in
+-- an `effect` FUNCTION -- 181 `fx.applyStatus` calls across the items against 49 `inflicts` fields --
+-- and a function body cannot be walked as data. What every one of those calls does carry is the
+-- status id as a string literal, and ids are unique across the tree (models/registry.lua), so a
+-- literal `"status_burn"` in a file is that file naming Burn and nothing else. Comments are stripped
+-- first: a piece whose header mentions a status by way of explanation has not touched it.
+--
+-- THE ROLE IS READ OFF THE CALL IT SITS IN. A literal inside `fx.clearStatus(...)` ends the status, a
+-- `statusImmunity` list wards it, a `hasStatus` / `requiresStatus` / `lacks_status` test plays off a
+-- status somebody else put there -- and anything else (applyStatus, inflicts, openingBoon, a table of
+-- ids an effect loops over) is taken to put it on a body, which is what the great majority are. A
+-- guess made per MENTION, so one piece that both lands Wet and doubles its damage against the Wet is
+-- listed under both.
+local STATUS_ROLES = {
+    { key = "applies", head = "Applied by" },
+    { key = "removes", head = "Removed by" },
+    { key = "wards",   head = "Warded by" },
+    { key = "reads",   head = "Plays off it" },
+}
+
+-- Checked last-match-wins against the text before the literal on its own line: the NEAREST call is the
+-- one the literal is an argument of.
+local ROLE_CUES = {
+    { "clearStatus", "removes" }, { 'kind%s*=%s*"clear"', "removes" },
+    { "hasStatus", "reads" }, { "Status%.has", "reads" }, { "Status%.get", "reads" },
+    { "%.get%(", "reads" }, { "has_status", "reads" }, { "lacks_status", "reads" },
+    { "requiresStatus", "reads" }, { "notOn", "reads" }, { "coversStatus", "reads" },
+    { "ctx%.status", "reads" }, { "id%s*[=~]=", "reads" },
+    { "applyStatus", "applies" }, { "inflicts", "applies" }, { "applies%s*=", "applies" },
+    { "openingBoon", "applies" }, { "Status%.apply", "applies" },
+}
+
+-- Drop comments -- `--[[ ]]` blocks and `--` tails -- without touching a `--` inside a string, which
+-- the quote count before it tells apart well enough for blueprints that hold no escaped quotes.
+local function stripComments(src)
+    src = src:gsub("%-%-%[(=*)%[.-%]%1%]", "")
+    local out = {}
+    for line in (src .. "\n"):gmatch("([^\n]*)\n") do
+        local cut = #line + 1
+        local from = 1
+        while true do
+            local at = line:find("--", from, true)
+            if not at then break end
+            local _, quotes = line:sub(1, at - 1):gsub('"', "")
+            if quotes % 2 == 0 then cut = at; break end
+            from = at + 2
+        end
+        out[#out + 1] = line:sub(1, cut - 1)
+    end
+    return table.concat(out, "\n")
+end
+
+-- id -> { [statusId] = { [role] = true } } for one blueprint's source.
+local function scanStatuses(path)
+    local src = love.filesystem.read(path)
+    if not src then return {} end
+    src = stripComments(src)
+    local found = {}
+    local function note(sid, role)
+        if not Status.defs[sid] then return end
+        found[sid] = found[sid] or {}
+        found[sid][role] = true
+    end
+    -- A statusImmunity list first, then cut out, so its entries are not read a second time as applied.
+    src = src:gsub("statusImmunity%s*=%s*(%b{})", function(list)
+        for sid in list:gmatch('"(status_[%w_]+)"') do note(sid, "wards") end
+        return ""
+    end)
+    -- A file-level `local NAME = { "status_...", ... }` is a list the piece LOOPS over, and every
+    -- one of the kind in the tree (Exploit Weakness, Cutpurse's Tally, Thrill of the Hunt) counts
+    -- what is already on a body rather than putting anything there.
+    src = ("\n" .. src):gsub("\nlocal%s+[%w_]+%s*=%s*(%b{})", function(list)
+        for sid in list:gmatch('"(status_[%w_]+)"') do note(sid, "reads") end
+        return "\n"
+    end)
+    for line in (src .. "\n"):gmatch("([^\n]*)\n") do
+        local from = 1
+        while true do
+            local s, e, sid = line:find('"(status_[%w_]+)"', from)
+            if not s then break end
+            local before, role, best = line:sub(1, s - 1), "applies", 0
+            for _, cue in ipairs(ROLE_CUES) do
+                local at = 0
+                for pos in before:gmatch("()" .. cue[1]) do at = pos end
+                if at > best then best, role = at, cue[2] end
+            end
+            note(sid, role)
+            from = e + 1
+        end
+    end
+    return found
+end
+
+-- Every blueprint file under a data folder: { { id, path }, ... }, sorted by id.
+local function blueprintFiles(dir)
+    local out = {}
+    local function walk(d)
+        for _, file in ipairs(love.filesystem.getDirectoryItems(d)) do
+            local path = d .. "/" .. file
+            local info = love.filesystem.getInfo(path)
+            if info and info.type == "directory" then
+                walk(path)
+            else
+                local id = file:match("^(.+)%.lua$")
+                if id then out[#out + 1] = { id = id, path = path } end
+            end
+        end
+    end
+    walk(dir)
+    table.sort(out, function(a, b) return a.id < b.id end)
+    return out
+end
+
+-- The two indexes, built once by statusCatalogue():
+--   ITEM_STATUSES  itemId -> { statusId, ... }, every status the piece names, its traits' included
+--   STATUS_BY      statusId -> role -> { { item = id, via = traitName? } | { other = label, status = id? } }
+local ITEM_STATUSES, STATUS_BY = {}, {}
+
+-- The folders that are not items but still land statuses on a body. They have no page of their own, so
+-- they are NAMED on a status's entry rather than linked; a status landed by another status links.
+local STATUS_OTHERS = {
+    { dir = "data/hazards",  word = "Ground" },
+    { dir = "data/traps",    word = "Trap" },
+    { dir = "data/curses",   word = "Curse" },
+    { dir = "data/injuries", word = "Injury" },
+    { dir = "data/status",   word = "Status" },
+}
+
+local function statusName(sid)
+    local def = Status.defs[sid]
+    return (def and def.name) or sid
+end
+
+local function statusLink(sid)
+    return "[" .. cell(statusName(sid)) .. "](Statuses#" .. sid .. ")"
+end
+
+local function statusCatalogue()
+    ITEM_STATUSES, STATUS_BY = {}, {}
+    local function add(sid, role, entry)
+        STATUS_BY[sid] = STATUS_BY[sid] or {}
+        STATUS_BY[sid][role] = STATUS_BY[sid][role] or {}
+        table.insert(STATUS_BY[sid][role], entry)
+    end
+
+    local traitFound = {}
+    for _, f in ipairs(blueprintFiles("data/traits")) do traitFound[f.id] = scanStatuses(f.path) end
+
+    for _, f in ipairs(blueprintFiles("data/items")) do
+        local def = Item.defs[f.id]
+        if def then
+            local named = {}
+            local function take(found, via)
+                for sid, roles in pairs(found) do
+                    named[sid] = true
+                    for _, r in ipairs(STATUS_ROLES) do
+                        if roles[r.key] then add(sid, r.key, { item = f.id, via = via }) end
+                    end
+                end
+            end
+            take(scanStatuses(f.path))
+            for _, tid in ipairs(def.traits or {}) do
+                local t = Trait.defs[tid]
+                take(traitFound[tid] or {}, (t and t.name) or tid)
+            end
+            local list = {}
+            for sid in pairs(named) do list[#list + 1] = sid end
+            table.sort(list, function(a, b) return statusName(a) < statusName(b) end)
+            if #list > 0 then ITEM_STATUSES[f.id] = list end
+        end
+    end
+
+    for _, src in ipairs(STATUS_OTHERS) do
+        for _, f in ipairs(blueprintFiles(src.dir)) do
+            local ok, def = pcall(love.filesystem.load(f.path))
+            local name = (ok and type(def) == "table" and def.name) or f.id
+            for sid, roles in pairs(scanStatuses(f.path)) do
+                if sid ~= f.id then
+                    for _, r in ipairs(STATUS_ROLES) do
+                        if roles[r.key] then
+                            add(sid, r.key, { other = src.word .. ": " .. name,
+                                status = (src.dir == "data/status") and f.id or nil })
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+local function statusesCell(id)
+    local list = ITEM_STATUSES[id]
+    if not list then return "" end
+    local out = {}
+    for i, sid in ipairs(list) do out[i] = statusLink(sid) end
+    return table.concat(out, "<br>")
 end
 
 -- ---------------------------------------------------------------------------
@@ -592,10 +796,13 @@ local function notesCell(def)
     if def.openingBoon then parts[#parts + 1] = "opens the fight with a boon" end
     if def.encounterCleared then parts[#parts + 1] = "acts between fights" end
     if def.statusImmunity then
+        -- A list of status ids, so each one links to the status it wards.
         local names = {}
-        for k in pairs(def.statusImmunity) do names[#names + 1] = k end
+        for _, k in ipairs(def.statusImmunity) do
+            names[#names + 1] = Status.defs[k] and statusLink(k) or cell(k)
+        end
         table.sort(names)
-        parts[#parts + 1] = "immune to " .. cell(table.concat(names, ", "))
+        parts[#parts + 1] = "immune to " .. table.concat(names, ", ")
     end
     if def.immune then
         local names = {}
@@ -623,6 +830,7 @@ local function rowOf(id)
         stats  = statsCell(Item.growth(id)),
         use    = useCell(inst),
         traits = traitsCell(def),
+        statuses = statusesCell(id),
         hands  = def.hands and tostring(def.hands) or "",
         stack  = (def.type == "consumable") and tostring(Item.maxStack(def)) or "",
         tags   = tagsCell(def),
@@ -770,10 +978,11 @@ local function classPage(classId, bucket)
     -- rule owed back to the prose. The Creature page carried a paragraph about "Dropped by" while
     -- printing no such column: monster kit has no `unlockLevel`, so it is not in the rift pool the drop
     -- census measures at all -- it is never dealt, never sold and never in the depth-banded draw.
-    local anyDrop, anyKit = false, false
+    local anyDrop, anyKit, anyStatus = false, false, false
     for _, t in ipairs(order) do
         for _, id in ipairs(bucket.types[t.id]) do
             if dropCell(id) ~= "" then anyDrop = true end
+            if ITEM_STATUSES[id] then anyStatus = true end
             if (Item.defs[id] or {}).class == "creature" then anyKit = true end
         end
     end
@@ -788,6 +997,11 @@ local function classPage(classId, bucket)
         legend = legend .. "**Dropped by** names the body you can go and take one off — follow it to "
             .. "that body's own entry for the rest of what it carries; blank means no body is known "
             .. "for it and it comes out of the rift's depth-banded draw instead. "
+    end
+    if anyStatus then
+        legend = legend .. "**Statuses** names every status the piece applies, ends, wards or plays "
+            .. "off — follow one to [Statuses](Statuses) for what it does and everything else that "
+            .. "touches it. "
     end
     line(legend .. "See [Items](Items) for the whole catalogue and [Bestiary](Bestiary) for the "
         .. "bodies.")
@@ -1284,7 +1498,9 @@ end
 local function immuneLine(def)
     local names = {}
     for _, k in ipairs(def.immune or {}) do names[#names + 1] = cell(k) end
-    for k in pairs(def.statusImmunity or {}) do names[#names + 1] = cell(k) end
+    for _, k in ipairs(def.statusImmunity or {}) do
+        names[#names + 1] = Status.defs[k] and statusLink(k) or cell(k)
+    end
     if #names == 0 then return nil end
     table.sort(names)
     return table.concat(names, ", ")
@@ -1632,6 +1848,200 @@ local function bestiaryIndexPage()
     return table.concat(out, "\n")
 end
 
+-- ---------------------------------------------------------------------------
+-- Statuses: every status, and everything that names it
+-- ---------------------------------------------------------------------------
+--
+-- THE THIRD HALF OF THE CROSS-LINKING. An item's Statuses cell links here; each entry here links back
+-- to every piece that applies, ends, wards or plays off it -- read off the blueprints' source by
+-- statusCatalogue(), so a status nobody names says so rather than looking like one you will meet.
+--
+-- ADDRESSED BY ID, not by a heading slug: two statuses may share a display name, and an id is what an
+-- item's source names anyway. The <a> sits on its own line above the heading so the heading stays
+-- plain text in the page's table of contents.
+
+local UNTIL_LIFTED = 999
+
+local function durationText(def)
+    local d = def.duration
+    if type(d) ~= "number" then return nil end
+    if d >= UNTIL_LIFTED then return "until lifted" end
+    if def.hideDuration then return nil end
+    local turns = d / Status.TICKS_PER_TURN
+    local t = (turns == math.floor(turns)) and tostring(turns) or string.format("%.1f", turns)
+    return tostring(d) .. " ticks (~" .. t .. " turn" .. (turns == 1 and "" or "s") .. ")"
+end
+
+local function signed(v)
+    return (v < 0 and ("−" .. tostring(-v)) or ("+" .. tostring(v)))
+end
+
+local function sortedPairsText(t, fmt)
+    local keys = {}
+    for k in pairs(t) do keys[#keys + 1] = k end
+    table.sort(keys)
+    local out = {}
+    for _, k in ipairs(keys) do out[#out + 1] = fmt(k, t[k]) end
+    return table.concat(out, " · ")
+end
+
+-- What the status does to the rules, in the fields' own words. The mechanism of most statuses is a
+-- hook function and is the description's job; these are the declarative flags a reader can trust.
+local STATUS_FLAGS = {
+    { "lingers",           "stays when the bearer leaves the ground that granted it" },
+    { "bossProof",         "a boss refuses it" },
+    { "blocksMove",        "cannot move on its own turn" },
+    { "blocksForcedMove",  "cannot be shoved, thrown or dragged" },
+    { "stopsMovement",     "a walk that gains it stops there" },
+    { "untargetable",      "cannot be targeted" },
+    { "preventsDeath",     "cannot die while it holds" },
+    { "blocksHealing",     "cannot be healed" },
+    { "disablesActions",   "cannot act" },
+    { "disablesReactions", "cannot react" },
+    { "interruptsChannel", "breaks a channel" },
+    { "stacks",            "stacks" },
+}
+
+local function statusRules(def)
+    local parts = {}
+    if type(def.statBonus) == "table" then
+        parts[#parts + 1] = sortedPairsText(def.statBonus, function(k, v)
+            return signed(v) .. " " .. cell(k)
+        end)
+    end
+    if type(def.vulnerable) == "table" then
+        -- Positive is extra damage taken, negative is damage shrugged off.
+        parts[#parts + 1] = "damage taken " .. sortedPairsText(def.vulnerable, function(k, v)
+            return cell(k) .. " " .. signed(v)
+        end)
+    end
+    if type(def.resistible) == "string" then
+        parts[#parts + 1] = "resisted by " .. (def.resistible == "magical" and "magic defense" or "defense")
+    end
+    for _, f in ipairs(STATUS_FLAGS) do
+        if def[f[1]] then parts[#parts + 1] = f[2] end
+    end
+    if #parts == 0 then return nil end
+    return table.concat(parts, " · ")
+end
+
+-- One role's sources, items first (linked, with the trait that carries it), then everything else.
+local function sourcesText(entries)
+    if not entries or #entries == 0 then return nil end
+    local items, others, seen = {}, {}, {}
+    for _, e in ipairs(entries) do
+        local text
+        if e.item then
+            local named = Item.defs[e.item].name
+            text = itemLink(e.item)
+                .. ((e.via and e.via ~= named) and (" *(" .. cell(e.via) .. ")*") or "")
+        elseif e.status then
+            text = "Status: " .. statusLink(e.status)
+        else
+            text = cell(e.other)
+        end
+        if not seen[text] then
+            seen[text] = true
+            if e.item then items[#items + 1] = { text, Item.defs[e.item].name or e.item }
+            else others[#others + 1] = { text, text } end
+        end
+    end
+    local function byKey(a, b) return a[2] < b[2] end
+    table.sort(items, byKey)
+    table.sort(others, byKey)
+    local out = {}
+    for _, e in ipairs(items) do out[#out + 1] = e[1] end
+    for _, e in ipairs(others) do out[#out + 1] = e[1] end
+    return table.concat(out, " · ")
+end
+
+local function statusIds()
+    local ids = {}
+    for id in pairs(Status.defs) do ids[#ids + 1] = id end
+    table.sort(ids, function(a, b)
+        local na, nb = statusName(a), statusName(b)
+        if na ~= nb then return na < nb end
+        return a < b
+    end)
+    return ids
+end
+
+local function statusSection(out, sid)
+    local def = Status.defs[sid]
+    local function line(s) out[#out + 1] = s or "" end
+    line('<a name="' .. sid .. '" id="' .. sid .. '"></a>')
+    line()
+    line("### " .. cell(statusName(sid)))
+    line()
+    local meta = { "`" .. sid .. "`" }
+    if def.abbr then meta[#meta + 1] = "badge **" .. cell(def.abbr) .. "**" end
+    meta[#meta + 1] = def.debuff and "debuff — a Cure lifts it" or "not a debuff"
+    local dur = durationText(def)
+    if dur then meta[#meta + 1] = "lasts " .. dur end
+    if type(def.magnitude) == "number" then meta[#meta + 1] = "magnitude " .. tostring(def.magnitude) end
+    line(table.concat(meta, " · "))
+    line()
+    if def.description then line("> " .. cell(def.description)); line() end
+
+    local by = STATUS_BY[sid] or {}
+    local facts = {}
+    for _, r in ipairs(STATUS_ROLES) do
+        local text = sourcesText(by[r.key])
+        if text then facts[#facts + 1] = "| **" .. r.head .. "** | " .. text .. " |" end
+    end
+    if not by.applies then
+        facts[#facts + 1] = "| **Applied by** | *no blueprint names it* — the combat rules put it on "
+            .. "a body themselves, or nothing does yet. |"
+    end
+    local rules = statusRules(def)
+    if rules then facts[#facts + 1] = "| **Rules** | " .. rules .. " |" end
+    line("| | |")
+    line("|---|---|")
+    for _, f in ipairs(facts) do line(f) end
+    line()
+end
+
+local function statusPage()
+    local out = {}
+    local function line(s) out[#out + 1] = s or "" end
+    local ids = statusIds()
+    local debuffs, rest = {}, {}
+    for _, sid in ipairs(ids) do
+        if Status.defs[sid].debuff then debuffs[#debuffs + 1] = sid else rest[#rest + 1] = sid end
+    end
+
+    line(banner("Statuses: data/status/."))
+    line()
+    line("# Statuses")
+    line()
+    line("Every one of the **" .. #ids .. " statuses** a body can wear in a fight — "
+        .. #debuffs .. " debuffs and " .. #rest .. " others. A duration is measured in **ticks** of "
+        .. "the initiative clock, " .. Status.TICKS_PER_TURN .. " to a typical turn, so a slow body "
+        .. "sits through more of one between its turns than a fast one does.")
+    line()
+    line("Each entry names every piece that touches it, **read off the blueprints themselves**: "
+        .. "*Applied by* puts it on a body, *Removed by* ends it, *Warded by* keeps it off the bearer, "
+        .. "and *Plays off it* is a piece that does something more to a body already wearing it. A piece "
+        .. "that does it through a trait names the trait beside it. Every item links to its shelf; see "
+        .. "[Items](Items) for the catalogue.")
+    line()
+
+    local function group(title, list)
+        if #list == 0 then return end
+        line("## " .. title)
+        line()
+        local jump = {}
+        for _, sid in ipairs(list) do jump[#jump + 1] = statusLink(sid) end
+        line(table.concat(jump, " · "))
+        line()
+        for _, sid in ipairs(list) do statusSection(out, sid) end
+    end
+    group("Debuffs", debuffs)
+    group("Boons and conditions", rest)
+
+    return table.concat(out, "\n")
+end
+
 local function homePage(byClass, classIds)
     local out = {}
     local function line(s) out[#out + 1] = s or "" end
@@ -1666,6 +2076,10 @@ local function homePage(byClass, classIds)
     for _, kind in ipairs(BODY_KINDS) do
         line("  - [" .. kindName(kind) .. "](" .. bestiaryPageOf(kind) .. ") — " .. #BODIES[kind])
     end
+    local nStatus = 0
+    for _ in pairs(Status.defs) do nStatus = nStatus + 1 end
+    line("- **[Statuses](Statuses)** — all " .. nStatus .. " statuses: what each one does, and every "
+        .. "piece that applies, ends or wards it.")
     line("- **[Items](Items)** — all " .. total .. " items, by class and type.")
     for _, id in ipairs(classIds) do
         line("  - [" .. (Class.displayName(id) or id) .. "](" .. pageOf(id) .. ") — " .. byClass[id].count)
@@ -1685,6 +2099,7 @@ local function sidebarPage(byClass, classIds)
     for _, kind in ipairs(BODY_KINDS) do
         line("  - [" .. kindName(kind) .. "](" .. bestiaryPageOf(kind) .. ")")
     end
+    line("- [Statuses](Statuses)")
     line("- [Items](Items)")
     for _, id in ipairs(classIds) do
         line("  - [" .. (Class.displayName(id) or id) .. "](" .. pageOf(id) .. ")")
@@ -1720,6 +2135,7 @@ function M.render()
     -- composition rows both have to name the page and anchor a body will get.
     bodyCatalogue()
     kitCatalogue()
+    statusCatalogue()
 
     local byClass, classIds = catalogue()
     local pages = {
@@ -1728,6 +2144,7 @@ function M.render()
         { name = "Items", body = indexPage(byClass, classIds) },
         { name = "The-Rift", body = floorsPage() },
         { name = "Bestiary", body = bestiaryIndexPage() },
+        { name = "Statuses", body = statusPage() },
     }
     for _, id in ipairs(classIds) do
         pages[#pages + 1] = { name = pageOf(id), body = classPage(id, byClass[id]) }

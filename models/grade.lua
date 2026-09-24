@@ -465,6 +465,26 @@ Grade.TRAIT_GRADE = {
     trait_the_unbroken_stalk =          2.0,  -- The Unbroken Stalk -- a kill from hiding keeps you hidden
     trait_trophy_cord =                 2.5,  -- Trophy Cord -- +2 Damage per kind killed this trip, to +10
 
+    -- THE SATED AND THE FLIGHT (2026-09-23). The creature rules first, weighed as a body's own and never
+    -- shelved. Then the drops. Bottomless Gut and the Girth are the same meal from opposite ends -- the Gut
+    -- has to be FED a kill beside you, the Girth is full at the bell and spends itself down -- so the Gut
+    -- sits a notch under Trophy Cord (its ceiling is lower and its price is standing in the melee) and the
+    -- Girth beside Plummet. Gorger's Beak is +6 Damage at full for three draughts drunk, which a Warbrewer
+    -- does anyway. Sated and Tithe Feather are small, situational sustain; Hawk Bells is a narrow answer to
+    -- one kind of body, worth a lot on the floor that fields it and nothing elsewhere.
+    trait_three_meals =                 3.0,  -- Three Meals -- the Sated's weight, spent and eaten back
+    trait_swoop =                       1.0,  -- Swoop -- +1 damage per tile flown, to +6
+    trait_mantling =                    1.0,  -- Mantling -- the hawk's grip lets go when it is struck
+    trait_on_the_wing =                 3.0,  -- On the Wing -- half damage for three blows, then a crash
+    trait_answers_every_blow =          2.5,  -- Answers Every Blow -- a free half-damage bite per melee blow
+    trait_mated_for_life =              1.0,  -- Mated for Life -- Gorged when its mate falls
+    trait_bottomless_gut =              2.0,  -- Bottomless Gut -- a meal per foe that dies beside you, to 3
+    trait_distended_girth =             1.5,  -- Distended Girth -- full at the bell, shed with a debuff
+    trait_gorgers_beak =                2.0,  -- Gorger's Beak -- +2 Damage per consumable used, to +6
+    trait_sated =                       0.5,  -- Sated -- at full health, heals pass to a hurt neighbour
+    trait_tithe_feather =               1.0,  -- Tithe Feather -- 3 health when your beast lands a blow
+    trait_hawk_bells =                  1.0,  -- Hawk Bells -- Invisible foes within 3 can be targeted
+
     -- ADOPTED FROM THE SEED, not individually weighed. These are the classifier's own numbers, taken
     -- as authored on the designer's instruction rather than argued one by one. They are real weights
     -- and the grader treats them as such -- but Grade.TRAIT_ADOPTED below keeps the provenance, because
@@ -793,6 +813,53 @@ Grade.TRAIT_GRADE = {
     -- dead, so it can never win a fight it is losing, and what it fields is three copies of the
     -- CHEAPEST body its own file names rather than anything scaled to the bearer.
     trait_split =                       4.5,  -- Comes Apart
+
+    -- THE MOSS DROPS (data/traits/trait_come_apart.lua, trait_slough.lua), judged against Second Wind
+    -- (2.0). Come Apart catches the same once-a-battle lethal beat but stands the bearer up at 1 rather
+    -- than at half; what lifts it half a point is the three pieces, which fight and can walk back up to
+    -- 30% of the bar -- IF the company keeps them alive to get there. Slough is smaller: one piece, a
+    -- fifth of the bar, and only once the bearer is already under half.
+    trait_come_apart =                  2.5,  -- Come Apart
+    trait_slough =                      1.5,  -- Slough
+
+    -- THE VELVET LINE (Lust's slimes, data/traits/trait_strip.lua and kin). Strip and its two halves
+    -- are creature rules on bound bodies and graded as Comes Apart's neighbours; the drops are judged
+    -- against what they take. The Glove strips one armour once a battle (a Sunder that lands on the
+    -- first hit, 2.0). Kept Suitors pays only while a charm holds, so it is the charm's rider (1.5);
+    -- Loosened Laces is a standing -2 Defense on everything near, a Sunder with no cast (3.0).
+    trait_strip =                       4.0,  -- Strip
+    trait_wardrobe =                    0.5,  -- Wardrobe
+    trait_velvet_split =                4.5,  -- Comes Apart (velvet)
+    trait_velvet_glove =                2.0,  -- Velvet Glove
+    trait_kept_suitors =                1.5,  -- Kept Suitors
+    trait_loosened_laces =              3.0,  -- Loosened Laces
+    -- GREED'S LINE. Interest is judged at its commonest grant, the Ledger Coin's +1 a turn to +6 --
+    -- an Empowered that arrives slowly (2.5); the Scale is Fury Swipes without the type restriction.
+    trait_interest =                    2.5,  -- Interest
+    trait_usurers_scale =               3.0,  -- Usurer's Scale
+    -- THE LAST FOUR SLIME LINES (2026-09-24), judged against their nearest shipped neighbour. Creature
+    -- rules on bound bodies first, graded as Comes Apart's peers; then the drops.
+    trait_boil_over =                   4.0,  -- Boil Over (a Volatile that fires on a count)
+    trait_torpid_touch =                3.0,  -- Torpid Touch (a gentle Stun on every blow)
+    trait_numb =                        2.5,  -- Numb (a cost tax, stacking to three)
+    trait_drift =                       3.0,  -- Drift (grows while it holds)
+    trait_mimicry =                     4.0,  -- Mimicry (becomes the strongest thing that looks at it)
+    trait_begrudge =                    3.0,  -- Begrudge (every blessing twice)
+    trait_many_faced =                  4.5,  -- Many Faces (Comes Apart, aimed at the company)
+    trait_rank =                        4.0,  -- Rank (an order you must fight in)
+    trait_rank_top =                    4.5,  -- Apex
+    trait_seething_core =               2.5,  -- Seething Core (Interest's climb, paid in blows taken)
+    trait_caldera_plate =               2.0,  -- Caldera Plate (a once-a-battle burn ring)
+    trait_flashpoint =                  2.0,  -- Flashpoint (an Empowered every third hit taken)
+    trait_idle_hands =                  1.5,  -- Idle Hands (one free cast)
+    trait_snowbank =                    2.5,  -- Snowbank (up to +6 Defense for holding)
+    trait_stillwater =                  2.0,  -- Stillwater
+    trait_patient_blade =               2.0,  -- Patient Blade
+    trait_copycat =                     2.0,  -- Copycat (a borrowed weapon, one use)
+    trait_mirror_mask =                 3.0,  -- Mirror Mask (Substitution with the clone included)
+    trait_second_self =                 2.5,  -- Second Self (a two-turn afterlife)
+    trait_pecking_order =               2.0,  -- Pecking Order
+    trait_station =                     2.0,  -- Station
 
     -- BONE-KNIT, the skeleton's refusal to fall (data/items/utility/utility_marrowlight.lua), judged
     -- because the shape estimate and the sibling weight disagree by a factor of three and BOTH are

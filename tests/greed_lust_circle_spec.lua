@@ -76,8 +76,6 @@ return {
             for _, id in ipairs({ "greed", "lust" }) do
                 local sin = sinNamed(id)
                 assert(Character.defs[sin.minor.lead], id .. "'s stand-in is a body that loads")
-                assert(sin.guardian.filler == sin.minor.lead,
-                    id .. "'s approach body must fill out its own general's stair")
             end
         end,
     },

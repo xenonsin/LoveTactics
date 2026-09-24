@@ -166,7 +166,7 @@ AI.WEIGHTS = {
 local function foes(ctx)
     local out = {}
     for _, u in ipairs(ctx.combat.units) do
-        if u.alive and u.side ~= ctx.unit.side and not Status.untargetable(u) then out[#out + 1] = u end
+        if u.alive and u.side ~= ctx.unit.side and not Status.untargetable(u, ctx.combat) then out[#out + 1] = u end
     end
     return out
 end
@@ -508,6 +508,18 @@ AI.POSTURES = {
         engage = function() return true end,
     },
 
+    -- Walks back to its own. The Gluttony slimes' posture (ability_coalesce, ability_rejoin): what came
+    -- apart tries to come back together. A body with a maker walks home to it; one without walks to the
+    -- nearest of its own kind; with neither it closes on the fight like anybody else. It still hits
+    -- whatever it can reach on the way -- the walk is where it goes, not what it refuses to do.
+    gather = {
+        desc = "Tries to come back together. It walks to whoever made it, or to the nearest of its own"
+            .. " kind, and hits what it can reach on the way.",
+        rules = { SUPPORT_RULE, ATTACK_RULE },
+        move = "gather",
+        engage = function() return true end,
+    },
+
     -- Walks for the exit and nothing else. The escortee's posture: it never starts a fight, never
     -- steps aside to trade a blow -- it spends every turn closing on the ground the objective names,
     -- and leaves the killing to whoever is escorting it. The empty rule list is the whole point: with
@@ -575,7 +587,7 @@ AI.DEFAULT_POSTURE = "aggressive"
 -- belongs here -- one missing from this list is one the player cannot choose (tactics_editor_spec
 -- checks the two agree).
 AI.POSTURE_ORDER = {
-    "aggressive", "objective", "skirmish", "support", "guard", "defensive", "holdGround", "escort",
+    "aggressive", "objective", "skirmish", "support", "gather", "guard", "defensive", "holdGround", "escort",
     -- Last, because the scale this list is ordered on ends here: `escort` will not START a fight and
     -- `quarry` will not HAVE one.
     "quarry",
@@ -705,7 +717,7 @@ function AI.spared(combat, unit)
     -- thing across the module and a wide body is judged by its closest cell either way.
     local gap = Combat.unitGap(unit, body)
     for _, u in ipairs(combat.units) do
-        if u.alive and u ~= body and u.side ~= unit.side and not Status.untargetable(u)
+        if u.alive and u ~= body and u.side ~= unit.side and not Status.untargetable(u, combat)
             and Combat.unitGap(unit, u) < gap then
             return body -- somebody is standing closer: the escortee is screened
         end
@@ -1084,7 +1096,7 @@ function AI.candidates(combat, unit, items, tiles, wantSupport)
                     -- (including me); a strike wants theirs, and can't see an Invisible foe.
                     local legal = t.alive and (wantSupport
                         and t.side == unit.side
-                        or (not wantSupport and t.side ~= unit.side and not Status.untargetable(t)))
+                        or (not wantSupport and t.side ~= unit.side and not Status.untargetable(t, combat)))
                     if legal then
                         -- Measured BODY to body, not corner to corner: the mark's cell nearest this
                         -- stand tile, from the whole block this unit would occupy standing on it
@@ -1546,6 +1558,19 @@ local function fallbackMove(ctx, mode)
         -- turn it spends walking is a turn the party has to keep the road ahead of it clear. Falls
         -- back to approach on an objective that names no ground, so the posture is never inert.
         goal = AI.objectiveTile(combat, unit) or nearest(ctx, foes(ctx))
+    elseif mode == "gather" then
+        -- Home first -- the body that made it -- then the nearest of its own blueprint. A goal it is
+        -- already beside is reached: hold there rather than shuffling round it.
+        local home = unit.summoner
+        if not (home and home.alive) then
+            local kin = {}
+            for _, u in ipairs(allies(ctx)) do
+                if u ~= unit and u.char and unit.char and u.char.id == unit.char.id then kin[#kin + 1] = u end
+            end
+            home = nearest(ctx, kin)
+        end
+        if home and Combat.unitGap(unit, home) <= 1 then return nil end
+        goal = home or nearest(ctx, foes(ctx))
     elseif mode == "regroup" then
         -- Toward the ally most in need of me, not toward the fight.
         goal = weakest(allies(ctx)) or nearest(ctx, foes(ctx))

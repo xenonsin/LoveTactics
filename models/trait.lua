@@ -489,6 +489,28 @@ function Trait.trySurvive(combat, unit)
     if not unit or not unit.traits then return false end
     local Combat = require("models.combat")
     for _, t in ipairs(unit.traits) do
+        -- COME APART (data/traits/trait_come_apart.lua): the lethal blow leaves the bearer at 1 and
+        -- spills sloughlings carrying a share of them each, which Rejoin to bring them back. Once per
+        -- battle on `stacks`, as a cost-free Second Wind is.
+        if t.def.splitsOnLethal and t.stacks == 0 then
+            t.stacks = 1
+            local hp = unit.char.stats.health
+            hp.current = 1
+            local Summon = require("models.summon")
+            local share = math.max(1, math.floor(Combat.unreservedMax(unit.char, "health")
+                * Trait.param(t, "share", 0.1) + 0.5))
+            local born = 0
+            for _ = 1, Trait.param(t, "count", 3) do
+                local x, y = Combat.openTileNear(combat, unit.x, unit.y)
+                if not x then break end
+                local piece = Summon.spawn(combat, unit, "character_moss_sloughling", x, y,
+                    { announce = false, stats = { health = share } })
+                if piece then born = born + 1 end
+            end
+            Combat.logEvent(combat, "action", string.format("%s comes apart into %d.",
+                (unit.char and unit.char.name) or "Unit", born), unit)
+            return true
+        end
         if t.def.revivesOnLethal then
             local cost = Trait.param(t, "cost")
             -- canPay only ASKS; payCost is the line under it that bills. Kept apart for the reason
@@ -1075,6 +1097,7 @@ end
 function Trait.instantiate(id, item, params)
     local def = Trait.defs[id]
     assert(def, "unknown trait id: " .. tostring(id))
+    if def.presence then Trait.presenceLive = true end
     return {
         id = id,
         name = def.name or id,
@@ -1239,9 +1262,36 @@ end
 -- The summed live contribution to one stat. 0 for the overwhelming majority of bodies, which carry no
 -- live trait at all -- and 0 with no board, since a live passive is a claim about a field and the
 -- inventory screen has none.
+-- A PRESENCE is a live bonus that reaches OTHER bodies: a trait declaring `presence = { radius = 2,
+-- defense = -2 }` moves that stat on every foe standing within `radius` of its bearer (the Loosened
+-- Laces, data/traits/trait_loosened_laces.lua). Read here, on the stat's own path, so mitigation, the
+-- character sheet and the breakdown tooltip all see it at once. Only walked once a presence trait has
+-- ever been instantiated -- until then every stat read pays one boolean.
+Trait.presenceLive = false
+
+local function presenceOn(unit, stat)
+    local combat = unit.combat
+    if not (Trait.presenceLive and combat and combat.units) then return 0 end
+    local Combat = require("models.combat")
+    local total = 0
+    for _, bearer in ipairs(combat.units) do
+        if bearer ~= unit and bearer.alive and bearer.side ~= unit.side and bearer.traits then
+            for _, t in ipairs(bearer.traits) do
+                local p = t.def and t.def.presence
+                if p and p[stat] and Combat.unitGap(bearer, unit) <= (p.radius or 1) then
+                    total = total + p[stat]
+                end
+            end
+        end
+    end
+    return total
+end
+
 function Trait.liveBonus(unit, stat)
-    if not (unit and unit.traits and stat) then return 0 end
-    local total, ctx = 0, nil
+    if not (unit and stat) then return 0 end
+    local around = unit.alive ~= false and presenceOn(unit, stat) or 0
+    if not unit.traits then return around end
+    local total, ctx = around, nil
     for _, t in ipairs(unit.traits) do
         local live = t.def and t.def.live
         if live then
@@ -1552,6 +1602,17 @@ function Trait.shareTargets(combat, unit)
     end
     if #out == 0 then return nil end
     return out
+end
+
+-- A status just landed FRESH on `recipient`, and every other living body hears it (Status.apply). The
+-- observer's hook reads `ctx.recipient` and `ctx.status`; Envy's Begrudge copies a foe's blessing onto
+-- itself. Copies are applied with `echoed = true`, which Status.apply refuses to re-broadcast.
+function Trait.onAnyStatusApplied(combat, recipient, info)
+    for _, unit in ipairs(combat.units or {}) do
+        if unit.alive and unit ~= recipient and unit.traits then
+            dispatch(combat, unit, "onAnyStatusApplied", info)
+        end
+    end
 end
 
 function Trait.onAllyStrike(combat, striker, foe)

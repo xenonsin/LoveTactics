@@ -47,6 +47,21 @@ local TROPHIES = {
     -- either would be selling the boss fight's answer over the counter that the fight exists to
     -- teach, which is exactly what this list is for.
     "utility_unbroken_surface", "armor_quicksilver_mantle",
+    -- The wood's slimes (data/characters/character_moss_slime.lua and its King): Gluttony's slime rule,
+    -- "what came apart tries to come back together", worn three ways.
+    "armor_mosswrap", "utility_crown_of_the_court", "utility_moss_heart",
+    -- Lust's velvet slimes (data/characters/character_velvet_slime.lua and its Queen): their Strip,
+    -- worn, and the one coat nothing can be stripped from.
+    "utility_velvet_glove", "utility_kept_suitors", "utility_loosened_laces", "armor_silk_lining",
+    -- Greed's slimes compound (trait_interest): the coin, the purse and the scale are that rule worn.
+    "utility_ledger_coin", "utility_compound_purse", "utility_usurers_scale",
+    -- The last four slime lines (2026-09-24), each a circle's rule worn: Wrath's Boil Over, Sloth's three
+    -- (Torpid, Numbed, Drift), Envy's Mimicry and Begrudge, Pride's Rank.
+    "utility_seething_core", "armor_caldera_plate", "utility_flashpoint",
+    "armor_unhurried_coat", "utility_idle_hands", "utility_snowbank", "utility_the_slow_hour",
+    "utility_stillwater", "utility_heavy_lids", "utility_deep_sleep", "utility_snowslide", "utility_patient_blade",
+    "utility_copycat", "utility_mirror_mask", "utility_second_self",
+    "utility_pecking_order", "utility_station", "armor_above_reproach",
     -- The Mimic's one (data/characters/character_mimic.lua, models/mimic.lua's Mimic.TROPHY), and it
     -- is the first trophy that is not paid by the rank draw at all: a flat percent on top of the win,
     -- outside the roll. That makes the refusal below load-bearing in a way it is not for the others --
@@ -99,6 +114,14 @@ local TROPHIES = {
     -- Gula's (the wood's general, re-premised 2026-09-23): the beast's inhale as a druid's, and the rule
     -- that learns every blow as a hide. After the Maw on her drop list (Descent.DROPS.gluttony).
     "ability_draw_breath", "armor_studied_hide",
+    -- The Sated's (Gluttony's seat, reworked 2026-09-23): the Retch as a Bombardier's, the Eat as a
+    -- Barbarian's, the whole fight turned around as a Bulwark's coat, a devoured corpse as a
+    -- Necromancer's, and being full as a Paladin's.
+    "ability_bile_sac", "utility_bottomless_gut", "armor_distended_girth", "ability_second_helping",
+    "utility_sated_charm",
+    -- The flight's (Gluttony's approach, 2026-09-23): the hawk's bells as a Trapper's, and the Griffin's
+    -- appetite and tithe as a Warbrewer's and a Beastmaster's.
+    "utility_hawk_bells", "utility_gorgers_beak", "utility_tithe_feather",
 }
 
 local function vendorFor(class)

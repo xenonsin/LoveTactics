@@ -46,9 +46,15 @@ does not any more: the design docs argue about why the game is shaped this way a
 code that a change lands in, while a wiki is read by somebody who wants to know what a thing *does*.
 `docs/` is untouched and still the design source; it is simply no longer published.
 
-`& "E:\LOVE\lovec.exe" . wiki-gen` (`tools/wiki_gen.lua`) renders **58 pages**: every item by class
+`& "E:\LOVE\lovec.exe" . wiki-gen` (`tools/wiki_gen.lua`) renders **59 pages**: every item by class
 then by type (913 over 46 class pages), every body by kind (**the Bestiary** — 165 over 7), the Rift's
-fifteen floors, and the indexes over all three, into the gitignored `wiki/`. Every number is read
+fifteen floors, **every status** (one `Statuses` page), and the indexes over all of it, into the
+gitignored `wiki/`. An item's *Statuses* cell links each status its blueprint names, and each status
+entry links back to every piece that applies, removes, wards or plays off it. That index is a
+**source scan**: most statuses are landed inside an `effect` function, so the tool reads each
+blueprint's text (comments stripped) for `"status_..."` literals and guesses the role from the call
+around each one (`clearStatus` removes, `hasStatus`/`requiresStatus` plays off, `statusImmunity`
+wards, anything else applies). Traits fold into the items that carry them. Every number is read
 through the model (`Item.instantiate` / `Item.growth` at each forge level, `Character.instantiate` for
 a stat block), so a page cannot disagree with the game; a column no item in a section filled is
 dropped from that table. `tools/wiki-sync.sh` builds and publishes it, and its prune step retires any
@@ -83,8 +89,9 @@ finds nothing to commit and the hook stays silent. Skip it once with `LOVETACTIC
 commit ...`. Note it builds from the **working tree**, so uncommitted edits publish too.
 
 The second is `tools/wiki-watch.sh`, a Claude Code `PostToolUse` hook wired in `.claude/settings.json`:
-editing a blueprint under `data/items/`, `data/characters/`, `data/races/` or `data/encounters/`
-rebuilds `wiki/` on the spot, and **fails the edit (exit 2) if the blueprint no longer loads** — so a
+editing a blueprint under `data/items/`, `data/characters/`, `data/races/`, `data/encounters/`,
+`data/status/` or one of the folders the status page scans (`traits`, `hazards`, `traps`, `curses`,
+`injuries`) rebuilds `wiki/` on the spot, and **fails the edit (exit 2) if the blueprint no longer loads** — so a
 broken blueprint is reported against the edit that broke it rather than at commit time. That list is
 deliberately short of the transitive truth; the post-commit hook above is the backstop for everything
 else. `tests/wiki_spec.lua` holds the pages to their promises.

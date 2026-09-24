@@ -391,11 +391,19 @@ end
 -- the body is not paying. `magnitude` could not carry it: two of the injury statuses move two stats at
 -- once. Overrides rather than adds, so the authored table stays readable as "what this is at full
 -- strength" and the instance says what was actually taken.
+--
+-- A def declaring `statBonusScales` reads its table as ONE STACK's worth and multiplies it by the
+-- instance's magnitude, as `vulnerableScales` does for a vulnerability bag (status_full: a meal is +3
+-- Damage, three meals are +9).
+local function bonusScale(s)
+    return s.def.statBonusScales and math.max(0, s.magnitude or 0) or 1
+end
+
 function Status.statBonus(unit, name)
     local total = 0
     for _, s in ipairs(unit.statuses or {}) do
         local bonus = s.statBonus or s.def.statBonus
-        if bonus and bonus[name] then total = total + bonus[name] end
+        if bonus and bonus[name] then total = total + bonus[name] * bonusScale(s) end
         if s.def.magnitudeStat == name and s.magnitude then total = total + s.magnitude end
     end
     return total
@@ -412,7 +420,7 @@ function Status.statBonusParts(unit, name)
         -- The instance's own table wins, exactly as it does in Status.statBonus above -- the breakdown
         -- and the fold must never disagree about what a badge is taking.
         local bonus = s.statBonus or s.def.statBonus
-        if bonus and bonus[name] then v = v + bonus[name] end
+        if bonus and bonus[name] then v = v + bonus[name] * bonusScale(s) end
         if s.def.magnitudeStat == name and s.magnitude then v = v + s.magnitude end
         if v ~= 0 then parts[#parts + 1] = { label = s.def.name or s.id, value = v } end
     end
@@ -485,6 +493,18 @@ end
 -- Multiplier applied to every ability cost the unit pays, from each active status's
 -- `costMultiplier` (1 when none). Multiplicative so two haste-like buffs compound rather than
 -- cancel. Folded into Combat.abilityCost, the single source of truth for what an ability costs.
+-- A flat SURCHARGE on every pool cost `unit` pays, summed from each status's `costAdd` (per stack when
+-- the status stacks) -- Sloth's Numbed (data/status/status_numbed.lua): effort costs more. Applied after
+-- the multiplier in Combat.abilityCosts, and only to a cost that is already above zero, so a free swing
+-- stays free.
+function Status.costAdd(unit)
+    local add = 0
+    for _, s in ipairs(unit.statuses or {}) do
+        if s.def.costAdd then add = add + s.def.costAdd * math.max(1, s.magnitude or 1) end
+    end
+    return add
+end
+
 function Status.costMultiplier(unit)
     local m = 1
     for _, s in ipairs(unit.statuses or {}) do
@@ -526,8 +546,9 @@ end
 -- The unit stays INVISIBLE while it is lit -- it keeps the status, and keeps whatever else that status
 -- pays it. Only the untargetability is overruled, because that is the only part of hiding that the
 -- light has any business arguing with.
-function Status.untargetable(unit)
+function Status.untargetable(unit, combat)
     if Status.limned(unit) then return false end
+    if combat and Status.belled(combat, unit) then return false end
     for _, s in ipairs(unit.statuses or {}) do
         if s.def.untargetable then return true end
     end
@@ -585,8 +606,40 @@ end
 -- "An element it is not ALSO immune to" is load-bearing rather than a flourish: it is what lets the
 -- same field state a body immune to an ELEMENT (a thing made of fire), where the element on the blow
 -- is exactly what is being refused and must not walk round the refusal it triggered.
+-- PRIDE'S RANK (data/traits/trait_rank.lua): a ranked body is warded while a lower-ranked body of its own
+-- side still stands -- the lowest current health ranks lowest, a `rankTop` body (the Apex Crystal) sits
+-- above every other, and ties go to board order. Answered here, beside immunity, so the hover preview, the
+-- breakdown receipt and the live blow all see the same ward. Returns a named marker for the log line.
+local RANK_WARD = { id = "rank", name = "Outranked" }
+
+local function outranked(unit)
+    local combat = unit.combat
+    if not (combat and combat.units) then return false end
+    local Trait = require("models.trait")
+    local mine = Trait.flag(unit, "ranked")
+    if not mine then return false end
+    local top = Trait.flag(unit, "rankTop") and true or false
+    local hp = unit.char.stats.health.current or 0
+    for _, other in ipairs(combat.units) do
+        if other ~= unit and other.alive and other.side == unit.side and Trait.flag(other, "ranked") then
+            local otherTop = Trait.flag(other, "rankTop") and true or false
+            if top and not otherTop then return true end
+            if not top and not otherTop then
+                local ohp = other.char.stats.health.current or 0
+                if ohp < hp or (ohp == hp and (other.index or 0) < (unit.index or 0)) then return true end
+            end
+        end
+    end
+    return false
+end
+
+function Status.outranked(unit)
+    return unit ~= nil and unit.traits ~= nil and outranked(unit)
+end
+
 function Status.immuneToDamage(unit, tags)
     if not unit then return nil end
+    if unit.traits and outranked(unit) then return RANK_WARD end
     for _, s in ipairs(unit.statuses or {}) do
         local im = s.def.immune
         if im then
@@ -712,6 +765,54 @@ function Status.limned(unit)
         if s.def.revealsBearer then return s end
     end
     return nil
+end
+
+-- Is `unit` within earshot of a foe wearing HAWK BELLS (data/traits/trait_hawk_bells.lua)? A bearer's
+-- `belled` flag reaches `bellRange` tiles; an Invisible body inside it can be targeted by anyone. The
+-- limning above is a status the lit body wears; this one is read off the field at the moment of asking,
+-- because a bell rings where its bearer is standing NOW, and a badge would lag a step behind the walk.
+Status.BELL_RANGE = 3
+function Status.belled(combat, unit)
+    if not (combat and unit) then return false end
+    local Trait = require("models.trait")
+    local Combat = require("models.combat")
+    for _, u in ipairs(combat.units or {}) do
+        if u.alive and u ~= unit and u.side ~= unit.side and Trait.flag(u, "belled")
+            and Combat.unitGap(u, unit) <= Status.BELL_RANGE then
+            return true
+        end
+    end
+    return false
+end
+
+-- How many stacks of a stacking status `unit` carries (its instance's magnitude), 0 without one.
+function Status.stacksOf(unit, id)
+    local s = Status.get(unit, id)
+    return (s and s.magnitude) or 0
+end
+
+-- Spend `n` (default 1) stacks of `id` off `unit`, and take the badge off with the last. False, and
+-- nothing spent, when there are fewer than `n` -- a cost is paid whole or not at all. The Sated's meals
+-- are spent this way (fx.spendStacks, Retch and Settle), and so is anything else that is paid in a count.
+function Status.spendStacks(combat, unit, id, n)
+    n = n or 1
+    local s = Status.get(unit, id)
+    if not s or (s.magnitude or 0) < n then return false end
+    s.magnitude = s.magnitude - n
+    if s.magnitude <= 0 then Status.remove(combat, unit, id) end
+    return true
+end
+
+-- How much of a blow reaches `unit`, as a multiplier: the product of every active status's
+-- `damageTakenScale` (the Griffin's On the Wing: 0.5 while it flies). 1 when nothing scales it.
+-- Applied LAST in Combat.mitigatedDamage, after armour and resistance, so a flying body's armour still
+-- means what it means and the wing halves what got through.
+function Status.damageTakenScale(unit)
+    local scale = 1
+    for _, s in ipairs((unit and unit.statuses) or {}) do
+        if s.def.damageTakenScale then scale = scale * s.def.damageTakenScale end
+    end
+    return scale
 end
 
 -- The DEFERRAL on `unit` -- a status declaring `defers = true` (the Sealed Hour) -- or nil. While one
@@ -1151,6 +1252,12 @@ function Status.apply(combat, unit, id, opts)
             Trait.onStatusApplied(combat, applier,
                 { status = status, applier = applier, recipient = unit, role = "applier" })
         end
+        -- ...and every OTHER body on the field hears a fresh status land (Envy's Begrudge, data/traits/
+        -- trait_begrudge.lua). A status copied by that very rule carries `echoed`, so a copy is never
+        -- heard again and two begrudgers cannot feed each other forever.
+        if isNew and not opts.echoed then
+            Trait.onAnyStatusApplied(combat, unit, { status = status, recipient = unit })
+        end
 
         -- A hard-control or forced-movement status shatters a channel the recipient was winding up.
         -- `interruptsChannel = true` always breaks it (Stun, Freeze); `"mana"` breaks only a mana-cost
@@ -1382,7 +1489,10 @@ end
 function Status.blocksForcedMove(unit)
     if unit and unit.headOf then return true end -- a head moves with its body or not at all (above)
     for _, s in ipairs((unit and unit.statuses) or {}) do
-        if s.def.blocksForcedMove then return true end
+        -- `unmovable` on the INSTANCE is one grant's rider on a status that does not otherwise pin its
+        -- bearer: the Full that Second Helping hands over plants its eater, and the Full a Distended
+        -- Girth or the Sated carries does not (data/items/ability/ability_second_helping.lua).
+        if s.def.blocksForcedMove or s.unmovable then return true end
     end
     return false
 end

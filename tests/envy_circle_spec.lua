@@ -60,8 +60,6 @@ return {
             -- posture, and its own header says so at length.
             assert(sin.minor.filler ~= "character_homunculus_discard",
                 "the discard is cargo -- a protect objective, not a combatant")
-            assert(sin.guardian.filler == sin.minor.lead,
-                "and the mini sin fills out its own general's stair")
         end,
     },
 

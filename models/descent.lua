@@ -101,11 +101,11 @@ local Descent = {}
 -- fought on that sin's ground and pays into that sin's house, and the LAST of them is where she is
 -- standing. The ones above it are held by `minor`.
 --
--- THE MINOR BOSS IS THE GENERAL'S OWN HONOUR GUARD, promoted. `minor.lead` is exactly the body that
--- fills out `guardian` on her floor -- so the thing that held a stair against you two floors ago is
--- standing behind her when you finally reach her, and a player reads their own progress off it without
--- being told. It also means a fifteen-floor descent needed no new blueprints: every body here was
--- already authored and already belongs to this house.
+-- THE MINOR BOSS WAS THE GENERAL'S OWN HONOUR GUARD, promoted -- `minor.lead` had to be exactly the body
+-- that filled out `guardian` on her floor, asserted in four specs. THAT RULE IS REMOVED (2026-09-24, on
+-- Keno's call, when the Sated took Gluttony's first stair): a stair's boss is authored for its stair, and
+-- a general's escort for her fight. Most circles still seat the same body in both, because their stand-ins
+-- were chosen under the old rule; nothing requires it any more.
 --
 -- ...AND ALL SEVEN LIEUTENANTS ARE GONE (2026-09-22), to be re-authored. The Gralloch, the Suppliant,
 -- the Tally, Second Water, the Anvil, the Late Watch and Marginalia are deleted from disk, so every
@@ -198,9 +198,12 @@ Descent.SINS = {
         -- condition without also spending a lesson on what this one is. Every other circle's gate --
         -- the ward, the toll, the count, the open door -- is read against it.
         gate = { kind = "clear" },
-        -- NO LIEUTENANT. The Gralloch is gone; the pack's alpha stands in, which is the heaviest thing
-        -- the forest rolls that is not one of its elites. It is what a replacement replaces.
-        minor = { lead = "character_wolf_alpha", filler = "character_hawk" },
+        -- THE SATED HOLDS THE FIRST STAIR (2026-09-24, on Keno's call: "have the sated be the floor 1
+        -- boss"), in the Gralloch's old seat, with the hawks that are its larder around it. It is NOT
+        -- Gula's honour guard -- that rule was removed the same day (see this table's header) -- so her
+        -- fight keeps the wolf alpha in `guardian.filler`. Authored at its seat-floor size and kept there
+        -- on purpose ("keep as is"): the first stair's boss is the heaviest thing on the floor.
+        minor = { lead = "character_the_sated", filler = "character_hawk" },
         -- BOTH RUNGS BILLED, WHICH THE RUNG SPLIT IS WHAT MADE POSSIBLE. The Fen Mouth is gone, so rung
         -- 1 named nobody and all five of the wood's elites drew at ELITE_WEIGHT on both of Gluttony's
         -- floors. They are cut across the two stairs now by their own authored depths (the blueprints'
@@ -210,10 +213,15 @@ Descent.SINS = {
         --
         -- `spares` is listed by the rung each one stands on, because a spare billed against the wrong
         -- floor is a spare that never turns up there.
-        elites = { approach = "encounter_white_wolf", seat = "encounter_gluttony_the_sated",
+        --
+        -- THE CHIMERA IS THE SEAT'S NOW (2026-09-24): the Sated left its roaming encounter to hold the
+        -- first stair, and the seat's billing went to the spare the review recommended.
+        elites = { approach = "encounter_white_wolf", seat = "encounter_the_chimera",
             spares = { "encounter_the_unseeing", "encounter_the_larder",       -- rung 1
+                       "encounter_the_moss_king",                           -- rung 1
+                       "encounter_the_eyrie",                               -- rung 1
                        "encounter_the_sow", "encounter_meandering_stag",        -- rung 2
-                       "encounter_the_high_glade", "encounter_the_chimera" } } },  -- rung 2
+                       "encounter_the_high_glade" } } },                        -- rung 2
     -- ---------------------------------------------------------------------------
     -- LUST: THE CIRCLE THAT NEVER TAKES YOUR HEALTH. IT TAKES YOUR SAY OVER WHERE YOU ARE STANDING.
     -- ---------------------------------------------------------------------------
@@ -393,7 +401,10 @@ Descent.SINS = {
         elites = { approach = "encounter_lust_the_drowned_stair",
                    seat = "encounter_lust_the_eyrie",
                    spares = { "encounter_lust_the_lady_chapel", "encounter_lust_the_flue",
-                              "encounter_lust_the_anchorhold", "encounter_lust_the_churchyard_yew" } } },
+                              "encounter_lust_the_anchorhold", "encounter_lust_the_churchyard_yew",
+                              -- LUST'S SLIMES (2026-09-24): the velvet slimes strip a company's gear,
+                              -- the slimes on the approach and their Queen on the seat.
+                              "encounter_the_velvet_slimes", "encounter_the_velvet_queen" } } },
     { id = "greed", name = "Greed", vendor = "undercroft", biome = "swamp",
         scene = "conversation_descent_greed",
         guardian = { lead = "character_general_greed", filler = "character_fen_lancer" },
@@ -429,7 +440,9 @@ Descent.SINS = {
         -- replaces.
         minor = { lead = "character_glass_eater", filler = "character_glass_mote" },
         elites = { approach = "encounter_envy_the_unwanted",
-            seat = "encounter_envy_second_self" } },
+            seat = "encounter_envy_second_self",
+            -- ENVY'S SLIMES (2026-09-24): they become you and want what you get (Mimicry, Begrudge).
+            spares = { "encounter_the_mimic_slimes", "encounter_the_many_faced_king" } } },
     { id = "wrath", name = "Wrath", vendor = "colosseum", biome = "volcanic",
         scene = "conversation_descent_wrath",
         -- The Champion held this slot and held it CORRECTLY -- a real body carrying a Demon Sigil with
@@ -445,7 +458,10 @@ Descent.SINS = {
         -- to a body that is improved by being struck. It is what a replacement replaces.
         minor = { lead = "character_forge_wretch", filler = "character_cinder_kin" },
         elites = { approach = "encounter_wrath_the_unquenched",
-            seat = "encounter_wrath_rift_born" } },
+            seat = "encounter_wrath_rift_born",
+            -- WRATH'S SLIMES (2026-09-24): they Boil Over -- the cinder slimes on the approach, their
+            -- Caldera King on the seat.
+            spares = { "encounter_the_cinder_slimes", "encounter_the_caldera_king" } } },
     { id = "sloth", name = "Sloth", vendor = "bastion", biome = "tundra",
         scene = "conversation_descent_sloth",
         guardian = { lead = "character_general_sloth", filler = "character_the_long_winter" },
@@ -474,7 +490,11 @@ Descent.SINS = {
         -- This circle is the loudest of the seven either way -- its whole rollable cast is an ice
         -- elemental and this elite, which is also why `minor.lead` above is standing in for a
         -- lieutenant. A second tundra elite closes both holes at once.
-        elites = { seat = "encounter_sloth_long_winter" } },
+        -- ...AND THE APPROACH HAS AN ELITE AGAIN (2026-09-24): Sloth's three slimes, together -- one takes
+        -- your turns (Torpid), one taxes your effort (Numbed), one grows while you are busy (Drift). The
+        -- hole this comment describes above is closed by them, not by a second landmark.
+        elites = { approach = "encounter_the_still_slimes", seat = "encounter_sloth_long_winter",
+            spares = { "encounter_the_glacier_king" } } },
     { id = "pride", name = "Pride", vendor = "arcanum", biome = "spire",
         scene = "conversation_descent_pride",
         guardian = { lead = "character_general_pride", filler = "character_gilded_sworn" },
@@ -498,7 +518,10 @@ Descent.SINS = {
         --
         -- This comment is still the marker for whoever authors the replacement; what it is no longer is
         -- a description of a floor quietly billing the wrong body.
-        elites = { approach = "encounter_pride_the_gallery" } },
+        -- ...AND THE SEAT HAS AN ELITE AGAIN (2026-09-24): the Apex Crystal, top of Pride's slime order
+        -- (Rank). The crystal slimes stand on the approach beside the Gallery.
+        elites = { approach = "encounter_pride_the_gallery", seat = "encounter_the_apex_crystal",
+            spares = { "encounter_the_crystal_slimes" } } },
 }
 
 -- WHAT COMES OFF THE BODY: the unique piece a rank pays for being put down, per sin, in the order it is

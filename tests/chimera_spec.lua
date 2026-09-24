@@ -82,7 +82,9 @@ return {
         end,
     },
     {
-        name = "the Scorched Glade is a rung-2 elite of the wood, billed as a seat spare",
+        -- Promoted from spare to the seat's billed elite on 2026-09-24, when the Sated left that billing to
+        -- hold Gluttony's first stair.
+        name = "the Scorched Glade is a rung-2 elite of the wood, billed as the seat's elite",
         fn = function()
             local enc = Encounter.get("encounter_the_chimera")
             assert(enc.kind == "elite" and enc.rung == 2, "an elite homed on rung 2")
@@ -90,13 +92,9 @@ return {
                 "and locked to the wood")
             local billed = false
             for _, sin in ipairs(Descent.SINS) do
-                if sin.id == "gluttony" then
-                    for _, id in ipairs(sin.elites.spares or {}) do
-                        if id == "encounter_the_chimera" then billed = true end
-                    end
-                end
+                if sin.id == "gluttony" and sin.elites.seat == "encounter_the_chimera" then billed = true end
             end
-            assert(billed, "Gluttony bills it among its spares")
+            assert(billed, "Gluttony bills it as the seat's elite")
         end,
     },
 
