@@ -158,7 +158,11 @@ end
 -- between them show 36 distinct items.
 -- `layout` optionally names a hand-authored board (data/arenas/<id>.lua) instead of rolling one --
 -- how the Field Gallery below drops onto its own map without needing a quest to carry it.
-local function startMockBattle(layout)
+-- `setup` is what the Mock Battle panel chose (ui/panels/mock_setup.lua): { biome, depth, encounterId?,
+-- composition }. With an encounter it is fought AS that encounter -- its kind sets the fight tier and
+-- its spoils -- seating the composition the panel previewed; without one it is the custom roster, on
+-- the same objective shape the galleries use. No setup is the old fixed bout (the galleries' path).
+local function startMockBattle(layout, setup)
     local Character = require("models.character")
     local pool = randomizablePool()
     local taken = {}
@@ -168,17 +172,39 @@ local function startMockBattle(layout)
         randomizeLoadout(char, pool, taken)
         party[#party + 1] = char
     end
+    local biome = setup and setup.biome or "castle"
+    local depth = setup and setup.depth or nil
+    local toMenu = function() State.switch(require("states.menu")) end
+    local encDef = setup and setup.encounterId and require("models.encounter").get(setup.encounterId)
+    if encDef then
+        State.switch(require("states.battle"), {
+            -- The encounter's own kind and id, with the previewed roll pinned as its composition (the
+            -- override EncounterBattle.spec honours) so the fight seats exactly what the panel showed.
+            encounter = { kind = encDef.kind, id = setup.encounterId, composition = setup.composition },
+            biome = biome,
+            depth = depth,
+            rung = encDef.rung,
+            prestige = 3,
+            party = party,
+            onWin = toMenu,
+            onLoss = toMenu,
+        })
+        return
+    end
+    local composition = setup and setup.composition
+        or { "character_bandit", "character_bandit", "character_champion" }
     State.switch(require("states.battle"), {
         -- Objective-kind so it draws its hand-picked roster (the objective block below), but it is a
         -- practice bout, not a boss -- so it asks for the ordinary battle bed rather than music.boss.
         encounter = { kind = "objective", music = "music.battle" },
-        biome = "castle",
+        biome = biome,
+        depth = depth,
         prestige = 3,
         party = party,
-        quest = { map = { biome = "castle", objective = {
+        quest = { map = { biome = biome, objective = {
             name = layout and "Field Gallery" or "Mock Battle",
             layout = layout,
-            composition = function() return { "character_bandit", "character_bandit", "character_champion" } end,
+            composition = function() return composition end,
             win = { type = "killAll" },
         } } },
         -- No hub/quest to return to: send both outcomes back to the menu.
@@ -409,7 +435,8 @@ local function buildDebugMenu()
         -- DRAFT: it shares none of the campaign's progression and is still being built, which is what
         -- this column is for -- a mode lives here until it is worth putting in front of a player.
         { label = "Draft", action = function() State.switch(require("states.draft")) end },
-        { label = "Mock Battle", action = function() startMockBattle() end },
+        -- Opens the setup panel first: ground, depth, and an authored encounter or a hand-built roster.
+        { label = "Mock Battle", action = function() menu.openMockSetup() end },
         -- Every tile-field pattern on one board, for looking at the shader rather than arguing about
         -- it. See data/arenas/field_gallery.lua for what each row is arranged to prove.
         { label = "Field Gallery", action = function() startMockBattle("field_gallery") end },
@@ -434,6 +461,17 @@ local function buildDebugMenu()
     })
 end
 
+-- The Mock Battle setup modal (debug builds only). While it is open it owns every input.
+function menu.openMockSetup()
+    menu.panel = require("ui.panels.mock_setup").new({
+        onStart = function(setup)
+            menu.panel = nil
+            startMockBattle(nil, setup)
+        end,
+        onClose = function() menu.panel = nil end,
+    })
+end
+
 -- The widget keyboard and gamepad currently drive.
 local function focused()
     if focus == "debug" and debugWidget then return debugWidget end
@@ -455,6 +493,7 @@ function menu.enter()
     -- that way: nothing else ever clears it. The hub, the draft and a battle all reset on entry for
     -- the same reason (ui/screen_fx.lua).
     ScreenFx.reset()
+    menu.panel = nil
     require("models.sound").music("music.menu")
     widget = buildMenu()
     debugWidget = buildDebugMenu()
@@ -462,6 +501,7 @@ function menu.enter()
 end
 
 function menu.update(dt)
+    if menu.panel then menu.panel:update(dt); return end
     -- Only the focused widget gets update(): it polls the analog stick, and two menus polling it
     -- would move both selections at once. The other still needs its rectangles laid out.
     focused():update(dt)
@@ -498,6 +538,8 @@ function menu.draw()
     -- campaign takes the first free one and destroys nothing; the only place a save is ever erased is
     -- the bin on its own row in the load list, which asks first.)
 
+    if menu.panel then menu.panel:draw() end
+
     -- Transient debug status (e.g. the result of Extract Strings).
     if menu.status and menu.statusTimer and menu.statusTimer > 0 then
         love.graphics.setFont(hintFont)
@@ -510,6 +552,7 @@ end
 -- Hovering a column claims focus, so the highlight the mouse leaves behind is the one the keyboard
 -- picks up from.
 function menu.mousemoved(x, y)
+    if menu.panel then menu.panel:mousemoved(x, y); return end
     if debugWidget and debugWidget:mouseOverItem(x, y) then
         setFocus("debug")
         debugWidget:mousemoved(x, y)
@@ -521,17 +564,20 @@ end
 
 -- Hand over a menu button, arrow elsewhere (see ui/cursor.lua).
 function menu:cursorKind(x, y)
+    if menu.panel then return menu.panel:cursorKind(x, y) end
     if widget:mouseOverItem(x, y) then return "hand" end
     if debugWidget and debugWidget:mouseOverItem(x, y) then return "hand" end
     return "arrow"
 end
 
 function menu.mousepressed(x, y, button)
+    if menu.panel then menu.panel:mousepressed(x, y, button); return end
     widget:mousepressed(x, y, button)
     if debugWidget then debugWidget:mousepressed(x, y, button) end
 end
 
 function menu.keypressed(key)
+    if menu.panel then menu.panel:keypressed(key); return end
     if key == "tab" and debugWidget then
         setFocus(focus == "main" and "debug" or "main")
         return
@@ -540,11 +586,20 @@ function menu.keypressed(key)
 end
 
 function menu.gamepadpressed(joystick, button)
+    if menu.panel then menu.panel:gamepadpressed(joystick, button); return end
     if (button == "leftshoulder" or button == "rightshoulder") and debugWidget then
         setFocus(focus == "main" and "debug" or "main")
         return
     end
     focused():gamepadpressed(joystick, button)
+end
+
+function menu.textinput(t)
+    if menu.panel then menu.panel:textinput(t) end
+end
+
+function menu.wheelmoved(x, y)
+    if menu.panel then menu.panel:wheelmoved(x, y) end
 end
 
 return menu
