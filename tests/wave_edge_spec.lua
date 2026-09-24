@@ -233,4 +233,25 @@ return {
             assert(plan == nil, "a full board commits no arrival")
         end,
     },
+    {
+        -- A reinforcement is the fight's own level, not its bare blueprint: minted through Growth.spawn
+        -- exactly as the opening line was. Without `grow` the arrival stays blueprint-exact, which the
+        -- overrule relies on (a body from the end of the line standing on an early board).
+        name = "previewWaveArrival grows an arrival to the fight's level when asked, and only then",
+        fn = function()
+            local Growth = require("models.growth")
+            local w = { composition = { "character_bear" }, from = "top" }
+            local grown = Combat.previewWaveArrival(combatWith(arena(8, 8)), w, {}, { level = 12, floor = 6 })
+            local want = Growth.spawn("character_bear", 12, 6)
+            assert(grown.chars[1].stats.health.max == want.stats.health.max,
+                "the arrival is the body Growth.spawn mints at that level")
+            assert(grown.chars[1].stats.damage == want.stats.damage, "...in what it swings as well")
+            local exact = Combat.previewWaveArrival(combatWith(arena(8, 8)), w, {})
+            local blueprint = Character.instantiate("character_bear")
+            assert(exact.chars[1].stats.health.max == blueprint.stats.health.max,
+                "without a level the arrival is the blueprint, untouched")
+            assert(want.stats.health.max ~= blueprint.stats.health.max,
+                "the fixture must actually differ, or this case proves nothing")
+        end,
+    },
 }

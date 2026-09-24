@@ -1944,6 +1944,11 @@ local function spawnWaves()
     local state = battle.combat.waveState
     local clock = battle.combat.clock or 0
     local ctx = battle.encounterCtx or {}
+    -- REINFORCEMENTS ARE THE FIGHT'S OWN LEVEL. A wave used to land as its bare blueprint while the line it
+    -- was reinforcing had been minted through Growth.spawn, so the same wolf was two different wolves
+    -- depending on whether it opened the fight or walked into it -- and on Gula's stair, where the wood
+    -- keeps arriving for the whole fight, that was most of the board. (The overrule below stays exact.)
+    local grow = { level = battle.enemyLevel, floor = battle.floorLevel }
     for i, wave in ipairs(waves) do
         -- First fire lands at `at` for a one-shot, at `every` for a recurring wave that gives no
         -- explicit start (so an endless wave holds off one period before its first reinforcement).
@@ -1964,7 +1969,7 @@ local function spawnWaves()
             -- Due. Fire from the plan committed in the lead window; if that window was skipped in one
             -- clock jump (a very slow unit's turn elapsing many ticks at once), resolve it in place so
             -- the wave still lands -- just without the early warning.
-            fireWave(st.committed or Combat.previewWaveArrival(battle.combat, wave, ctx))
+            fireWave(st.committed or Combat.previewWaveArrival(battle.combat, wave, ctx, grow))
             st.fires = st.fires + 1
             st.committed = nil
             -- Recurring waves rearm relative to the fire that just happened (so a `maxAlive` stall
@@ -1973,7 +1978,7 @@ local function spawnWaves()
         elseif clock >= st.nextAt - LEAD_TICKS and not st.committed then
             -- Entering the lead window: resolve the arrival once and HOLD it, so the telegraph is stable
             -- (a random edge is fixed here, not re-rolled every frame) and the spawn reads the same plan.
-            st.committed = Combat.previewWaveArrival(battle.combat, wave, ctx)
+            st.committed = Combat.previewWaveArrival(battle.combat, wave, ctx, grow)
         end
     end
 end

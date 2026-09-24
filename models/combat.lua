@@ -3119,7 +3119,13 @@ end
 -- evaluated a single time and a random roster is fixed the moment it is committed. Units for which no
 -- tile is open (a packed edge) are dropped from the plan, exactly as the old fire-time path skipped an
 -- arrival with nowhere to stand. Pure and headless-safe (Character.instantiate needs no window).
-function Combat.previewWaveArrival(combat, wave, ctx)
+--
+-- `grow = { level, floor }` mints each arrival through Growth.spawn at the fight's own level, exactly as the
+-- opening line was minted (models/encounter_battle.lua), so a body walking in on turn twelve is the same
+-- body the fight opened with rather than its bare blueprint. Omitted, the arrival is blueprint-exact --
+-- which the OVERRULE wants and says so (states/battle.lua's fireOverrule: a body from the end of the line
+-- standing on an early board is the whole beat).
+function Combat.previewWaveArrival(combat, wave, ctx, grow)
     local ids = wave.composition
     if type(ids) == "function" then ids = ids(ctx or {}) end
     ids = ids or {}
@@ -3138,7 +3144,12 @@ function Combat.previewWaveArrival(combat, wave, ctx)
     end
     local tiles, chars, keptIds = {}, {}, {}
     for i, id in ipairs(ids) do
-        local char = Character.instantiate(id)
+        local char
+        if grow and grow.level then
+            char = Growth.spawn(id, grow.level, grow.floor)
+        else
+            char = Character.instantiate(id)
+        end
         local fp = char.footprint or { w = 1, h = 1 }
         local w, h = fp.w or 1, fp.h or 1
         local x, y = Combat.waveArrivalTile(combat, from, edges[i], w, h, freeFn)
@@ -7609,6 +7620,9 @@ end
 -- Returns the body it took, or nil when there was nothing it may take.
 function Combat.devour(combat, eater, body, opts)
     if not (combat and eater and body and body.char) or body == eater then return nil end
+    -- `absorb`: the eater takes the body's remaining health into itself, ceiling and all -- the moss
+    -- slimes' Coalesce (data/items/ability/ability_coalesce.lua). Measured before the kill zeroes it.
+    local absorbed = 0
     if body.alive then
         if body.char.boss or body.summoned or body.decoyOf then return nil end
         if body.side ~= eater.side then
@@ -7616,6 +7630,7 @@ function Combat.devour(combat, eater, body, opts)
             local share = opts and opts.weakFoe
             if not (share and hp.max and hp.max > 0 and hp.current <= hp.max * share) then return nil end
         end
+        if opts and opts.absorb then absorbed = math.max(0, body.char.stats.health.current or 0) end
         -- Past every window at once: the corpse path, so nothing lies on the tile to be revived.
         body.noRevive = true
         body.char.stats.health.current = 0
@@ -7632,6 +7647,13 @@ function Combat.devour(combat, eater, body, opts)
     body.devoured = true
     Combat.logEvent(combat, "action",
         string.format("%s devours %s.", unitName(eater), unitName(body)), eater)
+    if absorbed > 0 and eater.alive then
+        local hp = eater.char.stats.health
+        hp.max = hp.max + absorbed
+        hp.current = hp.current + absorbed
+        Combat.logEvent(combat, "action",
+            string.format("%s swells by %d.", unitName(eater), absorbed), eater)
+    end
     -- ...and becomes what it ate (models/palate.lua). Here, on the live path, rather than in the effect:
     -- the effect also runs under the forecast, and a hover must never hand her a power.
     require("models.palate").take(combat, eater, body)
