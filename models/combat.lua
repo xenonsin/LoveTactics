@@ -997,6 +997,12 @@ function Combat.abilityRange(combat, unit, ab, x, y)
     -- a tile further out while it rides high. Read here, the one reader, so the tell, the planner and the
     -- swing agree.
     if unit then range = range + Status.statBonus(unit, "range") end
+    -- A reach an ability only has FROM HIDING (`hiddenRange`): the Sabertooth's Pounce bites from three
+    -- tiles when it came up to act unseen, and from beside you otherwise. A floor under the reach rather
+    -- than an addition, so a field bonus on top still means what it says.
+    if unit and ab and ab.hiddenRange and Combat.unseenFor(combat, unit) then
+        range = math.max(range, ab.hiddenRange)
+    end
     -- A range-cutting debuff (Blind) shortens the reach, but never below 1: a blinded unit is groping
     -- in the dark, not disarmed, so it can still strike an adjacent foe.
     if unit then range = range - Status.rangeMalus(unit) end
@@ -3515,11 +3521,24 @@ function Combat.startTurn(combat)
             Combat.grantExtraAction(unit, math.floor(actions) - 1)
         end
     end
+    -- CAME UP UNSEEN: still hidden at the moment its turn arrived, read BEFORE the sweep below ends
+    -- that invisibility. A Vanishing Strike or an Unlit Hood lasts "until your next turn", which is
+    -- exactly the turn a pounce wants to be made out of -- so this is the question, not "is it
+    -- Invisible right now", which the sweep would answer no to on the one beat that matters.
+    local cameUpHidden = unit and Status.has(unit, "status_invisible") or false
     if unit then Status.onTurnStart(combat, unit) end
+    -- A KILL MADE FROM HIDING THAT KEPT ITS BEARER HIDDEN (Thrill of the Hunt) also opens the next
+    -- turn hidden, whatever the blood tally says -- otherwise the veil it kept would lapse on the very
+    -- beat it was kept for. Latched by the trait, spent here.
+    if unit and unit.veilNext then veil, unit.veilNext = true, nil end
     -- The idle veil, granted past the expiry sweep above (see where `veil` is decided): a ninja who
     -- drew no blood last turn opens this one out of sight. After onTurnStart, or the sweep that ends
     -- LAST turn's invisibility would end this turn's in the same breath.
     if veil then Status.apply(combat, unit, "status_invisible") end
+    -- Stamped for Combat.unseenFor: this turn was opened out of sight, one way or the other. The veil is
+    -- asked of the status rather than of `veil`, because a Marked body is refused it (status_mark
+    -- `forbids` Invisible) and a hunter's paint has to shut the pounce off along with the veil.
+    if unit then unit.openedUnseen = cameUpHidden or Status.has(unit, "status_invisible") end
     -- A SCRIPTED FELLING, AS A BACKSTOP AND NOTHING MORE. A mark is spent the instant the threshold
     -- that armed it is crossed, at the close of that blow's own dispatch (dispatchAnswer), so in the
     -- ordinary course nothing is ever still holding one by the time its bearer stands up. This catches
@@ -6269,6 +6288,7 @@ end
 --   preserve   -- the neighbour consumable's own stack is not spent (Everflask)
 --   careful    -- the cast's area spares the caster's own side (Careful Sigil)
 --   twin       -- a single-target cast strikes one more body beside its target (Twinned Sigil)
+--   critUnseen -- a weapon blow struck on a turn opened unseen is a critical (Ambush Charm)
 --
 -- Every numeric field is additive across applicable neighbours and every flag is a logical OR, so two
 -- charms beside one spell simply both apply. PURE: it reads the grid and touches nothing, because the
@@ -6286,7 +6306,7 @@ end
 local function adjacencyAura(char, item)
     local tags, statuses = {}, {}
     local mods = { amount = 0, range = 0, speed = 0, preserve = false, lifesteal = 0,
-                   manaHeal = 0, careful = false, twin = false }
+                   manaHeal = 0, careful = false, twin = false, critUnseen = false }
     local idx = char and Character.slotIndex(char, item)
     if idx then
         for _, nb in ipairs(Character.adjacentItems(char, idx)) do
@@ -6301,6 +6321,7 @@ local function adjacencyAura(char, item)
                 if nb.aura.preserve then mods.preserve = true end
                 if nb.aura.careful then mods.careful = true end
                 if nb.aura.twin then mods.twin = true end
+                if nb.aura.critUnseen then mods.critUnseen = true end -- Ambush Charm (Combat.forcesCrit)
             end
         end
     end
@@ -6947,7 +6968,59 @@ end
 -- Luck subtracts here as well as in Avoid, and that double duty is the stat's whole character: a
 -- lucky body is not especially hard to hit, it is hard to hit BADLY. A body with luck 8 has taken
 -- roughly a weapon's worth of crit off every attacker in the game.
+-- DID `unit` OPEN ITS TURN UNSEEN? On its own turn this is the stamp Combat.startTurn left (hidden when
+-- the turn arrived, or veiled at its top). Off its turn -- the threat overlay drawn on the company's
+-- turn, the planner weighing a body that has not stood up yet -- the best answer there is to "will it
+-- come up hidden" is "is it hidden now", so that is what it reads.
+function Combat.unseenFor(combat, unit)
+    if not unit then return false end
+    local turn = combat and combat.turn
+    if turn and turn.unit == unit then return unit.openedUnseen == true end
+    return Status.has(unit, "status_invisible")
+end
+
+-- Can any living foe of `unit` see the tile it stands on? Combat.hasLineOfSight is the one measure, so
+-- the wood's soft cover and a hill hide a body here exactly as they block a shot.
+function Combat.seenByFoe(combat, unit)
+    for _, other in ipairs((combat and combat.units) or {}) do
+        if other.alive and other.side ~= unit.side
+            and Combat.hasLineOfSight(combat, other.x, other.y, unit.x, unit.y) then
+            return true
+        end
+    end
+    return false
+end
+
+-- A LANDED BLOW THAT IS A CRITICAL WHATEVER THE DICE SAY -- every one of them a blow struck out of
+-- hiding, and only ever on the striker's own turn, so a reflex thrown back out of turn keeps its roll:
+--   * `critFromHiding` on the ability      the Sabertooth's Pounce, opened unseen
+--   * a `critUnseen` aura beside the weapon the Ambush Charm, opened unseen
+--   * the `critFromCover` flag              the Stalker's Mantle: the first blow of the fight, struck
+--                                           from a tile no foe can see
+-- Read by Combat.critChance, so the forecast, the planner and the swing all say 100 together.
+function Combat.forcesCrit(combat, user, target, item)
+    local turn = combat and combat.turn
+    if not (user and item and turn and turn.unit == user) then return false end
+    if not (target and target ~= user and target.side ~= user.side) then return false end
+    if Combat.unseenFor(combat, user) then
+        local ab = item.activeAbility
+        if ab and ab.critFromHiding then return true end
+        if item.type == "weapon" then
+            local _, _, mods = adjacencyAura(user.char, item)
+            if mods.critUnseen then return true end
+        end
+    end
+    if Trait.flag(user, "critFromCover") and Combat.tallyCount(user, "hitDealt") == 0
+        and not Combat.seenByFoe(combat, user) then
+        return true
+    end
+    return false
+end
+
 function Combat.critChance(combat, user, target, item)
+    -- Asked BEFORE the dice gate: a forced critical is a certainty the item promised, not a roll, so it
+    -- holds on a board where nothing rolls (the prologue's lesson, the suite's pinned dice) as well.
+    if Combat.forcesCrit(combat, user, target, item) then return 100 end
     if not Combat.rollsToHit(combat, user, target, item) then return 0 end
     local crit = Item.crit(item) + flatStat(user, "skill") / 2
     return math.max(0, math.min(100, math.floor(crit - flatStat(target, "luck") + 0.5)))
@@ -8678,6 +8751,9 @@ function Combat.dealDamage(combat, user, target, item, opts)
             opts.critical = true
         end
     end
+    -- A FORCED critical (Combat.forcesCrit) lands whether or not this blow asked the dice -- a board that
+    -- rolls nothing still keeps an item's promise. Checked after the roll, so it costs no draw.
+    if not opts.critical and Combat.forcesCrit(combat, user, target, item) then opts.critical = true end
     -- `user` rides along as the attacker so a reaction trait (a counter) knows who struck, and how
     -- far away they stood. A flat source (a trap, a burn) passes no attacker and provokes no counter.
     local dealt = Combat.dealFlatDamage(combat, target, base, tags, nil, user, opts)

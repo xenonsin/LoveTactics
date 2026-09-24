@@ -147,6 +147,15 @@ local function snapshotItem(item)
     -- stores the truth and the game withholds it -- the same arrangement `level` has had since the seal
     -- was built, one line above.
     if type(item.curse) == "string" then snap.curse = item.curse end
+    -- THE KINDS A TROPHY CORD HAS TAKEN THIS TRIP (data/traits/trait_trophy_cord.lua), as a sorted list
+    -- of body ids. A trip spans many saves, so a cord that forgot its count on a reload would be a cord
+    -- the player could empty by quitting. Absent on every other piece.
+    if type(item.trophies) == "table" and next(item.trophies) then
+        local ids = {}
+        for id in pairs(item.trophies) do ids[#ids + 1] = id end
+        table.sort(ids)
+        snap.trophies = ids
+    end
     return snap
 end
 
@@ -947,6 +956,13 @@ local function restoreItem(itemSnap)
         require("models.curse").lift(item)
         if type(itemSnap.curse) == "string" then
             require("models.curse").afflict(item, itemSnap.curse)
+        end
+    end
+    -- ...and a Trophy Cord's count of kinds taken this trip (see snapshotItem).
+    if item and type(itemSnap.trophies) == "table" then
+        item.trophies = {}
+        for _, id in ipairs(itemSnap.trophies) do
+            if type(id) == "string" then item.trophies[id] = true end
         end
     end
     return item

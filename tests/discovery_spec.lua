@@ -93,6 +93,9 @@ local TROPHIES = {
     -- The Chimera's (Gluttony's seat, 2026-09-23): the lion's appetite as a Battlemage charm, and each
     -- head as a Beastmaster's -- a head you wear, earned by breaking that head.
     "utility_hearth_hunger", "utility_serpent_head", "utility_goat_head",
+    -- The Sabertooths' (Gluttony's approach, 2026-09-23): the ambush as a cloak, the pounce's critical as a
+    -- charm, the appetite as a cord, and the Longfang's hunt as her own.
+    "armor_stalkers_mantle", "utility_ambush_charm", "utility_trophy_cord", "utility_the_unbroken_stalk",
 }
 
 local function vendorFor(class)

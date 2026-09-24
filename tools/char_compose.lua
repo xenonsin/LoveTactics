@@ -454,6 +454,11 @@ local CHARACTER_SILHOUETTE = {
     wyvern_alpha = "faithtoken/dragon-head",
     the_highwing = "lorc/dragon-spiral",
 
+    -- THE SABERTOOTHS (Gluttony's approach). The one cat skull in the set for the pride, and a tiger's
+    -- head for the Longfang who leads it.
+    sabertooth = "lorc/saber-tooth",
+    the_longfang = "delapouite/tiger-head",
+
     -- ...AND THE THIRD ELEMENTAL THE KEEP MADE. The other two need nothing here and must not get it:
     -- character_fire_elemental and character_wind_elemental carry their element word in the id, so
     -- `elementOf` seats them on ELEMENT_SILHOUETTE and ELEMENT_TINT exactly as it always has -- and

@@ -271,7 +271,8 @@ return {
             -- A refill puts its own bodies back on this list.
             for _, id in ipairs({ "character_the_sated", "character_manticore", "character_wyvern",
                                   "character_wyvern_alpha", "character_the_highwing",
-                                  "character_chimera" }) do
+                                  "character_chimera", "character_sabertooth",
+                                  "character_the_longfang" }) do
                 local base = Character.instantiate(id)
                 local grown = Growth.spawn(id, 20)
                 assert(grown.stats.health.max >= base.stats.health.max,

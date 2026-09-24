@@ -266,6 +266,20 @@ function Player.carryList(player)
     return player.stash
 end
 
+-- A TRIP'S TROPHIES ARE THE TRIP'S. The Trophy Cord (data/traits/trait_trophy_cord.lua) keeps the
+-- kinds its bearer has killed on the piece itself, and the count is "on this trip" -- so every exit
+-- through the Gate clears it, wherever the cord is lying (a grid, the shelf, the bag). Hung on
+-- Player.unpack because that is the one call both exits already make.
+function Player.clearTrophies(player)
+    if not player then return end
+    local function clear(item) if item then item.trophies = nil end end
+    for _, char in ipairs(player.roster or {}) do
+        for _, item in ipairs(Character.eachItem(char)) do clear(item) end
+    end
+    for _, item in ipairs(player.stash or {}) do clear(item) end
+    for _, item in ipairs(player.pack or {}) do clear(item) end
+end
+
 -- EMPTY THE BAG ONTO THE SHELF, and hand back how many pieces made the trip.
 --
 -- CALLED ON BOTH EXITS, and the symmetry is the same one states/game.lua argues for the floor stack: if
@@ -278,6 +292,7 @@ end
 -- be the shelf whichever side of the flag the caller has got to. A drain that could put the bag back in
 -- the bag would be a loop with no way out of it.
 function Player.unpack(player)
+    Player.clearTrophies(player)
     local pack = player and player.pack
     if not pack then return 0 end
     local n = 0

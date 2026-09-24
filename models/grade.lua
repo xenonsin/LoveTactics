@@ -455,6 +455,16 @@ Grade.TRAIT_GRADE = {
     trait_plummet =                     1.5,  -- Plummet -- a quarter of Damage after a three-tile run
     trait_lead_the_wind =               0.5,  -- Lead the Wind -- the Alpha Wyvern's flight
 
+    -- THE SABERTOOTHS (2026-09-23). The Stalker's Mantle is one forced critical a fight, and only off a
+    -- tile no foe can see -- an archer's opening shot tripled, once -- so it sits a notch over Plummet.
+    -- The Unbroken Stalk keeps a hidden body hidden past a kill: survival worth real turns, but only for
+    -- a build that is hiding and finishing already, so a charm's defensive middle. The Trophy Cord is
+    -- flat Damage that has to be collected a kind at a time and empties every trip; at a full +10 it is a
+    -- strong charm, and most of a trip it is not full.
+    trait_stalkers_mantle =             1.5,  -- Stalker's Mantle -- the first blow from cover is a critical
+    trait_the_unbroken_stalk =          2.0,  -- The Unbroken Stalk -- a kill from hiding keeps you hidden
+    trait_trophy_cord =                 2.5,  -- Trophy Cord -- +2 Damage per kind killed this trip, to +10
+
     -- ADOPTED FROM THE SEED, not individually weighed. These are the classifier's own numbers, taken
     -- as authored on the designer's instruction rather than argued one by one. They are real weights
     -- and the grader treats them as such -- but Grade.TRAIT_ADOPTED below keeps the provenance, because
