@@ -1,29 +1,32 @@
 -- The general of Gluttony, and the end of the Hunter's Lodge line (docs/story.md, "The Hunter's Lodge").
--- Enemy blueprint; the objective of data/quests/general_gluttony.lua. The finale
--- (data/quests/quest_the_gate_below.lua) already reserves a slot for her -- "general_gluttony" sits in its
--- requiredQuests.
+-- She holds the wood's last stair (Descent.SINS' gluttony `guardian`).
 --
--- WHO SHE IS: once the finest hunter the region ever produced, celebrated and real -- and the Grand
--- Hunter turning NOW, the current head of the cull's own harvest. Every Grand Hunter turns; most turn
--- into a mere beast. Gula made a pact with the Demon Lord and did not merely turn -- she became the
--- crowned apex of the apexes, keeping mind enough to go on hunting for the pleasure of it. What the
--- bargain gave her was not strength but APPETITE: the pleasure of the kill made a compulsion that sates
--- less each time and demands the next sooner.
+-- WHO SHE IS: once the finest hunter the region ever produced, and the Grand Hunter turning NOW. Every
+-- Grand Hunter turns; most turn into a mere beast. Gula made a pact with the Demon Lord and did not merely
+-- turn -- she became the APEX of the wood, the one predator every other one in it is prey to. What the
+-- bargain gave her was not strength but APPETITE, and an appetite that has eaten everything in a wood can
+-- do everything in it.
 --
--- Her rule rides on the Maw in her grid (a blueprint's own `traits` field is never collected; only an
--- item's is -- models/trait.lua): "never stops" (data/traits/trait_ravenous.lua) -- every blow she lands
--- feeds her. The counterplay is the sin read as tactics: STARVE her -- burst her down, kill clean, deny
--- the long trade. The one hunter she can never feed on is Kaya (character_kaya.lua), who carries no
--- surplus to eat.
+-- THE REDESIGN (settled on review 2026-09-23, "think Kirby"). Every beast in the circle is known for one
+-- thing -- the wyvern carries, the spider roots, the manticore quills, the boar charges -- and Gula EATS a
+-- body and takes that thing (models/palate.lua). Her fight is three rules deep:
 --
--- Her kit is the gralloch knife (heal-on-hit, data/items/weapon/weapon_gralloch_knife.lua) and the wolves
--- she calls to the heart of the wood. Statted as the beast at the wood's centre: an enormous health pool,
--- heavy damage, warded in flesh and thin against magic. `assassinate` is the honest objective.
+--   * DEVOUR (ability_devour) -- a corpse or a downed body of either side, or any of her OWN side at any
+--     time. She heals a tenth and takes its power into her grid.
+--   * THE PALATE -- the huntress holds ONE power (`palateCapacity = 1`); eating something new replaces
+--     it, and THE KNOCK (a blow of 12% of her health, or a crit) makes her lose it. Her stair line is the
+--     rule word for word: "there is nothing in me that keeps things".
+--   * STUDIED (utility_hunters_read) -- every blow teaches her its damage kind, and the next blow of that
+--     kind lands on a body that resists it. One lesson at a time: alternate, and you always land in full.
 --
--- TODO (see docs/story.md + the plan): the finale is not fully built. She should be TWO-PHASE -- the human
--- huntress sheds into the beast she has been becoming, the thing the Lodge exists to hunt -- and her
--- second-form mechanic is DEVOUR-THE-FALLEN: any downed unit adjacent to her, even her own, consumed to
--- heal her toward full. Both are new work over what ships here.
+-- At half health she TURNS (utility_the_turning_hunger -> character_gula_the_apex), keeping what she held.
+-- The beast keeps EVERYTHING it eats, grows what it eats twice, cannot be knocked, and draws breath.
+--
+-- AND THE FIGHT IS A WAVE BATTLE: the beasts of the whole floor keep walking in to help her, and every one
+-- of them is also food (Descent.SINS' gluttony `guardian.waves`). The win is her body, not the field.
+--
+-- What she hands over is the Maw of the Unfed (the relic, reworked into the player's half of the Palate),
+-- then the Breath and the Hide lifted off the two halves of her rule -- Descent.DROPS.gluttony.
 return {
     name = "Gula, the Unsated",
     race = "human",
@@ -38,28 +41,30 @@ return {
     sprite = "assets/chars/general_gluttony.png",
     portrait = "assets/portraits/general_gluttony.png", -- large VN portrait for conversations (falls back if missing)
     archetype = "aggressive",
+    -- One power at a time (models/palate.lua). The beast she turns into declares none, and keeps everything.
+    eats = true,
+    palateCapacity = 1,
     stats = {
-        health = 240, mana = 20, stamina = 18,
+        health = 240, mana = 20, stamina = 20,
         staminaRegen = 3,
-        damage = 20, magicDamage = 0, -- a beast: she hits in flesh, and every hit feeds her
-        defense = 15, magicDefense = 8, -- warded in hide, thin against the magic she never learned
+        damage = 18, magicDamage = 0, -- the copies are her threat now; her own blade is only a blade
+        defense = 12, magicDefense = 8, -- warded in hide, thin against the magic she never learned
         movement = 4,
-        speed = 4,
+        speed = 5,
         -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
-        skill = 5, luck = 4,
+        skill = 6, luck = 4,
     },
-    -- Her loadout as the 3x3 grid (row-major); false = an empty cell. Her rule rides on the Maw of the
-    -- Unfed in the center (unstealable). Around it: the gralloch knife she eats with, and the pack she
-    -- calls to the deep wood.
+    -- Her loadout as the 3x3 grid (row-major); false = an empty cell. Five cells are left open on
+    -- purpose: they are where what she eats goes.
     startingItems = {
-        "ability_summon_wolf", "ability_summon_wolf",     false,
-        "weapon_gralloch_knife", "utility_maw_of_the_unfed", false,
-        false,                 false,                      false,
+        "weapon_gralloch_knife", "ability_devour",             false,
+        "utility_hunters_read",  "utility_the_turning_hunger", false,
+        false,                   false,                        false,
     },
     defaultAction = "weapon_gralloch_knife",
     ai = {
-        { priority = "high", act = "attack", item = "weapon_gralloch_knife",
-          when = { subject = "any_foe", test = "in_reach" } },
+        { priority = "normal", act = "attack", targetPref = "lowest_hp",
+          when = { subject = "any_foe", test = "exists" } },
     },
 }

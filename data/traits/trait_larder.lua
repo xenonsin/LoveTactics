@@ -1,5 +1,9 @@
 -- LARDER HOOK: what you are carrying above half is what you swing with.
 --
+-- THE SYNERGY BELOW IS GONE (2026-09-23). The Maw of the Unfed no longer carries Ravenous -- it becomes
+-- whatever its bearer last killed (data/traits/trait_palate.lua) -- so the surplus this was built to spend
+-- now comes only from Ravener's Hide. The baseline stands on its own; the set pairing is owed a rethink.
+--
 --   baseline   a company opens a fight at full health, so this pays from the first exchange and thins
 --              as the fight takes its toll. Real on its own, and honestly shaped: it is the reward for
 --              being ahead.

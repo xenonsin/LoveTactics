@@ -7585,6 +7585,59 @@ function Combat.fell(combat, target, opts)
     return true
 end
 
+-- DEVOUR: `eater` takes a body off the field whole, which is Gula's verb (data/items/ability/
+-- ability_devour.lua) and the thing her Palate reads (models/palate.lua). Three bodies it will take, and
+-- they are the three a hungry thing finds lying about:
+--
+--   * a CORPSE, of either side -- spent, exactly as Combat.consumeCorpse spends one;
+--   * a DOWNED body, of either side -- the revive window is shut on it, which is the Unseeing's Taking
+--     reaching the dying as well as the dead, told as appetite rather than necromancy;
+--   * a LIVING body on the eater's OWN side -- her escort is her larder, and she may eat it whenever
+--     she likes. Never a living foe: that is what the Breath is for, and the Breath only finishes the
+--     ones it drags in already beaten. Never a boss, which is Coup de Grace's rule and every execute's.
+--
+-- WHAT IS EATEN IS OUT OF THE FIGHT AND NO FURTHER. The body is stamped `devoured` and leaves no corpse,
+-- and Combat.reviveFallenParty and Combat.fallenParty both read the flag beside `sank` -- so a companion
+-- she ate walks home off a won board and is wounded by a lost one like anybody else who fell. Without
+-- those two lines this function would be permadeath by appetite, in the circle a new company meets
+-- first, against docs/the-count.md's founding law.
+--
+-- `opts.weakFoe` (a share of health) is the one door a LIVING FOE comes through: the Breath
+-- (data/items/ability/ability_the_breath.lua) drags a body to her mouth and swallows it only if it
+-- arrives already beaten. Everything else about a foe still standing is a fight, not a meal.
+--
+-- Returns the body it took, or nil when there was nothing it may take.
+function Combat.devour(combat, eater, body, opts)
+    if not (combat and eater and body and body.char) or body == eater then return nil end
+    if body.alive then
+        if body.char.boss or body.summoned or body.decoyOf then return nil end
+        if body.side ~= eater.side then
+            local hp = body.char.stats.health
+            local share = opts and opts.weakFoe
+            if not (share and hp.max and hp.max > 0 and hp.current <= hp.max * share) then return nil end
+        end
+        -- Past every window at once: the corpse path, so nothing lies on the tile to be revived.
+        body.noRevive = true
+        body.char.stats.health.current = 0
+        killUnit(combat, body)
+    end
+    if body.incapacitated then
+        if body.noRevive and body.laidDown then return nil end -- a script's body is the script's
+        Status.remove(combat, body, "status_downed")
+        body.incapacitated = false
+    elseif not body.corpse then
+        return nil
+    end
+    body.corpse = false
+    body.devoured = true
+    Combat.logEvent(combat, "action",
+        string.format("%s devours %s.", unitName(eater), unitName(body)), eater)
+    -- ...and becomes what it ate (models/palate.lua). Here, on the live path, rather than in the effect:
+    -- the effect also runs under the forecast, and a hover must never hand her a power.
+    require("models.palate").take(combat, eater, body)
+    return body
+end
+
 -- THE WATER RISES: turn a shallow tile into a deep one, and take whatever was standing in it.
 --
 -- The only terrain mutation in the game, and it exists for exactly one body (character_nethrys). Her
@@ -8471,7 +8524,7 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
         -- `wakes`, as the ordinary survivor below: a blow held at 1 is still a blow, so a sleeper wakes
         -- and a status that answers being floored hears it (Heartbound sends its bearer home to its
         -- tree on exactly this beat -- data/status/status_heartbound.lua).
-        raiseAnswer(combat, target, { amount = dmg, tags = tags, source = source, attacker = attacker,
+        raiseAnswer(combat, target, { amount = dmg, tags = tags, source = source, attacker = attacker, critical = crit or nil,
             area = opts and opts.area, wakes = true })
         applyKnockback()
         return dmg
@@ -8484,7 +8537,7 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
         -- (never a fragile shape, which the check above already excluded from the death path).
         if not target.fragile and Trait.trySurvive(combat, target) then
             inflictCarried()
-            raiseAnswer(combat, target, { amount = dmg, tags = tags, source = source, attacker = attacker,
+            raiseAnswer(combat, target, { amount = dmg, tags = tags, source = source, attacker = attacker, critical = crit or nil,
             area = opts and opts.area })
             applyKnockback()
             return dmg
@@ -8529,7 +8582,7 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
         inflictCarried()
         -- ...and the statuses riding the survivor get the same news (`wakes`), for the ones a blow is
         -- supposed to BREAK (Sleep) -- raised together so the hold cannot separate them.
-        raiseAnswer(combat, target, { amount = dmg, tags = tags, source = source, attacker = attacker,
+        raiseAnswer(combat, target, { amount = dmg, tags = tags, source = source, attacker = attacker, critical = crit or nil,
             area = opts and opts.area, wakes = true })
         applyKnockback()
     end
@@ -9135,8 +9188,9 @@ function Combat.fallenParty(combat)
     local out = {}
     for _, u in ipairs((combat and combat.units) or {}) do
         -- `sank` rides along for the same reason it does in Combat.reviveFallenParty below: a drowned
-        -- body is a body that ended the fight down, and a lost fight must wound it like any other.
-        if u.side == "party" and not u.alive and (u.incapacitated or u.corpse or u.sank)
+        -- body is a body that ended the fight down, and a lost fight must wound it like any other. So
+        -- does `devoured` (Combat.devour), which is the same statement made by a mouth.
+        if u.side == "party" and not u.alive and (u.incapacitated or u.corpse or u.sank or u.devoured)
             and not u.summoned and not u.decoyOf and u.char then
             out[#out + 1] = u.char
         end
@@ -9203,7 +9257,9 @@ function Combat.reviveFallenParty(combat, fraction)
         -- carried off the won board -- permadeath by terrain, arriving silently, in a mode whose
         -- founding law (docs/the-count.md) is that a bad trip costs a body on the bench, never a
         -- character.
-        if u.side == "party" and not u.alive and (u.incapacitated or u.corpse or u.sank)
+        -- ...and a FOURTH, `devoured` (Combat.devour): Gula ate it, which leaves nothing on the tile for
+        -- the same reason the water does. Out of the fight, never out of the roster.
+        if u.side == "party" and not u.alive and (u.incapacitated or u.corpse or u.sank or u.devoured)
             and not u.summoned and not u.decoyOf
             -- Either fallen state is carried out: still INCAPACITATED when the fight ended, or gone
             -- cold when the count ran out. A body that never comes back stays down even in victory (a
@@ -9221,6 +9277,7 @@ function Combat.reviveFallenParty(combat, fraction)
             -- of the campaign -- no corpse, no revive window, unreachable by every rescue in the game,
             -- from a flag nothing would ever print.
             u.sank = false
+            u.devoured = false
             u.statuses = {}
             carried[#carried + 1] = u.char
         end
@@ -9700,6 +9757,9 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
         recall = function() touchesBoard() return false end,
         bounty = function() touchesBoard() return 0 end,
         consumeCorpse = function() touchesBoard() return false end,
+        -- Inert, but it answers with the BODY, so the effect goes on to its heal and its Gorged and the
+        -- planner sees what eating would pay (see ability_devour's note on why that is the payload).
+        devour = function(body) touchesBoard() return body end,
     }
     if ab.effect then pcall(ab.effect, fx) end
     -- THE POURED MEASURE'S RETURN, on the caster's own bar, so the forecast counts the health the
@@ -10163,6 +10223,7 @@ function Combat.abilityOutput(unit, item)
         recall = function() out.recall = true; return true end,
         bounty = function(amount) out.bounty = (out.bounty or 0) + (amount or 0); return 0 end,
         consumeCorpse = function() return false end,
+        devour = function() return nil end,
     }
     pcall(ab.effect, fx)
     return out
@@ -11194,7 +11255,12 @@ function Combat.releaseClaims(char)
             -- Cleared here rather than at the grant, because the whole point is that it is real FOR the
             -- fight: it stacks, it is cast, it is stolen, it is previewed, exactly like bought stock.
             -- The only thing it may not do is persist.
-            if item.ephemeral then char.inventory[i] = nil end
+            --
+            -- ...EXCEPT WHERE IT IS WEARING SOMETHING THAT MUST. A MORPHED piece (models/palate.lua --
+            -- the Maw of the Unfed turning into whatever its bearer last killed) sits in its cell as the
+            -- borrowed power, ephemeral like any other, with the relic it replaced kept on `morphOf`.
+            -- The borrowed power goes; the relic comes back to the same cell it left.
+            if item.ephemeral then char.inventory[i] = item.morphOf end
             -- A HEX THAT WENT FOR A WALK (data/items/ability/ability_let_it_walk.lua). The Shaman spent
             -- a binding to summon something and the bell decides what it cost: a spirit still standing
             -- hands the curse back to the piece it came off, and a spirit that fell took the binding
@@ -12856,6 +12922,9 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
         -- a transaction that turns a body into something else (the Ledger's coin), and deliberately
         -- separate from fx.bounty so the two can be priced apart.
         consumeCorpse = function(corpse) return Combat.consumeCorpse(combat, corpse) end,
+        -- Take a body off the field whole -- a corpse, a downed body, or one of the caster's own
+        -- (Combat.devour). Returns the body, or nil when it was not one the caster may eat.
+        devour = function(body, opts) return Combat.devour(combat, unit, body, opts) end,
     }
 
     -- Log the action itself before its effect runs, so the cast heads the sub-events it spawns

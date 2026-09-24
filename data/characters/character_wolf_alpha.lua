@@ -4,6 +4,7 @@ return {
     name = "Alpha Wolf",
     race = "beast",
     tier = 2,
+    palate = "ability_howl_lesser", -- what Gula takes when she eats one (models/palate.lua)
     sprite = "assets/chars/wolf_alpha.png",
     stats = {
         health = 56, mana = 0, stamina = 20,

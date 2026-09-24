@@ -56,6 +56,7 @@ return {
     name = "Ancient Stag",
     race = "beast",
     tier = 2,
+    palate = "weapon_stag_antlers", -- what Gula takes when she eats one (models/palate.lua)
     boss = true, -- a quest objective: immune to execute (Coup de Grace) and to Charm -- see the header
     sprite = "assets/chars/stag.png",
     stats = {

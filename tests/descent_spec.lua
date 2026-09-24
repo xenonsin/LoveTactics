@@ -721,7 +721,15 @@ return {
                 local expected = Descent.isGeneralFloor(floor) and sin.guardian.lead or sin.minor.lead
                 assert(bodies[1] == expected,
                     "floor " .. floor .. " is not led by " .. sin.id .. "'s own body")
-                assert(obj.win.type == "killAll", "a circle's stair is taken by clearing it")
+                -- ...except a general whose band declares WAVES (Gula, 2026-09-23): the wood keeps walking
+                -- in, so the field can never be cleared and the stair is taken on her body (Descent.stairWin).
+                local band = Descent.isGeneralFloor(floor) and sin.guardian or sin.minor
+                if band.waves then
+                    assert(obj.win.type == "assassinate" and obj.win.target == band.lead,
+                        "a wave-battle stair is taken on the one it is fought around")
+                else
+                    assert(obj.win.type == "killAll", "a circle's stair is taken by clearing it")
+                end
             else
                 assert(bodies[1] == "character_demon_lord", "the last floor is the Demon Lord's")
                 assert(obj.win.type == "assassinate" and obj.win.target == "character_demon_lord",

@@ -17,6 +17,7 @@ return {
     name = "Wild Boar",
     race = "beast",
     tier = 2,
+    palate = "ability_gore", -- what Gula takes when she eats one (models/palate.lua)
     sprite = "assets/chars/boar.png",
     stats = {
         -- THE 10 POOL IS THE RATE LIMITER ON GORE, and it is load-bearing rather than incidental. A

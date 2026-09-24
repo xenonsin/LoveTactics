@@ -28,6 +28,7 @@ return {
     name = "Manticore",
     race = "beast",
     tier = 2,
+    palate = "ability_tail_volley", -- what Gula takes when she eats one (models/palate.lua)
     sprite = "assets/chars/manticore.png",
     stats = {
         -- 20 at 3 a tick: a volley (6) and a bite (5) in the same stretch, with the volley's own cooldown

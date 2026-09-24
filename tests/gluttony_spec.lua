@@ -1,6 +1,6 @@
 -- The Hunter's Lodge line's two rules, read the two ways (docs/story.md, "The Hunter's Lodge": the
--- hunter answers gluttony with temperance). Gula's Ravenous heals her on every blow she lands
--- (data/traits/trait_ravenous.lua); Kaya opens each battle with a wolf at her side and the Wolfsong Horn
+-- hunter answers gluttony with temperance). Ravenous heals its wearer on every blow landed
+-- (data/traits/trait_ravenous.lua, on Ravener's Hide since Gula's re-premise); Kaya opens each battle with a wolf at her side and the Wolfsong Horn
 -- she roots the ring with (data/traits/trait_wolf_companion.lua, data/items/utility/utility_wolfsong_horn.lua).
 -- Headless.
 
@@ -21,13 +21,18 @@ end
 
 return {
     {
-        name = "Ravenous: every blow Gula lands feeds her -- the long trade is her friend",
+        -- Gula carried this rule until the 2026-09-23 re-premise (tests/gula_spec.lua has what she does
+        -- now). It lives on in Ravener's Hide, so the rule is held against the piece that still wears it.
+        name = "Ravenous: every blow the wearer lands feeds them -- the long trade is their friend",
         fn = function()
+            local wearer = Character.instantiate("character_bandit")
+            assert(Character.addItem(wearer, require("models.item").instantiate("armor_raveners_hide")),
+                "the bandit wears the hide")
             local c = Combat.new(arena(6, 6),
                 { { char = Character.instantiate("character_bandit"), x = 3, y = 1 } },
-                { { char = Character.instantiate("character_general_gluttony"), x = 1, y = 1 } })
+                { { char = wearer, x = 1, y = 1 } })
             local gula, foe = c.units[2], c.units[1]
-            assert(Trait.has(gula, "trait_ravenous"), "Gula carries her rule (off the Maw in her grid)")
+            assert(Trait.has(gula, "trait_ravenous"), "the wearer carries the rule (off the hide)")
 
             -- Wound her, so a heal has room to land.
             local hp = gula.char.stats.health

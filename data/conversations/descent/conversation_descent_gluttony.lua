@@ -24,6 +24,10 @@
 -- idiom -- which for all seven is the same shape, because all seven bought a thing and were given its
 -- cruel inverse. She is not surprised to see anybody. She has been down here a long time.
 
+-- TODO(Keno): one more beat for her, after "nothing in me that keeps things" -- a line that points at the
+-- beasts walking in, since her stair is a wave battle now and every one of them is something she will eat
+-- and become (re-premised 2026-09-23, models/palate.lua). Her existing line already IS the one-power rule
+-- and stays. Left for the author to write rather than drafted here.
 return {
     title = "Gula, the Unsated",
     cast  = { "character_general_gluttony" },

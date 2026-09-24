@@ -1,5 +1,9 @@
 -- ENGORGE: Gluttony's rule, one rank down, and the mechanic the whole swamp circle is built on.
 --
+-- GULA'S RULE HAS MOVED ON (2026-09-23). The paragraph below describes her OLD rule, Ravenous. She now
+-- EATS -- the dead, the downed and her own -- and becomes what she ate (models/palate.lua). Engorge still
+-- teaches the cheap half of that honestly: it feeds when something dies beside it.
+--
 -- Gula's Ravenous heals her on EVERY blow she lands (data/traits/trait_ravenous.lua), so a long trade
 -- only fattens her and the counterplay is to starve her -- burst, kill clean, never grind. That is a
 -- fine rule for the thing at the bottom of a circle and a terrible one to meet cold: a player who has

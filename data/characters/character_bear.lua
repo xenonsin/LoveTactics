@@ -61,6 +61,7 @@ return {
     name = "Bear",
     race = "beast",
     tier = 2,
+    palate = "utility_the_same_wound", -- what Gula takes when she eats one (models/palate.lua)
     sprite = "assets/chars/bear.png",
     stats = {
         -- The 24 pool is the rate limiter on the ramp, the way the boar's 10 is the limiter on its

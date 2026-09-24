@@ -41,7 +41,7 @@ local Descent = {}
 -- (Listed here in the order a first descent meets them -- Descent.INFERNO -- which is not the order
 -- the table below is written in.)
 --
---   gluttony  forest      a beast hunt: the circle that eats is the circle you hunt
+--   gluttony  forest      a beast hunt: the circle that eats is the circle you hunt, and its apex eats the rest
 --   lust      castle      a court, and its cast has always belonged in one
 --   greed     swamp       a drowned vault, silted up, and the things that live in it
 --   wrath     volcanic    the obvious one, and it has earned it
@@ -174,7 +174,22 @@ Descent.SINS = {
         -- stays hers and this floor got a body authored to stand on it. That body was the Gralloch and
         -- it is deleted with the other six (see the lieutenant note in this table's header); the escort
         -- is the circle's own stock until a replacement is authored.
-        guardian = { lead = "character_general_gluttony", filler = "character_wolf_alpha" },
+        -- A WAVE BATTLE (settled on review 2026-09-23): the beasts of the whole wood keep walking in to
+        -- help her, and every one of them is also something she can eat and become (models/palate.lua).
+        -- One stream per beast, staggered so one arrival lands about every two turns, each capped by
+        -- `maxAlive` so the glade tops up rather than floods. The win is her, not the field
+        -- (Descent.stairWin). Both floors' beasts, because she is the apex of the whole circle.
+        guardian = { lead = "character_general_gluttony", filler = "character_wolf_alpha",
+            waves = {
+                { at = 10, every = 70, composition = { "character_wolf_grunt", "character_wolf_grunt" },
+                  from = "surround", maxAlive = 5 },
+                { at = 20, every = 70, composition = { "character_boar" }, from = "surround", maxAlive = 5 },
+                { at = 30, every = 70, composition = { "character_giant_spider" }, from = "surround", maxAlive = 5 },
+                { at = 40, every = 70, composition = { "character_manticore" }, from = "surround", maxAlive = 5 },
+                { at = 50, every = 70, composition = { "character_wyvern" }, from = "surround", maxAlive = 5 },
+                { at = 60, every = 70, composition = { "character_stag_beast" }, from = "surround", maxAlive = 5 },
+                { at = 70, every = 70, composition = { "character_bear" }, from = "surround", maxAlive = 5 },
+            } },
         -- SHE WILL NOT RISE WHILE THERE IS ANYTHING LEFT TO EAT: the floor must be picked clean.
         --
         -- AND IT IS THE TEACHING GATE NOW, since this circle opens the descent (Descent.INFERNO). That
@@ -562,6 +577,9 @@ Descent.SINS = {
 Descent.DROPS = {
     gluttony = { minor = { "utility_larder_hook" }, general = {
         "utility_maw_of_the_unfed",
+        -- The two halves of her rule, lifted off her (settled on review 2026-09-23): the Breath her beast
+        -- drew, and the Hide that learns what hits it.
+        "ability_draw_breath", "armor_studied_hide",
         "armor_raveners_hide", "weapon_held_breath",
         "weapon_last_word",
     } },
@@ -3165,9 +3183,11 @@ end
 -- teaching ground whether or not it is written as one: it is the only stratum whose company is known
 -- before it is rolled -- a pair, at the level Act 0 leaves them (Descent.OPENING_CAP) -- and whatever
 -- it asks of them is what every circle under it gets read against. Gluttony is a beast hunt on open
--- forest. Bodies that walk at you and bite, a `clear` gate that needs no explaining, and a ground with
--- no signature hazard on it, so the lesson of the first stratum is the lesson of the game: stand
--- somewhere, swing, and go down.
+-- forest. Bodies that walk at you and bite, a `clear` gate that needs no explaining, and one hazard
+-- that is only ever a trap (the web, since 9e287d23), so the lesson of the first stratum is the lesson of
+-- the game: stand somewhere, swing, and go down. Its general is the APEX of every body in it -- she eats
+-- them and does what they did (models/palate.lua) -- which makes the whole circle, looked back on from
+-- her stair, the list of things she might become.
 --
 -- Lust is the opposite of a first lesson. It is the circle that takes your say over where you are
 -- standing and whose side you are on, fought in a warren of thin walls that does the actual killing --
@@ -3778,6 +3798,26 @@ Descent.GUARD_MAX = require("models.arena").DEFAULT_ENEMY_CAP - 1
 -- the note on named filler below), and swarm stock is a third of her weight -- so every general's stair
 -- came out under the plan that sized it and the ramp dipped on four floors. A solver that models a
 -- different fight from the one built is not a solver.
+-- WHAT ENDS A STAIR FIGHT. Every stair is a plain kill-them-all -- except a general whose band declares
+-- `waves`, which is a WAVE BATTLE: the floor keeps walking in to help her, so the field can never be
+-- emptied and the win has to be HER (an `assassinate` on the band's lead, matched through a transform by
+-- Combat.evaluate). Gluttony is the one that declares it: the beasts of the wood arriving are her
+-- reinforcements and her food at once (data/characters/character_general_gluttony.lua).
+--
+-- Built fresh per call, the waves copied rather than aliased: the arena normalizes the objective it is
+-- handed and a battle keeps firing state beside it, and neither may write back into Descent.SINS.
+function Descent.stairWin(sin, isGeneral)
+    local band = isGeneral and sin and sin.guardian
+    if not (band and band.waves) then return { type = "killAll" } end
+    local waves = {}
+    for i, w in ipairs(band.waves) do
+        local copy = {}
+        for k, v in pairs(w) do copy[k] = v end
+        waves[i] = copy
+    end
+    return { type = "assassinate", target = band.lead, waves = waves }
+end
+
 function Descent.guardList(sin, isGeneral, floor, n)
     local band = isGeneral and sin.guardian or sin.minor
     local list = { band.lead }
@@ -4154,7 +4194,7 @@ function Descent.floorQuest(run, player)
                 -- The stair opts out of the floor's own body ceiling (Descent.OPENING_CAP). What the
                 -- circle put on it is what stands there.
                 enemyCap = false,
-                win = { type = "killAll" },
+                win = Descent.stairWin(sin, general),
             },
             -- ...AND WHATEVER A HOUSE HAS ASKED FOR DOWN HERE. See Descent.floorObjectives. Resolved at
             -- the top of this function rather than here, because the fight budget above is spent on it.
@@ -4186,7 +4226,7 @@ function Descent.floorObjectives(player, floor, sin, floorLevel, general, run)
         -- floor cut to the size of the company that walks in still ends on the fight the circle put
         -- there. See Descent.OPENING_CAP.
         enemyCap = false,
-        win = { type = "killAll" },
+        win = Descent.stairWin(sin, general),
         floorLevel = floorLevel,
     }
     -- THE WARD, for a circle that bars its stair with a body (Descent.GATES' `ward`). One more end on

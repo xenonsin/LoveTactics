@@ -1,5 +1,9 @@
 -- THE GRALLOCH HOOK: Gula's rule, cut down, and the mini sin's whole reason to exist.
 --
+-- STRANDED AND STALE (2026-09-23). The Gralloch that carried this is deleted, and the paragraph below
+-- describes Gula's OLD rule, Ravenous; she now eats and becomes what she ate (models/palate.lua). Kept on
+-- disk as material for a replacement lieutenant (models/descent.lua's lieutenant note); nothing fields it.
+--
 -- Gula's Maw of the Unfed heals her on EVERY blow she lands (data/traits/trait_ravenous.lua), so a long
 -- trade fattens her and the counterplay is to starve her -- burst, kill clean, never grind. That is a
 -- fine rule for the thing at the bottom of a circle and a miserable one to meet cold: a player who has

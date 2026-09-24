@@ -1,21 +1,20 @@
--- Gula's grid weapon, and gluttony's reading of the hunter's kit the way the Censer of Ashes is lust's
--- (docs/story.md, "The Hunter's Lodge"). A gralloch is the gutting stroke that opens a carcass to be
--- dressed; read as consumption, it is heal-on-hit -- the blade that eats what it cuts.
+-- Gula's grid weapon, and gluttony's reading of the hunter's kit (docs/story.md, "The Hunter's Lodge"). A
+-- gralloch is the gutting stroke that opens a carcass to be dressed.
 --
--- The heal rides in the effect itself (fx.heal(fx.user)), the mechanic already shipped on the Parasitic
--- Staff (data/items/weapon/weapon_parasitic_staff.lua) -- no new engine. Her relic carries the same
--- appetite as a passive for whoever lifts it (data/traits/trait_ravenous.lua on
--- data/items/utility/utility_maw_of_the_unfed.lua), so the grind that feeds her in her own grid is the
--- grind she hands you when you wear her key.
+-- IT NO LONGER HEALS HER (settled on review 2026-09-23). It used to, and her Maw's Ravenous healed her
+-- again on the same blow, so every cut paid her twice and the counterplay the story names -- starve her --
+-- had nothing to grip but a bigger number. Her healing is EATING now (data/items/ability/ability_devour.lua):
+-- a thing the company can see coming and deny, rather than a tax on every exchange. So the knife is only
+-- a knife, quick and cheap -- and the moment she has eaten something with a better weapon in it, she
+-- swings that instead.
 --
--- A boss weapon: `creature`, no `price`, `noSteal`. It is fast and cheap so she swings often -- every
--- swing a meal. The flag is the half that matters: a body's own grid feeds the drop pool directly
--- (models/spoils.lua), so without it her knife fell out of her own corpse.
+-- A boss weapon: `creature`, no `price`, `noSteal`. The flag is the half that matters: a body's own grid
+-- feeds the drop pool directly (models/spoils.lua), so without it her knife fell out of her own corpse.
 local Curve = require("models.curve")
 
 return {
     name = "Gralloch Knife",
-    description = "On damage dealt: heal.",
+    description = "Deals damage.",
     flavor = "The stroke that opens a carcass to be dressed. On her it never stops at the carcass.",
     sprite = "assets/items/gralloch_knife.png",
     type = "weapon",
@@ -29,12 +28,11 @@ return {
     activeAbility = {
         target = "enemy",
         range = 1,
-        speed = 2, -- quick: she acts again almost at once, and each strike feeds her
+        speed = 2, -- quick: she acts again almost at once
         cost = { stat = "stamina", amount = 4 },
         damage = Curve.ramp(5, 15),
         effect = function(fx)
             fx.damage(fx.target)
-            fx.heal(fx.user, 8) -- she eats what she cuts, the same shape parasitic_staff refills mana on hit
         end,
     },
 }

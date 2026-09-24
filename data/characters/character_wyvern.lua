@@ -24,6 +24,7 @@ return {
     name = "Wyvern",
     race = "beast",
     tier = 2,
+    palate = "ability_take_wing", -- what Gula takes when she eats one (models/palate.lua)
     sprite = "assets/chars/wyvern.png",
     stats = {
         health = 44, mana = 0, stamina = 22,

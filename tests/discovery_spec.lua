@@ -96,6 +96,9 @@ local TROPHIES = {
     -- The Sabertooths' (Gluttony's approach, 2026-09-23): the ambush as a cloak, the pounce's critical as a
     -- charm, the appetite as a cord, and the Longfang's hunt as her own.
     "armor_stalkers_mantle", "utility_ambush_charm", "utility_trophy_cord", "utility_the_unbroken_stalk",
+    -- Gula's (the wood's general, re-premised 2026-09-23): the beast's inhale as a druid's, and the rule
+    -- that learns every blow as a hide. After the Maw on her drop list (Descent.DROPS.gluttony).
+    "ability_draw_breath", "armor_studied_hide",
 }
 
 local function vendorFor(class)

@@ -3,6 +3,7 @@ return {
     name = "Wolf",
     race = "beast",
     tier = 1,
+    palate = "weapon_wolf_fangs", -- what Gula takes when she eats one (models/palate.lua)
     sprite = "assets/chars/wolf.png",
     stats = {
         health = 28, mana = 0, stamina = 18,

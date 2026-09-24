@@ -974,12 +974,17 @@ mostly the beast at its center, exactly the fate the Lodge warns of, cultivates,
 Famine ate alive for felling the sacred grove; Actaeon, the hunter run down as a stag by his own
 hounds.)
 
-Her rule is **"never stops,"** and she is the cheapest general on the board to build: **heal-on-hit**
-— every blow she lands feeds her, `fx.heal(fx.user)`, the mechanic already shipped on
-`weapon_parasitic_staff` (no new engine work). The counterplay is the sin read as tactics: **starve
-her.** Do not feed the long trade — burst her down, kill clean and fast, deny her the grind; a party
-that stands and swings turn after turn only fattens her. Temperance as tactics is the discipline to
-**stop feeding the hunt.**
+Her rule is **"never stops,"** and it is read as the **apex**: every beast in the wood hunts one way,
+and Gula hunts every way, because she has eaten each of them. She **devours** a body — a corpse, a
+downed body, or any of her own side whenever she likes — heals on it, and **takes the one thing it is
+known for** (the wyvern's wings, the spider's silk, the boar's charge; `models/palate.lua`). The
+huntress keeps only the last thing she swallowed ("there is nothing in me that keeps things"), and a
+hard enough blow **knocks it out of her**. Every blow also teaches her its kind: she resists whatever
+hit her last, until something different arrives. The counterplay is still the sin read as tactics:
+**starve her** — kill her beasts before they reach her, hit her hard enough to make her lose what she
+ate, and never hit her with the same thing twice. Temperance as tactics is the discipline to **stop
+feeding the hunt.** (Re-premised 2026-09-23; it used to be heal-on-hit, which answered only to a bigger
+number.)
 
 **Killing her frees nothing automatically.** The deep wood she stripped does not grow back, and the
 appetite is the Lodge's, not hers alone: kill Gula and the Lodge simply crowns its next Grand Hunter,
@@ -1056,7 +1061,7 @@ fattening, and the Lodge grows its own game from its own greatest.
 | 7 | **The turn** | 3 | *(no fight)* | **the beast at the wood's heart is Gula,** and every Grand Hunter turns — the honor is a fattening, the Lodge farms its own; Kaya learns what the crown she'd be offered really is (there but for restraint) |
 | 8 | The break | 3 | **One Shot, and Stop** — `assassinate` | the temperance beat: Kaya takes **one** shot and stops — stopping is not quitting |
 | 9 | The approach | 3 | **Into the Deep Wood** — `assassinate` | into the deep wood; the scale of what her death will **not** undo — a wild already stripped |
-| 10 | The general | 4 | **Gula** — `assassinate` | two-phase (human huntress → the beast she became); she **devours the fallen** to heal; the stripped wild remains |
+| 10 | The general | 4 | **Gula** — `assassinate` | two-phase (human huntress → the apex beast); she **devours** and becomes what she ate, learns every blow, and the wood keeps walking in to feed her; the stripped wild remains |
 
 `sacred_stag` exists; the recruit (slot 2), the finale (slot 10), the recruit `outro` (Kaya's terms
 — why she'll guide you), and every mid-line scene are new. Slot 7 needs the antagonist to **speak
@@ -1067,11 +1072,11 @@ ladder's *shape*, which still wants standing as a **count of distinct completed 
 ### The relic, and Kaya's signature
 
 **The general's drop — Maw of the Unfed** (parallel to the Reliquary of the Unbidden): a trophy taken
-from the warden Gula killed to begin her fall, now the vessel of her appetite — carrying the
-heal-on-hit trait for whoever lifts it, `noSteal`, no `class`, no `price`, `gateHint` written into
-its flavor and consumed by `quest_the_gate_below`. Her grid weapon beside it is a **gralloch knife** (the
-gutting blade read as consumption — heal-on-hit), gluttony's reading of the hunter's kit the way the
-Censer of Ashes is lust's.
+from the warden Gula killed to begin her fall, now the vessel of her appetite — and for whoever lifts
+it, it **becomes whatever they last killed** (the wolf's fangs, the spider's silk), handed back as the
+Maw at the bell. `noSteal`, no `price`, `gateHint` written into its flavor and consumed by
+`quest_the_gate_below`. Her grid weapon is a **gralloch knife** (the gutting blade), gluttony's reading
+of the hunter's kit the way the Censer of Ashes is lust's — only a knife now; her healing is eating.
 
 **Kaya's signature is the Wolfsong Horn** (`utility_wolfsong_horn.lua`), and it is built. A wolf
 fields itself at her side at the opening bell (`trait_wolf_companion`) — one wolf, granted once and
@@ -1084,8 +1089,8 @@ it re-locks after each use, so a wolf that keeps biting can raise it again. (Bui
 conditional-unlock signature system, as on Rowan's `armor_sworn_aegis`; a `when` + `count` gate keys
 it to a living, bloodied wolf — see `Combat.unlockReady`.)
 
-Read as tactics against Gula: rooting the ring lets a kiting archer break the long trade instead of
-feeding a heal-on-hit foe — temperance as the counter to gluttony.
+Read as tactics against Gula: a rooted body is anchored against her Breath, and a rooted beast cannot
+walk to her to be eaten — temperance as the counter to gluttony.
 
 The wolves fight like a pack now: a wolf's bite **gives ground a tile and slips any melee counter**
 (`weapon_wolf_fangs`, the hit-and-run every wolf makes — companion, grunt, and alpha alike), which
@@ -1106,11 +1111,13 @@ her own; it is the Lodge's whole engine shown once and live — **the turning ev
 undergoes,** here made a boss fight instead of a slow disappearance into the wood. Her beast form
 should share a **visual lineage** with the lesser turned hunters the mid-line meets — the shape the
 wild takes when a Grand Hunter goes under, Gula simply the apex of it — so the finale reads as *the
-biggest of a kind the player already fears,* not a one-off monster (uses the shared
-two-phase-transform subsystem, not yet built). **The second finale mechanic** (parallel to Luxuria
-turning the blooded): she **devours the fallen** — any downed unit adjacent to her, even her own
-hunters, is consumed to heal her toward full: gluttony that eats everything, including its own. Both
-are deferred, flagged as new work.
+biggest of a kind the player already fears,* not a one-off monster. **The second finale mechanic**
+(parallel to Luxuria turning the blooded): she **devours** — the dead, the downed, and her own, gluttony
+that eats everything including its own — and becomes what she ate. **Both ship** (2026-09-23): at half
+health she turns into **Gula, the Apex** (`character_gula_the_apex`), which keeps every power it eats,
+grows a power it eats twice, cannot be knocked, and **draws breath** — a telegraphed inhale that drags
+the glade to her and swallows what arrives beaten. Her stair is a **wave battle**: the beasts of the
+whole wood keep walking in, to help her and to be eaten.
 
 ### What is built, and what is not
 
@@ -1119,21 +1126,23 @@ foreshadow relic `weapon_hornbow_of_the_hunt`, the *wild-game* beast roster (`ch
 `character_boar`, `character_wolf_alpha`, `character_dire_bear` — ordinary animals, the honest
 bounties), and the `fx.heal(fx.user)` exemplar (`weapon_parasitic_staff`). Both characters —
 `character_kaya` (temperance hunter, Wolfsong Horn centered, recruited as a **guide** so no
-`boss = true` — nothing fights her) and `character_general_gluttony` (**Gula**, `boss = true`). Gula's
-rule `trait_ravenous` (the shipped heal-on-hit half, `onCast`) on her **Maw of the Unfed** relic
-(rank-4 drop, `noSteal`, `gateHint = "at the heart of the wood the hunt hollowed out"`), plus her
-`weapon_gralloch_knife` (heal-on-hit inline). Kaya's Wolfsong Horn was already forged. Three of the ten
+`boss = true` — nothing fights her) and `character_general_gluttony` (**Gula**, `boss = true`) with her
+second body `character_gula_the_apex`. Her rules: **Devour** (`ability_devour`), **the Palate**
+(`models/palate.lua`), **the Knock** and **the Turning Hunger** (`utility_the_turning_hunger`),
+**Studied** (`utility_hunters_read`), and the beast's **Breath** (`ability_the_breath`); her
+`weapon_gralloch_knife` is only a knife now. She drops the **Maw of the Unfed** (`noSteal`,
+`gateHint = "at the heart of the wood the hunt hollowed out"`), which **becomes whatever its bearer
+last killed**, then **Draw Breath** and the **Studied Hide**; the heal-on-hit rule lives on in
+**Ravener's Hide**. Kaya's Wolfsong Horn was already forged. Three of the ten
 quests — slot 1 (`sacred_stag`), the recruit slot 2 (`the_guide`, a `survive` guide-join,
 `rewardCharacter = "character_kaya"`), slot 5 (`the_silent_wood`), and slot 10 (`general_gluttony`,
 rank-4 gated, drops the Maw + `gateHint`). `general_gluttony` is in `quest_the_gate_below` `requiredQuests`.
 Four conversations — `vendor_hunters_lodge_intro`, `hunters_lodge_the_guide_confront`, `kaya_joins`,
-`hunters_lodge_general_gluttony_confront`. Coverage in `tests/gluttony_spec.lua`.
+`hunters_lodge_general_gluttony_confront`. Coverage in `tests/gluttony_spec.lua` and `tests/gula_spec.lua`.
 
 **Not built:** a **`character_turned_hunter`** beast blueprint (the *named* former Grand Hunter, distinct
 from the wild-game roster — the "beast that wore a name" at slot 5 and the wardens at slot 9), built to
-share Gula's phase-two design language; Kaya's **temperance-immunity** fold-in on the Horn (moot until
-the general's devour mechanic it answers exists); the **devour-the-fallen** finale mechanic and the
-**two-phase transform** into the beast; and the six mid-line quests and scenes — slots 3, 4, 6, 7, 8, 9
+share Gula's phase-two design language; and the six mid-line quests and scenes — slots 3, 4, 6, 7, 8, 9
 (slot 7 is the *speak-without-a-fight* seam shared with the other lines).
 
 ## The Crucible: envy, designed

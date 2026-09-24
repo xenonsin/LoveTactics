@@ -274,6 +274,7 @@ local CHARACTER_SILHOUETTE = {
     general_greed = "delapouite/coins-pile",
     general_envy = "lorc/voodoo-doll",              -- the Unborn: a made effigy of a person
     general_gluttony = "lorc/gluttony",
+    gula_the_apex = "delapouite/t-rex-skull",       -- Gula's phase two: the apex of the wood, and what it ate
     general_lust = "lorc/pentagram-rose",           -- the pacted Saint
     general_sloth = "delapouite/broken-wall",       -- the Bastion's own wall, given way
 

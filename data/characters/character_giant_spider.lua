@@ -21,6 +21,7 @@ return {
     name = "Giant Spider",
     race = "beast",
     tier = 2,
+    palate = "ability_silk_shot", -- what Gula takes when she eats one (models/palate.lua)
     sprite = "assets/chars/giant_spider.png",
     stats = {
         health = 42, mana = 0, stamina = 22,
