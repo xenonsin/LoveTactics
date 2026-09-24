@@ -14,6 +14,9 @@
 --                                                        --   PURCHASABLE blow (The Gilded Wound).
 --                                                        --   dx,dy optional: a two-stage THROW's landing
 --                                                        --   (Heave), with tx,ty the grabbed tile.
+--                                                        --   head optional: the unit INDEX of a head the
+--                                                        --   blow was aimed at (Combat.aimHead), with
+--                                                        --   tx,ty a cell of the body it grows from.
 --   { kind = "wait" }
 --   { kind = "blink",   x, y }
 --   { kind = "forfeit" }
@@ -84,6 +87,7 @@ function Command.wellFormed(cmd)
         if cmd.windup ~= nil and not (isCoord(cmd.windup) and cmd.windup >= 0) then
             return false, "use windup must be a whole count >= 0"
         end
+        if cmd.head ~= nil and not isCoord(cmd.head) then return false, "use head must be a unit index" end
         -- spend is optional (only a PURCHASABLE ability carries one -- The Gilded Wound): the gold poured
         -- into the blow, a whole non-negative count. Combat.spendPurse clamps it to what the caster can
         -- actually afford, so a peer can never buy past its purse -- this only rejects garbage. Inert in a
@@ -218,7 +222,11 @@ function Command.apply(combat, unit, cmd)
         -- peer resolves the same lane. Absent (every other cast), dest is nil and the throw -- if any --
         -- flings away from the thrower, matching the local fallback path.
         local dest = cmd.dx and { x = cmd.dx, y = cmd.dy } or nil
+        -- A blow aimed at a HEAD: hold the aim for exactly this cast, as the sender's board did.
+        local head = cmd.head and combat.units[cmd.head]
+        if head and head.headOf then Combat.aimHead(combat, head) end
         result.acted = Combat.useItem(combat, unit, item, cmd.tx, cmd.ty, cmd.windup, dest, cmd.spend) and true or false
+        Combat.aimHead(combat, nil)
         if not result.acted then
             -- The turn still has to end, or a peer would sit forever on a unit that did nothing.
             Combat.pass(combat, unit)

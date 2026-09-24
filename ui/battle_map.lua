@@ -518,7 +518,12 @@ end
 -- by a cast whose approach walk is replaying (overlays.heldUnits). It must not be drawn, and must not
 -- be marked "known" or start materializing, until the cast that conjures it plays: revealed then, it
 -- knits in WITH the blow rather than popping onto the field while the summoner is still walking in.
+--
+-- A HEAD answers yes as well, always (Combat.spawnHeads): it stands on no tile of its own, so it has no
+-- body to draw, no bar to hang over the board and no board badge -- it would otherwise draw a second
+-- token on top of the body it grows from. Its card on the turn strip is where it is read.
 function BattleMap:heldUnit(u)
+    if u and u.headOf then return true end
     local held = self.overlays and self.overlays.heldUnits
     return (held and held[u]) or false
 end
@@ -1884,7 +1889,7 @@ end
 function BattleMap:statusAt(px, py)
     if not self.combat then return nil end
     for _, u in ipairs(self.combat.units) do
-        if u.alive then
+        if u.alive and not self:heldUnit(u) then -- a head wears no board badges (heldUnit)
             local wx, wy = self:unitOrigin(u)
             for _, r in ipairs(self:statusBadgeRects(u, wx, wy)) do
                 if r.st and px >= r.x and px <= r.x + r.w and py >= r.y and py <= r.y + r.h then

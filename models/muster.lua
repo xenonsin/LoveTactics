@@ -60,10 +60,24 @@ function Muster.rate(char)
     local offense = math.max(stat("damage"), stat("magicDamage"))
     local defense = (stat("defense") + stat("magicDefense")) / 2
 
-    return stat("health") * w.health
+    local worth = stat("health") * w.health
         + offense * w.offense
         + defense * w.defense
         + stat("speed") * w.speed
+
+    -- ...AND THE HEADS IT GROWS. A head is a body of its own on the board -- its own turn, its own
+    -- health, its own blow (Combat.spawnHeads) -- but it is grown by an ITEM at the bell, so it is in no
+    -- composition and no roster. Without this a chimera was rated as its lion alone, and the floor's
+    -- light-fight filter (Descent.floorPool) threw the whole fight out as too cheap to deal. Minted at
+    -- the bearer's own level, exactly as Combat.growHead mints it; a head grows no heads of its own.
+    for _, item in ipairs(Character.eachItem(char) or {}) do
+        if item and item.head and Character.defs[item.head] then
+            local head = Character.instantiate(item.head)
+            Growth.resolve(head, char.level or 1)
+            worth = worth + Muster.rate(head)
+        end
+    end
+    return worth
 end
 
 -- A list of bodies, summed.

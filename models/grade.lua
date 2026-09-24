@@ -437,6 +437,16 @@ Grade.TRAIT_GRADE = {
     trait_bristle =                     2.5,  -- Bristle -- every 15 taken, Quill everything close
     trait_man_eater =                   0.5,  -- Man-eater -- the Manticore's appetite
 
+    -- THE CHIMERA (2026-09-23). Hearth Hunger is Constrictor's Due read against Burn -- a flat bite on a
+    -- set-up body -- but a point lighter and on the weapon only, so it sits a notch under it. Serpent's
+    -- Strike is a melee counter that answers once per coil and throws a thorn and a Poison rather than
+    -- a swing, so it sits under Melee Counter's 3.0. The lion's two appetites are one creature's rules
+    -- and sit at the reactive-rule floor.
+    trait_hearth_hunger =               2.0,  -- Hearth Hunger -- weapon blows bite harder on the Burning
+    trait_serpents_strike =             2.0,  -- Serpent's Strike -- a coiled tail bites the first striker
+    trait_eats_what_is_cut =            0.5,  -- It Eats What You Cut Off -- the Chimera eats its heads
+    trait_unfed =                       0.5,  -- Unfed -- a turn with nothing to do comes round sooner
+
     -- ADOPTED FROM THE SEED, not individually weighed. These are the classifier's own numbers, taken
     -- as authored on the designer's instruction rather than argued one by one. They are real weights
     -- and the grader treats them as such -- but Grade.TRAIT_ADOPTED below keeps the provenance, because

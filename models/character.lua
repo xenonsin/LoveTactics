@@ -426,6 +426,19 @@ end
 -- saved level-up state: { level, growth, technique, ... }. When present, the accumulated growth deltas are
 -- re-baked into the stats here (max for resource stats), so a loaded character comes back at its full
 -- leveled power without replaying its history. A new character passes nil -> level 1, no growth.
+-- How many HEADS the blueprint `id` grows at the bell: the pieces of its authored grid that declare
+-- `head` (Combat.spawnHeads). Each is a body on the board with a turn of its own, so a question about how
+-- many bodies a fight fields has to count them -- the Chimera's composition is one id and three bodies.
+function Character.headCount(id)
+    local def = Character.defs[id]
+    local n = 0
+    for _, itemId in ipairs((def and def.startingItems) or {}) do
+        local idef = itemId and Item.defs[itemId]
+        if idef and idef.head then n = n + 1 end
+    end
+    return n
+end
+
 function Character.instantiate(id, progress)
     local def = Character.defs[id]
     assert(def, "unknown character id: " .. tostring(id))

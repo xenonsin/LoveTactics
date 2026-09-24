@@ -194,7 +194,7 @@ return {
             -- against the seed Arena.build stamps onto the ctx, so the same stop met twice is not the
             -- same head-count twice.
             --
-            -- THE PINNED FOUR ARE NAMED, not described, and each one carries its reason in its own
+            -- THE PINNED FIVE ARE NAMED, not described, and each one carries its reason in its own
             -- blueprint. A named list is the point: a stop that quietly stops rolling -- an author
             -- writing a literal count, or a band whose `max` swallows it -- would otherwise join them
             -- silently, and "most stops vary" is not a property anybody can check.
@@ -208,6 +208,9 @@ return {
                 -- A cast of one, and the only plain-table composition in the game: two mimics is two
                 -- chests, standing in two places. The disguise is the entire monster.
                 encounter_mimic = true,
+                -- A cast of one that is three bodies: the Chimera grows its own two heads at the bell,
+                -- and anything standing beside it would stand in the goat's cone.
+                encounter_the_chimera = true,
             }
             -- THE ROSTER, NOT THE HEAD-COUNT. Asked as "is this the same fight on every seed", because
             -- a stop is allowed to roll its SHAPE while holding its size: the Skeleton King's court is

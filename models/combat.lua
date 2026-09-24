@@ -1021,7 +1021,10 @@ function Combat.actionSpeed(unit, ab, item)
     if ab.speedPreview then base = ab.speedPreview(unit, item)
     else base = ab.speed or Combat.DEFAULT_SPEED end
     local bonus = (unit and unit.char and item) and Combat.adjacencySpeedBonus(unit.char, item) or 0
-    return math.max(1, base + bonus)
+    -- A hungry head comes round sooner (Status.actionTimeScale, status_starving). Folded here, the one
+    -- reader, so the turn strip's ghost slot and the settled turn quote the same time.
+    local scale = unit and Status.actionTimeScale(unit) or 1
+    return math.max(1, math.floor((base + bonus) * scale + 0.5))
 end
 
 -- Cells an area-of-effect ability centred on (tx, ty) covers, clamped to the arena. An ability's
@@ -1513,6 +1516,128 @@ function Combat.addUnit(combat, char, side, x, y, opts)
     return unit
 end
 
+-- ---------------------------------------------------------------------------------------- heads
+--
+-- A HEAD IS A UNIT WITH NO TILES OF ITS OWN (the Chimera, 2026-09-23 -- "can each head be represented
+-- individually in the turn order?"). It takes turns of its own, wears its own card on the strip, runs its
+-- own one-item AI and has its own health, but it stands wherever the body it grows from stands:
+--
+--   * POSITION IS READ THROUGH, NEVER COPIED. x/y/w/h are looked up on the body by a metatable, and a
+--     write to them is dropped, so every range, sight and cone measured from a head is measured from the
+--     body's footprint, and no knockback, swap or blink can walk a head off on its own.
+--   * IT IS ON NO TILE. Combat.unitAt, unitsNear and abilityTargets skip it, which keeps it out of
+--     pathing, collision, click-to-select, every area blast and every AI plan in one move. Status.blocksMove
+--     and blocksForcedMove answer yes for it without a status to Cure.
+--   * IT IS AIMED AT, NOT FOUND. Combat.aimHead points a single-target blow at it for one cast; the body's
+--     cells answer with the head for that cast alone. An area blast covering the body hits the body only
+--     (approved on review: breaking a head is always a single-target choice).
+--   * IT DIES WITH THE BODY (the `summoner` link: killUnit dismisses what the fallen sustained) and it is
+--     `summoned`, so it never counts for a win, leaves no corpse and sends no death to the field. Killed
+--     on its own it is BROKEN, which the body's character remembers (killUnit) and the drop roll reads.
+--
+-- A head is grown by an ITEM (`head = "<character id>"`), so the chimera's grid carries its heads and a
+-- person can wear one too (the Beastmaster's Serpent Head and Goat Head): the same seam from both sides.
+local HEAD_POS = { x = true, y = true, w = true, h = true }
+
+function Combat.isHead(unit) return unit ~= nil and unit.headOf ~= nil end
+
+-- The living heads growing from `body`, in grid order.
+function Combat.headsOf(combat, body)
+    local out = {}
+    for _, u in ipairs(combat.units) do
+        if u.alive and u.headOf == body then out[#out + 1] = u end
+    end
+    return out
+end
+
+-- Grow one head off `body` from the blueprint `charId`, at the body's own level so a deep chimera's heads
+-- are as deep as it is. `item` is what grew it (kept for the readouts).
+function Combat.growHead(combat, body, charId, item)
+    if not (Character.defs[charId] and body and body.alive) then return nil end
+    local char = Character.instantiate(charId)
+    Growth.resolve(char, (body.char and body.char.level) or 1)
+    -- Its own AI whichever side it is on: a head is not a body the player drives (the review asked for
+    -- "a separate head with its own AI"), which is also what keeps a worn head from being a second
+    -- character to command.
+    local head = Combat.addUnit(combat, char, body.side, body.x, body.y, {
+        control = (body.control == "none") and "none" or "ai",
+        summoner = body,
+        summoned = true,
+    })
+    head.headOf = body
+    head.headItem = item
+    for k in pairs(HEAD_POS) do rawset(head, k, nil) end
+    setmetatable(head, {
+        __index = function(_, k) if HEAD_POS[k] then return body[k] end end,
+        __newindex = function(t, k, v) if not HEAD_POS[k] then rawset(t, k, v) end end,
+    })
+    return head
+end
+
+-- Grow every head the field's gear asks for. Called once at the bell (Combat.openBattle), before the
+-- first rebase, so the heads are seated on the timeline with everybody else. Iterates a snapshot: a head
+-- joining combat.units must not be asked whether it grows heads of its own.
+function Combat.spawnHeads(combat)
+    local bodies = {}
+    for _, u in ipairs(combat.units) do
+        if u.alive and not u.headOf and not u.timeless then bodies[#bodies + 1] = u end
+    end
+    for _, body in ipairs(bodies) do
+        for _, item in ipairs(Character.eachItem(body.char) or {}) do
+            if item and item.head then Combat.growHead(combat, body, item.head, item) end
+        end
+    end
+end
+
+-- Point the next single-target blow at `head` (nil clears it). Set around a cast or its preview, and
+-- cleared by the caller: while it stands, the body's cells answer Combat.unitAt with the head.
+function Combat.aimHead(combat, head)
+    combat.aimedHead = head
+end
+
+-- The cell of `head`'s body a blow from `unit` would be aimed through: the nearest one, so range and
+-- sight are judged exactly as they would be for a blow at the body.
+function Combat.headAimCell(unit, head)
+    local b = head and head.headOf
+    if not b then return nil end
+    local best, bx, by
+    for dx = 0, (b.w or 1) - 1 do
+        for dy = 0, (b.h or 1) - 1 do
+            local x, y = b.x + dx, b.y + dy
+            local d = math.max(math.abs(x - unit.x), math.abs(y - unit.y))
+            if not best or d < best then best, bx, by = d, x, y end
+        end
+    end
+    return bx, by
+end
+
+-- Strike `head` with `item`: the aimed cast, resolved through the body's nearest cell with the aim held
+-- for exactly that cast. An AREA ability ignores the aim and lands as it would on the body -- a blast is
+-- thrown at ground, and a head stands on none.
+function Combat.useItemOnHead(combat, unit, item, head, windup, spend)
+    local tx, ty = Combat.headAimCell(unit, head)
+    if not tx then return false, "no such head" end
+    local ab = item and item.activeAbility
+    local aimed = ab and Combat.isSingleTarget(ab)
+    if aimed then Combat.aimHead(combat, head) end
+    local ok, why = Combat.useItem(combat, unit, item, tx, ty, windup, nil, spend)
+    Combat.aimHead(combat, nil)
+    return ok, why
+end
+
+-- THE UNFED MOUTH (status_starving). A body whose gear declares `starves` comes round sooner for every
+-- turn it found nothing to do: a WAIT feeds its hunger a stack, an ACTION eats it off. Called from both
+-- ends of a turn (Combat.wait, endTurn). The serpent's hunger is judged on its coil instead -- it always
+-- acts -- so its gear declares no `starves` and ability_coil does the arithmetic.
+function Combat.feedHunger(combat, unit, acted)
+    if not (unit and unit.alive and Trait.flag(unit, "starves")) then return end
+    if acted then
+        if Status.has(unit, "status_starving") then Status.remove(combat, unit, "status_starving") end
+    else
+        Status.apply(combat, unit, "status_starving")
+    end
+end
+
 -- The unit table a body takes when it is on the board FROM THE OPENING BELL -- built by Combat.new for
 -- every side, and by Combat.deployUnit for a party member the player stands during the deployment phase.
 -- Distinct from Combat.addUnit's arrival above in one way that matters: initiative is the char's natural
@@ -1776,6 +1901,9 @@ end
 function Combat.openBattle(combat)
     if combat.opened then return combat end
     combat.opened = true
+
+    -- Heads grow before the first rebase, so they are seated on the timeline with everybody else.
+    Combat.spawnHeads(combat)
 
     -- Rebase so the fastest unit starts at initiative 0 (the current-actor convention). The
     -- initial offset isn't elapsed battle time, so reset the clock to 0 afterwards -- and flag the
@@ -2581,9 +2709,21 @@ end
 -- collision, spawn placement, click-to-select and AoE all route through it, so making it read the
 -- whole footprint is what lets a 2×2 body block, be selected, and be hit from any of its four cells.
 -- A 1×1 unit's single cell is its anchor, so this is exactly the old x==,y== test for them.
+--
+-- A HEAD (Combat.spawnHeads) stands on no tile and is never the answer here -- which is what keeps it out
+-- of pathing, collision, click-to-select and every area blast at once, since they all ask this. The one
+-- exception is a head somebody has AIMED at (Combat.aimHead): for the length of that one cast, the cells
+-- of its body answer with the head, so a single-target blow resolved through its tile lands on it.
 function Combat.unitAt(combat, x, y)
+    local aim = combat.aimedHead
+    if aim and aim.alive and aim.headOf and aim.headOf.alive then
+        local b = aim.headOf
+        if x >= b.x and x <= b.x + (b.w or 1) - 1 and y >= b.y and y <= b.y + (b.h or 1) - 1 then
+            return aim
+        end
+    end
     for _, u in ipairs(combat.units) do
-        if u.alive then
+        if u.alive and not u.headOf then
             local w, h = u.w or 1, u.h or 1
             if x >= u.x and x <= u.x + w - 1 and y >= u.y and y <= u.y + h - 1 then
                 return u
@@ -3144,7 +3284,9 @@ function Combat.unitsNear(combat, x, y, radius)
     local out = {}
     for _, u in ipairs(combat.units) do
         -- Nearest cell of the body, so a big unit is "near" (x, y) when any part of it is in radius.
-        if u.alive and Combat.cellGap(x, y, u) <= radius then out[#out + 1] = u end
+        -- A head is not a body standing anywhere (Combat.unitAt): an aura, a spray or a count of who is
+        -- close finds the body it grows from, once.
+        if u.alive and not u.headOf and Combat.cellGap(x, y, u) <= radius then out[#out + 1] = u end
     end
     return out
 end
@@ -3532,6 +3674,7 @@ local function endTurn(combat, unit, actionCost, defer)
         unit.tempoDebt = nil
     end
     Status.onTurnEnd(combat, unit)
+    Combat.feedHunger(combat, unit, true)
     -- THE LONG WAIT: the turn's whole price, multiplied. Applied to the settled total (move + action +
     -- any deferred debt) rather than to one term, because what the relic sells is a longer wait for the
     -- WHOLE turn, however that turn was spent -- a burst of four swings and a single step both cost
@@ -3630,6 +3773,7 @@ function Combat.wait(combat, unit)
     local moveCost = turnMoveCost(combat, unit) + (unit.tempoDebt or 0)
     unit.tempoDebt = nil
     Status.onTurnEnd(combat, unit)
+    Combat.feedHunger(combat, unit, false)
     local nxt = nextUnit(combat, unit)
     unit.initiative = nxt and math.max(moveCost, nxt.initiative + 1) or (moveCost + Combat.WAIT_COST)
     combat.turnCount = combat.turnCount + 1
@@ -7168,6 +7312,14 @@ end
 --     (a summon's death frees its summoner's mana); a dead caster drops its own.
 local function killUnit(combat, target)
     target.alive = false
+    -- A HEAD KILLED IS A HEAD BROKEN (Combat.spawnHeads), stamped on the body's character rather than on
+    -- the unit, because the drop roll reads the fight's setup list and that list holds characters
+    -- (Spoils: `onlyWhenBroken`). Dismissed heads -- the body fell first -- never reach here.
+    if target.headOf and target.headOf.char then
+        local body = target.headOf.char
+        body.brokenHeads = body.brokenHeads or {}
+        body.brokenHeads[target.char.id] = true
+    end
     -- A caster cut down mid-channel drops the spell -- clear the pending payload and badge so nothing
     -- detonates from a corpse and the turn order stays clean.
     if target.channel then Combat.interruptChannel(combat, target, "death") end
@@ -9961,7 +10113,9 @@ function Combat.abilityTargets(combat, unit, item)
     for _, other in ipairs(combat.units) do
         local d = Combat.unitGap(unit, other) -- nearest cell to nearest cell, so either body may be wide
         local waivesRange, waivesSight = Combat.reachWaiver(combat, unit, other)
-        if other.alive and (d <= range or waivesRange) and d >= minRange then
+        -- A head is aimed at only through the picker (Combat.aimHead), never planned for: the AI's list
+        -- is bodies, and a blow planned on a head's cell would land on the body anyway.
+        if other.alive and not other.headOf and (d <= range or waivesRange) and d >= minRange then
             local valid = false
             -- An untargetable foe (Invisible) can't be picked; a friendly cast ignores the status,
             -- so an ally can still heal or buff someone the enemy has lost sight of.
@@ -11608,6 +11762,9 @@ function Combat.useItem(combat, unit, item, tx, ty, windup, dest, spend)
     end
 
     local target = Combat.unitAt(combat, tx, ty)
+    -- A HEAD casting on itself stands on no tile of its own (Combat.unitAt answers with its body), so a
+    -- self-cast from one is resolved to the head directly rather than refused as aimed at somebody else.
+    if ab.target == "self" and unit.headOf then target = unit end
     if target then
         if ab.target == "enemy" and target.side == unit.side then return false, "invalid target" end
         if ab.target == "ally" and target.side ~= unit.side then return false, "invalid target" end

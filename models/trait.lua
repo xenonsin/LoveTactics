@@ -1330,6 +1330,10 @@ function Trait.outgoingDamageBonus(combat, user, target, item, tags)
         if t.def.damageBonusVs then
             total = total + (t.def.damageBonusVs({
                 combat = combat, unit = user, target = target, item = t.item, trait = t, def = t.def,
+                -- `blow` is the item THROWING this blow (`item` above is the one that granted the
+                -- trait), so a rule can pay on a weapon swing and not on a spell (trait_hearth_hunger).
+                blow = item,
+                param = function(key, default) return Trait.param(t, key, default) end,
                 tags = tags or {},
                 hasTag = function(want) return hasTag(tags, want) end,
                 hasStatus = function(tgt, id) return tgt ~= nil and Status.has(tgt, id) end,

@@ -197,7 +197,8 @@ Descent.SINS = {
         -- floor is a spare that never turns up there.
         elites = { approach = "encounter_white_wolf", seat = "encounter_gluttony_the_sated",
             spares = { "encounter_the_unseeing", "encounter_the_larder",       -- rung 1
-                       "encounter_the_sow", "encounter_meandering_stag" } } },  -- rung 2
+                       "encounter_the_sow", "encounter_meandering_stag",        -- rung 2
+                       "encounter_the_chimera" } } },                           -- rung 2
     -- ---------------------------------------------------------------------------
     -- LUST: THE CIRCLE THAT NEVER TAKES YOUR HEALTH. IT TAKES YOUR SAY OVER WHERE YOU ARE STANDING.
     -- ---------------------------------------------------------------------------
@@ -1508,7 +1509,15 @@ function Descent.floorPool(ctx)
                 -- ...and the hard floor, which holds on a pool too thin to have a median worth trusting.
                 local comp = Encounter.get(e.id).composition
                 local ids = type(comp) == "function" and comp(ctx) or comp
-                if type(ids) == "table" and #ids < Descent.MIN_BODIES then light = true end
+                -- Counting the HEADS a body grows (Character.headCount): a chimera is one id and three
+                -- bodies on the board, and "never one animal" is about the board.
+                if type(ids) == "table" then
+                    local bodies = #ids
+                    for _, id in ipairs(ids) do
+                        bodies = bodies + require("models.character").headCount(id)
+                    end
+                    if bodies < Descent.MIN_BODIES then light = true end
+                end
             end
             -- ...and the ceiling, which drops what the floor cannot cut down to its own size. An elite
             -- is exempt from the cap (Arena.UNCAPPED_KINDS) and so is exempt from this: it is the one

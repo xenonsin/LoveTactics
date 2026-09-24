@@ -928,6 +928,9 @@ function Item.instantiate(id, quantity, level)
         -- are handed a LIVE item off a grid and never the blueprint.
         wearerSkin = def.wearerSkin,
         phases = deepCopy(def.phases),         -- a boss relic's health-threshold script, read by trait_boss_phases
+        -- A HEAD this piece grows on its bearer at the bell: a character id (Combat.spawnHeads). On the
+        -- whitelist for `unstocked`'s reason -- the reader is handed a live item, never the blueprint.
+        head = def.head,
         class = def.class,                     -- which class vendor sells it; nil = sold by none
         discipline = def.discipline,           -- shop taxonomy: the locked discipline this item belongs to (docs/classes.md)
         price = def.price,                     -- vendor gold cost; nil means it is never sold

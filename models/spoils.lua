@@ -276,6 +276,7 @@ local function lootCandidates(maxPrice, tier, pricedOnly)
         -- half of the `or` below, and which let all 92 of them straight back in. A proxy gate is only as
         -- good as the thing it is a proxy for, and this one's meaning changed underneath it.
         elseif def.noSteal then
+        elseif def.onlyWhenBroken then -- earned by breaking a head in a fight, never found lying about
         elseif not (priced or (def.unlockLevel and not pricedOnly)) then -- nothing this caller may hand over
         elseif Spoils.depthOf(def) > tier then -- ranked or gated deeper than this floor reaches
         elseif priced then
@@ -606,14 +607,28 @@ end
 -- held entry simply leaves the rest of that rank -- the class's other stock, another body's list -- and
 -- the draw stays at the rank the floor chose. A farmed body still goes quiet without the floor going
 -- quiet with it.
+-- A HEAD'S DROP IS EARNED BY BREAKING IT (the Chimera, approved on review 2026-09-23 as Monster
+-- Hunter's part break). An item declaring `onlyWhenBroken = "<head id>"` enters a pool only when a body
+-- in this fight had that head broken off it (Combat's killUnit stamps `char.brokenHeads`), and never
+-- through the house stock or the any-rank fallback, where nothing was broken at all.
+local function brokenHeadsIn(enemyUnits)
+    local set = {}
+    for _, unit in ipairs(enemyUnits or {}) do
+        for id in pairs((unit and unit.char and unit.char.brokenHeads) or {}) do set[id] = true end
+    end
+    return set
+end
+
 local function rankCandidates(enemyUnits, r, player)
     local Class = require("models.class")
     local own, house = {}, {}
     local seenOwn, classes = {}, {}
+    local broken = brokenHeadsIn(enemyUnits)
 
     local function add(into, id, seen)
         local def = Item.defs[id]
         if not def or def.bound or def.noSteal then return end
+        if def.onlyWhenBroken and not (into == own and broken[def.onlyWhenBroken]) then return end
         -- SUPPLY IS NOT A FIND, so it never occupies a rank slot (R3-6, Spoils.SUPPLY_SHARE). Without
         -- this a consumable reached the player through BOTH tracks, and because consumables sit at the
         -- shallow end of the ladder that landed hardest exactly where the gear pool is thinnest: floor
@@ -686,6 +701,10 @@ local function rankCandidates(enemyUnits, r, player)
     return pool
 end
 
+-- Exposed for tests/chimera_spec.lua, which holds a head's drop to the break it is earned by. The live
+-- draw reaches it through slotDrawer below, never through this name.
+Spoils.rankCandidates = rankCandidates
+
 -- ...and anything at all at that rank, for a rank at which nothing standing here has stock. Not a
 -- legacy path: the class ladders are deliberately incomplete (the Cathedral has nothing at ranks 3, 7
 -- or 8), so this is a designed outcome and a measured one -- `. drop-sample`'s class-match column is
@@ -693,7 +712,7 @@ end
 local function anyAtRank(r, player)
     local pool = {}
     for id, def in pairs(Item.defs) do
-        if not def.bound and not def.noSteal and def.type ~= "consumable" and def.unlockLevel
+        if not def.bound and not def.noSteal and not def.onlyWhenBroken and def.type ~= "consumable" and def.unlockLevel
             and Spoils.depthOf(def) == r and not Spoils.companyOwns(player, id) then
             pool[#pool + 1] = { id = id, weight = 1 }
         end

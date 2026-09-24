@@ -1754,6 +1754,7 @@ local function beginTurn(resume)
     battle.windup = 0 -- a chargeable wind-up never carries its depth across turns
     battle.windupChooser = nil -- nor does an un-committed depth chooser (cancelled by the turn ending)
     battle.spendChooser = nil  -- nor an un-committed money slider (a purchasable blow, sized but not paid)
+    battle.headPicker = nil    -- nor an unanswered "which head?" (battle.offerHeadPicker)
     battle.throwStage, battle.throwFrom = nil, nil -- a two-stage throw never carries across turns either
     battle.throwCells, battle.throwSet = nil, nil
     battle.hoverItem = nil
@@ -2197,6 +2198,8 @@ local netApplyRemote
 local function netFinishTurn(cmd)
     local session = battle.session
     if not session or not session:isPlaying() then return end
+    -- A blow aimed at a HEAD names it, so the peer holds the same aim (Combat.aimHead, models/command.lua).
+    if cmd and cmd.kind == "use" and battle.combat.aimedHead then cmd.head = battle.combat.aimedHead.index end
     -- Only a turn WE took is announced; a remote one already came from them.
     if cmd then session:submit(cmd) end
     session:report(session.turn, battle.combat)
@@ -3695,6 +3698,60 @@ end
 -- commits at that amount. The plan (firing tile, route) is captured now so the swing lands where it was
 -- aimed however long the panel stays up. The high end of the slider is the smaller of the ability's own
 -- ceiling and what the caster's purse can actually afford, so it never offers a spend that cannot be paid.
+-- WHICH HEAD? A single-target HOSTILE blow confirmed on a body that grows heads (the Chimera --
+-- Combat.spawnHeads) asks whether it is for the body or for one of the heads, before it lands: a blow on a
+-- head wounds the head and not the body (approved on review, 2026-09-23). A small choice modal
+-- (ui/panels/choice.lua), three-input like every panel; backing out leaves the aim armed.
+--
+-- Only where there IS a choice: an area blast is thrown at ground and a head stands on none, so a sweep,
+-- a line or a burst never raises it -- and a chargeable or purchasable blow keeps its own chooser.
+-- Each option forecasts its own health in the future tense (`30 → 18`), priced by the same dry run the
+-- board hover uses with the aim held on that head (Combat.aimHead).
+--
+-- A field on `battle` rather than a local: this file sits at Lua 5.1's 200-local ceiling. The commit is
+-- handed in (commitArmedStrike) for the same reason.
+function battle.offerHeadPicker(current, item, cx, cy, plan, commit)
+    local ab = item and item.activeAbility
+    if not (ab and ab.target == "enemy" and Combat.isSingleTarget(ab)) then return false end
+    if Item.isChargeable(ab) or Item.isPurchasable(ab) then return false end
+    local body = Combat.unitAt(battle.combat, cx, cy)
+    if not (body and body.alive and body.side ~= current.side) then return false end
+    local heads = Combat.headsOf(battle.combat, body)
+    if #heads == 0 then return false end
+
+    local function forecast(u, head)
+        Combat.aimHead(battle.combat, head)
+        local preview = Combat.previewAbility(battle.combat, current, item, cx, cy)
+        Combat.aimHead(battle.combat, nil)
+        local hp = u.char.stats.health
+        local dmg = preview and preview.entries and preview.entries[u] and preview.entries[u].damage
+        if dmg then
+            return string.format("Health %d → %d", hp.current, math.max(0, hp.current - dmg))
+        end
+        return string.format("Health %d / %d", hp.current, hp.max)
+    end
+    local function strike(head)
+        battle.headPicker = nil
+        Combat.aimHead(battle.combat, head)
+        commit(current, item, cx, cy, plan, nil)
+        Combat.aimHead(battle.combat, nil)
+    end
+
+    local options = { { label = body.char.name or "Body", desc = forecast(body, nil),
+                        cb = function() strike(nil) end } }
+    for _, head in ipairs(heads) do
+        options[#options + 1] = { label = head.char.name or "Head", desc = forecast(head, head),
+                                  cb = function() strike(head) end }
+    end
+    battle.headPicker = require("ui.panels.choice").new({
+        title = item.name or "Strike",
+        prompt = "A blow on a head does not wound the body.",
+        options = options,
+        onClose = function() battle.headPicker = nil end,
+    })
+    return true
+end
+
 local function openSpendChooser(current, item, cx, cy, plan)
     local ab = item.activeAbility
     local rate, cap = Item.purchaseRate(ab)
@@ -3822,6 +3879,9 @@ local function confirm()
         -- it raises the wind-up chooser, which picks the depth and then hands back here to commit. Every
         -- other ability commits at once (wu = nil). The walk-and-strike, the network command and the
         -- refusal banner all live in commitArmedStrike, shared by both paths.
+        -- A single-target blow on a body that grows HEADS asks which of them it is for (the Chimera):
+        -- the picker commits through commitArmedStrike itself, so the path below is skipped.
+        if battle.offerHeadPicker(current, item, cx, cy, plan, commitArmedStrike) then return end
         if Item.isChargeable(item.activeAbility) then
             openWindupChooser(current, item, cx, cy, plan)
         elseif Item.isPurchasable(item.activeAbility) then
@@ -5542,6 +5602,7 @@ function battle.enter(self, opts)
     battle.windupChooser = nil           -- the chargeable-swing depth chooser, while a swing is sized
     battle.bagPanel = nil                -- and an open bag, which belongs to the turn that opened it
     battle.spendChooser = nil            -- the purchasable-blow money slider, while a swing is priced
+    battle.headPicker = nil              -- "Body / Goat / Serpent?", while a blow on a headed body is aimed
     battle.debugMenu = nil               -- the right-click debug context menu (debug builds only)
     battle.debugPickTile = nil           -- while the debug "Move to tile" is awaiting a destination click
     battle.over = false
@@ -6550,7 +6611,7 @@ function battle.draw()
         -- un-ask the question of what is standing on that tile.
         local a = battle.aim
         if a and a.unit == battle.current then battle.drawTileTooltipAt(a.x, a.y) end
-    elseif battle.windupChooser or battle.spendChooser or battle.bagPanel then
+    elseif battle.windupChooser or battle.spendChooser or battle.bagPanel or battle.headPicker then
         -- The wind-up / spend / bag modal owns the frame: no board / panel tooltip bleeds behind it.
         -- Suppressing the tooltip is ALL this does -- an early return here would leave draw before the
         -- modal's own draw call below, and an invisible panel that still eats every click reads as a
@@ -6672,6 +6733,7 @@ function battle.draw()
     -- The wind-up chooser, when a chargeable swing is being sized, sits above the frozen board too.
     if battle.windupChooser then battle.windupChooser:draw() end
     if battle.bagPanel then battle.bagPanel:draw() end
+    if battle.headPicker then battle.headPicker:draw() end
     -- The spend chooser is the same kind of modal for a purchasable blow (The Gilded Wound).
     if battle.spendChooser then battle.spendChooser:draw() end
     -- The bench chooser, while a rotation or a reinforcement is picking who comes on.
@@ -7416,6 +7478,7 @@ function battle.keypressed(key)
     -- The bench chooser owns the keyboard while someone is being picked off the bench.
     -- The wind-up chooser eats every key while a chargeable swing is being sized (arrows/+- adjust,
     -- Enter commits the blow, Esc backs out and leaves it armed).
+    if battle.headPicker then battle.headPicker:keypressed(key); return end
     if battle.spendChooser then battle.spendChooser:keypressed(key); return end
     if battle.bagPanel then battle.bagPanel:keypressed(key); return end
     if battle.windupChooser then battle.windupChooser:keypressed(key); return end
@@ -7520,6 +7583,7 @@ function battle.gamepadpressed(joystick, button)
     if battle.deploy then battle.deploy:gamepadpressed(joystick, button); return end
     -- The wind-up chooser owns the pad while a chargeable swing is being sized (D-pad / bumpers adjust,
     -- A commits, B backs out).
+    if battle.headPicker then battle.headPicker:gamepadpressed(joystick, button); return end
     if battle.spendChooser then battle.spendChooser:gamepadpressed(joystick, button); return end
     if battle.bagPanel then battle.bagPanel:gamepadpressed(joystick, button); return end
     if battle.windupChooser then battle.windupChooser:gamepadpressed(joystick, button); return end
@@ -7612,6 +7676,7 @@ function battle.mousemoved(x, y, dx, dy)
         battle.deploy:mousemoved(x, y)
         return
     end
+    if battle.headPicker then battle.headPicker:mousemoved(x, y); return end
     if battle.spendChooser then battle.spendChooser:mousemoved(x, y); return end
     if battle.bagPanel then battle.bagPanel:mousemoved(x, y); return end
     if battle.windupChooser then battle.windupChooser:mousemoved(x, y); return end
@@ -7645,6 +7710,7 @@ function battle.wheelmoved(dx, dy)
     -- underneath, which has not begun.
     if battle.deploy then return end
     -- The wind-up chooser owns the wheel while it is up: scrolling tunes the depth on the rung ladder.
+    if battle.headPicker then return end -- a list of three: nothing to scroll
     if battle.spendChooser then battle.spendChooser:wheelmoved(dx, dy); return end
     if battle.windupChooser then battle.windupChooser:wheelmoved(dx, dy); return end
     if battle.debugMenu then battle.debugMenu:wheelmoved(dx, dy); return end
@@ -7769,7 +7835,7 @@ function battle.mousepressed(x, y, button)
     if InputMode.touch and button == 1 and not battle.holdReplaying
         and not (battle.deploy or battle.deployLoadout or battle.settingsMenu or battle.summary
                  or battle.logReview or battle.windupChooser or battle.spendChooser
-                 or battle.bagPanel or battle.debugMenu) then
+                 or battle.bagPanel or battle.debugMenu or battle.headPicker) then
         -- Armed here and resolved on the release, alongside the hold rather than instead of it: the
         -- two gestures share a press and are told apart by what the finger does next. Still still,
         -- and it is a reading; slid, and it is a drag (battle.mousemoved owns that fork).
@@ -7821,6 +7887,7 @@ function battle.mousepressed(x, y, button)
     end
     -- The wind-up chooser is the top-most modal while a chargeable swing is sized: a rung, the steppers,
     -- Confirm, the X, or a click on the dim backdrop all work it; nothing reaches the board beneath.
+    if battle.headPicker then battle.headPicker:mousepressed(x, y, button); return end
     if battle.spendChooser then battle.spendChooser:mousepressed(x, y, button); return end
     if battle.bagPanel then battle.bagPanel:mousepressed(x, y, button); return end
     if battle.windupChooser then battle.windupChooser:mousepressed(x, y, button); return end
@@ -7994,6 +8061,7 @@ function battle.mousereleased(x, y, button)
         return
     end
     if battle.deploy then battle.deploy:mousereleased(x, y, button); return end
+    if battle.headPicker then return end
     if battle.spendChooser then battle.spendChooser:mousereleased(x, y, button); return end
     if battle.windupChooser then battle.windupChooser:mousereleased(x, y, button) end
     if battle.debugMenu then battle.debugMenu:mousereleased(x, y, button) end
@@ -8020,6 +8088,7 @@ function battle.cursorKind()
     if battle.logReview then
         return battle.logReview.close:contains(mx, my) and "hand" or "arrow"
     end
+    if battle.headPicker then return battle.headPicker:cursorKind(mx, my) end
     if battle.spendChooser then return battle.spendChooser:cursorKind(mx, my) end
     if battle.bagPanel then return battle.bagPanel:cursorKind(mx, my) end
     if battle.windupChooser then return battle.windupChooser:cursorKind(mx, my) end

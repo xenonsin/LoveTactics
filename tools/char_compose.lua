@@ -442,6 +442,12 @@ local CHARACTER_SILHOUETTE = {
     -- exactly, which is nearer the animal than any lion or wyvern in the set.
     manticore = "delapouite/greek-sphinx",
 
+    -- THE CHIMERA (Gluttony's seat): the lion is the body, and each head wears its own animal -- a head
+    -- is drawn only on the turn strip, where it has to be told from the other two at a glance.
+    chimera = "lorc/lion",
+    chimera_goat = "skoll/goat",
+    chimera_serpent = "delapouite/rattlesnake",
+
     -- ...AND THE THIRD ELEMENTAL THE KEEP MADE. The other two need nothing here and must not get it:
     -- character_fire_elemental and character_wind_elemental carry their element word in the id, so
     -- `elementOf` seats them on ELEMENT_SILHOUETTE and ELEMENT_TINT exactly as it always has -- and

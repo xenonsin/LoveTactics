@@ -86,6 +86,9 @@ local TROPHIES = {
     -- The Manticore's (Gluttony's seat, 2026-09-23): its Bristle's barbs as a coat, its volley as a
     -- fletching, and the Bristle itself as the chase.
     "armor_quillhide", "utility_barbed_fletching", "utility_the_bristling",
+    -- The Chimera's (Gluttony's seat, 2026-09-23): the lion's appetite as a Battlemage charm, and each
+    -- head as a Beastmaster's -- a head you wear, earned by breaking that head.
+    "utility_hearth_hunger", "utility_serpent_head", "utility_goat_head",
 }
 
 local function vendorFor(class)

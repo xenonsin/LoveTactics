@@ -269,7 +269,7 @@ return {
         fn = function()
             -- Four of the five are deleted; the apex is the whole of what the circle still fields.
             -- A refill puts its own bodies back on this list.
-            for _, id in ipairs({ "character_the_sated", "character_manticore" }) do
+            for _, id in ipairs({ "character_the_sated", "character_manticore", "character_chimera" }) do
                 local base = Character.instantiate(id)
                 local grown = Growth.spawn(id, 20)
                 assert(grown.stats.health.max >= base.stats.health.max,

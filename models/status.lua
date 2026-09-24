@@ -493,6 +493,27 @@ function Status.costMultiplier(unit)
     return m
 end
 
+-- Multiplier on the TIME an action takes on the timeline (Combat.actionSpeed), from each active status's
+-- `actionTimeScale` (1 when none). Distinct from costMultiplier above, which is what Haste turns and
+-- which prices the POOLS an ability draws on and the ticks a walk costs -- never the ability's own speed.
+-- This is the knob for a body that comes round sooner because of what it is feeling rather than what
+-- it is spending: status_starving, a chimera's head that found nothing to eat.
+--
+-- A STACKING status scales it per stack (`actionTimeScales`, the shape vulnerableScales reads), so three
+-- stacks of 0.8 is 0.8^3 and never a negative time. Multiplicative across statuses for the reason the
+-- cost multiplier is.
+function Status.actionTimeScale(unit)
+    local m = 1
+    for _, s in ipairs((unit and unit.statuses) or {}) do
+        local scale = s.def.actionTimeScale
+        if scale then
+            local n = (s.def.actionTimeScales and (s.magnitude or 1)) or 1
+            m = m * scale ^ n
+        end
+    end
+    return m
+end
+
 -- Can the opposing side pick this unit as a target? False while any active status sets
 -- `untargetable` (Invisible). Read by Combat.abilityTargets and the enemy AI's target scans;
 -- friendly and self casts ignore it, so an ally can still heal an invisible friend.
@@ -1336,7 +1357,13 @@ function Status.onDeath(combat, unit, killer)
 end
 
 -- Does any active status forbid this unit from moving this turn (root)?
+--
+-- A HEAD never moves, and answers yes here and in blocksForcedMove below without wearing a status for
+-- it (Combat.spawnHeads): it has no tiles of its own and stands wherever the body it grows from stands,
+-- so a walk, a shove or a drag has nothing to move. Read off the unit rather than a permanent Root so
+-- no Cure, no immunity and no badge can ever argue with it.
 function Status.blocksMove(unit)
+    if unit and unit.headOf then return true end
     for _, s in ipairs(unit.statuses or {}) do
         if s.def.blocksMove then return true end
     end
@@ -1353,6 +1380,7 @@ end
 -- still hurts; it simply finds nothing to move. That is also why an anchored body takes no impact
 -- damage: it was not driven into a wall, it was not driven at all (see Combat.knockback).
 function Status.blocksForcedMove(unit)
+    if unit and unit.headOf then return true end -- a head moves with its body or not at all (above)
     for _, s in ipairs((unit and unit.statuses) or {}) do
         if s.def.blocksForcedMove then return true end
     end
