@@ -473,6 +473,19 @@ Grade.TRAIT_GRADE = {
     trait_heir_of_all =                 2.0,  -- Heir of All -- every Share on the board comes to you
     trait_mithril =                     3.0,  -- Mithril -- never a critical, and once a fight a killing blow leaves 1
 
+    -- THE KOBOLDS AND THEIR DRAGONS (2026-09-25). The race's two, the eggs' and the Godling's are a body's
+    -- own and never shelved, weighed as one. Of the drops: Scurry is In and Out plus a -3 Defense opening for
+    -- the next striker, a half-step up; the Scale is a Closed Ranks for everyone within two, worth a strong
+    -- charm, and its Dragonkin is a rider that only a company hiring kobolds collects on.
+    trait_pack =                        1.5,  -- Pack -- +2 per kinsman beside the target, to +6
+    trait_devotion =                    1.0,  -- Devotion -- the Dragon's Eye near a dragon
+    trait_dragonkin =                   0.5,  -- Dragonkin -- the kobolds rally and break on you
+    trait_clutch =                      1.0,  -- Clutch -- brooded three times, hatch a Wyrmling
+    trait_the_tithe =                   2.0,  -- The Tithe -- a worshipper beside you is eaten, for Glut
+    trait_bare_patch =                  0.0,  -- The Bare Patch -- a weakness, not a gift
+    trait_scurry =                      1.5,  -- Scurry -- step back after a blow, and Harry the foe
+    trait_godlings_scale =              2.0,  -- You Are the Dragon -- allies within 2 gain damage and defense
+
     -- THE SATED AND THE FLIGHT (2026-09-23). The creature rules first, weighed as a body's own and never
     -- shelved. Then the drops. Bottomless Gut and the Girth are the same meal from opposite ends -- the Gut
     -- has to be FED a kill beside you, the Girth is full at the bell and spends itself down -- so the Gut

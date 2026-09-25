@@ -472,6 +472,18 @@ local CHARACTER_SILHOUETTE = {
     dwarf_hornblower = "lorc/hunting-horn",
     dwarf_goldsmith = "lorc/anvil-impact",
 
+    -- THE KOBOLDS AND THEIR DRAGONS (Greed's deeps, 2026-09-25). Dog-faced folk, so the chaff is the dog;
+    -- the rest are drawn by what they wear or carry. The dragons and the egg are the set's reptile, wyvern
+    -- and a plain egg -- the egg ITEMS (the Clutch, the Dragon Egg) hold the two nest-and-clutch pictures.
+    kobold_skulker = "delapouite/sitting-dog",
+    kobold_trapwright = "delapouite/robber-mask",
+    kobold_broodkeeper = "lorc/horned-helm",
+    kobold_scale_priest = "delapouite/warlock-hood",
+    kobold_devotee = "delapouite/ceremonial-mask",
+    wyrmling = "delapouite/horned-reptile",
+    the_godling = "lorc/wyvern",
+    dragon_egg = "delapouite/raw-egg",
+
     -- THE FLIGHT (Gluttony's approach). The griffin gets the one griffin in the set; the Falconer's Glove's
     -- bird is split from the wood's hawk and may not be one picture with it (the two bears' rule above).
     griffin = "delapouite/griffin-symbol",

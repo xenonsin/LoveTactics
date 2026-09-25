@@ -570,6 +570,10 @@ function Character.instantiate(id, progress)
         -- copied here -- so every one of them walked into a fight broke and her Gilded Wound spent
         -- nothing. Found by tests/dwarf_line_spec.lua (2026-09-24). Nil for a body that carries none.
         coffer = def.coffer,
+        -- An OBJECT that stands outside the turn order from the moment it is dealt (a Dragon Egg,
+        -- data/characters/character_dragon_egg.lua). Combat.addUnit and the opening line both read it,
+        -- as they read a summon's `timeless`. Nil for every body that takes turns.
+        timeless = def.timeless,
         -- A PLANT body -- a sapling, a heartwood tree, a mandrake -- is one the Dryad line's grain runs
         -- through (models/grove.lua): a Nymph steps out beside it, the Hamadryad moves foes between them.
         -- Nil for everything else.
@@ -639,6 +643,10 @@ function Character.instantiate(id, progress)
         -- the player on every map, including the many that name no objective at all. Nil for everyone
         -- else, which leaves the objective reading untouched.
         guards = def.guards,
+        -- How close to its charge that post is held (AI.post), where AI.POST_RADIUS is the default. The
+        -- Kobold Broodkeeper's is 1: it stands AT the egg, not near it, because the egg is brooded only
+        -- by a body that ends its turn beside it. Nil for every other guard.
+        guardRadius = def.guardRadius,
         -- The two items that ARE this character, named by the blueprint: its weapon and its signature
         -- verb. General identity ("what is this unit, in two items"), not a mode-specific field --
         -- Draft mode is simply the first consumer, stripping a bought body down to exactly these

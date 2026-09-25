@@ -118,6 +118,11 @@ local TROPHIES = {
     -- The Dwarves' (Greed's keep, 2026-09-24): each body drops the trick it fights with -- the Delver's
     -- dive, the Hornblower's painted lead, the Goldsmith's leaf -- and the Thane his mithril.
     "ability_delve", "ability_fools_gold", "ability_gilders_leaf", "armor_mithril_shirt",
+    -- The Kobolds' (Greed's deeps, 2026-09-25): each body drops the trick it fights with -- the Skulker's
+    -- footwork, the Trapwright's rock, the Broodkeeper's egg, the priest's borrowed fire -- and the
+    -- Godling its own scale.
+    "utility_scurry", "ability_deadfall", "ability_dragon_egg", "ability_borrowed_breath",
+    "utility_godlings_scale",
     -- Gula's (the wood's general, re-premised 2026-09-23): the beast's inhale as a druid's, and the rule
     -- that learns every blow as a hide. After the Maw on her drop list (Descent.DROPS.gluttony).
     "ability_draw_breath", "armor_studied_hide",

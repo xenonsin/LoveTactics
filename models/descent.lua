@@ -475,8 +475,12 @@ Descent.SINS = {
         -- (2026-09-25) The Undertow went down with the naga, so the King Slime held the seat alone -- until
         -- the Hoard-Thane (2026-09-24 review, round 2: "the Counting Hall becomes Greed's second-floor
         -- elite"). The King Slime stays on the seat as a spare.
+        --
+        -- THE KOBOLDS' NEST IS THE SEAT'S SECOND SPARE (2026-09-25, "The Kobolds of Greed": "Spare only"
+        -- -- not the lieutenant). The Godling and the worshippers who walk in to be eaten; the kobolds are
+        -- Greed's second race, and their four ordinary fights stand beside the dwarves' four.
         elites = { approach = "encounter_fen_ooze", seat = "encounter_greed_the_counting_hall",
-            spares = { "encounter_the_king_slime" } } },
+            spares = { "encounter_the_king_slime", "encounter_greed_the_nest" } } },
     { id = "envy", name = "Envy", vendor = "alchemist", biome = "desert",
         scene = "conversation_descent_envy",
         -- THE SECOND OF THE TWO BROKEN LEADS. character_homunculus is the alchemist's SUMMON -- its own

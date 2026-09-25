@@ -533,6 +533,19 @@ AI.POSTURES = {
         engage = function() return true end,
     },
 
+    -- Walks to its dragon and nothing else. The Kobold Devotee's posture (2026-09-25, "The Kobolds of
+    -- Greed"): a worshipper that came to the Nest to be eaten. It never swings; it closes on the nearest
+    -- dragon on its side (models/devotion.lua) and stands beside it, where the Godling takes it at the
+    -- end of its turn (data/traits/trait_the_tithe.lua). With no dragon left it has nothing to walk to.
+    devotee = {
+        desc = "Walks to its dragon and stands beside it. It never fights: it came to be eaten.",
+        rules = {},
+        move = "dragon",
+        -- Engaged from the first turn, as `escort` is: the walk only runs for an engaged body, and with
+        -- no rules to act on, engaging here means walking and nothing else.
+        engage = function() return true end,
+    },
+
     -- Walks for the exit and nothing else. The escortee's posture: it never starts a fight, never
     -- steps aside to trade a blow -- it spends every turn closing on the ground the objective names,
     -- and leaves the killing to whoever is escorting it. The empty rule list is the whole point: with
@@ -601,7 +614,7 @@ AI.DEFAULT_POSTURE = "aggressive"
 -- checks the two agree).
 AI.POSTURE_ORDER = {
     "aggressive", "objective", "skirmish", "support", "gather", "shadow", "guard", "defensive", "holdGround",
-    "escort",
+    "escort", "devotee",
     -- Last, because the scale this list is ordered on ends here: `escort` will not START a fight and
     -- `quarry` will not HAVE one.
     "quarry",
@@ -1004,7 +1017,13 @@ end
 -- walking with it instead of standing on the square it left.
 function AI.post(combat, unit)
     local body = AI.postedUnit(combat, unit)
-    if body then return bodyPost(body) end
+    if body then
+        local post = bodyPost(body)
+        -- A guard that must stand AT its charge rather than near it (the Kobold Broodkeeper, whose egg
+        -- is brooded only by a body beside it) says so on its blueprint.
+        if unit.char and unit.char.guardRadius then post.radius = unit.char.guardRadius end
+        return post
+    end
     -- ...with one piece of ground that is nobody's post but its owner's. A `defend` objective's ground
     -- IS the protectee's own tiles (Combat.objectiveGround), so on an escort map the far side reads
     -- "hold the objective" as "go and stand on the caravan" -- the very beeline AI.spared exists to
@@ -1634,6 +1653,12 @@ local function fallbackMove(ctx, mode)
         local ward = AI.heapRunner(combat, unit)
         if ward and Combat.unitGap(unit, ward) <= 1 then return nil end
         goal = ward or nearest(ctx, foes(ctx))
+    elseif mode == "dragon" then
+        -- Beside the nearest dragon on its side (the Devotee's walk). Already beside it: hold, and be
+        -- taken. No dragon at all: nothing left to walk to, so it stays where it is.
+        local dragon, d = require("models.devotion").nearestDragon(combat, unit)
+        if not dragon or d <= 1 then return nil end
+        goal = dragon
     else
         -- A HEAP-SEEKER with nothing to hit walks for the gold rather than the fight (a dwarf's Stout,
         -- data/traits/trait_stout.lua; hazard_coin_heap.lua). The heap is a POINT goal, like an

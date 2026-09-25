@@ -21,6 +21,8 @@
 --                            blueprint), ctx.applier and ctx.recipient. Note ctx.def is still the
 --                            reacting TRAIT's own blueprint, not the status's.
 --   * onDeath(ctx)       -- the bearer dropped
+--   * onAnyTurnEnd(ctx)  -- somebody ELSE's turn just ended; ctx.actor is who. A broadcast, like
+--                           onAnyDeath: a body that takes no turns (an egg) still hears it
 --
 -- Two things carry traits, and both flow through Trait.attach:
 --   * a character blueprint  -- `traits = { "trait_wrath_rising" }` on data/characters/<id>.lua
@@ -1275,10 +1277,14 @@ local function presenceOn(unit, stat)
     local Combat = require("models.combat")
     local total = 0
     for _, bearer in ipairs(combat.units) do
-        if bearer ~= unit and bearer.alive and bearer.side ~= unit.side and bearer.traits then
+        if bearer ~= unit and bearer.alive and bearer.traits then
             for _, t in ipairs(bearer.traits) do
                 local p = t.def and t.def.presence
-                if p and p[stat] and Combat.unitGap(bearer, unit) <= (p.radius or 1) then
+                -- `allies = true` turns the reach round: the Godling's Scale lends its bearer's own
+                -- line the Dragon's Eye (data/traits/trait_godlings_scale.lua). Foes otherwise.
+                local reaches = p and ((p.allies and bearer.side == unit.side)
+                    or (not p.allies and bearer.side ~= unit.side))
+                if reaches and p[stat] and Combat.unitGap(bearer, unit) <= (p.radius or 1) then
                     total = total + p[stat]
                 end
             end
@@ -1611,6 +1617,21 @@ function Trait.onAnyStatusApplied(combat, recipient, info)
     for _, unit in ipairs(combat.units or {}) do
         if unit.alive and unit ~= recipient and unit.traits then
             dispatch(combat, unit, "onAnyStatusApplied", info)
+        end
+    end
+end
+
+-- `actor`'s turn just ended, and every other living body hears it. Fired from Combat.endTurn and
+-- Combat.wait beside Status.onTurnEnd. A BROADCAST because the bodies that care take no turns of
+-- their own: a Dragon Egg is brooded by whoever ends a turn beside it, and the Godling eats the
+-- worshipper that does (data/traits/trait_clutch.lua, trait_the_tithe.lua). A turn-end hook on the
+-- actor would have to be carried by every body that might stand there -- and a body that arrived
+-- mid-fight never had its opener run to be handed one.
+function Trait.onAnyTurnEnd(combat, actor)
+    if not (combat and actor) then return end
+    for _, unit in ipairs(combat.units or {}) do
+        if unit.alive and unit ~= actor and unit.traits and #unit.traits > 0 then
+            dispatch(combat, unit, "onAnyTurnEnd", { actor = actor })
         end
     end
 end

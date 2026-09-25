@@ -1502,7 +1502,9 @@ function Combat.addUnit(combat, char, side, x, y, opts)
         fragile = opts.fragile,
         summoned = opts.summoned,
         summonRemaining = opts.duration, -- nil for an indefinite summon; ticks down in rebase
-        timeless = opts.timeless, -- stands outside the initiative timeline (Combat.inTimeline)
+        -- stands outside the initiative timeline (Combat.inTimeline). A blueprint may say so itself --
+        -- a Dragon Egg dealt onto the board by an encounter is an object from the first beat.
+        timeless = opts.timeless or char.timeless,
         -- Where this unit was put down. The AI's leashed postures measure from it (models/ai.lua:
         -- a `guard` holds a radius around its anchor, a `holdGround` never leaves it), so it has to
         -- be the tile it STARTED on and not wherever it happens to stand now.
@@ -1678,6 +1680,8 @@ local function buildOpeningUnit(combat, u, side)
         -- Side implies control, except where the caller overrides it: an escorted
         -- ally fights on the party's side but runs itself (control = "ai"/"none").
         control = u.control or ((side == "party") and "player" or "ai"),
+        -- An object dealt into the opening line (a Dragon Egg) takes no turns, as a summoned one doesn't.
+        timeless = u.char.timeless,
         anchorX = u.x, anchorY = u.y, -- start tile; the leashed AI postures measure from it
         -- An enemy's own gold pool for money abilities (Combat.spendPurse reads it) -- Aurea's
         -- coffer. Seated here as well as in Combat.addUnit, because a battle-start unit is built
@@ -3764,6 +3768,9 @@ local function endTurn(combat, unit, actionCost, defer)
         unit.tempoDebt = nil
     end
     Status.onTurnEnd(combat, unit)
+    -- ...and the field hears the turn end: an egg is brooded by who stands beside it, the Godling eats
+    -- the worshipper that does (Trait.onAnyTurnEnd).
+    Trait.onAnyTurnEnd(combat, unit)
     Combat.feedHunger(combat, unit, true)
     -- THE LONG WAIT: the turn's whole price, multiplied. Applied to the settled total (move + action +
     -- any deferred debt) rather than to one term, because what the relic sells is a longer wait for the
@@ -3863,6 +3870,7 @@ function Combat.wait(combat, unit)
     local moveCost = turnMoveCost(combat, unit) + (unit.tempoDebt or 0)
     unit.tempoDebt = nil
     Status.onTurnEnd(combat, unit)
+    Trait.onAnyTurnEnd(combat, unit)
     Combat.feedHunger(combat, unit, false)
     local nxt = nextUnit(combat, unit)
     unit.initiative = nxt and math.max(moveCost, nxt.initiative + 1) or (moveCost + Combat.WAIT_COST)
