@@ -43,7 +43,7 @@ local Descent = {}
 --
 --   gluttony  forest      a beast hunt: the circle that eats is the circle you hunt, and its apex eats the rest
 --   lust      swamp       a drowned church in a fen, and the things that sing from its water
---   greed     castle      a counting-house keep, and the toll at its door
+--   greed     cave        the dwarves' deeps under the mountain, and the toll at their door
 --   wrath     volcanic    the obvious one, and it has earned it
 --   sloth     tundra      the post nobody came back to
 --   envy      desert      barren ground with a view of somewhere green
@@ -71,6 +71,11 @@ local Descent = {}
 --     and its slimes; a counting-house is a keep with a door you pay at. The swap cost one line per
 --     fight (every encounter here is locked by `ctx.biome`), and it left Greed's keep with no ordinary
 --     fight at all, because the Shoal was the only one it had -- which is owed, and marked in its entry.
+--   * ...AND GREED WENT DOWN INTO THE MOUNTAIN (2026-09-24, on Keno's call: "put greed biome in a mountain
+--     or cave not castle"). The dwarves that filled its owed hole belong in the rock they dug, and
+--     DELVING DEEPER is the circle's own verb; a new ground was built for it (data/biomes/cave.lua, the
+--     caverns carve with rock for walls and loose gold on the floor), and the slimes followed. The keep
+--     is left the Thinwall Keep it was, and fields no circle -- a ninth ground and eight circles.
 --   * ...WHICH LEAVES THE CROWN THE UNDERWORLD ALONE, and the undead Greed left behind in it. The
 --     bottom floor used to borrow Greed's pool wholesale -- you re-fought floors five and six under the
 --     last stair -- and now it has the Bone Orchard, the Barrow Lord and the Skeleton King to itself.
@@ -430,13 +435,19 @@ Descent.SINS = {
                               -- the Eyrie, which stays the fight floor four is ABOUT.
                               "encounter_the_lorelei_rock", "encounter_the_undertow",
                               "encounter_the_still_water" } } },
-    { id = "greed", name = "Greed", vendor = "undercroft", biome = "castle",
+    { id = "greed", name = "Greed", vendor = "undercroft", biome = "cave",
         scene = "conversation_descent_greed",
         -- THE KEEP (2026-09-25). Greed came up out of the fen when Lust went down into it, and the naga
         -- went with the water. Its guardian's escort and its stair lead were Fen Lancers; both are the
-        -- circle's own Slime now, a stand-in and marked as one. GREED'S KEEP FIELDS NO ORDINARY FIGHT --
-        -- the Shoal was the only one, and it is Lust's -- so a floor here rolls only its two elites. That
-        -- is owed, the same hole Lust's castle had on 2026-09-22, and it is Greed's next round of content.
+        -- circle's own Slime now, a stand-in and marked as one.
+        --
+        -- THE DWARVES FILL THE DEEPS (2026-09-24, reviewed in three rounds, "The Dwarves of Greed"). The
+        -- hole the swap left -- no ordinary fight at all -- is closed by a race that appends to classes, as
+        -- the naga do (data/races/dwarf.lua): The Dig and The Strongroom on the approach, The Assay Office
+        -- and The Seam on the seat, and The Counting Hall billed below. The deeps' signature ground is
+        -- loose gold now (hazard_coin_heap), which is what every one of those fights is about: a dwarf goes
+        -- for a heap and sickens on it, the company loots one and the whole line comes for the looter, and
+        -- a fallen dwarf's Share passes to its kin (Inheritance). Greed takes the haul; its folk take gold.
         guardian = { lead = "character_general_greed", filler = "character_slime" },
         -- PAY AT THE STAIR. Priced as a SHARE of what is on the mule rather than as a flat purse, so
         -- greed taxes exactly what the company came down for and a fat bag costs more to walk past --
@@ -450,8 +461,11 @@ Descent.SINS = {
         -- stair was ABOUT anything. Cut across the two rungs, the approach has exactly one candidate and
         -- the seat has two, so naming them costs nothing and buys a floor its own face: the Fen Ooze is
         -- the whole of the approach, and the Mere's set-piece is the heaviest thing the water has.
-        -- (2026-09-25) The Undertow went down with the naga, so the King Slime holds the seat alone.
-        elites = { approach = "encounter_fen_ooze", seat = "encounter_the_king_slime" } },
+        -- (2026-09-25) The Undertow went down with the naga, so the King Slime held the seat alone -- until
+        -- the Hoard-Thane (2026-09-24 review, round 2: "the Counting Hall becomes Greed's second-floor
+        -- elite"). The King Slime stays on the seat as a spare.
+        elites = { approach = "encounter_fen_ooze", seat = "encounter_greed_the_counting_hall",
+            spares = { "encounter_the_king_slime" } } },
     { id = "envy", name = "Envy", vendor = "alchemist", biome = "desert",
         scene = "conversation_descent_envy",
         -- THE SECOND OF THE TWO BROKEN LEADS. character_homunculus is the alchemist's SUMMON -- its own

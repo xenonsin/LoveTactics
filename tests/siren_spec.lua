@@ -75,10 +75,10 @@ end
 return {
     -- ------------------------------------------------------------------------------ the ground
     {
-        name = "Lust fights on the fen and Greed in the keep, and the naga came down with Lust",
+        name = "Lust fights on the fen and Greed in the caves, and the naga came down with Lust",
         fn = function()
             assert(sinNamed("lust").biome == "swamp", "Lust's floors are the swamp")
-            assert(sinNamed("greed").biome == "castle", "Greed's are the keep")
+            assert(sinNamed("greed").biome == "cave", "Greed's are the caves under the mountain (2026-09-24)")
             for _, id in ipairs({ "encounter_the_shoal", "encounter_the_undertow", "encounter_the_reed_choir",
                                   "encounter_the_lorelei_rock", "encounter_the_still_water",
                                   "encounter_lust_the_open_roof", "encounter_the_velvet_queen" }) do
@@ -88,12 +88,12 @@ return {
             end
             for _, id in ipairs({ "encounter_fen_ooze", "encounter_the_king_slime" }) do
                 local enc = Encounter.get(id)
-                assert(enc.condition({ biome = "castle" }) and not enc.condition({ biome = "swamp" }),
-                    id .. " went up to the keep with Greed")
+                assert(enc.condition({ biome = "cave" }) and not enc.condition({ biome = "swamp" }),
+                    id .. " went with Greed, into the caves")
             end
             local greed = sinNamed("greed")
             assert(greed.guardian.filler ~= "character_fen_lancer" and greed.minor.lead ~= "character_fen_lancer",
-                "no lancer is seated in the keep")
+                "no lancer is seated in the deeps")
         end,
     },
     {

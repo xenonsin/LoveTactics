@@ -216,6 +216,7 @@ return {
             for biome, want in pairs({
                 forest = "hazard_web", -- sweetbriar until the wood became Gluttony's; see forest.lua
                 castle = "hazard_threshold",
+                cave = "hazard_coin_heap", -- Greed's deeps: loose gold (2026-09-24)
                 underworld = "hazard_spoil_heap",
             }) do
                 local layout = Arena.generateLayout({ seed = 7, party = 2, enemies = 2, biome = biome })

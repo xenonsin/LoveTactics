@@ -123,7 +123,6 @@ return {
     "armor_unyielding_harness",
     "armor_vestments_open_hand",
     "armor_volatile_carapace",
-    "armor_wardens_oath",
     "armor_warding_chasuble",
     "armor_witchlight_shroud",
     "consumable_bannerets_steel",

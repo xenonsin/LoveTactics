@@ -60,7 +60,7 @@ return {
     --
     -- Descent.SINS' `elites` is the SEPARATE question of which of a floor's candidates the floor is
     -- ABOUT (billed at ELITE_NAMED_WEIGHT). The rung says where a thing may stand at all.
-    condition = function(ctx) return ctx.biome == "castle" end,
+    condition = function(ctx) return ctx.biome == "cave" end,
     -- RUNG 1 -- the approach, and Greed bills it there. Its own header argues this lesson must land
     -- "well above the crowned version of it" -- and above, in a rift, is the approach floor.
     rung = 1,

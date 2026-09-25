@@ -565,6 +565,11 @@ function Character.instantiate(id, progress)
         -- A general/boss blueprint sets `boss = true`; carried through so an ability can refuse to work
         -- on one (Coup de Grace won't execute a boss, Charm won't turn it). Nil for an ordinary unit.
         boss = def.boss,
+        -- An enemy's own gold (Combat.purseAvailable reads `unit.coffer`, seated from this at
+        -- Combat.new / addUnit). It was authored on Aurea as `coffer = 600` and on every dwarf, and never
+        -- copied here -- so every one of them walked into a fight broke and her Gilded Wound spent
+        -- nothing. Found by tests/dwarf_line_spec.lua (2026-09-24). Nil for a body that carries none.
+        coffer = def.coffer,
         -- A PLANT body -- a sapling, a heartwood tree, a mandrake -- is one the Dryad line's grain runs
         -- through (models/grove.lua): a Nymph steps out beside it, the Hamadryad moves foes between them.
         -- Nil for everything else.

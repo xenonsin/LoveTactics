@@ -3111,6 +3111,29 @@ function Combat.waveArrivalTile(combat, from, edge, w, h, freeFn)
             candidates[#candidates + 1] = e
         end
     end
+    -- UP THROUGH THE FLOOR (`from = "below"`, encounter_greed_the_seam.lua's Drums in the Deep): not an
+    -- edge at all. The ring two tiles out from the company's centre, then three, in board order, so a
+    -- wave surfaces close enough to matter and never already in a body's face. The committed plan is
+    -- telegraphed on those tiles like any wave's, which is the drum a turn early.
+    if from == "below" then
+        local px, py = partyCentroid(combat)
+        local tiles = combat.arena and combat.arena.tiles
+        if px and tiles then
+            local ring = {}
+            for y = 1, #tiles do
+                for x = 1, #(tiles[y] or {}) do
+                    local d = math.max(math.abs(x - math.floor(px + 0.5)), math.abs(y - math.floor(py + 0.5)))
+                    if d == 2 or d == 3 then ring[#ring + 1] = { x = x, y = y, d = d } end
+                end
+            end
+            table.sort(ring, function(a, b)
+                if a.d ~= b.d then return a.d < b.d end
+                if a.y ~= b.y then return a.y < b.y end
+                return a.x < b.x
+            end)
+            for _, t in ipairs(ring) do candidates[#candidates + 1] = t end
+        end
+    end
     for _, t in ipairs(Combat.edgeTiles(combat, edge, 3)) do candidates[#candidates + 1] = t end
 
     -- ROOM FOR THE CHARGE (see WAVE_PROTECT_CLEARANCE). The first free tile that clears every living
@@ -7099,6 +7122,9 @@ end
 function Combat.critChance(combat, user, target, item)
     -- Asked BEFORE the dice gate: a forced critical is a certainty the item promised, not a roll, so it
     -- holds on a board where nothing rolls (the prologue's lesson, the suite's pinned dice) as well.
+    -- ...unless the target wears a MITHRIL SHIRT (data/traits/trait_mithril.lua): no blow against it is
+    -- ever a critical, forced or rolled. Asked first, so the forecast and the swing agree on 0.
+    if target and Trait.flag(target, "critProof") then return 0 end
     if Combat.forcesCrit(combat, user, target, item) then return 100 end
     if not Combat.rollsToHit(combat, user, target, item) then return 0 end
     local crit = Item.crit(item) + flatStat(user, "skill") / 2
@@ -8938,7 +8964,8 @@ function Combat.dealDamage(combat, user, target, item, opts)
     end
     -- A FORCED critical (Combat.forcesCrit) lands whether or not this blow asked the dice -- a board that
     -- rolls nothing still keeps an item's promise. Checked after the roll, so it costs no draw.
-    if not opts.critical and Combat.forcesCrit(combat, user, target, item) then opts.critical = true end
+    if not opts.critical and Combat.forcesCrit(combat, user, target, item)
+        and not Trait.flag(target, "critProof") then opts.critical = true end
     -- `user` rides along as the attacker so a reaction trait (a counter) knows who struck, and how
     -- far away they stood. A flat source (a trap, a burn) passes no attacker and provokes no counter.
     local dealt = Combat.dealFlatDamage(combat, target, base, tags, nil, user, opts)
@@ -14362,7 +14389,10 @@ function Combat.outcomeFor(combat, side)
         end
         return nil
     else -- killAll (default)
-        if Combat.eliminated(combat, foe) then return "win" end
+        -- A kill-all may carry reinforcement WAVES (encounter_greed_the_seam.lua's Drums in the Deep),
+        -- and then a board cleared in the lull before one lands is not a win -- the same rule `defend`
+        -- keeps. A fight with no waves reads as all arrived, so every other kill-all is unchanged.
+        if Combat.allWavesArrived(combat, obj) and Combat.eliminated(combat, foe) then return "win" end
         return nil
     end
 end

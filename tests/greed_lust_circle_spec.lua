@@ -552,24 +552,24 @@ return {
         end,
     },
     {
-        -- THE HOLE THE SWAP LEFT, AND THIS CASE IS ITS MARKER. Greed came up into the keep and the Shoal,
-        -- its only ordinary fight, went down with the naga. Its two elites came with it. Greed's own
-        -- ordinary content is owed (Descent.SINS' Greed entry): when it lands this case reddens on its
-        -- second assertion, and whoever lands it turns that line into `>= 1`.
-        name = "Greed's keep fields its two slime elites, and no ordinary fight yet (owed)",
+        -- THE HOLE THE SWAP LEFT IS CLOSED (2026-09-24). Greed came up out of the fen and its only ordinary
+        -- fight, the Shoal, went down with the naga; this case was the marker for that owed content. The
+        -- dwarves filled it, and Greed moved again on the way -- out of the keep into the caves under the
+        -- mountain (data/biomes/cave.lua), where the slimes followed it.
+        name = "Greed's deeps field ordinary fights on both floors, and their elites",
         fn = function()
             local Encounter = require("models.encounter")
-            assert(sinNamed("greed").biome == "castle", "Greed fights in the keep")
+            assert(sinNamed("greed").biome == "cave", "Greed fights in the caves under the mountain")
             local combat, elite = 0, 0
             for rung = 1, 2 do
-                for _, row in ipairs(Encounter.pool({ biome = "castle", depth = 5, rung = rung,
+                for _, row in ipairs(Encounter.pool({ biome = "cave", depth = 5, rung = rung,
                                                       quest = { sin = "greed" } })) do
                     if row.kind == "elite" then elite = elite + 1
                     elseif row.kind == "combat" then combat = combat + 1 end
                 end
             end
-            assert(elite >= 2, "the keep rolls " .. elite .. " elite rows across its two floors")
-            assert(combat == 0, "the keep rolls an ordinary fight now: the owed hole is closed -- update this marker")
+            assert(elite >= 2, "the deeps roll " .. elite .. " elite rows across its two floors")
+            assert(combat >= 2, "the deeps roll " .. combat .. " ordinary fights across its two floors")
         end,
     },
     -- ------------------------------------------------------------ WHAT THE FLOCK IS KNOWN FOR

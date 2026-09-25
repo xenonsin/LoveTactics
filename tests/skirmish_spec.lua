@@ -274,7 +274,7 @@ return {
         -- was measuring a fight the game never deals. So each encounter is stood on the first ground in
         -- the circles' order that its own `condition` admits. A fight with no ground lock (humans float)
         -- keeps the forest it was always measured on.
-        local GROUNDS = { "forest", "castle", "swamp", "volcanic", "tundra", "desert", "spire", "underworld" }
+        local GROUNDS = { "forest", "castle", "cave", "swamp", "volcanic", "tundra", "desert", "spire", "underworld" }
         local function homeGround(def)
             if not def.condition then return "forest" end
             for _, g in ipairs(GROUNDS) do

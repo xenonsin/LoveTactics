@@ -465,6 +465,14 @@ Grade.TRAIT_GRADE = {
     trait_the_unbroken_stalk =          2.0,  -- The Unbroken Stalk -- a kill from hiding keeps you hidden
     trait_trophy_cord =                 2.5,  -- Trophy Cord -- +2 Damage per kind killed this trip, to +10
 
+    -- THE DWARVES (2026-09-24). Three are the race's own and never shelved, weighed as a body's rule. The
+    -- Mithril Shirt is the one drop: no critical ever lands on its wearer, which on a tank is a steady
+    -- third of the worst blows in the game gone -- a strong charm, but it answers only a hit that crits.
+    trait_stout =                       1.0,  -- Stout -- cannot be robbed, and goes for loose gold
+    trait_inheritance =                 1.5,  -- Inheritance -- a fallen kinsman's Share passes on
+    trait_heir_of_all =                 2.0,  -- Heir of All -- every Share on the board comes to you
+    trait_mithril =                     2.0,  -- Mithril -- no blow against you is ever a critical
+
     -- THE SATED AND THE FLIGHT (2026-09-23). The creature rules first, weighed as a body's own and never
     -- shelved. Then the drops. Bottomless Gut and the Girth are the same meal from opposite ends -- the Gut
     -- has to be FED a kill beside you, the Girth is full at the bell and spends itself down -- so the Gut

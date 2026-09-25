@@ -213,4 +213,33 @@
 -- filling again with the same shape it always had. If that happens, the answer is the combat model --
 -- a term on mitigation and healing that scales with the ladder -- and not a number in this file.
 
-return {}
+-- ---------------------------------------------------------------------------
+-- AND THE FIRST NEW ROWS, 2026-09-24: THE DWARVES, AND THEY ARE THE SHAPE THIS FILE PREDICTED.
+-- ---------------------------------------------------------------------------
+--
+-- Greed's deeps were filled with a race of PEOPLE (data/races/dwarf.lua), and two of their four
+-- ordinary fights measure over the budget -- the two that field the Hearthguard, a sentinel whose
+-- Warden's Oath soaks the first blow each turn meant for the kinsman beside it, and in the Assay Office
+-- a Goldsmith healing and hasting behind it. Mitigation and sustain on the far side, exactly the row the
+-- section above said to watch for. The Dig (5) and the Seam (5) have neither and are well inside.
+--
+-- BUT THE LOG SAYS A SECOND THING, and it is the dwarves' own. Printed turn by turn, the company kills
+-- fast; the unit-turns go on WALKING. Dwarves run for the floor's coin heaps rather than at the company
+-- (their Stout, data/traits/trait_stout.lua -- the review's "they seek out the heaps"), and the
+-- autobattling company holds position waiting for a line that is busy elsewhere. Neither trimming the
+-- Hearthguard's stats nor taking its Oath off moved the Strongroom (26 -> 27, 29): it is the walk, not
+-- the wall. A player walks to them; the harness does not. Recorded rather than tuned away, because the
+-- walk is the approved design and the budget is measuring the harness's patience with it.
+--
+-- LAVA PITS WENT IN BEFORE THESE ROWS WERE EVER COMMITTED (Keno: "the biome should also have lava pit
+-- tiles"), and every dwarf fight slowed with them -- the Dig 5 -> 7, the Seam 5 -> 7, the Strongroom
+-- 26 -> 32, the Assay Office 37 -> 45 -- because impassable ground on an eight-by-eight board is more walk
+-- for a line that was already walking. Recorded at the pitted numbers: the rows below are the first
+-- measurement of the ground as it ships, not a raise.
+--
+-- Measured 2026-09-24 at DEPTH 11, cave, four bodies, RNG pinned per fight.
+
+return {
+    encounter_greed_the_strongroom = 32,
+    encounter_greed_the_assay_office = 45,
+}

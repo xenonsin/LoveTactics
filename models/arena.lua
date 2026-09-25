@@ -127,6 +127,12 @@ Arena.BIOME_TERRAIN = {
     -- one-word substitution the swamp takes below, for the same reason: it costs the generator nothing
     -- and it gives the tile a second circle to live in.
     underworld = { fill = "rough", rise = "hill", block = "deep" },
+    -- GREED'S DEEPS (data/biomes/cave.lua): the Underworld's carve with the mountain's own rock for walls,
+    -- and scree underfoot for thin cover. THE RISE IS A LAVA PIT (2026-09-24, Keno: "the biome should also
+    -- have lava pit tiles") -- one to three of them, the mine struck too deep, impassable and no bar to a
+    -- line of sight, the colosseum's precedent for a rise that is not high ground. The rock stays the
+    -- blocker so the Deeps and the Cinderfall Flows (whose blocker IS lava) never scatter the same board.
+    cave = { fill = "rough", rise = "lava", block = "mountain" },
     -- The bowl. Sand underfoot like the desert, but the rise is a blocker rather than a hill, and so
     -- is the blocker: there is no high ground in an arena and no landform anyone climbs -- everything
     -- standing on this floor was carried in and set down for the card.

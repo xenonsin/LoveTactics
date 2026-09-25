@@ -463,6 +463,15 @@ local CHARACTER_SILHOUETTE = {
     sabertooth = "lorc/saber-tooth",
     the_longfang = "delapouite/tiger-head",
 
+    -- THE DWARVES (Greed's keep, 2026-09-24). The set's three dwarf heads go to the three who most read
+    -- as dwarves at a glance -- the chaff, the line and the lord -- and the other two are drawn by the
+    -- thing in their hands.
+    dwarf_delver = "delapouite/dwarf-face",
+    dwarf_hearthguard = "kier-heyl/dwarf-helmet",
+    the_hoard_thane = "kier-heyl/dwarf-king",
+    dwarf_hornblower = "lorc/hunting-horn",
+    dwarf_goldsmith = "lorc/anvil-impact",
+
     -- THE FLIGHT (Gluttony's approach). The griffin gets the one griffin in the set; the Falconer's Glove's
     -- bird is split from the wood's hawk and may not be one picture with it (the two bears' rule above).
     griffin = "delapouite/griffin-symbol",

@@ -294,7 +294,7 @@ AI.TEST_ORDER = {
 }
 AI.ACTION_ORDER = { "attack", "support", "cast", "retreat", "wait" }
 AI.TARGET_PREF_ORDER = { "nearest", "lowest_hp", "most_wounded", "lethal", "self", "objective",
-                         "drownable" }
+                         "drownable", "gilded" }
 
 -- Which tests take a `value`, and what shape it is. A test that takes none must not show a value
 -- field at all -- an editor offering "exists 0.4" is offering nonsense.
@@ -520,6 +520,19 @@ AI.POSTURES = {
         engage = function() return true end,
     },
 
+    -- Walks beside the kinsman nearest the gold. The Dwarf Hearthguard's posture (2026-09-24, Keno's note
+    -- on its row: "don't defend heaps, defend allies that are going for heaps"): it does not stand on the
+    -- heap, it keeps pace with whichever ally is closest to one, so its Warden's Oath is next to the body
+    -- the company most wants to shoot. With no heap left it walks beside the nearest heap-seeker, and with
+    -- none of those it closes on the fight. It still hits what it can reach on the way.
+    shadow = {
+        desc = "Keeps beside the ally nearest the gold, to take the blows meant for it, and hits what it"
+            .. " can reach on the way.",
+        rules = { SUPPORT_RULE, ATTACK_RULE },
+        move = "shadow",
+        engage = function() return true end,
+    },
+
     -- Walks for the exit and nothing else. The escortee's posture: it never starts a fight, never
     -- steps aside to trade a blow -- it spends every turn closing on the ground the objective names,
     -- and leaves the killing to whoever is escorting it. The empty rule list is the whole point: with
@@ -587,7 +600,8 @@ AI.DEFAULT_POSTURE = "aggressive"
 -- belongs here -- one missing from this list is one the player cannot choose (tactics_editor_spec
 -- checks the two agree).
 AI.POSTURE_ORDER = {
-    "aggressive", "objective", "skirmish", "support", "gather", "guard", "defensive", "holdGround", "escort",
+    "aggressive", "objective", "skirmish", "support", "gather", "shadow", "guard", "defensive", "holdGround",
+    "escort",
     -- Last, because the scale this list is ordered on ends here: `escort` will not START a fight and
     -- `quarry` will not HAVE one.
     "quarry",
@@ -1067,7 +1081,9 @@ function AI.candidates(combat, unit, items, tiles, wantSupport)
     for _, tile in ipairs(tiles) do
         for _, item in ipairs(items) do
             local ab = item.activeAbility
-            local considered = ab and Combat.isSupportAbility(ab) == wantSupport
+            -- `aimsEither`: a cast meant for BOTH sides (Gilder's Leaf -- armour on a kinsman, bait on a
+            -- foe) is offered in both passes, and the legal-mark test below picks the side each pass wants.
+            local considered = ab and (Combat.isSupportAbility(ab) == wantSupport or ab.aimsEither)
             if considered and ab.target == "self" then
                 -- A SELF-targeted ability has exactly one legal mark -- the caster -- aimed at the tile
                 -- it would be STANDING on, not the one it stands on now. Enumerated apart from the scan
@@ -1532,6 +1548,45 @@ local function fleeMove(ctx)
     return nil
 end
 
+-- The live gold on the board a heap-seeker would walk for: every zone that WELCOMES `unit` (a coin heap,
+-- a Fool's Gold -- Hazard.tileBias reads the same `welcomes`), as point goals in board order. Empty for a
+-- body no zone welcomes, which is every body that is not a dwarf.
+local function heapsFor(combat, unit)
+    local out = {}
+    for _, h in ipairs((combat and combat.hazards) or {}) do
+        if h.alive and h.def and h.def.welcomes and h.def.welcomes(unit)
+            and not require("models.combat").unitAt(combat, h.x, h.y) then
+            out[#out + 1] = { x = h.x, y = h.y }
+        end
+    end
+    return out
+end
+
+-- The nearest heap `unit` would walk for, as a point goal { x, y }, or nil when there is none.
+function AI.nearestHeap(combat, unit)
+    local best, bestD
+    for _, h in ipairs(heapsFor(combat, unit)) do
+        local d = require("models.combat").cellGap(h.x, h.y, unit)
+        if not bestD or d < bestD then best, bestD = h, d end
+    end
+    return best
+end
+
+-- The kinsman a Hearthguard keeps beside: the heap-seeking ally (not `unit` itself) standing nearest to
+-- any heap; with no heap on the board, the nearest heap-seeking ally; nil with neither.
+function AI.heapRunner(combat, unit)
+    local Combat = require("models.combat")
+    local best, bestD
+    for _, u in ipairs(combat.units or {}) do
+        if u ~= unit and u.alive and u.side == unit.side and Trait.flag(u, "seeksHeaps") then
+            local heap = AI.nearestHeap(combat, u)
+            local d = heap and Combat.cellGap(heap.x, heap.y, u) or (1000 + Combat.unitGap(unit, u))
+            if not bestD or d < bestD then best, bestD = u, d end
+        end
+    end
+    return best
+end
+
 local function fallbackMove(ctx, mode)
     local Combat = require("models.combat")
     local unit, combat = ctx.unit, ctx.combat
@@ -1574,8 +1629,16 @@ local function fallbackMove(ctx, mode)
     elseif mode == "regroup" then
         -- Toward the ally most in need of me, not toward the fight.
         goal = weakest(allies(ctx)) or nearest(ctx, foes(ctx))
+    elseif mode == "shadow" then
+        -- Beside the kinsman nearest the gold (the Hearthguard's walk). Already beside him: hold.
+        local ward = AI.heapRunner(combat, unit)
+        if ward and Combat.unitGap(unit, ward) <= 1 then return nil end
+        goal = ward or nearest(ctx, foes(ctx))
     else
-        goal = nearest(ctx, foes(ctx))
+        -- A HEAP-SEEKER with nothing to hit walks for the gold rather than the fight (a dwarf's Stout,
+        -- data/traits/trait_stout.lua; hazard_coin_heap.lua). The heap is a POINT goal, like an
+        -- objective tile, so the walk ends on it and the heap's onEnter pays it out.
+        goal = (Trait.flag(unit, "seeksHeaps") and AI.nearestHeap(combat, unit)) or nearest(ctx, foes(ctx))
     end
     if not goal then return nil end
 
@@ -1674,7 +1737,12 @@ end
 -- to the ordinary decision.
 function AI.preempt(combat, unit)
     local Combat = require("models.combat")
+    -- GOLD FEVER is the same compulsion with a different cause (data/status/status_gold_fever.lua): the
+    -- dwarf that saw the gold taken goes for whoever took it. It carries its target in the same field.
     local taunt = Status.get(unit, "status_taunt")
+    if not (taunt and taunt.taunter and taunt.taunter.alive) then
+        taunt = Status.get(unit, "status_gold_fever")
+    end
     if not (taunt and taunt.taunter and taunt.taunter.alive and taunt.taunter.side ~= unit.side) then
         return nil
     end
@@ -1985,6 +2053,10 @@ local function prefBonus(ctx, rule, cand, w)
             if cell and cell.drowns then return w.TARGET_PREF end
         end
         return 0
+    elseif pref == "gilded" then
+        -- COVETED: a body plated in gold (data/status/status_gilded.lua) is gold with legs, and a dwarf
+        -- goes for it first. A bias like the rest, so a lethal blow elsewhere can still win.
+        return Status.has(t, "status_gilded") and w.TARGET_PREF or 0
     end
     return 0
 end

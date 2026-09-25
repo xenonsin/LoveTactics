@@ -482,8 +482,9 @@ return {
             -- that stops naming them fails here.
             -- Deep enough for both gates: the ooze opens at day 6 and the King at 14, and a ctx
             -- shallower than either would pass this case by simply never asking about the body.
-            -- The KEEP since the 2026-09-25 swap: Greed came up out of the fen and brought its slimes.
-            local ctx = { day = 20, biome = "castle", prestige = 4 }
+            -- The CAVES since 2026-09-24: Greed came up out of the fen into the keep, then down into the
+            -- mountain (data/biomes/cave.lua), and its slimes went with it both times.
+            local ctx = { day = 20, biome = "cave", prestige = 4 }
             local seen = {}
             for _, def in pairs(Encounter.defs) do
                 if def.condition == nil or def.condition(ctx) then
