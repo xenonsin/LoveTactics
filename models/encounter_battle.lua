@@ -77,6 +77,7 @@ function EncounterBattle.spec(opts, partyIds, seed)
         spec.composition = obj.composition
         spec.allies = obj.allies -- AI-run escorts fighting on the party's side
         spec.objective = obj.win -- { type, target, protect } win condition; nil -> killAll
+        spec.scatter = obj.scatter -- ground the fight lays on its own board (Arena.build's bodyGround)
     else
         local def = enc.id and EncounterModel.get(enc.id)
         spec.composition = def and def.composition

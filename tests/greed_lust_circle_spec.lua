@@ -355,8 +355,12 @@ return {
             -- utility_chorister_call and utility_beloveds_devotion. What is left is the naturals a
             -- survivor still carries and the two the deleted mini sins left behind -- and the contract
             -- is the same one either way, so a refill adds its pieces to this list.
+            -- Avaritia's kit (2026-09-25) is the refill that added three: her centre piece, her sweep
+            -- and her strafe. (Her breath is the mage's own Dragonfire, which she drops.)
             for _, id in ipairs({ "weapon_cutpurse_nip", "weapon_gilt_maw", "utility_the_reckoning",
-                                  "weapon_petal_touch", "utility_offered_nothing" }) do
+                                  "weapon_petal_touch", "utility_offered_nothing",
+                                  "utility_the_hoard", "weapon_tail_sweep",
+                                  "ability_strafe" }) do
                 local def = Item.defs[id]
                 assert(def, id .. " does not exist")
                 assert(def.noSteal and not def.price and def.class == "creature",

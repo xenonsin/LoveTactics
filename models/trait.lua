@@ -1290,7 +1290,14 @@ local function presenceOn(unit, stat)
                 local reaches = p and ((p.allies and bearer.side == unit.side)
                     or (not p.allies and bearer.side ~= unit.side))
                 if reaches and p[stat] and Combat.unitGap(bearer, unit) <= (p.radius or 1) then
-                    total = total + p[stat]
+                    -- A value may be a pure function of the bearer, for a presence that lends what the
+                    -- bearer has right now (the Gilded Belly: data/traits/trait_gilded_belly.lua).
+                    local v = p[stat]
+                    if type(v) == "function" then
+                        local ok, out = pcall(v, bearer, combat)
+                        v = ok and tonumber(out) or 0
+                    end
+                    total = total + v
                 end
             end
         end

@@ -449,8 +449,8 @@ Descent.SINS = {
     { id = "greed", name = "Greed", vendor = "undercroft", biome = "cave",
         scene = "conversation_descent_greed",
         -- THE KEEP (2026-09-25). Greed came up out of the fen when Lust went down into it, and the naga
-        -- went with the water. Its guardian's escort and its stair lead were Fen Lancers; both are the
-        -- circle's own Slime now, a stand-in and marked as one.
+        -- went with the water. Its guardian's escort and its stair lead were Fen Lancers; the stair lead is
+        -- the circle's own Slime now, a stand-in and marked as one (the escort is Avaritia's, below).
         --
         -- THE DWARVES FILL THE DEEPS (2026-09-24, reviewed in three rounds, "The Dwarves of Greed"). The
         -- hole the swap left -- no ordinary fight at all -- is closed by a race that appends to classes, as
@@ -459,11 +459,36 @@ Descent.SINS = {
         -- loose gold now (hazard_coin_heap), which is what every one of those fights is about: a dwarf goes
         -- for a heap and sickens on it, the company loots one and the whole line comes for the looter, and
         -- a fallen dwarf's Share passes to its kin (Inheritance). Greed takes the haul; its folk take gold.
-        guardian = { lead = "character_general_greed", filler = "character_slime" },
-        -- PAY AT THE STAIR. Priced as a SHARE of what is on the mule rather than as a flat purse, so
-        -- greed taxes exactly what the company came down for and a fat bag costs more to walk past --
-        -- which couples the two systems this mode is built on instead of standing beside them.
-        gate = { kind = "toll", share = 0.25 },
+        --
+        -- AVARITIA, THE UNSPENT (2026-09-25, reviewed in three rounds): an elder dragon on her hoard, fought
+        -- as a raid (data/characters/character_general_greed.lua; models/hoard.lua). A WAVE BATTLE: her
+        -- kobolds keep walking in, so the win is her (Descent.stairWin). Skulkers from the start and
+        -- scale-priests behind them -- and a company that broke the Shrine (a lead-in on this floor) meets
+        -- half of it: one skulker a firing and no priests. `clutch` seats her two eggs on the hoard, one
+        -- once the Shrine is broken (read at the bell, off the save being played). Her escort is a
+        -- scale-priest, as reviewed.
+        guardian = { lead = "character_general_greed", filler = "character_kobold_scale_priest",
+            clutch = { id = "character_dragon_egg", n = 2 },
+            waves = {
+                { at = 10, every = 60, from = "surround", maxAlive = 6,
+                  composition = function()
+                      if require("models.hoard").activeState().shrine then
+                          return { "character_kobold_skulker" }
+                      end
+                      return { "character_kobold_skulker", "character_kobold_skulker" }
+                  end },
+                { at = 40, every = 60, from = "surround", maxAlive = 6,
+                  composition = function()
+                      if require("models.hoard").activeState().shrine then return {} end
+                      return { "character_kobold_scale_priest" }
+                  end },
+            } },
+        -- NO GATE (2026-09-25, round 2: the toll was denied and "the lead-ins are the price" approved). The
+        -- stair is open; the Burglary and the Shrine beside it are optional, and each changes her fight.
+        gate = { kind = "none" },
+        -- ...AND THE TWO ENDS BESIDE HER STAIR (models/hoard.lua): the Burglary robs her treasury, the
+        -- Shrine breaks her procession. Laid by Descent.floorObjectives on her floor only.
+        leadIns = { "burglary", "shrine" },
         -- NO LIEUTENANT. The Tally is gone; a fen lancer stands in, which is the heaviest thing the
         -- water rolls short of the Undertow. It is what a replacement replaces.
         minor = { lead = "character_slime", filler = "character_slime" },
@@ -479,8 +504,11 @@ Descent.SINS = {
         -- THE KOBOLDS' NEST IS THE SEAT'S SECOND SPARE (2026-09-25, "The Kobolds of Greed": "Spare only"
         -- -- not the lieutenant). The Godling and the worshippers who walk in to be eaten; the kobolds are
         -- Greed's second race, and their four ordinary fights stand beside the dwarves' four.
+        -- THE GOLD GOLEM IS A SPARE TOO (2026-09-25, "The Golems of Greed": "Rung 1 spare"). Its own `rung`
+        -- stands it on the approach beside the Fen Ooze; this list is only the billing.
         elites = { approach = "encounter_fen_ooze", seat = "encounter_greed_the_counting_hall",
-            spares = { "encounter_the_king_slime", "encounter_greed_the_nest" } } },
+            spares = { "encounter_the_king_slime", "encounter_greed_the_nest",
+                "encounter_greed_the_gold_golem" } } },
     { id = "envy", name = "Envy", vendor = "alchemist", biome = "desert",
         scene = "conversation_descent_envy",
         -- THE SECOND OF THE TWO BROKEN LEADS. character_homunculus is the alchemist's SUMMON -- its own
@@ -674,7 +702,11 @@ Descent.DROPS = {
         "ability_changing_partners", "utility_smelling_salts", "utility_saints_chalice",
     } },
     greed    = { minor = { "utility_tally_stick" }, general = {
-        "utility_bottomless_purse",
+        -- Avaritia's (settled on review 2026-09-25): the Gilded Belly relic, then her breath, her wings, her
+        -- gold, her ground, her sky, and her ledger.
+        "utility_gilded_belly",
+        "ability_dragonfire", "utility_wingbeat_mantle", "ability_gild",
+        "armor_emberwalk_greaves", "ability_fire_from_the_sky", "utility_hoard_ledger",
     } },
     envy     = { minor = { "utility_second_vessel" }, general = {
         "utility_envious_glass",
@@ -808,8 +840,9 @@ function Descent.objectiveReward(player, run, objSpec)
     -- A WARD PAYS NOTHING BEYOND THE FIGHT'S OWN SPOILS. She is the circle's GATE rather than the floor's
     -- end, so the guardian's piece below is not hers to hand over -- a card naming it here would promise
     -- the general's drop for beating her doorkeeper, and the grant this screen mirrors (states/game.lua's
-    -- ward branch in onWin) hands over nothing at all.
-    if objSpec and objSpec.wardFor then return nil end
+    -- ward branch in onWin) hands over nothing at all. A LEAD-IN (models/hoard.lua) is the same: what it
+    -- pays is the gold on its board and what it changes about her fight.
+    if objSpec and (objSpec.wardFor or objSpec.leadIn) then return nil end
 
     -- THE STAIR GUARDIAN: what was on the body, then what the circle paid toward the next company.
     local depth = Descent.depth(run)
@@ -4041,7 +4074,17 @@ local function guardianComposition(sin, floorLevel, isGeneral, floor, target, ru
         -- ...except on the stair a descent OPENS on, where a lieutenant over swarm stock is the lightest
         -- thing on the board unless it is told otherwise. See Descent.OPENING_GUARD.
         if opening then n = math.max(n, Descent.OPENING_GUARD) end
-        return Descent.guardList(sin, isGeneral, floor, n)
+        local list = Descent.guardList(sin, isGeneral, floor, n)
+        -- A general's CLUTCH (Avaritia's eggs on her hoard): seated beside her, one fewer once the save
+        -- has broken the Shrine (models/hoard.lua). Read here, at the bell, so a Shrine broken on this
+        -- same visit counts.
+        local clutch = isGeneral and band.clutch
+        if clutch then
+            local eggs = clutch.n or 1
+            if require("models.hoard").activeState().shrine then eggs = eggs - 1 end
+            for _ = 1, eggs do list[#list + 1] = clutch.id end
+        end
+        return list
     end
 end
 
@@ -4341,9 +4384,28 @@ function Descent.floorObjectives(player, floor, sin, floorLevel, general, run)
         end
     end
 
+    -- THE LEAD-INS, for a general whose circle declares them (Greed's Burglary and Shrine,
+    -- models/hoard.lua): optional ends beside her stair whose outcome changes her fight. Marked `leadIn`
+    -- rather than given a questId -- they settle nothing on a shelf and pay no purse -- and ALWAYS emitted
+    -- while the circle declares them, because a kept board's cell must keep resolving to its own spec
+    -- rather than falling back to the stair (states/game.lua's objectiveAt). Whether one is still OPEN is
+    -- asked when it is stepped on, not here.
+    local leadIns = {}
+    if general and sin and sin.leadIns then
+        local Hoard = require("models.hoard")
+        for _, id in ipairs(sin.leadIns) do
+            local spec = Hoard.leadInSpec(id, player, floorLevel)
+            if spec then
+                spec.leadIn = id
+                leadIns[#leadIns + 1] = spec
+            end
+        end
+    end
+
     if not player then
         local out = { stair }
         if ward then out[#out + 1] = ward end
+        for _, spec in ipairs(leadIns) do out[#out + 1] = spec end
         return out
     end
 
@@ -4368,6 +4430,7 @@ function Descent.floorObjectives(player, floor, sin, floorLevel, general, run)
     local Errand = require("models.errand")
     local out = { stair }
     if ward then out[#out + 1] = ward end
+    for _, spec in ipairs(leadIns) do out[#out + 1] = spec end
     for _, entry in ipairs(Errand.onFloor(player, floor)) do
         out[#out + 1] = specFor(entry)
     end

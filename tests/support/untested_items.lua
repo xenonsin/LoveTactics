@@ -184,7 +184,6 @@ return {
     "weapon_bellfounders_hammer",
     "weapon_bellowing_edge",
     "weapon_blight_spitter",
-    "weapon_boar_spear",
     "weapon_carrion_axe",
     "weapon_censer_of_cold_light",
     "weapon_censer_of_the_grasping_hollow",

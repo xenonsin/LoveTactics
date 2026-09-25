@@ -597,7 +597,9 @@ local function markerColor(kind, enc)
     -- stair is wearing. Banked dark and properly saturated so it is never read as one of the ways out --
     -- the ascent and the crossroads are both pale grey-blues up near white -- and it carries the combat
     -- border neither of those ever does, so steel inside a red ring is only ever this.
-    if kind == "ward" then return 0.42, 0.60, 0.82 end
+    -- A GENERAL'S LEAD-IN (models/hoard.lua) wears the ward's steel and mark: both are a fight beside the
+    -- stair rather than the stair, and the hover line (Encounter.GLOSS.leadin) says which.
+    if kind == "ward" or kind == "leadin" then return 0.42, 0.60, 0.82 end
     if kind == "elite" then return 0.95, 0.55, 0.15 end
     if kind == "treasure" then return 0.35, 0.80, 0.55 end
     if kind == "event" then return 0.60, 0.60, 0.95 end   -- a story stop, not a fight
@@ -733,6 +735,8 @@ function MarkerIcon.ward(x, y, w, h, r, g, b, a)
     love.graphics.setColor(r * 0.30, g * 0.30, b * 0.30, a)
     love.graphics.rectangle("fill", x, y + h * 0.40, w, h * 0.17, 1, 1)
 end
+-- A GENERAL'S LEAD-IN draws the ward's mark: both are a fight beside the stair (see markerColor).
+function MarkerIcon.leadin(x, y, w, h, r, g, b, a) return MarkerIcon.ward(x, y, w, h, r, g, b, a) end
 
 -- A POSTED WRIT: the piece of work somebody asked for. A campaign ground's quest, a house's errand, the
 -- job lying on a descent floor that opens a shut door -- every end that belongs to a NAME rather than to

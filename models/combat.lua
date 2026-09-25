@@ -7132,6 +7132,13 @@ function Combat.forcesCrit(combat, user, target, item)
         and not Combat.seenByFoe(combat, user) then
         return true
     end
+    -- THE BARE SCALE (data/traits/trait_gilded_belly.lua): a body carrying `bareWhileChanneling` rears
+    -- while it winds up, and every PIERCE blow into it is a critical until the wind-up resolves. The one
+    -- clause here read off the TARGET rather than the striker.
+    if target.channel and Trait.flag(target, "bareWhileChanneling")
+        and hasTag(collectTags(item), "pierce") then
+        return true
+    end
     return false
 end
 
@@ -9807,6 +9814,7 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
         placeTrap = function() touchesBoard() return nil end,
         placeHazard = function() touchesBoard() return nil end,
         placeWall = function() touchesBoard() return nil end,
+        mine = function() touchesBoard() return false end,
         -- READING ground is not mutating it, so `hazardsAt` answers honestly and the dry run sees the
         -- real board. The other two are mutations and are inert: setting a zone off and spending it
         -- are exactly the Saboteur's fuse problem one layer over, and a hover that detonated the floor
@@ -10270,6 +10278,7 @@ function Combat.abilityOutput(unit, item)
             return nil
         end,
         placeWall = function(_, _, id) out.wall = id or true; return nil end,
+        mine = function() out.mine = true; return false end,
         -- There is no board here at all -- this builds an INVENTORY row, with no tile to read -- so a
         -- zone-reading ability describes itself by its own words rather than by what happens to be on
         -- the floor. Empty list, and the two mutations report nothing, like every other placer.
@@ -11753,6 +11762,8 @@ function Combat.steal(combat, thief, victim)
                 string.format("%s is lost.", item.name or "The item"))
         end
     end
+    -- Goods taken off a foe: Heart of Gold heals the thief, once a turn (models/golem.lua).
+    require("models.golem").took(combat, thief)
     return item
 end
 
@@ -12306,7 +12317,11 @@ function Combat.useItem(combat, unit, item, tx, ty, windup, dest, spend)
     -- Tile-target casts (e.g. summoning a trap) land ON the chosen cell, so it must be an empty,
     -- occupiable tile -- never a solid obstacle, never a tile a unit already stands on. Reject
     -- before any cost is spent.
-    if ab.target == "tile" then
+    -- `aimsObstacle` turns the rule round: the cast is aimed AT something standing in the way -- a wall,
+    -- an object, solid rock -- and an empty tile has nothing to take (Veinfinder, models/golem.lua).
+    if ab.target == "tile" and ab.aimsObstacle then
+        if not require("models.golem").mineable(combat, tx, ty) then return false, "nothing to mine" end
+    elseif ab.target == "tile" then
         local row = combat.arena and combat.arena.tiles and combat.arena.tiles[ty]
         local cell = row and row[tx]
         if not (cell and cell.walkable) then return false, "blocked tile" end
@@ -12978,6 +12993,10 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
         -- Raise a wall segment on a tile, owned by the caster's side (models/wall.lua). Summon Wall
         -- calls this once per tile of its 3x1 line; a tile that can't hold a wall (a unit on it,
         -- solid terrain, another wall) is silently skipped by Wall.place returning nil.
+        -- MINE an obstacle out of a tile (models/golem.lua, the golems of Greed): a wall, a standing
+        -- object or solid rock comes away and leaves a coin heap where it stood. A verb rather than a
+        -- write in the effect, because a preview replays the effect against the real board.
+        mine = function(px, py) return require("models.golem").mine(combat, unit, px, py) end,
         placeWall = function(px, py, id, opts)
             opts = opts or {}
             opts.side = opts.side or unit.side

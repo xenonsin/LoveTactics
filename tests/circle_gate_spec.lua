@@ -30,9 +30,14 @@ return {
         -- THE WHOLE POINT OF AUTHORING SEVEN. Two circles sharing a kind is two boss floors that play
         -- the same before their casts are dealt, which is the thing one floor per circle was in danger
         -- of producing.
+        --
+        -- `none` IS NOT A QUESTION, so it is the one kind two circles may share (2026-09-25: Greed's toll
+        -- was denied on review and "no gate -- the lead-ins are the price" approved; Sloth already had
+        -- none). A stair with no gate asks nothing, and two of them are not two floors asking the same.
         local seen = {}
         for _, sin in ipairs(Descent.SINS) do
             local kind = Descent.gateFor(sin).kind
+            if kind == "none" then kind = "none:" .. sin.id end
             assert(not seen[kind], "two circles bar their stair the same way: " .. kind ..
                 " on both " .. tostring(seen[kind]) .. " and " .. sin.id)
             seen[kind] = sin.id
@@ -102,9 +107,11 @@ return {
         assert(Descent.gateState(pride, { sealed = 99 }).met, "and will fight somebody who has")
     end },
 
+    -- THE TOLL OUTLIVED ITS CIRCLE. Greed barred its stair with it until 2026-09-25, when the review denied
+    -- it for Avaritia; the machinery stays (a gate kind is one line of data away from coming back), so these
+    -- two cases hold it on a fixture circle rather than going red for losing their fixture.
     { name = "the toll is a share, never more than is carried, and never nothing", fn = function()
-        local greed
-        for _, sin in ipairs(Descent.SINS) do if sin.id == "greed" then greed = sin end end
+        local greed = { id = "toll_fixture", gate = { kind = "toll", share = 0.25 } }
         assert(Descent.tollFor(greed, 0) == 0, "a company carrying nothing is charged nothing")
         for carried = 1, 20 do
             local due = Descent.tollFor(greed, carried)
@@ -114,17 +121,14 @@ return {
         end
         -- A bigger bag costs more, which is the whole reason the price is a share.
         assert(Descent.tollFor(greed, 16) > Descent.tollFor(greed, 4), "a fat mule pays properly")
-        -- ...and only Greed has one.
+        -- ...and no circle takes one today.
         for _, sin in ipairs(Descent.SINS) do
-            if sin.id ~= "greed" then
-                assert(Descent.tollFor(sin, 10) == 0, sin.id .. " does not take a toll")
-            end
+            assert(Descent.tollFor(sin, 10) == 0, sin.id .. " does not take a toll")
         end
     end },
 
-    { name = "greed's stair opens once it has been paid, and not before", fn = function()
-        local greed
-        for _, sin in ipairs(Descent.SINS) do if sin.id == "greed" then greed = sin end end
+    { name = "a tolled stair opens once it has been paid, and not before", fn = function()
+        local greed = { id = "toll_fixture", gate = { kind = "toll", share = 0.25 } }
         assert(not Descent.gateState(greed, { paid = false }).met, "unpaid is shut")
         assert(Descent.gateState(greed, { paid = true }).met, "paid is open")
     end },

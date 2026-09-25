@@ -10,7 +10,13 @@ return {
     disposition = "hostile",  -- the enemy AI steps around it
     dousedByTags = { "water" },
     spread = { intoTag = "burnable" }, -- creeps into adjacent burnable tiles
+    -- EMBERWALK (Avaritia, and the Emberwalk Greaves lifted off her): fire ground does not touch a body
+    -- carrying the flag, and its planner walks through it as if it were floor.
+    welcomes = function(unit)
+        return unit ~= nil and require("models.trait").flag(unit, "emberwalk") ~= nil
+    end,
     onEnter = function(ctx)
+        if ctx.unit and require("models.trait").flag(ctx.unit, "emberwalk") then return end
         -- ctx.amount (the Fireball/Flask item's level-scaled burn) sets how hard the Burn sears; nil
         -- (an arena-authored blaze) falls back to Burn's own blueprint magnitude.
         ctx.applyStatus(ctx.unit, "status_burn", { magnitude = ctx.amount })

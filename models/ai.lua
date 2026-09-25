@@ -1663,7 +1663,8 @@ local function fallbackMove(ctx, mode)
         -- A HEAP-SEEKER with nothing to hit walks for the gold rather than the fight (a dwarf's Stout,
         -- data/traits/trait_stout.lua; hazard_coin_heap.lua). The heap is a POINT goal, like an
         -- objective tile, so the walk ends on it and the heap's onEnter pays it out.
-        goal = (Trait.flag(unit, "seeksHeaps") and AI.nearestHeap(combat, unit)) or nearest(ctx, foes(ctx))
+        goal = ((Trait.flag(unit, "seeksHeaps") or Trait.flag(unit, "eatsHeaps")) and AI.nearestHeap(combat, unit))
+            or nearest(ctx, foes(ctx))
     end
     if not goal then return nil end
 

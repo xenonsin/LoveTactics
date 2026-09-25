@@ -10,6 +10,11 @@
 -- fight. Each dive makes the next one hurt more.
 --
 -- THE COUNTERPLAY IS THE TELEGRAPH: stand clear of the exit, or be waiting beside it with a hammer.
+--
+-- THE GOLEMS DELVE TOO (2026-09-25, "The Golems of Greed": they carry this very item rather than a copy
+-- of it). What is theirs alone is the VEIN: a bearer of `strikesVein` (trait_strikes_vein) leaves the
+-- hole it sank through as a coin heap, or one time in three a lava pit (models/golem.lua) -- and never
+-- brings the cave-in, which stays the Delver's own.
 local Curve = require("models.curve")
 local Status = require("models.status")
 
@@ -40,6 +45,7 @@ return {
         effect = function(fx)
             if fx.clearStatus then fx.clearStatus(fx.user, "status_underground") end
             local x, y = fx.tx, fx.ty
+            local fromX, fromY = fx.user.x, fx.user.y -- the hole it sank through
             local occupant = fx.unitAt(x, y)
             if occupant and occupant ~= fx.user then x, y = fx.openTileNear(x, y) end
             if x and y then fx.teleportUser(x, y) end
@@ -49,7 +55,13 @@ return {
             fx.applyStatus(fx.user, "status_deeper", { magnitude = 1 })
             -- DELVED TOO GREEDILY AND TOO DEEP (round 3): the dive that brings Deeper to three brings the
             -- roof down. A status, so the lava is laid only live (status_cave_in explains why).
-            if require("models.status").stacksOf(fx.user, "status_deeper") >= 3 then
+            local Trait = require("models.trait")
+            if Trait.flag(fx.user, "strikesVein") then
+                -- Only live: a preview's board is the real one, and a vein is struck once.
+                if fx.combat and fx.combat.arena and (fromX ~= fx.user.x or fromY ~= fx.user.y) then
+                    require("models.golem").strikeVein(fx.combat, fx.user, fromX, fromY)
+                end
+            elseif require("models.status").stacksOf(fx.user, "status_deeper") >= 3 then
                 fx.applyStatus(fx.user, "status_cave_in")
             end
         end,

@@ -76,6 +76,9 @@ local CREATURE_MATCH = {
     { "ogre", "delapouite/ogre" },
     { "imp", "lorc/imp-laugh" },
     { "demon", "lorc/daemon-skull" },
+    -- Greed's two golems are not the Crucible's (2026-09-25): both must sort above the bare "golem" key.
+    { "earth_golem", "delapouite/golem-head" },
+    { "gold_golem", "delapouite/metal-golem-head" },
     { "golem", "delapouite/rock-golem" },
     { "zombie", "sbed/death-skull" },
     { "ghost", "lorc/ghost" },
@@ -271,7 +274,7 @@ local CHARACTER_SILHOUETTE = {
     general_wrath = "delapouite/angry-eyes",
     general_wrath_demon = "lorc/flame-claws",       -- Ira's phase two: the bargain come due, made flesh
     general_pride = "delapouite/imperial-crown",
-    general_greed = "delapouite/coins-pile",
+    general_greed = "lorc/double-dragon", -- Avaritia, an elder dragon (2026-09-25)
     general_envy = "lorc/voodoo-doll",              -- the Unborn: a made effigy of a person
     general_gluttony = "lorc/gluttony",
     general_lust = "lorc/pentagram-rose",           -- the pacted Saint

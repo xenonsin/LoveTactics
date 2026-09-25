@@ -164,7 +164,7 @@ return {
                 "a rank classless boss -> overlord")
             assert(Char.BOSS_SILHOUETTE ~= Char.HUMANOID_DEFAULT, "the boss figure must differ from the rank one")
             assert(slug("character_general_gluttony") == "lorc/gluttony", "a general reads as its sin, not the lift")
-            assert(slug("character_general_greed") == "delapouite/coins-pile", "... and no two of them agree")
+            assert(slug("character_general_greed") == "lorc/double-dragon", "... and no two of them agree")
         end,
     },
     {

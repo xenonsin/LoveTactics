@@ -860,6 +860,13 @@ function Save.snapshot(player)
         announcedDisciplines = announcedDisciplines,
         classesTaken = classesTaken,
         flags = flags,
+        -- AVARITIA'S HOARD (models/hoard.lua): heaps carried out of her treasury, trips in, the Shrine
+        -- broken. Elided while untouched, so a save that never reached her floor carries nothing.
+        greedHoard = player.greedHoard and {
+            taken = player.greedHoard.taken or 0,
+            alarm = player.greedHoard.alarm or 0,
+            shrine = player.greedHoard.shrine and true or nil,
+        } or nil,
         newItems = newItems,
         -- THE COUNTER WATERMARK: which classes' racks the market has already announced
         -- (Market.markOpened). Without it a load re-announces every blade the company has ever
@@ -1410,6 +1417,12 @@ function Save.restore(snap)
         announcedDisciplines = announcedDisciplines,
         classesTaken = classesTaken,
         flags = flags,             -- absent on a save from before this existed; empty reads as unanswered
+        -- Avaritia's hoard (models/hoard.lua); nil reads as untouched (Hoard.state makes the default).
+        greedHoard = type(snap.greedHoard) == "table" and {
+            taken = tonumber(snap.greedHoard.taken) or 0,
+            alarm = tonumber(snap.greedHoard.alarm) or 0,
+            shrine = snap.greedHoard.shrine == true,
+        } or nil,
         newItems = newItems,
         -- The counter watermark, restored as written. A class that has since been renamed away
         -- simply never matches a live one and is inert, which is the same forgiving default the

@@ -554,10 +554,12 @@ function Overworld:placeObjectiveAndGates(params)
     self.objectives = {}
     for i, cell in ipairs(chosen) do
         local spec = specs[i] or {}
+        -- `leadIn` rides for the ward's reason: a general's side-end (models/hoard.lua) has no quest id
+        -- either, and without its mark it would resolve to the stair.
         cell.encounter = { kind = "objective", name = spec.name or "Objective",
-            questId = spec.questId, wardFor = spec.wardFor, meet = spec.meet or nil }
+            questId = spec.questId, wardFor = spec.wardFor, leadIn = spec.leadIn, meet = spec.meet or nil }
         self.objectives[i] = { x = cell.x, y = cell.y, questId = spec.questId,
-            wardFor = spec.wardFor }
+            wardFor = spec.wardFor, leadIn = spec.leadIn }
     end
     -- The deepest end, still under its old name. Everything that wants "the far end of this floor" as a
     -- single cell -- the opening pan, the report tools, the two map relics -- reads this.

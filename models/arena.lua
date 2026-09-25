@@ -1185,13 +1185,19 @@ end
 -- (a rating pass) simply lays none rather than rolling an unrepeatable one.
 local GROUND_SALT = 7919
 
-local function bodyGround(layout, enemyIds, party, enemies, taken, seed)
+local function bodyGround(layout, enemyIds, party, enemies, taken, seed, scatter)
     if not (seed and layout.tiles) then return nil end
     local Character = require("models.character") -- lazily, as footprintOf does
     local wanted = {}
     for _, id in ipairs(enemyIds) do
         local g = Character.defs[id] and Character.defs[id].seedsGround
         if g and g.id and (g.count or 0) > 0 then wanted[#wanted + 1] = g end
+    end
+    -- ...and whatever ground the FIGHT itself asks for (`spec.scatter`, a list of { id, count }): a
+    -- lead-in whose board is ABOUT something lying on it -- Avaritia's treasury, heaped with gold
+    -- (models/hoard.lua) -- scatters it the way a body's own ground is scattered.
+    for _, g in ipairs(scatter or {}) do
+        if g.id and (g.count or 0) > 0 then wanted[#wanted + 1] = g end
     end
     if #wanted == 0 then return nil end
 
@@ -1530,7 +1536,7 @@ function Arena.build(ctx, spec)
         -- to disagree.
         -- ...and whatever ground the bodies standing here brought with them (bodyGround).
         hazards = withBodyGround(withTerrainZones(layout),
-            bodyGround(layout, enemyIds, party, enemies, taken, spec.seed or layout.seed)),
+            bodyGround(layout, enemyIds, party, enemies, taken, spec.seed or layout.seed, spec.scatter)),
         props = layout.props or {}, -- scattered/authored props (barrels, crates) carried into combat (Combat.new places them)
         objective = normalizeObjective(spec.objective, layout, enemyIds),
         -- The seed the caller chose, not whatever the layout happened to record: it is what the

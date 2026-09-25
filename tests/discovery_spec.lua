@@ -127,12 +127,20 @@ local TROPHIES = {
     -- Godling its own scale.
     "utility_scurry", "ability_deadfall", "ability_dragon_egg", "ability_borrowed_breath",
     "utility_godlings_scale",
+    -- The Gold Golem's (Greed's approach, 2026-09-25): all three trophies, each one of its rules turned to
+    -- work on every floor -- the pull as a lodestone, the hoard as a purse, the plates as ballast.
+    "utility_lodestone", "utility_spilled_purse", "utility_golden_ballast",
     -- Gula's (the wood's general, re-premised 2026-09-23): the beast's inhale as a druid's, and the rule
     -- that learns every blow as a hide. After the Maw on her drop list (Descent.DROPS.gluttony).
     "ability_draw_breath", "armor_studied_hide",
     -- Luxuria's (the fen's general, re-premised as the succubus Queen 2026-09-25): her escape as a
     -- Skirmisher's, a counter to her charm as an Alchemist's, and her old Rapture as a Priest's crowd drain.
     "ability_changing_partners", "utility_smelling_salts", "utility_saints_chalice",
+    -- Avaritia's (the deeps' general, re-premised as an elder dragon 2026-09-25): her breath and her strafe
+    -- as a Mage's (she carries the breath herself), her wings as a Skirmisher's, her melted gold and her
+    -- ledger as a Mammonite's, her ground as a Bulwark's greaves. After the Gilded Belly on her list.
+    "ability_dragonfire", "utility_wingbeat_mantle", "ability_gild", "armor_emberwalk_greaves",
+    "ability_fire_from_the_sky", "utility_hoard_ledger",
     -- The Sated's (Gluttony's seat, reworked 2026-09-23): the Retch as a Bombardier's, the Eat as a
     -- Barbarian's, the whole fight turned around as a Bulwark's coat, a devoured corpse as a
     -- Necromancer's, and being full as a Paladin's.

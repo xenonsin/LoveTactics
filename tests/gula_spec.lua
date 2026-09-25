@@ -302,6 +302,13 @@ return {
                         "the Queen's stair is won on the Queen")
                     assert(win.waves and #win.waves >= 1 and win.waves[1].maxAlive,
                         "and her court tops up rather than floods")
+                elseif sin.id == "greed" then
+                    -- The third (2026-09-25): Avaritia's kobolds keep walking in, and the win is the dragon.
+                    -- Her own rules are held in tests/avaritia_spec.lua.
+                    assert(win.type == "assassinate" and win.target == "character_general_greed",
+                        "the dragon's stair is won on the dragon")
+                    assert(win.waves and #win.waves >= 1 and win.waves[1].maxAlive,
+                        "and her kobolds top up rather than flood")
                 else
                     assert(win.type == "killAll", sin.id .. "'s stair stays a clear")
                 end

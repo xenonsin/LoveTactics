@@ -1213,7 +1213,9 @@ local function computeRange(unit, item)
         -- with no one standing in it).
         local occ = Combat.unitAt(battle.combat, cell.x, cell.y)
         local valid
-        if target == "tile" then valid = occ == nil or ab.allowOccupied == true
+        if target == "tile" and ab.aimsObstacle then
+            valid = require("models.golem").mineable(battle.combat, cell.x, cell.y)
+        elseif target == "tile" then valid = occ == nil or ab.allowOccupied == true
         elseif occ and target == "enemy" then valid = occ.side ~= unit.side
         elseif occ and target == "ally" then valid = occ.side == unit.side
         else valid = true end

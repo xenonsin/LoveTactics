@@ -1126,6 +1126,12 @@ local function objectiveAt(cell)
             if spec.wardFor == enc.wardFor then return spec end
         end
     end
+    -- A LEAD-IN (models/hoard.lua) is the third end with no quest id, matched on its own mark.
+    if enc and enc.leadIn then
+        for _, spec in ipairs(mp.objectives or {}) do
+            if spec.leadIn == enc.leadIn then return spec end
+        end
+    end
     return (mp.objectives and mp.objectives[1]) or mp.objective
 end
 
@@ -2124,8 +2130,20 @@ function game:openEncounter(cell, opts)
     -- can come back once the condition is answered.
     --
     -- Asked only of the STAIR: a floor carries several ends and the gate belongs to exactly one of them.
-    -- `wardFor` and `questId` are what tell the others apart.
-    if game.descent and objSpec and not objSpec.questId and not objSpec.wardFor then
+    -- `wardFor` and `questId` are what tell the others apart (and `leadIn`, a general's side-end).
+    --
+    -- A LEAD-IN THAT HAS CLOSED says so and stays put (models/hoard.lua): the Burglary once the treasury is
+    -- empty or its passage sealed, the Shrine once it is broken. Asked here, when it is stepped on, because
+    -- a kept board keeps its cells and cannot be told to drop one.
+    if game.descent and objSpec and objSpec.leadIn then
+        local Hoard = require("models.hoard")
+        if not Hoard.leadInOpen(objSpec.leadIn, game.player) then
+            game:pushToast(objSpec.leadIn == "shrine" and "The Shrine is already broken."
+                or "Her treasury has nothing left to take from here.")
+            return
+        end
+    end
+    if game.descent and objSpec and not objSpec.questId and not objSpec.wardFor and not objSpec.leadIn then
         local st = game:stairGate()
         if st and not st.met then
             -- A TOLL IS THE ONE GATE THE PLAYER CAN ANSWER ON THE SPOT, so it is asked rather than
@@ -2793,6 +2811,22 @@ function game:openEncounter(cell, opts)
                         if objSpec and objSpec.wardFor then
                             game:pushToast((objSpec.name or "The ward") ..
                                 " is beaten -- the way down is unbarred")
+                            saveRun()
+                            return
+                        end
+
+                        -- A LEAD-IN WON (models/hoard.lua): write what it changed about the general's
+                        -- fight onto the save, and say it. Like a ward it is not the floor's end, so it
+                        -- never reaches the landing, and its gold was paid by grantSideSpoils above.
+                        -- The Burglary can be walked again on a later trip until the treasury is empty
+                        -- or the passage sealed, so its cell is left armed while it is still open; the
+                        -- Shrine stays cleared for good (an objective cell is never re-armed).
+                        if objSpec and objSpec.leadIn then
+                            local Hoard = require("models.hoard")
+                            local fought = game.battle and game.battle.combat
+                            local line = Hoard.recordLeadIn(objSpec.leadIn, game.player, fought)
+                            if line then game:pushToast(line) end
+                            if cell and Hoard.leadInOpen(objSpec.leadIn, game.player) then cell.cleared = nil end
                             saveRun()
                             return
                         end

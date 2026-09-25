@@ -30,13 +30,20 @@ local function seeks(unit)
     return unit ~= nil and Trait.flag(unit, "seeksHeaps") ~= nil
 end
 
+-- A GOLD GOLEM EATS a heap rather than pocketing it (trait_eats_heaps, "The Golems of Greed", 2026-09-25):
+-- it heals and puts the gold back on as a plate (models/golem.lua, Golem.eat).
+local function eats(unit)
+    local Trait = require("models.trait")
+    return unit ~= nil and Trait.flag(unit, "eatsHeaps") ~= nil
+end
+
 return {
     name = "Coin Heap",
     description = "Loose gold. A dwarf that pockets it takes Dragon-Sickness; the company that loots it banks the gold, and every dwarf on the board catches Gold Fever.",
     tags = { "earth" },
     duration = math.huge,
     disposition = "neutral",
-    welcomes = function(unit) return seeks(unit) and unit.side ~= "party" end,
+    welcomes = function(unit) return (seeks(unit) or eats(unit)) and unit.side ~= "party" end,
     onEnter = function(ctx)
         local unit, combat = ctx.unit, ctx.combat
         if not (unit and unit.alive and combat) then return end
@@ -44,6 +51,14 @@ return {
         local Combat = require("models.combat")
         local Status = require("models.status")
         local name = (unit.char and unit.char.name) or "Unit"
+        -- A GILT PLATE knocked off its wearer (trait_shed_plate, "reclaim"): the wearer walking back over
+        -- it puts the plate on again, and the gold is the plate's rather than the purse's.
+        if ctx.hazard and ctx.hazard.plateOf == unit then
+            ctx.consume()
+            Status.apply(combat, unit, "status_gilt_plate", { magnitude = 1 })
+            Combat.logEvent(combat, "action", string.format("%s puts the gilt plate back on.", name), unit)
+            return
+        end
         if unit.side == "party" then
             Combat.bounty(combat, gold)
             ctx.consume()
@@ -52,9 +67,20 @@ return {
             if require("models.trait").flag(unit, "coveredInGold") then
                 Status.apply(combat, unit, "status_every_hair_covered", { magnitude = 1 })
             end
+            -- Counted for the fight, so a lead-in that is ABOUT taking gold (the Burglary, models/hoard.lua)
+            -- can read how much was carried off when it is won.
+            combat.heapsLooted = (combat.heapsLooted or 0) + 1
+            require("models.golem").took(combat, unit) -- Heart of Gold heals the looter, once a turn
+            local Trait = require("models.trait")
             for _, u in ipairs(combat.units or {}) do
                 if u.alive and u.side ~= unit.side and seeks(u) then
                     Status.apply(combat, u, "status_gold_fever", { applier = unit })
+                end
+                -- EVERY COIN COUNTED: a hoard's owner knows the moment a heap goes (trait_the_hoard).
+                if u.alive and u.side ~= unit.side and Trait.flag(u, "countsEveryCoin") then
+                    Status.apply(combat, u, "status_every_coin_counted", { magnitude = 1 })
+                    Combat.logEvent(combat, "action", string.format("%s knows a heap is gone.",
+                        (u.char and u.char.name) or "It"), u)
                 end
             end
         elseif seeks(unit) then
@@ -62,6 +88,8 @@ return {
             ctx.consume()
             Status.apply(combat, unit, "status_dragon_sickness", { magnitude = 1 })
             Combat.logEvent(combat, "action", string.format("%s pockets %d gold.", name, gold), unit)
+        elseif eats(unit) then
+            require("models.golem").eat(combat, unit, ctx.hazard)
         end
     end,
 }

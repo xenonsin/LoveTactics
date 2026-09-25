@@ -1,78 +1,83 @@
--- The general of Greed, and the end of the Undercroft's line (docs/story.md, "The Undercroft"). Enemy
--- blueprint; the objective of data/quests/general_greed.lua. The finale (data/quests/quest_the_gate_below.lua)
--- already reserves a slot for her -- "general_greed" sits in its requiredQuests.
+-- The general of Greed. She holds the last stair of the Goldvein Deeps (Descent.SINS' greed `guardian`).
 --
--- WHO SHE IS: a debtor once, ruined and owned -- the thing at the bottom of an institution like her own.
--- She pacted with the Demon Lord not for power but never to owe again -- to be the one everyone owes,
--- forever -- and the bargain's cruelty is Midas's exactly: everyone does, and she can keep or feel or
--- spend none of it. She is the world's creditor and starves at her own table; being owed is the only
--- sensation the pact left her, so she must keep calling it in.
+-- THE REDESIGN (settled over three rounds on 2026-09-25, artifact UtAAeXrYn5u9vGT48ejxpf, "Avaritia, the
+-- Unspent"): an ELDER DRAGON on her hoard -- Smaug as the source, built as a raid fight. Aurea the debtor is
+-- gone, and so is every story tie: nothing here claims she made the circle or anything in it. She is simply
+-- what lies at the bottom of the deeps -- the dragon the kobolds' faith is about, and the sickness the
+-- dwarves are named for.
 --
--- HER RULE rides on the Purse in her grid (a blueprint's own `traits` field is never collected; only an
--- item's is -- models/trait.lua): the Golden Touch -- "lifts the kit out of your hands mid-fight"
--- (data/items/utility/utility_bottomless_purse.lua). She takes the THING (your gear, turned to gold),
--- which keeps her the clean side of the Greed/Envy line: Livia's Covet takes the thing's PROPERTY and
--- would rather you had neither.
+-- HER FIGHT, BY HER HEALTH (her rules ride The Hoard in her centre cell; models/hoard.lua is the shared
+-- machinery):
 --
--- SHIPPED FIDELITY: the bare take-a-thing is what ships. The whole GOLD ECONOMY the chapter designs --
--- gold as her ward, the cost of her every action, and board-loot; her hired blades bought with it; and
--- the bankruptcy-triggered two-phase transform into the Midas-horror -- is a bespoke finale subsystem,
--- deferred new work. Statted here as an ordinary single-phase general with a real health pool rather than
--- the gold-warded soft mortal the full design calls for.
+--   100 -> 60   ON THE HOARD. Heaps are laid round her at the bell. GILDED BELLY: +2 Defense and +2 Magic
+--               Defense per heap within 2, lent to her side within 2. EVERY COIN COUNTED: each heap the
+--               company takes is +2 Damage for her. DRAGONFIRE (the mage's own, the piece she drops): a
+--               turn-long wind-up, a five-deep cone off her face that burns both sides and melts heaps to
+--               Molten Gold -- and while it winds up she
+--               rears, the belly is off, and every pierce blow is a critical (the Bare Scale). WING BUFFET
+--               throws a foe beside her 2 at her turn start; TAIL SWEEP hits every foe around her.
+--   60 -> 30    OVER THE DEEPS. She takes wing and STRAFES a whole row or column, telegraphed a turn ahead,
+--               landing at its far end; where she lands the roof comes down on three marked tiles.
+--   30 -> 0     THE MOUNTAIN BURNS. Every heap left melts at once, she stays on the ground at +25% damage,
+--               and the lava spreads a tile every turn until the board runs out.
 --
--- ONE PIECE OF that economy is wired now: her `coffer` and The Gilded Wound. She pays gold to carve a
--- wound (data/items/ability/ability_gilded_wound.lua) -- the enemy-side use of the purse the player buys
--- off the rogue's shelf (models/combat.lua Combat.spendPurse is side-aware; an enemy spends unit.coffer).
--- It is a first, self-contained taste of "gold IS her weapon", ahead of the gold-ward/loot/transform work.
--- The coffer here is an interim pool sized for a fight, not the campaign-scale hoard the finale designs.
+-- MOLTEN GOLD burns, and a body that ends a turn in it is Gilded -- and her fire goes for the gilded first.
+-- Her kobolds keep walking in (a wave battle; `guardian.waves`), and her clutch of two eggs sits on the hoard.
 --
--- `assassinate` is the honest objective -- her retinue is a wall to pass, not a thing to grind.
+-- WHAT HAPPENS BEFORE HER counts: two LEAD-INS on her floor (models/hoard.lua). The Burglary robs her
+-- treasury -- every heap carried out is one fewer on her hoard, and one more stack she opens with. The
+-- Shrine halves her procession and takes one of her eggs.
+--
+-- THE COUNTERPLAY, STATED: strip her heaps (and accept her anger for it); shoot the belly while she winds
+-- up; don't crowd her; read the strafe line and the roof; stay out of the gold; and in the last third, be
+-- quick.
+--
+-- What she hands over is Descent.DROPS.greed.general: the Gilded Belly relic, then her breath, her wings,
+-- her gold, her ground and her sky.
 return {
-    name = "Aurea, the Ever-Owed",
-    race = "human",
+    name = "Avaritia, the Unspent",
+    race = "dragon",
     tier = 4,
-    -- WHAT LEVEL THESE NUMBERS WERE WRITTEN FOR. This body is authored as the fight it is at the end
-    -- of its line, and models/growth.lua scales it DOWN toward the shallows rather than growing it up
-    -- from a base -- so a descent that deals this circle as floor 1 meets a smaller version of the
-    -- same thing instead of an unkillable one. At this level the numbers below are exactly the
-    -- numbers. See Growth.spawn.
+    -- WHAT LEVEL THESE NUMBERS WERE WRITTEN FOR. This body is authored as the fight it is at the end of its
+    -- line, and models/growth.lua scales it DOWN toward the shallows rather than growing it up from a base.
+    -- See Growth.spawn.
     referenceLevel = 13,
     boss = true, -- a quest objective: immune to execute (Coup de Grace) and to Charm
     sprite = "assets/chars/general_greed.png",
     portrait = "assets/portraits/general_greed.png", -- large VN portrait for conversations (falls back if missing)
+    archetype = "aggressive",
+    -- FOUR TILES (the Sated's footprint): she blocks all four, is struck from beside any of them, and takes
+    -- one hit from an area blast rather than four.
+    footprint = { w = 2, h = 2 },
     stats = {
-        health = 256, mana = 40, stamina = 15,
-        staminaRegen = 2,
-        damage = 14, magicDamage = 0, -- she does not duel; she takes, and she buys blades (deferred)
-        defense = 13, magicDefense = 11,
-        movement = 4,
-        speed = 3, -- slow: a hoard does not chase
-        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
-        -- attacker's crit. Authored, and never grown -- these are what this body IS.
-        skill = 5, luck = 10,
+        -- HEAVY AND SLOW, on review: the Belly is where her armour comes from, and it comes off in stages.
+        health = 380, mana = 60, stamina = 40, -- mana for her breath (Dragonfire, off the mage shelf)
+        staminaRegen = 4,
+        damage = 20, magicDamage = 20,
+        defense = 14, magicDefense = 10,
+        movement = 3,
+        speed = 3,
+        skill = 8, luck = 4,
     },
-    -- Her interim war-chest, spent by The Gilded Wound (Combat.spendPurse reads an enemy's coffer). Sized
-    -- for a couple of maximum-price blows (25 dmg = 250g each) and then some dagger work -- a hoard that
-    -- runs down over the fight, which is the shape her whole design wants. The finale's campaign-scale gold
-    -- economy (docs/roadmap.md #15) will supersede this flat number.
-    coffer = 600,
-    -- Her loadout as the 3x3 grid (row-major); false = an empty cell. Her rule rides on the Bottomless
-    -- Purse in the center (unstealable). Around it: her own blade (its bleed her one free action) and a
-    -- second lift -- she takes with both hands.
+    -- THE HIDE turns a blade and a club and lets a point through: the black arrow's weakness. Reviewed as
+    -- +2 / +2 / -2; the bestiary holds a hide's physical three to a sum of zero, so the point finds -4.
+    resist = { slash = 2, impact = 2, pierce = -4 },
     startingItems = {
-        "ability_pickpocket",      false,                      "ability_gilded_wound",
-        "weapon_kingsblood_dagger", "utility_bottomless_purse", false,
-        false,                     false,                      false,
+        "weapon_tail_sweep", "ability_dragonfire", "ability_strafe",
+        false,               "utility_the_hoard", false,
+        false,               false,               false,
     },
-    defaultAction = "weapon_kingsblood_dagger",
-    -- The Gilded Wound rule sits FIRST: while there is gold in the coffer she prices you rather than
-    -- closing, and the scorer pours what she can afford (models/ai.lua). It reaches three tiles, so a foe
-    -- she cannot yet touch with the dagger she can still bleed for coin. When the coffer runs dry the
-    -- purchase buys nothing, the candidate scores zero, and she falls through to the blade.
+    defaultAction = "weapon_tail_sweep",
+    signatureWeapon = "weapon_tail_sweep",
     ai = {
-        { priority = "high", act = "attack", item = "ability_gilded_wound",
-          when = { subject = "any_foe", test = "in_reach" } },
-        { priority = "high", act = "attack", item = "weapon_kingsblood_dagger",
+        -- 1. Over the deeps, the strafe first -- through the gilded, if any of the company is.
+        { priority = "high", act = "attack", item = "ability_strafe", targetPref = "gilded",
+          when = { subject = "self", test = "has_status", value = "status_over_the_deeps" } },
+        -- 2. The breath, whenever a foe is in reach of it -- the gilded first.
+        { priority = "high", act = "attack", item = "ability_dragonfire", targetPref = "gilded",
+          when = { subject = "nearest_foe", test = "within", value = 5 } },
+        -- 3. Otherwise the sweep, into whatever is standing against her.
+        { priority = "normal", act = "attack", item = "weapon_tail_sweep", targetPref = "nearest",
           when = { subject = "any_foe", test = "in_reach" } },
     },
 }

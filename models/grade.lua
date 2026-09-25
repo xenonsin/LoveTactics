@@ -497,6 +497,21 @@ Grade.TRAIT_GRADE = {
     trait_every_hair_covered =          1.5,  -- Every Hair Covered -- +2 Defense per heap looted
     trait_linden_leaf =                 0.0,  -- Linden Leaf -- one physical tag left open: a weakness
 
+    -- THE GOLEMS OF GREED (2026-09-25). The bodies' own rules first, never shelved; then the drops. Shed
+    -- Plate is weighed at its plates (+3 Defense that a mace takes back, less than a flat +3); Heart of
+    -- Gold is small sustain that needs gold on the floor or a thief's hand; Lodestone is a board-wide
+    -- pull worth a strong charm; Spilled Purse pays gold, not power; the ballast's wear is its price.
+    trait_shed_plate =                  1.0,  -- Shed Plate -- plates an impact blow knocks off
+    trait_strikes_vein =                0.5,  -- Strikes the Vein -- the hole it delves out of is gold or lava
+    trait_eats_heaps =                  1.0,  -- Regild -- eats heaps to heal and re-plate
+    trait_chipped_gold =                0.0,  -- Chipped Gold -- pays the attacker, a weakness not a gift
+    trait_hoard_falls_out =             0.0,  -- The Hoard Falls Out -- its death pays the company
+    trait_gold_calls =                  1.0,  -- Gold Calls to Gold -- heaps slide toward it
+    trait_heart_of_gold =               1.5,  -- Heart of Gold -- 15% when you take gold or goods, once a turn
+    trait_lodestone =                   2.0,  -- Lodestone -- foes within 3 dragged a tile closer each turn
+    trait_spilled_purse =               0.5,  -- Spilled Purse -- a kill leaves a coin heap
+    trait_ballast_wear =                0.0,  -- Golden Ballast's price -- impact wears its Defense off
+
     -- THE SATED AND THE FLIGHT (2026-09-23). The creature rules first, weighed as a body's own and never
     -- shelved. Then the drops. Bottomless Gut and the Girth are the same meal from opposite ends -- the Gut
     -- has to be FED a kill beside you, the Girth is full at the bell and spends itself down -- so the Gut
@@ -622,6 +637,13 @@ Grade.TRAIT_GRADE = {
     trait_the_court =                   1.0,  -- The Court
     trait_her_court =                   2.4,  -- Her Court
     trait_smelling_salts =              1.4,  -- Smelling Salts
+    -- Avaritia (2026-09-25): her own two rules, and her four finds' rules.
+    trait_the_hoard =                   1.0,  -- The Hoard (a boss's machinery; rides no shelf)
+    trait_gilded_belly =                2.4,  -- Gilded Belly
+    trait_crusted_in_gold =             2.0,  -- Crusted in Gold (the Gilded Belly relic)
+    trait_wingbeat =                    1.2,  -- Wingbeat (the Wingbeat Mantle)
+    trait_emberwalk =                   1.0,  -- Emberwalk (the Emberwalk Greaves)
+    trait_hoard_ledger =                2.0,  -- Hoard-Ledger
     trait_field_still =                 2.0,  -- Field Still
     trait_ghost_wind =                  2.0,  -- Ghost-Wind
     trait_guardians_blessing =          2.0,  -- Guardian's Blessing

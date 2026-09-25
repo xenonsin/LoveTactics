@@ -318,9 +318,7 @@ return {
     ["line.conversation_descent_envy.2"] = { en = "I will wear it in a moment, and I will do it perfectly. That has never once been the same as having it.", ja = "" },  -- TODO
     ["line.conversation_descent_gluttony.1"] = { en = "You are going further down. They all are.", ja = "" },  -- TODO
     ["line.conversation_descent_gluttony.2"] = { en = "I ate the last four who came through saying it. I could not describe one of them to you now. There is nothing in me that keeps things.", ja = "" },  -- TODO
-    ["line.conversation_descent_greed.1"] = { en = "You came down here to be paid. Everyone who walks past me is on their way to being paid.", ja = "" },  -- TODO
-    ["line.conversation_descent_greed.2"] = { en = "I am owed by everything that lives. I have never once spent any of it and I have never once been able to stop collecting.", ja = "" },  -- TODO
-    ["line.conversation_descent_greed.3"] = { en = "What you are carrying is already mine. Bring it here.", ja = "" },  -- TODO
+    ["line.conversation_descent_greed.1"] = { en = "TODO: Avaritia's lines (Keno).", ja = "" },  -- TODO
     ["line.conversation_descent_lust.1"] = { en = "You are holding something back. For the bottom, or for whatever you have decided is worse than me.", ja = "" },  -- TODO
     ["line.conversation_descent_lust.2"] = { en = "I will have it either way. It is the only thing I have ever been able to do.", ja = "" },  -- TODO
     ["line.conversation_descent_pride.1"] = { en = "Show me what you have brought.", ja = "" },  -- TODO
@@ -494,8 +492,8 @@ return {
     ["name.character_demon_lord"] = { en = "The Hollow Crown", ja = "" },  -- TODO
     ["name.character_general_envy"] = { en = "Livia, the Unborn", ja = "" },  -- TODO
     ["name.character_general_gluttony"] = { en = "Gula, the Unsated", ja = "" },  -- TODO
-    ["name.character_general_greed"] = { en = "Aurea, the Ever-Owed", ja = "" },  -- TODO
-    ["name.character_general_lust"] = { en = "Luxuria, the Unbidden", ja = "" },  -- TODO
+    ["name.character_general_greed"] = { en = "Avaritia, the Unspent", ja = "" },  -- TODO
+    ["name.character_general_lust"] = { en = "Luxuria, Queen of the Succubi", ja = "" },  -- TODO
     ["name.character_general_pride"] = { en = "Sublimitas, the Unequalled", ja = "" },  -- TODO
     ["name.character_general_sloth"] = { en = "Acedia, the Unrelieved", ja = "" },  -- TODO
     ["name.character_general_wrath"] = { en = "Ira, the Unappeased", ja = "" },  -- TODO
@@ -554,7 +552,7 @@ return {
     ["title.conversation_descent_crown"] = { en = "The Hollow Crown", ja = "" },  -- TODO
     ["title.conversation_descent_envy"] = { en = "Livia, the Unborn", ja = "" },  -- TODO
     ["title.conversation_descent_gluttony"] = { en = "Gula, the Unsated", ja = "" },  -- TODO
-    ["title.conversation_descent_greed"] = { en = "Aurea, the Ever-Owed", ja = "" },  -- TODO
+    ["title.conversation_descent_greed"] = { en = "Avaritia, the Unspent", ja = "" },  -- TODO
     ["title.conversation_descent_lust"] = { en = "Luxuria, the Unbidden", ja = "" },  -- TODO
     ["title.conversation_descent_pride"] = { en = "Sublimitas, the Unequalled", ja = "" },  -- TODO
     ["title.conversation_descent_sloth"] = { en = "Acedia, the Unrelieved", ja = "" },  -- TODO

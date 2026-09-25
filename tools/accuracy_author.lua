@@ -149,7 +149,7 @@ local NAMED = {
     character_general_pride = { skill = 10, luck = 3, why = "the Unequalled: the only 10, and it is the point" },
     -- The Ever-Owed. Luck 10, the mirror of Pride's: Greed's domain IS fortune, so she is nearly
     -- impossible to crit and every attacker gives up their upside against her.
-    character_general_greed = { skill = 5, luck = 10, why = "fortune itself is the domain" },
+    character_general_greed = { skill = 8, luck = 4, why = "an old dragon: sure of her aim, and never lucky -- she never needed to be" },
     -- The Unborn covets what others have, fortune included.
     character_general_envy = { skill = 6, luck = 8, why = "covets the luck as well" },
     character_general_lust = { skill = 7, luck = 7, why = "practised and favoured in equal measure" },

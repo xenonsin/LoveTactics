@@ -197,6 +197,7 @@ end
 -- ward is asked FIRST: it is an `objective` like every other end, so the clause below would swallow it.
 function Encounter.markerKind(enc)
     if enc and enc.wardFor then return "ward" end
+    if enc and enc.leadIn then return "leadin" end
     if enc and enc.kind == "objective" and enc.questId then return "quest" end
     return enc and enc.kind
 end
@@ -211,7 +212,7 @@ end
 -- Encounter.markerKind. Kept in step with the blueprints by tests/encounter_gloss_spec.lua, which walks
 -- `Encounter.defs` and fails on a kind that reached disk without a sentence.
 Encounter.MARKER_KINDS = {
-    "combat", "elite", "pack", "objective", "quest", "ward",
+    "combat", "elite", "pack", "objective", "quest", "ward", "leadin",
     "treasure", "rest", "merchant", "crossroads", "event",
     "relic_cache", "shrine", "weeping_stone", "anvil", "lectern", "translation",
     "spinner", "dark", "drop", "stair", "ascent", "road",
@@ -236,6 +237,7 @@ Encounter.GLOSS = {
     objective     = "The floor's own end. Put it down and the stair opens.",
     quest         = "Work a house posted. Take it and the shelf it belongs to opens wider.",
     ward          = "A lieutenant set in front of the stair. The gate holds until she falls.",
+    leadin        = "A way into the general's fight from the side. What happens here changes the fight on the stair.",
     treasure      = "An unguarded cache. Nothing stands over it; it is simply picked up.",
     rest          = "A safe camp. Rest here and the company takes some of the road back.",
     merchant      = "A market on the road. Goods off this floor's shelf, for gold.",
