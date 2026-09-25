@@ -121,6 +121,9 @@ local TROPHIES = {
     -- Gula's (the wood's general, re-premised 2026-09-23): the beast's inhale as a druid's, and the rule
     -- that learns every blow as a hide. After the Maw on her drop list (Descent.DROPS.gluttony).
     "ability_draw_breath", "armor_studied_hide",
+    -- Luxuria's (the fen's general, re-premised as the succubus Queen 2026-09-25): her escape as a
+    -- Skirmisher's, a counter to her charm as an Alchemist's, and her old Rapture as a Priest's crowd drain.
+    "ability_changing_partners", "utility_smelling_salts", "utility_saints_chalice",
     -- The Sated's (Gluttony's seat, reworked 2026-09-23): the Retch as a Bombardier's, the Eat as a
     -- Barbarian's, the whole fight turned around as a Bulwark's coat, a devoured corpse as a
     -- Necromancer's, and being full as a Paladin's.

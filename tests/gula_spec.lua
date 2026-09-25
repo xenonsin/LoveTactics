@@ -308,7 +308,7 @@ return {
         end,
     },
     {
-        name = "her stair is a wave battle won on her body; every other stair is a clear",
+        name = "her stair is a wave battle won on her body, as is the Queen's; every other stair is a clear",
         fn = function()
             for _, sin in ipairs(Descent.SINS) do
                 local win = Descent.stairWin(sin, true)
@@ -323,6 +323,13 @@ return {
                         assert(w.maxAlive, "every stream tops up rather than floods")
                     end
                     assert(win.waves ~= sin.guardian.waves, "copied, never aliased into Descent.SINS")
+                elseif sin.id == "lust" then
+                    -- The second wave battle (2026-09-25): the Queen's court keeps walking in, and the
+                    -- win is her body. Her own rules are held in tests/luxuria_spec.lua.
+                    assert(win.type == "assassinate" and win.target == "character_general_lust",
+                        "the Queen's stair is won on the Queen")
+                    assert(win.waves and #win.waves >= 1 and win.waves[1].maxAlive,
+                        "and her court tops up rather than floods")
                 else
                     assert(win.type == "killAll", sin.id .. "'s stair stays a clear")
                 end

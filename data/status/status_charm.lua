@@ -118,6 +118,11 @@ return {
     -- to the side it was standing on when they took it rather than walked off the board.
     onExpire = function(ctx)
         local u = ctx.unit
+        -- A Consort (data/status/status_consort.lua) is a rider on the charm and leaves with it, on every
+        -- ending: a body handed back must not keep the Queen's damage or her oath for one swing.
+        if ctx.combat and require("models.status").has(u, "status_consort") then
+            require("models.status").remove(ctx.combat, u, "status_consort")
+        end
         if u._charmSide then
             u.side, u.control = u._charmSide, u._charmControl
             u._charmSide, u._charmControl = nil, nil

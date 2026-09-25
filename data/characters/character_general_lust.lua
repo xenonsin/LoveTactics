@@ -1,67 +1,78 @@
--- The general of Lust, and the end of the Cathedral's line (docs/story.md, "The Cathedral"). Enemy
--- blueprint; the objective of data/quests/general_lust.lua. The finale (data/quests/quest_the_gate_below.lua)
--- already reserves a slot for her -- "general_lust" sits in its requiredQuests.
+-- The general of Lust. She holds the fen's last stair (Descent.SINS' lust `guardian`).
 --
--- WHO SHE IS: a human who made a pact with the Demon Lord for demonic power, then INFILTRATED the
--- Cathedral and took the seat of its most revered living Saint -- the one who blesses (bloods) every
--- soldier. The "holy" magic in the anointed is her blood; she has seeded the whole order as a sleeper
--- army. She is not Xin's kin and not a redeemed oblate -- an outsider at the altar.
+-- THE REDESIGN (settled on review 2026-09-25, artifact PngKcU4z39bbBGUvodNXHh): Luxuria is the QUEEN OF
+-- THE SUCCUBI, for the whole fight -- no human phase, no transform -- with a large army of charmed
+-- followers that protect her, and she charms the company "easily, but not unfairly". Kept as the
+-- character; the review cut the fiction that tied her to the blooding, so nothing here claims she made the
+-- anointed or the line below her. She is simply the thing the succubus line answers to.
 --
--- Her whole fight is one rule, and it rides on the reliquary in her grid (a blueprint's own `traits`
--- field is never collected; only an item's is -- models/trait.lua): she takes what you hold back
--- (data/traits/trait_rapture.lua). Every blow draws off the stamina and mana the target was hoarding and
--- takes it into herself as health -- so a party husbanding resources for the big turn feeds her the whole
--- time. The counterplay is the sin read as tactics: SPEND, let nothing sit unspent near her. The one unit
--- she can never draw from is Xin (character_xin.lua) -- an unblooded acolyte, carrying none of
--- Luxuria's blood, so the taking finds no purchase on her (data/traits/trait_devotion_unbidden.lua).
+-- HER FIGHT IS HER ARMY, and every rule is one of the ways it stands between you and her (models/court.lua
+-- holds the mechanics; data/items/utility/utility_the_court.lua carries them):
 --
--- At the finale she offers the one thing that could break her foil -- Xin's birth-name, the self the
--- Cathedral took (she keeps the intake rolls). Not a seizure -- Xin's refusal is a choice. Statted as a
--- hungry duelist rather than a wall: middling everything, kept alive by what she drinks off you.
--- `assassinate` is the honest objective -- her guard is a wall to pass, and every turn grinding it feeds her.
+--   * THE PROCESSION -- a wave battle. Knights and priests keep walking in (`guardian.waves`), and at the
+--     start of her turn each newcomer kneels: bound to her, not taken, so when she falls the whole room
+--     comes back to itself and walks out. The win is her body, never the field.
+--   * SWORN -- each of them, standing beside her, takes the first blow each turn meant for her.
+--   * THE CONGREGATION -- whatever still reaches her is split across everyone she holds.
+--   * HER MARK -- she Marks one of the company (ability_mark_target, beside the Anointing it needs), and
+--     every one of her court goes for the Marked body first (AI.courtBonus).
+--   * HER CHARM -- the Anointing's roll, 25% on a whole body up to 85% on one nearly down, on the ordinary
+--     clock. She may hold ONE of the company above half her health and TWO below; the first she holds
+--     each fight is her CONSORT (half again its damage, and sworn to her like the rest).
+--   * CHANGING PARTNERS -- a foe beside her at the start of her turn, and she trades places with one of
+--     her own anywhere on the board.
+--   * BELOW HALF -- the cap rises and the Procession quickens.
 --
--- TODO (see docs/story.md + the plan): the finale kit is not yet built. She should also DRAIN-AND-TURN
--- (a blooded unit she has drained enough flips to her side; Xin, unblooded, is the hard counter), and
--- the fight is TWO-PHASE -- the human Saint sheds into her demonic form at a health threshold. Both are
--- new work over the shipped Rapture rule.
+-- THE COUNTERPLAY, STATED: every one of those runs through her court, so the court is the fight. Thin it
+-- and she has fewer walls, fewer places to go and fewer bodies to split a wound across; Sunder her and the
+-- Court and the Congregation go quiet together (Trait.flag); Cure what she takes; Root her and she cannot
+-- change partners. And Xin, who can never be taken, is still the one body her charm finds no purchase on.
 --
--- Her reliquary carries her rule for whoever lifts it (data/items/utility/utility_reliquary_unbidden.lua).
+-- What she hands over is the Reliquary of the Unbidden, reworked to her court (trait_her_court), then her
+-- escape, a counter to her charm, and her old Rapture as a drain on a crowd -- Descent.DROPS.lust.
 return {
-    name = "Luxuria, the Unbidden",
-    race = "human",
+    name = "Luxuria, Queen of the Succubi",
+    race = "demon",
     tier = 4,
     -- WHAT LEVEL THESE NUMBERS WERE WRITTEN FOR. This body is authored as the fight it is at the end
     -- of its line, and models/growth.lua scales it DOWN toward the shallows rather than growing it up
-    -- from a base -- so a descent that deals this circle as floor 1 meets a smaller version of the
-    -- same thing instead of an unkillable one. At this level the numbers below are exactly the
-    -- numbers. See Growth.spawn.
+    -- from a base. See Growth.spawn.
     referenceLevel = 13,
     boss = true, -- a quest objective: immune to execute (Coup de Grace) and to Charm
     sprite = "assets/chars/general_lust.png",
     portrait = "assets/portraits/general_lust.png", -- large VN portrait for conversations (falls back if missing)
+    archetype = "skirmish",
     stats = {
-        health = 261, mana = 60, stamina = 25,
-        staminaRegen = 2,
-        damage = 14, magicDamage = 10, -- middling; the drink is what keeps her standing
-        defense = 14, magicDefense = 14,
-        movement = 4,
-        speed = 4,
-        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
-        -- attacker's crit. Authored, and never grown -- these are what this body IS.
-        skill = 7, luck = 7,
+        -- THIN ON PURPOSE (settled on review): the army is her armour. What she pays for is everything
+        -- in the list above, and a body that makes others take its blows does not also need the bar.
+        health = 250, mana = 60, stamina = 25,
+        staminaRegen = 3,
+        damage = 12, magicDamage = 18,
+        defense = 8, magicDefense = 14,
+        movement = 5,
+        speed = 6,
+        skill = 8, luck = 8,
     },
-    -- Her loadout as the 3x3 grid (row-major); false = an empty cell. Her rule rides on the Reliquary of
-    -- the Unbidden in the center (bound, unstealable), the censer of ashes -- the lust family read from the
-    -- taking side (data/items/weapon/weapon_censer_of_ashes.lua) -- beside it.
+    -- The line's resist, at its top rung: the same nothing the succubi wear, with a demon's holy wound.
+    resist = { dark = 4, holy = -4 },
+    -- Her loadout as the 3x3 grid (row-major); false = an empty cell. Mark Target sits beside the
+    -- Anointing because it needs a ranged weapon next to it; the rule rides the Court in the centre, and
+    -- she wears her own reliquary.
     startingItems = {
-        false, false,                        false,
-        false, "utility_reliquary_unbidden", "weapon_censer_of_ashes",
-        false, false,                        false,
+        "weapon_parting_kiss",  "weapon_the_anointing", "ability_mark_target",
+        "utility_fallen_wings", "utility_the_court",    "utility_reliquary_unbidden",
+        false,                  false,                  false,
     },
-    -- Basic tactics (models/ai.lua): a hungry duelist finishes what she has drained -- press the foe
-    -- already closest to falling. (Her Rapture rule rides on the reliquary; this only picks the mark.)
+    defaultAction = "weapon_parting_kiss",
     ai = {
-        { priority = "high", act = "attack", targetPref = "lowest_hp",
-          when = { subject = "foe_lowest_hp", test = "hp_pct_below", value = 0.5 } },
+        -- 1. Mark the body closest to falling, so the court converges on the one her charm also wants.
+        { priority = "high", act = "cast", item = "ability_mark_target", targetPref = "lowest_hp",
+          when = { subject = "foe_lowest_hp", test = "lacks_status", value = "status_mark" } },
+        -- 2. The Anointing into the weakest: the charm's own curve read as a preference.
+        { priority = "high", act = "attack", item = "weapon_the_anointing", targetPref = "lowest_hp",
+          when = { subject = "any_foe", test = "exists" } },
+        -- 3. Otherwise the kiss, into whatever reached her.
+        { priority = "normal", act = "attack", targetPref = "nearest",
+          when = { subject = "any_foe", test = "in_reach" } },
     },
 }

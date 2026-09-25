@@ -1,39 +1,52 @@
--- Luxuria's rule, and Lust's in one hook: lust "takes what is not offered" (docs/story.md, which flags
--- this as the wired-but-unwritten trait). Where Greed takes the foe itself -- Charm, the tool that turns
--- an ally (data/items/ability/ability_charm.lua) -- Lust takes what you KEPT: the reserves you were
--- hoarding rather than spending. Every time she acts on a foe she draws off the stamina and mana they
--- did not offer up, and takes it into herself as health.
+-- Rapture: Lust in one hook -- it "takes what is not offered" (docs/story.md). Where Charm takes the foe
+-- itself, this takes what the foe KEPT: the stamina and mana it was hoarding rather than spending.
 --
--- The counterplay is the sin stated as tactics: SPEND. A party that pours its reserves out each turn has
--- nothing held back for her to find; a party that husbands them for the big turn is feeding her the whole
--- time. And the one unit she can never draw from is the one that already gave everything away -- Xin
+-- IT WAS LUXURIA'S RULE AND IS NOT ANY MORE. When she became the Queen of the succubi (settled on review
+-- 2026-09-25) her fight became her army, and this left her kit for its own piece: the Saint's Chalice
+-- (data/items/utility/utility_saints_chalice.lua). The review asked for it back "as an aoe drain", so it
+-- no longer drinks from one body: every blow draws off the reserves of the foe it lands on AND of every
+-- foe standing beside that one, and half of what it took comes back to the bearer as health.
+--
+-- The counterplay is still the sin stated as tactics: SPEND, and do not bunch up. A company that pours its
+-- reserves out each turn has nothing held back to find; one clustered around the body being hit feeds the
+-- bearer three and four times over. And the one unit it can never draw from is Xin
 -- (data/traits/trait_devotion_unbidden.lua), whose Unbidden rule this hook checks and passes over.
 --
--- Fired from onCast (Trait.onCast), so it rides on any offensive action and, like every general's rule,
--- travels with the relic lifted off her body (data/items/utility/utility_reliquary_unbidden.lua): carry
--- it and you take what your foes withhold, and become the thing you killed.
+-- Per body it takes less than the old single-target rule did (12 each) and still more than the Unasked
+-- (trait_unasked, 8 each), which is the ordering tests/greed_lust_circle_spec.lua holds.
 return {
     name = "Rapture",
-    description = "Draws off the stamina and mana a foe held back, and takes it into herself.",
-    stamina = 12, -- reserve seized from each pool on a hit
-    mana = 12,
+    description = "Draws off the stamina and mana held back by the foe you hit and every foe beside it, "
+        .. "and takes half into you as health.",
+    stamina = 10, -- reserve seized from each pool, per body caught
+    mana = 10,
     onCast = function(ctx)
-        local target = ctx.unitAt(ctx.tx, ctx.ty)
+        local centre = ctx.unitAt(ctx.tx, ctx.ty)
+        if not (centre and centre.alive) then return end
         -- WHOSE the body is, not which side it is standing on: a foe this same cast just Charmed is on
-        -- her side by the time this hook runs, and seizing what it held back is exactly the thing she
-        -- does to it (Status.ownSide, which reads through Charm's stash).
+        -- the bearer's side by the time this hook runs, and it is still a foe (Status.ownSide).
         local Status = require("models.status")
-        if not target or not target.alive
-            or Status.ownSide(target) == Status.ownSide(ctx.unit) then return end
-        -- A will that gave everything away holds nothing back to seize (Xin's Unbidden rule).
-        if require("models.trait").has(target, "trait_devotion_unbidden") then
-            ctx.log("action", string.format("%s has held nothing back.", (target.char and target.char.name) or "The target"))
-            return
+        local Trait = require("models.trait")
+        local mine = Status.ownSide(ctx.unit)
+        if Status.ownSide(centre) == mine then return end
+        local taken, spared = 0, false
+        for _, u in ipairs(ctx.unitsNear(centre.x, centre.y, 1)) do
+            if u.alive and u ~= ctx.unit and Status.ownSide(u) ~= mine then
+                -- A will that gave everything away holds nothing back to seize (Xin's Unbidden rule).
+                if Trait.has(u, "trait_devotion_unbidden") then
+                    spared = true
+                else
+                    taken = taken + ctx.drain(u, "stamina", ctx.def.stamina) + ctx.drain(u, "mana", ctx.def.mana)
+                end
+            end
         end
-        local taken = ctx.drain(target, "stamina", ctx.def.stamina) + ctx.drain(target, "mana", ctx.def.mana)
+        if spared then
+            ctx.log("action", "One of them has held nothing back.")
+        end
         if taken > 0 then
-            ctx.heal(ctx.unit, math.floor(taken / 2 + 0.5)) -- she takes it into herself
-            ctx.log("action", string.format("%s takes what was not offered.", (ctx.unit.char and ctx.unit.char.name) or "She"))
+            ctx.heal(ctx.unit, math.floor(taken / 2 + 0.5))
+            ctx.log("action", string.format("%s takes what was not offered.",
+                (ctx.unit.char and ctx.unit.char.name) or "The bearer"))
         end
     end,
 }

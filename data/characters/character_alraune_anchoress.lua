@@ -53,6 +53,8 @@ return {
         "utility_the_pit_grows",
         "ability_gallows_seed",
         "consumable_mandragora",
+        -- The censer that roots, off the body that holds (moved off Luxuria's list, 2026-09-25).
+        "weapon_censer_of_the_grasping_hollow",
     },
     defaultAction = "weapon_nightshade",
     ai = {

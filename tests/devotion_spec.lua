@@ -23,35 +23,43 @@ end
 
 return {
     {
-        name = "Rapture draws off the reserves a foe held back, and takes them into herself",
+        -- Rapture left Luxuria's kit on review (2026-09-25) for the Saint's Chalice, which is where it is
+        -- carried now; the rule and Xin's exception to it are what these two cases hold.
+        name = "Rapture draws off the reserves a foe held back, and takes them into the bearer",
         fn = function()
             local c = Combat.new(arena(6, 6),
-                { { char = Character.instantiate("character_general_lust"), x = 1, y = 1 } },
+                { { char = Character.instantiate("character_priest"), x = 1, y = 1 } },
                 { { char = Character.instantiate("character_rowan"), x = 2, y = 1 } })
             local luxuria, foe = c.units[1], c.units[2]
-            assert(Trait.has(luxuria, "trait_rapture"), "Luxuria carries her rule")
+            luxuria.traits = luxuria.traits or {}
+            luxuria.traits[#luxuria.traits + 1] =
+                Trait.instantiate("trait_rapture", Item.instantiate("utility_saints_chalice"))
+            assert(Trait.has(luxuria, "trait_rapture"), "the Chalice's bearer carries the rule")
 
             -- Wound her so the reserves she takes have somewhere to go.
-            luxuria.char.stats.health.current = 120
+            luxuria.char.stats.health.current = 10
             local stamBefore = Combat.resource(foe.char, "stamina")
             local manaBefore = Combat.resource(foe.char, "mana")
             local hpBefore = luxuria.char.stats.health.current
-            assert(stamBefore >= 12 and manaBefore >= 12, "the foe has reserves to lose")
+            assert(stamBefore >= 10 and manaBefore >= 10, "the foe has reserves to lose")
 
             Trait.onCast(c, luxuria, { tx = foe.x, ty = foe.y })
 
-            assert(Combat.resource(foe.char, "stamina") == stamBefore - 12, "12 stamina seized")
-            assert(Combat.resource(foe.char, "mana") == manaBefore - 12, "12 mana seized")
-            assert(luxuria.char.stats.health.current > hpBefore, "and taken into her as health")
+            assert(Combat.resource(foe.char, "stamina") == stamBefore - 10, "10 stamina seized")
+            assert(Combat.resource(foe.char, "mana") == manaBefore - 10, "10 mana seized")
+            assert(luxuria.char.stats.health.current > hpBefore, "and taken in as health")
         end,
     },
     {
         name = "Xin holds nothing back: Rapture passes over her, taking nothing",
         fn = function()
             local c = Combat.new(arena(6, 6),
-                { { char = Character.instantiate("character_general_lust"), x = 1, y = 1 } },
+                { { char = Character.instantiate("character_priest"), x = 1, y = 1 } },
                 { { char = Character.instantiate("character_xin"), x = 2, y = 1 } })
             local luxuria, xin = c.units[1], c.units[2]
+            luxuria.traits = luxuria.traits or {}
+            luxuria.traits[#luxuria.traits + 1] =
+                Trait.instantiate("trait_rapture", Item.instantiate("utility_saints_chalice"))
             assert(Trait.has(xin, "trait_devotion_unbidden"), "Xin carries the Unbidden rule")
 
             local stamBefore = Combat.resource(xin.char, "stamina")

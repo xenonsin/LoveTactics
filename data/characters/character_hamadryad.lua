@@ -48,6 +48,8 @@ return {
         "weapon_churchyard_yew",
         "ability_through_the_grain",
         "ability_briarfloor",
+        -- Ground that heals, off the grove's heart (moved off Luxuria's list, 2026-09-25).
+        "weapon_renewal_staff",
     },
     defaultAction = "weapon_thorn_whip",
     ai = {

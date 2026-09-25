@@ -36,6 +36,8 @@ return {
     drops = {
         "weapon_spore_censer",
         "consumable_puffball",
+        -- A thurifer carries a censer; two of the priest finds that waited on Luxuria's list (2026-09-25).
+        "weapon_censer_of_the_hollow_dark", "weapon_censer_of_the_unravelling",
     },
     defaultAction = "weapon_spore_bolt",
     ai = {

@@ -589,6 +589,15 @@ Grade.TRAIT_GRADE = {
     -- the pure multipliers on this shelf: a heal that only fires while a foe you took is still swinging
     -- is worth less per turn than a bonus that fires on every one of yours.
     trait_borrowed_blood =              1.2,  -- Borrowed Blood
+    -- LUXURIA'S THREE (2026-09-25). THE COURT is her whole army and rides only her own vessel, so it is
+    -- priced like the Blooded: worth nothing to a player, who can never hold it. HER COURT (the reworked
+    -- Reliquary) is a live multiplier on two stats that is dead until a charm lands and scales with how
+    -- many are held -- the Congregation's condition with a gentler payoff, so a little under it. SMELLING
+    -- SALTS answers one charm a fight and nothing else: a narrow, reliable ward, priced under the curse
+    -- ward's everything-of-a-kind.
+    trait_the_court =                   1.0,  -- The Court
+    trait_her_court =                   2.4,  -- Her Court
+    trait_smelling_salts =              1.4,  -- Smelling Salts
     trait_field_still =                 2.0,  -- Field Still
     trait_ghost_wind =                  2.0,  -- Ghost-Wind
     trait_guardians_blessing =          2.0,  -- Guardian's Blessing

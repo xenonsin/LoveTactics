@@ -315,7 +315,18 @@ Descent.SINS = {
     -- and she decides what it does.
     { id = "lust", name = "Lust", vendor = "cathedral", biome = "swamp",
         scene = "conversation_descent_lust",
-        guardian = { lead = "character_general_lust", filler = "character_lamia" },
+        -- THE QUEEN AND HER PROCESSION (settled on review 2026-09-25; data/characters/character_general_lust.lua).
+        -- Her escort is her court -- knights, and priests walking in behind them -- and it was a lamia
+        -- until she became a body that trades tiles: the lamia roots, and the hold/move rule below keeps
+        -- a rooter out of any fight with a mover in it. The waves are a WAVE BATTLE, so the win is her
+        -- (Descent.stairWin): the church keeps sending its own, every one of them kneels to her at the start
+        -- of her turn, and every one walks out the moment she falls. `maxAlive` counts HER, so the room
+        -- tops up to five of her court. Below half her health the period drops to 40 (Court.quicken).
+        guardian = { lead = "character_general_lust", filler = "character_knight",
+            waves = {
+                { at = 10, every = 60, composition = { "character_knight", "character_priest" },
+                  from = "surround", maxAlive = 6 },
+            } },
         -- THE UNBIDDEN COMES WHEN SHE IS CALLED, and the body that calls her stands at its own end of
         -- the floor: the ward is a body. Beat her, the ward breaks, the stair opens. Who that body is
         -- is the lieutenant, and the lieutenant is gone -- so the ward is currently held by whatever
@@ -652,8 +663,11 @@ Descent.DROPS = {
     } },
     lust     = { minor = { "utility_beggars_bowl" }, general = {
         "utility_reliquary_unbidden",
-        "weapon_censer_of_the_grasping_hollow", "weapon_censer_of_the_hollow_dark",
-        "weapon_censer_of_the_unravelling", "weapon_renewal_staff",
+        -- Her rules, lifted off her (settled on review 2026-09-25): her escape, the answer to her charm,
+        -- and her old Rapture reworked as a drain on a crowd. The four priest finds that queued here went
+        -- to bodies of their own on her ground ("have other things drop it"): the censers to the Thurifer
+        -- and the Anchoress, the Renewal Staff to the Hamadryad.
+        "ability_changing_partners", "utility_smelling_salts", "utility_saints_chalice",
     } },
     greed    = { minor = { "utility_tally_stick" }, general = {
         "utility_bottomless_purse",

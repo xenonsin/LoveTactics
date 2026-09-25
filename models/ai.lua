@@ -2061,6 +2061,21 @@ local function prefBonus(ctx, rule, cand, w)
     return 0
 end
 
+-- HER COURT GOES FOR WHOEVER SHE MARKED (data/characters/character_general_lust.lua, models/court.lua).
+-- Luxuria's army is knights and priests walking in on their own blueprints, whose rules know nothing of
+-- her; what makes them HERS is the binding, so the preference rides the binding rather than their rules.
+-- A body bound to a charmer who carries The Court scores a Marked foe as if its own rule had asked for
+-- it -- the same TARGET_PREF weight every authored preference adds, so a lethal blow elsewhere still wins.
+function AI.courtBonus(unit, cand, w)
+    local t = cand.target
+    if not (t and t.alive and Status.has(t, "status_mark")) then return 0 end
+    if Status.ownSide(t) == unit.side then return 0 end
+    local st = Status.get(unit, "status_charm")
+    local queen = st and st.bound and st.charmer
+    if not (queen and queen.alive and require("models.trait").has(queen, "trait_the_court")) then return 0 end
+    return w.TARGET_PREF or 0
+end
+
 -- ---------------------------------------------------------------------------
 -- The decision
 -- ---------------------------------------------------------------------------
@@ -2191,6 +2206,7 @@ function AI.plan(combat, unit)
                 for _, c in ipairs(pool) do
                     c.score = AI.scoreCandidate(combat, unit, c, w, previews)
                     c.score = c.score + prefBonus(ctx, rule, c, w)
+                    c.score = c.score + AI.courtBonus(unit, c, w)
                     if c.outcome > 0 and c.target ~= spare and not takesTheLast(c) then
                         scored[#scored + 1] = c
                     end

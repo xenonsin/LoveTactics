@@ -1193,7 +1193,12 @@ return {
             -- ...and the bodies Descent seats directly, which no encounter pool contains.
             local lust = sinNamed("lust")
             check("the Lust stair", { lust.minor.lead, lust.minor.filler })
-            check("the Lust guardian", { lust.guardian.lead, lust.guardian.filler })
+            local guard = { lust.guardian.lead, lust.guardian.filler }
+            -- ...and the Queen's Procession, which walks in for the whole fight (2026-09-25).
+            for _, w in ipairs(lust.guardian.waves or {}) do
+                for _, id in ipairs(w.composition or {}) do guard[#guard + 1] = id end
+            end
+            check("the Lust guardian", guard)
         end,
     },
 }
