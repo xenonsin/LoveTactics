@@ -482,7 +482,8 @@ return {
             -- that stops naming them fails here.
             -- Deep enough for both gates: the ooze opens at day 6 and the King at 14, and a ctx
             -- shallower than either would pass this case by simply never asking about the body.
-            local ctx = { day = 20, biome = "swamp", prestige = 4 }
+            -- The KEEP since the 2026-09-25 swap: Greed came up out of the fen and brought its slimes.
+            local ctx = { day = 20, biome = "castle", prestige = 4 }
             local seen = {}
             for _, def in pairs(Encounter.defs) do
                 if def.condition == nil or def.condition(ctx) then
@@ -491,8 +492,8 @@ return {
                     for _, id in ipairs(comp or {}) do seen[id] = true end
                 end
             end
-            assert(seen.character_slime, "nothing in the swamp fields a slime")
-            assert(seen.character_king_slime, "nothing in the swamp fields the King")
+            assert(seen.character_slime, "nothing in Greed's keep fields a slime")
+            assert(seen.character_king_slime, "nothing in Greed's keep fields the King")
         end,
     },
     {

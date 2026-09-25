@@ -28,7 +28,7 @@
 -- ratchet for debt already shipped, its header says not to raise a number to make a build pass, and
 -- filing brand-new content as pre-existing debt is the same move wearing a different hat.
 --
--- Locked to the swamp by `ctx.biome`, the same predicate every circle keeps its stock with, so the
+-- Locked to Greed's keep by `ctx.biome` (it came up out of the fen with Greed in the 2026-09-25 swap), the same predicate every circle keeps its stock with, so the
 -- stratum means something and no engine work was needed to say so.
 --
 -- THE DEPTH IS THE SAFETY MARGIN, and it is worth naming because this is the only body in the game a
@@ -60,7 +60,7 @@ return {
     --
     -- Descent.SINS' `elites` is the SEPARATE question of which of a floor's candidates the floor is
     -- ABOUT (billed at ELITE_NAMED_WEIGHT). The rung says where a thing may stand at all.
-    condition = function(ctx) return ctx.biome == "swamp" end,
+    condition = function(ctx) return ctx.biome == "castle" end,
     -- RUNG 1 -- the approach, and Greed bills it there. Its own header argues this lesson must land
     -- "well above the crowned version of it" -- and above, in a rift, is the approach floor.
     rung = 1,

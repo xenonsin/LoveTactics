@@ -22,6 +22,11 @@ return {
     -- Which of a circle's floors a thing bills on is Descent.SINS' `elites` for the standing threat, and
     -- `rung` for anything an author wants split across the approach and the seat.
     condition = function(ctx) return ctx.biome == "swamp" end,
+    -- LUST'S SEAT ONLY (2026-09-25). The Shoal came down with the swap and is placed the way the
+    -- mushroom folk are, on Keno's note: ONE home fight on ONE floor (floor four, as the Ossuary is), and
+    -- its chaff padding the circle's other fen fights (the Reed Choir, the Lorelei's Rock, the Still
+    -- Water). Floor three already has the naga in the Reed Choir.
+    rung = 2,
     -- THICKENS EARLY AND FLATTENS, which is the shape both measurements asked for. A shoal of two
     -- behind one lancer is a fight a levelled company walks over (tests/descent_spec.lua rates it on
     -- floor three); a shoal that kept growing is a fight that stops ending (tests/skirmish_spec.lua

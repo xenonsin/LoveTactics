@@ -69,7 +69,8 @@ return {
         -- the contract written out where the sizing case used to be, at the foot of this file.
         name = "Greed's and Lust's lieutenant slots are filled, and by stand-ins that say so",
         fn = function()
-            assert(sinNamed("greed").minor.lead == "character_fen_lancer", "a lancer stands in for the Tally")
+            -- A SLIME since the swap (2026-09-25): the lancers went down into the fen with Lust.
+            assert(sinNamed("greed").minor.lead == "character_slime", "a slime stands in for the Tally")
             assert(sinNamed("lust").minor.lead == "character_lamia", "a lamia stands in for the Suppliant")
             assert(not Character.defs["character_the_tally"], "the Tally is gone")
             assert(not Character.defs["character_the_suppliant"], "the Suppliant is gone")
@@ -529,21 +530,46 @@ return {
         end,
     },
     {
-        name = "the castle fields an ordinary fight and an elite again",
+        name = "Lust's fen fields ordinary fights and elites on both of its floors",
         fn = function()
-            -- THE 2026-09-22 CUT LEFT THIS GROUND AT 0/0 -- Lust's two floors rolled nothing at all,
+            -- THE 2026-09-22 CUT LEFT LUST'S GROUND AT 0/0 -- its two floors rolled nothing at all,
             -- which is a playability break rather than thinning. Measured the way that hole was
             -- measured: the floor pool derives its circle from ctx.quest.sin, so a ctx without it
-            -- silently skips the elite billing entirely.
+            -- silently skips the elite billing entirely. Lust's ground is the SWAMP since the swap
+            -- (2026-09-25), and both rungs are asked, since a circle's two floors deal different fights.
             local Encounter = require("models.encounter")
-            local combat, elite = 0, 0
-            for _, row in ipairs(Encounter.pool({ biome = "castle", depth = 3, rung = 2,
-                                                  quest = { sin = "lust" } })) do
-                if row.kind == "elite" then elite = elite + 1
-                elseif row.kind == "combat" then combat = combat + 1 end
+            assert(sinNamed("lust").biome == "swamp", "Lust fights on the fen")
+            for rung = 1, 2 do
+                local combat, elite = 0, 0
+                for _, row in ipairs(Encounter.pool({ biome = "swamp", depth = 3, rung = rung,
+                                                      quest = { sin = "lust" } })) do
+                    if row.kind == "elite" then elite = elite + 1
+                    elseif row.kind == "combat" then combat = combat + 1 end
+                end
+                assert(combat >= 1, "Lust's floor " .. rung .. " rolls no ordinary fight at all")
+                assert(elite >= 1, "Lust's floor " .. rung .. " rolls no elite at all")
             end
-            assert(combat >= 1, "the castle rolls no ordinary fight at all")
-            assert(elite >= 1, "the castle rolls no elite at all")
+        end,
+    },
+    {
+        -- THE HOLE THE SWAP LEFT, AND THIS CASE IS ITS MARKER. Greed came up into the keep and the Shoal,
+        -- its only ordinary fight, went down with the naga. Its two elites came with it. Greed's own
+        -- ordinary content is owed (Descent.SINS' Greed entry): when it lands this case reddens on its
+        -- second assertion, and whoever lands it turns that line into `>= 1`.
+        name = "Greed's keep fields its two slime elites, and no ordinary fight yet (owed)",
+        fn = function()
+            local Encounter = require("models.encounter")
+            assert(sinNamed("greed").biome == "castle", "Greed fights in the keep")
+            local combat, elite = 0, 0
+            for rung = 1, 2 do
+                for _, row in ipairs(Encounter.pool({ biome = "castle", depth = 5, rung = rung,
+                                                      quest = { sin = "greed" } })) do
+                    if row.kind == "elite" then elite = elite + 1
+                    elseif row.kind == "combat" then combat = combat + 1 end
+                end
+            end
+            assert(elite >= 2, "the keep rolls " .. elite .. " elite rows across its two floors")
+            assert(combat == 0, "the keep rolls an ordinary fight now: the owed hole is closed -- update this marker")
         end,
     },
     -- ------------------------------------------------------------ WHAT THE FLOCK IS KNOWN FOR
@@ -1142,12 +1168,16 @@ return {
             assert(classOf("character_harpy") == "move", "a harpy throws")
             assert(classOf("character_dryad") == "move", "a dryad pulls")
             assert(classOf("character_swooncap_puffer") == "either", "a puffer does neither")
+            -- ...and the fen's own, which came down with the swap (2026-09-25).
+            assert(classOf("character_undertow") == "move", "the Undertow drags")
+            assert(classOf("character_siren") == "either", "a Siren sings, and neither holds nor throws")
+            assert(classOf("character_lorelei") == "either", "nor does the Lorelei")
 
-            -- Every rolled and elite fight on the castle, at every depth and on both rungs, since a
-            -- band can add a body the base list does not name.
+            -- Every rolled and elite fight on Lust's ground (the fen since the swap), at every depth and
+            -- on both rungs, since a band can add a body the base list does not name.
             local swept = 0
             for id, enc in pairs(Encounter.defs) do
-                local ctx = { biome = "castle", depth = 1, rung = enc.rung or 1, quest = { sin = "lust" } }
+                local ctx = { biome = "swamp", depth = 1, rung = enc.rung or 1, quest = { sin = "lust" } }
                 if enc.composition and (not enc.condition or enc.condition(ctx)) then
                     for depth = 1, Descent.FLOORS do
                         ctx.depth = depth
@@ -1158,7 +1188,7 @@ return {
                     swept = swept + 1
                 end
             end
-            assert(swept >= 15, "the sweep reached only " .. swept .. " castle fights -- is it reading the ground?")
+            assert(swept >= 20, "the sweep reached only " .. swept .. " fen fights -- is it reading the ground?")
 
             -- ...and the bodies Descent seats directly, which no encounter pool contains.
             local lust = sinNamed("lust")

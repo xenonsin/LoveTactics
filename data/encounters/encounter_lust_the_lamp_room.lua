@@ -30,7 +30,7 @@
 -- fights; the Open Roof, the Cistern and the Long Gallery brought back three and the note on the Open
 -- Roof asked for ground that was "not a harpy". This is the fourth, and it is not an animal at all.
 --
--- Locked to the castle stratum by ctx.biome, the same gate every circle uses. NO DEPTH GATE: ITS CIRCLE
+-- Locked to Lust's stratum by ctx.biome (the fen since the 2026-09-25 swap), the same gate every circle uses. NO DEPTH GATE: ITS CIRCLE
 -- IS ITS PLACEMENT. A circle owns a fixed stratum, so a depth on top of that is a second opinion about
 -- where this goes, and it disagrees the moment the shuffle deals Lust at another depth
 -- (Descent.sinOrder).
@@ -40,7 +40,7 @@ return {
     name = "The Lamp Room",
     kind = "combat",
     weight = 5,
-    condition = function(ctx) return ctx.biome == "castle" end,
+    condition = function(ctx) return ctx.biome == "swamp" end,
     rung = 2, -- home floor of the circle (models/encounter.lua)
     composition = function(ctx)
         -- A ROOM OF ONE KIND, on the Open Roof's own argument. What makes four Fire Elementals worse

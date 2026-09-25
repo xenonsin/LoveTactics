@@ -41,14 +41,14 @@
 -- See encounter_lust_the_long_gallery for why there are human bodies on a floor the 2026-09-22 sweep
 -- cleared of them, and what the distinction is.
 --
--- Locked to the castle stratum by ctx.biome, the same gate every circle uses.
+-- Locked to Lust's stratum by ctx.biome (the fen since the 2026-09-25 swap), the same gate every circle uses.
 local Band = require("models.band")
 
 return {
     name = "The Lady Chapel",
     kind = "elite",
     weight = 1, -- rarest thing on the floor: the body a stratum is remembered for
-    condition = function(ctx) return ctx.biome == "castle" end,
+    condition = function(ctx) return ctx.biome == "swamp" end,
     -- RUNG 2, beside the Eyrie. Heaviest of the castle's four measured, and the floor where "cut
     -- the one doing it" -- this circle's standing law, free advice everywhere else -- finally has
     -- to be paid for. One elite, one floor: see models/encounter.lua's eligibility note.

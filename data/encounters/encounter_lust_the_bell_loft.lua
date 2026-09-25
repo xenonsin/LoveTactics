@@ -31,14 +31,14 @@
 -- that works -- a party strung across a doorway hands the loft three tiles of purchase on every body in
 -- it, and one packed into the middle of the floor eats a shove that ends on a friendly shoulder.
 --
--- Locked to the castle stratum by ctx.biome. NO DEPTH GATE: ITS CIRCLE IS ITS PLACEMENT.
+-- Locked to Lust's stratum by ctx.biome (the fen since the 2026-09-25 swap). NO DEPTH GATE: ITS CIRCLE IS ITS PLACEMENT.
 local Band = require("models.band")
 
 return {
     name = "The Bell Loft",
     kind = "combat",
     weight = 5,
-    condition = function(ctx) return ctx.biome == "castle" end,
+    condition = function(ctx) return ctx.biome == "swamp" end,
     rung = 1, -- home floor of the circle (models/encounter.lua)
     composition = function(ctx)
         -- ONE HEAVIER THAN THE CISTERN'S BAND, AND THE NUMBER WAS MEASURED RATHER THAN CHOSEN. This

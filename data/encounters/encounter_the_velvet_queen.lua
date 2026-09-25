@@ -9,7 +9,7 @@ return {
     name = "The Velvet Queen",
     kind = "elite",
     weight = 2,
-    condition = function(ctx) return ctx.biome == "castle" end,
+    condition = function(ctx) return ctx.biome == "swamp" end,
     rung = 2,
     composition = function(ctx)
         return Band.fill({ "character_velvet_queen" }, ctx, "character_velvet_slime",

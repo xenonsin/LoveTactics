@@ -53,6 +53,10 @@ local TROPHIES = {
     -- Lust's velvet slimes (data/characters/character_velvet_slime.lua and its Queen): their Strip,
     -- worn, and the one coat nothing can be stripped from.
     "utility_velvet_glove", "utility_kept_suitors", "utility_loosened_laces", "armor_silk_lining",
+    -- The Siren's four and the Lorelei's two (data/characters/character_siren.lua, character_lorelei.lua):
+    -- the answer to her, her voice carried, the crew's rope, the mere's echo; her Only Voice and her rock.
+    "utility_beeswax", "utility_sirens_comb", "utility_mast_rope", "utility_echo",
+    "utility_deaf_heart", "utility_held_note",
     -- Greed's slimes compound (trait_interest): the coin, the purse and the scale are that rule worn.
     "utility_ledger_coin", "utility_compound_purse", "utility_usurers_scale",
     -- The last four slime lines (2026-09-24), each a circle's rule worn: Wrath's Boil Over, Sloth's three

@@ -242,12 +242,13 @@ return {
         end,
     },
     {
-        name = "the castle fields the succubus line, and all three of its stops are reachable",
+        name = "Lust's ground fields the succubus line, and all three of its stops are reachable",
         fn = function()
             local Encounter = require("models.encounter")
             local seen = {}
+            -- The fen since the 2026-09-25 swap: the church is drowned, and its chapels went with it.
             for _, rung in ipairs({ 1, 2 }) do
-                for _, row in ipairs(Encounter.pool({ biome = "castle", depth = 3, rung = rung,
+                for _, row in ipairs(Encounter.pool({ biome = "swamp", depth = 3, rung = rung,
                                                       quest = { sin = "lust" } })) do
                     seen[row.id] = true
                 end

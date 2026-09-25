@@ -347,12 +347,24 @@ end
 -- NO for deep water, or the player would be handed a way to walk into it after all. "Where does a shove
 -- come to rest" is the only caller that wants the water open, and there is exactly one of it: the
 -- preview below, which has to land the ghost on the tile the live shove will.
+-- ONLY THE WATER'S OWN FOLK DROWN YOU ON LUST'S FEN (Keno's call, 2026-09-25). A shove, pull or throw
+-- from an enemy that cannot swim stops at the bank on a swamp board: the harpies, the Wind Elemental,
+-- the dryads and the succubi still move a company, and a channel still costs the tile it stands in the
+-- way of, but only a naga or a Siren puts a body IN it. The player's own shoves are untouched, and so is
+-- every other ground (the spire's drop is Pride's, and she keeps it). `combat._shover` is named by the
+-- displacement entry points (namingTheShover, beside Combat.pull).
+function Combat.bankHolds(combat)
+    local shover = combat and combat._shover
+    if not shover or shover.side == "party" or Combat.isAquatic(shover) then return false end
+    return (combat.arena and combat.arena.biome) == "swamp"
+end
+
 function Combat.footprintShovable(combat, w, h, ax, ay, ignoreUnit, alsoIgnore)
     local arena = combat.arena
     for _, c in ipairs(Combat.cellsAt(w, h, ax, ay)) do
         local row = arena and arena.tiles and arena.tiles[c.y]
         local cell = row and row[c.x]
-        if not (cell and (cell.walkable or cell.drowns)) then return false end
+        if not (cell and (cell.walkable or (cell.drowns and not Combat.bankHolds(combat)))) then return false end
         if Combat.objectBlocksAt(combat, c.x, c.y) then return false end
         local occ = Combat.unitAt(combat, c.x, c.y)
         if occ and occ ~= ignoreUnit and occ ~= alsoIgnore then return false end
@@ -4815,7 +4827,7 @@ function Combat.enterTile(combat, unit, x, y, reason, fromX, fromY)
     -- Last, and re-checking `alive`: a trap or hazard may already have killed the unit on this very
     -- tile, and a corpse does not bleed.
     if unit.alive and (reason == "walk" or reason == "forced") then
-        Status.onEnterTile(combat, unit)
+        Status.onEnterTile(combat, unit, reason, fromX, fromY)
     end
     -- A body wider than one tile also stands on the cells beyond its anchor. The once-per-move effects
     -- above (trail, carried ground, bleed) fired for the body as a whole; here we spring only the
@@ -5274,7 +5286,7 @@ local function footprintCanShift(combat, unit, dx, dy)
         -- walkable = false, so it never appears in a move band and no player can walk into it. Which
         -- means the tile is a weapon the enemy points at you rather than a hole you fall down -- and it
         -- is why the naga kit is built out of shoves and pulls rather than out of damage.
-        if not (cell and (cell.walkable or cell.drowns)) then return false, nil end
+        if not (cell and (cell.walkable or (cell.drowns and not Combat.bankHolds(combat)))) then return false, nil end
         if Combat.objectBlocksAt(combat, c.x, c.y) then
             local obj, kind = Combat.objectAt(combat, c.x, c.y)
             return false, obj, kind
@@ -5386,7 +5398,7 @@ function Combat.knockback(combat, source, target, distance, opts)
     -- Said in the log, because "the mace hit and the body did not move" needs a reason on screen.
     if Status.blocksForcedMove(target) then
         Combat.logEvent(combat, "status",
-            string.format("%s is rooted and holds its ground.", unitName(target)), target)
+            string.format("%s holds its ground.", unitName(target)), target)
         return 0, false
     end
 
@@ -5938,6 +5950,24 @@ function Combat.pull(combat, source, target)
     end
     return true, moved
 end
+
+-- NAME THE SHOVER for the length of a displacement, so the one legality test underneath all of them
+-- (footprintCanShift / Combat.footprintShovable) can ask Combat.bankHolds who is doing the moving. A
+-- wrapper rather than a threaded argument: the primitive is reached from a dozen shapes of shove, and
+-- only these three entry points know their source. Restored rather than cleared, so a shove that
+-- sets off another (a collision's chain) hands the name back on the way out.
+local function namingTheShover(fn)
+    return function(combat, source, ...)
+        local was = combat and combat._shover
+        if combat then combat._shover = source end
+        local out = { fn(combat, source, ...) }
+        if combat then combat._shover = was end
+        return unpack(out, 1, table.maxn(out))
+    end
+end
+Combat.knockback = namingTheShover(Combat.knockback)
+Combat.knockbackTile = namingTheShover(Combat.knockbackTile)
+Combat.pull = namingTheShover(Combat.pull)
 
 -- Drag a standing OBJECT (a prop, a visible trap) toward `source` until it stands adjacent -- the
 -- object-layer twin of Combat.pull, exactly as Combat.hurlObject is Combat.knockback's. Needs a clear
@@ -7315,6 +7345,14 @@ local function releaseCharmedBy(combat, gone)
     for _, freed in ipairs(Status.removePointingAt(combat, "status_charm", "charmer", gone)) do
         Combat.logEvent(combat, "status",
             string.format("%s comes back to itself.", unitName(freed)), freed)
+    end
+    -- ...and a SONG ends with its singer, on the same argument: the Siren's Longing and the Lorelei's
+    -- Only Voice both name who sang them (data/status/status_longing.lua), and cutting her down is the
+    -- answer the fen hands the player. Quiet per body -- the song stopping is one line, not six.
+    local heard = #Status.removePointingAt(combat, "status_longing", "singer", gone)
+        + #Status.removePointingAt(combat, "status_the_only_voice", "singer", gone)
+    if heard > 0 then
+        Combat.logEvent(combat, "status", string.format("%s's song ends.", unitName(gone)), gone)
     end
 end
 
@@ -9050,6 +9088,13 @@ function Combat.applyHeal(combat, target, amount)
     -- game runs through -- a spell, a potion, a Regeneration tick, a lifesteal drink, a Sanctified
     -- Presence -- so nothing has to learn the rule twice and nothing can route around it.
     local blocked = Status.blocksHealing(target)
+    -- ...and a body that hears only HER is not healed either (the Only Voice, a foe's Deaf Heart).
+    local deaf = not blocked and (amount or 0) > 0 and Status.deafToAllies(target)
+    if deaf then
+        Combat.logEvent(combat, "status",
+            string.format("%s cannot be healed: %s.", unitName(target), deaf), target)
+        return 0
+    end
     if blocked and (amount or 0) > 0 then
         Combat.logEvent(combat, "status",
             string.format("%s cannot be healed: %s.", unitName(target), blocked.name or blocked.id), target)
@@ -10366,7 +10411,15 @@ function Combat.reachWaiver(combat, unit, other)
     local range, sight = false, false
     if Trait.flag(unit, "reachesWeb") and Combat.besideWeb(combat, other) then range, sight = true, true end
     if Trait.flag(unit, "sightsRooted") and Status.has(other, "status_root") then sight = true end
-    return range, sight
+    -- A third answer, a reach BONUS against this one body rather than a waiver: the Siren's Comb carries
+    -- a bearer's abilities two tiles further to a foe that is Wet (sound carries over water).
+    local extra = 0
+    local comb = Trait.flag(unit, "carriesOverWater")
+    if comb and other.side ~= unit.side and Status.has(other, "status_wet") then
+        extra = (comb.def and comb.def.carriesOverWater) or 2
+        if type(extra) ~= "number" then extra = 2 end
+    end
+    return range, sight, extra
 end
 
 -- Is any cell of `other`'s body on a web strand, or next to one (diagonals count)?
@@ -10389,10 +10442,10 @@ function Combat.abilityTargets(combat, unit, item)
     local minRange = Combat.abilityMinRange(ab)
     for _, other in ipairs(combat.units) do
         local d = Combat.unitGap(unit, other) -- nearest cell to nearest cell, so either body may be wide
-        local waivesRange, waivesSight = Combat.reachWaiver(combat, unit, other)
+        local waivesRange, waivesSight, reachExtra = Combat.reachWaiver(combat, unit, other)
         -- A head is aimed at only through the picker (Combat.aimHead), never planned for: the AI's list
         -- is bodies, and a blow planned on a head's cell would land on the body anyway.
-        if other.alive and not other.headOf and (d <= range or waivesRange) and d >= minRange then
+        if other.alive and not other.headOf and (d <= range + (reachExtra or 0) or waivesRange) and d >= minRange then
             local valid = false
             -- An untargetable foe (Invisible) can't be picked; a friendly cast ignores the status,
             -- so an ally can still heal or buff someone the enemy has lost sight of.
@@ -12193,11 +12246,11 @@ function Combat.useItem(combat, unit, item, tx, ty, windup, dest, spend)
     -- occupant from it -- so a 2×2 foe can be struck from beside any of its four cells.
     local dist = Combat.cellGap(tx, ty, unit)
     local aimedAt = ab.target == "enemy" and Combat.unitAt(combat, tx, ty) or nil
-    local waivesRange, waivesSight = false, false
+    local waivesRange, waivesSight, reachExtra = false, false, 0
     if aimedAt and aimedAt.side ~= unit.side then
-        waivesRange, waivesSight = Combat.reachWaiver(combat, unit, aimedAt)
+        waivesRange, waivesSight, reachExtra = Combat.reachWaiver(combat, unit, aimedAt)
     end
-    if dist > Combat.abilityRange(combat, unit, ab) + Combat.adjacencyRangeBonus(unit.char, item)
+    if dist > Combat.abilityRange(combat, unit, ab) + Combat.adjacencyRangeBonus(unit.char, item) + (reachExtra or 0)
         and not waivesRange then
         return false, "out of range"
     end
@@ -13147,6 +13200,16 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
         -- Strip every debuff from a unit (Cure). Returns the number removed.
         cleanse = function(tgt)
             if not tgt then return 0 end
+            -- A body that hears only HER (the Lorelei's Only Voice, a Deaf Heart's presence) takes no
+            -- cleanse from its own side -- which is also what keeps the Only Voice on it: the one thing
+            -- that would lift it is an ally's Cure. Self-cleanses and a foe's are untouched.
+            local deaf = unit and unit ~= tgt and unit.side == tgt.side and Status.deafToAllies(tgt)
+            if deaf then
+                Combat.logEvent(combat, "status",
+                    string.format("%s cannot hear its own side (%s): the cleanse does not reach it.",
+                        unitName(tgt), deaf), tgt)
+                return 0
+            end
             return Combat.cleanse(combat, tgt)
         end,
         -- The reachable corpse on a tile, or nil -- a harvestable body (Raise Dead / the Ledger's Due
@@ -13493,6 +13556,33 @@ end
 -- Note the control itself still lands in full. Kingsfall's bearer is stunned, shoved down the order, and
 -- swings anyway -- what it declines is the cancellation, never the status. That keeps the counterplay
 -- honest: a stun aimed at a Kingsfall is not wasted, it is only insufficient.
+-- Does `unit` hold the note this time? True -- once a battle -- for a bearer of Held Note (the Lorelei's
+-- rock, and the drop that hands it over): the first thing that would break a sustained cast (a channel
+-- interrupted, a Siren's song struck) does not. Spends the once and logs it; false ever after, and for
+-- everybody without the trait. A body is rebuilt for every fight, so the once is per battle.
+function Combat.holdsTheNote(combat, unit)
+    local t = Trait.flag(unit, "heldNote")
+    if not t or (t.stacks or 0) > 0 then return false end
+    t.stacks = 1
+    Combat.logEvent(combat, "status", string.format("%s holds the note.", unitName(unit)), unit)
+    return true
+end
+
+-- WHO HEARS A SONG. Every foe of the singer within four tiles, and every foe that is WET anywhere on
+-- the board -- sound carries over water, so the lancers' soaking is what points the song. The rule the
+-- Siren, the Lorelei and Echo share (data/status/status_singing.lua, data/traits/trait_echo.lua), in one
+-- place so the three cannot disagree about who was listening. `ally` flips it to the singer's own side.
+Combat.SONG_REACH = 4
+function Combat.hears(singer, other, ally)
+    if not (singer and other and other.alive and other ~= singer) or other.incapacitated then return false end
+    if ally then
+        if other.side ~= singer.side then return false end
+    elseif other.side == singer.side then
+        return false
+    end
+    return Combat.unitGap(singer, other) <= Combat.SONG_REACH or Status.has(other, "status_wet")
+end
+
 function Combat.interruptChannel(combat, unit, reason)
     if not unit.channel then return false end
     -- VIGIL BEADS (the Theurge's): a bearer whose charm declares `steadfastChannels` cannot have ANY
@@ -13510,6 +13600,9 @@ function Combat.interruptChannel(combat, unit, reason)
             string.format("%s does not falter (%s).", unitName(unit), reason or "disrupted"), unit)
         return false
     end
+    -- HELD NOTE (data/traits/trait_held_note.lua): the first break each battle is shrugged off. Never
+    -- a death or a dismissal -- the note is held by somebody who is still there.
+    if reason ~= "death" and reason ~= "dismissed" and Combat.holdsTheNote(combat, unit) then return false end
     unit.channel = nil
     Status.remove(combat, unit, "status_channeling")
     Combat.logEvent(combat, "status",

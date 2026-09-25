@@ -9,6 +9,15 @@ because three things turned out not to work the way this document said they woul
 
 > Nobody walks into deep water. You get **put** there.
 
+**Where the Mere lives now (2026-09-25).** Lust and Greed swapped grounds: Lust fights on the swamp,
+Greed in the keep, and the Mere went down with the water into **Lust's** two floors. The Shoal is
+floor four's ordinary traffic, the Undertow and Nethrys (an elite at last, *The Still Water*) are spares
+on floor four, and two new bodies sing from the channels: the **Siren** (Longing, where every step away
+from her costs health) and her elite the **Lorelei** (the Only Voice, where nothing from your own side
+reaches you). One rule changed the load-bearing fact above on that ground only: on Lust's fen **only a
+swimmer's shove** puts you in the water (`Combat.bankHolds`). A harpy's gust stops at the bank. See
+`Descent.SINS`' Lust entry and `tests/siren_spec.lua`.
+
 ---
 
 ## The ground

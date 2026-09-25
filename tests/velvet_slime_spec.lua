@@ -245,14 +245,15 @@ return {
 
     -- ----- placement -----
     {
-        name = "the velvet slimes stand on Lust's approach and their Queen on its seat, in the keep only",
+        name = "the velvet slimes stand on Lust's approach and their Queen on its seat, on Lust's fen only",
         fn = function()
             local slimes = Encounter.defs.encounter_the_velvet_slimes
             local queen = Encounter.defs.encounter_the_velvet_queen
             assert(slimes.kind == "elite" and slimes.rung == 1, "the slimes are the approach's elite")
             assert(queen.kind == "elite" and queen.rung == 2, "the Queen is the seat's")
             for _, e in ipairs({ slimes, queen }) do
-                assert(e.condition({ biome = "castle" }) and not e.condition({ biome = "swamp" }), "the keep only")
+                -- The fen since the 2026-09-25 swap: Lust's ground, not a particular landform.
+                assert(e.condition({ biome = "swamp" }) and not e.condition({ biome = "castle" }), "Lust's fen only")
             end
             local lust
             for _, s in ipairs(Descent.SINS) do if s.id == "lust" then lust = s end end

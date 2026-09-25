@@ -42,8 +42,8 @@ local Descent = {}
 -- the table below is written in.)
 --
 --   gluttony  forest      a beast hunt: the circle that eats is the circle you hunt, and its apex eats the rest
---   lust      castle      a court, and its cast has always belonged in one
---   greed     swamp       a drowned vault, silted up, and the things that live in it
+--   lust      swamp       a drowned church in a fen, and the things that sing from its water
+--   greed     castle      a counting-house keep, and the toll at its door
 --   wrath     volcanic    the obvious one, and it has earned it
 --   sloth     tundra      the post nobody came back to
 --   envy      desert      barren ground with a view of somewhere green
@@ -64,6 +64,13 @@ local Descent = {}
 --   * GREED TOOK THE SWAMP, which had to keep an owner once Gluttony left it. A drowned vault reads:
 --     the coffer crawler and the coin chitter are vermin, the Gilt Wyrm is a wyrm, and a hoard under
 --     silt is a hoard nobody has counted. The naga set stays on the water and becomes Greed's.
+--   * ...AND LUST AND GREED SWAPPED (2026-09-25, on Keno's call). Lust went down into the fen and took
+--     the naga with it; Greed came up into the keep. The Cathedral's church is DROWNED, not gone -- its
+--     bell loft, lamp rooms and chapels keep their names under the water line -- and the fen's own folk
+--     (the naga, the Siren and the Lorelei) are what a church sunk in a mere grows. Greed keeps its toll
+--     and its slimes; a counting-house is a keep with a door you pay at. The swap cost one line per
+--     fight (every encounter here is locked by `ctx.biome`), and it left Greed's keep with no ordinary
+--     fight at all, because the Shoal was the only one it had -- which is owed, and marked in its entry.
 --   * ...WHICH LEAVES THE CROWN THE UNDERWORLD ALONE, and the undead Greed left behind in it. The
 --     bottom floor used to borrow Greed's pool wholesale -- you re-fought floors five and six under the
 --     last stair -- and now it has the Bone Orchard, the Barrow Lord and the Skeleton King to itself.
@@ -242,13 +249,24 @@ Descent.SINS = {
     -- allegiance -- and it is the only stratum where a body can spend an entire fight without ever
     -- meaningfully hurting anybody.
     --
-    -- SO WHAT DOES THE KILLING IS THE KEEP. The castle is the Thinwall Keep (data/biomes/castle.lua):
-    -- a rooms carve, thin walls, a warren of doorways, and a signature hazard that Disarms whoever
-    -- stands in one. A tile of shove is worth nothing in open country and everything in here --
-    -- Combat.knockback charges the impact of a shove it could not finish, harder the more travel it was
-    -- denied, so a body driven into a wall pays for the whole distance it never travelled. The flock
-    -- rearranges the company; the building kills it. That is the circle, and it is why the bodies on it
+    -- SO WHAT DOES THE KILLING IS THE WATER. Since the swap (2026-09-25) this circle is fought on the
+    -- fen, whose walls are deep channels that drown anything that cannot swim (hazard_deep_water). A
+    -- tile of shove is worth nothing in open country and everything beside a channel. The flock
+    -- rearranges the company; the water kills it. That is the circle, and it is why the bodies on it
     -- are authored thin and fast rather than heavy.
+    --
+    -- BUT ONLY THE WATER'S OWN FOLK AIM AT IT (Keno's call, 2026-09-25). A shove from a body that cannot
+    -- swim stops at the bank on this ground (Combat.bankHolds): the harpies, the Wind Elemental, the
+    -- dryads and the succubi still move you, and the channel still costs you the tile, but only a naga
+    -- or a Siren puts you IN it. Drowning is the fen faction's signature and not background noise on
+    -- the second circle a company walks.
+    --
+    -- AND THE SIREN SINGS FROM IT. Her song lands LONGING on everyone who hears her -- within four tiles,
+    -- or anywhere on the board while Wet, since sound carries over water -- and while it lasts every step
+    -- a body takes away from her costs it health (data/status/status_longing.lua). The lancers soak, she
+    -- sings to the soaked, and the cheap way out of the song is to walk in toward the channel the naga
+    -- are waiting in. Her elite, the Lorelei, adds THE ONLY VOICE: whoever hears her gets nothing from
+    -- their own side. Both songs break when the singer is hit, and both end with her.
     --
     -- THE COUNTERPLAY, STATED, because a circle whose rule cannot be answered is a tax:
     --   * Decide where the fight happens. The roofless room is the one piece of open floor on the
@@ -270,8 +288,10 @@ Descent.SINS = {
     -- and no roster -- rolled, seated or escorted -- mixes them:
     --
     --   HOLD   the Lamiae (the knot), the Alraune line (Taproot, and the honey it holds you on)
-    --   MOVE   the flock, the three succubi (the kiss trades tiles), the Wind Elemental, the Dryad line
-    --   EITHER the Fire Elemental and the mushroom folk -- they neither root nor shove
+    --   MOVE   the flock, the three succubi (the kiss trades tiles), the Wind Elemental, the Dryad line,
+    --          the Undertow and Nethrys (the drag and the drive into the channel)
+    --   EITHER the Fire Elemental, the mushroom folk, the Shoalkin, the Fen Lancer, the Tidecaller, the
+    --          Siren and the Lorelei -- they neither root nor shove
     --
     -- tests/greed_lust_circle_spec.lua sweeps every roster this circle can field and fails on a mix; a
     -- body is classed by its KIT, not by a list, so a new one cannot slip past it.
@@ -288,7 +308,7 @@ Descent.SINS = {
     -- taunted body is taken out of the player's hands and driven at whoever jeered. That is what lets
     -- this circle's alpha escalate in KIND rather than in size: the flock decides where your body is,
     -- and she decides what it does.
-    { id = "lust", name = "Lust", vendor = "cathedral", biome = "castle",
+    { id = "lust", name = "Lust", vendor = "cathedral", biome = "swamp",
         scene = "conversation_descent_lust",
         guardian = { lead = "character_general_lust", filler = "character_lamia" },
         -- THE UNBIDDEN COMES WHEN SHE IS CALLED, and the body that calls her stands at its own end of
@@ -404,24 +424,34 @@ Descent.SINS = {
                               "encounter_lust_the_anchorhold", "encounter_lust_the_churchyard_yew",
                               -- LUST'S SLIMES (2026-09-24): the velvet slimes strip a company's gear,
                               -- the slimes on the approach and their Queen on the seat.
-                              "encounter_the_velvet_slimes", "encounter_the_velvet_queen" } } },
-    { id = "greed", name = "Greed", vendor = "undercroft", biome = "swamp",
+                              "encounter_the_velvet_slimes", "encounter_the_velvet_queen",
+                              -- THE FEN'S OWN (2026-09-25), which came down with the swap. The Lorelei
+                              -- sings on the approach; the Undertow and Nethrys hold the seat beside
+                              -- the Eyrie, which stays the fight floor four is ABOUT.
+                              "encounter_the_lorelei_rock", "encounter_the_undertow",
+                              "encounter_the_still_water" } } },
+    { id = "greed", name = "Greed", vendor = "undercroft", biome = "castle",
         scene = "conversation_descent_greed",
-        guardian = { lead = "character_general_greed", filler = "character_fen_lancer" },
+        -- THE KEEP (2026-09-25). Greed came up out of the fen when Lust went down into it, and the naga
+        -- went with the water. Its guardian's escort and its stair lead were Fen Lancers; both are the
+        -- circle's own Slime now, a stand-in and marked as one. GREED'S KEEP FIELDS NO ORDINARY FIGHT --
+        -- the Shoal was the only one, and it is Lust's -- so a floor here rolls only its two elites. That
+        -- is owed, the same hole Lust's castle had on 2026-09-22, and it is Greed's next round of content.
+        guardian = { lead = "character_general_greed", filler = "character_slime" },
         -- PAY AT THE STAIR. Priced as a SHARE of what is on the mule rather than as a flat purse, so
         -- greed taxes exactly what the company came down for and a fat bag costs more to walk past --
         -- which couples the two systems this mode is built on instead of standing beside them.
         gate = { kind = "toll", share = 0.25 },
         -- NO LIEUTENANT. The Tally is gone; a fen lancer stands in, which is the heaviest thing the
         -- water rolls short of the Undertow. It is what a replacement replaces.
-        minor = { lead = "character_fen_lancer", filler = "character_slime" },
+        minor = { lead = "character_slime", filler = "character_slime" },
         -- BILLED AT LAST, AND THE RUNG SPLIT IS WHY. The Gilt Wyrm and the Hoard are gone, so both of
         -- Greed's floors drew the same three pieces of inherited water at the same weight and neither
         -- stair was ABOUT anything. Cut across the two rungs, the approach has exactly one candidate and
         -- the seat has two, so naming them costs nothing and buys a floor its own face: the Fen Ooze is
         -- the whole of the approach, and the Mere's set-piece is the heaviest thing the water has.
-        elites = { approach = "encounter_fen_ooze", seat = "encounter_the_undertow",
-            spares = { "encounter_the_king_slime" } } },  -- rung 2
+        -- (2026-09-25) The Undertow went down with the naga, so the King Slime holds the seat alone.
+        elites = { approach = "encounter_fen_ooze", seat = "encounter_the_king_slime" } },
     { id = "envy", name = "Envy", vendor = "alchemist", biome = "desert",
         scene = "conversation_descent_envy",
         -- THE SECOND OF THE TWO BROKEN LEADS. character_homunculus is the alchemist's SUMMON -- its own

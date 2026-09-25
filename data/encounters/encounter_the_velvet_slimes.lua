@@ -10,7 +10,7 @@ return {
     name = "The Velvet Slimes",
     kind = "elite",
     weight = 2,
-    condition = function(ctx) return ctx.biome == "castle" end,
+    condition = function(ctx) return ctx.biome == "swamp" end,
     rung = 1,
     composition = function(ctx)
         return Band.fill({}, ctx, "character_velvet_slime", { base = 2, per = 4, max = 3 })

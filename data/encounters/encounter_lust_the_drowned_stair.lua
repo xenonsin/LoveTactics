@@ -17,7 +17,7 @@
 -- and deliberate interaction on a floor that rolls both stops -- but as an AUTHORED cast it would
 -- teach the coil and the wind in the same breath and neither one cleanly.
 --
--- Locked to the castle stratum by ctx.biome; billed on the circle's own floors through Descent.SINS'
+-- Locked to Lust's stratum by ctx.biome (the fen since the 2026-09-25 swap); billed on the circle's own floors through Descent.SINS'
 -- `elites`, which is where a circle says WHICH of its two stairs a threat stands on.
 local Band = require("models.band")
 
@@ -25,7 +25,7 @@ return {
     name = "The Drowned Stair",
     kind = "elite",
     weight = 1, -- rarest thing on the floor: the body a stratum is remembered for
-    condition = function(ctx) return ctx.biome == "castle" end,
+    condition = function(ctx) return ctx.biome == "swamp" end,
     -- RUNG 1 -- the approach, which is where Lust bills it. The coils only PRICE a company's turns
     -- where the Matriarch's cry takes them outright, so the cheaper rule stands on the floor walked
     -- onto first. One elite, one floor: see models/encounter.lua's eligibility note.

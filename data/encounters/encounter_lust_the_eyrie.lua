@@ -12,7 +12,7 @@
 -- a word of explanation. The two blueprints are one lesson taught twice, which is what an approach and
 -- a seat are for.
 --
--- Locked to the castle stratum by ctx.biome, the same gate every circle uses; billed on the circle's
+-- Locked to Lust's stratum by ctx.biome (the fen since the 2026-09-25 swap), the same gate every circle uses; billed on the circle's
 -- own floors through Descent.SINS' `elites`, which is where a circle says WHICH of its two stairs a
 -- threat stands on.
 local Band = require("models.band")
@@ -21,7 +21,7 @@ return {
     name = "The Eyrie",
     kind = "elite",
     weight = 1, -- rarest thing on the floor: the body a stratum is remembered for
-    condition = function(ctx) return ctx.biome == "castle" end,
+    condition = function(ctx) return ctx.biome == "swamp" end,
     -- RUNG 2 -- the seat, which is where Lust bills it. A party that learned on the stair that
     -- distance costs arrives here about to be compelled to cross a room.
     -- One elite, one floor: see models/encounter.lua's eligibility note.

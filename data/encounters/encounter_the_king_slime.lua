@@ -36,7 +36,7 @@ return {
     --
     -- Descent.SINS' `elites` is the SEPARATE question of which of a floor's candidates the floor is
     -- ABOUT (billed at ELITE_NAMED_WEIGHT). The rung says where a thing may stand at all.
-    condition = function(ctx) return ctx.biome == "swamp" end,
+    condition = function(ctx) return ctx.biome == "castle" end,
     -- RUNG 2 -- the seat: the crowned version, one floor under the ooze that teaches the lesson
     -- cheaply.
     rung = 2,

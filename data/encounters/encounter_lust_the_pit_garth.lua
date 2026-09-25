@@ -12,14 +12,14 @@
 -- HOLD ONLY. Nothing in this roster shoves, drags or swaps, and nothing may be added here that does
 -- (Descent.SINS' Lust entry; tests/greed_lust_circle_spec.lua sweeps every Lust roster for the mix).
 --
--- Locked to the castle stratum by ctx.biome. NO DEPTH GATE: ITS CIRCLE IS ITS PLACEMENT.
+-- Locked to Lust's stratum by ctx.biome (the fen since the 2026-09-25 swap). NO DEPTH GATE: ITS CIRCLE IS ITS PLACEMENT.
 local Band = require("models.band")
 
 return {
     name = "The Pit Garth",
     kind = "combat",
     weight = 4,
-    condition = function(ctx) return ctx.biome == "castle" end,
+    condition = function(ctx) return ctx.biome == "swamp" end,
     rung = 1, -- home floor of the circle (models/encounter.lua)
     composition = function(ctx)
         local list = { "character_alraune", "character_mandrake", "character_mandrake" }

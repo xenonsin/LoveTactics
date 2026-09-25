@@ -833,6 +833,19 @@ Grade.TRAIT_GRADE = {
     trait_velvet_glove =                2.0,  -- Velvet Glove
     trait_kept_suitors =                1.5,  -- Kept Suitors
     trait_loosened_laces =              3.0,  -- Loosened Laces
+    -- THE SIREN AND THE LORELEI (2026-09-25, Lust's fen). The Only Voice is a creature rule on a bound
+    -- rock and graded as Strip's peer. The drops: Beeswax is three immunities bought with a real cost
+    -- (no ally buff lands), a ward's worth (2.0); the Comb is two tiles of reach against one condition
+    -- (1.5); the Mast-Rope anchors a whole line, Root's protection with none of its cost (2.5); Echo
+    -- is a half-power spell for free whenever a caster works beside you (3.0); Deaf Heart is an
+    -- anti-heal presence, Loosened Laces' weight (3.0); Held Note is one saved channel (1.5).
+    trait_only_voice =                  4.0,  -- The Only Voice
+    trait_beeswax =                     2.0,  -- Beeswax
+    trait_sirens_comb =                 1.5,  -- Siren's Comb
+    trait_mast_rope =                   2.5,  -- Mast-Rope
+    trait_echo =                        3.0,  -- Echo
+    trait_deaf_heart =                  3.0,  -- Deaf Heart
+    trait_held_note =                   1.5,  -- Held Note
     -- GREED'S LINE. Interest is judged at its commonest grant, the Ledger Coin's +1 a turn to +6 --
     -- an Empowered that arrives slowly (2.5); the Scale is Fury Swipes without the type restriction.
     trait_interest =                    2.5,  -- Interest

@@ -718,6 +718,32 @@ function Status.blocksHealing(unit)
     return nil
 end
 
+-- Does `unit` hear ONLY HER -- is it deaf to its own side? Answers the name of what is doing it, or nil.
+-- Two sources, one question: the Lorelei's Only Voice (a status declaring `hearsOnlyHer`, data/status/
+-- status_the_only_voice.lua), and a Deaf Heart worn by a FOE standing near (a trait `presence` carrying
+-- `deafens`, data/traits/trait_deaf_heart.lua). Read at the three doors a company helps itself through:
+-- a heal (Combat.applyHeal), a buff from an ally (Status.apply), and an ally's cleanse (fx.cleanse).
+function Status.deafToAllies(unit)
+    for _, s in ipairs((unit and unit.statuses) or {}) do
+        if s.def.hearsOnlyHer then return s.def.name or s.id end
+    end
+    local combat = unit and unit.combat
+    local Trait = require("models.trait")
+    if not (Trait.presenceLive and combat and combat.units) then return nil end
+    local Combat = require("models.combat")
+    for _, bearer in ipairs(combat.units) do
+        if bearer ~= unit and bearer.alive and bearer.side ~= unit.side and bearer.traits then
+            for _, t in ipairs(bearer.traits) do
+                local p = t.def and t.def.presence
+                if p and p.deafens and Combat.unitGap(bearer, unit) <= (p.radius or 1) then
+                    return t.def.name or "a Deaf Heart"
+                end
+            end
+        end
+    end
+    return nil
+end
+
 -- Is `unit`'s healing turned back on it -- does a heal aimed at this body WOUND it instead? True while
 -- any active status sets `invertsHealing` (Interred). Read through Combat.healingInverted, which asks
 -- this and the trait side of the same question together, at the one funnel every heal runs through.
@@ -1120,6 +1146,24 @@ function Status.apply(combat, unit, id, opts)
         end
     end
 
+    -- A BUFF FROM AN ALLY does not land on a body that cannot hear its own side: the Lorelei's Only
+    -- Voice and a foe's Deaf Heart (Status.deafToAllies), and Beeswax in the bearer's own ears (the
+    -- `hearsNothing` trait flag -- deaf to the song, and to its friends). Only a status somebody ELSE
+    -- on its side handed it: a body's own stance, a debuff, and ground with no applier all land as ever.
+    local giver = opts.applier
+    if combat and not def.debuff and giver and giver ~= unit and giver.side == unit.side then
+        local deaf = Status.deafToAllies(unit)
+        if not deaf and require("models.trait").flag(unit, "hearsNothing") then deaf = "Beeswax" end
+        if deaf then
+            if not def.hideLog then
+                local Combat = require("models.combat")
+                Combat.logEvent(combat, "status", string.format("%s cannot hear its own side (%s): %s does not land.",
+                    (unit.char and unit.char.name) or "Unit", deaf, def.name or id), unit)
+            end
+            return nil
+        end
+    end
+
     -- A resistible status buys only the ticks this body's ward and its own history let it (see the
     -- resistance contract above). Copied rather than mutated: `opts` is frequently a table owned by an
     -- item blueprint (an aura's `status.opts`, passed straight through), and writing the shortened
@@ -1383,8 +1427,19 @@ end
 -- routes through, but only for ground movement: a blink, a swap, and a summon's arrival deliberately
 -- do NOT fire it (see the `reason` gate there). The hook a per-tile effect hangs on -- Bleed, which
 -- costs the afflicted unit blood for every step it takes and nothing at all for standing still.
-function Status.onEnterTile(combat, unit)
-    runHook(combat, unit, "onEnterTile")
+-- `reason` ("walk" or "forced") and the tile it came from ride onto the ctx, so a hook can tell a step
+-- the body chose from one it was thrown along, and which way it went: Longing bills only a WALK that
+-- ends farther from its singer (data/status/status_longing.lua).
+function Status.onEnterTile(combat, unit, reason, fromX, fromY)
+    local snapshot = {}
+    for _, s in ipairs(unit.statuses or {}) do snapshot[#snapshot + 1] = s end
+    for _, s in ipairs(snapshot) do
+        if s.def.onEnterTile then
+            local ctx = ctxFor(combat, unit, s)
+            ctx.reason, ctx.fromX, ctx.fromY = reason, fromX, fromY
+            s.def.onEnterTile(ctx)
+        end
+    end
 end
 
 -- The bearer just DEALT `amount` post-mitigation damage to someone. Fired from Combat.dealDamage
@@ -1493,6 +1548,22 @@ function Status.blocksForcedMove(unit)
         -- bearer: the Full that Second Helping hands over plants its eater, and the Full a Distended
         -- Girth or the Sated carries does not (data/items/ability/ability_second_helping.lua).
         if s.def.blocksForcedMove or s.unmovable then return true end
+    end
+    -- LASHED TO THE MAST (data/traits/trait_mast_rope.lua). A Mast-Rope ties its bearer to every ally
+    -- touching it: while they stand together, none of them can be shoved, pulled or thrown. Asked
+    -- through the board the body stands on, and only once a presence trait exists at all (the rope
+    -- declares one), so every other body in the game pays one boolean here.
+    local combat = unit and unit.combat
+    local Trait = require("models.trait")
+    if Trait.presenceLive and combat and combat.units and unit.alive ~= false then
+        local Combat = require("models.combat")
+        local selfLashed = Trait.flag(unit, "lashes")
+        for _, u in ipairs(combat.units) do
+            if u ~= unit and u.alive and not u.incapacitated and u.side == unit.side
+                and Combat.unitGap(unit, u) == 1 and (selfLashed or Trait.flag(u, "lashes")) then
+                return true
+            end
+        end
     end
     return false
 end

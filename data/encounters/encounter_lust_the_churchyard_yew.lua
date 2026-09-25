@@ -16,7 +16,7 @@ return {
     name = "The Churchyard Yew",
     kind = "elite",
     weight = 1,
-    condition = function(ctx) return ctx.biome == "castle" end,
+    condition = function(ctx) return ctx.biome == "swamp" end,
     rung = 2,
     composition = function(ctx)
         local list = { "character_hamadryad", "character_nymph" }

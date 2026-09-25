@@ -38,14 +38,14 @@
 -- fourth. It turns up at ELITE_WEIGHT on either floor instead (Descent.floorPool's elite branch keeps
 -- the unnamed ones legal so a circle's spares still appear).
 --
--- Locked to the castle stratum by ctx.biome, the same gate every circle uses.
+-- Locked to Lust's stratum by ctx.biome (the fen since the 2026-09-25 swap), the same gate every circle uses.
 local Band = require("models.band")
 
 return {
     name = "The Flue",
     kind = "elite",
     weight = 1, -- rarest thing on the floor: the body a stratum is remembered for
-    condition = function(ctx) return ctx.biome == "castle" end,
+    condition = function(ctx) return ctx.biome == "swamp" end,
     -- RUNG 1, beside the Drowned Stair. Lightest of the castle's four measured, and the one castle
     -- fight where the stratum's standing counterplay REVERSES -- clear the chaff first, because the
     -- fire is what the wind pulls on. A lesson that inverts a rule belongs on the floor that floor

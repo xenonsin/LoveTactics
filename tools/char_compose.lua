@@ -390,6 +390,9 @@ local CHARACTER_SILHOUETTE = {
     tidecaller = "lorc/sea-serpent",           -- the thing in the channel that is calling the weather
     undertow = "delapouite/kraken-tentacle",   -- it does not chase you; it reaches and takes
     nethrys = "delapouite/mermaid",            -- the only one of them with a face worth drawing
+    -- THE FEN'S SINGERS (2026-09-25): the lyre she carries, and the harp the Lorelei sits behind.
+    siren = "lorc/lyre",
+    lorelei = "delapouite/harp",
 
     -- THE ENVY CIRCLE. Glass, all of it -- an `elemental`, three `construct`s and the mini sin -- which
     -- without names here would collapse onto two kind fallbacks between them.

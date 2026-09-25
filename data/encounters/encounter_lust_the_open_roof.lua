@@ -17,7 +17,7 @@
 -- and 0 elites -- Lust's two floors rolled nothing at all. This is the first of the ordinary fights
 -- back; the ground is owed at least one more that is not a harpy.
 --
--- Locked to the castle stratum by ctx.biome, the same gate every circle uses. NO DEPTH GATE: ITS
+-- Locked to Lust's stratum by ctx.biome (the fen since the 2026-09-25 swap), the same gate every circle uses. NO DEPTH GATE: ITS
 -- CIRCLE IS ITS PLACEMENT. A circle owns a fixed stratum, so a depth on top of that is a second opinion
 -- about where this goes, and it disagrees the moment the shuffle deals Lust at another depth
 -- (Descent.sinOrder).
@@ -27,7 +27,7 @@ return {
     name = "The Open Roof",
     kind = "combat",
     weight = 5,
-    condition = function(ctx) return ctx.biome == "castle" end,
+    condition = function(ctx) return ctx.biome == "swamp" end,
     rung = 1, -- home floor of the circle (models/encounter.lua)
     composition = function(ctx)
         -- A FLOCK OF ONE KIND, where the wood and the glass field each lead with a heavier body. There

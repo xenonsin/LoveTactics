@@ -30,7 +30,7 @@
 -- charmed, with no healer of their own and a charmer who can be cut to switch them off. What was
 -- removed was that fight; what is here is the circle's own rule wearing a face.
 --
--- Locked to the castle stratum by ctx.biome, the same gate every circle uses. NO DEPTH GATE: ITS CIRCLE
+-- Locked to Lust's stratum by ctx.biome (the fen since the 2026-09-25 swap), the same gate every circle uses. NO DEPTH GATE: ITS CIRCLE
 -- IS ITS PLACEMENT. A circle owns a fixed stratum, so a depth on top of that is a second opinion about
 -- where this goes, and it disagrees the moment the shuffle deals Lust at another depth
 -- (Descent.sinOrder).
@@ -40,7 +40,7 @@ return {
     name = "The Long Gallery",
     kind = "combat",
     weight = 5,
-    condition = function(ctx) return ctx.biome == "castle" end,
+    condition = function(ctx) return ctx.biome == "swamp" end,
     rung = 1, -- home floor of the circle (models/encounter.lua)
     composition = function(ctx)
         -- ONE charmer, however deep the floor. What thickens is the congregation, which is the right

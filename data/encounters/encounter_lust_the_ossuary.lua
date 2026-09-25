@@ -12,14 +12,14 @@
 -- EITHER HALF. Nothing here roots or shoves, so the mushroom folk may stand in any Lust fight; this is
 -- the one where they stand alone.
 --
--- Locked to the castle stratum by ctx.biome. NO DEPTH GATE: ITS CIRCLE IS ITS PLACEMENT.
+-- Locked to Lust's stratum by ctx.biome (the fen since the 2026-09-25 swap). NO DEPTH GATE: ITS CIRCLE IS ITS PLACEMENT.
 local Band = require("models.band")
 
 return {
     name = "The Ossuary",
     kind = "combat",
     weight = 4,
-    condition = function(ctx) return ctx.biome == "castle" end,
+    condition = function(ctx) return ctx.biome == "swamp" end,
     rung = 2, -- home floor of the circle (models/encounter.lua)
     composition = function(ctx)
         local list = { "character_swooncap_verger", "character_swooncap_thurifer" }

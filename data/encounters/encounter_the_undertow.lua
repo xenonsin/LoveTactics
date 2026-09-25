@@ -31,11 +31,15 @@ return {
     -- Descent.SINS' `elites` is the SEPARATE question of which of a floor's candidates the floor is
     -- ABOUT (billed at ELITE_NAMED_WEIGHT). The rung says where a thing may stand at all.
     condition = function(ctx) return ctx.biome == "swamp" end,
-    -- RUNG 2 -- the seat, and Greed bills it there. Heaviest of the swamp's three measured, and the
-    -- only one that opens at Arena.ELITE_CAP rather than at a skirmish's size.
+    -- RUNG 2 -- the seat. It was Greed's billed seat until the swap (2026-09-25) took the fen and the naga
+    -- to Lust, where it stands as a spare beside the Eyrie. Opens at Arena.ELITE_CAP rather than at a
+    -- skirmish's size.
     rung = 2,
+    -- ...AND A SIREN SINGS IN IT (approved on review). The drag and the song together: Longing makes
+    -- every step away from the bank cost, and the Undertow pulls you onto it. The Tidecaller soaks, so the
+    -- Siren's voice reaches the whole company.
     composition = function(ctx)
-        local list = { "character_undertow", "character_tidecaller", "character_fen_lancer" }
+        local list = { "character_undertow", "character_tidecaller", "character_siren", "character_fen_lancer" }
         return Band.fill(list, ctx, "character_fen_lancer", { base = 1, per = 6 })
     end,
 }

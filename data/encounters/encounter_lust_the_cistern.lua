@@ -20,7 +20,7 @@
 -- rung's billed threat -- so the ordinary fight teaches the string flat, and the elite one teaches
 -- what a slope does to it.
 --
--- Locked to the castle stratum by ctx.biome, the same gate every circle uses. NO DEPTH GATE: ITS
+-- Locked to Lust's stratum by ctx.biome (the fen since the 2026-09-25 swap), the same gate every circle uses. NO DEPTH GATE: ITS
 -- CIRCLE IS ITS PLACEMENT. A circle owns a fixed stratum, so a depth on top of that is a second
 -- opinion about where this goes, and it disagrees the moment the shuffle deals Lust at another depth
 -- (Descent.sinOrder).
@@ -30,7 +30,7 @@ return {
     name = "The Cistern",
     kind = "combat",
     weight = 5,
-    condition = function(ctx) return ctx.biome == "castle" end,
+    condition = function(ctx) return ctx.biome == "swamp" end,
     rung = 1, -- home floor of the circle (models/encounter.lua)
     composition = function(ctx)
         local list = { "character_lamia" }

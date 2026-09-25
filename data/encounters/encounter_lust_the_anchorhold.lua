@@ -17,7 +17,7 @@ return {
     name = "The Anchorhold",
     kind = "elite",
     weight = 1,
-    condition = function(ctx) return ctx.biome == "castle" end,
+    condition = function(ctx) return ctx.biome == "swamp" end,
     rung = 1,
     composition = function(ctx)
         local list = { "character_alraune_anchoress", "character_mandrake", "character_mandrake" }
