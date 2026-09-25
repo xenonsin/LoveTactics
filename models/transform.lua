@@ -103,6 +103,8 @@ end
 -- the shape is worn, and released by Transform.revert. Omit it for an inflicted shape, which costs
 -- its victim nothing to wear.
 --
+-- `opts.level` mints the shape at that level rather than at the blueprint's (see below).
+--
 -- Everything that reads a unit's grid is rebuilt for the new body: its passives are re-folded
 -- (Combat.refreshPassives -- a bear wears no chainmail) and its traits re-attached (Trait.attach --
 -- the shape's own reactions, and none of the ones the original's relics granted).
@@ -116,7 +118,12 @@ function Transform.apply(combat, unit, charId, opts)
     local Trait = require("models.trait")
 
     local original = unit.char
-    local shape = Character.instantiate(charId)
+    -- `opts.level` mints the shape AT that level (Growth.atLevel) instead of at the blueprint's own: an
+    -- enemy is fielded through Growth.spawn at the fight's level, and a shape it turns into mid-fight has
+    -- to stand there too. The flat stats are the ones a shape takes over, so a level-1 shape on a deep
+    -- floor would hit like a floor-one body. Left off, the shape is the blueprint as authored.
+    local shape = opts.level and require("models.growth").atLevel(charId, opts.level)
+        or Character.instantiate(charId)
     carryContinuity(original, shape)
 
     -- The token that owns the shape's upkeep. `unit._shape` is a fresh table that exists for exactly

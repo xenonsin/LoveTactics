@@ -419,4 +419,200 @@ return {
             assert(Combat.outcomeFor(c, "party") == "win", "once both waves have come and fallen, it is")
         end,
     },
+    -- ------------------------------------------------------------------------------ the Gilt Wyrm
+    -- Reviewed 2026-09-25 ("Dragon-Sickness"): the sickness is the race's road to a dragon. Three stacks,
+    -- however they arrived, and a dwarf becomes a Gilt Wyrm for the rest of the fight.
+    {
+        name = "at three stacks of Dragon-Sickness a dwarf becomes a Gilt Wyrm, and keeps its wounds and stacks",
+        fn = function()
+            local Transform = require("models.transform")
+            local c = dwarves({ { "character_dwarf_delver", 5, 5 } })
+            local dwarf = units(c, "character_dwarf_delver")[1]
+            local pool = dwarf.char.stats.health
+            pool.current = pool.max - 5
+            for i = 1, 2 do
+                Hazard.place(c, 5 + i, 5, "hazard_coin_heap")
+                Hazard.onEnter(c, dwarf, 5 + i, 5)
+            end
+            assert(dwarf.char.id == "character_dwarf_delver", "two heaps is sick, not yet a dragon")
+            Hazard.place(c, 8, 5, "hazard_coin_heap")
+            Hazard.onEnter(c, dwarf, 8, 5)
+            assert(dwarf.char.id == "character_gilt_wyrm", "the third heap makes a dragon of it")
+            assert(Transform.originalChar(dwarf).id == "character_dwarf_delver", "the same unit, in a new body")
+            assert(dwarf.char.stats.health == pool and hp(dwarf) == pool.max - 5, "its wounds came with it: no heal")
+            assert(Status.stacksOf(dwarf, "status_dragon_sickness") == 3, "and every stack of the sickness")
+            assert(itemNamed(dwarf.char, "weapon_gilt_maw") and itemNamed(dwarf.char, "ability_venom_breath"),
+                "it bites with the Gilt Maw and breathes venom")
+            assert(itemNamed(dwarf.char, "utility_stout"), "and it is still Stout: unmovable, unrobbable, gold-seeking")
+            Hazard.place(c, 9, 5, "hazard_coin_heap")
+            Hazard.onEnter(c, dwarf, 9, 5)
+            assert(Status.stacksOf(dwarf, "status_dragon_sickness") == 4, "a wyrm still pockets gold, and still sickens")
+        end,
+    },
+    {
+        name = "a turned dwarf is a wyrm at its own level, never the blueprint's",
+        fn = function()
+            local Growth = require("models.growth")
+            local deep = Growth.spawn("character_dwarf_delver", 12, 12)
+            local c = dwarves({ { deep, 5, 5 } })
+            local dwarf = c.units[2]
+            local level = dwarf.char.level
+            assert(level and level > 1, "a deep dwarf is fielded above level 1")
+            Status.apply(c, dwarf, "status_dragon_sickness", { magnitude = 3 })
+            assert(dwarf.char.id == "character_gilt_wyrm", "it turned")
+            assert(dwarf.char.level == level, "the wyrm stands at the dwarf's level")
+            assert(dwarf.char.stats.damage > Character.instantiate("character_gilt_wyrm").stats.damage,
+                "and hits like it, not like a level-1 wyrm")
+        end,
+    },
+    {
+        name = "inherited stacks turn the heir; a company body never turns",
+        fn = function()
+            local c = dwarves({ { "character_dwarf_delver", 5, 5 }, { "character_dwarf_delver", 6, 5 } })
+            local a, heir = unpack(units(c, "character_dwarf_delver"))
+            Status.apply(c, a, "status_dragon_sickness", { magnitude = 2 })
+            Status.apply(c, heir, "status_dragon_sickness", { magnitude = 1 })
+            Combat.fell(c, a)
+            assert(heir.char.id == "character_gilt_wyrm", "a kinsman's two and its own one make three")
+            local walkerUnit = c.units[1]
+            Status.apply(c, walkerUnit, "status_dragon_sickness", { magnitude = 5 })
+            assert(walkerUnit.char.id ~= "character_gilt_wyrm", "the company stays out of it")
+        end,
+    },
+    {
+        name = "the Hoard-Thane turns, and stays an objective and the heir of all",
+        fn = function()
+            local c = dwarves({ { "character_the_hoard_thane", 10, 10 }, { "character_dwarf_delver", 3, 3 } })
+            local thane = units(c, "character_the_hoard_thane")[1]
+            Status.apply(c, thane, "status_dragon_sickness", { magnitude = 3 })
+            assert(thane.char.id == "character_gilt_wyrm", "the Thane is a dwarf, and the gold takes him too")
+            assert(thane.char.boss, "still off the execute and Charm tables")
+            Combat.fell(c, units(c, "character_dwarf_delver")[1])
+            assert(Status.stacksOf(thane, "status_inheritance") == 1, "and his line's Shares still cross the board to him")
+        end,
+    },
+    {
+        name = "a turned dwarf pays from the wyrm's list AND its own",
+        fn = function()
+            local Spoils = require("models.spoils")
+            local c = dwarves({ { "character_dwarf_delver", 5, 5 } })
+            local dwarf = units(c, "character_dwarf_delver")[1]
+            Status.apply(c, dwarf, "status_dragon_sickness", { magnitude = 3 })
+            local function offers(id)
+                local r = Spoils.depthOf(Item.defs[id])
+                for _, e in ipairs(Spoils.rankCandidates({ dwarf }, r, {})) do
+                    if e.id == id then return true end
+                end
+                return false
+            end
+            assert(offers("weapon_gram"), "the wyrm's trophies are on offer")
+            assert(offers("ability_delve"), "and so is the Delver's own")
+        end,
+    },
+    {
+        name = "the Gilt Wyrm is natural kit, and its drops are six unstocked trophies",
+        fn = function()
+            local def = Character.defs["character_gilt_wyrm"]
+            assert(def and def.race == "dragon" and not def.class, "a dragon claims no class")
+            for _, id in ipairs({ "weapon_gilt_maw", "ability_venom_breath", "utility_wyrm_dread" }) do
+                assert(Item.defs[id].class == "creature", id .. " is part of the body")
+            end
+            local want = { weapon_gram = true, armor_aegishjalmur = true, ability_wyrms_venom = true,
+                utility_lindworm_heart = true, utility_linden_leaf = true, utility_every_hair_covered = true }
+            local n = 0
+            for _, id in ipairs(def.drops) do
+                assert(want[id], id .. " was not reviewed as a wyrm drop")
+                local item = Item.defs[id]
+                assert(item.unstocked and item.price == nil and item.class ~= "creature", id .. " is a person's trophy")
+                n = n + 1
+            end
+            assert(n == 6, "six drops (Andvaranaut was cut on review)")
+        end,
+    },
+    {
+        name = "Venom Breath poisons the foes in its cone and leaves Choking Fumes on its own side",
+        fn = function()
+            local c = dwarves({ { "character_gilt_wyrm", 5, 5 } }, walker(6, 5))
+            local wyrm, foe = c.units[2], c.units[1]
+            Fixture.openTurn(c, wyrm)
+            local ok = Combat.useItem(c, wyrm, itemNamed(wyrm.char, "ability_venom_breath"), 6, 5)
+            assert(ok, "the wyrm breathes")
+            assert(Status.has(foe, "status_poison"), "the foe in the cone is poisoned")
+            local fumes = Hazard.at(c, 6, 5, "hazard_choking")
+            assert(fumes and fumes.side == wyrm.side, "the ground chokes, and it is the wyrm's")
+            assert(fumes.remaining >= 15, "for three turns")
+        end,
+    },
+    {
+        name = "the Helm of Terror: a foe within 2 moves 2 fewer squares, and one at 3 does not",
+        fn = function()
+            local near = dwarves({ { "character_gilt_wyrm", 5, 5 } }, walker(7, 5))
+            local far = dwarves({ { "character_gilt_wyrm", 5, 5 } }, walker(8, 5))
+            local a, b = near.units[1], far.units[1]
+            assert(Combat.flatStat(a, "movement") == Combat.flatStat(b, "movement") - 2, "Dread takes two squares")
+            local worn = Fixture.combat(board(), unit("character_archer", 1, 1, { items = { "armor_aegishjalmur" } }),
+                { unit("character_dwarf_delver", 2, 2) })
+            local foe = worn.units[2]
+            local alone = Fixture.combat(board(), walker(1, 1), { unit("character_dwarf_delver", 2, 2) })
+            assert(Combat.flatStat(foe, "movement") == Combat.flatStat(alone.units[2], "movement") - 2,
+                "and the Aegishjalmur lends the same dread to its wearer")
+        end,
+    },
+    {
+        name = "the Lindworm's Heart slips a spell as well as a blow, then waits three turns",
+        fn = function()
+            local Trait = require("models.trait")
+            local c = Fixture.combat(board(), unit("character_archer", 1, 1, { items = { "utility_lindworm_heart" } }),
+                { unit("character_dwarf_delver", 9, 9) })
+            local bearer = c.units[1]
+            assert(Trait.tryEvade(c, bearer, { "magical", "fire" }), "the birds warn of a spell")
+            assert(not Trait.tryEvade(c, bearer, { "physical", "slash" }), "and then the warning is spent")
+            assert(Combat.onCooldown(bearer, "trait_birds_warning"), "on a cooldown, not once a fight")
+        end,
+    },
+    {
+        name = "the Linden Leaf leaves exactly one physical tag open, on a badge, for the fight",
+        fn = function()
+            local c = Fixture.combat(board(), unit("character_archer", 1, 1, { items = { "utility_linden_leaf" } }),
+                { unit("character_dwarf_delver", 9, 9) })
+            local bearer = c.units[1]
+            local open = 0
+            for _, tag in ipairs({ "slash", "pierce", "impact" }) do
+                if Status.has(bearer, "status_vulnerable_" .. tag) then open = open + 1 end
+            end
+            assert(open == 1, "one spot the leaf covered, and only one")
+        end,
+    },
+    {
+        name = "Every Hair Covered: each heap its bearer loots is another +2 Defense",
+        fn = function()
+            local c = dwarves({ { "character_dwarf_delver", 10, 10 } },
+                unit("character_archer", 5, 5, { items = { "utility_every_hair_covered" } }))
+            local looter = c.units[1]
+            local before = Combat.flatStat(looter, "defense")
+            for i = 1, 2 do
+                Hazard.place(c, 5 + i, 5, "hazard_coin_heap")
+                Hazard.onEnter(c, looter, 5 + i, 5)
+            end
+            assert(Status.stacksOf(looter, "status_every_hair_covered") == 2, "a stack a heap")
+            assert(Combat.flatStat(looter, "defense") == before + 4, "+2 Defense each")
+        end,
+    },
+    {
+        name = "Gram: standing your ground, a foe that came to you is struck critically",
+        fn = function()
+            local c = Fixture.combat(board(), unit("character_archer", 5, 5, { items = { "weapon_gram" } }),
+                { unit("character_dwarf_delver", 6, 5) })
+            local bearer, foe = c.units[1], c.units[2]
+            local gram = itemNamed(bearer.char, "weapon_gram")
+            Fixture.openTurn(c, bearer)
+            foe.turnStartX, foe.turnStartY = 9, 5
+            assert(Combat.forcesCrit(c, bearer, foe, gram), "it walked onto the blade")
+            foe.turnStartX, foe.turnStartY = 6, 5
+            assert(not Combat.forcesCrit(c, bearer, foe, gram), "a foe that stood still gets an ordinary blow")
+            foe.turnStartX, foe.turnStartY = 9, 5
+            c.turn.moved = true
+            assert(not Combat.forcesCrit(c, bearer, foe, gram), "and a bearer that stepped has left the pit")
+        end,
+    },
 }

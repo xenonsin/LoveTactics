@@ -200,11 +200,16 @@ end
 -- physical (non-magical) hit is evaded; a spell passes through. Mutates (starts the cooldown, logs), so
 -- it must run on a REAL hit only -- never the damage preview, which reads mitigatedDamage instead.
 function Trait.tryEvade(combat, unit, tags)
-    if not unit or not unit.traits or hasTag(tags, "magical") then return false end
+    if not unit or not unit.traits then return false end
     if reactionsSuppressed(unit) then return false end -- a stunned/frozen unit can't dodge
     local Combat = require("models.combat")
+    -- A spell is not something footwork slips (`evadesPhysical`, Dodge), but a WARNING is about the blow
+    -- coming rather than its kind: `evadesAny` (the Lindworm's Heart, data/traits/trait_birds_warning.lua)
+    -- voids either.
+    local magical = hasTag(tags, "magical")
     for _, t in ipairs(unit.traits) do
-        if t.def.evadesPhysical and not Combat.onCooldown(unit, t.id) then
+        if (t.def.evadesAny or (t.def.evadesPhysical and not magical))
+            and not Combat.onCooldown(unit, t.id) then
             Combat.setCooldown(unit, t.id, Trait.param(t, "cooldown", 0))
             Combat.logEvent(combat, "action",
                 string.format("%s dodges the blow!", (unit.char and unit.char.name) or "Unit"), unit)

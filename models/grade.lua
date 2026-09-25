@@ -486,6 +486,17 @@ Grade.TRAIT_GRADE = {
     trait_scurry =                      1.5,  -- Scurry -- step back after a blow, and Harry the foe
     trait_godlings_scale =              2.0,  -- You Are the Dragon -- allies within 2 gain damage and defense
 
+    -- THE GILT WYRM (2026-09-25), what a dwarf becomes at three Dragon-Sickness, and its saga drops. The
+    -- Helm is Loosened Laces on the legs rather than the guard; the Heart is Dodge with magic let in at a
+    -- slightly longer wait; From Below is a critical you have to stand still and be walked onto for; the
+    -- gold skin pays only where there is gold to loot; the Leaf's trait is its COST (the item's resist is
+    -- weighed on the item), so it carries nothing, as the Bare Patch does not.
+    trait_helm_of_terror =              3.0,  -- Helm of Terror -- foes within 2 move 2 fewer
+    trait_birds_warning =               3.0,  -- The Birds' Warning -- evade any attack, 3-turn cooldown
+    trait_from_below =                  2.5,  -- From Below -- unmoved, a foe that came to you is critted
+    trait_every_hair_covered =          1.5,  -- Every Hair Covered -- +2 Defense per heap looted
+    trait_linden_leaf =                 0.0,  -- Linden Leaf -- one physical tag left open: a weakness
+
     -- THE SATED AND THE FLIGHT (2026-09-23). The creature rules first, weighed as a body's own and never
     -- shelved. Then the drops. Bottomless Gut and the Girth are the same meal from opposite ends -- the Gut
     -- has to be FED a kill beside you, the Girth is full at the bell and spends itself down -- so the Gut

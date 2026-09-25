@@ -619,6 +619,21 @@ local function brokenHeadsIn(enemyUnits)
     return set
 end
 
+-- THE DROP LISTS A BODY ANSWERS FOR: the blueprint it is wearing, and -- when it changed shape mid-fight
+-- (models/transform.lua) -- the one it walked in as. A Delver that turned into a Gilt Wyrm is both, so it
+-- pays from both lists; read off the shape alone, every turned dwarf would forfeit its own trophy for the
+-- wyrm's. Deduplicated, so a body that never changed shape answers for one list exactly as before.
+local function bodyDefs(unit)
+    local out = {}
+    local char = unit and unit.char
+    local def = char and char.id and Character.defs[char.id]
+    if def then out[#out + 1] = def end
+    local original = unit and unit._shape and unit._shape.char
+    local odef = original and original.id and Character.defs[original.id]
+    if odef and odef ~= def then out[#out + 1] = odef end
+    return out
+end
+
 local function rankCandidates(enemyUnits, r, player)
     local Class = require("models.class")
     local own, house = {}, {}
@@ -650,19 +665,20 @@ local function rankCandidates(enemyUnits, r, player)
     -- commons keep the preference.
     local prize = {}
     for _, unit in ipairs(enemyUnits or {}) do
-        local def = unit and unit.char and unit.char.id and Character.defs[unit.char.id]
-        local top = nil
-        for _, id in ipairs((def or {}).drops or {}) do
-            local d = Item.defs[id]
-            if d then
-                local depth = Spoils.depthOf(d)
-                if not top or depth > top then top = depth end
-            end
-        end
-        if top == r then
-            for _, id in ipairs((def or {}).drops or {}) do
+        for _, def in ipairs(bodyDefs(unit)) do
+            local top = nil
+            for _, id in ipairs(def.drops or {}) do
                 local d = Item.defs[id]
-                if d and Spoils.depthOf(d) == r then prize[id] = true end
+                if d then
+                    local depth = Spoils.depthOf(d)
+                    if not top or depth > top then top = depth end
+                end
+            end
+            if top == r then
+                for _, id in ipairs(def.drops or {}) do
+                    local d = Item.defs[id]
+                    if d and Spoils.depthOf(d) == r then prize[id] = true end
+                end
             end
         end
     end
@@ -671,7 +687,9 @@ local function rankCandidates(enemyUnits, r, player)
         local char = unit and unit.char
         local def = char and char.id and Character.defs[char.id]
         if def then
-            for _, id in ipairs(def.drops or {}) do add(own, id, seenOwn) end
+            for _, body in ipairs(bodyDefs(unit)) do
+                for _, id in ipairs(body.drops or {}) do add(own, id, seenOwn) end
+            end
             -- Tolerant about the shape it is handed, exactly as the pool this replaced was: a live
             -- battle passes real units, and a headless caller may pass bare `{ char = { id = ... } }`
             -- stand-ins with no grid at all. A body with no inventory contributes nothing rather than

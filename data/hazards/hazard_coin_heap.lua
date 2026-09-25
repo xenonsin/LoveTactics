@@ -48,6 +48,10 @@ return {
             Combat.bounty(combat, gold)
             ctx.consume()
             Combat.logEvent(combat, "action", string.format("%s scoops up %d gold.", name, gold), unit)
+            -- EVERY HAIR COVERED (data/traits/trait_every_hair_covered.lua): the looter is plated in it.
+            if require("models.trait").flag(unit, "coveredInGold") then
+                Status.apply(combat, unit, "status_every_hair_covered", { magnitude = 1 })
+            end
             for _, u in ipairs(combat.units or {}) do
                 if u.alive and u.side ~= unit.side and seeks(u) then
                     Status.apply(combat, u, "status_gold_fever", { applier = unit })

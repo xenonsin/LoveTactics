@@ -7112,6 +7112,14 @@ function Combat.forcesCrit(combat, user, target, item)
     local turn = combat and combat.turn
     if not (user and item and turn and turn.unit == user) then return false end
     if not (target and target ~= user and target.side ~= user.side) then return false end
+    -- FROM BELOW (Gram, data/traits/trait_from_below.lua): a bearer that has not moved this turn strikes a
+    -- foe that CAME TO IT -- one that moved on its own last turn (its turnStartX/Y bookmark stands until
+    -- its next turn opens) and now stands adjacent -- critically. The pit on the wyrm's path, carried.
+    if Trait.flag(user, "critOnArrival") and not turn.moved and target.turnStartX and target.turnStartY
+        and (target.x ~= target.turnStartX or target.y ~= target.turnStartY)
+        and Combat.unitGap(user, target) <= 1 then
+        return true
+    end
     if Combat.unseenFor(combat, user) then
         local ab = item.activeAbility
         if ab and ab.critFromHiding then return true end

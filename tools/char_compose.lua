@@ -470,6 +470,7 @@ local CHARACTER_SILHOUETTE = {
     the_hoard_thane = "kier-heyl/dwarf-king",
     dwarf_hornblower = "lorc/hunting-horn",
     dwarf_goldsmith = "lorc/anvil-impact",
+    gilt_wyrm = "lorc/sea-dragon", -- what a dwarf becomes at three Dragon-Sickness (2026-09-25): a lindworm
 
     -- THE KOBOLDS AND THEIR DRAGONS (Greed's deeps, 2026-09-25). Dog-faced folk, so the chaff is the dog;
     -- the rest are drawn by what they wear or carry. The dragons and the egg are the set's reptile, wyvern

@@ -118,6 +118,10 @@ local TROPHIES = {
     -- The Dwarves' (Greed's keep, 2026-09-24): each body drops the trick it fights with -- the Delver's
     -- dive, the Hornblower's painted lead, the Goldsmith's leaf -- and the Thane his mithril.
     "ability_delve", "ability_fools_gold", "ability_gilders_leaf", "armor_mithril_shirt",
+    -- The Gilt Wyrm's (2026-09-25): what a dwarf becomes at three Dragon-Sickness, and the saga it came out
+    -- of -- Sigurd's sword, Fafnir's helm, the heart, the leaf, the breath and the otter's gold skin.
+    "weapon_gram", "armor_aegishjalmur", "ability_wyrms_venom", "utility_lindworm_heart",
+    "utility_linden_leaf", "utility_every_hair_covered",
     -- The Kobolds' (Greed's deeps, 2026-09-25): each body drops the trick it fights with -- the Skulker's
     -- footwork, the Trapwright's rock, the Broodkeeper's egg, the priest's borrowed fire -- and the
     -- Godling its own scale.

@@ -406,6 +406,18 @@ end
 --
 -- An id the catalogue does not know is dropped rather than instantiated, the same guard every other
 -- data-fed grant keeps: a typo in a drop list must not reach Item.instantiate.
+-- A body minted at a level the caller already KNOWS, rather than one worked out from the company and the
+-- floor. One caller: a mid-fight change of shape (models/transform.lua's `opts.level`), where the new body
+-- has to stand at the level of the body it replaces -- a floor-twelve dwarf that turns into a Gilt Wyrm is
+-- a floor-twelve wyrm, and Character.instantiate alone would hand it the blueprint's level-1 numbers.
+-- No `referenceLevel` scaling: a shape is not a boss arriving on its own stair.
+function Growth.atLevel(id, level)
+    local char = Character.instantiate(id)
+    Growth.resolve(char, level or 1)
+    stampClassLevel(char, level or 1)
+    return char
+end
+
 function Growth.spawn(id, playerLevel, battleFloor, carried)
     local def = Character.defs[id]
     local char = Character.instantiate(id)
