@@ -12,7 +12,7 @@ return {
     sprite = "assets/items/utility_lindworm_heart.png",
     type = "utility",
     class = "hunter",
-    unlockLevel = 6,
+    unlockLevel = 12,
     unstocked = true,
     traits = { "trait_birds_warning" },
 }

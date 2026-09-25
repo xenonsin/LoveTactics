@@ -16,7 +16,7 @@ return {
     type = "ability",
     tags = { "poison", "magical" },
     class = "poisoner",
-    unlockLevel = 6,
+    unlockLevel = 15,
     unstocked = true,
     activeAbility = {
         target = "tile",
@@ -26,7 +26,7 @@ return {
         cooldown = 15,
         cost = { stat = "mana", amount = 8 },
         aoe = { shape = "cone", length = 3 },
-        damage = Curve.ramp(10, 20),
+        damage = Curve.ramp(16, 26),
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do
                 if u.side ~= fx.user.side then fx.damage(u, { inflicts = "status_poison" }) end

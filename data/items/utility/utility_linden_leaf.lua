@@ -12,7 +12,7 @@ return {
     sprite = "assets/items/utility_linden_leaf.png",
     type = "utility",
     class = "bulwark",
-    unlockLevel = 6,
+    unlockLevel = 2,
     unstocked = true,
     resist = { slash = 3, pierce = 3, impact = 3 },
     traits = { "trait_linden_leaf" },

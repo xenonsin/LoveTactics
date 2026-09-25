@@ -14,7 +14,7 @@ return {
     type = "utility",
     tags = { "guile" },
     class = "mammonite",
-    unlockLevel = 6,
+    unlockLevel = 4,
     unstocked = true,
     traits = { "trait_every_hair_covered" },
 }

@@ -13,7 +13,7 @@ return {
     sprite = "assets/items/armor_aegishjalmur.png",
     type = "armor",
     class = "warlord",
-    unlockLevel = 6,
+    unlockLevel = 9,
     unstocked = true,
     traits = { "trait_helm_of_terror" },
     bonus = { defense = Curve.ramp(3, 13), movement = -1 },

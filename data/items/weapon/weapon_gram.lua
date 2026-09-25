@@ -16,7 +16,7 @@ return {
     tags = { "sword", "slash", "physical", "melee" },
     hands = 1,
     class = "knight",
-    unlockLevel = 6,
+    unlockLevel = 12,
     unstocked = true,
     traits = { "trait_parry", "trait_from_below" },
     activeAbility = {
@@ -24,7 +24,7 @@ return {
         range = 1,
         speed = 3,
         cost = { stat = "stamina", amount = 8 },
-        damage = Curve.ramp(9, 19),
+        damage = Curve.ramp(14, 24),
         effect = function(fx)
             fx.damage(fx.target)
         end,
