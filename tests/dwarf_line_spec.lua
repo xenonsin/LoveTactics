@@ -27,7 +27,7 @@ local BODIES = {
     "character_dwarf_delver", "character_dwarf_hornblower", "character_dwarf_hearthguard",
     "character_dwarf_goldsmith", "character_the_hoard_thane",
 }
-local TROPHIES = { "ability_delve", "ability_fools_gold", "ability_gilders_leaf", "utility_mithril_shirt" }
+local TROPHIES = { "ability_delve", "ability_fools_gold", "ability_gilders_leaf", "armor_mithril_shirt" }
 
 local function walker(x, y, health)
     local spawn = Fixture.walker(x, y)
@@ -89,9 +89,10 @@ return {
                 assert(Character.defs[body].drops[1] == id, body .. " drops " .. id)
             end
             local thane = Character.defs["character_the_hoard_thane"].drops
-            assert(thane[1] == "utility_mithril_shirt", "the Thane's own trophy is the Mithril Shirt")
-            assert(Item.defs["utility_mithril_shirt"].type == "utility",
-                "a shirt costing no movement cannot be armor -- every armor costs a square")
+            assert(thane[1] == "armor_mithril_shirt", "the Thane's own trophy is the Mithril Shirt")
+            local shirt = Item.defs["armor_mithril_shirt"]
+            assert(shirt.type == "armor" and shirt.bonus.movement == 0, "mithril is armor, and costs no movement")
+            assert(shirt.resist.pierce > 0, "and it turns a point")
         end,
     },
     -- ------------------------------------------------------------------------------ Stout
@@ -295,13 +296,18 @@ return {
         end,
     },
     {
-        name = "the Mithril Shirt: no blow against its wearer is ever a critical",
+        name = "the Mithril Shirt: never a critical, and once a fight a killing blow leaves its wearer at 1",
         fn = function()
-            local shirted = unit("character_archer", 5, 5, { isolate = "bare", items = { "utility_mithril_shirt" } })
+            local shirted = unit("character_archer", 5, 5, { isolate = "bare", items = { "armor_mithril_shirt" } })
             local c = Fixture.combat(board(), shirted, { unit("character_dwarf_delver", 6, 5) })
             local wearer, dwarf = c.units[1], units(c, "character_dwarf_delver")[1]
             local weapon = itemNamed(dwarf.char, "weapon_iron_hammer")
             assert(Combat.critChance(c, dwarf, wearer, weapon) == 0, "the forecast says no critical")
+            local hpBefore = hp(wearer)
+            Combat.dealFlatDamage(c, wearer, hpBefore + 500, { "physical" }, "test")
+            assert(wearer.alive and hp(wearer) == 1, "the troll's spear: a killing blow leaves it at 1")
+            Combat.dealFlatDamage(c, wearer, 500, { "physical" }, "test")
+            assert(not wearer.alive, "once a fight -- the second one lands")
         end,
     },
     -- ------------------------------------------------------------------------------ the Goldsmith

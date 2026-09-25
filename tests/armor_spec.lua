@@ -120,8 +120,18 @@ return {
             --
             -- Shields and relics are inside this rule, not beside it. A shield is worn, and a rule
             -- with a carve-out for the one item class that wanted one is not a cost table.
+            --
+            -- ONE NAMED EXCEPTION, on the author's call (2026-09-24): the Mithril Shirt, "armor and cost no
+            -- movement, just add more effects to make it special". It is an unstocked trophy off the
+            -- Hoard-Thane, never sold, so "wear four free pieces" cannot be built from it -- there is one.
+            -- Listed by id with its reason so the exception cannot spread by accident; a second entry
+            -- here is a design decision, not a fix for a red build.
+            local WEIGHTLESS = { armor_mithril_shirt = "mithril: a single trophy, light as a feather" }
             for id, def in pairs(Item.defs) do
-                if def.type == "armor" then
+                if def.type == "armor" and WEIGHTLESS[id] then
+                    assert(def.unstocked and not def.price,
+                        id .. " is weightless only because nobody can buy a stack of them")
+                elseif def.type == "armor" then
                     local m = def.bonus and def.bonus.movement
                     assert(type(m) == "number" and m <= -1,
                         id .. "'s movement penalty is " .. tostring(m)

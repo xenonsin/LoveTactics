@@ -45,7 +45,7 @@ return {
         "utility_butchers_tally",   false,                      false,
     },
     -- His own trophy is the Mithril Shirt (round 3); the rest is his line's, and the Butcher's Tally.
-    drops = { "utility_mithril_shirt", "ability_gilders_leaf", "ability_delve", "utility_butchers_tally" },
+    drops = { "armor_mithril_shirt", "ability_gilders_leaf", "ability_delve", "utility_butchers_tally" },
     defaultAction = "weapon_iron_axe",
     signatureWeapon = "weapon_iron_axe",
     ai = {
