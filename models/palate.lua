@@ -8,20 +8,15 @@
 -- a copied power is the owner's item, already built and already tested on its owner, so the only new
 -- balance surface is WHO is holding it.
 --
--- TWO APPETITES, read off the eater's blueprint (`eats = true`, then `palateCapacity`):
+-- ONE APPETITE, on a blueprint that declares `eats = true`: it KEEPS everything. A kind it has not had
+-- ADDS its power; a kind it already holds UPGRADES that power a forge level (Item.instantiate at level + 1
+-- -- the same scaling the Forge applies, so an upgraded Gore is exactly a forged Gore); a grid with no
+-- room left upgrades the weakest power it holds instead. Nothing knocks a power out. (There was a second
+-- appetite -- a huntress who held one and lost it to a hard blow -- cut 2026-09-24 when Gula became the
+-- beast from the first turn.)
 --
---   * the HUNTRESS holds exactly one (capacity 1). Eating something new REPLACES it, and a hard enough
---     blow knocks it out of her (Palate.knock, from data/traits/trait_the_knock.lua). Her own line is
---     the rule word for word: "there is nothing in me that keeps things".
---   * the BEAST keeps everything (no capacity). A kind it has not had ADDS its power; a kind it already
---     holds UPGRADES that power a forge level (Item.instantiate at level + 1 -- the same scaling the
---     Forge applies, so an upgraded Gore is exactly a forged Gore); a grid with no room left upgrades the
---     weakest power it holds instead. Nothing knocks a beast's powers out.
---
--- THE HELD LIST LIVES ON THE UNIT (`unit.palate`), NOT ONLY IN THE GRID, because a transform swaps the
--- grid wholesale for the shape's (models/transform.lua: "a bear has claws, not your chainmail"). The
--- huntress's power has to be standing in the beast's grid when the beast opens, so the phase trait that
--- transforms her calls Palate.regrant straight after.
+-- The held list lives on the unit (`unit.palate`): it is what an upgrade finds its entry in, and what
+-- Palate.edibleNear ranks a meal she has not tasted yet against.
 --
 -- AND THE PLAYER'S HALF IS A MORPH (Palate.morph). Carry the Maw and your killing blow turns the relic
 -- ITSELF into the power of what you killed -- the cell shows the fangs, the tooltip reads the fangs --
@@ -63,12 +58,6 @@ function Palate.powerOf(body)
         end
     end
     return nil
-end
-
--- How many powers this eater keeps at once: its blueprint's `palateCapacity`, or unbounded (the beast).
-local function capacityOf(unit)
-    local def = unit and unit.char and Character.defs[unit.char.id]
-    return (def and def.palateCapacity) or math.huge
 end
 
 -- A granted item's own traits, attached to the bearer who is already mid-fight. Trait.attach cannot be
@@ -150,32 +139,21 @@ end
 function Palate.take(combat, unit, body)
     local id = Palate.powerOf(body)
     if not (combat and unit and unit.char and id) then return nil end
-    -- Only a body whose blueprint EATS takes a power by eating (both of Gula's). A company member who
+    -- Only a body whose blueprint EATS takes a power by eating (Gula's). A company member who
     -- swallows a foe with Draw Breath has eaten it and no more -- the player's half of the Palate is the
     -- Maw, which morphs on the kill instead (Palate.morph).
     local def = Character.defs[unit.char.id]
     if not (def and def.eats) then return nil end
     local Combat = require("models.combat")
     unit.palate = unit.palate or {}
-    local cap = capacityOf(unit)
 
     for _, entry in ipairs(unit.palate) do
-        if entry.id == id then
-            -- The huntress keeps one thing and does not grow it; only the beast feeds a power it has.
-            if cap == math.huge then return upgrade(combat, unit, entry) end
-            return nil
-        end
-    end
-
-    -- The huntress: the new taste replaces the old one.
-    while #unit.palate >= cap do
-        remove(combat, unit, table.remove(unit.palate, 1))
+        if entry.id == id then return upgrade(combat, unit, entry) end
     end
 
     local item = grant(combat, unit, id, 0)
     if not item then
-        -- A full grid. The beast grows what it has rather than going without; the huntress (whose one
-        -- slot was just emptied) cannot land here.
+        -- A full grid: she grows what she has rather than going without.
         local weakest
         for _, entry in ipairs(unit.palate) do
             if not weakest or (entry.level or 0) < (weakest.level or 0) then weakest = entry end
@@ -187,33 +165,6 @@ function Palate.take(combat, unit, body)
     Combat.logEvent(combat, "status", string.format("%s takes %s for her own.",
         nameOf(unit), item.name or id), unit)
     return entry
-end
-
--- A hard enough blow knocks the held power out of the huntress: it is simply gone (nothing lands on the
--- ground -- settled on review). A body with no capacity cap -- the beast -- keeps what it ate, and this
--- is a no-op on it. Returns true when something was lost.
-function Palate.knock(combat, unit)
-    if not (unit and unit.palate and #unit.palate > 0) then return false end
-    if capacityOf(unit) == math.huge then return false end
-    local Combat = require("models.combat")
-    local lost = {}
-    for _, entry in ipairs(unit.palate) do
-        remove(combat, unit, entry)
-        lost[#lost + 1] = (entry.item and entry.item.name) or entry.id
-    end
-    unit.palate = {}
-    Combat.logEvent(combat, "status", string.format("%s loses %s.",
-        nameOf(unit), table.concat(lost, ", ")), unit)
-    return true
-end
-
--- After a transform: put every held power back into the grid the unit is now wearing, at the level it
--- had reached. The old items went with the old body's grid; the list on the unit is what survives.
-function Palate.regrant(combat, unit)
-    if not (unit and unit.palate) then return end
-    for _, entry in ipairs(unit.palate) do
-        entry.item = grant(combat, unit, entry.id, entry.level)
-    end
 end
 
 -- Is `body` something `eater` may devour? The three bodies Combat.devour takes, asked without taking.

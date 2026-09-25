@@ -1,8 +1,8 @@
 -- GULA, THE APEX: the Gluttony general's fight, re-premised on review 2026-09-23 ("think Kirby"). She eats
--- a body and takes the one thing it is known for (models/palate.lua); the huntress holds one and a hard
--- blow knocks it out of her; the beast she turns into keeps everything and grows what it eats twice; every
--- blow teaches her its kind; and her stair is a wave battle won on her body. Each rule is held here by the
--- behaviour it promises, against the real blueprints. Headless.
+-- a body and takes the one thing it is known for (models/palate.lua), keeps everything and grows what it
+-- eats twice; every blow teaches her its kind; and her stair is a wave battle won on her body. She is the
+-- beast from the first turn (2026-09-24: the huntress half, its Knock and its turning are cut). Each rule
+-- is held here by the behaviour it promises, against the real blueprints. Headless.
 
 local Character = require("models.character")
 local Combat = require("models.combat")
@@ -55,6 +55,21 @@ local MENU = {
 
 return {
     {
+        name = "she is the beast from the first turn: no second body, no phase piece, the Breath in hand",
+        fn = function()
+            local def = Character.defs["character_general_gluttony"]
+            assert(def.race == "beast", "Gula is a beast, not a woman who turns into one")
+            assert(def.eats and not def.palateCapacity, "and keeps everything she eats")
+            assert(not Character.defs["character_gula_the_apex"], "there is no second body to turn into")
+            local c, gula = glade()
+            assert(holds(gula, "ability_the_breath"), "she draws breath from the first turn")
+            local hp = gula.char.stats.health
+            hp.current = math.floor(hp.max / 2) + 1
+            Combat.dealFlatDamage(c, gula, 2, {}, "test")
+            assert(gula.char.id == "character_general_gluttony", "and crossing half turns her into nothing")
+        end,
+    },
+    {
         name = "the menu: every beast of the wood names a power that loads and is its own kit",
         fn = function()
             for id, want in pairs(MENU) do
@@ -94,54 +109,11 @@ return {
         end,
     },
     {
-        name = "the huntress holds one power: a new meal replaces the old",
-        fn = function()
-            local c, gula = glade({ { id = "character_wolf_grunt", x = 5, y = 4 },
-                                    { id = "character_boar", x = 3, y = 4 } })
-            local wolf, boar = c.units[3], c.units[4]
-            assert(Combat.devour(c, gula, wolf), "she eats the wolf")
-            assert(holds(gula, "weapon_wolf_fangs"), "the fangs are hers")
-            assert(Combat.devour(c, gula, boar), "then the boar")
-            assert(holds(gula, "ability_gore"), "Gore is hers now")
-            assert(not holds(gula, "weapon_wolf_fangs"), "and the fangs are gone -- nothing in her keeps things")
-            assert(#gula.palate == 1, "one power at a time")
-        end,
-    },
-    {
-        name = "the Knock: a heavy blow or a crit makes the huntress lose her power",
-        fn = function()
-            local c, gula = glade({ { id = "character_giant_spider", x = 5, y = 4 } })
-            assert(Combat.devour(c, gula, c.units[3]), "she eats the spider")
-            assert(holds(gula, "ability_silk_shot"), "and holds Silk Shot")
-            -- A scratch does nothing.
-            Combat.dealFlatDamage(c, gula, 14, { "physical" }, "test")
-            assert(holds(gula, "ability_silk_shot"), "a light blow does not knock it loose")
-            -- A blow of 12% of her ceiling does.
-            Combat.dealFlatDamage(c, gula, 60, { "physical" }, "test")
-            assert(not holds(gula, "ability_silk_shot"), "a heavy blow knocks the power out of her")
-            assert(#gula.palate == 0, "and she holds nothing")
-        end,
-    },
-    {
-        name = "at half health she turns into the beast, and keeps what she was holding",
-        fn = function()
-            local c, gula = glade({ { id = "character_manticore", x = 5, y = 4 } })
-            assert(Combat.devour(c, gula, c.units[3]), "she eats the manticore")
-            local hp = gula.char.stats.health
-            hp.current = math.floor(hp.max / 2) + 1
-            Combat.dealFlatDamage(c, gula, 2, {}, "test")
-            assert(gula.char.id == "character_gula_the_apex", "she turned")
-            assert(holds(gula, "ability_tail_volley"), "the beast still holds what the huntress ate")
-            assert(holds(gula, "ability_the_breath"), "and draws breath")
-        end,
-    },
-    {
-        name = "the beast keeps everything, grows a power it eats twice, and cannot be knocked",
+        name = "she keeps everything she eats, and grows a power she eats twice",
         fn = function()
             local c, gula = glade({ { id = "character_wolf_grunt", x = 5, y = 4 },
                                     { id = "character_wolf_grunt", x = 3, y = 4 },
                                     { id = "character_boar", x = 4, y = 5 } })
-            require("models.transform").apply(c, gula, "character_gula_the_apex")
             assert(Combat.devour(c, gula, c.units[3]), "the first wolf")
             local fangs = holds(gula, "weapon_wolf_fangs")
             assert(fangs and fangs.level == 0, "fangs at base")
@@ -150,8 +122,9 @@ return {
             fangs = holds(gula, "weapon_wolf_fangs")
             assert(fangs and fangs.level == 1, "a kind it already holds grows a forge level")
             assert(holds(gula, "ability_gore"), "and it kept the boar's Gore beside it")
-            assert(not Palate.knock(c, gula), "nothing knocks the beast's powers out")
-            assert(holds(gula, "ability_gore"), "Gore survives a knock attempt")
+            -- A heavy blow and a crit take nothing: there is no Knock any more.
+            Combat.dealFlatDamage(c, gula, 60, { "physical" }, "test")
+            assert(holds(gula, "ability_gore") and holds(gula, "weapon_wolf_fangs"), "a heavy blow knocks nothing out")
         end,
     },
     {
@@ -241,7 +214,6 @@ return {
                   { char = Character.instantiate("character_bandit"), x = 6, y = 5 } },
                 { { char = Character.instantiate("character_general_gluttony"), x = 3, y = 4 } })
             local weak, rooted, gula = c.units[1], c.units[2], c.units[3]
-            require("models.transform").apply(c, gula, "character_gula_the_apex")
             local hp = weak.char.stats.health
             hp.current = math.max(1, math.floor(hp.max * 0.2))
             Status.apply(c, rooted, "status_root")
@@ -260,7 +232,7 @@ return {
         name = "her kit is natural and hers, and what she hands over is the Maw, then the two halves of her rule",
         fn = function()
             for _, id in ipairs({ "ability_devour", "ability_the_breath", "weapon_rending_maw",
-                                  "utility_the_turning_hunger", "utility_hunters_read" }) do
+                                  "utility_hunters_read" }) do
                 local def = Item.defs[id]
                 assert(def, id .. " does not load")
                 assert(def.class == "creature" and def.noSteal and not def.price,

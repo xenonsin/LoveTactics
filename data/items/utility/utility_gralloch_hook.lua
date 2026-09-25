@@ -19,9 +19,8 @@
 -- and then take the stair and meet the thing that has had it since the opening bell. The general
 -- becomes a recognition rather than a surprise, which is what two floors per circle is for.
 --
--- A gralloch is the act of opening a carcass in the field. Gula's own knife is named for it
--- (data/items/weapon/weapon_gralloch_knife.lua) -- the mini sin is named for her tool rather than for
--- her rule, so the family reads off the name without the mechanic being written in it.
+-- A gralloch is the act of opening a carcass in the field -- a hunter's word, from the Lodge Gula came
+-- out of -- so the family reads off the name without the mechanic being written in it.
 --
 -- Natural kit, so: no class, no price, noSteal (tests/bestiary_spec.lua). It is a hooked thing grown
 -- into an animal, not a relic anybody could pick up.

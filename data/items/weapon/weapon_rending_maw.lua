@@ -1,6 +1,5 @@
--- The beast's own mouth, and all it needs. The second form fights with what it has EATEN -- every power
--- the huntress held and everything the beast takes after (models/palate.lua) -- so its own weapon is
--- deliberately plain: a heavy bite at arm's length, no rider, nothing that would bury the grid it is
+-- Gula's own mouth, and all she needs. She fights with what she has EATEN (models/palate.lua), so her
+-- own weapon is deliberately plain: a heavy bite at arm's length, no rider, nothing that would bury the grid it is
 -- growing. The Glutted Bulk's rule, one circle over: the interesting property is on the body.
 local Curve = require("models.curve")
 

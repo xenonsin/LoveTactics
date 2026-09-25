@@ -207,7 +207,6 @@ return {
     "weapon_gale_fists",
     "weapon_given_hour",
     "weapon_golem_fists",
-    "weapon_gralloch_knife",
     "weapon_headsmans_cleaver",
     "weapon_hollow_arc",
     "weapon_iron_crook",

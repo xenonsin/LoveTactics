@@ -149,8 +149,7 @@ Each of the thirteen shoppable families carries **ten** weapons, split down the 
   tallies toward for growth. They are granted through a quest's `rewardItems`.
 
 **Signature and relic weapons do not count toward the ten.** A companion's signature (`weapon_first_motion`,
-`weapon_borrowed_time`, `armor_sworn_aegis`) and a general's relic (`weapon_forsworn_pike`,
-`weapon_gralloch_knife`) are tagged `signature` / `relic` and sit outside their family's roster entirely —
+`weapon_borrowed_time`, `armor_sworn_aegis`) and a general's relic (`weapon_forsworn_pike`) are tagged `signature` / `relic` and sit outside their family's roster entirely —
 so authoring the signatures still owed to Kaya, Ren and Gyeom cannot make a family overflow.
 
 The unlock ladder is a property of a **shelf**, not of a family. The dagger family spans two vendors, so it

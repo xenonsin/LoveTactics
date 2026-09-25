@@ -26,8 +26,10 @@
 
 -- TODO(Keno): one more beat for her, after "nothing in me that keeps things" -- a line that points at the
 -- beasts walking in, since her stair is a wave battle now and every one of them is something she will eat
--- and become (re-premised 2026-09-23, models/palate.lua). Her existing line already IS the one-power rule
--- and stays. Left for the author to write rather than drafted here.
+-- and become (re-premised 2026-09-23, models/palate.lua). Her existing line was written as the huntress's
+-- one-power rule, which is cut (2026-09-24: she is the beast from the first turn and keeps everything she
+-- eats); it still reads true as memory -- she keeps powers, not faces -- but whether it stays is the
+-- author's call. Left for the author to write rather than drafted here.
 return {
     title = "Gula, the Unsated",
     cast  = { "character_general_gluttony" },

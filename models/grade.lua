@@ -833,10 +833,6 @@ Grade.TRAIT_GRADE = {
     -- payload is borrowed and varies with what was killed, and a hawk hands it back empty; a whole extra
     -- item's worth at best, nothing at worst, and it asks for the killing blow first.
     trait_palate =                      3.0,  -- The Palate
-    -- Two phase-script traits that only ever ride Gula's own natural piece, graded where the phase
-    -- script is (trait_boss_phases): the Knock is a weakness she carries, the Turning a shape change.
-    trait_the_knock =                   0.5,  -- The Knock
-    trait_turning_hunger =              0.5,  -- The Turning Hunger
     -- COMES APART is graded at Volatile's weight, which is the same beat -- a death that costs the
     -- killer something -- and deliberately no higher despite putting three bodies on the board where
     -- Volatile puts one blast. Two things hold it level: it pays out only when the bearer is already

@@ -1,6 +1,4 @@
--- The apex LEARNS: the piece that carries Gula's Studied (data/traits/trait_studied.lua) through both of
--- her bodies. It sits in the huntress's grid and again in the beast's, because a transform swaps the grid
--- whole (models/transform.lua) and a rule carried on one body's item would stop the moment she turned.
+-- The apex LEARNS: the piece in Gula's grid that carries her Studied (data/traits/trait_studied.lua).
 -- Settled on review 2026-09-23: "have her gain resistance every time she gets hit".
 return {
     name = "Hunter's Read",
