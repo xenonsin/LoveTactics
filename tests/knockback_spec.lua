@@ -541,6 +541,41 @@ return {
             assert(c.turn ~= nil, "and the turn was never spent")
         end,
     },
+    {
+        name = "the Pull ability brings a flier down: its wing stacks go and it is Grounded",
+        fn = function()
+            local Status = require("models.status")
+            local knight = Character.instantiate("character_rowan")
+            knight.inventory = {}
+            Character.addItem(knight, Item.instantiate("ability_pull"))
+            local c = Combat.new(arena(8, 8), { unit(knight, 2, 4) }, { unit("character_bandit", 6, 4) })
+            local ku, flier = c.units[1], c.units[2]
+            Status.apply(c, flier, "status_on_the_wing", { magnitude = 3 })
+            c.turn = { unit = ku, moved = false, moveCost = 0 }
+
+            local ok, reason = Combat.useItem(c, ku, knight.inventory[1], 6, 4)
+            assert(ok, "the cast lands, got: " .. tostring(reason))
+            assert(flier.x == 3 and flier.y == 4, "hauled up beside the puller")
+            assert(not Status.has(flier, "status_on_the_wing"), "its flight is stripped")
+            assert(Status.has(flier, "status_grounded"), "and it is Grounded")
+            assert(not Status.has(flier, "status_stun"), "but not stunned -- that stays the prize for the knockdown")
+        end,
+    },
+    {
+        name = "the Pull ability grounds nobody who was not flying",
+        fn = function()
+            local Status = require("models.status")
+            local knight = Character.instantiate("character_rowan")
+            knight.inventory = {}
+            Character.addItem(knight, Item.instantiate("ability_pull"))
+            local c = Combat.new(arena(8, 8), { unit(knight, 2, 4) }, { unit("character_bandit", 6, 4) })
+            local ku, bandit = c.units[1], c.units[2]
+            c.turn = { unit = ku, moved = false, moveCost = 0 }
+
+            assert(Combat.useItem(c, ku, knight.inventory[1], 6, 4), "the cast lands")
+            assert(not Status.has(bandit, "status_grounded"), "a walker has nothing to come down from")
+        end,
+    },
 
     -- -----------------------------------------------------------------------
     -- Object layer: push and pull reach any body, prop or trap

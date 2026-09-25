@@ -2126,7 +2126,8 @@ function CombatPanel:drawItemGrid()
         local blocked = isPartyTurn and self:blockReason(item) or nil
         -- A Blink (moveBehavior) item is activatable too, even though it has no ability: clicking it
         -- toggles teleport movement rather than arming a cast.
-        local isBlink = item and item.moveBehavior ~= nil
+        -- An ALWAYS-ON hop (the Bog-Hopper Greaves) has no toggle to press: it is how the bearer moves.
+        local isBlink = item and item.moveBehavior ~= nil and not item.moveBehavior.always
         local usable = item and (item.activeAbility ~= nil or isBlink) and isPartyTurn and not blocked
         -- A triggered reflex that has fired and is still on cooldown. Not a blockReason: nothing here
         -- is being cast, so there is no arm to refuse -- the slot simply cannot answer yet.

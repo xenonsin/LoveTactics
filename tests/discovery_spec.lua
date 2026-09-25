@@ -105,6 +105,9 @@ local TROPHIES = {
     -- The Manticore's (Gluttony's seat, 2026-09-23): its Bristle's barbs as a coat, its volley as a
     -- fletching, and the Bristle itself as the chase.
     "armor_quillhide", "utility_barbed_fletching", "utility_the_bristling",
+    -- The Giant Toad's (Gluttony's seat, 2026-09-25): its hop as a tank's greaves, which is how a body in
+    -- plate stops being slow, and its swallow as a Barbarian's, beside the Bottomless Gut.
+    "utility_bog_hopper_greaves", "ability_the_gullet",
     -- The wyverns' (Gluttony's seat, 2026-09-23): the dive as a cloak, the cut as a hunter's ability, the
     -- flight's wind as a charm, the takeoff as an escape, and the carry as the Highwing's chase.
     "armor_plummet_cloak", "ability_gale_cut", "utility_tailwind_charm", "ability_skyward",

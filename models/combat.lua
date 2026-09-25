@@ -1565,6 +1565,14 @@ local HEAD_POS = { x = true, y = true, w = true, h = true }
 
 function Combat.isHead(unit) return unit ~= nil and unit.headOf ~= nil end
 
+-- STANDS ON NO TILE: a head, or a body something has swallowed (Combat.swallow). Both are still in
+-- combat.units and still alive -- a swallowed companion is not a fallen one, and the fight is not lost
+-- while it is inside -- but neither is a body anybody can walk into, aim at or catch in a blast, so
+-- Combat.unitAt, unitsNear and abilityTargets pass over them both.
+function Combat.isOffTile(unit)
+    return unit ~= nil and (unit.headOf ~= nil or unit.swallowedBy ~= nil)
+end
+
 -- The living heads growing from `body`, in grid order.
 function Combat.headsOf(combat, body)
     local out = {}
@@ -2770,7 +2778,7 @@ function Combat.unitAt(combat, x, y)
         end
     end
     for _, u in ipairs(combat.units) do
-        if u.alive and not u.headOf then
+        if u.alive and not Combat.isOffTile(u) then
             local w, h = u.w or 1, u.h or 1
             if x >= u.x and x <= u.x + w - 1 and y >= u.y and y <= u.y + h - 1 then
                 return u
@@ -3367,7 +3375,7 @@ function Combat.unitsNear(combat, x, y, radius)
         -- Nearest cell of the body, so a big unit is "near" (x, y) when any part of it is in radius.
         -- A head is not a body standing anywhere (Combat.unitAt): an aura, a spray or a count of who is
         -- close finds the body it grows from, once.
-        if u.alive and not u.headOf and Combat.cellGap(x, y, u) <= radius then out[#out + 1] = u end
+        if u.alive and not Combat.isOffTile(u) and Combat.cellGap(x, y, u) <= radius then out[#out + 1] = u end
     end
     return out
 end
@@ -4492,6 +4500,11 @@ end
 -- initiative the move costs at end-of-turn (so rough terrain is slower to cross in both reach and
 -- time). `steps` is the raw tile count, used only by the enemy AI's pathing.
 function Combat.reachable(combat, unit)
+    -- A HOPPER never walks (Combat.hopReady): what it can reach is the jump's diamond, over bodies and
+    -- terrain alike, and every caller of this -- the planner, the threat band, the attack reach -- reads
+    -- that without learning a second word.
+    local hop = Combat.hopReady(unit)
+    if hop then return Combat.teleportCells(combat, unit, hop.movement) end
     local graph = moveGraph(combat, unit)
     graph[key(unit.x, unit.y)] = nil -- the origin isn't a "move" target
     local out = {}
@@ -4919,6 +4932,14 @@ function Combat.planMove(combat, unit, x, y)
     if not combat.turn or combat.turn.unit ~= unit then return nil, "not this unit's turn" end
     if combat.turn.moved then return nil, "already moved" end
     if Status.blocksMove(unit) then return nil, "rooted" end
+    -- A hopper's plan is one jump, carried out by Combat.blink (walkOut's `hop` branch), so a planner, a
+    -- command and the battle screen all move it through the same door the Blink stone uses.
+    local hop = Combat.hopReady(unit)
+    if hop then
+        if not Combat.teleportCells(combat, unit, hop.movement)[key(x, y)] then return nil, "out of range" end
+        return { unit = unit, hop = true, x = x, y = y, cost = 0,
+                 path = { { x = unit.x, y = unit.y }, { x = x, y = y } } }
+    end
     -- Trace through the full graph (allies are walk-through transit nodes), not the filtered
     -- reachable set, so a path may route past a friendly unit -- but the destination itself must be
     -- a tile the unit can stop on (the origin has no fromKey; an ally's tile is `occupied`).
@@ -4981,6 +5002,7 @@ end
 
 function Combat.hazardRoute(combat, unit, x, y)
     if not (combat and unit) then return nil end
+    if Combat.hopReady(unit) then return nil end -- a jump crosses no ground to route around
     local tolls = Hazard.tollMap(combat, unit)
     if not tolls then return nil end
     return (tracePath(moveGraph(combat, unit, tolls), unit, x, y))
@@ -5000,6 +5022,8 @@ function Combat.planMoveVia(combat, unit, cells)
     if Status.blocksMove(unit) then return nil, "rooted" end
     if not cells or #cells < 2 then return nil, "no path" end
     if cells[1].x ~= unit.x or cells[1].y ~= unit.y then return nil, "not from origin" end
+    -- A hopper takes no route: whatever road was drawn, it jumps to the end of it (Combat.planMove).
+    if Combat.hopReady(unit) then return Combat.planMove(combat, unit, cells[#cells].x, cells[#cells].y) end
 
     local arena = combat.arena
     local budget = flatStat(unit, "movement")
@@ -5218,6 +5242,14 @@ end
 -- The route ends where the unit ended, which is short of the destination when something on the way
 -- killed it. One loop rather than two, so the flat-out walk and the watched one cannot drift apart.
 local function walkOut(combat, plan, capture)
+    if plan.hop then
+        local unit = plan.unit
+        local fromX, fromY = unit.x, unit.y
+        if not Combat.blink(combat, unit, plan.x, plan.y) then return capture and {} or nil, 0 end
+        local steps = capture and { { x = unit.x, y = unit.y, fromX = fromX, fromY = fromY,
+                                      fx = Combat.drainFx(combat) } } or nil
+        return steps, 0
+    end
     local walk = Combat.beginMove(combat, plan)
     local unit = plan.unit
     local steps = capture and {} or nil
@@ -7817,6 +7849,104 @@ function Combat.rejoin(combat, piece)
     piece.corpse = false
     piece.devoured = true
     return maker
+end
+
+-- SWALLOW: a body goes down a gullet whole and ALIVE, and comes back out later (the Giant Toad,
+-- data/characters/character_giant_toad.lua; the company's Gullet, data/items/utility/utility_the_gullet.lua).
+--
+-- Not Combat.devour, which ends a body. A swallowed one is still a combatant: it stays in combat.units and
+-- stays `alive`, so a company whose last standing member is inside a toad has not lost, and nothing about
+-- the revive or loss rules has to learn a new state. What it loses is its TILE -- Combat.isOffTile, the
+-- seam a Chimera's head already stands on -- so nothing walks into it, aims at it or catches it in a blast,
+-- and its position is read through the eater's (the head's metatable, below), so a toad that hops away
+-- carries its meal with it and a count of "who is near here" can never find a ghost on the tile it was
+-- swallowed from.
+--
+-- WHAT IT DOES TO THE BODY INSIDE lives on status_swallowed, which is what calls both halves of this: its
+-- onApply swallows and its onExpire -- fired on EVERY removal path -- spits. So the four ways out (a heavy
+-- hit, a stun, the eater's death, the time running out) are four ways of removing one status, and none of
+-- them can leave a body stranded off the board.
+local SWALLOW_POS = { x = true, y = true }
+
+-- The body `eater` is holding, or nil. One at a time: a gullet holds one meal. Kept on the eater as
+-- `swallowing` as well as found by the walk, because an ability's `usable` gate is handed the unit and
+-- nothing else, and "is my mouth full" is exactly what it has to ask.
+function Combat.swallowedIn(combat, eater)
+    local held = eater and eater.swallowing
+    if held and held.alive and held.swallowedBy == eater then return held end
+    for _, u in ipairs((combat and combat.units) or {}) do
+        if u.alive and u.swallowedBy == eater then return u end
+    end
+    return nil
+end
+
+-- May `eater` swallow `body`? A living FOE, one tile big, standing on a tile of its own, and not a boss --
+-- a quest's ending does not go down a toad. Asked by the ability before it lands the status, so a
+-- refusal costs nothing and forecasts nothing.
+function Combat.canSwallow(combat, eater, body)
+    if not (eater and eater.alive and body and body.alive and body.char) then return false end
+    if body == eater or body.side == eater.side then return false end
+    if Combat.isOffTile(body) or Combat.isOffTile(eater) then return false end
+    if body.summoned or body.timeless or body.decoyOf then return false end
+    if (body.w or 1) > 1 or (body.h or 1) > 1 then return false end
+    if Combat.isBoss(combat, body) or body.char.boss then return false end
+    if Combat.swallowedIn(combat, eater) then return false end
+    return true
+end
+
+-- Take `body` inside `eater`. The status that called this has already made it unable to act, answer or be
+-- aimed at; this takes it off its tile.
+function Combat.swallow(combat, eater, body)
+    if not (body and eater) or body.swallowedBy then return false end
+    body.swallowedBy = eater
+    eater.swallowing = body
+    for k in pairs(SWALLOW_POS) do rawset(body, k, nil) end
+    setmetatable(body, {
+        __index = function(_, k) if SWALLOW_POS[k] then return eater[k] end end,
+        __newindex = function(t, k, v) if not SWALLOW_POS[k] then rawset(t, k, v) end end,
+    })
+    Combat.logEvent(combat, "action",
+        string.format("%s swallows %s whole.", unitName(eater), unitName(body)), { eater, body })
+    return true
+end
+
+-- Put a swallowed body back on the board, on the free tile nearest its eater (ring by ring, in a fixed
+-- order so a seeded fight lands it in the same place every time). Returns x, y, or nil when it was not
+-- inside anything. A board with no free tile at all is not a board a fight can be on, so the widening
+-- search always finds one.
+function Combat.disgorge(combat, body)
+    local eater = body and body.swallowedBy
+    if not eater then return nil end
+    local ex, ey = eater.x, eater.y
+    -- Searched while the body is still inside, so Combat.unitAt passes over it (it is off its tile) and
+    -- its own read-through position never meets the search.
+    local cols = (combat.arena and combat.arena.cols) or 0
+    local rows = (combat.arena and combat.arena.rows) or 0
+    local lx, ly
+    for r = 1, math.max(cols, rows) do
+        for dy = -r, r do
+            for dx = -r, r do
+                if not lx and math.max(math.abs(dx), math.abs(dy)) == r then
+                    local x, y = ex + dx, ey + dy
+                    if x >= 1 and x <= cols and y >= 1 and y <= rows
+                        and Combat.footprintFree(combat, 1, 1, x, y, body) then
+                        lx, ly = x, y
+                    end
+                end
+            end
+        end
+        if lx then break end
+    end
+    setmetatable(body, nil)
+    body.swallowedBy = nil
+    if eater.swallowing == body then eater.swallowing = nil end
+    rawset(body, "x", lx or ex)
+    rawset(body, "y", ly or ey)
+    Combat.logEvent(combat, "action",
+        string.format("%s spits %s out.", unitName(eater), unitName(body)), { eater, body })
+    Combat.stampField(combat, body)
+    if lx then Combat.enterTile(combat, body, lx, ly) end
+    return body.x, body.y
 end
 
 -- THE WATER RISES: turn a shallow tile into a deep one, and take whatever was standing in it.
@@ -10497,7 +10627,7 @@ function Combat.abilityTargets(combat, unit, item)
         local waivesRange, waivesSight, reachExtra = Combat.reachWaiver(combat, unit, other)
         -- A head is aimed at only through the picker (Combat.aimHead), never planned for: the AI's list
         -- is bodies, and a blow planned on a head's cell would land on the body anyway.
-        if other.alive and not other.headOf and (d <= range + (reachExtra or 0) or waivesRange) and d >= minRange then
+        if other.alive and not Combat.isOffTile(other) and (d <= range + (reachExtra or 0) or waivesRange) and d >= minRange then
             local valid = false
             -- An untargetable foe (Invisible) can't be picked; a friendly cast ignores the status,
             -- so an ally can still heal or buff someone the enemy has lost sight of.
@@ -11035,13 +11165,29 @@ end
 -- Present only when the unit has toggled blink on AND can pay one jump's cost. The single gate the
 -- move overlay, the click handler, and Combat.blink all read, so teleport is offered exactly when it
 -- can be taken (and a blink you can't afford silently becomes a walk).
+--
+-- ALWAYS-ON (`moveBehavior.always`): a body that never walks at all -- the Giant Toad's hop, and the
+-- Bog-Hopper Greaves that give it to a person. Armed from the first beat with no toggle to find, and it
+-- is the ONLY way that body moves while it can pay: Combat.reachable and Combat.planMove both route
+-- through it (Combat.hopReady), so the AI's planner and a headless run move a hopper exactly as the
+-- battle screen does. Unaffordable, it falls back to the walk like any Blink -- which for a toad standing
+-- on 0 movement means staying put.
 function Combat.blinkReady(unit)
-    if not unit.blinkArmed then return nil end
     local item = Combat.blinkItem(unit.char)
     if not item then return nil end
     local mb = item.moveBehavior
+    if not (unit.blinkArmed or mb.always) then return nil end
     if mb.cost and resourceValue(unit.char, mb.cost.stat) < mb.cost.amount then return nil end
     return mb, item
+end
+
+-- The always-on hop `unit` would move by right now, or nil for a walk (see blinkReady). Root holds a
+-- hopper exactly as it holds a walker: the move is refused, never re-routed.
+function Combat.hopReady(unit)
+    if not (unit and unit.char) or Status.blocksMove(unit) then return nil end
+    local mb, item = Combat.blinkReady(unit)
+    if mb and mb.always then return mb, item end
+    return nil
 end
 
 -- Tiles a unit may blink to this turn: every walkable, unoccupied, wall-free tile within the blink's
@@ -11079,6 +11225,7 @@ function Combat.blink(combat, unit, x, y)
     if not unit.alive then return false, "dead" end
     if not combat.turn or combat.turn.unit ~= unit then return false, "not this unit's turn" end
     if combat.turn.moved then return false, "already moved" end
+    if Status.blocksMove(unit) then return false, "rooted" end
     local mb = Combat.blinkReady(unit)
     if not mb then return false, "cannot blink" end
     -- The whole body must fit where it lands (its own current cells don't block the jump); a wide
@@ -11092,7 +11239,8 @@ function Combat.blink(combat, unit, x, y)
     combat.turn.moved = true
     combat.turn.moveCost = 0 -- a blink owes no move initiative; its resource cost is the price
     unit.x, unit.y = x, y
-    Combat.logEvent(combat, "move", string.format("%s blinks to (%d, %d).", unitName(unit), x, y), unit)
+    Combat.logEvent(combat, "move", string.format("%s %s to (%d, %d).", unitName(unit),
+        mb.verb or "blinks", x, y), unit)
     Combat.enterTile(combat, unit, x, y) -- no `reason`: a blink crosses no ground (see Combat.enterTile)
     return true
 end

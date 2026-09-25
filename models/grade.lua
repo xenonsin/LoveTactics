@@ -526,6 +526,10 @@ Grade.TRAIT_GRADE = {
     trait_answers_every_blow =          2.5,  -- Answers Every Blow -- a free half-damage bite per melee blow
     trait_mated_for_life =              1.0,  -- Mated for Life -- Gorged when its mate falls
     trait_bottomless_gut =              2.0,  -- Bottomless Gut -- a meal per foe that dies beside you, to 3
+    -- Gullet is the swallow's RELEASE rule -- a heavy blow, a stun or a death lets the body back out -- so
+    -- it is a cost the Gullet and the toad's Swallow carry, not a power. Weighed small and positive only
+    -- because it is also what lets the swallow be safe to hold: it never strands a body off the board.
+    trait_gullet =                      0.5,  -- Gullet -- a heavy blow, a stun or its death spits the meal
     trait_distended_girth =             1.5,  -- Distended Girth -- full at the bell, shed with a debuff
     trait_gorgers_beak =                2.0,  -- Gorger's Beak -- +2 Damage per consumable used, to +6
     trait_sated =                       0.5,  -- Sated -- at full health, heals pass to a hurt neighbour

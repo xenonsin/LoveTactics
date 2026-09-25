@@ -448,6 +448,10 @@ local CHARACTER_SILHOUETTE = {
     -- exactly, which is nearer the animal than any lion or wyvern in the set.
     manticore = "delapouite/greek-sphinx",
 
+    -- THE GIANT TOAD (Gluttony's seat, 2026-09-25). The crowned frog is the set's only full-bodied,
+    -- squatting frog; lorc/frog is the Tongue Lash's icon, and a body and its own weapon must not read alike.
+    giant_toad = "delapouite/frog-prince",
+
     -- THE CHIMERA (Gluttony's seat): the lion is the body, and each head wears its own animal -- a head
     -- is drawn only on the turn strip, where it has to be told from the other two at a glance.
     chimera = "lorc/lion",

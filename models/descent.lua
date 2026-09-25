@@ -193,14 +193,19 @@ Descent.SINS = {
         -- (Descent.stairWin). Both floors' beasts, because she is the apex of the whole circle.
         guardian = { lead = "character_general_gluttony", filler = "character_wolf_alpha",
             waves = {
-                { at = 10, every = 70, composition = { "character_wolf_grunt", "character_wolf_grunt" },
+                { at = 10, every = 80, composition = { "character_wolf_grunt", "character_wolf_grunt" },
                   from = "surround", maxAlive = 5 },
-                { at = 20, every = 70, composition = { "character_boar" }, from = "surround", maxAlive = 5 },
-                { at = 30, every = 70, composition = { "character_giant_spider" }, from = "surround", maxAlive = 5 },
-                { at = 40, every = 70, composition = { "character_manticore" }, from = "surround", maxAlive = 5 },
-                { at = 50, every = 70, composition = { "character_wyvern" }, from = "surround", maxAlive = 5 },
-                { at = 60, every = 70, composition = { "character_stag_beast" }, from = "surround", maxAlive = 5 },
-                { at = 70, every = 70, composition = { "character_bear" }, from = "surround", maxAlive = 5 },
+                { at = 20, every = 80, composition = { "character_boar" }, from = "surround", maxAlive = 5 },
+                { at = 30, every = 80, composition = { "character_giant_spider" }, from = "surround", maxAlive = 5 },
+                { at = 40, every = 80, composition = { "character_manticore" }, from = "surround", maxAlive = 5 },
+                { at = 50, every = 80, composition = { "character_wyvern" }, from = "surround", maxAlive = 5 },
+                { at = 60, every = 80, composition = { "character_stag_beast" }, from = "surround", maxAlive = 5 },
+                { at = 70, every = 80, composition = { "character_bear" }, from = "surround", maxAlive = 5 },
+                -- THE TOAD CAME LATER (2026-09-25, "have the toad join in with Gula"), and joining is why
+                -- every stream above went from 70 to 80: eight beasts ten ticks apart, so the glade still
+                -- takes one arrival about every two turns. Her own palate for it is the Pull -- the one
+                -- beast in the wood that hands her a way to FETCH what she eats.
+                { at = 80, every = 80, composition = { "character_giant_toad" }, from = "surround", maxAlive = 5 },
             } },
         -- SHE WILL NOT RISE WHILE THERE IS ANYTHING LEFT TO EAT: the floor must be picked clean.
         --

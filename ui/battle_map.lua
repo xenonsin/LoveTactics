@@ -524,6 +524,10 @@ end
 -- token on top of the body it grows from. Its card on the turn strip is where it is read.
 function BattleMap:heldUnit(u)
     if u and u.headOf then return true end
+    -- ...and so does a body something has SWALLOWED (Combat.swallow): it is inside the eater, reads its
+    -- position through it, and drawing it would stack a second token on the toad. The Swallowed badge on
+    -- its turn-strip card is where it is read until it is spat back out.
+    if u and u.swallowedBy then return true end
     local held = self.overlays and self.overlays.heldUnits
     return (held and held[u]) or false
 end
