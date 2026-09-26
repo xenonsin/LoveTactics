@@ -1141,7 +1141,10 @@ function AI.candidates(combat, unit, items, tiles, wantSupport)
                         -- Combat.useItem's range re-check (measured to this same cell, from the body
                         -- once it has arrived) agrees the shot is legal.
                         local d, tcx, tcy = Combat.reachFrom(unit, tile.x, tile.y, t)
+                        -- A Shadow Mantle hides its bearer past N (Status.concealedAt), measured from
+                        -- THIS stand tile -- so the plan that survives is the one that walks within N.
                         if d <= range and d >= minRange
+                            and (wantSupport or not Status.concealedAt(t, combat, d))
                             and (not ab.requiresSight
                                  or Combat.sightFrom(combat, unit, tile.x, tile.y, tcx, tcy)) then
                             out[#out + 1] = {
@@ -1883,7 +1886,7 @@ function AI.preempt(combat, unit)
             local range = Combat.abilityRange(combat, unit, ab, node.x, node.y)
                 + Combat.adjacencyRangeBonus(unit.char, weapon)
             local d, cx, cy = Combat.reachFrom(unit, node.x, node.y, tt)
-            if d <= range and d >= minRange
+            if d <= range and d >= minRange and not Status.concealedAt(tt, combat, d)
                 and (not (ab and ab.requiresSight) or Combat.sightFrom(combat, unit, node.x, node.y, cx, cy))
                 and (not best or node.steps < best.steps) then
                 best = { x = node.x, y = node.y, tx = cx, ty = cy, steps = node.steps }

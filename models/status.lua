@@ -557,6 +557,27 @@ function Status.untargetable(unit, combat)
     return false
 end
 
+-- Is `unit` hidden from an aim taken `gap` tiles away? THE SHADOW MANTLE's rule (data/traits/
+-- trait_shadow_mantle.lua): a body carrying a trait with `concealedBeyond = N` cannot be picked by
+-- anything farther than N tiles off -- an archer or a caster has to come within N to reach it. It is
+-- untargetability with a RANGE on it, so it answers to exactly what Status.untargetable answers to: the
+-- same light overrules it (Witchlight, a carried lantern, a bell), and a friendly cast ignores it.
+--
+-- Asked with the gap the AIM is taken across -- body to body (Combat.unitGap), or from a candidate stand
+-- tile in the planner (Combat.reachFrom) -- so it binds a body the player drives as well as one the AI
+-- does: Combat.useItem refuses the cast, Combat.abilityTargets leaves it off the list, and AI.candidates
+-- measures it from where the striker would stand, which is what walks an archer in to within range.
+function Status.concealedAt(unit, combat, gap)
+    if not (unit and gap) then return false end
+    local flag = require("models.trait").flag(unit, "concealedBeyond")
+    local beyond = flag and flag.def and flag.def.concealedBeyond
+    if not beyond or gap <= beyond then return false end
+    if Status.limned(unit) then return false end
+    if combat and Status.lanternLit(combat, unit) then return false end
+    if combat and Status.belled(combat, unit) then return false end
+    return true
+end
+
 -- The barrier status on `unit` that would negate an incoming hit of the given school (`magical`
 -- true -> a magical barrier, false -> a physical one), or nil. A barrier def carries
 -- `negates = "physical"|"magical"`; the first matching one is returned so Combat.dealFlatDamage can

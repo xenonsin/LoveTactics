@@ -327,6 +327,14 @@ local CHARACTER_SILHOUETTE = {
     barrow_wight = "delapouite/elysium-shade",
     ghoul = "delapouite/shambling-zombie",
     vesh = "lorc/grim-reaper",
+    -- THE PAYMASTER AND WHAT HE WAS (2026-09-26, "The Paymaster"). The disguise is drawn by what he does --
+    -- he pays -- because a dwarf's face would be the one lie the board tells for him; the Lure is the shade
+    -- under it. The Bone Wyrm rides the Gilt Wyrm's token in bone (the ALIAS in tests/char_compose_spec.lua).
+    the_paymaster = "delapouite/pay-money",
+    the_lure = "delapouite/floating-ghost",
+    bone_wyrm = "lorc/sea-dragon",
+    -- The Gilded King (2026-09-26): Greed's seat, a dead king in a crown -- the old king, not the dwarf's.
+    the_gilded_king = "cathelineau/old-king",
 
     -- (THE BONE ORCHARD'S DEAD ARE OTHERWISE ABSENT FROM THIS TABLE. They are not bodies of their
     -- own -- each one EXTENDS a living blueprint and inherits its `sprite`, so the Skeleton Knight is
@@ -466,6 +474,10 @@ local CHARACTER_SILHOUETTE = {
     gilded_scarab = "lorc/scarab-beetle",
     rust_mite = "lorc/mite",
     brood_queen = "delapouite/flying-beetle",
+
+    -- THE THING UNDER THE SEAM (Greed's seat, 2026-09-26): a `demon`, so without a row it would land on the
+    -- daemon skull every imp wears. The horned giant is the set's nearest thing to what the dwarves woke.
+    deep_bane = "lorc/minotaur",
     scarab_egg = "sbed/egg-pod",
 
     -- THE CHIMERA (Gluttony's seat): the lion is the body, and each head wears its own animal -- a head

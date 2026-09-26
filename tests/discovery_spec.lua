@@ -118,6 +118,9 @@ local TROPHIES = {
     "ability_offering_bone", "utility_wights_shroud", "ability_through_the_rock", "ability_barrow_touch",
     "consumable_ghoul_nail_paste", "ability_ghouls_bite", "ability_foreclosure", "ability_raise_the_owing",
     "utility_the_dead_hand", "utility_ledger_of_the_lured", "ability_call_the_lured",
+    -- The Paymaster's (Greed's approach, 2026-09-26, round 5 of "The Paymaster"): his Pay Out turned round,
+    -- the company's own gold thrown at a tile -- a heap where nobody stands, a blow where a foe does.
+    "ability_thrown_wages",
     -- The wyverns' (Gluttony's seat, 2026-09-23): the dive as a cloak, the cut as a hunter's ability, the
     -- flight's wind as a charm, the takeoff as an escape, and the carry as the Highwing's chase.
     "armor_plummet_cloak", "ability_gale_cut", "utility_tailwind_charm", "ability_skyward",
@@ -125,6 +128,9 @@ local TROPHIES = {
     -- The Chimera's (Gluttony's seat, 2026-09-23): the lion's appetite as a Battlemage charm, and each
     -- head as a Beastmaster's -- a head you wear, earned by breaking that head.
     "utility_hearth_hunger", "utility_serpent_head", "utility_goat_head",
+    -- The Thing Under the Seam's (Greed's seat, 2026-09-26): its lash as a mace that drags and burns, and
+    -- its shadow as a mantle nothing past three tiles can aim through.
+    "weapon_whip_of_flame", "utility_shadow_mantle",
     -- The Sabertooths' (Gluttony's approach, 2026-09-23): the ambush as a cloak, the pounce's critical as a
     -- charm, the appetite as a cord, and the Longfang's hunt as her own.
     "armor_stalkers_mantle", "utility_ambush_charm", "utility_trophy_cord", "utility_the_unbroken_stalk",
@@ -149,6 +155,8 @@ local TROPHIES = {
     -- The Gold Golem's (Greed's approach, 2026-09-25): all three trophies, each one of its rules turned to
     -- work on every floor -- the pull as a lodestone, the hoard as a purse, the plates as ballast.
     "utility_lodestone", "utility_spilled_purse", "utility_golden_ballast",
+    -- The Gilded King's (Greed's seat, 2026-09-26): the crown he wears, and the bread that starved him.
+    "utility_the_gilded_crown", "ability_gilded_bread",
     -- Gula's (the wood's general, re-premised 2026-09-23): the beast's inhale as a druid's, and the rule
     -- that learns every blow as a hide. After the Maw on her drop list (Descent.DROPS.gluttony).
     "ability_draw_breath", "armor_studied_hide",

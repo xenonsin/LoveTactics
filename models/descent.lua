@@ -518,9 +518,18 @@ Descent.SINS = {
         -- stands it on the approach beside the Fen Ooze; this list is only the billing.
         -- THE BROOD QUEEN IS A SPARE ON THE APPROACH (2026-09-25, "The Coin-Eaters": "Elite only" -- the
         -- stand-in Slime keeps the stair). Floor five's puzzle: keep her Hoard under 20 or read the lane.
+        -- THE PAYMASTER IS A SPARE ON THE APPROACH TOO (2026-09-26, "The Paymaster", five rounds): Vesh's
+        -- hand, paying a dwarf crew into the ground on Vesh's own floor, and a shade once the last of it falls.
+        -- THE THING UNDER THE SEAM IS THE SEAT'S THIRD SPARE (2026-09-26: "They dug too greedily and too
+        -- deep"). What the dwarves woke under the gold, fought alone on floor six (encounter_greed_the_
+        -- deep_bane, runged 2) beside the Counting Hall, the King Slime and the Nest.
+        -- THE GILDED KING IS A SPARE ON THE SEAT (2026-09-26): the dead king in his plates and his gilded
+        -- guard, the fight that pays as it is hit. Its own `rung = 2` stands it on floor six.
         elites = { approach = "encounter_fen_ooze", seat = "encounter_greed_the_counting_hall",
             spares = { "encounter_the_king_slime", "encounter_greed_the_nest",
-                "encounter_greed_the_gold_golem", "encounter_greed_the_brood_queen" } } },
+                "encounter_greed_the_gold_golem", "encounter_greed_the_brood_queen",
+                "encounter_greed_the_paymaster", "encounter_greed_the_deep_bane",
+                "encounter_greed_the_gilded_king" } } },
     { id = "envy", name = "Envy", vendor = "alchemist", biome = "desert",
         scene = "conversation_descent_envy",
         -- THE SECOND OF THE TWO BROKEN LEADS. character_homunculus is the alchemist's SUMMON -- its own
@@ -1557,7 +1566,9 @@ function Descent.floorPool(ctx)
     -- level and the SHARE is unchanged, which is the other reason this rule is a ratio.
     local worths, rated = {}, {}
     for _, e in ipairs(pool) do
-        if e.kind == "combat" or e.kind == "elite" then
+        -- An elite that stands `alone` is excused the share below, so it is not rated into its median.
+        local standsAlone = e.kind == "elite" and (Encounter.get(e.id) or {}).alone == true
+        if (e.kind == "combat" or e.kind == "elite") and not standsAlone then
             local ok, worth = pcall(Muster.encounter, Encounter.get(e.id), {
                 depth = ctx.depth,
                 quest = ctx.quest,
@@ -1657,7 +1668,16 @@ function Descent.floorPool(ctx)
         -- filter that forgot to ask what KIND it was looking at would strip the floor of everything that
         -- is not a fight and leave it a corridor of skirmishes.
         local light = false
-        if e.kind == "combat" or e.kind == "elite" then
+        -- AN ELITE AUTHORED TO STAND ALONE (`alone = true`, the Thing Under the Seam's Too Deep) is excused
+        -- BOTH rules below. Each is about a body that is a walk-over by itself -- the lone stag -- and each
+        -- measures that with a sum of stat lines (Muster) or a head-count, which is exactly what a set-piece
+        -- built on one body's mechanics does not have: measured, no lone stat block inside the elite band
+        -- reaches the share on a deep floor. So the blueprint says what it is. Only an elite may claim it,
+        -- and it is kept out of the median it is excused from (the rating loop above), so declaring a
+        -- rating meaningless cannot also move the bar for every other fight on the floor.
+        local aloneDef = e.kind == "elite" and Encounter.get(e.id)
+        local excused = aloneDef and aloneDef.alone == true
+        if (e.kind == "combat" or e.kind == "elite") and not excused then
             light = median ~= nil and rated[e.id] ~= nil
                 and rated[e.id] < median * Descent.MIN_SHARE
             if not light then

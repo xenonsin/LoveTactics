@@ -35,7 +35,10 @@
 --   ground    { from, to }      every zone of blueprint `from` on the board becomes one of `to`, in
 --                               this instant -- the healing trail a fleeing stag laid turning to
 --                               blight under the party standing on it (models/hazard.lua's convert).
---                               The only response that writes the FLOOR rather than the bearer.
+--                               One of two responses that write the FLOOR rather than the bearer.
+--   chasm     { gap }           every walkable tile exactly `gap` from the bearer's footprint falls away
+--                               to lava, and the bodies on it drop to the inside edge (Combat.openChasm)
+--                               -- the other one, and the only one that writes TERRAIN.
 --   log       { text }          a line in the combat log
 --   mark      { victim, scene,  the bearer picks a body and puts it down BY SCRIPT rather than by
 --               hitScene,       damage, on the threshold itself. See the paragraph below for why this
@@ -84,6 +87,19 @@ local RESPONSES = {
     ground = function(ctx, r)
         if not (r.from and r.to and ctx.combat) then return end
         require("models.hazard").convert(ctx.combat, r.from, r.to)
+    end,
+    -- THE FLOOR FALLS AWAY. Every walkable tile exactly `gap` from the bearer's footprint becomes the
+    -- cave's impassable lava (Combat.openChasm), and the bearer stands on an island -- the Thing Under the
+    -- Seam's half-health break (utility_what_was_sleeping).
+    --
+    -- The same license `ground` takes, one layer down: it writes the FLOOR, and it is terrain rather than
+    -- a zone. The bodies standing on the ring drop to its inside edge -- which is not an act the bearer
+    -- takes, any more than Combat.floodTile taking the body standing in the ford is one: it is where a
+    -- body ends up when the ground under it goes, resolved in the same instant the ground goes, so there
+    -- is never a tick in which somebody stands on a tile nobody can stand on.
+    chasm = function(ctx, r)
+        if not ctx.combat then return end
+        require("models.combat").openChasm(ctx.combat, ctx.unit, r.gap or 2)
     end,
     -- Set the magnitude the curve is worth at death's door; the onDamaged body below re-scales the
     -- bearer's damage off missing health every later survived blow (ctx.trait.applied tracks paid).

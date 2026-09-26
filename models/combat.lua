@@ -3282,15 +3282,22 @@ end
 -- A trail lays only ONE trap per tile: a wearer pacing the same corridor would otherwise heap a fresh
 -- caltrop on the pile every crossing, since traps -- unlike hazards, which dedupe by refreshing -- have
 -- no notion of an identical one already being here.
+--
+-- A WIDE BODY LEAVES EVERY TILE IT VACATES, not only the one its anchor left (Combat.vacatedCells). A 2x2
+-- stepping once lifts two tiles off the ground, and the trail is about the ground it lifted off -- the
+-- Thing Under the Seam leaves two tiles burning a step. For a 1x1 the vacated set is the one tile it came
+-- from, so every trail that shipped before this lays exactly what it did.
 function Combat.layTrail(combat, unit, fromX, fromY)
     if not (unit and unit.char) then return end
+    local vacated = (fromX and fromY) and Combat.vacatedCells(unit, fromX, fromY) or {}
     for _, item in ipairs(Character.eachItem(unit.char)) do
         local trail = item.trail
         if trail then
             if trail.selfStatus then
                 Status.apply(combat, unit, trail.selfStatus.id, { duration = trail.selfStatus.duration })
             end
-            if fromX and fromY then
+            for _, cell in ipairs(vacated) do
+                local fromX, fromY = cell.x, cell.y
                 if trail.hazard then
                     -- SCATTERED, where a plain trail is laid. `scatter = N` throws the ground somewhere
                     -- within N of the tile just vacated instead of onto it, one draw per step -- which
@@ -3324,6 +3331,21 @@ function Combat.layTrail(combat, unit, fromX, fromY)
             end
         end
     end
+end
+
+-- The tiles a body standing where it is now has LEFT since it stood with its anchor on (fromX, fromY): its
+-- old footprint less its new one. One tile for a 1x1 (the tile it came from), up to w or h tiles for a wide
+-- body taking one step. A field on Combat rather than a local, as the main chunk is near Lua's local cap.
+function Combat.vacatedCells(unit, fromX, fromY)
+    local w, h = unit.w or 1, unit.h or 1
+    local out = {}
+    for y = fromY, fromY + h - 1 do
+        for x = fromX, fromX + w - 1 do
+            local still = x >= unit.x and x <= unit.x + w - 1 and y >= unit.y and y <= unit.y + h - 1
+            if not still then out[#out + 1] = { x = x, y = y } end
+        end
+    end
+    return out
 end
 
 -- Lay the ground a unit's kit carries WITH it. An `incense = { hazard, radius, amount }` on any item in
@@ -8036,6 +8058,110 @@ function Combat.floodTile(combat, x, y)
     return true
 end
 
+-- THE FLOOR FALLS AWAY: every walkable tile exactly `gap` from `unit`'s footprint (Combat.cellGap,
+-- Manhattan off the box) becomes lava, and the body stands on an island. The Thing Under the Seam's
+-- half-health break (trait_boss_phases' `chasm`, utility_what_was_sleeping), approved on review 2026-09-26.
+--
+-- LAVA, BECAUSE THE CAVE ALREADY HAS THE TILE. It is the Deeps' own rise -- impassable, no bar to a line
+-- of sight, crossed by a flier and by nothing else (models/terrain.lua) -- and the golems strike it and the
+-- dwarves' cave-in lays it (Golem.lava). So a ring of it is exactly the island the review asked for with no
+-- new kind of ground: range and reach still cross it, no foot does, and a leap or a lash is how melee gets
+-- over. And a ring of Manhattan radius `gap` SEALS: a step changes a tile's gap from the box by one at most,
+-- so nothing walks from inside to outside without setting foot on the ring.
+--
+-- NOBODY DIES OF IT. A body standing on the ring drops one tile to the INSIDE edge -- an orthogonal
+-- neighbour one nearer the body, else the nearest free tile on the inside edge, else the nearest on the
+-- outside one -- before the ground under it goes. A body with nowhere to land keeps its tile, and the tile
+-- under it stays floor: nothing is ever left standing on ground nothing can stand on. A flier stays where it
+-- is, over the fire, as a flier over lava always has. A wide body on the ring is left standing likewise.
+-- Whatever zone lay on the ring goes with the ground (a fire, a coin heap).
+--
+-- Once: the phase cursor spends it. Returns how many tiles fell.
+function Combat.openChasm(combat, unit, gap)
+    local tiles = combat and combat.arena and combat.arena.tiles
+    if not (tiles and unit) then return 0 end
+    gap = gap or 2
+    local w, h = unit.w or 1, unit.h or 1
+    local function cellAt(x, y) return tiles[y] and tiles[y][x] end
+
+    local ring, onRing = {}, {}
+    for y = unit.y - gap, unit.y + h - 1 + gap do
+        for x = unit.x - gap, unit.x + w - 1 + gap do
+            local cell = cellAt(x, y)
+            if cell and cell.walkable and Combat.cellGap(x, y, unit) == gap then
+                ring[#ring + 1] = { x = x, y = y, cell = cell }
+                onRing[y * 100000 + x] = true
+            end
+        end
+    end
+
+    local function free(x, y)
+        local cell = cellAt(x, y)
+        return cell ~= nil and cell.walkable and not onRing[y * 100000 + x]
+            and not Combat.unitAt(combat, x, y) and not Combat.objectAt(combat, x, y)
+    end
+    -- Nearest free tile at exactly `want` from the body, first in reading order on a tie.
+    local function nearestAt(want, fx, fy)
+        local best, bestD
+        for y = unit.y - want, unit.y + h - 1 + want do
+            for x = unit.x - want, unit.x + w - 1 + want do
+                if Combat.cellGap(x, y, unit) == want and free(x, y) then
+                    local d = math.abs(x - fx) + math.abs(y - fy)
+                    if not bestD or d < bestD then best, bestD = { x = x, y = y }, d end
+                end
+            end
+        end
+        return best
+    end
+    local function landing(x, y)
+        for _, d in ipairs({ { 0, -1 }, { 1, 0 }, { 0, 1 }, { -1, 0 } }) do
+            local nx, ny = x + d[1], y + d[2]
+            if Combat.cellGap(nx, ny, unit) == gap - 1 and free(nx, ny) then return { x = nx, y = ny } end
+        end
+        return nearestAt(gap - 1, x, y) or nearestAt(gap + 1, x, y)
+    end
+
+    -- The bodies first, so the ground never goes out from under anybody.
+    for _, c in ipairs(ring) do
+        local body = Combat.unitAt(combat, c.x, c.y)
+        if body and body.alive and body ~= unit and not Combat.isFlying(body)
+            and (body.w or 1) == 1 and (body.h or 1) == 1 then
+            local to = landing(c.x, c.y)
+            if to then
+                Combat.logEvent(combat, "move", string.format("The floor falls away under %s, who drops to (%d, %d).",
+                    unitName(body), to.x, to.y), { body, unit })
+                Combat.teleportUnit(combat, body, to.x, to.y, { silent = true, glide = true })
+            end
+        end
+    end
+
+    local lava = Terrain.get("lava")
+    local fell = 0
+    for _, c in ipairs(ring) do
+        local stander = Combat.unitAt(combat, c.x, c.y)
+        if not stander or Combat.isFlying(stander) then
+            local cell = c.cell
+            cell.type = "lava"
+            cell.moveCost = lava.moveCost
+            cell.walkable = lava.walkable
+            cell.sightCost = lava.sightCost or 0
+            cell.bonus = lava.bonus
+            cell.tags = lava.tags
+            cell.swim, cell.drowns = nil, nil
+            -- Over a copy: consuming a zone lifts it out of the list being walked.
+            local zones = {}
+            for _, z in ipairs(Hazard.allAt(combat, c.x, c.y) or {}) do zones[#zones + 1] = z end
+            for _, z in ipairs(zones) do Hazard.consume(combat, z) end
+            fell = fell + 1
+        end
+    end
+    if fell > 0 then
+        Combat.logEvent(combat, "action", string.format("The floor falls away round %s: %d tiles drop into the fire.",
+            unitName(unit), fell), unit)
+    end
+    return fell
+end
+
 -- TAKE A BODY UNDER. The one death in the game that terrain deals, spent by hazard_deep_water when
 -- something that cannot swim arrives in a channel (Combat.enterTile -> Hazard.onEnter).
 --
@@ -9310,6 +9436,19 @@ function Combat.healingInverted(target)
     return Status.invertsHealing(target) or Trait.flag(target, "invertsHealing")
 end
 
+-- Would a heal aimed at `target` restore NOTHING? Returns the thing that stops it (a status, a trait, or
+-- the reason a deaf body gives), or nil. The read-only union of every early exit Combat.applyHeal takes
+-- before a point lands: the refusals, the Only Voice, the heal that turns to gold, and the one that
+-- wounds instead. Asked by an effect that has to decide BEFORE it pays -- Gilded Bread spends real gold
+-- per point, and a purse emptied into a body that could not take it would be a price on a heal that
+-- never happened.
+function Combat.healRefusal(target)
+    if not (target and target.char) then return nil end
+    return Status.blocksHealing(target) or Trait.flag(target, "refusesHealing")
+        or Status.deafToAllies(target) or Trait.flag(target, "healsTurnToGold")
+        or Combat.healingInverted(target)
+end
+
 -- Restore health to `target`, capped at its ceiling (its max less any reserved health -- reserved
 -- life can't be healed back into). Returns the amount actually healed. Reached through `fx.heal`
 -- inside an ability effect.
@@ -9339,7 +9478,9 @@ function Combat.applyHeal(combat, target, amount)
     -- An UNCLOSING WOUND refuses the heal outright. Sat at the top of the one funnel every heal in the
     -- game runs through -- a spell, a potion, a Regeneration tick, a lifesteal drink, a Sanctified
     -- Presence -- so nothing has to learn the rule twice and nothing can route around it.
-    local blocked = Status.blocksHealing(target)
+    -- A TRAIT that refuses the same way (`refusesHealing`, Gold in the Mouth on Gilded Bread's bearer) is
+    -- the standing version of the wound: asked in the same breath, logged in the same line.
+    local blocked = Status.blocksHealing(target) or Trait.flag(target, "refusesHealing")
     -- ...and a body that hears only HER is not healed either (the Only Voice, a foe's Deaf Heart).
     local deaf = not blocked and (amount or 0) > 0 and Status.deafToAllies(target)
     if deaf then
@@ -9348,8 +9489,25 @@ function Combat.applyHeal(combat, target, amount)
         return 0
     end
     if blocked and (amount or 0) > 0 then
+        local why = blocked.name or (blocked.def and blocked.def.name) or blocked.id
         Combat.logEvent(combat, "status",
-            string.format("%s cannot be healed: %s.", unitName(target), blocked.name or blocked.id), target)
+            string.format("%s cannot be healed: %s.", unitName(target), why), target)
+        return 0
+    end
+    -- TURNED TO GOLD (the Gilded King, trait_turned_to_gold): a heal aimed at him becomes a coin heap
+    -- beside him and restores nothing. Ahead of the inversion on purpose -- he is undead, and Grave-Cold
+    -- would otherwise burn him with it -- because what he is cursed with is older than what he is.
+    if (amount or 0) > 0 and Trait.flag(target, "healsTurnToGold") then
+        local Golem = require("models.golem")
+        local spot = Golem.tileBeside(combat, target.x, target.y)
+        if spot then
+            Golem.heap(combat, spot.x, spot.y)
+            Combat.logEvent(combat, "action",
+                string.format("The healing turns to gold at %s's feet.", unitName(target)), target)
+        else
+            Combat.logEvent(combat, "action",
+                string.format("The healing turns to gold on %s and falls away.", unitName(target)), target)
+        end
         return 0
     end
     -- INTERRED, or simply dead: the heal curdles and lands as a wound of the same size. Checked after
@@ -9937,6 +10095,10 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
         end,
         heal = function(tgt, amount)
             if not tgt then return 0 end
+            -- A body that refuses healing outright, or turns it to gold, previews no heal at all -- and
+            -- no wound either, since Combat.applyHeal asks both of these BEFORE the inversion below (the
+            -- Gilded King is undead, and his heals still land as gold rather than as a burn).
+            if Trait.flag(tgt, "refusesHealing") or Trait.flag(tgt, "healsTurnToGold") then return 0 end
             -- A heal aimed at an INTERRED body (or at anything grave-cold) lands as a wound instead, so
             -- the preview has to show it as one -- a green number over a zombie the party is about to
             -- burn down is the preview lying about the one thing the player needed to know. The toll is
@@ -10705,7 +10867,10 @@ function Combat.abilityTargets(combat, unit, item)
             local valid = false
             -- An untargetable foe (Invisible) can't be picked; a friendly cast ignores the status,
             -- so an ally can still heal or buff someone the enemy has lost sight of.
+            -- The Shadow Mantle's reach limit rides beside it (Status.concealedAt), measured across the same
+            -- body-to-body gap the range was: a mantled foe past its N is off the list as an Invisible one is.
             if ab.target == "enemy" then valid = other.side ~= unit.side and not Status.untargetable(other, combat)
+                and not Status.concealedAt(other, combat, d)
             elseif ab.target == "ally" then valid = other.side == unit.side -- includes self
             elseif ab.target == "self" then valid = other == unit
             -- An occupiable AoE (e.g. Rain of Arrows) aims at a cell, so it can be centred right on
@@ -10713,6 +10878,7 @@ function Combat.abilityTargets(combat, unit, item)
             -- A point placement (a trap: tile-target but no aoe/allowOccupied) stays unplannable here.
             elseif ab.target == "tile" and ab.aoe and ab.allowOccupied then
                 valid = other.side ~= unit.side and not Status.untargetable(other, combat)
+                    and not Status.concealedAt(other, combat, d)
             -- A cast aimed at ANY body (`target = "unit"`) is offered to the planner only at foes, and only
             -- when it says so (`aiFoes`): the Hobgoblin's Lash is a whip first, and a lash on an ally second
             -- (ability_the_lash plans that half as a support cast).
@@ -12592,6 +12758,14 @@ function Combat.useItem(combat, unit, item, tx, ty, windup, dest, spend)
     end
     if target then
         if ab.target == "self" and target ~= unit then return false, "invalid target" end
+        -- THE SHADOW MANTLE (Status.concealedAt): a body hidden past N tiles cannot be AIMED at from
+        -- farther than N -- a strike at it, or an area cast centred on it. Refused here in the model, so
+        -- it binds a body the player drives as well as the planner's; an area cast centred elsewhere
+        -- still catches it, because being caught is not being aimed at.
+        if target.side ~= unit.side and (ab.target == "enemy" or ab.target == "tile")
+            and Status.concealedAt(target, combat, Combat.unitGap(unit, target)) then
+            return false, "out of range"
+        end
     end
     -- A sight-gated single-target strike needs a real foe in its line -- line of sight is to a TARGET,
     -- not to bare ground, and empty ground trivially passes unitHasSight above. Without this the shot

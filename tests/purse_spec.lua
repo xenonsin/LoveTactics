@@ -25,6 +25,9 @@ local Fixture = require("tests.support.fixture")
 local MONEY_KIT = {
     -- The spenders: gold out, as a resource (Combat.spendPurse).
     "ability_blood_money", "ability_gilded_wound", "ability_grease_palms", "ability_open_account",
+    -- ...and the Paymaster's trophy (2026-09-26): the gold thrown, as a heap or as a blow.
+    "ability_thrown_wages",
+    "ability_gilded_bread", -- the Gilded King's trophy: gold out, health in, five a point
     -- The earners: gold in (Combat.bounty and kin).
     "ability_ledgers_due", "ability_price_on_the_head", "utility_skimmers_cut", "armor_cutpurse_coat",
 }

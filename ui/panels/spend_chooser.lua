@@ -40,6 +40,9 @@ function SpendChooser.new(opts)
     self.hi = math.max(self.lo, opts.hi or self.lo)
     self.value = math.max(self.lo, math.min(self.hi, opts.value or self.lo))
     self.rate = math.max(1, opts.rate or 10)
+    -- What a point buys, as the read-out's word: "dmg" for a blow, "hp" for Gilded Bread's heal
+    -- (`purchase.unit` on the ability).
+    self.unit = opts.unit or "dmg"
     self.onChange = opts.onChange
     self.onConfirm = opts.onConfirm
     self.onCancel = opts.onCancel
@@ -132,7 +135,7 @@ function SpendChooser:draw()
     Theme.set(Theme.accentAmber)
     love.graphics.print(tostring(self:gold()) .. "g", self.x + PAD + 14, ry - 1)
     Theme.set(Theme.ink)
-    love.graphics.printf(tostring(self.value) .. " dmg", self.x, ry - 1, self.w - PAD, "right")
+    love.graphics.printf(tostring(self.value) .. " " .. self.unit, self.x, ry - 1, self.w - PAD, "right")
 
     -- The track.
     Theme.set(Theme.slot)

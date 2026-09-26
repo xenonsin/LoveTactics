@@ -755,7 +755,13 @@ function Character.instantiate(id, progress)
     -- A body with a full grid simply does not get it. That is a loud enough failure to be worth leaving
     -- unguarded -- it means a nine-item blueprint of a race that grants something, which is an
     -- authoring mistake the race spec catches by counting cells rather than a runtime case to handle.
-    for _, itemId in ipairs(Race.grantsOf(def.race)) do
+    --
+    -- `raceGrants = false` is the ONE way out, and it exists for a body that WEARS a race rather than
+    -- being one: the Paymaster (data/characters/character_the_paymaster.lua) is a shade in a dead dwarf's
+    -- shape, so he reads as a dwarf -- the race, its line, its short legs -- and carries none of what a
+    -- dwarf is inside. No Stout means no pull toward loose gold, no Dragon-Sickness and no Share to take
+    -- up. A flag on the body rather than a second dwarf race, so the race stays one table.
+    for _, itemId in ipairs(def.raceGrants == false and {} or Race.grantsOf(def.race)) do
         for cell = 1, Character.MAX_INVENTORY do
             if not char.inventory[cell] then
                 char.inventory[cell] = Item.instantiate(itemId)

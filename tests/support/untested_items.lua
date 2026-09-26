@@ -45,7 +45,6 @@ return {
     "ability_leaping_crash",
     "ability_mana_sunder",
     "ability_march_wardens_standard",
-    "ability_mark_of_heresy",
     "ability_muster_rift",
     "ability_not_yet",
     "ability_null_field",

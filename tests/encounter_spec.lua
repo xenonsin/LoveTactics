@@ -211,6 +211,9 @@ return {
                 -- A cast of one that is three bodies: the Chimera grows its own two heads at the bell,
                 -- and anything standing beside it would stand in the goat's cone.
                 encounter_the_chimera = true,
+                -- A cast of one by review: the Thing Under the Seam fights alone ("no escort"), and
+                -- anything beside it would stand in its trail, its cone and its island at once.
+                encounter_greed_the_deep_bane = true,
             }
             -- THE ROSTER, NOT THE HEAD-COUNT. Asked as "is this the same fight on every seed", because
             -- a stop is allowed to roll its SHAPE while holding its size: the Skeleton King's court is

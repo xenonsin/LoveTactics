@@ -7,6 +7,11 @@
 --                "heap"     a coin heap -- the Gold Golem, whose plates are gold (round 2)
 --                "reclaim"  a coin heap its wearer can walk back over to put the plate on again -- Gilt
 --                           Plating (hazard_coin_heap reads `plateOf`)
+--   shedOn       nil        only an IMPACT blow sheds (every golem piece)
+--                "blow"     ANY blow a body strikes sheds, whatever it carries -- the Gilded King
+--                           (utility_gilded_flesh, 2026-09-26): he is crusted in it, not armoured, and it
+--                           comes off under a knife as readily as under a hammer. A tick with no striker
+--                           (a burn, a bleed) is not a blow and sheds nothing.
 --
 -- The slab lands on the clear tile beside the wearer furthest from whoever struck it -- "behind you",
 -- away from the attacker -- and a plate with nowhere to land is still knocked off. Only IMPACT sheds a
@@ -31,7 +36,12 @@ return {
     onDamaged = function(ctx)
         local unit, combat = ctx.unit, ctx.combat
         local status = ctx.param("plateStatus")
-        if not (unit and unit.alive and status and Golem.hasTag(ctx.tags, "impact")) then return end
+        if not (unit and unit.alive and status) then return end
+        if ctx.param("shedOn") == "blow" then
+            if not ctx.attacker then return end
+        elseif not Golem.hasTag(ctx.tags, "impact") then
+            return
+        end
         if not Status.spendStacks(combat, unit, status, 1) then return end
         local spot = Golem.tileBeside(combat, unit.x, unit.y, ctx.attacker)
         local shedAs = ctx.param("shedAs", "rubble")

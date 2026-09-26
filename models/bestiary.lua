@@ -59,13 +59,28 @@ end
 -- MET MEANS FOUGHT, NOT KILLED. A body that walked off, was polymorphed, or was still standing when the
 -- objective completed has still been met -- the entry is a record of what the company has SEEN, and a
 -- player who fought a thing and did not finish it has learned exactly as much about what it carries.
+--
+-- A DISGUISE IS MET AS WHAT IT SHOWED, UNTIL IT DROPS. The Paymaster (character_the_paymaster.lua) walks in
+-- as a dwarf; the roster this reads holds the character he walked in as, and his reveal stamps the face under
+-- it onto that same character (`unmasked`, models/paymaster.lua). So a company that killed him before he
+-- turned has met the dwarf and nothing else, and one that saw him turn has met both.
 function Bestiary.recordMet(player, enemyUnits)
     local added = 0
     for _, unit in ipairs(enemyUnits or {}) do
         local char = unit and unit.char
         if char and char.id and Bestiary.markMet(player, char.id) then added = added + 1 end
+        if char and char.unmasked and Bestiary.markMet(player, char.unmasked) then added = added + 1 end
     end
     return added
+end
+
+-- The disguise whose true face `charId` is (a blueprint's `unmasks`), or nil. Read off the data, so the book
+-- needs no list of its own.
+local function guiseOf(charId)
+    for id, def in pairs(Character.defs) do
+        if def.unmasks == charId then return id end
+    end
+    return nil
 end
 
 -- ---------------------------------------------------------------------------
@@ -108,15 +123,24 @@ end
 
 -- Every body the company has met, as entries the panel lists. Sorted by name so the list is stable and
 -- readable; a caller that wants them grouped by circle reads `class` off each row.
+--
+-- TWO FACES OF ONE BODY ARE ONE ENTRY. A disguise's true face is folded into the disguise's own entry rather
+-- than listed beside it, and it is NAMED there only once the company has seen it (`unmasks`): before the
+-- reveal the entry is the dwarf the Paymaster shows, after it the entry names both.
 function Bestiary.entries(player)
     local out = {}
     for charId in pairs((player or {}).met or {}) do
         local def = Character.defs[charId]
+        local guise = def and guiseOf(charId)
+        if guise and Bestiary.hasMet(player, guise) then def = nil end -- folded into the disguise's entry
         if def then
             local found, total = Bestiary.progress(player, charId)
+            local name = def.name or charId
+            local face = def.unmasks and Bestiary.hasMet(player, def.unmasks) and Character.defs[def.unmasks]
+            if face then name = name .. " / " .. (face.name or def.unmasks) end
             out[#out + 1] = {
                 id = charId,
-                name = def.name or charId,
+                name = name,
                 kind = def.kind,
                 tier = def.tier or 2,
                 class = def.class,

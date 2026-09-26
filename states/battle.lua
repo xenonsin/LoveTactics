@@ -3776,7 +3776,7 @@ local function openSpendChooser(current, item, cx, cy, plan)
     local px, py = battle.map:cellToPixel(cx, cy)
     local sz = battle.map.size
     battle.spendChooser = SpendChooser.new({
-        lo = 1, hi = hi, value = 1, rate = rate,
+        lo = 1, hi = hi, value = 1, rate = rate, unit = ab.purchase and ab.purchase.unit,
         anchorX = px + sz / 2, anchorY = py + sz / 2, tileSize = sz,
         onConfirm = function(value)
             battle.spendChooser = nil

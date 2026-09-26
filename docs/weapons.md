@@ -255,6 +255,7 @@ one exception: it *pairs* the two tiles, so it needs both.
 | Q | `weapon_rimebell` | The tiles they are **dragged across** freeze over. The only zone painted with somebody else's body. |
 | Q | `weapon_answering_bell` | Carries `trait_shield_shove`: **shoves whoever strikes it**. A body nobody can stay next to. |
 | Q | `weapon_suspension_mace` | `status_suspended` instead of a shove — displacement in **time**. Your party cannot touch it either. |
+| Q | `weapon_whip_of_flame` | The Gathering Bell's pull at the Bell's reach, and it **Burns** what it drags. The Thing Under the Seam's lash; there is no whip family, and a whip is a displacement weapon. |
 
 ### `hammer` — fighter
 | | Weapon | Its extra over the base |

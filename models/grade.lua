@@ -464,6 +464,10 @@ Grade.TRAIT_GRADE = {
     trait_stalkers_mantle =             1.5,  -- Stalker's Mantle -- the first blow from cover is a critical
     trait_the_unbroken_stalk =          2.0,  -- The Unbroken Stalk -- a kill from hiding keeps you hidden
     trait_trophy_cord =                 2.5,  -- Trophy Cord -- +2 Damage per kind killed this trip, to +10
+    -- Shrouded (the Shadow Mantle) is untargetability with a range on it and no clock: it never switches
+    -- off, but it never hides you from a blade, a blast or the light, and a foe that walks in to three is
+    -- not delayed at all. Priced as a strong defensive charm, under the Unbroken Stalk's kept hiding.
+    trait_shadow_mantle =               1.5,  -- Shrouded -- cannot be targeted from more than 3 tiles away
 
     -- THE DWARVES (2026-09-24). Three are the race's own and never shelved, weighed as a body's rule. The
     -- Mithril Shirt is the one drop: no critical ever lands on its wearer, and once a fight a killing blow
@@ -558,6 +562,15 @@ Grade.TRAIT_GRADE = {
     trait_deep_delver =                 2.0,  -- Up From Below -- the first blow after surfacing crits
     trait_the_dead_hand =               1.5,  -- The Dead Hand -- dark hits take 5 mana
     trait_ledger_of_the_lured =         2.0,  -- Ledger of the Lured -- summons reserve half
+    -- THE PAYMASTER (2026-09-26, "The Paymaster"). Both are his own plumbing -- a disguise's wages and the
+    -- rule that ends it -- on bound creature organs no company ever carries, so they weigh nothing.
+    trait_pay_out =                     0.0,  -- Pay Out -- a heap beside one of his crew each turn
+    trait_the_payroll =                 0.0,  -- The Payroll -- the last of the crew down turns him
+    -- THE GILDED KING (2026-09-26). His two are a creature's and never sold; the bread's is its COST, and
+    -- weighs nothing, as every weakness on this table does.
+    trait_turned_to_gold =              0.0,  -- Turned to Gold -- a heal on him is a coin heap instead
+    trait_the_gilded_guard =            0.0,  -- The Gilded Guard -- his side opens Gilded
+    trait_gold_in_the_mouth =           0.0,  -- Gold in the Mouth -- the bearer cannot be healed: a weakness
     trait_distended_girth =             1.5,  -- Distended Girth -- full at the bell, shed with a debuff
     trait_gorgers_beak =                2.0,  -- Gorger's Beak -- +2 Damage per consumable used, to +6
     trait_sated =                       0.5,  -- Sated -- at full health, heals pass to a hurt neighbour
