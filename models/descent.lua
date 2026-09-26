@@ -511,9 +511,11 @@ Descent.SINS = {
         -- Greed's second race, and their four ordinary fights stand beside the dwarves' four.
         -- THE GOLD GOLEM IS A SPARE TOO (2026-09-25, "The Golems of Greed": "Rung 1 spare"). Its own `rung`
         -- stands it on the approach beside the Fen Ooze; this list is only the billing.
+        -- THE BROOD QUEEN IS A SPARE ON THE APPROACH (2026-09-25, "The Coin-Eaters": "Elite only" -- the
+        -- stand-in Slime keeps the stair). Floor five's puzzle: keep her Hoard under 20 or read the lane.
         elites = { approach = "encounter_fen_ooze", seat = "encounter_greed_the_counting_hall",
             spares = { "encounter_the_king_slime", "encounter_greed_the_nest",
-                "encounter_greed_the_gold_golem" } } },
+                "encounter_greed_the_gold_golem", "encounter_greed_the_brood_queen" } } },
     { id = "envy", name = "Envy", vendor = "alchemist", biome = "desert",
         scene = "conversation_descent_envy",
         -- THE SECOND OF THE TWO BROKEN LEADS. character_homunculus is the alchemist's SUMMON -- its own

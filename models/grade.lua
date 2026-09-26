@@ -530,6 +530,11 @@ Grade.TRAIT_GRADE = {
     -- it is a cost the Gullet and the toad's Swallow carry, not a power. Weighed small and positive only
     -- because it is also what lets the swallow be safe to hold: it never strands a body off the board.
     trait_gullet =                      0.5,  -- Gullet -- a heavy blow, a stun or its death spits the meal
+    -- The Coin-Eaters (2026-09-25). Rust Hide pays on every melee blow a body takes, fight-long, against
+    -- the weapon that keeps coming -- worth most on the body struck most. The Nest is the Queen's own
+    -- plumbing and nothing a company can use, so it weighs nothing.
+    trait_rust_hide =                   2.0,  -- Rust Hide -- a weapon that strikes you in melee blunts, to -6
+    trait_the_nest =                    0.0,  -- The Nest -- heaps rolled into her join her Hoard
     trait_distended_girth =             1.5,  -- Distended Girth -- full at the bell, shed with a debuff
     trait_gorgers_beak =                2.0,  -- Gorger's Beak -- +2 Damage per consumable used, to +6
     trait_sated =                       0.5,  -- Sated -- at full health, heals pass to a hurt neighbour

@@ -1152,6 +1152,26 @@ function AI.candidates(combat, unit, items, tiles, wantSupport)
                         end
                     end
                 end
+                -- AIMED AT GROUND, NOT AT A BODY (`ab.aiAims`). Everything above offers a cast only the
+                -- cells a unit stands on, which is right for a blow and blind to a verb whose mark is the
+                -- floor itself -- the Coin-Eaters roll and lay in coin HEAPS (models/scarab.lua), and a
+                -- heap is an empty tile. The ability names the cells worth aiming at; each is offered in
+                -- the half of the kit the ability belongs to, with no body as its target, and scored by
+                -- the same preview as any other cast.
+                if ab.aiAims and (Combat.isSupportAbility(ab) and true or false) == (wantSupport and true or false) then
+                    for _, cell in ipairs(ab.aiAims(combat, unit) or {}) do
+                        local d = Combat.pointReachFrom(unit, tile.x, tile.y, cell.x, cell.y)
+                        if d <= range and d >= minRange
+                            and (not ab.requiresSight
+                                 or Combat.sightFrom(combat, unit, tile.x, tile.y, cell.x, cell.y)) then
+                            out[#out + 1] = {
+                                x = tile.x, y = tile.y, steps = tile.steps or 0, toll = tile.toll,
+                                item = item, target = nil, tx = cell.x, ty = cell.y,
+                                moved = tile.x ~= unit.x or tile.y ~= unit.y,
+                            }
+                        end
+                    end
+                end
             end
         end
     end
@@ -2039,6 +2059,7 @@ local function prefBonus(ctx, rule, cand, w)
     local pref = rule.targetPref
     if not pref then return 0 end
     local t = cand.target
+    if not t then return 0 end -- a cast aimed at ground (ab.aiAims) has no body to prefer
     if pref == "nearest" then
         local n = nearest(ctx, foes(ctx))
         return (t == n) and w.TARGET_PREF or 0
@@ -2233,7 +2254,9 @@ function AI.plan(combat, unit)
                     c.score = AI.scoreCandidate(combat, unit, c, w, previews)
                     c.score = c.score + prefBonus(ctx, rule, c, w)
                     c.score = c.score + AI.courtBonus(unit, c, w)
-                    if c.outcome > 0 and c.target ~= spare and not takesTheLast(c) then
+                    -- `spare and`, not a bare `~=`: a cast aimed at GROUND (ab.aiAims) has no target, and
+                    -- with nobody to spare `nil ~= nil` is false -- which silently dropped every one of them.
+                    if c.outcome > 0 and not (spare and c.target == spare) and not takesTheLast(c) then
                         scored[#scored + 1] = c
                     end
                 end
@@ -2299,7 +2322,8 @@ function AI.plan(combat, unit)
                             spend = pick.spend,
                             reason = string.format("%s rule %d (%s) -> %s, score %.1f",
                                 postureName, index, AI.describeRule(rule),
-                                pick.target.char.name or "target", pick.score),
+                                (pick.target and pick.target.char.name)
+                                    or string.format("(%d, %d)", pick.tx, pick.ty), pick.score),
                         }
                     end
                 end

@@ -8836,6 +8836,7 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
         -- and a status that answers being floored hears it (Heartbound sends its bearer home to its
         -- tree on exactly this beat -- data/status/status_heartbound.lua).
         raiseAnswer(combat, target, { amount = dmg, tags = tags, source = source, attacker = attacker, critical = crit or nil,
+            blow = opts and opts.blowItem,
             area = opts and opts.area, wakes = true })
         applyKnockback()
         return dmg
@@ -8849,6 +8850,7 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
         if not target.fragile and Trait.trySurvive(combat, target) then
             inflictCarried()
             raiseAnswer(combat, target, { amount = dmg, tags = tags, source = source, attacker = attacker, critical = crit or nil,
+            blow = opts and opts.blowItem,
             area = opts and opts.area })
             applyKnockback()
             return dmg
@@ -8894,6 +8896,7 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
         -- ...and the statuses riding the survivor get the same news (`wakes`), for the ones a blow is
         -- supposed to BREAK (Sleep) -- raised together so the hold cannot separate them.
         raiseAnswer(combat, target, { amount = dmg, tags = tags, source = source, attacker = attacker, critical = crit or nil,
+            blow = opts and opts.blowItem,
             area = opts and opts.area, wakes = true })
         applyKnockback()
     end
@@ -9044,7 +9047,11 @@ function Combat.dealDamage(combat, user, target, item, opts)
     -- against a Marked foe). Pure and summed into `base` here AND in computeDamage below, so the hover
     -- preview never disagrees with the blow. See Trait.outgoingDamageBonus.
     local charmBonus = Trait.outgoingDamageBonus(combat, user, target, item, tags)
-    local base = (opts.amount or (ab and ab.damage) or 0) + flatStat(user, atkStat) + unarmedDamageBonus(user, item) + charmBonus
+    -- TARNISHED (the Rust Mite's hide, the Rustcoat): the WEAPON that struck it carries the rust, not
+    -- the body -- so it is read per item, and a spell, a bow or another blade from the same hand is
+    -- untouched. Subtracted in both this and computeDamage, so the hover quotes the blunted edge.
+    local rust = Status.tarnishOn(user, item)
+    local base = (opts.amount or (ab and ab.damage) or 0) + flatStat(user, atkStat) + unarmedDamageBonus(user, item) + charmBonus - rust
     base = relicOutgoing(user, target, base)
     -- Name where that pre-mitigation power came from, so the combat-log hover can spell it out: the
     -- attacker's attack stat, the weapon/ability's own damage, and any bare-fist bonus. Rides along on
@@ -9121,6 +9128,10 @@ function Combat.dealDamage(combat, user, target, item, opts)
         and not Trait.flag(target, "critProof") then opts.critical = true end
     -- `user` rides along as the attacker so a reaction trait (a counter) knows who struck, and how
     -- far away they stood. A flat source (a trap, a burn) passes no attacker and provokes no counter.
+    -- The weapon rides the blow down to the answer it raises (`blow` on Trait.onDamaged's ctx), so a hide
+    -- can tell WHICH weapon struck it. `blow`, not `item`: a trait's ctx already spends `item` on the
+    -- piece that granted the trait, and the event's keys are copied over it.
+    opts.blowItem = opts.blowItem or item
     local dealt = Combat.dealFlatDamage(combat, target, base, tags, nil, user, opts)
     -- Let the attacker's statuses record what they just did (Fury banks damage dealt to heal from
     -- later). Fired here, where the attacker is known, only for a survived-or-not real hit.
@@ -9203,7 +9214,11 @@ function Combat.computeDamage(combat, user, target, item, opts)
     local ab = item and item.activeAbility
     -- Mirror dealDamage exactly, charm bonus included, or the hover would under-promise the real hit.
     local charmBonus = Trait.outgoingDamageBonus(combat, user, target, item, tags)
-    local base = (opts.amount or (ab and ab.damage) or 0) + flatStat(user, atkStat) + unarmedDamageBonus(user, item) + charmBonus
+    -- TARNISHED (the Rust Mite's hide, the Rustcoat): the WEAPON that struck it carries the rust, not
+    -- the body -- so it is read per item, and a spell, a bow or another blade from the same hand is
+    -- untouched. Subtracted in both this and computeDamage, so the hover quotes the blunted edge.
+    local rust = Status.tarnishOn(user, item)
+    local base = (opts.amount or (ab and ab.damage) or 0) + flatStat(user, atkStat) + unarmedDamageBonus(user, item) + charmBonus - rust
     base = relicOutgoing(user, target, base)
     return Combat.mitigatedDamage(target, base, tags, opts)
 end

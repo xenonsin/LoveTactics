@@ -452,6 +452,13 @@ local CHARACTER_SILHOUETTE = {
     -- squatting frog; lorc/frog is the Tongue Lash's icon, and a body and its own weapon must not read alike.
     giant_toad = "delapouite/frog-prince",
 
+    -- THE COIN-EATERS (Greed's approach, 2026-09-25): the scarab, the mite, the Queen who flies above both,
+    -- and her egg -- each its own row, so no CREATURE_MATCH seats two of them on one silhouette.
+    gilded_scarab = "lorc/scarab-beetle",
+    rust_mite = "lorc/mite",
+    brood_queen = "delapouite/flying-beetle",
+    scarab_egg = "sbed/egg-pod",
+
     -- THE CHIMERA (Gluttony's seat): the lion is the body, and each head wears its own animal -- a head
     -- is drawn only on the turn strip, where it has to be told from the other two at a glance.
     chimera = "lorc/lion",

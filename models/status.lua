@@ -820,6 +820,17 @@ end
 -- Spend `n` (default 1) stacks of `id` off `unit`, and take the badge off with the last. False, and
 -- nothing spent, when there are fewer than `n` -- a cost is paid whole or not at all. The Sated's meals
 -- are spent this way (fx.spendStacks, Retch and Settle), and so is anything else that is paid in a count.
+-- How much the rust on `item` takes off every blow `unit` throws with it (status_tarnished, laid by the
+-- Rust Mite's hide and the Rustcoat). Per WEAPON rather than per body: the rust is on the blade that
+-- struck, so a spell or another weapon from the same hand reads 0. Pure, so the hover and the blow agree.
+function Status.tarnishOn(unit, item)
+    if not (unit and item) then return 0 end
+    local s = Status.get(unit, "status_tarnished")
+    local stacks = s and s.rust and s.rust[item]
+    if not stacks then return 0 end
+    return stacks * (s.def.perStack or 2)
+end
+
 function Status.spendStacks(combat, unit, id, n)
     n = n or 1
     local s = Status.get(unit, id)

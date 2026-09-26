@@ -108,6 +108,9 @@ local TROPHIES = {
     -- The Giant Toad's (Gluttony's seat, 2026-09-25): its hop as a tank's greaves, which is how a body in
     -- plate stops being slow, and its swallow as a Barbarian's, beside the Bottomless Gut.
     "utility_bog_hopper_greaves", "ability_the_gullet",
+    -- The Coin-Eaters' (Greed's approach, 2026-09-25): the scarab's roll made of bodies as a Fighter's,
+    -- the mite's rusting hide as a Knight's coat, the Queen's egg laid in a foe as a Beastmaster's.
+    "ability_gathering_roll", "armor_rustcoat", "ability_brood_sting",
     -- The wyverns' (Gluttony's seat, 2026-09-23): the dive as a cloak, the cut as a hunter's ability, the
     -- flight's wind as a charm, the takeoff as an escape, and the carry as the Highwing's chase.
     "armor_plummet_cloak", "ability_gale_cut", "utility_tailwind_charm", "ability_skyward",
