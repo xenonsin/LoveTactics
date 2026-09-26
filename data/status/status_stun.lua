@@ -31,6 +31,8 @@ return {
     interruptsChannel = true,     -- a stunned caster drops whatever spell it was channeling
     disablesReactions = true,     -- a stunned unit is too rattled to counter, dodge or otherwise react
     onApply = function(ctx)
+        -- Nerveless (Status.shoveProof): the badge lands, the shove does not.
+        if require("models.status").shoveProof(ctx.unit, "status_stun") then return end
         ctx.unit.initiative = ctx.unit.initiative + (ctx.magnitude or 0)
     end,
     -- The delay has been served: the body is back at initiative 0 and standing up. See above.

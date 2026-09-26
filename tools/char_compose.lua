@@ -317,6 +317,17 @@ local CHARACTER_SILHOUETTE = {
     barrow_lord = "delapouite/knight-banner",
     skeleton_archer = "delapouite/archer",
 
+    -- GREED'S DEAD (2026-09-25, "The Dead Hand"). The two skeletons ride their living blueprints' tokens
+    -- in bone, as the orchard's do; these three are bodies of their own. The wight is a shade, the ghoul
+    -- shambles, and Vesh is the one on floor five who reads as the reaper.
+    -- A dead Delver and a dead Skulker are shaped like the living ones (tests/char_compose_spec.lua's
+    -- ALIAS lets them share), and the bone skin is what tells them apart on the board.
+    dwarf_skeleton = "delapouite/dwarf-face",
+    kobold_skeleton = "delapouite/sitting-dog",
+    barrow_wight = "delapouite/elysium-shade",
+    ghoul = "delapouite/shambling-zombie",
+    vesh = "lorc/grim-reaper",
+
     -- (THE BONE ORCHARD'S DEAD ARE OTHERWISE ABSENT FROM THIS TABLE. They are not bodies of their
     -- own -- each one EXTENDS a living blueprint and inherits its `sprite`, so the Skeleton Knight is
     -- drawn from the knight's own token and the Skeleton Archer from the archer's. What makes them read

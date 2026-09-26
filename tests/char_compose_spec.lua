@@ -58,6 +58,9 @@ local ALIAS = {
     character_skeleton_knight = "character_knight",
     character_barrow_lord = "character_knight",
     character_skeleton_archer = "character_archer",
+    -- Greed's dead (2026-09-25): a dead Delver and a dead Skulker, drawn from their living tokens in bone.
+    character_dwarf_skeleton = "character_dwarf_delver",
+    character_kobold_skeleton = "character_kobold_skulker",
 }
 
 -- Are these two blueprints allowed to converge? The relation is symmetric, and it composes through the

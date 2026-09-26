@@ -43,6 +43,9 @@ return {
         -- curve exists to make impossible. `slept` also records what was taken, so no ending can
         -- refund more than the spell ever cost (a refresh extends the badge past the original shove).
         if ctx.status.slept then return end
+        -- Nerveless (Status.shoveProof): asleep, and it costs the body no time -- recorded as a shove
+        -- of 0, so no ending refunds a delay that was never taken.
+        if require("models.status").shoveProof(ctx.unit, "status_sleep") then ctx.status.slept = 0 return end
         local shove = math.max(0, ctx.status.remaining or 0)
         ctx.status.slept = shove
         ctx.unit.initiative = ctx.unit.initiative + shove

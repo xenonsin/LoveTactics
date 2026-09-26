@@ -304,6 +304,10 @@ Balance.SLOT_TOLERANCE = { share = 0.15, floor = 1 }
 -- Distinct from the ALLY-TARGETED exclusion below, which is not a waiver at all: those items are not
 -- being let off a damage rule, they have no damage to rule on.
 Balance.MAGNITUDE_WAIVERS = {
+    ability_foreclosure = "Vesh's signature, and it is paid for three ways the ladder cannot see: a full"
+        .. " turn's wind-up, a blow that lands on the TILE it was aimed at (a foe that steps off takes"
+        .. " nothing), and thirty mana -- the costliest cast on its shelf. Knell's own argument: the tell"
+        .. " is the counterplay, so the blow at the end of it is allowed to be heavy.",
     weapon_long_fall = "docs/weapons.md's mace S4: four tiles of shove and almost no damage. Its own"
         .. " header argues that mace damage on top of the shove 'would simply be the best knight"
         .. " weapon in the game', and the party has to be built to collect -- the number is the price"

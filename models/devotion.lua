@@ -23,6 +23,17 @@ function Devotion.isDragon(unit)
     return unit ~= nil and require("models.trait").flag(unit, "dragonkin") ~= nil
 end
 
+-- IS `god` WHAT `devotee` WORSHIPS? A dragon, for any kobold -- and a LICH (trait_lich), for a kobold that
+-- has died. Settled on review 2026-09-25 ("The Dead Hand"): the kobolds would die for a god that eats
+-- them, and dead, they have found another one. A living kobold does not kneel to a lich, and a dead one
+-- still kneels to a dragon.
+function Devotion.isDragonTo(god, devotee)
+    if Devotion.isDragon(god) then return true end
+    if not (god and devotee) then return false end
+    return require("models.trait").flag(god, "lich") ~= nil
+        and require("models.character").isUndead(devotee.char)
+end
+
 function Devotion.isDevout(unit)
     return unit ~= nil and require("models.trait").flag(unit, "devout") ~= nil
 end
@@ -32,7 +43,7 @@ function Devotion.nearestDragon(combat, unit)
     local Combat = require("models.combat")
     local best, bestD
     for _, u in ipairs((combat and combat.units) or {}) do
-        if u ~= unit and u.alive and u.side == unit.side and Devotion.isDragon(u) then
+        if u ~= unit and u.alive and u.side == unit.side and Devotion.isDragonTo(u, unit) then
             local d = Combat.unitGap(unit, u)
             if not bestD or d < bestD then best, bestD = u, d end
         end
@@ -46,6 +57,7 @@ function Devotion.witnesses(combat, dragon)
     local out = {}
     for _, u in ipairs((combat and combat.units) or {}) do
         if u ~= dragon and u.alive and u.side == dragon.side and Devotion.isDevout(u)
+            and Devotion.isDragonTo(dragon, u)
             and Combat.hasLineOfSight(combat, u.x, u.y, dragon.x, dragon.y) then
             out[#out + 1] = u
         end

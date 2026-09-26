@@ -14,4 +14,7 @@ return {
     description = "Cannot be robbed, and goes for loose gold.",
     wardsTheft = true,
     seeksHeaps = true,
+    -- A DEAD DWARF KEEPS THE BODY AND LOSES THE WANT (Trait.flag's `deadForget`): still unmovable and
+    -- unrobbable, and it walks past loose gold -- so no pocket, no Dragon-Sickness, never a wyrm.
+    deadForget = { seeksHeaps = true },
 }

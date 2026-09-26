@@ -268,6 +268,24 @@ function Summon.copyOf(combat, copier, target, x, y, opts)
     opts = opts or {}
 
     local char = buildCopyChar(target.char)
+    -- A COPY IN BONE (`opts.bones`): the shape a lich raises -- Foreclosure's victim, Raise the Owing's
+    -- corpse (data/items/ability/ability_foreclosure.lua). The body it was, with the two facts of being a
+    -- skeleton put in its grid: Bare Bones (the lattice and the bone picture) and Grave-Cold, and the
+    -- undead tag stamped so every reader of Character.isUndead agrees. A grid with no room keeps the
+    -- piece it has, and the tag alone still makes it dead.
+    if opts.bones then
+        char.undead = true
+        char.race, char.kind, char.class = target.char.race, target.char.kind, target.char.class
+        for _, id in ipairs({ "utility_bare_bones", Character.UNDEAD_GRANT }) do
+            Character.addItem(char, Item.instantiate(id))
+        end
+    end
+    -- A copy of a body that is DOWN carries its empty bar with it. `opts.health` names the share of the
+    -- ceiling it stands up with (Raise the Owing, Foreclosure), so a raised shape is not dead on arrival.
+    if opts.health then
+        local hp = char.stats.health
+        if type(hp) == "table" then hp.current = math.max(1, math.floor((hp.max or 1) * opts.health + 0.5)) end
+    end
 
     local summoner = copier
     if opts.summoner ~= nil then summoner = opts.summoner or nil end
@@ -279,7 +297,9 @@ function Summon.copyOf(combat, copier, target, x, y, opts)
         summoned = true,
         duration = opts.duration,
     })
-    Combat.logEvent(combat, "system", string.format("%s takes the shape of %s.",
+    -- A bone copy is not the copier wearing a shape; it is the body getting back up for somebody else.
+    local line = opts.bones and "%s raises %s in bone." or "%s takes the shape of %s."
+    Combat.logEvent(combat, "system", string.format(line,
         copier.char.name or "Unit", target.char.name or "a foe"), { copier, target })
     Combat.enterTile(combat, unit, x, y) -- as above: the shape may not outlive its arrival
     return unit

@@ -1342,7 +1342,13 @@ function Trait.flag(unit, name)
     local Status = require("models.status")
     if not unit or Status.has(unit, "status_sundered") then return nil end
     for _, t in ipairs(unit.traits or {}) do
-        if t.def and t.def[name] then return t end
+        -- WHAT THE DEAD FORGET (`deadForget`): a race's rule that dies with the body. A dead dwarf keeps
+        -- Stout's "cannot be moved or robbed" and loses the pull toward loose gold (2026-09-25, "The Dead
+        -- Hand": "As skeletons they lose desire for gold").
+        if t.def and t.def[name] and not (t.def.deadForget and t.def.deadForget[name]
+            and unit.char and unit.char.undead) then
+            return t
+        end
     end
     return nil
 end

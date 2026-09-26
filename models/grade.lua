@@ -535,6 +535,14 @@ Grade.TRAIT_GRADE = {
     -- plumbing and nothing a company can use, so it weighs nothing.
     trait_rust_hide =                   2.0,  -- Rust Hide -- a weapon that strikes you in melee blunts, to -6
     trait_the_nest =                    0.0,  -- The Nest -- heaps rolled into her join her Hoard
+    -- GREED'S DEAD (2026-09-25, "The Dead Hand"), weighed by judgement against the items they ride.
+    trait_half_here =                   3.0,  -- Half Here -- weapon blows at half their chance, unless lit
+    trait_lich =                        0.0,  -- Lich -- dead kobolds kneel to him (a creature's, never sold)
+    trait_nerveless =                   1.5,  -- Nerveless -- Stun and Sleep cost no time
+    trait_skull_lantern =               1.5,  -- Skull-Lantern -- foes within 2 are Limned
+    trait_deep_delver =                 2.0,  -- Up From Below -- the first blow after surfacing crits
+    trait_the_dead_hand =               1.5,  -- The Dead Hand -- dark hits take 5 mana
+    trait_ledger_of_the_lured =         2.0,  -- Ledger of the Lured -- summons reserve half
     trait_distended_girth =             1.5,  -- Distended Girth -- full at the bell, shed with a debuff
     trait_gorgers_beak =                2.0,  -- Gorger's Beak -- +2 Damage per consumable used, to +6
     trait_sated =                       0.5,  -- Sated -- at full health, heals pass to a hurt neighbour

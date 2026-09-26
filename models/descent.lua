@@ -494,9 +494,14 @@ Descent.SINS = {
         -- ...AND THE TWO ENDS BESIDE HER STAIR (models/hoard.lua): the Burglary robs her treasury, the
         -- Shrine breaks her procession. Laid by Descent.floorObjectives on her floor only.
         leadIns = { "burglary", "shrine" },
-        -- NO LIEUTENANT. The Tally is gone; a fen lancer stands in, which is the heaviest thing the
-        -- water rolls short of the Undertow. It is what a replacement replaces.
-        minor = { lead = "character_slime", filler = "character_slime" },
+        -- VESH, THE HOLLOW KING HOLDS FLOOR FIVE'S STAIR (2026-09-25, "The Dead Hand", three rounds), in the
+        -- stand-in Slime's place. A human necromancer who lured greedy dwarves down for fresh bodies, and
+        -- the dead of the approach are his catch: a Dwarf Skeleton at his side (`escort`, one of it), then
+        -- kobold skeletons as the swarm. The escort he opens with reserves none of his mana; the skeletons
+        -- he CALLS mid-fight do. `escortsGeneral = false`: the dead never share a fight with the living, so
+        -- his kobold dead do not stand at Avaritia's shoulder beside her living kobolds a floor down.
+        minor = { lead = "character_vesh", escort = "character_dwarf_skeleton",
+                  filler = "character_kobold_skeleton", escortsGeneral = false },
         -- BILLED AT LAST, AND THE RUNG SPLIT IS WHY. The Gilt Wyrm and the Hoard are gone, so both of
         -- Greed's floors drew the same three pieces of inherited water at the same weight and neither
         -- stair was ABOUT anything. Cut across the two rungs, the approach has exactly one candidate and
@@ -708,7 +713,10 @@ Descent.DROPS = {
         -- and the Anchoress, the Renewal Staff to the Hamadryad.
         "ability_changing_partners", "utility_smelling_salts", "utility_saints_chalice",
     } },
-    greed    = { minor = { "utility_tally_stick" }, general = {
+    -- The Tally's stick first -- it is the lieutenant's MIRROR of Avaritia's rule (tests/sin_drops_spec.lua)
+    -- -- then Vesh's own (2026-09-25): his signature, his raise, his hand, his ledger and his call.
+    greed    = { minor = { "utility_tally_stick", "ability_foreclosure", "ability_raise_the_owing",
+                           "utility_the_dead_hand", "utility_ledger_of_the_lured", "ability_call_the_lured" }, general = {
         -- Avaritia's (settled on review 2026-09-25): the Gilded Belly relic, then her breath, her wings, her
         -- gold, her ground, her sky, and her ledger.
         "utility_gilded_belly",
@@ -3946,10 +3954,17 @@ end
 function Descent.guardList(sin, isGeneral, floor, n)
     local band = isGeneral and sin.guardian or sin.minor
     local list = { band.lead }
-    local named = isGeneral and sin.minor and sin.minor.filler or nil
+    -- The lieutenant's stock stands at the general's shoulder -- unless the lieutenant says it does not
+    -- (`escortsGeneral = false`): Greed's dead never share a fight with the living (2026-09-25).
+    local named = isGeneral and sin.minor and sin.minor.escortsGeneral ~= false and sin.minor.filler or nil
     if named and named ~= band.filler then
         list[#list + 1] = band.filler
         for _ = 2, n do list[#list + 1] = named end
+    elseif not isGeneral and band.escort then
+        -- A LIEUTENANT'S SECOND (`minor.escort`), the minor stair's equivalent of the general's own
+        -- filler above: one of it beside the lead, then the swarm.
+        list[#list + 1] = band.escort
+        for _ = 2, n do list[#list + 1] = band.filler end
     else
         for _ = 1, n do list[#list + 1] = band.filler end
     end

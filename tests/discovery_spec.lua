@@ -111,6 +111,13 @@ local TROPHIES = {
     -- The Coin-Eaters' (Greed's approach, 2026-09-25): the scarab's roll made of bodies as a Fighter's,
     -- the mite's rusting hide as a Knight's coat, the Queen's egg laid in a foe as a Beastmaster's.
     "ability_gathering_roll", "armor_rustcoat", "ability_brood_sting",
+    -- The dead of Greed's approach (2026-09-25, "The Dead Hand"): the dwarf skeleton's want, nerves, eyes and
+    -- arrival; the kobold skeleton's offering; the wight's shroud, drift and touch; the ghoul's nails and
+    -- bite; and Vesh's signature, raise, hand, ledger and call.
+    "armor_hollow_helm", "utility_nerveless_bones", "utility_skull_lantern", "weapon_deep_delvers_pick",
+    "ability_offering_bone", "utility_wights_shroud", "ability_through_the_rock", "ability_barrow_touch",
+    "consumable_ghoul_nail_paste", "ability_ghouls_bite", "ability_foreclosure", "ability_raise_the_owing",
+    "utility_the_dead_hand", "utility_ledger_of_the_lured", "ability_call_the_lured",
     -- The wyverns' (Gluttony's seat, 2026-09-23): the dive as a cloak, the cut as a hunter's ability, the
     -- flight's wind as a charm, the takeoff as an escape, and the carry as the Highwing's chase.
     "armor_plummet_cloak", "ability_gale_cut", "utility_tailwind_charm", "ability_skyward",

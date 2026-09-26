@@ -67,10 +67,11 @@ return {
         -- off its own ground as a stand-in (see the lieutenant note at the head of Descent.SINS). They
         -- are named here on purpose: seating a replacement reddens this case, and whoever does it owes
         -- the contract written out where the sizing case used to be, at the foot of this file.
-        name = "Greed's and Lust's lieutenant slots are filled, and by stand-ins that say so",
+        name = "Greed's lieutenant is Vesh, and Lust's slot is still held by a stand-in that says so",
         fn = function()
-            -- A SLIME since the swap (2026-09-25): the lancers went down into the fen with Lust.
-            assert(sinNamed("greed").minor.lead == "character_slime", "a slime stands in for the Tally")
+            -- GREED'S SLOT IS FILLED (2026-09-25, "The Dead Hand"): Vesh, the Hollow King, replaced the
+            -- stand-in Slime; tests/dead_hand_spec.lua holds his stair. Lust's lamia is still a marker.
+            assert(sinNamed("greed").minor.lead == "character_vesh", "Vesh holds Greed's minor stair")
             assert(sinNamed("lust").minor.lead == "character_lamia", "a lamia stands in for the Suppliant")
             assert(not Character.defs["character_the_tally"], "the Tally is gone")
             assert(not Character.defs["character_the_suppliant"], "the Suppliant is gone")

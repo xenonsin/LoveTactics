@@ -232,6 +232,7 @@ function Status.initiativeShove(unit, id, opts)
     local def = Status.defs[id]
     local src = def and def.shovesInitiative
     if not src then return 0 end
+    if Status.shoveProof(unit, id) then return 0 end
     if src == "duration" then
         -- Sleep: the shove is exactly the ticks the ward and diminishing returns let it buy -- below a
         -- single tick it doesn't land, and shoves nothing (mirrors the < 1 refusal in Status.apply).
@@ -548,6 +549,7 @@ end
 -- light has any business arguing with.
 function Status.untargetable(unit, combat)
     if Status.limned(unit) then return false end
+    if combat and Status.lanternLit(combat, unit) then return false end
     if combat and Status.belled(combat, unit) then return false end
     for _, s in ipairs(unit.statuses or {}) do
         if s.def.untargetable then return true end
@@ -791,6 +793,44 @@ function Status.limned(unit)
         if s.def.revealsBearer then return s end
     end
     return nil
+end
+
+-- Is `unit` inside the light a foe CARRIES (the Delver's Skull-Lantern, trait_skull_lantern): within
+-- Status.LANTERN_RANGE of a living foe whose grid sets `limnsNear`? The lantern does what Witchlight does
+-- -- Limns -- but from a body rather than from ground, so it is asked here beside the status rather than
+-- stamped as one: a light that walks would otherwise have to re-stamp and strip a badge on every step
+-- of every body near it. Hawk Bells (below) answer only targeting; the lantern answers everything
+-- Status.lit is asked, the barrow-wight's Half Here included.
+Status.LANTERN_RANGE = 2
+
+function Status.lanternLit(combat, unit)
+    if not (combat and unit) then return false end
+    local Trait = require("models.trait")
+    local Combat = require("models.combat")
+    for _, u in ipairs(combat.units or {}) do
+        if u.alive and u ~= unit and u.side ~= unit.side and Trait.flag(u, "limnsNear")
+            and Combat.unitGap(u, unit) <= Status.LANTERN_RANGE then
+            return true
+        end
+    end
+    return false
+end
+
+-- Is `unit` LIT, from any source: standing in Witchlight (Status.limned) or inside a carried lantern's
+-- reach. The one question a rule about being found asks -- the wight's Half Here stops while it is lit.
+function Status.lit(combat, unit)
+    return Status.limned(unit) ~= nil or Status.lanternLit(combat, unit)
+end
+
+-- NERVELESS (utility_nerveless_bones, trait_nerveless): a body with no nerves left is not shoved down the
+-- turn order by a Stun or a Sleep. The badge still lands -- it still drops a channel, still silences its
+-- reactions -- but it costs the body no time. Asked by both shoves' onApply and by the preview below, so
+-- the ghost on the timeline and the live turn agree.
+Status.NERVELESS_SHOVES = { status_stun = true, status_sleep = true }
+
+function Status.shoveProof(unit, id)
+    if not (unit and Status.NERVELESS_SHOVES[id]) then return false end
+    return require("models.trait").flag(unit, "unshoved") ~= nil
 end
 
 -- Is `unit` within earshot of a foe wearing HAWK BELLS (data/traits/trait_hawk_bells.lua)? A bearer's

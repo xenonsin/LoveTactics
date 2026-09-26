@@ -56,6 +56,9 @@ return {
             -- DELVED TOO GREEDILY AND TOO DEEP (round 3): the dive that brings Deeper to three brings the
             -- roof down. A status, so the lava is laid only live (status_cave_in explains why).
             local Trait = require("models.trait")
+            -- UP FROM BELOW: a bearer of the Deep-Delver's Pick comes up ready (status_surfaced), and its
+            -- next landed blow is a critical. Stamped only there, so a dwarf line wears no empty badge.
+            if Trait.flag(fx.user, "critOnSurfacing") then fx.applyStatus(fx.user, "status_surfaced") end
             if Trait.flag(fx.user, "strikesVein") then
                 -- Only live: a preview's board is the real one, and a vein is struck once.
                 if fx.combat and fx.combat.arena and (fromX ~= fx.user.x or fromY ~= fx.user.y) then

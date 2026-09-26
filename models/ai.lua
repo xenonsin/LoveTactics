@@ -294,7 +294,7 @@ AI.TEST_ORDER = {
 }
 AI.ACTION_ORDER = { "attack", "support", "cast", "retreat", "wait" }
 AI.TARGET_PREF_ORDER = { "nearest", "lowest_hp", "most_wounded", "lethal", "self", "objective",
-                         "drownable", "gilded" }
+                         "drownable", "gilded", "sleeping" }
 
 -- Which tests take a `value`, and what shape it is. A test that takes none must not show a value
 -- field at all -- an editor offering "exists 0.4" is offering nonsense.
@@ -2104,6 +2104,10 @@ local function prefBonus(ctx, rule, cand, w)
         -- COVETED: a body plated in gold (data/status/status_gilded.lua) is gold with legs, and a dwarf
         -- goes for it first. A bias like the rest, so a lethal blow elsewhere can still win.
         return Status.has(t, "status_gilded") and w.TARGET_PREF or 0
+    elseif pref == "sleeping" then
+        -- THE LYING-DOWN FIRST (the ghoul, character_ghoul.lua): a sleeper is a body that will not get up
+        -- before the next blow, and the barrow-wight's touch is what puts it there.
+        return Status.has(t, "status_sleep") and w.TARGET_PREF or 0
     end
     return 0
 end

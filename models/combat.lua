@@ -7102,7 +7102,22 @@ function Combat.hitChance(combat, user, target, item)
     if not Combat.rollsToHit(combat, user, target, item) then return 100 end
     local hit = Item.hit(item) + flatStat(user, "skill") * 2 + flatStat(user, "luck") / 2
     local avoid = Combat.avoid(combat, target)
-    return math.max(0, math.min(100, math.floor(hit - avoid + 0.5)))
+    local chance = math.max(0, math.min(100, math.floor(hit - avoid + 0.5)))
+    if Combat.halfHere(combat, target, item) then chance = math.floor(chance / 2) end
+    return chance
+end
+
+-- HALF HERE (the barrow-wight, trait_half_here): a WEAPON blow of the physical kind passes through half
+-- the time -- the shown chance is halved, so the forecast, the planner and the swing agree. Never a
+-- spell, never a holy blow, and not while the body is LIT (Witchlight, or a carried lantern -- Status.lit):
+-- a found thing is all here. Asked inside hitChance, which a board that rolls nothing never reaches, so
+-- the prologue's lesson and the suite's pinned dice stay what they were.
+function Combat.halfHere(combat, target, item)
+    if not (target and item and item.type == "weapon") then return false end
+    if not Trait.flag(target, "halfHere") then return false end
+    local tags = collectTags(item)
+    if not hasTag(tags, "physical") or hasTag(tags, "holy") then return false end
+    return not Status.lit(combat, target)
 end
 
 -- The chance in 0..100 that a LANDED blow is a critical one. Pure, for the same reasons as above.
@@ -7169,6 +7184,12 @@ function Combat.forcesCrit(combat, user, target, item)
     -- clause here read off the TARGET rather than the striker.
     if target.channel and Trait.flag(target, "bareWhileChanneling")
         and hasTag(collectTags(item), "pierce") then
+        return true
+    end
+    -- UP FROM BELOW (the Deep-Delver's Pick, trait_deep_delver): the first blow a bearer lands after it
+    -- surfaces from any go-under -- a Delve, Through the Rock -- is a critical. The going-under stamps
+    -- status_surfaced; the landing blow spends it (Combat.dealDamage).
+    if Trait.flag(user, "critOnSurfacing") and Status.has(user, "status_surfaced") then
         return true
     end
     return false
@@ -8772,6 +8793,17 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     -- this multiplies a wound rather than dividing one (compare the bond above, which does the
     -- opposite and is subtracted for exactly that reason).
     Combat.echoWound(combat, target, dmg)
+    -- THE DEAD HAND (utility_the_dead_hand, trait_the_dead_hand): a dark blow that reached the body takes
+    -- mana out of it into the striker's pool. After the wound is final, for the reason the echo above is:
+    -- what the hand keeps is what actually landed, and a blow that was soaked or warded drew nothing.
+    if attacker and attacker ~= target and dmg > 0 and hasTag(tags, "dark") then
+        local thief = Trait.flag(attacker, "manaThief")
+        if thief then
+            local want = thief.def.manaThief
+            local taken = Combat.drainResource(target.char, "mana", type(want) == "number" and want or 5)
+            if taken and taken > 0 then Combat.restoreResource(attacker.char, "mana", taken) end
+        end
+    end
     -- A blow may CARRY hard control (a hammer's Stun, an ice bolt's Freeze): `opts.inflicts` names a
     -- status that lands WITH the hit rather than after it. The distinction is the whole point --
     -- an effect that applies its stun on the line after `fx.damage` applies it one line too late,
@@ -8800,6 +8832,12 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
                 o = {}
                 if c.opts then for k, v in pairs(c.opts) do o[k] = v end end
                 if o.applier == nil then o.applier = attacker end
+            end
+            -- A CRITICAL LANDS THE RIDER HARDER when the rider says by how much (`critMagnitude`): the
+            -- ghoul's claw is a small stun, and a critical one is a paralysis (weapon_ghoul_claws.lua).
+            if o and o.critMagnitude and opts.critical then
+                if o == c.opts then o = {}; for k, v in pairs(c.opts) do o[k] = v end end
+                o.magnitude = o.critMagnitude
             end
             Status.apply(combat, target, c.id, o)
         end
@@ -9126,6 +9164,11 @@ function Combat.dealDamage(combat, user, target, item, opts)
     -- rolls nothing still keeps an item's promise. Checked after the roll, so it costs no draw.
     if not opts.critical and Combat.forcesCrit(combat, user, target, item)
         and not Trait.flag(target, "critProof") then opts.critical = true end
+    -- Up from below is ONE blow (Combat.forcesCrit): the landing spends it, whether it was the surfacing
+    -- that forced the critical or the dice that happened to agree.
+    if Status.has(user, "status_surfaced") and user ~= target and Trait.flag(user, "critOnSurfacing") then
+        Status.remove(combat, user, "status_surfaced")
+    end
     -- `user` rides along as the attacker so a reaction trait (a counter) knows who struck, and how
     -- far away they stood. A flat source (a trap, a burn) passes no attacker and provokes no counter.
     -- The weapon rides the blow down to the answer it raises (`blow` on Trait.onDamaged's ctx), so a hide
@@ -9960,6 +10003,7 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
         placeHazard = function() touchesBoard() return nil end,
         placeWall = function() touchesBoard() return nil end,
         mine = function() touchesBoard() return false end,
+        strip = function() touchesBoard() return {} end,
         -- READING ground is not mutating it, so `hazardsAt` answers honestly and the dry run sees the
         -- real board. The other two are mutations and are inert: setting a zone off and spending it
         -- are exactly the Saboteur's fuse problem one layer over, and a hover that detonated the floor
@@ -10424,6 +10468,7 @@ function Combat.abilityOutput(unit, item)
         end,
         placeWall = function(_, _, id) out.wall = id or true; return nil end,
         mine = function() out.mine = true; return false end,
+        strip = function() out.strip = true; return {} end,
         -- There is no board here at all -- this builds an INVENTORY row, with no tile to read -- so a
         -- zone-reading ability describes itself by its own words rather than by what happens to be on
         -- the floor. Empty list, and the two mutations report nothing, like every other placer.
@@ -11385,7 +11430,10 @@ function Combat.abilityReserve(unit, ab)
     if not r then return nil end
     local res = unit.char.stats[r.stat]
     local max = (type(res) == "table") and res.max or (res or 0)
-    return { stat = r.stat, amount = math.floor(max * (r.percent or 0)) }
+    local percent = r.percent or 0
+    -- THE LEDGER OF THE LURED (trait_ledger_of_the_lured): a summoner who keeps the books pays half.
+    if Trait.flag(unit, "halfReserve") then percent = percent / 2 end
+    return { stat = r.stat, amount = math.floor(max * percent) }
 end
 
 -- Current value of a resource stat on `char` (a {max,current} table reads `current`; a plain
@@ -11964,7 +12012,10 @@ end
 function Combat.strip(combat, holder, victim, opts)
     opts = opts or {}
     local taken = {}
-    if not (combat and victim and victim.alive and victim.char) then return taken end
+    if not (combat and victim and victim.char) then return taken end
+    -- A body in its revive window may be robbed when the caller says so (`opts.downed`, the ghoul's
+    -- Grave-Robber); a cold corpse and a body that is simply gone may not.
+    if not (victim.alive or (opts.downed and victim.incapacitated)) then return taken end
     if Trait.flag(victim, "wardsTheft") then
         Combat.logEvent(combat, "action", string.format("%s cannot get anything off %s.",
             unitName(holder or victim), unitName(victim)), { holder, victim })
@@ -13160,6 +13211,10 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
         -- object or solid rock comes away and leaves a coin heap where it stood. A verb rather than a
         -- write in the effect, because a preview replays the effect against the real board.
         mine = function(px, py) return require("models.golem").mine(combat, unit, px, py) end,
+        -- STRIP a piece off a body for the rest of the fight (Combat.strip): a LOAN the caster wears,
+        -- returned on its death and at finishBattle. `opts.downed` reaches a body lying in its revive
+        -- window -- the ghoul's Grave-Robber, which robs the fallen (data/items/ability/ability_grave_rob.lua).
+        strip = function(tgt, opts) return Combat.strip(combat, unit, tgt, opts) end,
         placeWall = function(px, py, id, opts)
             opts = opts or {}
             opts.side = opts.side or unit.side
