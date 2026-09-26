@@ -18,14 +18,10 @@ local dead = {}
 for k, v in pairs(base) do dead[k] = v end
 
 dead.name = "Skeleton Archer"
-dead.race = "undead"
 
--- NO SHELF. A body that is not humanoid declares no `class` -- a class is a vendor shelf and a growth
--- declaration, and neither is a thing a corpse has (docs/bestiary.md, "creatures carry no discipline
--- gear"). The living blueprint's class is inherited by the copy above and cleared here, which is also
--- the line that makes this a corpse rather than a knight with a condition.
-dead.class = nil
-dead.discipline = nil
+-- A HUNTER STILL, AND DEAD -- see character_skeleton_knight.lua for the rule (2026-09-25). The class and
+-- the human race are the living archer's; `undead` is what happened to it.
+dead.undead = true
 
 dead.stats = {}
 for k, v in pairs(base.stats) do dead.stats[k] = v end
@@ -42,14 +38,16 @@ dead.stats.defense = 1
 -- one body's blue bar is the whole fight (character_barrow_lord.lua), that misreading is expensive.
 dead.stats.mana = 0
 
--- INNATE MITIGATION -- see character_skeleton_knight.lua for the argument. The same lattice, on the same
--- tier-2 budget: edges and points slide through, the frame pays for both and breaks, holy at the cap.
-dead.resist = { slash = 3, pierce = 3, impact = -6, holy = -6 }
+-- The lattice rides on Bare Bones (see character_skeleton_knight.lua), at the line this body used to
+-- declare innate.
 
--- The bow it was buried with, the volley it still remembers, and the two facts of being a skeleton.
+-- The bow it was buried with, the volley it still remembers, and the trapper's kit back where it fits
+-- (the review's retrofit line): a dead hunter still knows where it laid its spikes. The wolf does not
+-- come back -- it reserved a mana pool this body no longer keeps, and a dead man's dog is its own body.
+-- Grave-Cold is seeded by the tag; Bare Bones is the lattice and the picture.
 dead.startingItems = {
-    false,                "weapon_iron_bow",    "ability_rain_of_arrows",
-    "utility_grave_cold", "utility_bare_bones", false,
+    "ability_spike_trap", "weapon_iron_bow",    "ability_rain_of_arrows",
+    "utility_trap_sense", "utility_bare_bones", false,
     false,                false,                false,
 }
 dead.defaultAction = "weapon_iron_bow"

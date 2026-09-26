@@ -34,14 +34,10 @@ local lord = {}
 for k, v in pairs(base) do lord[k] = v end
 
 lord.name = "Barrow Lord"
-lord.race = "undead"
 
--- NO SHELF. A body that is not humanoid declares no `class` -- a class is a vendor shelf and a growth
--- declaration, and neither is a thing a corpse has (docs/bestiary.md, "creatures carry no discipline
--- gear"). The living blueprint's class is inherited by the copy above and cleared here, which is also
--- the line that makes this a corpse rather than a knight with a condition.
-lord.class = nil
-lord.discipline = nil
+-- A KNIGHT STILL, AND DEAD -- see character_skeleton_knight.lua for the rule (2026-09-25). The class and
+-- the human race are the living knight's; `undead` is what happened to it.
+lord.undead = true
 -- Elite: a signature relic and a rule that reads (docs/bestiary.md). The relic is the Binding.
 lord.tier = 3
 
@@ -72,11 +68,9 @@ lord.stats.defense = 4
 lord.archetype = "aggressive"
 
 
--- INNATE MITIGATION -- see character_skeleton_knight.lua for the argument, at the tier-3 budget
--- (Balance.INNATE_BUDGET allows 4). The mace is still the answer, which is what keeps three whole bars
--- from being a wall: a company carrying the right weapon takes this apart, and a company carrying four
--- swords finds out why it should have.
-lord.resist = { slash = 4, pierce = 4, impact = -8, holy = -8 }
+-- THE LATTICE RIDES ON THE BINDING (utility_barrow_binding.lua) at the line this body used to declare
+-- innate: slash 4, pierce 4, impact -8, holy -8. A humanoid may not also have a hide, and the Binding is
+-- already the one thing on this grid that is his bone. The mace is still the answer.
 
 -- The knight's own iron, the fact of being dead, and the rite that holds him up. Both utilities are
 -- `class = "creature"`, unpriced and noSteal, which is the whole of what separates this body's version
@@ -88,8 +82,8 @@ lord.resist = { slash = 4, pierce = 4, impact = -8, holy = -8 }
 -- landed in (Character.spriteOf takes the first in grid order), and this is the one body in the
 -- orchard whose whole fight rests on the player being able to pick him out of the rank.
 lord.startingItems = {
-    "weapon_iron_spear",  "weapon_iron_sword",      false,
-    "utility_grave_cold", "utility_barrow_binding", false,
+    "weapon_iron_spear",      "weapon_iron_sword", false,
+    "utility_barrow_binding", false,               false,
     false,                false,                    false,
 }
 

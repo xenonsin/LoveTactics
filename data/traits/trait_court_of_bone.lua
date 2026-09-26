@@ -39,7 +39,9 @@ local function courtSize(ctx)
     local n = 0
     for _, u in ipairs(combat.units or {}) do
         if u ~= ctx.unit and u.alive and u.side == ctx.unit.side
-            and u.char and u.char.kind == "undead" then
+            -- The undead TAG, not the race: his knights kept their class and their human race when
+            -- a skeleton stopped being a creature (2026-09-25), and a subject is anybody dead.
+            and u.char and require("models.character").isUndead(u.char) then
             n = n + 1
         end
     end

@@ -542,6 +542,12 @@ moves" — and it mostly was, but three of the things it turned up are worth mor
   folder was therefore a humanoid as far as the code was concerned — which is the exact line the
   creature rule above is drawn along, so the rule could not have been checked at all. Declared, it costs
   one line per body and makes the rule mechanical.
+- **`undead`** — a TAG beside the race, never a replacement for it (settled 2026-09-25, "The Dead Hand").
+  A body that was never anything else is `race = "undead"` (a wight, a ghoul, the Skeleton King). A body
+  of a living race that died keeps its race, its class and its shelf and adds `undead = true`: a dwarf
+  skeleton is a fighter, still Stout, and dead. `Character.isUndead` asks both, the tag seeds Grave-Cold,
+  and a skeleton's lattice rides on its bone item (`utility_bare_bones`) because a humanoid may not also
+  have a hide. The Bestiary files every tagged body on the Undead page.
 - **`tier`** — 1 chaff · 2 line · 3 elite · 4 boss, and **0 for a body that is not on the ladder**: a
   prop, an escortee, or a shape worn by Wild Shape. Rung 0 is declared rather than left absent so that
   "this will never fight" and "nobody has labelled this" stay different states.

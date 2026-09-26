@@ -193,17 +193,20 @@ return {
                 local base = Character.instantiate(baseId)
                 assert(dead.spritePath == base.spritePath, deadId
                     .. " is drawn from " .. baseId .. "'s own token -- the bone skin does the rest")
-                -- ...and DROPS its shelf. A class is a vendor shelf and a growth declaration, and a
-                -- corpse has neither (docs/bestiary.md); the living blueprint's is inherited by the copy
-                -- and must be cleared, which is also the line that makes it a corpse rather than a
-                -- knight with a condition.
-                assert(dead.class == nil, deadId .. " declares no shelf -- a " .. tostring(dead.kind)
-                    .. " has none, and it inherited " .. tostring(base.class) .. " from " .. baseId)
-                assert(dead.kind == "undead", deadId .. " is dead")
-                -- The lattice: edges and points slide through a frame, and the frame pays for both.
-                assert(dead.resist.slash > 0 and dead.resist.pierce > 0 and dead.resist.impact < 0,
+                -- ...and KEEPS its shelf and its race, tagged undead on top (2026-09-25, "The Dead
+                -- Hand"): a skeleton is the body you know with what happened to it, class and all.
+                assert(dead.class == base.class, deadId .. " keeps " .. tostring(base.class)
+                    .. " from " .. baseId .. ", got " .. tostring(dead.class))
+                assert(dead.race == base.race, deadId .. " keeps its race")
+                assert(Character.isUndead(dead), deadId .. " is dead")
+                -- The lattice, carried by its bone item now (a humanoid may not also have a hide):
+                -- edges and points slide through a frame, and the frame pays for both.
+                local c = Combat.new(Fixture.new(6, 6), { Fixture.unit("character_knight", 1, 1) },
+                    { Fixture.unit(deadId, 5, 5) })
+                local r = c.units[2].resist
+                assert(r.slash > 0 and r.pierce > 0 and r.impact < 0,
                     deadId .. " slips edges and points and comes apart under impact")
-                assert(dead.resist.slash + dead.resist.pierce + dead.resist.impact == 0,
+                assert(r.slash + r.pierce + r.impact == 0,
                     deadId .. "'s three lines are a redistribution, summing to zero "
                         .. "(Balance.INNATE_PHYSICAL)")
             end

@@ -219,12 +219,16 @@ return {
             -- one wants a header as loud as that file's before it lands here.
             local wearable, all = {}, {}
             for id, def in pairs(Item.defs) do
+                local negative = false
                 for _, v in pairs(def.resist or {}) do
                     local first = type(v) == "table" and v[1] or v
-                    if type(first) == "number" and first < 0 then
-                        all[#all + 1] = id
-                        if def.type == "armor" then wearable[#wearable + 1] = id end
-                    end
+                    if type(first) == "number" and first < 0 then negative = true end
+                end
+                -- Once per ITEM. This counted once per negative LINE, which read as "one other" only
+                -- while the one other had a single line; the bone lattice has two (impact, holy).
+                if negative then
+                    all[#all + 1] = id
+                    if def.type == "armor" then wearable[#wearable + 1] = id end
                 end
             end
             -- TWO NOW, AND THE SECOND ONE EARNED ITS HEADER. armor_scale_hauberk is cut from naga
@@ -255,7 +259,21 @@ return {
             end
             assert(#wearable == 3, "exactly three ARMORS carry a negative resist; found " .. #wearable
                 .. ": " .. table.concat(wearable, ", "))
-            assert(#all == 4, "and the only other is the demon's own flesh; found " .. #all)
+            -- THE OTHERS ARE FLESH AND BONE, nobody's choice: the demon's essence, and the lattice a skeleton
+            -- carries on its bone since a skeleton kept its class (2026-09-25) -- Bare Bones, and the Barrow
+            -- Lord's Binding. Each is `noSteal`, so no player ever holds the weakness.
+            local FLESH = {
+                ["utility_demonic_essence"] = true,
+                ["utility_bare_bones"] = true,
+                ["utility_barrow_binding"] = true,
+            }
+            for _, id in ipairs(all) do
+                if not WEARABLE_AMPLIFIERS[id] then
+                    assert(FLESH[id], id .. " carries a negative resist and is neither a named armour nor flesh")
+                    assert(Item.defs[id].noSteal, id .. " is flesh, so it must be noSteal")
+                end
+            end
+            assert(#all == 6, "three armours and three pieces of flesh; found " .. #all)
         end,
     },
 }

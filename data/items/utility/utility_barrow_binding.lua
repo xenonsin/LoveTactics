@@ -39,6 +39,9 @@ return {
     -- SKIN): the Lord is a dead knight in a room of dead knights, and his whole fight is that a player
     -- can tell which one he is.
     statusImmunity = { "status_bleed" },
+    -- The Lord's lattice (see utility_bare_bones.lua): the tier-3 line his blueprint used to declare
+    -- innate, carried by the one piece on his grid that is his bone.
+    resist = { slash = 4, pierce = 4, impact = -8, holy = -8 },
     wearerSkin = "crowned",
     traits = { "trait_bone_knit" },
     traitParams = {

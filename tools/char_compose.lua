@@ -309,12 +309,10 @@ local CHARACTER_SILHOUETTE = {
     -- writes the file once and they ride along) -- and what separates them on the board is the bone SKIN
     -- applied at draw time, not a picture of their own.
     --
-    -- THEY NEED A LINE HERE ANYWAY, and the reason is worth writing down because it is not obvious: a
-    -- humanoid's silhouette is resolved from its CLASS, and a corpse declares no class -- an undead has
-    -- no shelf (docs/bestiary.md), so the inherited one is cleared on every one of these blueprints. That
-    -- drops them straight through to the undead bucket's head, where all three land on sbed/death-skull
-    -- together with the zombie. So the class lookup they can no longer reach is restated here, by hand,
-    -- which is also the honest way to say it: this is a dead KNIGHT, and it is shaped like one.
+    -- THESE LINES WERE WRITTEN WHEN A CORPSE HAD NO CLASS, and they stay because they are still true: a
+    -- dead knight is shaped like a knight. Since 2026-09-25 a skeleton keeps its class and race and is
+    -- tagged undead on top (models/character.lua), so the class lookup would reach the same picture on
+    -- its own -- naming them here only pins it against a class silhouette ever moving.
     skeleton_knight = "delapouite/knight-banner",
     barrow_lord = "delapouite/knight-banner",
     skeleton_archer = "delapouite/archer",

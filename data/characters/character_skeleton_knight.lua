@@ -32,14 +32,14 @@ local dead = {}
 for k, v in pairs(base) do dead[k] = v end
 
 dead.name = "Skeleton Knight"
-dead.race = "undead"
 
--- NO SHELF. A body that is not humanoid declares no `class` -- a class is a vendor shelf and a growth
--- declaration, and neither is a thing a corpse has (docs/bestiary.md, "creatures carry no discipline
--- gear"). The living blueprint's class is inherited by the copy above and cleared here, which is also
--- the line that makes this a corpse rather than a knight with a condition.
-dead.class = nil
-dead.discipline = nil
+-- A KNIGHT STILL, AND DEAD (settled 2026-09-25, "The Dead Hand": a skeleton keeps its class and its
+-- race and is tagged undead on top). The class, the human race and the knight's growth are the living
+-- blueprint's, inherited by the copy above; `undead` is the one line that says what happened to it
+-- (Character.instantiate seeds Grave-Cold off it). This used to clear the class and swap the race for
+-- `undead`, which made a dead knight a creature with no shelf -- the rule it broke is the one this
+-- file's own header argues: it is the body you already know.
+dead.undead = true
 
 -- Its own table, copied off the base, so a tune to the living knight's pools cannot be undone here by
 -- accident -- and so the two fields below are visibly the only numbers that moved.
@@ -76,21 +76,18 @@ dead.archetype = "aggressive"
 -- orchard that pays for its own deaths is the Barrow Lord, and it says so on its sheet.
 dead.stats.mana = 0
 
--- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist table is
--- written in and summed into the same total. This body wears nothing now, so this is what it has instead
--- of a coat -- and the negative line is not an oversight, it is the price (docs/bestiary.md).
---   Edges and points pass through the gaps they were already aiming for.
---   The frame pays for both, in full, which is what keeps the three lines summing to zero
---   (Balance.INNATE_PHYSICAL) -- and the tier-2 budget allows exactly this (Balance.INNATE_BUDGET).
---   And the Cathedral was right about the dead, at the tier-2 weakness cap.
-dead.resist = { slash = 3, pierce = 3, impact = -6, holy = -6 }
+-- THE LATTICE RIDES ON BARE BONES NOW (data/items/utility/utility_bare_bones.lua), at exactly the line
+-- this body used to declare innate: slash 3, pierce 3, impact -6, holy -6. A humanoid buys its per-tag
+-- line off what it carries and may not also have a hide (tests/bestiary_spec.lua), and with the class
+-- back this is a humanoid -- so the bone that IS the lattice carries it, and every skeleton that is bone
+-- gets it from the same cell.
 
 -- The knight's own grid, minus everything that rotted: the spear and the sword it was buried holding,
 -- and the two standing facts of being a skeleton. No chainmail, no buckler, no potion -- a body that
 -- wounds itself by drinking one would spend the fight proving it.
 dead.startingItems = {
     "weapon_iron_spear", "weapon_iron_sword",  false,
-    "utility_grave_cold", "utility_bare_bones", false,
+    "utility_bare_bones", false,                false,
     false,                false,                false,
 }
 

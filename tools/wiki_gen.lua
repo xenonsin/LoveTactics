@@ -444,6 +444,10 @@ local function bodyCatalogue()
         -- for the same reason an unknown item type does: a bucket nobody has taught this tool about
         -- is still content. tests/data_spec is what fails such a blueprint, not this.
         local kind = Race.kindOf(def.race) or "unknown"
+        -- A DEAD DWARF IS FILED WITH THE DEAD. The undead tag sits beside the race (Character.isUndead),
+        -- and a reader hunting the Bestiary for a skeleton looks under Undead, not under Humanoid -- so
+        -- the tag wins the page, while the entry itself still names the race it kept.
+        if Character.isUndead(def) then kind = "undead" end
         if not BODIES[kind] then BODIES[kind] = {}; BODY_KINDS[#BODY_KINDS + 1] = kind end
         BODIES[kind][#BODIES[kind] + 1] = id
         KIND_OF[id] = kind

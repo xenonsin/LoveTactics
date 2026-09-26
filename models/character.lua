@@ -49,6 +49,19 @@ end
 -- `if unit.char.unarmed`), so this needs no special casing anywhere else.
 Character.DEFAULT_UNARMED = "weapon_unarmed"
 
+-- THE UNDEAD TAG (Character.instantiate's `undead`): the item every dead body is seeded with, and the
+-- question every reader asks. Takes a runtime character or a blueprint -- a blueprint answers off its
+-- `undead` flag and its race, exactly as instantiate stamps it, so a tool reading Character.defs and a
+-- rule reading a live unit's char cannot disagree.
+Character.UNDEAD_GRANT = "utility_grave_cold"
+
+function Character.isUndead(charOrDef)
+    if not charOrDef then return false end
+    if charOrDef.undead then return true end
+    local Race = require("models.race")
+    return Race.kindOf(charOrDef.race) == "undead"
+end
+
 -- Stats that deplete during play. On instantiation these become
 -- { max = base, current = base }; every other stat is copied as a flat number.
 -- Keeping the list here is the single source of truth for "which stats are
@@ -548,6 +561,13 @@ function Character.instantiate(id, progress)
         -- Nil for a blueprint whose `race` is missing or misspelled, which is what makes that a loud
         -- failure at tests/race_spec.lua rather than a quiet one at a shelf.
         kind = Race.kindOf(def.race),
+        -- ...AND WHETHER IT HAS DIED. A TAG BESIDE THE RACE, NEVER A REPLACEMENT FOR IT (settled on review
+        -- 2026-09-25, "The Dead Hand": "Skeletons do have classes and keep the original race's bonus on
+        -- top of being tagged undead"). A dwarf skeleton is still a dwarf -- Stout, Inheritance, the
+        -- dwarf's resist line, a fighter's growth and shelf -- and it is ALSO dead. So `race = "undead"`
+        -- stays for the bodies that were never anything else (a wight, a ghoul, the Skeleton King), and
+        -- `undead = true` on a blueprint marks a living race that died. Character.isUndead asks both.
+        undead = def.undead == true or Race.kindOf(def.race) == "undead" or nil,
         -- Which RUNG of the ladder this body sits on (docs/bestiary.md): 1 chaff · 2 line · 3 elite ·
         -- 4 boss, or 0 for a body that is not on the ladder at all -- a prop, an escortee, or a shape
         -- worn by Wild Shape. A DECLARED LABEL, never a multiplier: nothing derives a stat from it.
@@ -740,6 +760,26 @@ function Character.instantiate(id, progress)
             if not char.inventory[cell] then
                 char.inventory[cell] = Item.instantiate(itemId)
                 break
+            end
+        end
+    end
+
+    -- WHAT THE UNDEAD TAG PUTS IN THE GRID: Grave-Cold, the one rule every dead thing shares (a heal
+    -- wounds it). Seeded like a race grant, and skipped where the author already placed it, so the
+    -- bodies that have always listed it by hand keep their own cell. Bone is NOT granted here -- a wight
+    -- and a ghoul are dead and are not a lattice, so Bare Bones stays on the grids that are bone.
+    if char.undead then
+        local held = false
+        for cell = 1, Character.MAX_INVENTORY do
+            local it = char.inventory[cell]
+            if it and it.id == Character.UNDEAD_GRANT then held = true break end
+        end
+        if not held then
+            for cell = 1, Character.MAX_INVENTORY do
+                if not char.inventory[cell] then
+                    char.inventory[cell] = Item.instantiate(Character.UNDEAD_GRANT)
+                    break
+                end
             end
         end
     end

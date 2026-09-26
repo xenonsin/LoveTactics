@@ -16,7 +16,7 @@
 -- no counter deals it, no growth tally counts it and no thief lifts it.
 return {
     name = "Bare Bones",
-    description = "Nothing left to bleed.",
+    description = "Nothing left to bleed. Edges and points slip through the ribs; a hammer breaks them.",
     flavor = "The Arcanum files these separately from the walking dead. Different shelf, different smell, different rite.",
     sprite = "assets/items/bare_bones.png",
     type = "utility",
@@ -24,5 +24,10 @@ return {
     tags = { "dark" },
     noSteal = true, -- it is what the body IS, not equipment
     statusImmunity = { "status_bleed" },
+    -- THE LATTICE, which was each skeleton's innate hide until a skeleton kept its class (2026-09-25):
+    -- a humanoid may not also have a hide, so the bone that is the lattice carries it. Edges and points
+    -- pass through the gaps they were already aiming for; a hammer breaks the frame; holy at the cap.
+    -- The tier-2 line every skeleton in the tree declared, so no body's total moved.
+    resist = { slash = 3, pierce = 3, impact = -6, holy = -6 },
     wearerSkin = "bone",
 }
