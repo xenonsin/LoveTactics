@@ -905,10 +905,15 @@ end
 -- `damageTakenScale` (the Griffin's On the Wing: 0.5 while it flies). 1 when nothing scales it.
 -- Applied LAST in Combat.mitigatedDamage, after armour and resistance, so a flying body's armour still
 -- means what it means and the wing halves what got through.
-function Status.damageTakenScale(unit)
+function Status.damageTakenScale(unit, attacker)
     local scale = 1
     for _, s in ipairs((unit and unit.statuses) or {}) do
         if s.def.damageTakenScale then scale = scale * s.def.damageTakenScale end
+        -- ...EXCEPT FROM ONE BODY (the orc Pit-Fighter's Challenge, the Pit-Fighter's Belt): the share is
+        -- taken off every blow but the one struck by the instance's `exempt`. Asked only when the blow has a
+        -- striker to compare -- a trap, a burn or a hover with no attacker in hand reads it as full.
+        local except = s.def.damageTakenScaleExcept
+        if except and attacker and attacker ~= s.exempt then scale = scale * except end
     end
     return scale
 end

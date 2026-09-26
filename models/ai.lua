@@ -1851,6 +1851,19 @@ end
 function AI.preempt(combat, unit)
     local Combat = require("models.combat")
     if Status.has(unit, "status_seeing_red") then return seeingRedPlan(combat, unit) end
+    -- THE CROWD (the orc Pit-Fighter's Blood Ring, data/traits/trait_the_blood_ring.lua): a spectator watches
+    -- the ring and does nothing else until something falls and it steps in.
+    if Status.has(unit, "status_spectating") then return { wait = true, reason = "watching the ring" } end
+    -- A RAMPAGE (models/rampage.lua): a Berserker with nothing else to hit, or an ogre off its chain, strikes
+    -- whoever is nearest.
+    local rampage = require("models.rampage").plan(combat, unit)
+    if rampage then return rampage end
+    -- ON THE CHAIN (data/traits/trait_the_chain.lua): the War Ogre goes for whatever its Handler last struck.
+    if unit.side ~= "party" and Trait.flag(unit, "chained") and unit.pointedAt and unit.pointedAt.alive
+        and unit.pointedAt.side ~= unit.side then
+        local plan = strikePlan(combat, unit, unit.pointedAt, "on the chain")
+        if plan then return plan end
+    end
     -- GOLD FEVER is the same compulsion with a different cause (data/status/status_gold_fever.lua): the
     -- dwarf that saw the gold taken goes for whoever took it. It carries its target in the same field.
     local taunt = Status.get(unit, "status_taunt")

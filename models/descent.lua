@@ -573,7 +573,10 @@ Descent.SINS = {
             -- the Goblin King's Court and the Redcaps on the seat. Spares all, beside the slimes.
             spares = { "encounter_the_cinder_slimes", "encounter_the_caldera_king",
                 "encounter_wrath_the_hobgoblins_mob", "encounter_wrath_the_goblin_kings_court",
-                "encounter_wrath_the_redcaps" } } },
+                "encounter_wrath_the_redcaps",
+            -- ...AND ITS ORCS (2026-09-26, "The Orcs of Wrath"): the Pit-Fighter's Blood Ring on the approach (the alpha),
+            -- the Warchief's Band on the seat (the elite).
+                "encounter_wrath_the_blood_ring", "encounter_wrath_the_warchiefs_band" } } },
     { id = "sloth", name = "Sloth", vendor = "bastion", biome = "tundra",
         scene = "conversation_descent_sloth",
         guardian = { lead = "character_general_sloth", filler = "character_the_long_winter" },

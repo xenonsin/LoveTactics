@@ -36,7 +36,9 @@
 --     passion that overwhelms reason, the trap.
 --     Bodies: goblins, trolls, orcs, ogres, minotaurs, oni, vengeful spirits, ghosts, vampires.
 --     DONE: the goblins (2026-09-26, "The Goblins of Wrath", tests/goblin_line_spec.lua) -- a race with Blood
---       Feud, eleven bodies from the Cutter to the Goblin King, six fights. The rest are still owed.
+--       Feud, eleven bodies from the Cutter to the Goblin King, six fights.
+--     DONE: the orcs (2026-09-26, "The Orcs of Wrath", tests/orc_line_spec.lua) -- a race made Proven by every
+--       kill, nine bodies and a War Ogre, ten fights with two of them mixed with goblins. The rest are still owed.
 --     Suggested: berserkers, furies (the Erinyes -- vengeance with a name), hellhounds, salamanders.
 --     Mechanic ideas (suggested): a body that cannot stop attacking once started; a rage that grows with
 --       every hit TAKEN; blindness that makes a swing land on whatever is nearest, friend or foe; floods
@@ -84,9 +86,8 @@ local SPEC = 15 -- distinct creatures per floor
 
 -- circle/rung -> what it fielded when listed: the circles the 2026-09-22 cuts emptied, owed their
 -- creatures one circle at a time. (Greed's first floor was listed at 12 and closed at 16 with the beetles;
--- Wrath's seat was listed at 6 and closed at 15 with the goblins, whose approach still wants four more.)
+-- Wrath's seat was listed at 6 and closed at 15 with the goblins; its approach closed at 17 with the orcs.)
 local KNOWN_GAPS = {
-    ["wrath/1"] = "11 creatures -- the goblins; trolls, orcs and ogres are owed",
     ["sloth/1"] = "3 creatures",
     ["sloth/2"] = "5 creatures",
     ["envy/1"]  = "4 creatures",
@@ -108,8 +109,7 @@ local ELITE_SPEC = 4 -- distinct elites a floor can seat (Gluttony's seat has 4)
 -- (Greed's two floors were listed at 3 elites each and closed on 2026-09-26: the Paymaster on the approach,
 -- the Thing Under the Seam and the Gilded King on the seat.)
 local KNOWN_FIGHT_GAPS = {
-    ["wrath/1"] = "2.8 effective fights",
-    ["wrath/2"] = "2.9 effective fights",
+    ["wrath/1"] = "6.7 effective fights -- the goblins and orcs; one more lineup closes it",
     ["sloth/1"] = "0 -- no ordinary fight at all",
     ["sloth/2"] = "0 -- no ordinary fight at all",
     ["envy/1"]  = "1.0 effective fights",
@@ -119,7 +119,6 @@ local KNOWN_FIGHT_GAPS = {
     ["crown/1"] = "1.0 effective fights -- the bottom floor",
 }
 local KNOWN_ELITE_GAPS = {
-    ["wrath/1"] = "3 elites",
     ["sloth/1"] = "1 elite",
     ["sloth/2"] = "2 elites",
     ["envy/1"]  = "2 elites",

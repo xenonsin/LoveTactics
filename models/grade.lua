@@ -504,6 +504,22 @@ Grade.TRAIT_GRADE = {
     trait_bottled_rage =                0.5,  -- Bottled Rage -- a stack per hit taken, to 5
     trait_dipped_cap =                  2.0,  -- The Dipped Cap -- a kill: Invisible, and a certain critical
     trait_redcaps_pike =                1.0,  -- Redcap's Pike -- a kill heals 20%
+    -- THE ORCS OF WRATH (2026-09-26). Blood Up, the March, the Chain, the Blood Ring and the Warchief's rule are a
+    -- body's own and never shelved. Of the drops: Proven (Orc Scars) is +2/+2 a kill to three; Unbroken and
+    -- Warpaint are a streak that resets on a dry turn; the Belt halves all but one foe; the Torc is a heal and a
+    -- stack per ally lost; Succession is a once-a-fight hand-on the ability pays for.
+    trait_proven =                      1.5,  -- Proven -- a kill: +2 Damage and +2 Defense, to three
+    trait_blood_up =                    0.0,  -- Blood Up -- the Berserker's streak and compulsion
+    trait_unbroken =                    1.0,  -- Unbroken -- +2 a turn in a row this axe hits, to +10
+    trait_warpaint =                    1.0,  -- Warpaint -- +2 a turn in a row any hit lands, to +10
+    trait_the_march =                   0.0,  -- The March -- the drum steps the orc line
+    trait_the_chain =                   0.0,  -- The Chain -- the ogre's leash, and Unchained
+    trait_holding_the_chain =           0.0,  -- Holding the Chain -- the Handler points the ogre
+    trait_the_blood_ring =              0.0,  -- The Blood Ring -- the alpha's arena
+    trait_the_strongest_leads =         0.0,  -- The Strongest Leads -- the Warchief's presence and heir
+    trait_pit_fighters_belt =           2.0,  -- Pit-Fighter's Belt -- half from every foe but the last struck
+    trait_heirs_torc =                  1.0,  -- Heir's Torc -- an ally falls: heal 25%, +3 Damage, to three
+    trait_succession =                  0.5,  -- Succession -- fallen, your boons pass to the strongest ally
 
     -- THE GILT WYRM (2026-09-25), what a dwarf becomes at three Dragon-Sickness, and its saga drops. The
     -- Helm is Loosened Laces on the legs rather than the guard; the Heart is Dodge with magic let in at a

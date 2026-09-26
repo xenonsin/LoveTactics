@@ -152,6 +152,12 @@ local TROPHIES = {
     "ability_toss", "utility_firewalkers_wraps", "ability_spin_out", "ability_bottled_rage",
     "ability_red_mist", "utility_dipped_cap", "weapon_redcaps_pike", "utility_ambushers_hood",
     "weapon_hobgoblins_lash", "ability_kings_lever",
+    -- The Orcs' (Wrath, 2026-09-26): each body drops what it fights with, less the compulsion -- the Grunt's
+    -- scars, the Berserker's streak twice (an axe and a utility), the Drummer's drum, the Blood-Caller's
+    -- offering, the Handler's goad, the Pit-Fighter's belt, and the Warchief's torc and succession.
+    "utility_orc_scars", "weapon_unbroken_axe", "utility_warpaint", "ability_marching_drum",
+    "ability_blood_offering", "ability_goad", "utility_pit_fighters_belt", "utility_heirs_torc",
+    "ability_the_strongest_leads",
     -- The Gold Golem's (Greed's approach, 2026-09-25): all three trophies, each one of its rules turned to
     -- work on every floor -- the pull as a lodestone, the hoard as a purse, the plates as ballast.
     "utility_lodestone", "utility_spilled_purse", "utility_golden_ballast",

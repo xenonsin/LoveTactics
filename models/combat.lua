@@ -7307,7 +7307,7 @@ end
 -- the matching defense stat (magical tags route to magicDefense) and any tag `resist`, floored at
 -- 1. No mutation or logging -- shared by Combat.dealFlatDamage (which then applies it) and the
 -- damage-preview tooltip (Combat.computeDamage / Combat.previewAbility).
-function Combat.mitigatedDamage(target, base, tags, opts)
+function Combat.mitigatedDamage(target, base, tags, opts, attacker)
     tags = tags or {}
     local magical = hasTag(tags, "magical")
     -- A barrier of the incoming school swallows the hit whole: report 0 so the damage preview reads
@@ -7337,7 +7337,7 @@ function Combat.mitigatedDamage(target, base, tags, opts)
     local dmg = math.max(damageFloor(base), math.floor(base - defense - resist + vuln + 0.5))
     -- A body the blow only half reaches (On the Wing) takes a share of what armour left, never less
     -- than the floor: Status.damageTakenScale, last, so armour keeps its meaning under it.
-    local scale = Status.damageTakenScale(target)
+    local scale = Status.damageTakenScale(target, attacker)
     if scale ~= 1 then dmg = math.max(damageFloor(base), math.floor(dmg * scale + 0.5)) end
     return dmg
 end
@@ -8836,7 +8836,7 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     if Trait.tryPreempt(combat, target, attacker, opts and opts.area) then
         return 0
     end
-    local dmg = Combat.mitigatedDamage(target, base, tags, opts)
+    local dmg = Combat.mitigatedDamage(target, base, tags, opts, attacker)
     -- A CRITICAL multiplies what armour left, not what the arm swung (Combat.CRIT_MULTIPLIER). This is
     -- Fire Emblem's order of operations and it matters: tripling the pre-mitigation power would let a
     -- crit blow through heavy plate as if it were not there, where tripling the remainder makes a crit
@@ -9403,7 +9403,7 @@ function Combat.computeDamage(combat, user, target, item, opts)
     local rust = Status.tarnishOn(user, item)
     local base = (opts.amount or (ab and ab.damage) or 0) + flatStat(user, atkStat) + unarmedDamageBonus(user, item) + charmBonus - rust
     base = relicOutgoing(user, target, base)
-    return Combat.mitigatedDamage(target, base, tags, opts)
+    return Combat.mitigatedDamage(target, base, tags, opts, user)
 end
 
 -- Pure: the damage `unit` striking a trap with `weapon` would deal -- the weapon's attack stat
@@ -12751,7 +12751,9 @@ function Combat.useItem(combat, unit, item, tx, ty, windup, dest, spend)
     -- SEEING RED (the goblin Hexer's Red Mist, status_seeing_red) waives the side check: a body that has
     -- lost control uses any action on any target (AI.preempt rolls it), so a blade lands on a friend and a
     -- heal on a foe. Self-casts keep their own gate -- that one is about geometry, not about sides.
-    local seesRed = Status.has(unit, "status_seeing_red")
+    -- ...and so does a body on a RAMPAGE (models/rampage.lua): a Berserker that must swing and has no foe in
+    -- reach, or an ogre off its chain, hits whoever is nearest.
+    local seesRed = Status.has(unit, "status_seeing_red") or require("models.rampage").aimsAnyone(unit)
     if target and not seesRed then
         if ab.target == "enemy" and target.side == unit.side then return false, "invalid target" end
         if ab.target == "ally" and target.side ~= unit.side then return false, "invalid target" end

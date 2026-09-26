@@ -531,6 +531,18 @@ local CHARACTER_SILHOUETTE = {
     bugbear = "delapouite/orc-head",
     hobgoblin = "delapouite/goblin-camp",
     goblin_king = "delapouite/pope-crown",
+    -- THE ORCS OF WRATH (2026-09-26), drawn by what they do -- the gear, the scars, the hook, the rage, the drum,
+    -- the offered blood, the whip, the giant on it, the ring, the war bonnet.
+    orc_grunt = "lorc/battle-gear",
+    orc_veteran = "lorc/stitched-wound",
+    orc_spear_hurler = "lorc/harpoon-chain",
+    orc_berserker = "lorc/bloody-sword",
+    orc_war_drummer = "delapouite/drum",
+    orc_blood_caller = "lorc/tribal-mask",
+    orc_beast_handler = "lorc/whip",
+    war_ogre = "delapouite/giant",
+    orc_pit_fighter = "lorc/boxing-glove",
+    orc_warchief = "delapouite/war-bonnet",
 
     -- THE FLIGHT (Gluttony's approach). The griffin gets the one griffin in the set; the Falconer's Glove's
     -- bird is split from the wood's hawk and may not be one picture with it (the two bears' rule above).
