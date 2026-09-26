@@ -506,6 +506,19 @@ local CHARACTER_SILHOUETTE = {
     wyrmling = "delapouite/horned-reptile",
     the_godling = "lorc/wyvern",
     dragon_egg = "delapouite/raw-egg",
+    -- THE GOBLINS OF WRATH (2026-09-26). The chaff is the goblin's head; the rest are drawn by what they do --
+    -- the fire, the bomb, the madness, the mist, the camp the alpha keeps, the crown on the throne.
+    goblin_cutter = "delapouite/goblin-head",
+    goblin_sapper = "lorc/fire-bomb",
+    goblin_firebrand = "delapouite/fire-dash",
+    goblin_brute = "delapouite/barbarian",
+    goblin_fanatic = "lorc/mad-scientist",
+    goblin_hexer = "lorc/evil-minion",
+    goblin_wolf_rider = "caro-asercion/goblin",
+    redcap = "lorc/chewed-skull",
+    bugbear = "delapouite/orc-head",
+    hobgoblin = "delapouite/goblin-camp",
+    goblin_king = "delapouite/pope-crown",
 
     -- THE FLIGHT (Gluttony's approach). The griffin gets the one griffin in the set; the Falconer's Glove's
     -- bird is split from the wood's hawk and may not be one picture with it (the two bears' rule above).

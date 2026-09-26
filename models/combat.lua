@@ -7192,7 +7192,18 @@ function Combat.forcesCrit(combat, user, target, item)
     if Trait.flag(user, "critOnSurfacing") and Status.has(user, "status_surfaced") then
         return true
     end
+    -- THE DIPPED CAP (utility_dipped_cap): a kill wets it (status_dipped), and the next blow on a foe below
+    -- half is a certain critical. The landing blow spends it (Combat.dealDamage, beside Up From Below).
+    if Status.has(user, "status_dipped") and Combat.belowHalf(target) then
+        return true
+    end
     return false
+end
+
+-- Is `unit` below half of its maximum health? The Redcap's scent and its cap both ask it.
+function Combat.belowHalf(unit)
+    local hp = unit and unit.char and unit.char.stats and unit.char.stats.health
+    return hp ~= nil and (hp.max or 0) > 0 and (hp.current or 0) < hp.max / 2
 end
 
 function Combat.critChance(combat, user, target, item)
@@ -9169,6 +9180,9 @@ function Combat.dealDamage(combat, user, target, item, opts)
     if Status.has(user, "status_surfaced") and user ~= target and Trait.flag(user, "critOnSurfacing") then
         Status.remove(combat, user, "status_surfaced")
     end
+    if opts.critical and user ~= target and Status.has(user, "status_dipped") then
+        Status.remove(combat, user, "status_dipped")
+    end
     -- `user` rides along as the attacker so a reaction trait (a counter) knows who struck, and how
     -- far away they stood. A flat source (a trap, a burn) passes no attacker and provokes no counter.
     -- The weapon rides the blow down to the answer it raises (`blow` on Trait.onDamaged's ctx), so a hide
@@ -10698,7 +10712,15 @@ function Combat.abilityTargets(combat, unit, item)
             -- a foe -- surface those foes as targets so the enemy AI plans the volley like a strike.
             -- A point placement (a trap: tile-target but no aoe/allowOccupied) stays unplannable here.
             elseif ab.target == "tile" and ab.aoe and ab.allowOccupied then
+                valid = other.side ~= unit.side and not Status.untargetable(other, combat)
+            -- A cast aimed at ANY body (`target = "unit"`) is offered to the planner only at foes, and only
+            -- when it says so (`aiFoes`): the Hobgoblin's Lash is a whip first, and a lash on an ally second
+            -- (ability_the_lash plans that half as a support cast).
+            elseif ab.target == "unit" and ab.aiFoes then
                 valid = other.side ~= unit.side and not Status.untargetable(other, combat) end
+            -- `excludeSelf`: an ally-target cast that means somebody ELSE (the Lash: a goblin whipped into
+            -- acting again, never the whipper).
+            if valid and ab.excludeSelf and other == unit then valid = false end
             -- A sight-gated ability can't reach a target it has no clear line to (terrain cover).
             if valid and ab.requiresSight and not waivesSight
                 and not Combat.unitsSighted(combat, unit, other) then
@@ -11822,6 +11844,13 @@ function Combat.itemBlockReason(unit, item)
         return { kind = "disarmed", reason = "disarmed", text = "Disarmed -- cannot use weapons" }
     end
 
+    -- THROWN (ability_toss): the weapon is lying on the ground where it landed, and this cell is empty until
+    -- its bearer walks over it (hazard_tossed_weapon). Kept on the UNIT, not the item, so the fight's end
+    -- hands it back by simply ending -- nothing on the character remembers that it was ever thrown.
+    if unit.tossed and unit.tossed[item] then
+        return { kind = "tossed", reason = "thrown", text = "Thrown -- walk over it to pick it up" }
+    end
+
     -- BROKEN: the piece wore out and has not been to the forge (models/item.lua's Item.wear). Refused
     -- here, beside Disarmed, because it is the same shape of answer -- "that is in your hand and you
     -- cannot swing it" -- and routing it through this one gate is what makes the grid slot grey itself,
@@ -12553,9 +12582,15 @@ function Combat.useItem(combat, unit, item, tx, ty, windup, dest, spend)
     -- A HEAD casting on itself stands on no tile of its own (Combat.unitAt answers with its body), so a
     -- self-cast from one is resolved to the head directly rather than refused as aimed at somebody else.
     if ab.target == "self" and unit.headOf then target = unit end
-    if target then
+    -- SEEING RED (the goblin Hexer's Red Mist, status_seeing_red) waives the side check: a body that has
+    -- lost control uses any action on any target (AI.preempt rolls it), so a blade lands on a friend and a
+    -- heal on a foe. Self-casts keep their own gate -- that one is about geometry, not about sides.
+    local seesRed = Status.has(unit, "status_seeing_red")
+    if target and not seesRed then
         if ab.target == "enemy" and target.side == unit.side then return false, "invalid target" end
         if ab.target == "ally" and target.side ~= unit.side then return false, "invalid target" end
+    end
+    if target then
         if ab.target == "self" and target ~= unit then return false, "invalid target" end
     end
     -- A sight-gated single-target strike needs a real foe in its line -- line of sight is to a TARGET,

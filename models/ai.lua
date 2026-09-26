@@ -1781,8 +1781,73 @@ end
 -- consult its tactics, that is what being taunted means. Lifted wholesale out of the old
 -- Combat.planEnemyAction so its behavior is preserved exactly. Returns a plan, or nil to continue on
 -- to the ordinary decision.
+-- SEEING RED (data/status/status_seeing_red.lua, the goblin Hexer's Red Mist): the body does not choose its
+-- turn. It uses a random action from its own kit on a random target in range -- friend, foe or itself --
+-- rolled from what is legal where it stands. Reviewed 2026-09-26 on Keno's note: "lose control of them and
+-- they use any action towards any target". Combat.useItem waives its side check for a body seeing red, so a
+-- blade can land on a friend and a heal on a foe.
+local function seeingRedPlan(combat, unit)
+    local Combat = require("models.combat")
+    local pairs_ = {}
+    for _, item in ipairs(require("models.character").eachItem(unit.char)) do
+        local ab = item.activeAbility
+        if ab and not Combat.itemBlockReason(unit, item) then
+            if ab.target == "self" then
+                pairs_[#pairs_ + 1] = { item = item, tx = unit.x, ty = unit.y }
+            elseif ab.target == "enemy" or ab.target == "ally" or ab.target == "unit"
+                or (ab.target == "tile" and ab.aoe and ab.allowOccupied) then
+                local range = Combat.abilityRange(combat, unit, ab) + Combat.adjacencyRangeBonus(unit.char, item)
+                local minRange = Combat.abilityMinRange(ab)
+                for _, other in ipairs(combat.units) do
+                    local d = Combat.unitGap(unit, other)
+                    if other.alive and not Combat.isOffTile(other) and d <= range and d >= minRange then
+                        local cx, cy = Combat.nearestCell(unit.x, unit.y, other)
+                        pairs_[#pairs_ + 1] = { item = item, tx = cx, ty = cy }
+                    end
+                end
+            end
+        end
+    end
+    if #pairs_ == 0 then return { wait = true, reason = "seeing red" } end
+    local pick = pairs_[Combat.roll(combat, #pairs_)] or pairs_[1]
+    return { item = pick.item, tx = pick.tx, ty = pick.ty, reason = "seeing red" }
+end
+
+-- Strike `tt` this turn if the default weapon can reach it from here or from a tile it can walk to, else nil.
+-- The shared half of the Taunt and the Blood Feud: a taunted body then shambles closer when it cannot reach;
+-- a goblin in a feud simply goes on with its turn.
+local function strikePlan(combat, unit, tt, reason)
+    local Combat = require("models.combat")
+    local weapon = Combat.defaultWeapon(unit.char)
+    if not weapon then return nil end
+    local ab = weapon.activeAbility
+    for _, t in ipairs(Combat.abilityTargets(combat, unit, weapon)) do
+        if t == tt then
+            local cx, cy = Combat.nearestCell(unit.x, unit.y, tt)
+            return { item = weapon, tx = cx, ty = cy, reason = reason }
+        end
+    end
+    local minRange = Combat.abilityMinRange(ab)
+    local best
+    for _, node in ipairs(Combat.reachableList(combat, unit)) do
+        local range = Combat.abilityRange(combat, unit, ab, node.x, node.y)
+            + Combat.adjacencyRangeBonus(unit.char, weapon)
+        local d, cx, cy = Combat.reachFrom(unit, node.x, node.y, tt)
+        if d <= range and d >= minRange
+            and (not (ab and ab.requiresSight) or Combat.sightFrom(combat, unit, node.x, node.y, cx, cy))
+            and (not best or node.steps < best.steps) then
+            best = { x = node.x, y = node.y, tx = cx, ty = cy, steps = node.steps }
+        end
+    end
+    if best then
+        return { move = { x = best.x, y = best.y }, item = weapon, tx = best.tx, ty = best.ty, reason = reason }
+    end
+    return nil
+end
+
 function AI.preempt(combat, unit)
     local Combat = require("models.combat")
+    if Status.has(unit, "status_seeing_red") then return seeingRedPlan(combat, unit) end
     -- GOLD FEVER is the same compulsion with a different cause (data/status/status_gold_fever.lua): the
     -- dwarf that saw the gold taken goes for whoever took it. It carries its target in the same field.
     local taunt = Status.get(unit, "status_taunt")
@@ -1790,6 +1855,13 @@ function AI.preempt(combat, unit)
         taunt = Status.get(unit, "status_gold_fever")
     end
     if not (taunt and taunt.taunter and taunt.taunter.alive and taunt.taunter.side ~= unit.side) then
+        -- BLOOD FEUD (models/feud.lua): a goblin that can reach its side's Feud this turn attacks it and
+        -- nothing else. One that cannot goes on with its own turn -- rage with no plan, but not a leash.
+        -- The company's own hired goblin is never compelled: an AI rule binds no body the player drives.
+        if unit.side ~= "party" and Trait.flag(unit, "bloodFeud") then
+            local tt = require("models.feud").of(combat, unit.side)
+            if tt and tt.alive then return strikePlan(combat, unit, tt, "blood feud") end
+        end
         return nil
     end
 

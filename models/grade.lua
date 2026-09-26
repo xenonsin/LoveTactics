@@ -485,6 +485,21 @@ Grade.TRAIT_GRADE = {
     trait_bare_patch =                  0.0,  -- The Bare Patch -- a weakness, not a gift
     trait_scurry =                      1.5,  -- Scurry -- step back after a blow, and Harry the foe
     trait_godlings_scale =              2.0,  -- You Are the Dragon -- allies within 2 gain damage and defense
+    -- THE GOBLINS OF WRATH (2026-09-26). The race's two, the Brute's fuse, the Fanatic's flag, the Redcap's cap
+    -- and the Wolf-Rider's saddle are a body's own and never shelved. Of the drops: Fire-Fed is a conditional
+    -- +3 on ground the wraps lay themselves; Bottled Rage keeps the stacks its ability spends (the ability
+    -- carries its own damage); the Dipped Cap is invisibility plus one certain critical per kill; the Pike's
+    -- heal on a kill is a sustain rider.
+    trait_blood_feud =                  1.0,  -- Blood Feud -- +2 against whoever last hit a goblin
+    trait_mob_courage =                 0.0,  -- Mob Courage -- alone, cower: a weakness
+    trait_pent_up =                     0.0,  -- Pent Up -- a death burst, the Brute's own
+    trait_unsteered =                   0.0,  -- Unsteered -- the spin does not stop at lava: a weakness
+    trait_drying_cap =                  0.0,  -- The Drying Cap -- a dry turn costs health; a kill heals
+    trait_two_in_one =                  2.0,  -- Two in One -- the first lethal blow kills only half
+    trait_fire_fed =                    1.0,  -- Fire-Fed -- +3 damage standing in fire
+    trait_bottled_rage =                0.5,  -- Bottled Rage -- a stack per hit taken, to 5
+    trait_dipped_cap =                  2.0,  -- The Dipped Cap -- a kill: Invisible, and a certain critical
+    trait_redcaps_pike =                1.0,  -- Redcap's Pike -- a kill heals 20%
 
     -- THE GILT WYRM (2026-09-25), what a dwarf becomes at three Dragon-Sickness, and its saga drops. The
     -- Helm is Loosened Laces on the legs rather than the guard; the Heart is Dodge with magic let in at a

@@ -23,6 +23,7 @@
 --   * onDeath(ctx)       -- the bearer dropped
 --   * onAnyTurnEnd(ctx)  -- somebody ELSE's turn just ended; ctx.actor is who. A broadcast, like
 --                           onAnyDeath: a body that takes no turns (an egg) still hears it
+--   * onTurnEnd(ctx)     -- the bearer's OWN turn just ended (fired beside onAnyTurnEnd)
 --
 -- Two things carry traits, and both flow through Trait.attach:
 --   * a character blueprint  -- `traits = { "trait_wrath_rising" }` on data/characters/<id>.lua
@@ -517,6 +518,29 @@ function Trait.trySurvive(combat, unit)
             Combat.logEvent(combat, "action", string.format("%s comes apart into %d.",
                 (unit.char and unit.char.name) or "Unit", born), unit)
             return true
+        end
+        -- TWO IN ONE (data/traits/trait_two_in_one.lua, the Goblin Wolf-Rider): the lethal blow kills only
+        -- HALF the body, and which half is decided by how it was struck. From range, the rider is shot off
+        -- and the wolf goes wild (Seeing Red); up close, the wolf is cut down and the rider rolls clear on
+        -- foot. Once a battle, on `stacks`; the new body is a Transform, so it stands where the old one did.
+        if t.def.dismountsOnLethal and t.stacks == 0 then
+            t.stacks = 1
+            local a = unit.lastAttacker
+            local shot = a ~= nil and Combat.unitGap(a, unit) > 1
+            local into = shot and Trait.param(t, "riderless", "character_wolf_grunt")
+                or Trait.param(t, "unhorsed", "character_goblin_cutter")
+            local Transform = require("models.transform")
+            if Transform.apply(combat, unit, into, { level = unit.char.level }) then
+                local hp = unit.char.stats.health
+                hp.current = math.max(1, hp.max or 1)
+                Combat.logEvent(combat, "action", shot
+                    and "The rider is shot off, and the wolf goes wild."
+                    or "The wolf goes down, and its rider rolls clear.", unit)
+                if shot then
+                    require("models.status").apply(combat, unit, "status_seeing_red", { duration = 50 })
+                end
+                return true
+            end
         end
         if t.def.revivesOnLethal then
             local cost = Trait.param(t, "cost")
@@ -1647,6 +1671,9 @@ end
 -- mid-fight never had its opener run to be handed one.
 function Trait.onAnyTurnEnd(combat, actor)
     if not (combat and actor) then return end
+    -- ...and the actor hears its OWN turn end (`onTurnEnd`), for a rule about what the bearer did with the
+    -- turn it just had: the Redcap's cap dries if it drew no blood (data/traits/trait_drying_cap.lua).
+    if actor.alive and actor.traits and #actor.traits > 0 then dispatch(combat, actor, "onTurnEnd", {}) end
     for _, unit in ipairs(combat.units or {}) do
         if unit.alive and unit ~= actor and unit.traits and #unit.traits > 0 then
             dispatch(combat, unit, "onAnyTurnEnd", { actor = actor })

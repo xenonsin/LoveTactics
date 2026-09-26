@@ -140,6 +140,12 @@ local TROPHIES = {
     -- Godling its own scale.
     "utility_scurry", "ability_deadfall", "ability_dragon_egg", "ability_borrowed_breath",
     "utility_godlings_scale",
+    -- The Goblins' (Wrath, 2026-09-26): each body drops the trick it fights with -- the Cutter's throw, the
+    -- Firebrand's feet, the Fanatic's spin, the Brute's burst, the Hexer's mist, the Redcap's cap and pike,
+    -- the Bugbear's hood, the Hobgoblin's lash -- and the King the lever off his throne.
+    "ability_toss", "utility_firewalkers_wraps", "ability_spin_out", "ability_bottled_rage",
+    "ability_red_mist", "utility_dipped_cap", "weapon_redcaps_pike", "utility_ambushers_hood",
+    "weapon_hobgoblins_lash", "ability_kings_lever",
     -- The Gold Golem's (Greed's approach, 2026-09-25): all three trophies, each one of its rules turned to
     -- work on every floor -- the pull as a lodestone, the hoard as a purse, the plates as ballast.
     "utility_lodestone", "utility_spilled_purse", "utility_golden_ballast",

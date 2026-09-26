@@ -560,7 +560,11 @@ Descent.SINS = {
             seat = "encounter_wrath_rift_born",
             -- WRATH'S SLIMES (2026-09-24): they Boil Over -- the cinder slimes on the approach, their
             -- Caldera King on the seat.
-            spares = { "encounter_the_cinder_slimes", "encounter_the_caldera_king" } } },
+            -- ...AND ITS GOBLINS (2026-09-26, "The Goblins of Wrath"): the Hobgoblin's Mob on the approach,
+            -- the Goblin King's Court and the Redcaps on the seat. Spares all, beside the slimes.
+            spares = { "encounter_the_cinder_slimes", "encounter_the_caldera_king",
+                "encounter_wrath_the_hobgoblins_mob", "encounter_wrath_the_goblin_kings_court",
+                "encounter_wrath_the_redcaps" } } },
     { id = "sloth", name = "Sloth", vendor = "bastion", biome = "tundra",
         scene = "conversation_descent_sloth",
         guardian = { lead = "character_general_sloth", filler = "character_the_long_winter" },
