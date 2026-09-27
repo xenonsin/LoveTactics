@@ -1203,8 +1203,8 @@ local function ctxFor(combat, unit, trait, event)
             Combat.spawnBurst(combat, x or unit.x, y or unit.y, tags, opts)
         end,
         -- Lay a hazard on a tile, as fx.placeHazard does for an ability. A REACTION can leave ground
-        -- behind too -- a body that catches fire where it falls (data/traits/trait_cinderfall.lua) is
-        -- the same statement as a spell that lays fire, made on the death hook instead of the cast one.
+        -- behind too -- a body that leaves curse where it falls (data/traits/trait_curse_bearer.lua) is
+        -- the same statement as a spell that lays ground, made on the death hook instead of the cast one.
         -- Sided to the bearer, so the renderer tints it as theirs and Hazard's own ownership rules
         -- apply unchanged.
         placeHazard = function(x, y, id, opts)

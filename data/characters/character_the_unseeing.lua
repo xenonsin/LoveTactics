@@ -16,7 +16,7 @@
 -- down on when he is hemmed in and the call quietly comes up short.
 --
 -- Tier 3's band is 81-154 health, which is where a beast apex on a road sits here (compare
--- character_the_winter_hart at 136 and character_rift_born at 132). The stamina line is what lets the
+-- character_the_winter_hart at 136). The stamina line is what lets the
 -- call run every turn rather than every other one -- 6 a cast against 3 a tick is the pace of the fight.
 --
 -- The blindness is currently FICTION rather than mechanism. What was designed for it -- the clan aiming

@@ -1,5 +1,4 @@
--- Tests for the WRATH CIRCLE: the volcanic stratum's five bodies, its lieutenant slot, and the rule they
--- share.
+-- Tests for the WRATH CIRCLE: its lieutenant slot, and the tier's rule as the Cold Forge still carries it.
 --
 -- The tier's design rule, pinned here as it is for Gluttony and Envy: A MINI SIN'S SECOND PHASE IS ITS
 -- GENERAL'S FIRST. Ira's Unappeased Heart is two compounding terms with no ceiling; the Cold Forge runs
@@ -10,94 +9,60 @@
 -- on disk and is the material a replacement is built from. Every case here that read the blueprint is
 -- deleted; the contract it held is written out beside the slot below.
 --
--- Also pins the circle's real design property: the escalation is on the BOARD, not on the stat lines.
--- Everything here leaves fire behind, the drake drinks it, and the Cold Forge is paid for the trades you
--- take once you can no longer kite.
+-- THE CIRCLE'S FIRST FIVE BODIES ARE GONE TOO (2026-09-26): the ember-spit, the cinder-kin, the forge
+-- wretch, the Unquenched and the Rift-Born, with their kit and the two traits only they carried
+-- (Cinderfall, Drinks the Fire). The cases that pinned the fire-on-the-board escalation went with them;
+-- the goblins, orcs, oni and vampires carry their own specs.
 
 local Character = require("models.character")
-local Combat = require("models.combat")
 local Descent = require("models.descent")
-local Hazard = require("models.hazard")
 local Item = require("models.item")
 local Trait = require("models.trait")
-local Fixture = require("tests.support.fixture")
-
-local unit, openTurn, itemNamed = Fixture.unit, Fixture.openTurn, Fixture.itemNamed
 
 return {
     {
-        -- THE ANVIL IS DELETED AND THIS CASE IS THE MARKER. Wrath's lieutenant slot holds the circle's
-        -- own line body as a stand-in (see the lieutenant note at the head of Descent.SINS), which is
-        -- not a mini sin and does not pretend to be one. The stand-in is named here on purpose: seating
-        -- a replacement reddens this case, and whoever does it owes the contract the deleted case below
-        -- used to hold -- boss-rung, a `referenceLevel`, opening damage under its general's, and health
-        -- between 60% and 85% of hers and over its own line body's.
+        -- THE ANVIL IS DELETED AND THIS CASE IS THE MARKER. Wrath's lieutenant slot holds the oni's alpha
+        -- as a stand-in (see the lieutenant note at the head of Descent.SINS), which is not a mini sin
+        -- and does not pretend to be one. The stand-in is named here on purpose: seating a replacement
+        -- reddens this case, and whoever does it owes the contract the deleted case below used to hold --
+        -- boss-rung, a `referenceLevel`, opening damage under its general's, and health between 60% and
+        -- 85% of hers and over its own line body's.
         name = "Wrath's lieutenant slot is filled, and by a stand-in that says so",
         fn = function()
             local sin
             for _, s in ipairs(Descent.SINS) do if s.id == "wrath" then sin = s end end
             assert(sin, "the wrath circle exists")
-            assert(sin.minor.lead == "character_forge_wretch", "the wretch stands in for the Anvil")
+            assert(sin.minor.lead == "character_oni_general", "the Oni General stands in for the Anvil")
             assert(Character.defs[sin.minor.lead], "and whatever stands there is a body that loads")
+            assert(Character.defs[sin.minor.filler], "and so does its escort")
+            assert(Character.defs[sin.guardian.filler], "and so does Ira's")
             assert(not Character.defs["character_the_anvil"], "the Anvil is gone")
             -- The Champion is still a correctly built body and still the pattern for authoring phases;
             -- it just is not a sin.
             assert(Character.defs["character_champion"], "the Champion is still in the game")
         end,
     },
-
-    -- ------------------------------------------------------------ the board escalates, not the stats
     {
-        name = "a body that falls here leaves fire on the tile",
+        name = "the circle's first bodies are gone, and Wrath bills no elite in their place",
         fn = function()
-            local map = Fixture.new(10, 10)
-            local c = Fixture.combat(map,
-                { unit("character_knight", 2, 2) },
-                { unit("character_ember_spit", 6, 6) })
-            local spit
-            for _, u in ipairs(c.units) do
-                if u.char.id == "character_ember_spit" then spit = u end
+            for _, id in ipairs({ "character_ember_spit", "character_cinder_kin", "character_forge_wretch",
+                                  "character_the_unquenched", "character_rift_born" }) do
+                assert(not Character.defs[id], id .. " is deleted")
             end
-            assert(not Hazard.at(c, 6, 6, "hazard_fire"), "the tile starts clean")
-            Combat.dealFlatDamage(c, spit, 99999, {}, "test")
-            assert(not spit.alive, "the spit falls")
-            assert(Hazard.at(c, 6, 6, "hazard_fire"),
-                "and the tile it fell on is alight -- clearing the swarm costs you ground")
-        end,
-    },
-    {
-        name = "the Unquenched drinks the fire it is standing in, and nothing on clean ground",
-        fn = function()
-            local map = Fixture.new(12, 12)
-            local c = Fixture.combat(map,
-                { unit("character_knight", 4, 4) },
-                { unit("character_the_unquenched", 6, 4) })
-            local drake, victim
-            for _, u in ipairs(c.units) do
-                if u.side == "party" then victim = u else drake = u end
+            for _, s in ipairs(Descent.SINS) do
+                if s.id == "wrath" then
+                    assert(s.elites.approach == nil and s.elites.seat == nil,
+                        "nothing is promoted into the Unquenched's or the Rift-Born's billing")
+                end
             end
-            local jaws = itemNamed(drake.char, "weapon_rift_jaws")
-            Combat.dealFlatDamage(c, drake, 60, {}, "test")
-
-            -- On clean ground, acting pays it nothing.
-            local clean = Fixture.hp(drake)
-            openTurn(c, drake)
-            assert(Combat.useItem(c, drake, jaws, 5, 4), "the drake bites")
-            assert(Fixture.hp(drake) <= clean, "on clean ground it heals nothing")
-
-            -- Set its own tile alight and let it act again.
-            Hazard.place(c, drake.x, drake.y, "hazard_fire", { side = "enemy" })
-            local burning = Fixture.hp(drake)
-            openTurn(c, drake)
-            assert(Combat.useItem(c, drake, jaws, 5, 4), "the drake bites again")
-            assert(Fixture.hp(drake) > burning,
-                "standing in fire, acting feeds it -- which is why clearing the swarm is the losing line")
         end,
     },
 
     -- ------------------------------------------------------------ the tier's rule
     {
-        name = "Kindling climbs with blows taken and then stops",
+        -- NO BODY CARRIES KINDLING NOW. The forge wretch wore it and is deleted; the Cold Forge still
+        -- names it and is still on disk. So the rule is pinned on its definition, not on a fight.
+        name = "Kindling is capped, and is one term where Ira's is two",
         fn = function()
             local def = Trait.defs["trait_kindling"]
             assert(def, "the trait exists")
@@ -106,29 +71,6 @@ return {
             assert(parent and parent.magnitude, "the general's rule has a missing-health term")
             assert(def.magnitude == nil,
                 "the mini sin's version has no missing-health curve at all -- one term, not two")
-
-            local map = Fixture.new(10, 10)
-            local c = Fixture.combat(map,
-                { unit("character_knight", 2, 2) },
-                { unit("character_forge_wretch", 6, 6) })
-            local wretch
-            for _, u in ipairs(c.units) do
-                if u.char.id == "character_forge_wretch" then wretch = u end
-            end
-            -- ctx.addBonus writes unit.bonus, NOT char.stats -- a per-battle bump that never touches the
-            -- blueprint. So the reading is off the unit, which is also what combat itself adds in.
-            local function sharpness(u) return (u.bonus and u.bonus.damage) or 0 end
-            assert(sharpness(wretch) == 0, "it starts unsharpened")
-
-            for _ = 1, 3 do Combat.dealFlatDamage(c, wretch, 4, {}, "test") end
-            local sharpened = sharpness(wretch)
-            assert(sharpened > 0, "chipping it builds it")
-
-            -- ...and it stops. Many more blows must not carry it past the ceiling.
-            for _ = 1, 20 do Combat.dealFlatDamage(c, wretch, 1, {}, "test") end
-            assert(sharpness(wretch) <= def.ceiling, string.format(
-                "Kindling holds at its ceiling of %d (reached %d); only Ira's version never stops",
-                def.ceiling, sharpness(wretch)))
         end,
     },
     {
@@ -163,41 +105,14 @@ return {
     -- "roughly 60%" and still be tier 4. The rule that actually holds across all seven circles is:
     -- comfortably under its general, comfortably over its own circle's line body.
 
-    -- ------------------------------------------------------------ the apex
-    {
-        name = "Rift-Born shrinks the room instead of growing itself",
-        fn = function()
-            local rift = Item.defs["utility_riftline"]
-            assert(rift and rift.phases and #rift.phases == 2, "it splits twice")
-            for _, phase in ipairs(rift.phases) do
-                local summons = false
-                for _, r in ipairs(phase.responses or {}) do
-                    if r.kind == "summon" then
-                        summons = true
-                        assert(r.id == "character_ember_spit",
-                            "it sheds the swarm, which is TERRAIN: each one leaves fire where it falls")
-                    end
-                    assert(r.kind ~= "bonus" or r.amount < 0,
-                        "the escalation is on the board, not on the Rift-Born's stat line")
-                end
-                assert(summons, "every threshold sheds something")
-            end
-            assert(Character.defs["character_rift_born"].footprint.w == 2, "the apex stands on four tiles")
-        end,
-    },
-
     -- ------------------------------------------------------------ the kit contract
     {
-        name = "every Wrath item is natural kit and nothing else",
+        name = "the Cold Forge is natural kit and nothing else",
         fn = function()
-            for _, id in ipairs({ "weapon_ember_spit", "weapon_cinder_brand", "weapon_rift_jaws",
-                                  "utility_ember_husk", "utility_forge_scar", "utility_quenchless_gut",
-                                  "utility_riftline", "utility_cold_forge" }) do
-                local def = Item.defs[id]
-                assert(def, id .. " does not exist")
-                assert(def.noSteal and not def.price and def.class == "creature",
-                    id .. ": creature kit is unpriced, unshelved and unstealable")
-            end
+            local def = Item.defs["utility_cold_forge"]
+            assert(def, "utility_cold_forge does not exist")
+            assert(def.noSteal and not def.price and def.class == "creature",
+                "creature kit is unpriced, unshelved and unstealable")
         end,
     },
 }

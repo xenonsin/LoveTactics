@@ -590,13 +590,8 @@ local CHARACTER_SILHOUETTE = {
     -- characters resolve to the same silhouette". So it is named here, and tinted below.
     whirl_elemental = "lorc/flame-spin", -- the two of them met: a fire with a chimney's worth of air under it
 
-    -- THE WRATH CIRCLE. Two elementals, two demons and a beast, which without names here would collapse
-    -- onto three kind fallbacks between them.
-    ember_spit = "lorc/small-fire",
-    cinder_kin = "lorc/burning-embers",
-    forge_wretch = "lorc/flaming-claw",
-    the_unquenched = "lorc/fire-breath",   -- it drinks the board and breathes it back
-    rift_born = "sbed/lava",               -- the seam, not the thing that came out of it
+    -- THE WRATH CIRCLE. Its first bodies (the ember-spit, cinder-kin, forge wretch, the Unquenched and
+    -- the Rift-Born) are deleted (2026-09-26); the goblins, orcs, oni and vampires above are its stock now.
     the_anvil = "lorc/anvil-impact",       -- a thing that exists to be struck
 
     -- WHAT IS LEFT OF THE SLOTH CIRCLE. Its four lesser bodies are deleted (2026-09-22); the general's

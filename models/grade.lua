@@ -764,12 +764,7 @@ Grade.TRAIT_GRADE = {
     -- Fires once, on the bearer's own death, and lays one tile of ground. Worth something to a body that
     -- dies in a doorway and nothing at all to one that dies in the open -- and the bearer is never
     -- around to use it.
-    trait_cinderfall =                  0.5,  -- Cinderfall
-    trait_curse_bearer =                0.5,  -- Curse-Bearer: Cinderfall's twin, and weighed as it
-    -- Heals as it acts, but only while standing in fire. Enormous on the one board that fills itself
-    -- with fire and worth exactly zero anywhere else, so it grades near the conditional heals rather
-    -- than near the unconditional ones.
-    trait_drinks_the_fire =             2.0,  -- Drinks the Fire
+    trait_curse_bearer =                0.5,  -- Curse-Bearer
     -- Sloth's rule one rank down: one pair sworn instead of the whole party, and paid for with a turn
     -- rather than arriving at the opening bell. Worth roughly a third of Acedia's version.
     trait_torpor =                      2.0,  -- Torpor

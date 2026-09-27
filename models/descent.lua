@@ -557,16 +557,20 @@ Descent.SINS = {
         -- two authored phases, and the worked example in trait_boss_phases. It was still the wrong
         -- occupant: a stratum's centrepiece should BE the sin one rank down, not an arena fighter who
         -- happens to be nearby. It stays the authoring pattern; it stops standing in for Ira.
-        guardian = { lead = "character_general_wrath", filler = "character_forge_wretch" },
+        guardian = { lead = "character_general_wrath", filler = "character_oni_general" },
         -- UNAPPEASED UNTIL ENOUGH HAS BEEN SPILLED. A count of fights won on her floor, which is the
         -- gate a company clears by doing the thing it came to do -- so Wrath is the circle that asks
         -- for no detour, only for commitment.
         gate = { kind = "kills", n = 3 },
-        -- NO LIEUTENANT. The Anvil is gone; a forge wretch stands in, which is the closest the pit has
-        -- to a body that is improved by being struck. It is what a replacement replaces.
-        minor = { lead = "character_forge_wretch", filler = "character_cinder_kin" },
-        elites = { approach = "encounter_wrath_the_unquenched",
-            seat = "encounter_wrath_rift_born",
+        -- NO LIEUTENANT. The Anvil is gone; the Oni General stands in over its students -- the clan's
+        -- alpha, and the closest the pit now has to a rank above its line. It is what a replacement
+        -- replaces. (The forge wretch held this slot until it was deleted with the rest of the circle's
+        -- first bodies, 2026-09-26.)
+        minor = { lead = "character_oni_general", filler = "character_oni_student" },
+        -- NO `approach` AND NO `seat`. The Unquenched and the Rift-Born were deleted (2026-09-26) and
+        -- nothing is promoted into their billing: both floors deal their spares at ELITE_WEIGHT, the
+        -- same way Pride's seat stood bare before the Apex Crystal.
+        elites = {
             -- WRATH'S SLIMES (2026-09-24): they Boil Over -- the cinder slimes on the approach, their
             -- Caldera King on the seat.
             -- ...AND ITS GOBLINS (2026-09-26, "The Goblins of Wrath"): the Hobgoblin's Mob on the approach,
@@ -2163,7 +2167,7 @@ Descent.OPENING_CAP = 3
 -- contact rates as nine health. Expect this stair to play harder than 465 says.
 --
 -- A FLAT BODY COUNT IS SAFE HERE FOR A REASON WORTH WRITING DOWN. The seven minor bands do not field
--- comparable filler -- a cinder-kin is worth three petal-drifts -- so six of one is not six of another,
+-- comparable filler -- an oni student is worth several petal-drifts -- so six of one is not six of another,
 -- and at these numbers Wrath's opening stair would read 1100 where Lust's reads 465. It cannot happen to
 -- the company this constant is for: a first descent walks the authored order (Descent.INFERNO), so
 -- floor one is ALWAYS Gluttony until the Crown is broken, and the shuffle that could seat any other
@@ -3943,7 +3947,7 @@ end
 -- HOW MANY FILLER BODIES BRING `lead` UP TO `target`.
 --
 -- Solved rather than authored, which is the point: the seven circles do not field comparable filler --
--- a cinder kin is worth three petal drifts -- so one body count means seven different fights. Asking
+-- an oni student is worth several petal drifts -- so one body count means seven different fights. Asking
 -- for a WORTH and letting each circle spend as many of its own bodies as that takes is what makes the
 -- stairs comparable at all.
 --

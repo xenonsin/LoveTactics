@@ -31,8 +31,8 @@
 -- ([[prose-can-be-the-only-implementation]] is the shape, and it is the second time this circle has
 -- been caught by it -- Charm was in exactly the same position before the succubus line).
 --
--- SO IT IS THE OPPOSITE OF EVERY OTHER BURN IN THE GAME. A cinder-kin burns what it hits and Wrath's
--- whole stratum burns the ground you must stand on. This burns what reaches for IT -- the arrow as
+-- SO IT IS THE OPPOSITE OF EVERY OTHER BURN IN THE GAME. A brand burns what it hits and a fire hazard
+-- burns the ground you must stand on. This burns what reaches for IT -- the arrow as
 -- readily as the axe, the spell as readily as the arrow (data/traits/trait_wanting_costs.lua) -- so
 -- there is no distance at which answering it is free.
 --

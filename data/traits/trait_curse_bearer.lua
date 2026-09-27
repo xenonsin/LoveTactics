@@ -1,12 +1,6 @@
 -- CURSE-BEARER: the tile one of the Unseeing's clan dies on takes the curse.
 --
--- The sibling of data/traits/trait_cinderfall.lua, and deliberately a separate file rather than a
--- parameter on it -- a trait has no argument to read a hazard id out of when it is bound by a CALL
--- rather than granted by an item (there is no ctx.item here). Two five-line traits, each naming its own
--- fiction, beats one that has to be told what it is.
---
--- The real difference is not the hazard, it is WHERE THE RULE COMES FROM, and it matters. Cinderfall is
--- born on the body: a Wrath creature burns because of what it is. This is bound to the boar by
+-- A trait rather than a field on the boar, because WHERE THE RULE COMES FROM matters. This is bound to the boar by
 -- ability_the_call at the moment it is summoned (Summon.spawn's `opts.traits`, whose own header argues
 -- exactly this case -- "traits the CALL binds to the creature, rather than ones the creature was born
 -- with... they belong to the ability because that is what struck the bargain"). So the lord's clan

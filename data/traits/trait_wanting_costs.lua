@@ -6,10 +6,9 @@
 -- arriving the ordinary way -- something hit you. Nothing charged a company for REACHING.
 --
 -- SO IT IS THE OPPOSITE OF EVERY OTHER BURN IN THE GAME, and the inversion is the whole design. A
--- cinder-kin burns what it hits (data/items/weapon/weapon_cinder_brand.lua); Wrath's whole stratum
--- burns the ground you have to stand on. This burns what reaches for IT -- the arrow as readily as the
--- axe, the spell as readily as the arrow -- so there is no stand-off distance at which answering it is
--- free. Distance is the one currency this circle has never charged in, and this is the body that does
+-- brand burns what it hits; a fire hazard burns the ground you have to stand on. This burns what
+-- reaches for IT -- the arrow as readily as the axe, the spell as readily as the arrow -- so there is
+-- no stand-off distance at which answering it is free. Distance is the one currency this circle has never charged in, and this is the body that does
 -- not take it.
 --
 -- THERE IS EXACTLY ONE FREE ANSWER, AND IT IS THE ENGINE'S RULE RATHER THAN THIS TRAIT'S: KILL IT WITH

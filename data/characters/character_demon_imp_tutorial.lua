@@ -5,7 +5,7 @@
 -- ACT 0 OWNS THIS BODY, and the `_tutorial` on the filename is the whole point of it. Nothing outside
 -- the prologue fields an imp: the village street, the two survivor stops on the city sweep
 -- (data/encounters/encounter_survivors_*.lua) and one body standing beside the Champion, and that is
--- the list. The rift has its own demons -- the cinder kin, the forge wretch, the succubus line, the
+-- the list. The rift has its own demons -- the succubus line, the
 -- lamiae, a circle's general -- and none of them is this. So the numbers below answer to the lesson
 -- and to nothing else, which is a promise the suffix makes to whoever re-tunes the rift next.
 --

@@ -143,8 +143,8 @@ return {
     -- and this is the first demon anyone meets. It would be a strange bestiary whose one exception to
     -- that was the creature the whole game names as the example.
     --
-    -- -6 is the tier-2 weakness, the same depth the Assayer, the Chorister, the Cinder Kin and the
-    -- Forge Wretch carry (Balance.INNATE_BUDGET x Balance.INNATE_WEAKNESS_FACTOR). It buys nothing
+    -- -6 is the tier-2 weakness, the same depth the Assayer and the Chorister
+    -- carry (Balance.INNATE_BUDGET x Balance.INNATE_WEAKNESS_FACTOR). It buys nothing
     -- back: a creature's hide is a redistribution across the three physical types, and this body is
     -- forbidden the physical half, so it pays the price and takes no resist for it. That is the
     -- correct shape here -- it is the sturdiest common enemy in the game for reasons that have

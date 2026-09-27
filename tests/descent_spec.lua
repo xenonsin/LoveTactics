@@ -650,8 +650,8 @@ return {
         deep.floor = Descent.CIRCLE_FLOORS
         -- HELD HARDER BY WORTH, NOT BY HEAD COUNT. A body count was the old sizing rule and it is not
         -- the rule any more: a stair is solved to a multiple of the company that meets it
-        -- (Descent.stairTarget), and the circles field filler of wildly different weight -- a cinder kin
-        -- is worth three petal drifts -- so the deepest stair can be FEWER bodies and far heavier. This
+        -- (Descent.stairTarget), and the circles field filler of wildly different weight -- an oni student
+        -- is worth several petal drifts -- so the deepest stair can be FEWER bodies and far heavier. This
         -- asserted the count and would have passed a deep stair made of chaff.
         local deepWorth = Descent.stairPlan(deep)[Descent.CIRCLE_FLOORS]
         local firstWorth = Descent.stairPlan(run)[1]
