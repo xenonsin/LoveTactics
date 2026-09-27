@@ -1173,10 +1173,6 @@ local function compositionText(ids)
     return table.concat(parts, ", ")
 end
 
-local function compositionOf(def, ctx)
-    return compositionText(compositionIds(def, ctx))
-end
-
 -- EVERY FLOOR, GATHERED ONCE -- and gathered OUTSIDE the page that prints it, because the bestiary
 -- reads the same walk.
 --
@@ -1188,6 +1184,41 @@ end
 -- measured by the same walk the rift page prints, so the two pages cannot seat different bodies on
 -- the same stair.
 local RIFT_FLOORS, STAIR
+
+-- THE FLOOR BY WHO IS ON IT, not by which encounter blueprint seats them. An encounter is an authoring
+-- unit; what a reader standing on floor nine wants is the list of bodies they can walk into and how
+-- often. So the pool is folded per body: the share of that kind of fight it stands in (the weights of
+-- every encounter that seats it, over the pool's total weight) and the most of it one fight ever puts
+-- on the board. Ordinary and elite are kept as two shares because they are two different draws.
+local function floorBodies(combat, elite)
+    local rows, order = {}, {}
+    local function fold(pool, key)
+        local total = 0
+        for _, enc in ipairs(pool) do total = total + (enc.weight or 0) end
+        for _, enc in ipairs(pool) do
+            local count = {}
+            for _, id in ipairs(enc.ids) do count[id] = (count[id] or 0) + 1 end
+            for id, n in pairs(count) do
+                local row = rows[id]
+                if not row then
+                    row = { id = id, combat = 0, elite = 0, most = 0 }
+                    rows[id] = row
+                    order[#order + 1] = row
+                end
+                if total > 0 then row[key] = row[key] + (enc.weight or 0) / total end
+                if n > row.most then row.most = n end
+            end
+        end
+    end
+    fold(combat, "combat")
+    fold(elite, "elite")
+    table.sort(order, function(a, b)
+        if a.combat ~= b.combat then return a.combat > b.combat end
+        if a.elite ~= b.elite then return a.elite > b.elite end
+        return bodyName(a.id) < bodyName(b.id)
+    end)
+    return order
+end
 
 local function riftFloors()
     if RIFT_FLOORS then return RIFT_FLOORS, STAIR end
@@ -1220,20 +1251,10 @@ local function riftFloors()
         for _, entry in ipairs(Descent.floorPool(ctx)) do
             local def = Encounter.get(entry.id)
             if def and (entry.kind == "combat" or entry.kind == "elite") then
-                local row = {
-                    name = def.name or entry.id,
-                    bodies = compositionOf(def, ctx),
-                    weight = entry.weight,
-                }
+                local row = { ids = compositionIds(def, ctx), weight = entry.weight }
                 if entry.kind == "combat" then combat[#combat + 1] = row else elite[#elite + 1] = row end
             end
         end
-        local function heavyFirst(a, b)
-            if a.weight ~= b.weight then return a.weight > b.weight end
-            return a.name < b.name
-        end
-        table.sort(combat, heavyFirst)
-        table.sort(elite, heavyFirst)
 
         local gate = sin and Descent.gateFor(sin)
         local ward
@@ -1271,8 +1292,7 @@ local function riftFloors()
                 return label or "the stair stands open"
             end)(),
             ward = ward,
-            combat = combat,
-            elite = elite,
+            bodies = floorBodies(combat, elite),
         }
     end
 
@@ -1315,19 +1335,32 @@ local function floorsPage()
     end
     line()
 
-    local function fightTable(title, rows)
-        line("**" .. title .. "**")
+    -- A share rounded to a whole percent, with a body that is in the pool but under one percent
+    -- still told apart from one that is not in it at all.
+    local function share(p)
+        if p <= 0 then return "—" end
+        local pct = math.floor(p * 100 + 0.5)
+        return pct < 1 and "<1%" or (pct .. "%")
+    end
+
+    local function bodyTable(rows)
+        line("**Who you meet**")
         line()
         if #rows == 0 then
             line("_Nothing is eligible here._")
             line()
             return
         end
-        line("| Encounter | Who stands in it | Weight |")
-        line("| --- | --- | :--: |")
+        line("| Body | Kind | Ordinary fights | Elite fights | Most at once |")
+        line("| --- | --- | :--: | :--: | :--: |")
         for _, row in ipairs(rows) do
-            line("| " .. cell(row.name) .. " | " .. cell(row.bodies) .. " | " .. row.weight .. " |")
+            line("| " .. bodyLink(row.id) .. " | " .. cell(kindName(KIND_OF[row.id] or "unknown"))
+                .. " | " .. share(row.combat) .. " | " .. share(row.elite)
+                .. " | " .. row.most .. " |")
         end
+        line()
+        line("_A share is how many of that kind of fight on this floor the body stands in, by the "
+            .. "pool's weights._")
         line()
     end
 
@@ -1345,8 +1378,7 @@ local function floorsPage()
                 .. ". The stair holds until it falls.")
             line()
         end
-        fightTable("Ordinary", f.combat)
-        fightTable("Elite", f.elite)
+        bodyTable(f.bodies)
     end
 
     return table.concat(out, "\n")
