@@ -592,7 +592,9 @@ Descent.SINS = {
             -- ...and the Gorged on the seat (2026-09-27): 2x2, spills blood pools, bursts at half.
                 "encounter_wrath_the_gorged",
             -- ...and the Blood Countess on the seat (2026-09-27): every point of Bleed fills her basin, and she bathes.
-                "encounter_wrath_the_blood_countess" } } },
+                "encounter_wrath_the_blood_countess",
+            -- ...AND ITS MINOTAUR (2026-09-27, "The Minotaur"): one beast, alone, on the seat, in the maze it brings.
+                "encounter_wrath_the_labyrinth" } } },
     { id = "sloth", name = "Sloth", vendor = "bastion", biome = "tundra",
         scene = "conversation_descent_sloth",
         guardian = { lead = "character_general_sloth", filler = "character_the_long_winter" },

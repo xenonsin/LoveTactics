@@ -593,6 +593,7 @@ local CHARACTER_SILHOUETTE = {
     -- THE WRATH CIRCLE. Its first bodies (the ember-spit, cinder-kin, forge wretch, the Unquenched and
     -- the Rift-Born) are deleted (2026-09-26); the goblins, orcs, oni and vampires above are its stock now.
     the_anvil = "lorc/anvil-impact",       -- a thing that exists to be struck
+    minotaur = "lorc/bull",                -- the one beast in the maze (the horned giant is the Deep Bane's)
 
     -- WHAT IS LEFT OF THE SLOTH CIRCLE. Its four lesser bodies are deleted (2026-09-22); the general's
     -- ground and the mini sin are what remain.

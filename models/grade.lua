@@ -561,6 +561,10 @@ Grade.TRAIT_GRADE = {
     -- THE GORGED (2026-09-27): its organ is a body's own; the Heart is overheal banked, capped and broken by a hit.
     trait_full_to_bursting =            0.0,  -- Full to Bursting -- wounds spill pools; bursts at half
     trait_surfeit_heart =               1.5,  -- Surfeit Heart -- overheal to a 25% shield until hit
+    -- THE MINOTAUR (Wrath's seat, 2026-09-27). The Labyrinth is the fight's own and never shelved. The Run is a
+    -- free shove riding a blow, paid for with a straight approach of two or more: once a turn, and often not open.
+    trait_the_labyrinth =               0.0,  -- The Labyrinth -- the maze, the walls it walks, the shifts, Fury
+    trait_the_run =                     1.0,  -- The Run -- 2+ straight tiles then a blow: back 1 per 2, to 3
 
     -- THE GILT WYRM (2026-09-25), what a dwarf becomes at three Dragon-Sickness, and its saga drops. The
     -- Helm is Loosened Laces on the legs rather than the guard; the Heart is Dodge with magic let in at a

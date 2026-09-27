@@ -575,6 +575,12 @@ function Trait.trySurvive(combat, unit)
         end
     end
     for _, t in ipairs(unit.traits) do
+        -- HEAD DOWN (data/traits/trait_the_labyrinth.lua, the Minotaur's): a blow that would fell it from above a
+        -- third of its health puts its head down instead -- Fury, at 1 health and unkillable for the window.
+        -- The line is a promise the fight makes, and one big hit must not skip the second phase it promises.
+        if t.def.headDownOnLethal and not unit.headDown then
+            return require("models.labyrinth").headDown(combat, unit)
+        end
         -- THE BOX OF GRAVE-EARTH (data/traits/trait_grave_earth.lua, the Sire's drop): the first blow that would
         -- down the bearer turns it to mist instead. It drifts back to the tile it opened the fight on, cannot be
         -- touched there, and re-forms at 30% at the start of its next turn (status_grave_mist). Once a fight.

@@ -194,7 +194,7 @@ return {
             -- against the seed Arena.build stamps onto the ctx, so the same stop met twice is not the
             -- same head-count twice.
             --
-            -- THE PINNED FIVE ARE NAMED, not described, and each one carries its reason in its own
+            -- THE PINNED ARE NAMED, not described, and each one carries its reason in its own
             -- blueprint. A named list is the point: a stop that quietly stops rolling -- an author
             -- writing a literal count, or a band whose `max` swallows it -- would otherwise join them
             -- silently, and "most stops vary" is not a property anybody can check.
@@ -214,6 +214,9 @@ return {
                 -- A cast of one by review: the Thing Under the Seam fights alone ("no escort"), and
                 -- anything beside it would stand in its trail, its cone and its island at once.
                 encounter_greed_the_deep_bane = true,
+                -- A cast of one by review: the Minotaur is the only thing in its maze, and the author struck the
+                -- clan that would have stood beside it ("just a mythical beast").
+                encounter_wrath_the_labyrinth = true,
             }
             -- THE ROSTER, NOT THE HEAD-COUNT. Asked as "is this the same fight on every seed", because
             -- a stop is allowed to roll its SHAPE while holding its size: the Skeleton King's court is

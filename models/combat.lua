@@ -1113,6 +1113,12 @@ function Combat.aoeCells(combat, ab, tx, ty, unit)
             local width = (aoe and aoe.width) or 1
             local half = math.floor(width / 2)
             for i = -half, half do add(tx + px * i, ty + py * i) end
+            -- `back`: the same arc again BEHIND the wielder, mirrored through it (the Labrys, a double-headed
+            -- axe). Centred on the tile behind the wielder, as the front arc is centred on the tile ahead.
+            if aoe.back then
+                local bx, by = unit.x - dx, unit.y - dy
+                for i = -half, half do add(bx + px * i, by + py * i) end
+            end
         end
         return cells
     end
@@ -4445,6 +4451,9 @@ local function moveGraph(combat, unit, tolls)
     -- anchor is judged by whether the whole w×h block would fit there, so a 2×2 body cannot thread a
     -- one-tile gap. 1×1 collapses to the single-tile logic this always was.
     local w, h = unit.w or 1, unit.h or 1
+    -- THROUGH THE WALLS (models/labyrinth.lua): the Minotaur's route runs through a wall it will break on
+    -- arrival. Read once per graph, as `flying` and `phasing` are.
+    local walksWalls = require("models.labyrinth").walksThrough(unit)
 
     -- What the ground under this anchor charges ON TOP of its cost, summed over the footprint (a 2x2
     -- body straddling two burning tiles is twice as keen to be elsewhere). Zero, and free, when no
@@ -4490,7 +4499,10 @@ local function moveGraph(combat, unit, tolls)
                     -- `cell.swim` and not `cell.drowns`, deliberately -- the question here is "does
                     -- this body belong in this ground", and the ford already answers yes for everyone.
                     if not (flying or cell.walkable or (aquatic and cell.swim)) then ok = false; break end
-                    if Combat.objectBlocksAt(combat, c.x, c.y) then ok = false; break end
+                    if Combat.objectBlocksAt(combat, c.x, c.y)
+                        and not (walksWalls and not require("models.labyrinth").blocks(combat, unit, c.x, c.y)) then
+                        ok = false; break
+                    end
                     local occ = Combat.unitAt(combat, c.x, c.y)
                     if occ and occ ~= unit then
                         if occ.side ~= unit.side and not phasing then enemy = true; ok = false; break end
@@ -5088,7 +5100,7 @@ function Combat.planMoveVia(combat, unit, cells)
             if fc.x < 1 or fc.x > arena.cols or fc.y < 1 or fc.y > arena.rows then return nil, "off grid" end
             local tile = arena.tiles[fc.y][fc.x]
             if not (flying or tile.walkable or (aquatic and tile.swim)) then return nil, "blocked" end
-            if Combat.objectBlocksAt(combat, fc.x, fc.y) then return nil, "wall" end
+            if require("models.labyrinth").blocks(combat, unit, fc.x, fc.y) then return nil, "wall" end
             local occ = Combat.unitAt(combat, fc.x, fc.y)
             if occ and occ ~= unit then
                 -- The mover may pass THROUGH a friendly but must not stop on one (the destination is
@@ -5257,7 +5269,17 @@ function Combat.stepMove(combat, walk)
     walk.index = walk.index + 1
     local tile = walk.path[walk.index]
     local fromX, fromY = walk.unit.x, walk.unit.y -- the tile being vacated, for a trail laid behind
+    -- THROUGH THE WALLS (models/labyrinth.lua): a wall on the Minotaur's route breaks as it arrives.
+    require("models.labyrinth").breakThrough(combat, walk.unit, tile.x, tile.y)
     walk.unit.x, walk.unit.y = tile.x, tile.y
+    -- THE RUN (data/traits/trait_the_run.lua): the straight stretch walked last this turn, onto the turn record.
+    -- A step in the same direction as the one before lengthens it; a turn starts it again at one.
+    local turn = combat.turn
+    if turn and turn.unit == walk.unit then
+        local dx, dy = tile.x - fromX, tile.y - fromY
+        if turn.runDx == dx and turn.runDy == dy then turn.runLine = (turn.runLine or 0) + 1
+        else turn.runDx, turn.runDy, turn.runLine = dx, dy, 1 end
+    end
     walk.walked = (walk.walked or 0) + stepTerrainCost(combat, walk.unit, tile.x, tile.y, walk.flying)
     Combat.enterTile(combat, walk.unit, tile.x, tile.y, "walk", fromX, fromY)
     -- A unit walking into an opposing Overwatch stance's firing line is shot for it. Only a walk

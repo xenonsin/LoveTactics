@@ -1868,6 +1868,10 @@ function AI.preempt(combat, unit)
     -- beside a Blood-Ghoul drinks from its thrall.
     local thirst = require("models.thirst").plan(combat, unit)
     if thirst then return thirst end
+    -- THE LABYRINTH (models/labyrinth.lua): the Minotaur opens Reckless, charges foes down straight lines, and
+    -- with its head down runs at whoever is nearest.
+    local maze = require("models.labyrinth").plan(combat, unit)
+    if maze then return maze end
     -- ON THE CHAIN (data/traits/trait_the_chain.lua): the War Ogre goes for whatever its Handler last struck.
     if unit.side ~= "party" and Trait.flag(unit, "chained") and unit.pointedAt and unit.pointedAt.alive
         and unit.pointedAt.side ~= unit.side then

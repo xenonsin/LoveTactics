@@ -1158,6 +1158,9 @@ return {
     ["items/ability_the_waltz.png"] = { icon = "delapouite/ballerina-shoes", by = "hand" },
     ["items/armor_iron_maiden.png"] = { icon = "sbed/spikes", by = "hand" },
     ["items/utility_blood_basin.png"] = { icon = "delapouite/full-metal-bucket-handle", by = "hand" },
+    ["items/weapon_labrys.png"] = { icon = "lorc/crossed-axes", by = "hand" },
+    ["items/utility_bulls_brow.png"] = { icon = "delapouite/charging", by = "hand" },
+    ["items/utility_the_labyrinth.png"] = { icon = "lorc/maze", by = "hand" },
     ["items/utility_the_bath.png"] = { icon = "delapouite/bathtub", by = "hand" },
     ["items/weapon_countess_hand.png"] = { icon = "lorc/palm", by = "hand" },
     -- THE GORGED (2026-09-27): its organ and its drop.

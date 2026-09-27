@@ -174,6 +174,8 @@ local TROPHIES = {
     "ability_the_waltz", "armor_iron_maiden",
     -- The Thousand-Winged's (Wrath's approach, 2026-09-27): the swarm's own flight, off its bats.
     "ability_swarm_form",
+    -- The Minotaur's (Wrath's seat, 2026-09-27): its double axe as a Barbarian's, its charge as a Vanguard's.
+    "weapon_labrys", "utility_bulls_brow",
     -- The Gold Golem's (Greed's approach, 2026-09-25): all three trophies, each one of its rules turned to
     -- work on every floor -- the pull as a lodestone, the hoard as a purse, the plates as ballast.
     "utility_lodestone", "utility_spilled_purse", "utility_golden_ballast",
