@@ -5694,7 +5694,8 @@ function battle.enter(self, opts)
     -- Lua 5.1's 200-local ceiling, and crossing it is a compile error naming an unrelated line.
     local ctx = { depth = opts.depth or 1, rung = opts.rung, biome = opts.biome, quest = opts.quest,
         generalsStanding = opts.generalsStanding,
-        encounterKind = opts.encounter and opts.encounter.kind }
+        encounterKind = opts.encounter and opts.encounter.kind,
+        encounterCap = require("models.encounter").capOf(opts.encounter) }
     battle.arena = Arena.build(ctx, specFor(opts, partyIds, seed))
 
     -- Combat unit lists: { char = <instance>, x, y }.

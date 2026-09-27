@@ -141,7 +141,7 @@ function Muster.encounter(def, ctx)
     -- hands this function the blueprint and would otherwise have to remember to copy one field across
     -- -- and a muster that silently rated the wrong tier would mis-colour every marker on the board.
     ids = Arena.clampComposition(ids, Arena.enemyCap({
-        quest = ctx.quest, encounterKind = def.kind,
+        quest = ctx.quest, encounterKind = def.kind, encounterCap = def.enemyCap,
     }))
 
     -- The level the fight will ACTUALLY spawn at, which is now a property of the calendar rather than

@@ -57,9 +57,19 @@ Character.UNDEAD_GRANT = "utility_grave_cold"
 
 function Character.isUndead(charOrDef)
     if not charOrDef then return false end
-    if charOrDef.undead then return true end
+    if charOrDef.undead or charOrDef.vampire then return true end
     local Race = require("models.race")
     return Race.kindOf(charOrDef.race) == "undead"
+end
+
+-- THE VAMPIRE TAG (Wrath's vampires, 2026-09-26, "The Vampires of Wrath"): `vampire = true` on a blueprint, beside
+-- `undead`, and it IMPLIES it -- a vampire is dead, wears Grave-Cold, and a heal still burns it, except the one it
+-- drinks (models/thirst.lua). Race and class are KEPT, exactly as the undead tag keeps them: a goblin Fledgling
+-- still has Blood Feud. The tag seeds the Thirst the way the undead tag seeds Grave-Cold.
+Character.VAMPIRE_GRANT = "utility_the_thirst"
+
+function Character.isVampire(charOrDef)
+    return charOrDef ~= nil and charOrDef.vampire == true
 end
 
 -- Stats that deplete during play. On instantiation these become
@@ -567,7 +577,9 @@ function Character.instantiate(id, progress)
         -- dwarf's resist line, a fighter's growth and shelf -- and it is ALSO dead. So `race = "undead"`
         -- stays for the bodies that were never anything else (a wight, a ghoul, the Skeleton King), and
         -- `undead = true` on a blueprint marks a living race that died. Character.isUndead asks both.
-        undead = def.undead == true or Race.kindOf(def.race) == "undead" or nil,
+        undead = def.undead == true or def.vampire == true or Race.kindOf(def.race) == "undead" or nil,
+        -- ...AND WHETHER IT DRINKS (the vampire tag, Character.isVampire). Implies the line above.
+        vampire = def.vampire == true or nil,
         -- Which RUNG of the ladder this body sits on (docs/bestiary.md): 1 chaff · 2 line · 3 elite ·
         -- 4 boss, or 0 for a body that is not on the ladder at all -- a prop, an escortee, or a shape
         -- worn by Wild Shape. A DECLARED LABEL, never a multiplier: nothing derives a stat from it.
@@ -774,21 +786,21 @@ function Character.instantiate(id, progress)
     -- wounds it). Seeded like a race grant, and skipped where the author already placed it, so the
     -- bodies that have always listed it by hand keep their own cell. Bone is NOT granted here -- a wight
     -- and a ghoul are dead and are not a lattice, so Bare Bones stays on the grids that are bone.
-    if char.undead then
-        local held = false
+    -- ...and the VAMPIRE TAG puts the Thirst beside it, the same way (skipped where already placed).
+    local function seed(grant)
         for cell = 1, Character.MAX_INVENTORY do
             local it = char.inventory[cell]
-            if it and it.id == Character.UNDEAD_GRANT then held = true break end
+            if it and it.id == grant then return end
         end
-        if not held then
-            for cell = 1, Character.MAX_INVENTORY do
-                if not char.inventory[cell] then
-                    char.inventory[cell] = Item.instantiate(Character.UNDEAD_GRANT)
-                    break
-                end
+        for cell = 1, Character.MAX_INVENTORY do
+            if not char.inventory[cell] then
+                char.inventory[cell] = Item.instantiate(grant)
+                return
             end
         end
     end
+    if char.undead then seed(Character.UNDEAD_GRANT) end
+    if char.vampire then seed(Character.VAMPIRE_GRANT) end
 
     -- Authored default action (optional): the blueprint names an item id its bearer starts with
     -- pinned as the default action (Combat.defaultAction / the Loadout star), so a freshly recruited

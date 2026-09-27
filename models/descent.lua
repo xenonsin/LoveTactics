@@ -579,7 +579,16 @@ Descent.SINS = {
                 "encounter_wrath_the_blood_ring", "encounter_wrath_the_warchiefs_band",
             -- ...AND ITS ONI (2026-09-27, "The Oni of Wrath"): the Oni Twins on the approach, the Black-Flame Court on
             -- the seat.
-                "encounter_wrath_the_oni_twins", "encounter_wrath_the_black_flame_court" } } },
+                "encounter_wrath_the_oni_twins", "encounter_wrath_the_black_flame_court",
+            -- ...AND ITS VAMPIRES (2026-09-26, "The Vampires of Wrath"): the Sire's Brood on the approach (the alpha), and
+            -- the Night Flight, approved as an ordinary fight and moved here when it measured past the skirmish budget.
+                "encounter_wrath_the_sires_brood", "encounter_wrath_the_night_flight",
+            -- ...and the Thousand-Winged on the approach (2026-09-27): eight bats that fuse into a lord at four.
+                "encounter_wrath_the_thousand_winged",
+            -- ...and the Gorged on the seat (2026-09-27): 2x2, spills blood pools, bursts at half.
+                "encounter_wrath_the_gorged",
+            -- ...and the Blood Countess on the seat (2026-09-27): every point of Bleed fills her basin, and she bathes.
+                "encounter_wrath_the_blood_countess" } } },
     { id = "sloth", name = "Sloth", vendor = "bastion", biome = "tundra",
         scene = "conversation_descent_sloth",
         guardian = { lead = "character_general_sloth", filler = "character_the_long_winter" },

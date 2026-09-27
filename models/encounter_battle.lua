@@ -167,7 +167,8 @@ function EncounterBattle.build(opts)
     -- or the walk-off would resolve a differently sized fight from the one it stands in for.
     local ctx = { depth = opts.depth or 1, rung = opts.rung, biome = opts.biome, quest = opts.quest,
         generalsStanding = opts.generalsStanding,
-        encounterKind = opts.encounter and opts.encounter.kind }
+        encounterKind = opts.encounter and opts.encounter.kind,
+        encounterCap = require("models.encounter").capOf(opts.encounter) }
     local arena = Arena.build(ctx, EncounterBattle.spec(opts, partyIds, seed))
 
     -- The world fights at the level DEPTH sets, and that is the whole clock now: the campaign's

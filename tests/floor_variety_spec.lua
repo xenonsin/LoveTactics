@@ -38,7 +38,10 @@
 --     DONE: the goblins (2026-09-26, "The Goblins of Wrath", tests/goblin_line_spec.lua) -- a race with Blood
 --       Feud, eleven bodies from the Cutter to the Goblin King, six fights.
 --     DONE: the orcs (2026-09-26, "The Orcs of Wrath", tests/orc_line_spec.lua) -- a race made Proven by every
---       kill, nine bodies and a War Ogre, ten fights with two of them mixed with goblins. The rest are still owed.
+--       kill, nine bodies and a War Ogre, ten fights with two of them mixed with goblins.
+--     DONE (core): the vampires (2026-09-26, "The Vampires of Wrath", tests/vampire_spec.lua) -- a TAG on race and
+--       class with the Thirst, a living thrall and a bat, five vampires and the Sire, seven fights.
+--       The rest are still owed.
 --     Suggested: berserkers, furies (the Erinyes -- vengeance with a name), hellhounds, salamanders.
 --     Mechanic ideas (suggested): a body that cannot stop attacking once started; a rage that grows with
 --       every hit TAKEN; blindness that makes a swing land on whatever is nearest, friend or foe; floods

@@ -1173,6 +1173,25 @@ function Status.isImmune(unit, id)
 end
 -- ---------------------------------------------------------------------------
 
+-- A WARD HELD OVER A WHOLE SIDE: a living body on `unit`'s side (the bearer included) whose trait names `id` in
+-- `wardsAllies` keeps it off every one of them for as long as it stands -- the Sire's Signet (no Charm, no Seeing
+-- Red, no Bloodlust). Returns the ward's item (or trait def) for the log line, or nil.
+function Status.allyWard(combat, unit, id)
+    if not (combat and unit) then return nil end
+    local Trait = require("models.trait")
+    for _, u in ipairs(combat.units or {}) do
+        if u.alive and u.side == unit.side then
+            local t = Trait.flag(u, "wardsAllies")
+            if t then
+                for _, blocked in ipairs(t.def.wardsAllies or {}) do
+                    if blocked == id then return t.item or t.def end
+                end
+            end
+        end
+    end
+    return nil
+end
+
 -- Apply status `id` to `unit`. One instance per id: re-applying refreshes the remaining
 -- duration to the longer of old/new and re-runs onApply (so re-stunning bumps again). Runs
 -- the def's onApply hook. Returns the (possibly refreshed) status instance.
@@ -1192,7 +1211,7 @@ function Status.apply(combat, unit, id, opts)
     -- diminishing-returns tally: there is nothing to shorten and nothing to learn, so an immune body
     -- does not accumulate `_afflicted` counts it will never need. Returns nil exactly as a fully
     -- resisted application does, so every caller already handles it.
-    local ward = Status.isImmune(unit, id)
+    local ward = Status.isImmune(unit, id) or (combat and Status.allyWard(combat, unit, id))
     if ward then
         if combat and not def.hideLog then
             local Combat = require("models.combat")
@@ -1320,6 +1339,10 @@ function Status.apply(combat, unit, id, opts)
         status = Status.instantiate(id, opts)
         unit.statuses[#unit.statuses + 1] = status
     end
+    -- WHO OPENED IT (the last body to land it, fresh or as a refresh). Not `source`, which is the zone that
+    -- grants a zone-bound status. Read by Bleed, whose ticks feed the vampire that cut the wound
+    -- (models/thirst.lua's Running Feeds It).
+    if opts.applier then status.opener = opts.applier end
     -- WHEN IT LANDED, in the combat's own order of events. A blow struck inside a resolving cast is
     -- HELD and reported to the survivor's statuses only once the cast is over (models/combat.lua,
     -- Combat.beginAnswers) -- so a cast that wounds a body and THEN puts it to sleep or makes it swoon

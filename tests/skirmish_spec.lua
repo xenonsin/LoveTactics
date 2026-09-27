@@ -54,7 +54,7 @@ end
 local SKIRMISH_TURN_BUDGET = 22
 
 local function openedBodies(def, day)
-    local ctx = { day = day, encounterKind = def.kind }
+    local ctx = { day = day, encounterKind = def.kind, encounterCap = def.enemyCap }
     return #Arena.clampComposition(Arena.resolveComposition(def.composition, ctx), Arena.enemyCap(ctx))
 end
 
@@ -63,11 +63,14 @@ return {
         -- Prestige 200 is well past anything a campaign reaches, on purpose: the compositions grow off
         -- it without bound, so if the ceiling holds here it holds everywhere. This is the case that
         -- would have caught the old behaviour, where a late-run trail fight fielded a dozen bodies.
+        -- A fight may name its OWN ceiling (`enemyCap`, the Night Flight's swarm of bats) and is held to that
+        -- instead; it is still measured for length in the last case, at the size it really opens at.
         for _, e in ipairs(weightedByKind("combat")) do
+            local cap = e.def.enemyCap or Arena.SKIRMISH_CAP
             for _, prestige in ipairs({ 1, 6, 20, 200 }) do
                 local n = openedBodies(e.def, prestige)
-                assert(n <= Arena.SKIRMISH_CAP, e.id .. " opens " .. n ..
-                    " bodies at prestige " .. prestige .. ", past the skirmish cap of " .. Arena.SKIRMISH_CAP)
+                assert(n <= cap, e.id .. " opens " .. n ..
+                    " bodies at prestige " .. prestige .. ", past its cap of " .. cap)
             end
         end
     end },
@@ -77,7 +80,8 @@ return {
         assert(Arena.ELITE_CAP <= Arena.ENEMY_CAP.Normal, "and still sits under a real set-piece")
         for _, e in ipairs(weightedByKind("elite")) do
             local n = openedBodies(e.def, 200)
-            assert(n <= Arena.ELITE_CAP, e.id .. " opens " .. n .. " bodies, past the elite cap")
+            local cap = e.def.enemyCap or Arena.ELITE_CAP
+            assert(n <= cap, e.id .. " opens " .. n .. " bodies, past its cap of " .. cap)
         end
     end },
 

@@ -543,6 +543,23 @@ local CHARACTER_SILHOUETTE = {
     war_ogre = "delapouite/giant",
     orc_pit_fighter = "lorc/boxing-glove",
     orc_warchief = "delapouite/war-bonnet",
+    -- THE VAMPIRES OF WRATH (2026-09-26): the bat, the thrall's fangs, the newly turned asleep in the day, the
+    -- goblin's night claw, the duelist's winged blade, the heart it drinks from, the rite's cross, the old count.
+    familiar = "lorc/evil-bat",
+    blood_ghoul = "lorc/fanged-skull",
+    fledgling = "delapouite/resting-vampire",
+    goblin_fledgling = "lorc/midnight-claw",
+    vampire_duelist = "lorc/winged-sword",
+    hemomancer = "lorc/heart-inside",
+    communicant = "lorc/gothic-cross",
+    the_sire = "delapouite/vampire-dracula",
+    -- The Thousand-Winged (Wrath's approach, 2026-09-27): one bat of the swarm, and the moon full of them.
+    swarm_familiar = "delapouite/swamp-bat",
+    thousand_winged = "delapouite/moon-bats",
+    -- The Blood Countess (Wrath's seat, 2026-09-27): her tiara, and the tub she bathes in.
+    the_blood_countess = "delapouite/tiara",
+    blood_basin = "delapouite/bathtub",
+    the_gorged = "skoll/fat", -- (2026-09-27) the one that drank until it filled the room
     -- THE ONI OF WRATH (2026-09-27): the line body is the oni; the rest are drawn by their role in the clan --
     -- the student's bamboo, the greatblade's helm, the spy's star, the maiden's robe, the master, the two halves,
     -- the General's crest.

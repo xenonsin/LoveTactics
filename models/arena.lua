@@ -328,6 +328,10 @@ function Arena.enemyCap(ctx, override)
     -- drawn from (Muster.encounter) -- cannot drift: a marker that priced a nine-body fight the player
     -- then meets as four is worse than no marker at all.
     local byKind = ctx and ctx.encounterKind and Arena.CAP_BY_KIND[ctx.encounterKind]
+    -- ...unless the ENCOUNTER names its own (`enemyCap` on the blueprint, threaded in as `encounterCap`): a
+    -- swarm that is meant to arrive wider than its tier -- the Night Flight's five bats round a Fledgling
+    -- (Wrath's vampires, Keno's round-1 note "many bats ok"). The floor's own ceiling below still cuts it.
+    if ctx and ctx.encounterCap then byKind = ctx.encounterCap end
     local quest = ctx and ctx.quest
     local cap = byKind or (quest and Arena.ENEMY_CAP[quest.difficulty]) or Arena.DEFAULT_ENEMY_CAP
 

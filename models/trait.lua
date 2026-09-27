@@ -299,6 +299,68 @@ function Trait.trySubstitute(combat, unit, attacker)
     return false
 end
 
+-- MIST (the Vampire Duelist's Mist Step, the Mistcloak): does the bearer turn to mist under this blow? Consulted
+-- in Combat.dealFlatDamage beside trySmoke and trySubstitute, and like them it returns BEFORE mitigation: the blow
+-- does nothing, and the bearer re-forms on a free tile exactly 2 away from where it stood.
+--
+--   `mistsOnHit = "round"`  the Duelist: the first blow each round (the latch is re-armed at the end of the
+--                           bearer's own turn), it picks where it re-forms -- beside a bleeding foe if one is
+--                           there to bite, else as far from the striker as it can -- and the STRIKER Bleeds
+--                           (`mistBleeds`), with the Duelist as the wound's opener
+--   `mistsOnHit = "fight"`  the Mistcloak: the first blow each fight, re-formed AUTOMATICALLY on the free tile
+--                           farthest from whoever struck (Keno's round-1 note: "don't pick, be auto")
+--
+-- Only a real attack fires it (an `attacker` is known), so a Bleed tick or a trap neither triggers nor spends it.
+local function mistTile(combat, unit, attacker, pick)
+    local Combat = require("models.combat")
+    local Status = require("models.status")
+    local w, h = unit.w or 1, unit.h or 1
+    local best, bestScore
+    for dy = -2, 2 do
+        for dx = -2, 2 do
+            if math.abs(dx) + math.abs(dy) == 2 then
+                local x, y = unit.x + dx, unit.y + dy
+                if Combat.footprintFree(combat, w, h, x, y) then
+                    local far = attacker and Combat.cellGap(x, y, attacker) or 0
+                    local score = far
+                    if pick then
+                        for _, u in ipairs(combat.units or {}) do
+                            if u.alive and u.side ~= unit.side and Status.has(u, "status_bleed")
+                                and Combat.cellGap(x, y, u) == 1 then
+                                score = score + 100
+                                break
+                            end
+                        end
+                    end
+                    if not bestScore or score > bestScore then best, bestScore = { x = x, y = y }, score end
+                end
+            end
+        end
+    end
+    return best
+end
+
+function Trait.tryMist(combat, unit, attacker)
+    if not unit or not unit.traits or not attacker or attacker == unit then return false end
+    if reactionsSuppressed(unit) then return false end
+    local Combat = require("models.combat")
+    for _, t in ipairs(unit.traits) do
+        local mode = t.def.mistsOnHit
+        if mode and t.stacks == 0 then
+            t.stacks = 1
+            local spot = mistTile(combat, unit, attacker, mode == "round")
+            Combat.logEvent(combat, "action",
+                string.format("%s turns to mist.", (unit.char and unit.char.name) or "Unit"), unit)
+            if spot then Combat.teleportUnit(combat, unit, spot.x, spot.y, { silent = true }) end
+            if t.def.mistBleeds and attacker.alive then
+                require("models.status").apply(combat, attacker, "status_bleed", { applier = unit })
+            end
+            return true
+        end
+    end
+    return false
+end
+
 -- Does a duelist's blade (a `deflectsMelee` trait) turn an incoming MELEE blow aside AND answer it?
 -- The fencer's riposte proper: the parry and the counter are one motion, so unlike the ordinary
 -- data/traits/parry.lua -- which answers a hit it has already taken -- this one costs the bearer
@@ -513,6 +575,25 @@ function Trait.trySurvive(combat, unit)
         end
     end
     for _, t in ipairs(unit.traits) do
+        -- THE BOX OF GRAVE-EARTH (data/traits/trait_grave_earth.lua, the Sire's drop): the first blow that would
+        -- down the bearer turns it to mist instead. It drifts back to the tile it opened the fight on, cannot be
+        -- touched there, and re-forms at 30% at the start of its next turn (status_grave_mist). Once a fight.
+        if t.def.mistsOnLethal and t.stacks == 0 then
+            t.stacks = 1
+            local hp = unit.char.stats.health
+            hp.current = 1
+            local home = unit._graveStart
+            local x, y = home and home.x, home and home.y
+            if x and (x ~= unit.x or y ~= unit.y) then
+                local occ = Combat.unitAt(combat, x, y)
+                if occ and occ ~= unit then x, y = Combat.openTileNear(combat, x, y) end
+                if x then Combat.teleportUnit(combat, unit, x, y, { silent = true }) end
+            end
+            require("models.status").apply(combat, unit, "status_grave_mist")
+            Combat.logEvent(combat, "action", string.format("%s turns to mist and drifts home.",
+                (unit.char and unit.char.name) or "Unit"), unit)
+            return true
+        end
         -- COME APART (data/traits/trait_come_apart.lua): the lethal blow leaves the bearer at 1 and
         -- spills sloughlings carrying a share of them each, which Rejoin to bring them back. Once per
         -- battle on `stacks`, as a cost-free Second Wind is.

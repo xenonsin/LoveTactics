@@ -533,6 +533,34 @@ Grade.TRAIT_GRADE = {
     trait_the_horned_sister =           0.0,  -- The Horned Sister -- her sister falls: Full Horn Out
     trait_the_hornless_sister =         0.0,  -- The Hornless Sister -- mana drawn from her sister
     trait_borrowed_eyes =               1.0,  -- Borrowed Eyes -- Invisible foes within 4 are Limned
+    -- THE VAMPIRES OF WRATH (2026-09-26). The Thirst, the Thrall, the Courier, Mist Step and Blood Bond are a body's
+    -- own and never shelved. Of the drops: the Fang is a stacking +3 spent on a hit; the Scent is +2 movement and
+    -- +20% against the bled; the Mistcloak voids one blow a fight; the Chalice is a small heal that pays for itself
+    -- in health; the Signet wards three statuses and costs a two-turn frenzy when you fall; the Box is a once-a-fight
+    -- refusal of the downed window; the Whistle's return is a sustain rider on the summon the ability pays for.
+    trait_the_thirst =                  0.0,  -- The Thirst -- a dry turn climbs; Bloodlust at 3
+    trait_thrall =                      0.0,  -- Thrall -- the ghoul's, drunk from and bled out
+    trait_blood_courier =               0.0,  -- Blood Courier -- the bat's drink goes to a vampire
+    trait_mist_step =                   0.0,  -- Mist Step -- the Duelist's, first blow a round
+    trait_blood_bond =                  0.0,  -- Blood Bond -- the Sire's leash and tithe
+    trait_hungering_fang =              1.0,  -- Hungering Fang -- +3 a dry turn, to three, spent on a hit
+    trait_bloodhounds_scent =           1.5,  -- Bloodhound's Scent -- +2 movement and +20% against the bled
+    trait_mistcloak =                   1.5,  -- Mistcloak -- the first blow each fight does nothing
+    trait_communion_chalice =           1.0,  -- Communion Chalice -- 5% of you to each adjacent ally
+    trait_sires_signet =                1.5,  -- Sire's Signet -- allies warded from three statuses
+    trait_grave_earth =                 2.0,  -- Box of Grave-Earth -- once a fight, mist instead of downed
+    trait_familiars_whistle =           0.5,  -- Familiar's Whistle -- the summon returns next turn
+    -- The Thousand-Winged (Wrath's approach, 2026-09-27): the swarm's fusion and the lord's scatter, never shelved.
+    trait_the_swarm =                   0.0,  -- The Swarm -- four bats together fuse into the lord
+    trait_scatter =                     0.0,  -- Scatter -- the lord comes apart into half its bats
+    -- The Blood Countess (Wrath's seat, 2026-09-27). The Basin and the Bath are the fight's own and never shelved;
+    -- the Maiden is Spiteful Ichor's shape with Bleed, which bites only a foe that then walks.
+    trait_blood_basin =                 0.0,  -- Blood Basin -- fills with every point of Bleed
+    trait_the_bath =                    0.0,  -- The Bath -- full basin: heal to full, +2 spd, +20% dmg
+    trait_iron_maiden =                 1.0,  -- Iron Maiden -- melee attackers Bleed
+    -- THE GORGED (2026-09-27): its organ is a body's own; the Heart is overheal banked, capped and broken by a hit.
+    trait_full_to_bursting =            0.0,  -- Full to Bursting -- wounds spill pools; bursts at half
+    trait_surfeit_heart =               1.5,  -- Surfeit Heart -- overheal to a 25% shield until hit
 
     -- THE GILT WYRM (2026-09-25), what a dwarf becomes at three Dragon-Sickness, and its saga drops. The
     -- Helm is Loosened Laces on the legs rather than the guard; the Heart is Dodge with magic let in at a

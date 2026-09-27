@@ -163,6 +163,17 @@ local TROPHIES = {
     "utility_oni_horn", "weapon_odachi", "consumable_questionable_stew", "ability_steel_thread",
     "ability_purifying_bell", "weapon_instant_draw_katana", "weapon_morning_star", "utility_borrowed_eyes",
     "ability_black_flame_dome",
+    -- The Vampires' (Wrath, 2026-09-26): the ghoul's vitae, the bat's whistle, the Fledgling's fang and scent,
+    -- the Duelist's cloak, the Hemomancer's two spells, the Communicant's chalice, and the Sire's signet and box.
+    "consumable_vitae", "ability_familiars_whistle", "weapon_hungering_fang", "utility_bloodhounds_scent",
+    "armor_mistcloak", "ability_open_veins", "ability_boiling_blood", "utility_communion_chalice",
+    "utility_sires_signet", "utility_box_of_grave_earth",
+    -- ...and the Gorged's heart (2026-09-27): what it could not hold, worn as a shield.
+    "utility_surfeit_heart",
+    -- The Blood Countess's (Wrath's seat, 2026-09-27): her swap as a Duelist's, her spikes as a Knight's plate.
+    "ability_the_waltz", "armor_iron_maiden",
+    -- The Thousand-Winged's (Wrath's approach, 2026-09-27): the swarm's own flight, off its bats.
+    "ability_swarm_form",
     -- The Gold Golem's (Greed's approach, 2026-09-25): all three trophies, each one of its rules turned to
     -- work on every floor -- the pull as a lodestone, the hoard as a purse, the plates as ballast.
     "utility_lodestone", "utility_spilled_purse", "utility_golden_ballast",

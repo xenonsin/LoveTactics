@@ -87,9 +87,15 @@ end
 function Rampage.plan(combat, unit)
     if not Rampage.aimsAnyone(unit) then return nil end
     if not Status.has(unit, "status_unchained") and foeInReach(combat, unit) then return nil end
+    return Rampage.hitNearest(combat, unit, Status.has(unit, "status_unchained") and "unchained" or "blood up")
+end
+
+-- Strike the nearest body, either side, walking first if it must, or close on it; nil with nobody on the board.
+-- Shared with a vampire's Bloodlust (models/thirst.lua), which bites whoever is nearest on EVERY turn rather than
+-- only when no foe is in reach -- so the vampires read it without the Berserker's gate above.
+function Rampage.hitNearest(combat, unit, reason)
     local tt = nearestBody(combat, unit)
     if not tt then return nil end
-    local reason = Status.has(unit, "status_unchained") and "unchained" or "blood up"
     local plan = strikeAt(combat, unit, tt, reason)
     if plan then return plan end
     -- Out of reach: close on it.

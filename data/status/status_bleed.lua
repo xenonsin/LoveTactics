@@ -27,6 +27,10 @@ return {
         -- 3 would floor at 1 against every armored foe in the game and the number would be decoration.
         -- Routed through ctx.damage (Combat.dealFlatDamage), so this CAN be the blow that kills: a unit
         -- that runs on a bad wound bleeds out mid-stride.
-        ctx.damage(ctx.unit, ctx.magnitude, { "bleed" }, { raw = true })
+        --
+        -- `bledBy` names whoever OPENED the wound (Status.apply's `opener`), without making it the blow's
+        -- attacker -- a wound already open is answered by nobody. A vampire drinks what its wound spills
+        -- (models/thirst.lua, "running feeds it").
+        ctx.damage(ctx.unit, ctx.magnitude, { "bleed" }, { raw = true, bledBy = ctx.status.opener })
     end,
 }

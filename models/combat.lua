@@ -4420,9 +4420,16 @@ end
 -- down, which is where its reasoning lives.
 local groundStopsMovement
 
+-- SCENT OF BLOOD's extra movement this turn (models/thirst.lua): 2 for a body carrying the scent while a foe of
+-- it bleeds, else 0. The graph is walked with it; Combat.reachable and the two plan gates keep only the tiles the
+-- scent leads to among those it alone reaches.
+local function scentMove(combat, unit)
+    return require("models.thirst").scentMove(combat, unit)
+end
+
 local function moveGraph(combat, unit, tolls)
     local arena = combat.arena
-    local budget = flatStat(unit, "movement")
+    local budget = flatStat(unit, "movement") + scentMove(combat, unit)
     local flying = Combat.isFlying(unit)
     -- A swimmer opens the two water tiles and pays 1 on them (Combat.isAquatic). Hoisted beside
     -- `flying` for the same reason that is: it is a fact about the body, read once per graph rather
@@ -4530,9 +4537,16 @@ function Combat.reachable(combat, unit)
     local graph = moveGraph(combat, unit)
     graph[key(unit.x, unit.y)] = nil -- the origin isn't a "move" target
     local out = {}
+    -- SCENT OF BLOOD (models/thirst.lua): the graph was walked with the scent's extra movement, and a tile only
+    -- the extra reaches is a stop only where the scent leads.
+    local plain = flatStat(unit, "movement")
+    local scented = scentMove(combat, unit) > 0
     for k, node in pairs(graph) do
         -- An ally's tile is a walk-through, never a stopping point: keep it out of the reachable set.
-        if not node.occupied then out[k] = node end
+        if not node.occupied and (node.cost <= plain or (scented
+            and require("models.thirst").scentAllows(combat, unit, node.x, node.y))) then
+            out[k] = node
+        end
     end
     -- STOPS SHORT: a destination whose route runs through a friendly standing on ground that would stop
     -- this walker (a web, quicksand). The order is legal and the walk ends on the last clear tile
@@ -4967,6 +4981,10 @@ function Combat.planMove(combat, unit, x, y)
     -- a tile the unit can stop on (the origin has no fromKey; an ally's tile is `occupied`).
     local path, node = tracePath(moveGraph(combat, unit), unit, x, y)
     if not path then return nil, node end
+    -- SCENT OF BLOOD: a walk past the plain budget is legal only where the scent leads (models/thirst.lua).
+    if node.cost > flatStat(unit, "movement") and not require("models.thirst").scentAllows(combat, unit, x, y) then
+        return nil, "out of range"
+    end
 
     return { unit = unit, path = path, cost = node.cost }
 end
@@ -5083,7 +5101,11 @@ function Combat.planMoveVia(combat, unit, cells)
         -- walking it costs -- including the ground watched by an enemy's Overwatch. This used to
         -- re-derive the terrain arithmetic locally; see stepTerrainCost on why it no longer may.
         cost = cost + stepTerrainCost(combat, unit, c.x, c.y, flying, aquatic)
-        if cost > budget then return nil, "too far" end
+        if cost > budget + scentMove(combat, unit) then return nil, "too far" end
+    end
+    -- SCENT OF BLOOD: the extra movement only buys a walk that ends where the scent leads (models/thirst.lua).
+    if cost > budget and not require("models.thirst").scentAllows(combat, unit, cells[#cells].x, cells[#cells].y) then
+        return nil, "too far"
     end
 
     local path = {}
@@ -6034,6 +6056,27 @@ function Combat.pull(combat, source, target)
         Combat.pushFx(combat, { type = "slide", unit = target, fromX = oX, fromY = oY })
     end
     return true, moved
+end
+
+-- Drag `target` up to `steps` tiles toward `source`, stopping beside it or at the first tile it cannot enter.
+-- Combat.pull's haul, shortened and with no line of sight asked: the Sire's Call the Blood reaches for a bleeding
+-- body by its blood, not by eye (data/items/ability/ability_call_the_blood.lua). Every tile is a forced step
+-- (shoveStep -> enterTile), so a Bleed pays on each one. Returns the tiles moved.
+function Combat.pullBy(combat, source, target, steps)
+    if not (source and target and target.alive) then return 0 end
+    if Status.blocksForcedMove(target) then return 0 end
+    local oX, oY = target.x, target.y
+    local moved = 0
+    while moved < (steps or 1) and Combat.unitGap(source, target) > 1 do
+        local dx, dy = signDominant(source.x - target.x, source.y - target.y)
+        if not shoveStep(combat, target, dx, dy) then break end
+        moved = moved + 1
+        if not target.alive then break end
+    end
+    if moved > 0 and target.alive then
+        Combat.pushFx(combat, { type = "slide", unit = target, fromX = oX, fromY = oY })
+    end
+    return moved
 end
 
 -- NAME THE SHOVER for the length of a displacement, so the one legality test underneath all of them
@@ -8815,6 +8858,12 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
         Combat.pushFx(combat, { type = "miss", unit = target })
         return 0
     end
+    -- MIST (the Vampire Duelist's Mist Step, the Mistcloak -- Trait.tryMist): the bearer turns to mist under the
+    -- blow and re-forms two tiles off. Beside the three above and for their reason: nothing landed.
+    if Trait.tryMist(combat, target, attacker) then
+        Combat.pushFx(combat, { type = "miss", unit = target })
+        return 0
+    end
     -- SPELL EATER (the Spellbreaker's): a MAGICAL blow lands lighter on the bearer, and the difference
     -- is refunded to them as mana. Anti-magic as absorption rather than denial -- the enemy caster still
     -- gets to cast, and gets to watch it pay for the answer.
@@ -8867,6 +8916,12 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     -- and what the shield is asked to cover is the number that would actually have reached the body.
     -- Draining the smaller pool to spare the larger one is only a bargain while the mana lasts, and
     -- pricing it against the post-armor figure is what keeps it from being strictly better than armor.
+    -- SURFEIT (the Surfeit Heart's banked overheal) goes first and breaks on this hit, whatever it covered.
+    local surfeit = Combat.soakIntoSurfeit(combat, target, dmg)
+    if surfeit > 0 then
+        dmg = dmg - surfeit
+        if dmg <= 0 then return 0 end
+    end
     local soaked = Combat.soakIntoMana(combat, target, dmg)
     if soaked > 0 then
         dmg = dmg - soaked
@@ -8954,6 +9009,15 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
             local taken = Combat.drainResource(target.char, "mana", type(want) == "number" and want or 5)
             if taken and taken > 0 then Combat.restoreResource(attacker.char, "mana", taken) end
         end
+    end
+    -- RUNNING FEEDS IT (models/thirst.lua): a Bleed tick is blood drawn by whoever opened the wound. After the
+    -- wound is final, for the reason the hand above is: what is drunk is what actually spilled.
+    if opts and opts.bledBy and dmg > 0 then
+        require("models.thirst").onBleed(combat, opts.bledBy, target, dmg)
+    end
+    -- THE BLOOD BASIN (models/basin.lua): every point of Bleed damage taken anywhere fills the Countess's basin.
+    if dmg > 0 and hasTag(tags, "bleed") then
+        require("models.basin").onBleed(combat, target, dmg)
     end
     -- A blow may CARRY hard control (a hammer's Stun, an ice bolt's Freeze): `opts.inflicts` names a
     -- status that lands WITH the hit rather than after it. The distinction is the whole point --
@@ -9390,6 +9454,9 @@ function Combat.dealDamage(combat, user, target, item, opts)
                 user.streakTarget, user.streakCount = target, 1
             end
         end
+        -- THE BITE (models/thirst.lua): a vampire's weapon strike opens a vein, and a weapon that wounds a
+        -- living body is a drink -- the vampire's own, a Familiar's courier run, or Vitae's debt paid.
+        require("models.thirst").onStrike(combat, user, target, item, dealt)
     end
     return dealt
 end
@@ -9466,7 +9533,10 @@ end
 -- Restore health to `target`, capped at its ceiling (its max less any reserved health -- reserved
 -- life can't be healed back into). Returns the amount actually healed. Reached through `fx.heal`
 -- inside an ability effect.
-function Combat.applyHeal(combat, target, amount)
+--
+-- `opts.feeding` marks a heal that is a DRINK (a vampire's, models/thirst.lua): Grave-Cold does not turn it
+-- into a wound. Every other refusal still applies, and every other heal on a dead body still burns it.
+function Combat.applyHeal(combat, target, amount, opts)
     -- A body that is already FULL and wears the Sated charm (`passesHeals`) sends the heal on to the most
     -- hurt ally standing beside it. The ally is below full by construction, so the hand-off cannot loop.
     if (amount or 0) > 0 and target and target.alive and target.char and Trait.flag(target, "passesHeals") then
@@ -9485,7 +9555,7 @@ function Combat.applyHeal(combat, target, amount)
                 Combat.logEvent(combat, "action",
                     string.format("%s is sated, and passes it to %s.", unitName(target), unitName(best)),
                     { target, best })
-                return Combat.applyHeal(combat, best, amount)
+                return Combat.applyHeal(combat, best, amount, opts)
             end
         end
     end
@@ -9533,6 +9603,9 @@ function Combat.applyHeal(combat, target, amount)
     -- room to parry, riposte or reflect, and charging the priest's own healing to the target's armor
     -- would make plate a defense against being healed. It can fell, and is meant to.
     local inverted = Combat.healingInverted(target)
+    -- A DRINK is not grace: Grave-Cold (the trait every dead thing IS) lets a feeding heal through. A curse
+    -- somebody laid (Interred, the status) still turns it.
+    if inverted and opts and opts.feeding and not Status.invertsHealing(target) then inverted = nil end
     if inverted and (amount or 0) > 0 then
         local held = Status.deferralOn(target)
         if held then
@@ -9580,6 +9653,8 @@ function Combat.applyHeal(combat, target, amount)
     local before = hp.current
     hp.current = math.min(Combat.unreservedMax(target.char, "health"), hp.current + (amount or 0))
     local healed = math.max(0, hp.current - before)
+    -- SURFEIT (the Surfeit Heart): what would have gone past full is banked as a shield instead of lost.
+    if (amount or 0) > healed then Combat.bankSurfeit(combat, target, (amount or 0) - healed) end
     -- ...and a heal on any of them lifts all of them, the same way (Combat.syncSharedPool).
     if target.sharedPool then Combat.syncSharedPool(combat) end
     if healed > 0 then
@@ -10145,6 +10220,9 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
         -- fire/frost, the Unspent Blow's tally). Reads stay a plain `fx.user.<field>` and are truthful,
         -- since `fx.user` is the real unit -- the preview simply shows the branch THIS cast would run.
         bank = function() touchesBoard() end,
+        -- A vampire's drink (fx.feed) and a short haul (fx.pullBy) mutate the board: inert here.
+        feed = function() touchesBoard() return 0 end,
+        pullBy = function() touchesBoard() return 0 end,
         -- ...and banking on the ITEM is the same mutation aimed at the relic instead of the bearer.
         -- Inert for the sharper reason: `fx.item` here IS the player's real item, so a live write would
         -- empty a banked purse every time the aim cursor crossed a tile.
@@ -10799,6 +10877,8 @@ function Combat.abilityOutput(unit, item)
         -- advances the count nor flips the branch. (The userProxy above backstops any stray direct
         -- write for the same reason, but fx.bank is the path a data effect is meant to take.)
         bank = function() end,
+        feed = function() return 0 end,
+        pullBy = function() out.pull = true; return 0 end,
         -- Inert for the same reason, and more urgently: this table hands the effect the REAL item as
         -- `fx.item` (it has to -- the tooltip quotes the item's own level and counters off it), so an
         -- effect that spent its purse directly would drain it on every hover of the inventory grid.
@@ -10901,6 +10981,9 @@ function Combat.abilityTargets(combat, unit, item)
             -- `excludeSelf`: an ally-target cast that means somebody ELSE (the Lash: a goblin whipped into
             -- acting again, never the whipper).
             if valid and ab.excludeSelf and other == unit then valid = false end
+            -- `onlyAt(unit, other)`: a cast that means one KIND of body (a vampire's Feed drinks only from a
+            -- thrall; Wing-Swap trades only with a Familiar). Refused in Combat.useItem as well.
+            if valid and ab.onlyAt and not ab.onlyAt(unit, other) then valid = false end
             -- A sight-gated ability can't reach a target it has no clear line to (terrain cover).
             if valid and ab.requiresSight and not waivesSight
                 and not Combat.unitsSighted(combat, unit, other) then
@@ -11046,6 +11129,40 @@ end
 -- First shield in the grid wins, and they never stack: two of these is one of these. The pool is read
 -- through the reservation-aware ceiling nowhere at all -- only `current` matters, since a reserved
 -- point is still a point that is not there to spend.
+-- THE SURFEIT HEART (data/traits/trait_surfeit_heart.lua; the Gorged's drop). Bank `overflow` -- healing that
+-- went past `target`'s ceiling -- as Surfeit, a shield capped at the trait's share of max health. Returns what the
+-- shield grew by (0 without the Heart, or already at the cap).
+function Combat.bankSurfeit(combat, target, overflow)
+    if not (combat and target and target.alive and (overflow or 0) > 0) then return 0 end
+    local heart = Trait.flag(target, "surfeit")
+    if not heart then return 0 end
+    local share = Trait.param(heart, "surfeit", heart.def.surfeit or 0)
+    local cap = math.floor((target.char.stats.health.max or 0) * share)
+    local st = Status.get(target, "status_surfeit")
+    local have = (st and st.magnitude) or 0
+    local want = math.min(cap, have + math.floor(overflow))
+    if want <= have then return 0 end
+    Status.apply(combat, target, "status_surfeit", { magnitude = want })
+    Combat.logEvent(combat, "status",
+        string.format("%s's surplus healing becomes a shield (%d).", unitName(target), want), target)
+    return want - have
+end
+
+-- Pay a wound out of `target`'s Surfeit first, and break the shield: it lasts until a hit, not until it is used
+-- up. Returns how much of `dmg` it covered.
+function Combat.soakIntoSurfeit(combat, target, dmg)
+    if not dmg or dmg <= 0 then return 0 end
+    local st = target and Status.get(target, "status_surfeit")
+    if not st then return 0 end
+    local covered = math.min(dmg, st.magnitude or 0)
+    Status.remove(combat, target, "status_surfeit")
+    if combat then
+        Combat.logEvent(combat, "status",
+            string.format("%s's shield takes %d of the blow and breaks.", unitName(target), covered), target)
+    end
+    return covered
+end
+
 function Combat.soakIntoMana(combat, target, dmg)
     if not dmg or dmg <= 0 then return 0 end
     local char = target and target.char
@@ -11997,6 +12114,11 @@ function Combat.itemBlockReason(unit, item)
         return { kind = "swooning", reason = "swooning", text = "Swooning -- cannot bring itself to strike" }
     end
 
+    -- BLOODLUST (models/thirst.lua): a body in it may use only its bite -- a weapon, or its bare teeth.
+    if Status.has(unit, "status_bloodlust") and item.type ~= "weapon" then
+        return { kind = "bloodlust", reason = "bloodlust", text = "Bloodlust -- only a weapon" }
+    end
+
     -- Silenced: a mana cost can't be paid, so a mana ability is refused (one drawing on stamina or
     -- health still fires). Checked before affordability so the note reads "silenced", not "no mana".
     -- A cast drawing on mana AMONG other pools is refused whole: silence stops the working, and the
@@ -12502,6 +12624,8 @@ function Combat.strikeWith(combat, user, weapon, tx, ty)
         -- runs its effect here too (Dual Wield), and this path is not pcall-guarded, so the helper has
         -- to exist or a swung weapon that banks would fault. Real, like the rest of strikeWith.
         bank = function(key, value) if user then user[key] = value end end,
+        feed = function(v, drink) return require("models.thirst").feed(combat, v, drink) end,
+        pullBy = function(t, n) return t and Combat.pullBy(combat, user, t, n) or 0 end,
         -- The item-scoped twin (a relic's own purse). Present for the same reason `bank` is: this path
         -- is not pcall-guarded, so a sub-struck weapon that banks on itself would fault without it.
         bankItem = function(key, value) if weapon then weapon[key] = value end end,
@@ -12767,7 +12891,12 @@ function Combat.useItem(combat, unit, item, tx, ty, windup, dest, spend)
     -- heal on a foe. Self-casts keep their own gate -- that one is about geometry, not about sides.
     -- ...and so does a body on a RAMPAGE (models/rampage.lua): a Berserker that must swing and has no foe in
     -- reach, or an ogre off its chain, hits whoever is nearest.
+    -- ...and so does BLOODLUST (models/thirst.lua): a vampire bites the nearest body, whichever side it is on.
+    -- And a goblin may strike its OWN kin when that kin is its Feud (a Fledgling that bit a goblin in Bloodlust).
     local seesRed = Status.has(unit, "status_seeing_red") or require("models.rampage").aimsAnyone(unit)
+        or Status.has(unit, "status_bloodlust")
+        or (target ~= nil and target ~= unit and require("models.feud").isFeudOf(unit, target))
+    if target and ab.onlyAt and not ab.onlyAt(unit, target) then return false, "invalid target" end
     if target and not seesRed then
         if ab.target == "enemy" and target.side == unit.side then return false, "invalid target" end
         if ab.target == "ally" and target.side ~= unit.side then return false, "invalid target" end
@@ -13763,6 +13892,11 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
         -- takes (the flicker fx.spendCharge / fx.setSpeed avoid the same way). Reads stay a plain
         -- `fx.user.<field>` -- truthful in every builder because they mutate nothing.
         bank = function(key, value) if unit then unit[key] = value end end,
+        -- A VAMPIRE DRINKS (models/thirst.lua's one door): `v` feeds on `drink` points -- its Thirst resets, it
+        -- heals 30% of the drink as a feeding heal, and its Sire is tithed. The thrall's Feed and the Communion.
+        feed = function(v, drink) return require("models.thirst").feed(combat, v, drink) end,
+        -- Drag `t` up to `n` tiles toward the caster, no line of sight asked (Combat.pullBy): Call the Blood.
+        pullBy = function(t, n) return t and Combat.pullBy(combat, unit, t, n) or 0 end,
         -- The same stash, but ON THE ITEM rather than on its bearer: a purse that belongs to the relic
         -- and not to whoever is holding it this battle (the Gleaning Rod's charges, the Gleaner's
         -- Mantle's). Separate from fx.bank because the two answer different questions -- state banked on

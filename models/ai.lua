@@ -1659,7 +1659,13 @@ local function fallbackMove(ctx, mode)
         -- Home first -- the body that made it -- then the nearest of its own blueprint. A goal it is
         -- already beside is reached: hold there rather than shuffling round it.
         local home = unit.summoner
-        if not (home and home.alive) then
+        -- ...but a bat of the Thousand-Winged (`swarms`, models/swarm.lua) flies to the BIGGEST group of its kin,
+        -- or holds where it stands when its own group is the one the others are coming to.
+        if Trait.flag(unit, "swarms") then
+            local hold
+            home, hold = require("models.swarm").gatherGoal(combat, unit)
+            if hold then return nil end
+        elseif not (home and home.alive) then
             local kin = {}
             for _, u in ipairs(allies(ctx)) do
                 if u ~= unit and u.char and unit.char and u.char.id == unit.char.id then kin[#kin + 1] = u end
@@ -1858,6 +1864,10 @@ function AI.preempt(combat, unit)
     -- whoever is nearest.
     local rampage = require("models.rampage").plan(combat, unit)
     if rampage then return rampage end
+    -- THE THIRST (models/thirst.lua): a body in Bloodlust bites the nearest body, either side; a thirsty vampire
+    -- beside a Blood-Ghoul drinks from its thrall.
+    local thirst = require("models.thirst").plan(combat, unit)
+    if thirst then return thirst end
     -- ON THE CHAIN (data/traits/trait_the_chain.lua): the War Ogre goes for whatever its Handler last struck.
     if unit.side ~= "party" and Trait.flag(unit, "chained") and unit.pointedAt and unit.pointedAt.alive
         and unit.pointedAt.side ~= unit.side then

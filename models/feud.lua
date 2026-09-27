@@ -33,8 +33,12 @@ end
 
 -- Mark `target` as the Feud of `marker`'s side, clearing the side's old one. `marker` is the goblin that was
 -- struck (or the Hobgoblin naming its enemy), and rides in as the status's applier.
+--
+-- ONE BODY OF ITS OWN SIDE MAY BE THE FEUD: a goblin Fledgling in Bloodlust that bites a goblin (Wrath's
+-- vampires, 2026-09-26). It becomes that goblin's Feud and the warband turns on it.
 function Feud.mark(combat, target, marker)
-    if not (combat and target and target.alive and marker) or target.side == marker.side then return end
+    if not (combat and target and target.alive and marker) then return end
+    if target.side == marker.side and not Status.has(target, "status_bloodlust") then return end
     local old = Feud.of(combat, marker.side)
     if old == target then
         Status.apply(combat, target, Feud.STATUS, { applier = marker }) -- a refresh

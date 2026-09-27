@@ -14,6 +14,15 @@ Encounter.defs = Registry.load("data/encounters", "data.encounters")
 
 function Encounter.get(id) return Encounter.defs[id] end
 
+-- The encounter's OWN body ceiling (`enemyCap` on its blueprint), or nil to let its kind decide
+-- (Arena.enemyCap's `encounterCap`). Takes the blueprint or a rolled cell's { id, kind } entry alike.
+function Encounter.capOf(enc)
+    if not enc then return nil end
+    if enc.enemyCap then return enc.enemyCap end
+    local def = enc.id and Encounter.defs[enc.id]
+    return def and def.enemyCap or nil
+end
+
 -- DOES WALKING ONTO THIS STOP START A FIGHT? One question, asked from two places that must never
 -- disagree: states/game.lua opens the arena on it, and ui/overworld_map.lua draws the combat border on
 -- it. A marker that promises a fight the state then does not run is a lie the player only finds out by

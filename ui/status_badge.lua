@@ -20,6 +20,8 @@ end
 
 -- The badge's short label: the def's `abbr`, falling back to the first letter of its name.
 function StatusBadge.label(st)
+    -- A status whose COUNT is the whole read (`badgeCount`: the Blood Basin's fill) prints the count instead.
+    if st.def and st.def.badgeCount then return tostring(st.magnitude or 0) end
     return (st.def and st.def.abbr) or (st.name or "?"):sub(1, 1)
 end
 
