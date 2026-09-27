@@ -543,6 +543,18 @@ local CHARACTER_SILHOUETTE = {
     war_ogre = "delapouite/giant",
     orc_pit_fighter = "lorc/boxing-glove",
     orc_warchief = "delapouite/war-bonnet",
+    -- THE ONI OF WRATH (2026-09-27): the line body is the oni; the rest are drawn by their role in the clan --
+    -- the student's bamboo, the greatblade's helm, the spy's star, the maiden's robe, the master, the two halves,
+    -- the General's crest.
+    oni = "delapouite/oni",
+    oni_student = "delapouite/bamboo",
+    oni_greatblade = "delapouite/samurai-helmet",
+    oni_shadow = "darkzaitzev/shuriken",
+    oni_priestess = "delapouite/kimono",
+    oni_swordmaster = "delapouite/teacher",
+    oni_horned_twin = "delapouite/yin-yang",
+    oni_hornless_twin = "lorc/twin-shell",
+    oni_general = "delapouite/spartan-helmet",
 
     -- THE FLIGHT (Gluttony's approach). The griffin gets the one griffin in the set; the Falconer's Glove's
     -- bird is split from the wood's hawk and may not be one picture with it (the two bears' rule above).

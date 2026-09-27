@@ -521,6 +521,19 @@ Grade.TRAIT_GRADE = {
     trait_heirs_torc =                  1.0,  -- Heir's Torc -- an ally falls: heal 25%, +3 Damage, to three
     trait_succession =                  0.5,  -- Succession -- fallen, your boons pass to the strongest ally
 
+    -- THE ONI OF WRATH (2026-09-27). The Witch's Taint, the Clan Stands, Unmoved, the Keeper, the Lesson and the
+    -- two sisters are a body's own and never shelved. Of the drops: the Horn is +3/+1 and a regen past half, with
+    -- a crit taken snapping it; Borrowed Eyes is a reveal on a turn's end (the blind ward is weighed on the item).
+    trait_the_horn =                    1.0,  -- The Horn -- below half, Horn Out; a crit taken snaps it
+    trait_witchs_taint =                0.0,  -- The Witch's Taint -- the race's hunt of a hexed foe
+    trait_the_clan_stands =             0.0,  -- The Clan Stands -- the General holds the clan up once each
+    trait_unmoved =                     0.0,  -- Unmoved -- the Greatblade cannot be moved
+    trait_keeper_of_horns =             0.0,  -- Keeper of Horns -- a horn beside the Priestess cannot snap
+    trait_the_lesson =                  0.0,  -- The Lesson -- oni beside the master crit the more
+    trait_the_horned_sister =           0.0,  -- The Horned Sister -- her sister falls: Full Horn Out
+    trait_the_hornless_sister =         0.0,  -- The Hornless Sister -- mana drawn from her sister
+    trait_borrowed_eyes =               1.0,  -- Borrowed Eyes -- Invisible foes within 4 are Limned
+
     -- THE GILT WYRM (2026-09-25), what a dwarf becomes at three Dragon-Sickness, and its saga drops. The
     -- Helm is Loosened Laces on the legs rather than the guard; the Heart is Dodge with magic let in at a
     -- slightly longer wait; From Below is a critical you have to stand still and be walked onto for; the

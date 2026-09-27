@@ -158,6 +158,11 @@ local TROPHIES = {
     "utility_orc_scars", "weapon_unbroken_axe", "utility_warpaint", "ability_marching_drum",
     "ability_blood_offering", "ability_goad", "utility_pit_fighters_belt", "utility_heirs_torc",
     "ability_the_strongest_leads",
+    -- The Oni's (Wrath, 2026-09-27): the Oni's horn, the Greatblade's sword and stew, the Shadow's thread, the
+    -- Priestess's bell, the Swordmaster's katana, the Twins' morning star and borrowed eyes, the General's dome.
+    "utility_oni_horn", "weapon_odachi", "consumable_questionable_stew", "ability_steel_thread",
+    "ability_purifying_bell", "weapon_instant_draw_katana", "weapon_morning_star", "utility_borrowed_eyes",
+    "ability_black_flame_dome",
     -- The Gold Golem's (Greed's approach, 2026-09-25): all three trophies, each one of its rules turned to
     -- work on every floor -- the pull as a lodestone, the hoard as a purse, the plates as ballast.
     "utility_lodestone", "utility_spilled_purse", "utility_golden_ballast",

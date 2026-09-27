@@ -1871,6 +1871,30 @@ function AI.preempt(combat, unit)
         taunt = Status.get(unit, "status_gold_fever")
     end
     if not (taunt and taunt.taunter and taunt.taunter.alive and taunt.taunter.side ~= unit.side) then
+        -- HORN OUT (data/traits/trait_the_horn.lua): an oni with its horn out goes for whoever it is avenging, when
+        -- it can reach them this turn. THE WITCH'S TAINT (trait_witchs_taint): failing that, an oni goes for a foe
+        -- carrying a hex before anything else. The company's own hired oni is never compelled.
+        if unit.side ~= "party" and Trait.flag(unit, "oniHorn") then
+            local tt = unit.hornTarget
+            if tt and tt.alive and tt.side ~= unit.side
+                and (Status.has(unit, "status_horn_out") or Status.has(unit, "status_full_horn_out")) then
+                local plan = strikePlan(combat, unit, tt, "horn out")
+                if plan then return plan end
+            end
+        end
+        local taint = unit.side ~= "party" and Trait.flag(unit, "witchsTaint")
+        if taint then
+            local best, bestPlan
+            for _, foe in ipairs(combat.units or {}) do
+                if foe.alive and foe.side ~= unit.side and taint.def.carries(foe) then
+                    local plan = strikePlan(combat, unit, foe, "the witch's taint")
+                    if plan and (not best or Combat.unitGap(unit, foe) < Combat.unitGap(unit, best)) then
+                        best, bestPlan = foe, plan
+                    end
+                end
+            end
+            if bestPlan then return bestPlan end
+        end
         -- BLOOD FEUD (models/feud.lua): a goblin that can reach its side's Feud this turn attacks it and
         -- nothing else. One that cannot goes on with its own turn -- rage with no plan, but not a leash.
         -- The company's own hired goblin is never compelled: an AI rule binds no body the player drives.

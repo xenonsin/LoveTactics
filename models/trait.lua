@@ -496,6 +496,22 @@ end
 function Trait.trySurvive(combat, unit)
     if not unit or not unit.traits then return false end
     local Combat = require("models.combat")
+    -- THE CLAN STANDS (data/traits/trait_the_clan_stands.lua, the Oni General's): while a General stands, an
+    -- oni of its side does not fall to the first lethal blow. It stays up at 1 health under Not Yet for one
+    -- more action, and then it can fall. Once a body, and never the General itself -- the rule lives on the
+    -- General, and the one who holds the clan up cannot hold itself.
+    if not unit.clanStood and Trait.flag(unit, "oniHorn") and not Trait.flag(unit, "clanStands") then
+        for _, other in ipairs(combat.units or {}) do
+            if other ~= unit and other.alive and other.side == unit.side and Trait.flag(other, "clanStands") then
+                unit.clanStood = true
+                unit.char.stats.health.current = 1
+                require("models.status").apply(combat, unit, "status_not_yet", { duration = 6 })
+                Combat.logEvent(combat, "action", string.format("%s will not fall while the General stands.",
+                    (unit.char and unit.char.name) or "The oni"), unit)
+                return true
+            end
+        end
+    end
     for _, t in ipairs(unit.traits) do
         -- COME APART (data/traits/trait_come_apart.lua): the lethal blow leaves the bearer at 1 and
         -- spills sloughlings carrying a share of them each, which Rejoin to bring them back. Once per

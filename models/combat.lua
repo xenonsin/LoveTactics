@@ -7126,6 +7126,9 @@ function Combat.hitChance(combat, user, target, item)
     local avoid = Combat.avoid(combat, target)
     local chance = math.max(0, math.min(100, math.floor(hit - avoid + 0.5)))
     if Combat.halfHere(combat, target, item) then chance = math.floor(chance / 2) end
+    -- A MISS ROLLED AGAIN ONCE (`rerollMiss`, the Oni Greatblade's Odachi): two chances shown as one, so the
+    -- forecast, the planner and the swing all read the same number.
+    if item and item.rerollMiss then chance = math.floor(chance + (100 - chance) * chance / 100 + 0.5) end
     return chance
 end
 
@@ -7237,6 +7240,17 @@ function Combat.critChance(combat, user, target, item)
     if Combat.forcesCrit(combat, user, target, item) then return 100 end
     if not Combat.rollsToHit(combat, user, target, item) then return 0 end
     local crit = Item.crit(item) + flatStat(user, "skill") / 2
+    -- THE LESSON (data/traits/trait_the_lesson.lua, the Oni Swordmaster's): an oni striking beside a teacher of
+    -- its side crits the more often. One teacher is enough; two teach nothing the first did not.
+    if Trait.flag(user, "oniHorn") and combat and combat.units then
+        for _, other in ipairs(combat.units) do
+            local teach = other ~= user and other.alive and other.side == user.side and Trait.flag(other, "teachesCrit")
+            if teach and Combat.unitGap(user, other) <= Trait.param(teach, "radius", 2) then
+                crit = crit + Trait.param(teach, "crit", 10)
+                break
+            end
+        end
+    end
     return math.max(0, math.min(100, math.floor(crit - flatStat(target, "luck") + 0.5)))
 end
 

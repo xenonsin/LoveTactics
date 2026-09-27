@@ -1626,6 +1626,9 @@ function Status.blocksForcedMove(unit)
         -- Girth or the Sated carries does not (data/items/ability/ability_second_helping.lua).
         if s.def.blocksForcedMove or s.unmovable then return true end
     end
+    -- UNMOVED (data/traits/trait_unmoved.lua, the Oni Greatblade's): nothing moves her, and it is what she
+    -- is rather than a status anyone can Cure.
+    if unit and require("models.trait").flag(unit, "unmoved") then return true end
     -- LASHED TO THE MAST (data/traits/trait_mast_rope.lua). A Mast-Rope ties its bearer to every ally
     -- touching it: while they stand together, none of them can be shoved, pulled or thrown. Asked
     -- through the board the body stands on, and only once a presence trait exists at all (the rope

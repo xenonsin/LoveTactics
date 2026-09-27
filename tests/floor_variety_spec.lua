@@ -109,7 +109,6 @@ local ELITE_SPEC = 4 -- distinct elites a floor can seat (Gluttony's seat has 4)
 -- (Greed's two floors were listed at 3 elites each and closed on 2026-09-26: the Paymaster on the approach,
 -- the Thing Under the Seam and the Gilded King on the seat.)
 local KNOWN_FIGHT_GAPS = {
-    ["wrath/1"] = "6.7 effective fights -- the goblins and orcs; one more lineup closes it",
     ["sloth/1"] = "0 -- no ordinary fight at all",
     ["sloth/2"] = "0 -- no ordinary fight at all",
     ["envy/1"]  = "1.0 effective fights",

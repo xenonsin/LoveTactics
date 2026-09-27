@@ -576,7 +576,10 @@ Descent.SINS = {
                 "encounter_wrath_the_redcaps",
             -- ...AND ITS ORCS (2026-09-26, "The Orcs of Wrath"): the Pit-Fighter's Blood Ring on the approach (the alpha),
             -- the Warchief's Band on the seat (the elite).
-                "encounter_wrath_the_blood_ring", "encounter_wrath_the_warchiefs_band" } } },
+                "encounter_wrath_the_blood_ring", "encounter_wrath_the_warchiefs_band",
+            -- ...AND ITS ONI (2026-09-27, "The Oni of Wrath"): the Oni Twins on the approach, the Black-Flame Court on
+            -- the seat.
+                "encounter_wrath_the_oni_twins", "encounter_wrath_the_black_flame_court" } } },
     { id = "sloth", name = "Sloth", vendor = "bastion", biome = "tundra",
         scene = "conversation_descent_sloth",
         guardian = { lead = "character_general_sloth", filler = "character_the_long_winter" },
