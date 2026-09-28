@@ -172,6 +172,7 @@ return {
             assert(item and item.id == "ability_every_arm", "his signature, not the plain Burst")
             assert((item.activeAbility.windup or 0) > 0, "and it winds up: a shove breaks it")
             assert(itemOn(furor, "utility_burning_halo"), "he wears the Burning Halo")
+            assert((furor.resist.fire or 0) >= 5, "and his fire +5 rides his arms")
             assert(itemOn(furor, "ability_keen_senses"), "and answers first")
         end,
     },
