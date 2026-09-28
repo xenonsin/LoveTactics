@@ -496,7 +496,7 @@ return {
     ["name.character_general_lust"] = { en = "Luxuria, Queen of the Succubi", ja = "" },  -- TODO
     ["name.character_general_pride"] = { en = "Sublimitas, the Unequalled", ja = "" },  -- TODO
     ["name.character_general_sloth"] = { en = "Acedia, the Unrelieved", ja = "" },  -- TODO
-    ["name.character_general_wrath"] = { en = "Ira, the Unappeased", ja = "" },  -- TODO
+    ["name.character_general_wrath"] = { en = "Furor, the Thousand-Armed", ja = "" },  -- TODO
     ["name.character_gyeom"] = { en = "Gyeom", ja = "" },  -- TODO
     ["name.character_kaya"] = { en = "Kaya", ja = "" },  -- TODO
     ["name.character_ren"] = { en = "Ren", ja = "" },  -- TODO
@@ -556,7 +556,7 @@ return {
     ["title.conversation_descent_lust"] = { en = "Luxuria, the Unbidden", ja = "" },  -- TODO
     ["title.conversation_descent_pride"] = { en = "Sublimitas, the Unequalled", ja = "" },  -- TODO
     ["title.conversation_descent_sloth"] = { en = "Acedia, the Unrelieved", ja = "" },  -- TODO
-    ["title.conversation_descent_wrath"] = { en = "Ira, the Unappeased", ja = "" },  -- TODO
+    ["title.conversation_descent_wrath"] = { en = "Furor, the Thousand-Armed", ja = "" },  -- TODO
     ["title.conversation_flight_champion"] = { en = "The Champion", ja = "" },  -- TODO
     ["title.conversation_flight_champion_fall"] = { en = "She Does Not Get Up", ja = "" },  -- TODO
     ["title.conversation_flight_champion_turn"] = { en = "It Has Stopped Fighting", ja = "" },  -- TODO

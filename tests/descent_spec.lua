@@ -882,7 +882,7 @@ return {
         local wrath
         for _, sin in ipairs(Descent.SINS) do if sin.id == "wrath" then wrath = sin end end
         local first = Descent.dropFor(p, wrath, true)
-        assert(first == "armor_mail_of_the_unappeased", "Ira pays her mail, not the heart she fights with")
+        assert(first == "utility_the_broken_vow", "Furor pays his vow, not the blood he fights with")
 
         local paid, seen = 0, {}
         local id = first

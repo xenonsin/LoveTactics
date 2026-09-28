@@ -2390,6 +2390,29 @@ function Combat.spendCharge(unit, key, n)
     return take
 end
 
+-- Put `n` into pool `key` from outside its tallies -- the asura's Tapas and the chi a bursting asura throws
+-- to its kin (models/asura.lua). The pool is derived (banked less spent), so a grant moves the baseline
+-- DOWN rather than inventing a tally; and it stops at the cap, so a grant onto a full pool is wasted the
+-- way a punch onto a full pool is. Returns what actually went in.
+--
+-- Mutating, like spendCharge: an ability effect must never call it (the preview runs effects). Its callers
+-- are trait hooks and Combat.gather, which only ever run for real.
+function Combat.grantCharge(unit, key, n)
+    if not (unit and n and n > 0) then return 0 end
+    local def = Combat.chargeDef(unit, key)
+    if not def then return 0 end
+    local have = Combat.chargePool(unit, key)
+    local give = math.max(0, math.min(n, def.max - have))
+    if give <= 0 then return 0 end
+    local banked = 0
+    for tally in pairs(def.from) do banked = banked + Combat.tallyCount(unit, tally) end
+    unit.chargeSpent = unit.chargeSpent or {}
+    -- Re-seat the baseline on what the pool reads NOW, so an overflow hidden above the cap is not
+    -- counted twice: the pool lands on exactly have + give.
+    unit.chargeSpent[key] = banked - (have + give)
+    return give
+end
+
 -- Empty pool `key` outright without spending it on anything: the baseline jumps to whatever is banked,
 -- so the charge is gone rather than merely capped. What a pool declaring `resetOn` loses when its
 -- condition breaks -- the Duelist's Tempo evaporating the moment the blade finds a different throat.
@@ -4122,6 +4145,9 @@ function Combat.gather(combat, unit)
     local behavior = Combat.waitBehavior(unit)
     Status.apply(combat, unit, "status_empowered", { magnitude = behavior.power, applier = unit })
     Combat.logEvent(combat, "action", string.format("%s centers for a stronger blow.", unitName(unit)), unit)
+    -- TAPAS (models/asura.lua): a piece that declares `gatherCharge` banks that much chi on the coil, and
+    -- the coil is not an idle turn for the asura's drain.
+    require("models.asura").onGather(combat, unit)
     if behavior.covers then
         for _, ally in ipairs(Combat.unitsNear(combat, unit.x, unit.y, 1)) do
             if ally ~= unit and ally.alive and ally.side == unit.side then
@@ -10454,11 +10480,12 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
         grantItem = function() touchesBoard() return nil end,
         -- Dual Wield's preview: a sub-strike shows the weapon's post-mitigation damage on the target,
         -- so the tooltip totals the swings. setSpeed is inert here (the timeline isn't previewed).
-        strikeWith = function(weapon)
+        strikeWith = function(weapon, x, y)
             local wab = weapon and weapon.activeAbility
-            if not (wab and target) then return { damageDealt = 0 } end
-            local d = Combat.computeDamage(combat, unit, target, weapon, { amount = Combat.abilityMagnitude(wab) })
-            entryFor(target).damage = entryFor(target).damage + d
+            local at = (x and y) and Combat.unitAt(combat, x, y) or target
+            if not (wab and at) then return { damageDealt = 0 } end
+            local d = Combat.computeDamage(combat, unit, at, weapon, { amount = Combat.abilityMagnitude(wab) })
+            entryFor(at).damage = entryFor(at).damage + d
             return { damageDealt = d }
         end,
         setSpeed = function() touchesBoard() end,
@@ -13923,8 +13950,10 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
         -- its damage, tags, and on-hit status all land (Combat.strikeWith). Dual Wield swings several
         -- adjacent weapons in one action this way; each sub-strike pays no cost and doesn't end the turn.
         -- Its damage/heal fold into this cast's result so the caller/UI tallies the whole flurry.
-        strikeWith = function(weapon)
-            local r = Combat.strikeWith(combat, unit, weapon, tx, ty)
+        -- `x, y` (optional) aim the sub-strike somewhere other than the cast's own tile: Thousand Hands
+        -- spreads its blows across every foe in reach.
+        strikeWith = function(weapon, x, y)
+            local r = Combat.strikeWith(combat, unit, weapon, x or tx, y or ty)
             result.damageDealt = result.damageDealt + (r.damageDealt or 0)
             result.healed = result.healed + (r.healed or 0)
             return r

@@ -30,7 +30,9 @@ return {
             -- One strike, plus any extra hits granted by a "fist" item in the grid (Swift Fist adds
             -- one). Iron/Shadow/Drunken Fist raise this same fist's Power/range elsewhere; the extra
             -- hits are counted here because the number of blows is the effect's own business.
+            -- ...plus the arms an asura grows as its chi rises (models/asura.lua; Furor, the Thousand-Armed).
             local hits = 1 + ((fx.user.unarmedBonus and fx.user.unarmedBonus.hits) or 0)
+                + require("models.asura").grownHits(fx.user)
             for _ = 1, hits do
                 if fx.target and fx.target.alive then fx.damage(fx.target) end
             end

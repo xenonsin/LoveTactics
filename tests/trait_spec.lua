@@ -286,7 +286,10 @@ return {
         -- glances off is still someone touching her.
         name = "wrath_rising counts a blow that did nothing at all",
         fn = function()
-            local ira = Character.instantiate("character_general_wrath")
+            -- On a neutral carrier since Ira was retired (2026-09-28); the rule lives on in her Mail. The
+            -- 260 health is hers, kept so one point cannot move the health curve.
+            local ira = charWithTraits("character_bandit", { "trait_wrath_rising" })
+            ira.stats.health.max, ira.stats.health.current = 260, 260
             local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) }, { unit(ira, 5, 5) })
             local boss = c.units[2]
             local rested = boss.bonus.damage or 0
@@ -362,7 +365,7 @@ return {
     {
         name = "the damage preview never advances a trait",
         fn = function()
-            local ira = Character.instantiate("character_general_wrath")
+            local ira = charWithTraits("character_bandit", { "trait_wrath_rising" })
             local c = Combat.new(arena(8, 8), { unit("character_rowan", 4, 5) }, { unit(ira, 4, 4) })
             local knight, boss = c.units[1], c.units[2]
 

@@ -304,6 +304,9 @@ Balance.SLOT_TOLERANCE = { share = 0.15, floor = 1 }
 -- Distinct from the ALLY-TARGETED exclusion below, which is not a waiver at all: those items are not
 -- being let off a damage rule, they have no damage to rule on.
 Balance.MAGNITUDE_WAIVERS = {
+    ability_thousand_hands = "its blows are the bearer's own fists (fx.strikeWith, like Flurry's): one per 2 chi,"
+        .. " each carrying every fist charm, so its authored damage is never read and a ladder target has"
+        .. " nothing to attach to.",
     ability_foreclosure = "Vesh's signature, and it is paid for three ways the ladder cannot see: a full"
         .. " turn's wind-up, a blow that lands on the TILE it was aimed at (a foe that steps off takes"
         .. " nothing), and thirty mana -- the costliest cast on its shelf. Knell's own argument: the tell"

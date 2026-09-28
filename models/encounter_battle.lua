@@ -83,6 +83,9 @@ function EncounterBattle.spec(opts, partyIds, seed)
         spec.composition = def and def.composition
         spec.allies = def and def.allies
         spec.objective = def and def.objective
+        -- ...and the ground the fight lays on its own board, as an objective's may: the Meditation Hall's
+        -- shrine stones (data/encounters/encounter_wrath_the_meditation_hall.lua).
+        spec.scatter = def and def.scatter
         -- A CAST THE CELL ALREADY KNOWS wins over the blueprint's. Plain id lists only -- everything
         -- that can put one here rides in a save, so a function could never have been stored.
         --

@@ -157,8 +157,7 @@ local NAMED = {
     -- The Unrelieved does the minimum, and that is a stat line as much as a personality.
     character_general_sloth = { skill = 3, luck = 3, why = "does the least that will do" },
     -- Fury is not precision, and it is certainly not luck. Ira hits constantly and badly.
-    character_general_wrath = { skill = 6, luck = 1, why = "relentless, not accurate" },
-    character_general_wrath_demon = { skill = 8, luck = 1, why = "unbound: the fury finally lands" },
+    character_general_wrath = { skill = 7, luck = 3, why = "Furor: an ascetic's eye, and too angry to be lucky" },
     character_demon_lord = { skill = 8, luck = 5, why = "the Hollow Crown" },
 
     -- PRIDE'S LINE, which reads as a descending ladder of the one stat: the general at 10, her apex at

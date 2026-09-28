@@ -272,7 +272,6 @@ local CHARACTER_SILHOUETTE = {
     -- Off the overlord helm, which stays with the rank classless boss (the Bandit Chief). The seven
     -- generals are the game's marquee kills and each is a SIN -- so each reads as its own.
     general_wrath = "delapouite/angry-eyes",
-    general_wrath_demon = "lorc/flame-claws",       -- Ira's phase two: the bargain come due, made flesh
     general_pride = "delapouite/imperial-crown",
     general_greed = "lorc/double-dragon", -- Avaritia, an elder dragon (2026-09-25)
     general_envy = "lorc/voodoo-doll",              -- the Unborn: a made effigy of a person
@@ -594,6 +593,12 @@ local CHARACTER_SILHOUETTE = {
     -- the Rift-Born) are deleted (2026-09-26); the goblins, orcs, oni and vampires above are its stock now.
     the_anvil = "lorc/anvil-impact",       -- a thing that exists to be struck
     minotaur = "lorc/bull",                -- the one beast in the maze (the horned giant is the Deep Bane's)
+    -- ...AND ITS ASURA (2026-09-28): the temple novice, the Khon mask, the three faces, and the Nio's two mouths.
+    asura_acolyte = "delapouite/pagoda",
+    asura_adept = "lorc/curly-mask",
+    asura_three_faced = "lorc/double-face-mask",
+    asura_agyo = "delapouite/carnival-mask",
+    asura_ungyo = "lorc/domino-mask",
     -- ...AND ITS ELEMENTALS (2026-09-28). No element word in any of the three ids, so each is named here and
     -- tinted below rather than falling to the pale elemental bucket.
     blaze = "lorc/burning-embers",         -- the fire that will not stay where it was put

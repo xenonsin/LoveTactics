@@ -220,6 +220,9 @@ return {
                 -- A cast of two by review: a Blaze and an Arc, whose fight is whether they fuse ("Fire, Lightning,
                 -- and Dirty Thunder"). A third body beside them would be a second storm or a spare half.
                 encounter_wrath_dirty_thunder = true,
+                -- A cast of two by review: the Nio are the temple gate's pair, and the fight is the order they
+                -- fall in (whoever falls hands the other its chi). A third body would be a third gauge.
+                encounter_wrath_the_nio = true,
             }
             -- THE ROSTER, NOT THE HEAD-COUNT. Asked as "is this the same fight on every seed", because
             -- a stop is allowed to roll its SHAPE while holding its size: the Skeleton King's court is

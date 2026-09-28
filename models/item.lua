@@ -961,6 +961,11 @@ function Item.instantiate(id, quantity, level)
         -- field here it has to ride the instance: the reader is handed live items off a body, never
         -- blueprints, and a flag left off this list is a flag that parses, ships and does nothing.
         curseWard = def.curseWard,
+        -- THE ASURA (models/asura.lua): how many arms an organ shows, the chi thresholds at which Furor's
+        -- grow another pair, and the chi a piece banks on a Gather (Tapas).
+        arms = def.arms,
+        armsGrow = deepCopy(def.armsGrow),
+        gatherCharge = def.gatherCharge,
         level = math.max(0, level or 0),       -- upgrade level; 0 = a base, un-forged item
     }
 

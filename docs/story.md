@@ -570,6 +570,15 @@ with no `price` — unbuyable, and still tallying toward knight growth (see `doc
 
 ## The Colosseum: wrath, designed
 
+> **2026-09-28: Ira is retired as Wrath's general.** The stair now belongs to **Furor, the Thousand-Armed**
+> (same id, `character_general_wrath`): an asura, the greatest ascetic there ever was, who spent what his
+> austerity won him on war. The asura are monks who turned their discipline to war, and the whole line fights
+> with the monk's shelf (`models/asura.lua`, reviewed over two rounds). New name, new story, **no tie to the
+> Colosseum**. Everything below about Ira, her pact and her fight is the retired canon: kept because the
+> Colosseum quest scenes and Saber's foil still lean on it, and those are the author's to re-premise. Her
+> demon form, both hearts, The Only Hour and Run You Down are deleted; the Mail of the Unappeased survives
+> as an item but no longer drops.
+
 Four quests of this line ship; the other six are unwritten, and the section below is the spec. It is
 the third line worked out end to end, and it exists to prove the *vendor is quietly serving its sin*
 claim a second time in a completely different register: the Bastion serves sloth by **declining to

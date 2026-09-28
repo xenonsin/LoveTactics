@@ -27,7 +27,10 @@ local SET = {
     lust     = { "utility_reliquary_unbidden",   "utility_beggars_bowl",   "trait_beggars_due" },
     greed    = { "utility_gilded_belly",         "utility_tally_stick",    "trait_assayers_tally" },
     envy     = { "utility_envious_glass",        "utility_second_vessel",  "trait_covetous_eye" },
-    wrath    = { "armor_mail_of_the_unappeased", "utility_anvils_face",    "trait_anvil_face" },
+    -- Furor's Broken Vow since 2026-09-28. The Anvil's Face was cut to mirror Ira's Mail and still reads it
+    -- (the synergy case below wears the Mail directly); Wrath's own lieutenant, when one is authored, owes a
+    -- mirror that reads the Vow.
+    wrath    = { "utility_the_broken_vow",       "utility_anvils_face",    "trait_anvil_face" },
     sloth    = { "weapon_forsworn_pike",         "utility_unblown_horn",   "trait_kept_watch" },
     pride    = { "utility_codex_unanswered",     "utility_marginal_gloss", "trait_glossed" },
 }
@@ -116,17 +119,17 @@ return {
             for _, sin in ipairs(Descent.SINS) do if sin.id == "wrath" then wrath = sin end end
 
             local p = Player.new()
-            assert(Descent.dropFor(p, wrath, true) == "armor_mail_of_the_unappeased",
-                "Ira pays her mail, not the heart she fights with")
+            assert(Descent.dropFor(p, wrath, true) == "utility_the_broken_vow",
+                "Furor pays his vow, not the blood he fights with")
             assert(Descent.dropFor(p, wrath, false) == "utility_anvils_face",
                 "the Anvil pays its face")
 
             -- Held in the STASH... and what comes back is the NEXT unowned piece, not nothing. The list
             -- was one entry long when this case was written; the retired board's quest-only stock moved
             -- onto these bodies and made "the set is spent" a claim about a dozen pieces rather than one.
-            Player.addToStash(p, Item.instantiate("armor_mail_of_the_unappeased"))
+            Player.addToStash(p, Item.instantiate("utility_the_broken_vow"))
             local second = Descent.dropFor(p, wrath, true)
-            assert(second and second ~= "armor_mail_of_the_unappeased",
+            assert(second and second ~= "utility_the_broken_vow",
                 "a general handed over a second copy of something in the stash")
             assert(second == Descent.DROPS.wrath.general[2],
                 "the walk skipped past the next piece in the list rather than paying it")

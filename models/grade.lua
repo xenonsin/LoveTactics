@@ -533,6 +533,10 @@ Grade.TRAIT_GRADE = {
     trait_the_horned_sister =           0.0,  -- The Horned Sister -- her sister falls: Full Horn Out
     trait_the_hornless_sister =         0.0,  -- The Hornless Sister -- mana drawn from her sister
     trait_borrowed_eyes =               1.0,  -- Borrowed Eyes -- Invisible foes within 4 are Limned
+    -- THE ASURA OF WRATH (2026-09-28). The Gate Pair is a body's own. The Broken Vow is also the relic Furor pays:
+    -- chi off every blow taken and a free full-pool Burst, against a drain on idle turns and a turn the game takes.
+    trait_the_broken_vow =              1.0,  -- The Broken Vow -- chi when struck, drains idle, bursts at full
+    trait_the_nio =                     0.0,  -- The Gate Pair -- a fallen twin's chi passes to the other
     -- THE VAMPIRES OF WRATH (2026-09-26). The Thirst, the Thrall, the Courier, Mist Step and Blood Bond are a body's
     -- own and never shelved. Of the drops: the Fang is a stacking +3 spent on a hit; the Scent is +2 movement and
     -- +20% against the bled; the Mistcloak voids one blow a fight; the Chalice is a small heal that pays for itself

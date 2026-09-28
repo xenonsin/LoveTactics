@@ -557,7 +557,9 @@ Descent.SINS = {
         -- two authored phases, and the worked example in trait_boss_phases. It was still the wrong
         -- occupant: a stratum's centrepiece should BE the sin one rank down, not an arena fighter who
         -- happens to be nearby. It stays the authoring pattern; it stops standing in for Ira.
-        guardian = { lead = "character_general_wrath", filler = "character_oni_general" },
+        -- ...AND IRA IS GONE (2026-09-28, "The Asura of Wrath"): the lead is Furor, the Thousand-Armed, on the
+        -- same id, and his honour guard is his own kind -- Asura Adepts, not the oni's general.
+        guardian = { lead = "character_general_wrath", filler = "character_asura_adept" },
         -- UNAPPEASED UNTIL ENOUGH HAS BEEN SPILLED. A count of fights won on her floor, which is the
         -- gate a company clears by doing the thing it came to do -- so Wrath is the circle that asks
         -- for no detour, only for commitment.
@@ -597,7 +599,10 @@ Descent.SINS = {
                 "encounter_wrath_the_labyrinth",
             -- ...AND ITS ELEMENTALS (2026-09-28, "Fire, Lightning, and Dirty Thunder"): a Blaze and an Arc on the seat,
             -- and the storm they fuse into.
-                "encounter_wrath_dirty_thunder" } } },
+                "encounter_wrath_dirty_thunder",
+            -- ...AND ITS ASURA (2026-09-28, "The Asura of Wrath"): the Nio on the approach, the Meditation Hall on
+            -- the seat.
+                "encounter_wrath_the_nio", "encounter_wrath_the_meditation_hall" } } },
     { id = "sloth", name = "Sloth", vendor = "bastion", biome = "tundra",
         scene = "conversation_descent_sloth",
         guardian = { lead = "character_general_sloth", filler = "character_the_long_winter" },
@@ -676,9 +681,10 @@ Descent.SINS = {
 -- in things that playthrough has not seen. The lists are short today and they are meant to grow: that is
 -- the shape the run-again loop is built on rather than a placeholder.
 --
--- WRATH PAYS THE MAIL, NOT THE HEART, and she is the pattern for every lieutenant here. Ira carries
--- `utility_unappeased_heart`, which is `bound` -- her fight rule, and unstealable so a rogue cannot lift
--- her whole fight off her mid-battle. What drops is a wearable sibling carrying the same trait.
+-- A GENERAL PAYS THE WEARABLE, NOT THE ORGAN, and Wrath was the pattern for every lieutenant here. Ira
+-- carried a `bound` heart -- her fight rule, unstealable so a rogue could not lift her whole fight off her --
+-- and dropped a wearable sibling carrying the same trait. Furor keeps the shape (2026-09-28): his rule rides
+-- his blood (utility_asura_blood, bound), and what drops is the Broken Vow, the same rule on a monk's charm.
 --
 -- EVERY LIEUTENANT NEEDED THAT TREATMENT. Their kit is tagged `natural`, which in this codebase means a
 -- body part rather than equipment -- handing a player the Gralloch Hook hands them an organ. So each has
@@ -687,8 +693,9 @@ Descent.SINS = {
 --
 -- WHICH MAKES A CIRCLE A TWO-PIECE SET, in the order the circle taught it. The whole tier is built on one
 -- rule -- a mini sin's second phase is its general's first -- so the lieutenant's piece is the cut-down
--- version and the general's is the thing it was cutting down. The Anvil sharpens on every blow and stops;
--- Ira never stops. Wear both and the two terms compound exactly as they compounded on her. That is what
+-- version and the general's is the thing it was cutting down. (Wrath's pair was the Anvil and Ira, who
+-- never stopped sharpening; Furor replaced her and the Anvil's piece is only the stand-in lieutenant's now,
+-- so Wrath's set is open until a lieutenant of its own is authored.) That is what
 -- makes the second half of a circle worth walking to rather than a smaller copy of the first.
 --
 -- AN EMPTY LIST IS STILL A PAYOUT, and the field stays even though nothing is empty today: a list runs
@@ -763,8 +770,13 @@ Descent.DROPS = {
     envy     = { minor = { "utility_second_vessel" }, general = {
         "utility_envious_glass",
     } },
+    -- Furor's (settled on review 2026-09-28): his relic first, then his arms as a move, the halo he wears (The
+    -- Burning Halo, which already was the approved "Halo of Fire"), the Colosseum's own piece, his arm, his
+    -- stillness. Ira's Mail of the Unappeased left the list with her; the queued pieces behind it stay.
     wrath    = { minor = { "utility_anvils_face" }, general = {
-        "armor_mail_of_the_unappeased",
+        "utility_the_broken_vow",
+        "ability_thousand_hands", "utility_burning_halo", "ability_severing_blow",
+        "utility_the_asuras_arm", "utility_tapas_beads",
         "armor_adrenal_harness", "armor_blood_fever_mail", "armor_last_stand_plate",
         "weapon_given_hour", "weapon_kingsfall", "weapon_long_count", "weapon_mired_maul", "weapon_reapers_due",
         "weapon_tempo_debt", "weapon_the_stillness", "weapon_whitening",

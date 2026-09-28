@@ -1,60 +1,53 @@
--- The general of Wrath, and the first of the seven the Colosseum's line was always walking toward
--- (see docs/story.md, docs/wrath-line-beats.md). Enemy blueprint; the objective of
--- data/quests/colosseum/quest_colosseum_slot_10.lua.
+-- FUROR, THE THOUSAND-ARMED: the general of Wrath, on the stair at the bottom of its circle (Descent.SINS).
+-- Reviewed over two rounds on 2026-09-27/28 ("The Asura of Wrath"), and he replaced Ira, the Colosseum's
+-- champion, whose story and two bodies went with her. New name, new story, no tie to the Colosseum.
 --
--- WHO SHE IS. The Perennial's manufactured champion -- trained since birth, owned all her life, made
--- to win and to kill on the house's schedule and never her own. The one thing she was never given is
--- the one thing she wanted: to be free. The sand was the only place she ever moved on her own accord,
--- so she fought superbly, and her SULLEN wrath -- resentment held down for years -- was the secret
--- engine of her ferocity. Then she CHOSE the pact: promised freedom and the strength to take it, she
--- bargained with the Demon Lord herself and got an uncontrollable rage instead -- a deeper cage with
--- no door. This is phase one, the woman who still wants out; the bargain come due is her second form
--- (character_general_wrath_demon).
+-- WHO HE IS. The greatest ascetic there ever was. He sat in austerity longer than anyone has ever sat, was
+-- granted strength for it, and spent every bit of it on war. He is what every monk is one broken vow from
+-- becoming -- which is why the whole asura line fights with the monk's own shelf (models/asura.lua).
 --
--- HER FIGHT is one rule, and it rides on her Unappeased Heart relic (not `traits` -- character-level
--- traits are never instantiated; only grid items grant them): her damage rises as her health FALLS,
--- plus a per-blow contact term (data/traits/trait_wrath_rising.lua). Her opening stats are deliberately
--- modest for a boss -- a Warlord hits harder on turn one -- because the danger is not what she starts
--- as. Trade with her and you loose the thing she cannot control. The counterplay is burst, control, and
--- ending it before the rage rises -- the same lesson every bout on the sand has taught since the debut.
+-- HIS FIGHT is everything the line taught, in one body:
+--   * THE BROKEN VOW (his blood): chi fills when he is struck as well as when he strikes, it drains on a turn
+--     he is left alone, and his stillness heats him (Tapas, on the Centering Charm's Gather).
+--   * THE THOUSAND ARMS: he opens with four, and a pair grows at 4 chi and another at 8 -- one more landing on
+--     every bare-handed blow per pair. They are never lost. What keeps him small is keeping him cold.
+--   * EVERY ARM, his signature and his Burst: at a full pool he winds up and brings every arm down on the
+--     nearest foe. The wind-up breaks if he is shoved or moved -- the rule every wind-up already has.
+--   * THE BURNING HALO: foes beside him burn (and cannot see far enough to shoot).
+--   * KEEN SENSES: he answers first, with every arm, and every landing is chi.
+-- He stands with his Adepts and nobody else -- no waves (approved): fewer bodies, fewer ways to feed him.
 --
--- Her mail carries the same rule for whoever lifts it off her (data/items/armor/armor_mail_of_the_unappeased.lua).
+-- 1x1. His grandeur is the halo and the arms, not the footprint.
 return {
-    name = "Ira, the Unappeased",
-    race = "human",
+    name = "Furor, the Thousand-Armed",
+    race = "asura",
     tier = 4,
-    -- WHAT LEVEL THESE NUMBERS WERE WRITTEN FOR. This body is authored as the fight it is at the end
-    -- of its line, and models/growth.lua scales it DOWN toward the shallows rather than growing it up
-    -- from a base -- so a descent that deals this circle as floor 1 meets a smaller version of the
-    -- same thing instead of an unkillable one. At this level the numbers below are exactly the
-    -- numbers. See Growth.spawn.
+    -- WHAT LEVEL THESE NUMBERS WERE WRITTEN FOR. Authored as the fight at the end of its circle and scaled
+    -- DOWN toward the shallows by models/growth.lua (Growth.spawn), so a descent that deals Wrath early meets
+    -- a smaller version of the same thing rather than an unkillable one.
     referenceLevel = 13,
-    boss = true, -- a quest objective: immune to execute (Coup de Grace) and to Charm
+    boss = true, -- immune to execute (Coup de Grace) and to Charm
+    class = "priest",
+    discipline = "monk",
     sprite = "assets/chars/general_wrath.png",
-    portrait = "assets/portraits/general_wrath.png", -- large VN portrait for conversations (falls back if missing)
+    portrait = "assets/portraits/general_wrath.png",
+    archetype = "aggressive",
     stats = {
-        health = 211, mana = 0, stamina = 30,
-        damage = 18, magicDamage = 0, -- low, and rising
-        defense = 12, magicDefense = 6, -- deliberately soft to magic: the burst answer is real
-        movement = 4,
-        speed = 4,
-        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
-        -- attacker's crit. Authored, and never grown -- these are what this body IS.
-        skill = 6, luck = 1,
+        health = 220, mana = 0, stamina = 30,
+        staminaRegen = 5,
+        damage = 16, magicDamage = 0,
+        -- A little harder to magic than Ira was: the answer to him is not a burst of spells, it is keeping
+        -- him cold, and then heavy hands when he is.
+        defense = 10, magicDefense = 10,
+        movement = 5,
+        speed = 5, -- 6 after the race
+        skill = 7, luck = 3, -- skill 8 after the race
     },
-    -- Her loadout as the 3x3 grid (row-major); false = an empty cell. Her rule rides on the Unappeased
-    -- Heart relic in the center (data/items/utility/utility_unappeased_heart.lua): a bound item, and
-    -- `bound` keeps it unstealable -- a rogue can't lift her whole fight off her in one grab. Her greataxe
-    -- sits beside it.
     startingItems = {
-        false, false,                  false,
-        false, "utility_unappeased_heart", "weapon_crimson_greataxe",
-        false, false,                  false,
+        "utility_thousand_arms",   "utility_iron_fist",       "ability_every_arm",
+        "ability_flurry",          "ability_asura_strike",    "utility_centering_charm",
+        "ability_keen_senses",     "utility_burning_halo",    false,
     },
-    -- Basic tactics (models/ai.lua): unappeased and rising, she swings the greataxe at the foe already
-    -- closest to falling -- press the wounded.
-    ai = {
-        { priority = "high", act = "attack", targetPref = "lowest_hp",
-          when = { subject = "foe_lowest_hp", test = "hp_pct_below", value = 0.5 } },
-    },
+    signatureWeapon = "utility_iron_fist",
+    signatureAbility = "ability_every_arm",
 }

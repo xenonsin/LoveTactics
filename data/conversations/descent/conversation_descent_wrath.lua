@@ -4,19 +4,16 @@
 -- The stair guardian of the Wrath circle, played over the fight. See
 -- conversation_descent_gluttony.lua for what this folder is and why every scene in it is one speaker.
 --
--- CANON (docs/story.md, revised 2026-07-28): Ira was the Perennial's manufactured champion, owned all
--- her life, and she CHOSE the pact -- promised freedom and the strength to seize it, and given an
--- ungovernable rage instead. She must never ask to die: she wanted to be free, not gone. The register
--- is quiet and interior, never operatic, because the horror is a life spent owned.
+-- FUROR, THE THOUSAND-ARMED (2026-09-28, "The Asura of Wrath"): Ira and her Colosseum canon are retired, and
+-- the stair belongs to the greatest ascetic there ever was, who spent every bit of what his austerity won him
+-- on war. New name, new story, no tie to the Colosseum.
 --
--- The campaign's own confrontation is a forty-line scene written for Saber (see
--- data/conversations/colosseum/conversation_colosseum_slot_10_confront.lua, currently scaffolding).
--- Nothing of it is reached from here and nothing here is a compressed version of it: this is a fighter
--- telling four strangers how she would like to be fought, which is the one thing she has ever been
--- allowed to have an opinion about.
+-- THE TWO LINES BELOW ARE STILL IRA'S, and they are the author's to rewrite -- a premise change sweeps
+-- everything around the spoken lines and touches none of them. Until then a monk-general speaks a champion's
+-- words.
 
 return {
-    title = "Ira, the Unappeased",
+    title = "Furor, the Thousand-Armed",
     cast  = { "character_general_wrath" },
 
     script = {

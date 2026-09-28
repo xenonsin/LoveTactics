@@ -1872,6 +1872,10 @@ function AI.preempt(combat, unit)
     -- beside a Blood-Ghoul drinks from its thrall.
     local thirst = require("models.thirst").plan(combat, unit)
     if thirst then return thirst end
+    -- THE BROKEN VOW (models/asura.lua): an asura -- or a monk wearing its vow -- whose chi is full throws its
+    -- Burst at the nearest foe, and chooses nothing else.
+    local burst = require("models.asura").plan(combat, unit)
+    if burst then return burst end
     -- THE LABYRINTH (models/labyrinth.lua): the Minotaur opens Reckless, charges foes down straight lines, and
     -- with its head down runs at whoever is nearest.
     local maze = require("models.labyrinth").plan(combat, unit)

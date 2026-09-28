@@ -176,6 +176,8 @@ local TROPHIES = {
     "ability_swarm_form",
     -- The Minotaur's (Wrath's seat, 2026-09-27): its double axe as a Barbarian's, its charge as a Vanguard's.
     "weapon_labrys", "utility_bulls_brow",
+    -- Furor's (2026-09-28): his arms as a move, the Colosseum's own piece, his arm, his stillness.
+    "ability_thousand_hands", "ability_severing_blow", "utility_the_asuras_arm", "utility_tapas_beads",
     -- Wrath's elementals' (the approach and the seat, 2026-09-28): each body's three rules, handed over one by one.
     "utility_flowwalkers_soles", "utility_heart_of_the_wildfire", "utility_coal_in_the_fist",
     "weapon_forked_rod", "utility_flashpan", "utility_static_coil",

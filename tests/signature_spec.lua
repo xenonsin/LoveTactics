@@ -72,14 +72,17 @@ return {
                 { { char = Character.instantiate("character_general_wrath"), x = 2, y = 1 } })
             local victim = c.units[2]
             -- Leave ONLY the bound relic on the victim, so a successful steal is impossible if it's honored.
+            -- (Furor's Thousand Arms, since 2026-09-28; this case once used Ira's Unappeased Heart.)
+            local kept
             for i = 1, 9 do
                 local it = victim.char.inventory[i]
-                if it and it.id ~= "utility_unappeased_heart" then victim.char.inventory[i] = nil end
+                if it and it.id ~= "utility_thousand_arms" then victim.char.inventory[i] = nil end
+                if it and it.id == "utility_thousand_arms" then kept = i end
             end
             local taken = Combat.steal(c, c.units[1], victim)
             assert(taken == nil, "the boss's bound relic can't be pickpocketed, got " .. tostring(taken and taken.id))
-            assert(victim.char.inventory[5] and victim.char.inventory[5].id == "utility_unappeased_heart",
-                "and it stays in her grid")
+            assert(kept and victim.char.inventory[kept] and victim.char.inventory[kept].id == "utility_thousand_arms",
+                "and it stays in his grid")
         end,
     },
     {
