@@ -594,6 +594,11 @@ local CHARACTER_SILHOUETTE = {
     -- the Rift-Born) are deleted (2026-09-26); the goblins, orcs, oni and vampires above are its stock now.
     the_anvil = "lorc/anvil-impact",       -- a thing that exists to be struck
     minotaur = "lorc/bull",                -- the one beast in the maze (the horned giant is the Deep Bane's)
+    -- ...AND ITS ELEMENTALS (2026-09-28). No element word in any of the three ids, so each is named here and
+    -- tinted below rather than falling to the pale elemental bucket.
+    blaze = "lorc/burning-embers",         -- the fire that will not stay where it was put
+    arc = "lorc/plasma-bolt",              -- a strike with no aim but everything nearby
+    thunderhead = "lorc/thunderball",      -- the two of them fused: a storm with fire in it
 
     -- WHAT IS LEFT OF THE SLOTH CIRCLE. Its four lesser bodies are deleted (2026-09-22); the general's
     -- ground and the mini sin are what remain.
@@ -785,6 +790,11 @@ end
 -- unclassifiable elemental wears. Tinted as the fire it mostly is.
 local CHARACTER_TINT = {
     whirl_elemental = "#ef7d4a", -- ELEMENT_TINT.fire: it is a fire with air under it
+    -- Wrath's elementals (2026-09-28): ids with no element word, tinted as the element each is. The storm reads
+    -- as its lightning, since the fire is what it carries rather than what it throws first.
+    blaze = "#ef7d4a",       -- ELEMENT_TINT.fire
+    arc = "#f3d24a",         -- ELEMENT_TINT.lightning
+    thunderhead = "#f3d24a", -- ELEMENT_TINT.lightning
 }
 
 local function tintFor(def, id)

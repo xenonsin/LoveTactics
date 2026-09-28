@@ -176,6 +176,10 @@ local TROPHIES = {
     "ability_swarm_form",
     -- The Minotaur's (Wrath's seat, 2026-09-27): its double axe as a Barbarian's, its charge as a Vanguard's.
     "weapon_labrys", "utility_bulls_brow",
+    -- Wrath's elementals' (the approach and the seat, 2026-09-28): each body's three rules, handed over one by one.
+    "utility_flowwalkers_soles", "utility_heart_of_the_wildfire", "utility_coal_in_the_fist",
+    "weapon_forked_rod", "utility_flashpan", "utility_static_coil",
+    "ability_pyroclast", "utility_eruption_stone", "ability_ball_lightning",
     -- The Gold Golem's (Greed's approach, 2026-09-25): all three trophies, each one of its rules turned to
     -- work on every floor -- the pull as a lodestone, the hoard as a purse, the plates as ballast.
     "utility_lodestone", "utility_spilled_purse", "utility_golden_ballast",

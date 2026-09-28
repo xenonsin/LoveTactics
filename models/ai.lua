@@ -1665,6 +1665,10 @@ local function fallbackMove(ctx, mode)
             local hold
             home, hold = require("models.swarm").gatherGoal(combat, unit)
             if hold then return nil end
+        -- ...and a Blaze or an Arc (`stormKin`, models/storm.lua) walks to its other half, to end a turn beside it and
+        -- fuse; with none on the board it closes on the fight like anybody else.
+        elseif Trait.flag(unit, "stormKin") then
+            home = require("models.storm").partner(combat, unit)
         elseif not (home and home.alive) then
             local kin = {}
             for _, u in ipairs(allies(ctx)) do

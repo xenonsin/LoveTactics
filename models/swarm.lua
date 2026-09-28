@@ -119,6 +119,10 @@ local function letOut(combat, bat, x, y)
     Combat.stampField(combat, bat)
 end
 
+-- Exported for the Thunderhead (models/storm.lua), whose two halves are held inside it -- and it inside them, while
+-- torn -- through this same seam.
+Swarm.takeIn, Swarm.letOut = takeIn, letOut
+
 -- The bat at a group's heart: the one nearest all the others (board order breaks a tie).
 local function heartOf(group)
     local Combat = require("models.combat")

@@ -574,6 +574,14 @@ function Trait.trySurvive(combat, unit)
             end
         end
     end
+    -- THE STORM TEARS (models/storm.lua, the Thunderhead's): a blow that would fell a storm that has not yet torn
+    -- tears it back into its two halves instead, as crossing half would have. One big hit must not skip the
+    -- second half of the fight the tear promises.
+    if unit.stormParts and not unit.stormTorn and Trait.flag(unit, "fireConducts") then
+        unit.char.stats.health.current = 1
+        if require("models.storm").tear(combat, unit) then return true end
+        unit.char.stats.health.current = 0
+    end
     for _, t in ipairs(unit.traits) do
         -- HEAD DOWN (data/traits/trait_the_labyrinth.lua, the Minotaur's): a blow that would fell it from above a
         -- third of its health puts its head down instead -- Fury, at 1 health and unkillable for the window.

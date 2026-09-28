@@ -4328,7 +4328,7 @@ end
 -- which was survivable while the only term was terrain and became a real hazard the moment a tile's
 -- price could depend on the board: three readers that disagree mean the move overlay offers a tile the
 -- route preview will not walk to. Add a term here and all three learn it at once.
-local function stepTerrainCost(combat, unit, x, y, flying, aquatic)
+local function stepTerrainCost(combat, unit, x, y, flying, aquatic, lavaborn)
     if flying then return 1 end
     local tiles = combat.arena and combat.arena.tiles
     local worst = 0
@@ -4341,6 +4341,8 @@ local function stepTerrainCost(combat, unit, x, y, flying, aquatic)
         -- always kept. Only the watery cells go free.
         local mc = (cell and cell.moveCost) or 1
         if aquatic and cell and cell.swim then mc = 1 end
+        -- ...AND A LAVA-WALKER PAYS ONE IN LAVA (Combat.isLavaborn), by the same rule and for the same reason.
+        if lavaborn and cell and cell.type == "lava" then mc = 1 end
         if mc > worst then worst = mc end
     end
     local ease = Combat.terrainEase(combat, unit, x, y)
@@ -4403,6 +4405,20 @@ function Combat.isAquatic(unit)
     return false
 end
 
+-- Does `unit` walk LAVA (the `lavawalk` tag -- the Blaze's own Of the Flows, Flowwalker's Soles; models/storm.lua)?
+--
+-- SWIMMING'S RULE, MOVED TO THE FLOWS. It opens exactly one tile -- lava -- and charges 1 there; everywhere else
+-- the body pays what anybody pays. On the Cinderfall Flows the lava is what separates two lines without hiding
+-- them from each other, so a body at home in it is the one thing on that ground that comes up on your side.
+-- Read at the same chokepoints `swim` is (moveGraph, Combat.planMoveVia, stepTerrainCost).
+function Combat.isLavaborn(unit)
+    if not (unit and unit.char) then return false end
+    for _, item in ipairs(Character.eachItem(unit.char)) do
+        if hasTag(item.tags, "lavawalk") then return true end
+    end
+    return false
+end
+
 -- Does `unit` walk THROUGH bodies? True when any grid item carries a `moveBehavior` of mode "phase"
 -- (the Sidelong Greaves). Read once per move graph, and read off the grid rather than off a status,
 -- because it is a permanent property of what you are wearing.
@@ -4441,6 +4457,8 @@ local function moveGraph(combat, unit, tolls)
     -- `flying` for the same reason that is: it is a fact about the body, read once per graph rather
     -- than per candidate cell inside a Dijkstra.
     local aquatic = Combat.isAquatic(unit)
+    -- ...and a lava-walker opens lava the same way (Combat.isLavaborn).
+    local lavaborn = Combat.isLavaborn(unit)
     -- A phaser treats an enemy body the way everyone already treats a friendly one: transit, never
     -- footing. It still cannot STOP on the tile (Combat.reachable drops every occupied node whoever
     -- is standing there), so what phasing buys is passage through a line, not the ability to share a
@@ -4498,7 +4516,9 @@ local function moveGraph(combat, unit, tolls)
                     -- is unwalkable to everybody and open to the one body it is not poor footing for.
                     -- `cell.swim` and not `cell.drowns`, deliberately -- the question here is "does
                     -- this body belong in this ground", and the ford already answers yes for everyone.
-                    if not (flying or cell.walkable or (aquatic and cell.swim)) then ok = false; break end
+                    if not (flying or cell.walkable or (aquatic and cell.swim) or (lavaborn and cell.type == "lava")) then
+                        ok = false; break
+                    end
                     if Combat.objectBlocksAt(combat, c.x, c.y)
                         and not (walksWalls and not require("models.labyrinth").blocks(combat, unit, c.x, c.y)) then
                         ok = false; break
@@ -4513,7 +4533,7 @@ local function moveGraph(combat, unit, tolls)
                     -- Priced by the shared reader rather than in the loop above: the legality question
                     -- (may this body stand here) and the cost question (what does standing here cost)
                     -- are different, and only the second one grows terms. See stepTerrainCost.
-                    local step = stepTerrainCost(combat, unit, nx, ny, flying, aquatic)
+                    local step = stepTerrainCost(combat, unit, nx, ny, flying, aquatic, lavaborn)
                     local ncost = cur.cost + step
                     if ncost <= budget then
                         local nk = key(nx, ny)
@@ -5084,6 +5104,7 @@ function Combat.planMoveVia(combat, unit, cells)
     -- so the two must answer it the same way or a flier's own move band would refuse its own route.
     local flying = Combat.isFlying(unit)
     local aquatic = Combat.isAquatic(unit)
+    local lavaborn = Combat.isLavaborn(unit)
     local w, h = unit.w or 1, unit.h or 1
     local seen = { [key(unit.x, unit.y)] = true }
     local cost = 0
@@ -5099,7 +5120,9 @@ function Combat.planMoveVia(combat, unit, cells)
         for _, fc in ipairs(Combat.cellsAt(w, h, c.x, c.y)) do
             if fc.x < 1 or fc.x > arena.cols or fc.y < 1 or fc.y > arena.rows then return nil, "off grid" end
             local tile = arena.tiles[fc.y][fc.x]
-            if not (flying or tile.walkable or (aquatic and tile.swim)) then return nil, "blocked" end
+            if not (flying or tile.walkable or (aquatic and tile.swim) or (lavaborn and tile.type == "lava")) then
+                return nil, "blocked"
+            end
             if require("models.labyrinth").blocks(combat, unit, fc.x, fc.y) then return nil, "wall" end
             local occ = Combat.unitAt(combat, fc.x, fc.y)
             if occ and occ ~= unit then
@@ -5112,7 +5135,7 @@ function Combat.planMoveVia(combat, unit, cells)
         -- Priced by the same reader the derived path uses, so a hand-steered detour costs exactly what
         -- walking it costs -- including the ground watched by an enemy's Overwatch. This used to
         -- re-derive the terrain arithmetic locally; see stepTerrainCost on why it no longer may.
-        cost = cost + stepTerrainCost(combat, unit, c.x, c.y, flying, aquatic)
+        cost = cost + stepTerrainCost(combat, unit, c.x, c.y, flying, aquatic, lavaborn)
         if cost > budget + scentMove(combat, unit) then return nil, "too far" end
     end
     -- SCENT OF BLOOD: the extra movement only buys a walk that ends where the scent leads (models/thirst.lua).
@@ -5233,7 +5256,7 @@ function Combat.walkStop(combat, unit, path)
         -- on the tile BEFORE it, and never pays for the tile it refused. Mirrors Combat.stepMove's
         -- pre-step check, so the drawn route stops on the tile the feet will.
         if grants and not carrying and bodyInTheWay(combat, unit, t.x, t.y) then return i - 1, cost end
-        cost = cost + stepTerrainCost(combat, unit, t.x, t.y, flying, Combat.isAquatic(unit))
+        cost = cost + stepTerrainCost(combat, unit, t.x, t.y, flying, Combat.isAquatic(unit), Combat.isLavaborn(unit))
         if grants and not carrying then return i, cost end
         carrying = grants
     end
@@ -5280,7 +5303,10 @@ function Combat.stepMove(combat, walk)
         if turn.runDx == dx and turn.runDy == dy then turn.runLine = (turn.runLine or 0) + 1
         else turn.runDx, turn.runDy, turn.runLine = dx, dy, 1 end
     end
-    walk.walked = (walk.walked or 0) + stepTerrainCost(combat, walk.unit, tile.x, tile.y, walk.flying)
+    -- STATIC (models/storm.lua): every tile walked stores a charge on a bearer of the Arc's rule.
+    require("models.storm").stepped(combat, walk.unit)
+    walk.walked = (walk.walked or 0) + stepTerrainCost(combat, walk.unit, tile.x, tile.y, walk.flying,
+        Combat.isAquatic(walk.unit), Combat.isLavaborn(walk.unit))
     Combat.enterTile(combat, walk.unit, tile.x, tile.y, "walk", fromX, fromY)
     -- A unit walking into an opposing Overwatch stance's firing line is shot for it. Only a walk
     -- triggers this (not a knockback or a summon appearing), so it lives here rather than in enterTile.
@@ -12880,6 +12906,11 @@ function Combat.useItem(combat, unit, item, tx, ty, windup, dest, spend)
     if dist < Combat.abilityMinRange(ab) then
         return false, "too close"
     end
+    -- `straight`: aimed only along a row or a column from the caster (Ball Lightning, models/storm.lua), for a cast
+    -- whose whole effect is the line between the two.
+    if ab.straight and unit.x ~= tx and unit.y ~= ty then
+        return false, "not in a straight line"
+    end
     if ab.requiresSight and not waivesSight and not Combat.unitHasSight(combat, unit, tx, ty) then
         return false, "no line of sight"
     end
@@ -13130,6 +13161,11 @@ function Combat.tileHasTag(combat, x, y, tag)
     if hasTag(cell.tags, tag) then return true end
     for _, h in ipairs(Hazard.allAt(combat, x, y)) do
         if hasTag(h.tags, tag) then return true end
+        -- A THUNDERHEAD'S FIRE CARRIES ITS LIGHTNING (models/storm.lua): while one stands, a fire conducts as
+        -- water does.
+        if tag == Combat.CONDUCT_TAG and hasTag(h.tags, "fire") and require("models.storm").fireConducts(combat) then
+            return true
+        end
     end
     local occupant = Combat.unitAt(combat, x, y)
     return occupant ~= nil and Status.hasTileTag(occupant, tag)

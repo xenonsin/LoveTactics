@@ -594,7 +594,10 @@ Descent.SINS = {
             -- ...and the Blood Countess on the seat (2026-09-27): every point of Bleed fills her basin, and she bathes.
                 "encounter_wrath_the_blood_countess",
             -- ...AND ITS MINOTAUR (2026-09-27, "The Minotaur"): one beast, alone, on the seat, in the maze it brings.
-                "encounter_wrath_the_labyrinth" } } },
+                "encounter_wrath_the_labyrinth",
+            -- ...AND ITS ELEMENTALS (2026-09-28, "Fire, Lightning, and Dirty Thunder"): a Blaze and an Arc on the seat,
+            -- and the storm they fuse into.
+                "encounter_wrath_dirty_thunder" } } },
     { id = "sloth", name = "Sloth", vendor = "bastion", biome = "tundra",
         scene = "conversation_descent_sloth",
         guardian = { lead = "character_general_sloth", filler = "character_the_long_winter" },

@@ -217,6 +217,9 @@ return {
                 -- A cast of one by review: the Minotaur is the only thing in its maze, and the author struck the
                 -- clan that would have stood beside it ("just a mythical beast").
                 encounter_wrath_the_labyrinth = true,
+                -- A cast of two by review: a Blaze and an Arc, whose fight is whether they fuse ("Fire, Lightning,
+                -- and Dirty Thunder"). A third body beside them would be a second storm or a spare half.
+                encounter_wrath_dirty_thunder = true,
             }
             -- THE ROSTER, NOT THE HEAD-COUNT. Asked as "is this the same fight on every seed", because
             -- a stop is allowed to roll its SHAPE while holding its size: the Skeleton King's court is

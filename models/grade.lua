@@ -565,6 +565,18 @@ Grade.TRAIT_GRADE = {
     -- free shove riding a blow, paid for with a straight approach of two or more: once a turn, and often not open.
     trait_the_labyrinth =               0.0,  -- The Labyrinth -- the maze, the walls it walks, the shifts, Fury
     trait_the_run =                     1.0,  -- The Run -- 2+ straight tiles then a blow: back 1 per 2, to 3
+    -- WRATH'S ELEMENTALS (2026-09-28). The organs' rules are the bodies' own (Storm-Kin, Of the Flows, the
+    -- Thunderhead); the ones a company can carry are graded as what they buy on a floor: Wildfire and Kindle are
+    -- unsided ground (worth less than they read), Thunderclap a rider on one bolt a turn, Static a walk turned into
+    -- a bolt, and the Stone an island once a fight.
+    trait_storm_kin =                   0.0,  -- Storm-Kin -- a Blaze and an Arc side by side fuse
+    trait_of_the_flows =                0.0,  -- Of the Flows -- mends in lava; water puts it out
+    trait_the_thunderhead =             0.0,  -- The Thunderhead -- conducts, ash, the tear, the eruption
+    trait_wildfire =                    0.5,  -- Wildfire -- fire within 2 creeps a tile a turn, unsided
+    trait_coal_in_the_fist =            0.5,  -- Coal in the Fist -- a landed blow lights the struck tile
+    trait_thunderclap =                 1.0,  -- Thunderclap -- first lightning a turn Blinds
+    trait_static =                      1.0,  -- Static -- +3 a tile walked on the next lightning cast, to +15
+    trait_eruption_stone =              1.0,  -- Eruption Stone -- below a third, lava round you, once
 
     -- THE GILT WYRM (2026-09-25), what a dwarf becomes at three Dragon-Sickness, and its saga drops. The
     -- Helm is Loosened Laces on the legs rather than the guard; the Heart is Dodge with magic let in at a
