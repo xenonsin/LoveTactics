@@ -43,6 +43,8 @@ return {
         speed = 5, -- 6 after the race
         skill = 7, luck = 3, -- skill 8 after the race
     },
+    -- His own halo's heat (approved on review). On the body, since the bestiary check allows a humanoid one.
+    resist = { fire = 5 },
     startingItems = {
         "utility_thousand_arms",   "utility_iron_fist",       "ability_every_arm",
         "ability_flurry",          "ability_asura_strike",    "utility_centering_charm",

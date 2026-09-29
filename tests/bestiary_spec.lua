@@ -295,10 +295,11 @@ tests[#tests + 1] = { name = "an innate resist is a trade, not a buff", fn = fun
             local budget = Balance.INNATE_BUDGET[def.tier or 0]
             local function fail(fmt, ...) bad[#bad + 1] = id .. ": " .. string.format(fmt, ...) end
 
-            if not isArmourless(def) then
-                fail("a %s does not have an innate hide -- its per-tag line comes off a shelf, as a "
-                    .. "`resist` table on the armour it wears", tostring(def.kind))
-            end
+            -- A HUMANOID MAY DECLARE ONE TOO (loosened 2026-09-28, on the author's word: "this isn't a
+            -- rule"). This case used to fail any humanoid that did, on the argument that its per-tag line
+            -- comes off a shelf. Wearing is still how a humanoid usually gets one, and only creatures are
+            -- REQUIRED to declare (the case above) -- but a humanoid that is also something more (Furor's
+            -- fire) may carry it on the body. The budget and the physical-sum rule below hold either way.
             if not budget then
                 fail("tier %s has no Balance.INNATE_BUDGET entry", tostring(def.tier))
             end

@@ -546,8 +546,9 @@ moves" — and it mostly was, but three of the things it turned up are worth mor
   A body that was never anything else is `race = "undead"` (a wight, a ghoul, the Skeleton King). A body
   of a living race that died keeps its race, its class and its shelf and adds `undead = true`: a dwarf
   skeleton is a fighter, still Stout, and dead. `Character.isUndead` asks both, the tag seeds Grave-Cold,
-  and a skeleton's lattice rides on its bone item (`utility_bare_bones`) because a humanoid may not also
-  have a hide. The Bestiary files every tagged body on the Undead page.
+  and a skeleton's lattice rides on its bone item (`utility_bare_bones`), which is where it was put when a
+  humanoid could not also have a hide. (That check was loosened on 2026-09-28: a humanoid may declare an
+  innate `resist`; only creatures are required to.) The Bestiary files every tagged body on the Undead page.
 - **`tier`** — 1 chaff · 2 line · 3 elite · 4 boss, and **0 for a body that is not on the ladder**: a
   prop, an escortee, or a shape worn by Wild Shape. Rung 0 is declared rather than left absent so that
   "this will never fight" and "nobody has labelled this" stay different states.
