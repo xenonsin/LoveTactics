@@ -27,6 +27,12 @@ local BOUND = {
     -- that sheds an injury -- the other is a Rest spent on Bind -- and both are taken instead of
     -- something else, which is the property the deleted Inn never had.
     mendWound = true,
+    -- GLUTTONY'S STOPS (Crossroads.STOPS, 2026-09-29) resolve through the same ctx, and bind the rest: a
+    -- flat refill, a full restore, the elites read off the board, a status queued for the next fight, and
+    -- the injury the Watering Hole charges for drinking first.
+    refill = true, restore = true, revealElites = true, queueOpening = true, injure = true,
+    -- ...and Lust's Ferry, which carries the company to ground it has not walked (game:ferry).
+    ferry = true,
 }
 
 local function source(path)

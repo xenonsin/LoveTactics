@@ -1068,6 +1068,31 @@ function Player.camp(player, share)
     end
 end
 
+-- Give back `share` of each MAXIMUM, flat, where Player.camp gives back a share of what is missing:
+-- "heal a quarter of your health" and "half of every pool back" (Gluttony's stops, data/encounters/
+-- encounter_the_carcass.lua and encounter_the_watering_hole.lua). `stats` narrows it to a list of
+-- resource stats; omitted, every one. Capped by an injury the same way a camp is, and rounded up for the
+-- same reason.
+function Player.refill(player, share, stats)
+    local Injury = require("models.injury")
+    for _, char in ipairs(player.roster or {}) do
+        local injury = Injury.healShare(player, char.id)
+        for _, stat in ipairs(stats or Character.RESOURCE_STATS) do
+            local resource = char.stats[stat]
+            if type(resource) == "table" then
+                local ceiling = resource.max or 0
+                if stat == "health" and injury < 1 then
+                    ceiling = math.max(1, math.floor(ceiling * injury))
+                end
+                local cur = resource.current or ceiling
+                if cur < ceiling then
+                    resource.current = math.min(ceiling, cur + math.ceil((resource.max or 0) * share))
+                end
+            end
+        end
+    end
+end
+
 -- ---------------------------------------------------------------------------
 -- Consumables (out-of-combat use; the overworld "Use Items" panel)
 -- ---------------------------------------------------------------------------

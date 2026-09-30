@@ -629,6 +629,15 @@ local function markerColor(kind, enc)
     -- promises a fight the state then does not run is a lie.
     if kind == "weeping_stone" then return 0.62, 0.38, 0.72 end
     if kind == "crossroads" then return 0.70, 0.72, 0.80 end     -- a branching dilemma: a gamble
+    -- GLUTTONY'S TWO DILEMMAS wear the crossroads' grey-blue: they are the same thing to the eye, a stop
+    -- that asks one question, and the mark (a bone, a pool) says which. The anvil and the lectern rule.
+    if kind == "carcass" or kind == "watering_hole" then return 0.70, 0.72, 0.80 end
+    -- ...and LUST'S THREE, on the same rule: a question asked at a stop (the Ferry too -- it moves you,
+    -- but only if you say so, which is what keeps it out of the hazards' green-grey).
+    if kind == "still_pool" or kind == "mooring_post" or kind == "ferry" then return 0.70, 0.72, 0.80 end
+    -- ...and THE MAW takes the Weeping Stone's bruise: both trade something you hold for something rarer,
+    -- and the Stone is parked, so the hue stands on no other board.
+    if kind == "maw" then return 0.62, 0.38, 0.72 end
     if kind == "ascent" then return 0.72, 0.78, 0.86 end -- the way back up: cold daylight, and the only one
     -- ...and Act 0's road to the city takes the same daylight, for the reason MarkerIcon.road gives in
     -- full: it is the ascent's sentence on a leg that has no ascent, so it may wear the ascent's plate
@@ -794,6 +803,79 @@ function MarkerIcon.crossroads(x, y, w, h, r, g, b, a)
     love.graphics.line(cx, y + h, cx, y + h * 0.5)        -- the post
     love.graphics.line(cx, y + h * 0.5, x + w * 0.1, y + h * 0.2) -- left arm
     love.graphics.line(cx, y + h * 0.5, x + w * 0.9, y + h * 0.2) -- right arm
+    love.graphics.setLineWidth(1)
+end
+
+-- A BONE: the Carcass, a kill left all but whole (Gluttony's stop). A bar with two knuckles at each end.
+function MarkerIcon.carcass(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a)
+    love.graphics.setLineWidth(3)
+    love.graphics.line(x + w * 0.25, y + h * 0.75, x + w * 0.75, y + h * 0.25)
+    love.graphics.setLineWidth(1)
+    local k = w * 0.13
+    love.graphics.circle("fill", x + w * 0.14, y + h * 0.74, k)
+    love.graphics.circle("fill", x + w * 0.26, y + h * 0.86, k)
+    love.graphics.circle("fill", x + w * 0.74, y + h * 0.14, k)
+    love.graphics.circle("fill", x + w * 0.86, y + h * 0.26, k)
+end
+
+-- A POOL with a ripple: the Watering Hole (Gluttony's stop). The only flat, wide oval on the board.
+function MarkerIcon.watering_hole(x, y, w, h, r, g, b, a)
+    local cx, cy = x + w / 2, y + h * 0.62
+    love.graphics.setColor(r, g, b, a)
+    love.graphics.ellipse("fill", cx, cy, w * 0.48, h * 0.30)
+    love.graphics.setColor(r * 0.4, g * 0.4, b * 0.4, a)
+    love.graphics.setLineWidth(1)
+    love.graphics.ellipse("line", cx, cy, w * 0.24, h * 0.13)
+end
+
+-- OPEN JAWS: the Maw (Gluttony's stop). A dark mouth with four teeth pointing into it.
+function MarkerIcon.maw(x, y, w, h, r, g, b, a)
+    local cx, cy, R = x + w / 2, y + h / 2, w * 0.46
+    love.graphics.setColor(r, g, b, a)
+    love.graphics.circle("fill", cx, cy, R)
+    love.graphics.setColor(r * 0.25, g * 0.25, b * 0.25, a)
+    love.graphics.circle("fill", cx, cy, R * 0.66)
+    love.graphics.setColor(r, g, b, a)
+    for i = 0, 3 do
+        local ang = i * math.pi / 2 + math.pi / 4
+        local ox, oy = math.cos(ang), math.sin(ang)
+        local px, py = -oy, ox
+        local bx, by = cx + ox * R * 0.66, cy + oy * R * 0.66
+        love.graphics.polygon("fill", bx + px * R * 0.18, by + py * R * 0.18,
+            bx - px * R * 0.18, by - py * R * 0.18, cx + ox * R * 0.25, cy + oy * R * 0.25)
+    end
+end
+
+-- A ROUND MIRROR with a glint: the Still Pool (Lust's stop). Round where the Watering Hole is a flat oval.
+function MarkerIcon.still_pool(x, y, w, h, r, g, b, a)
+    local cx, cy, R = x + w / 2, y + h / 2, w * 0.42
+    love.graphics.setColor(r, g, b, a)
+    love.graphics.circle("fill", cx, cy, R)
+    love.graphics.setColor(r * 0.35, g * 0.35, b * 0.35, a)
+    love.graphics.circle("fill", cx, cy, R * 0.72)
+    love.graphics.setColor(r, g, b, a)
+    love.graphics.setLineWidth(2)
+    love.graphics.line(cx - R * 0.35, cy + R * 0.05, cx + R * 0.05, cy - R * 0.35)
+    love.graphics.setLineWidth(1)
+end
+
+-- A POST with a rope looped round it: the Mooring Post (Lust's stop).
+function MarkerIcon.mooring_post(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a)
+    love.graphics.rectangle("fill", x + w * 0.40, y + h * 0.08, w * 0.20, h * 0.86, 2, 2)
+    love.graphics.setLineWidth(2)
+    love.graphics.ellipse("line", x + w * 0.5, y + h * 0.42, w * 0.30, h * 0.12)
+    love.graphics.setLineWidth(1)
+end
+
+-- A FLAT BOAT under a pole: the Ferry (Lust's stop). The only mark wider at the top than at the bottom.
+function MarkerIcon.ferry(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a)
+    love.graphics.polygon("fill", x, y + h * 0.58, x + w, y + h * 0.58, x + w * 0.80, y + h * 0.86,
+        x + w * 0.20, y + h * 0.86)
+    love.graphics.setLineWidth(2)
+    love.graphics.line(x + w * 0.62, y + h * 0.58, x + w * 0.82, y + h * 0.06)
     love.graphics.setLineWidth(1)
 end
 

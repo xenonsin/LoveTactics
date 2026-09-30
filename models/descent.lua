@@ -215,6 +215,17 @@ Descent.SINS = {
         -- condition without also spending a lesson on what this one is. Every other circle's gate --
         -- the ward, the toll, the count, the open door -- is read against it.
         gate = { kind = "clear" },
+        -- THE CIRCLE'S OWN STOPS (2026-09-29, reviewed in three rounds: "I don't want fights, just
+        -- encounters"). Places rather than fights, each guaranteed once on the floors it names and spent for
+        -- good once used, because a kept board keeps a cleared stop cleared (Descent.rearmFloor re-arms only
+        -- fights). The Carcass and the Watering Hole are fixed dilemmas (models/crossroads.lua's STOPS); the
+        -- Maw is its own panel and keeps a count on the save (models/maw.lua). `rung` pins a stop to one
+        -- floor of the circle; `deadEnd` asks the board for a dead end (Overworld:placeEncounters).
+        stops = {
+            { kind = "carcass" },
+            { kind = "watering_hole" },
+            { kind = "maw", rung = 1, deadEnd = true },
+        },
         -- THE SATED HOLDS THE FIRST STAIR (2026-09-24, on Keno's call: "have the sated be the floor 1
         -- boss"), in the Gralloch's old seat, with the hawks that are its larder around it. It is NOT
         -- Gula's honour guard -- that rule was removed the same day (see this table's header) -- so her
@@ -342,6 +353,15 @@ Descent.SINS = {
         -- a BODY somewhere else on the floor only reads as a rule once the player has met one that
         -- was not.
         gate = { kind = "ward" },
+        -- THE CIRCLE'S OWN STOPS (2026-09-29, reviewed in one round), after Gluttony's: places rather than
+        -- fights, each guaranteed once per floor and spent once used. The Still Pool (reach in: a find, and
+        -- the next fight opens Burning), the Mooring Post (tie in: a full restore, and the next fight opens
+        -- Rooted) and the Ferry (ride it to ground you have not walked). models/crossroads.lua's STOPS.
+        stops = {
+            { kind = "still_pool" },
+            { kind = "mooring_post" },
+            { kind = "ferry" },
+        },
         -- NO LIEUTENANT. The Suppliant is gone and a lamia stands in -- the animal whose whole rule is
         -- holding, which is at least the right verb for a body barring a stair. The LEAD is a stand-in
         -- and reads as one; a new minor boss is owed here and is being authored by hand (2026-09-23).
@@ -4234,6 +4254,21 @@ local function guaranteeKinds(player, floor)
     return { "rest", "merchant" }
 end
 
+-- A circle's own stops on this floor (Descent.SINS' `stops`): the kinds to guarantee, and the per-kind
+-- placement a stop asked for (`deadEnd`), in the shape Overworld's `guarantee` table reads. Every kind
+-- is guaranteed once. Empty for a circle that declares none.
+function Descent.circleStops(sin, floor)
+    local kinds, guarantee = {}, {}
+    local rung = Descent.floorWithinCircle(floor)
+    for _, s in ipairs((sin and sin.stops) or {}) do
+        if not s.rung or s.rung == rung then
+            kinds[#kinds + 1] = s.kind
+            guarantee[s.kind] = { count = 1, deadEnd = s.deadEnd or nil }
+        end
+    end
+    return kinds, guarantee
+end
+
 function Descent.floorQuest(run, player)
     local floor = Descent.depth(run)
     local sin = Descent.sinAt(run, floor)
@@ -4250,6 +4285,12 @@ function Descent.floorQuest(run, player)
     -- (Descent.floorBudget). The Crown has no houses posting work on it and carries the one end below.
     local objectives = sin and Descent.floorObjectives(player, floor, sin, floorLevel, general, run) or nil
     local stops, rolled = Descent.floorBudget(objectives and #objectives or 1, floor)
+    -- ...AND THE CIRCLE'S OWN STOPS, guaranteed beside the rest and the merchant (Descent.circleStops).
+    local circleKinds, circleGuarantee = Descent.circleStops(sin, floor)
+    local floorKinds = guaranteeKinds(player, floor)
+    for _, k in ipairs(circleKinds) do floorKinds[#floorKinds + 1] = k end
+    local floorGuarantee = { rest = { count = Descent.FLOOR_RESTS } }
+    for k, g in pairs(circleGuarantee) do floorGuarantee[k] = g end
 
     if not sin then
         return {
@@ -4380,9 +4421,9 @@ function Descent.floorQuest(run, player)
             -- coming: this floor's ends, its elites, and the places.
             wanderingCombat = true,
             -- The reliquary, the rest, and -- while there is room in the company -- somebody to join it.
-            guaranteeKinds = guaranteeKinds(player, floor),
+            guaranteeKinds = floorKinds, -- ...and this circle's own stops (above)
             -- ...and how many of each, where a floor differs from a ground. See Descent.FLOOR_RESTS.
-            guarantee = { rest = { count = Descent.FLOOR_RESTS } },
+            guarantee = floorGuarantee,
             objective = {
                 -- THE END IS NAMED FOR WHO IS STANDING ON IT, not for what is under them.
                 --
@@ -5284,6 +5325,55 @@ function Descent.account(player, run)
 end
 
 -- ---------------------------------------------------------------------------
+-- The next fight on this floor
+-- ---------------------------------------------------------------------------
+--
+-- WHAT A STOP LEAVES FOR THE FIGHT AFTER IT (2026-09-29, Gluttony's stops, data/encounters/encounter_the_
+-- carcass.lua). A company that eats from a kill opens its next fight Full; one that picks it over leaves
+-- smelling of blood, and the beasts in the next fight open Starving. Nothing did that before: a meal is
+-- worn all day and an opening boon comes off a relic or a grid, so this is the one queue a floor stop can
+-- write to.
+--
+-- ONE FLOOR ONLY. The queue is stamped with the floor it was written on and read only on that floor, so a
+-- company that walks down the stair before fighting again carries nothing to the next one: "the next fight
+-- on this floor" is the whole promise, and a stale entry is dropped the first time anything asks.
+--
+-- A SIDE, NOT A BODY. Laid at the bell by Combat.dressSide on whoever is standing, so it reaches a whole
+-- company or a whole field without the stop knowing who will be deployed. The same stop asked twice adds
+-- to the entry already queued rather than laying two.
+--
+-- `stacks` IS FOR A COUNTED STATUS ONLY (a meal, Starving), and is laid as its magnitude. Omitted, the
+-- status keeps its authored magnitude -- which matters for Burn, whose magnitude is its damage (Lust's Still
+-- Water): a "one stack" of it would have been one point of fire a turn.
+function Descent.queueOpening(run, side, statusId, stacks)
+    if type(run) ~= "table" or not (side and statusId) then return end
+    local floor = run.floor or 1
+    if not (run.opening and run.opening.floor == floor) then run.opening = { floor = floor, boons = {} } end
+    for _, b in ipairs(run.opening.boons) do
+        if b.side == side and b.id == statusId then
+            if b.stacks and stacks then b.stacks = b.stacks + stacks end
+            return
+        end
+    end
+    local boons = run.opening.boons
+    boons[#boons + 1] = { side = side, id = statusId, stacks = stacks }
+end
+
+-- Hand over what is queued for this floor's next fight and clear the queue, as `{ side, id, opts }` rows
+-- for Combat.dressSide. Empty when nothing is queued or the queue was written on another floor.
+function Descent.takeOpening(run)
+    if type(run) ~= "table" or not run.opening then return {} end
+    local queued = run.opening
+    run.opening = nil
+    if queued.floor ~= (run.floor or 1) then return {} end
+    local out = {}
+    for _, b in ipairs(queued.boons or {}) do
+        out[#out + 1] = { side = b.side, id = b.id, opts = b.stacks and { magnitude = b.stacks } or {} }
+    end
+    return out
+end
+
+-- ---------------------------------------------------------------------------
 -- Persistence
 -- ---------------------------------------------------------------------------
 
@@ -5371,6 +5461,9 @@ function Descent.snapshot(run)
         -- roster's first four, so both degrade to the same honest default. Purely additive, so
         -- Save.VERSION does not move.
         party = (run.party and #run.party > 0) and run.party or nil,
+        -- WHAT A STOP LEFT FOR THE NEXT FIGHT (Descent.queueOpening), or a Carcass eaten, saved and
+        -- resumed would open the next fight without the meal. Nil when nothing is queued. Additive.
+        opening = run.opening or nil,
         -- (No `floors` -- the map book is the player's now, exactly as the tally is. models/save.lua
         -- carries an old save's forward off the raw snapshot, so a run saved while the floors still
         -- rode here does not lose the map it had drawn.)
@@ -5427,6 +5520,14 @@ function Descent.restore(snap)
             local out = {}
             for i, id in ipairs(snap.party) do out[i] = id end
             return out
+        end)() or nil,
+        -- ...and what a stop left for the next fight (Descent.queueOpening), copied; absent reads as nothing.
+        opening = type(snap.opening) == "table" and (function()
+            local boons = {}
+            for i, b in ipairs(snap.opening.boons or {}) do
+                boons[i] = { side = b.side, id = b.id, stacks = tonumber(b.stacks) }
+            end
+            return { floor = tonumber(snap.opening.floor) or 1, boons = boons }
         end)() or nil,
         -- (No `floors` -- see snapshot. The map book is the player's.)
         entry = nil, -- re-attached by Save.restoreRun from the run-level copy; see above

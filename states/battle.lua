@@ -5278,10 +5278,16 @@ local function commitDeploy(opts, deployed, front, placed)
     -- and traits are set, so they read as present from the first turn without touching a live combat
     -- action. Matched to their unit by char identity (the same instance game.lua queued them for).
     for _, boon in ipairs(opts.openingBoons or {}) do
-        for _, unit in ipairs(battle.combat.units) do
-            if unit.side == "party" and unit.char == boon.char and unit.alive then
-                Status.apply(battle.combat, unit, boon.id, boon.opts)
-                break
+        -- A boon for a whole SIDE rather than one body: what a floor stop left for the next fight
+        -- (Descent.queueOpening), laid on everyone standing on that side.
+        if boon.side then
+            Combat.dressSide(battle.combat, boon.side, boon.id, boon.opts)
+        else
+            for _, unit in ipairs(battle.combat.units) do
+                if unit.side == "party" and unit.char == boon.char and unit.alive then
+                    Status.apply(battle.combat, unit, boon.id, boon.opts)
+                    break
+                end
             end
         end
     end

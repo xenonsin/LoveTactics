@@ -1553,6 +1553,11 @@ function Overworld:placeEncounters(params)
         for _, p in ipairs(placed) do if p.encounter.kind == kind then have = have + 1 end end
         local entry = (have < want) and guaranteedEntry(pool, kind) or nil
         local prefer = (g and g.spine) and function(c) return withinSpine(c, g.spine) end or nil
+        -- ...or a DEAD END, for a stop that is a place you go looking for (the Maw, Descent.SINS'
+        -- gluttony `stops`). Preferred, not required: a floor whose dead ends the caches took still seats it.
+        if g and g.deadEnd then
+            prefer = function(c) return #self:pathNeighbors(c.x, c.y) == 1 end
+        end
         while entry and have < want do
             local c = takeSpaced(prefer)
             if not c then break end -- the floor is full: it simply holds fewer

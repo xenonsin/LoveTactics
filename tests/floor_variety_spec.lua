@@ -32,6 +32,14 @@
 -- fill it are picked for the sin and not just to make the count. The themes and the first roster of each
 -- are the author's; a line marked "suggested" is a proposal to be taken or struck, not a decision.
 --
+--   GLUTTONY -- THE BENCHMARK, not owed; written here because docs/story.md's Hunter's Lodge reading is out of
+--     date and this list is where a circle's brief is read from (the author's, 2026-09-29).
+--     Themes: survival of the fittest, apex predator, beasts, the hunt, hunger, insatiable, wastefulness.
+--     Bodies: the wood's beasts -- wolves, boars and bears, hawks and the griffin, sabertooths, stags, giant
+--       spiders, manticores, wyverns, the giant toad, moss slimes, the chimera -- under the Sated and Gula,
+--       the apex who eats them and does what they did.
+--     Its own stops (not fights, 2026-09-29): the Carcass, the Watering Hole, the Maw.
+--
 --   WRATH -- anger, relentlessness, no control, fury, raging fire, raging water, disaster, blindness,
 --     passion that overwhelms reason, the trap.
 --     Bodies: goblins, trolls, orcs, ogres, minotaurs, oni, vengeful spirits, ghosts, vampires.

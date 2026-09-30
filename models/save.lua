@@ -867,6 +867,9 @@ function Save.snapshot(player)
             alarm = player.greedHoard.alarm or 0,
             shrine = player.greedHoard.shrine and true or nil,
         } or nil,
+        -- THE MAW (models/maw.lua): how many times it has been fed, which is what its price climbs on. Elided
+        -- while untouched.
+        gluttonyMaw = player.gluttonyMaw and { fed = player.gluttonyMaw.fed or 0 } or nil,
         newItems = newItems,
         -- THE COUNTER WATERMARK: which classes' racks the market has already announced
         -- (Market.markOpened). Without it a load re-announces every blade the company has ever
@@ -1423,6 +1426,8 @@ function Save.restore(snap)
             alarm = tonumber(snap.greedHoard.alarm) or 0,
             shrine = snap.greedHoard.shrine == true,
         } or nil,
+        -- The Maw's feedings (models/maw.lua); nil reads as never fed (Maw.state makes the default).
+        gluttonyMaw = type(snap.gluttonyMaw) == "table" and { fed = tonumber(snap.gluttonyMaw.fed) or 0 } or nil,
         newItems = newItems,
         -- The counter watermark, restored as written. A class that has since been renamed away
         -- simply never matches a live one and is inert, which is the same forgiving default the

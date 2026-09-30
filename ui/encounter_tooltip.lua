@@ -73,6 +73,11 @@ local SPENT = {
     anvil = "Used. A forge tempers one piece.",
     lectern = "Read. A book hones one ability.",
     crossroads = "Answered.",
+    carcass = "Answered.", -- a choice was made here; which one is not the mark's to say
+    watering_hole = "Answered.",
+    still_pool = "Answered.",
+    mooring_post = "Answered.",
+    ferry = "Answered.",
     event = "Already happened.",
 }
 

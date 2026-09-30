@@ -417,4 +417,108 @@ function Crossroads.roll(rnd, sin)
     return pool[i]
 end
 
+-- ---------------------------------------------------------------------------
+-- A circle's own STOPS: one fixed dilemma per encounter kind, never rolled
+-- ---------------------------------------------------------------------------
+--
+-- GLUTTONY'S TWO (2026-09-29, reviewed in three rounds; data/encounters/encounter_the_carcass.lua and
+-- encounter_the_watering_hole.lua). A stop rather than a draw: the marker names what is standing there, so
+-- the question cannot be a surprise, and it is the same question every time it is met. Keyed by the
+-- blueprint's `kind`, and resolved by the same branch and the same ctx as a Crossroads (states/game.lua),
+-- which is why they live here rather than growing a module each. Three helpers are theirs alone:
+--
+--   refill(share, stats?) -> give back `share` of each maximum, flat (Player.refill),
+--   restore()             -> fill every pool, to an injury's ceiling (Player.restore),
+--   revealElites()        -> lift the fog off every elite still standing on this floor; answers how many,
+--   queueOpening(side, statusId, stacks) -> the next fight on this floor opens with it (Descent.queueOpening).
+--   ferry()               -> carry the company to unwalked ground somewhere on this floor; answers whether it moved.
+--
+-- THE WORDS ARE PLACEHOLDERS for the author's, and flat on purpose: a prompt says what is there, an
+-- option's desc says what it does.
+Crossroads.STOPS = {
+    -- THE CARCASS (wastefulness, hunger): a kill left all but whole.
+    carcass = {
+        prompt = "A fresh kill, barely eaten. Whatever brought it down took one bite and left.",
+        options = {
+            { label = "Pick it over", desc = "Take a sealed find. The beasts in your next fight on this floor open Starving.",
+                resolve = function(ctx)
+                    if not ctx.grantSealed() then ctx.notify("There is nothing worth taking") end
+                    ctx.queueOpening("enemy", "status_starving", 1)
+                end },
+            { label = "Eat", desc = "Heal a quarter of your health. Your company opens its next fight on this floor Full.",
+                resolve = function(ctx)
+                    ctx.refill(0.25, { "health" })
+                    ctx.queueOpening("party", "status_full", 1)
+                    ctx.notify("The company eats")
+                end },
+            { label = "Leave it", desc = "Walk on.", resolve = function() end },
+        },
+    },
+    -- THE WATERING HOLE (survival of the fittest): everything drinks here, in order of rank.
+    watering_hole = {
+        prompt = "A watering hole. Everything in the wood drinks here, the biggest first.",
+        options = {
+            { label = "Drink first", desc = "Restore every pool. One member is injured.",
+                resolve = function(ctx)
+                    ctx.restore()
+                    ctx.injure()
+                end },
+            { label = "Wait your turn", desc = "Recover half of every pool.",
+                resolve = function(ctx)
+                    ctx.refill(0.5)
+                    ctx.notify("The company drinks last")
+                end },
+            { label = "Watch the order", desc = "Reveal every elite on this floor.",
+                resolve = function(ctx)
+                    local n = ctx.revealElites()
+                    ctx.notify(n == 0 and "Nothing here outranks you"
+                        or (n == 1 and "One elite is on this floor" or (n .. " elites are on this floor")))
+                end },
+        },
+    },
+    --
+    -- LUST'S THREE (2026-09-29, reviewed in one round; data/encounters/encounter_the_still_pool.lua,
+    -- encounter_the_mooring_post.lua, encounter_the_ferry.lua). Each takes a piece of the company's say:
+    -- what it wants, whether it leaves, where it stands.
+    --
+    -- THE STILL POOL (wanting costs): a pool that shows each of the company what they want. Not "the Still
+    -- Water", which it was pitched as: that name is already Lust's elite (encounter_the_still_water).
+    still_pool = {
+        prompt = "A still pool. Each of you sees something in it you want.",
+        options = {
+            { label = "Reach in", desc = "Take a sealed find. Your company opens its next fight on this floor Burning.",
+                resolve = function(ctx)
+                    if not ctx.grantSealed() then ctx.notify("Your hand closes on water") end
+                    ctx.queueOpening("party", "status_burn")
+                end },
+            { label = "Look away", desc = "Walk on.", resolve = function() end },
+        },
+    },
+    -- THE MOORING POST (whether you leave): tie in, rest, and start the next fight unable to move -- or be
+    -- moved, which on this circle's ground is half a blessing.
+    mooring_post = {
+        prompt = "A mooring post in the fen, its ropes worn smooth.",
+        options = {
+            { label = "Tie in for the night", desc = "Restore every pool. Your company opens its next fight on this floor Rooted.",
+                resolve = function(ctx)
+                    ctx.restore()
+                    ctx.queueOpening("party", "status_root")
+                    ctx.notify("The company sleeps tied to the post")
+                end },
+            { label = "Walk on", desc = "Leave it.", resolve = function() end },
+        },
+    },
+    -- THE FERRY (where you stand): it takes you somewhere, and you do not choose where.
+    ferry = {
+        prompt = "A flat boat tied at a channel. There is a pole and no ferryman.",
+        options = {
+            { label = "Ride it", desc = "The boat carries your company somewhere on this floor you have not walked.",
+                resolve = function(ctx)
+                    if not ctx.ferry() then ctx.notify("The boat drifts back to the bank") end
+                end },
+            { label = "Leave it", desc = "Walk on.", resolve = function() end },
+        },
+    },
+}
+
 return Crossroads

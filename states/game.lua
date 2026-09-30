@@ -2279,6 +2279,12 @@ function game:openEncounter(cell, opts)
                     boons[#boons + 1] = { char = char, id = effect.id, opts = effect.opts }
                 end
             end
+            -- ...AND WHAT A STOP ON THIS FLOOR LEFT FOR THE NEXT FIGHT (Descent.queueOpening): a meal the
+            -- company ate, or the smell of blood that has the beasts opening Starving. Whole-side rows,
+            -- carrying `side` instead of `char`, and taken here so the queue is spent by exactly one fight.
+            if game.descent then
+                for _, row in ipairs(Descent.takeOpening(game.descent)) do boons[#boons + 1] = row end
+            end
 
             return {
                 openingBoons = boons,
@@ -3443,10 +3449,15 @@ function game:openEncounter(cell, opts)
             -- for. Applied after the bell, once traits are on and the units are built.
             local Status = require("models.status")
             for _, boon in ipairs(opening.openingBoons or {}) do
-                for _, unit in ipairs(combat.units) do
-                    if unit.side == "party" and unit.char == boon.char and unit.alive then
-                        Status.apply(combat, unit, boon.id, boon.opts)
-                        break
+                if boon.side then
+                    -- A whole side's boon, from a floor stop (Descent.queueOpening); see battle.lua.
+                    Combat.dressSide(combat, boon.side, boon.id, boon.opts)
+                else
+                    for _, unit in ipairs(combat.units) do
+                        if unit.side == "party" and unit.char == boon.char and unit.alive then
+                            Status.apply(combat, unit, boon.id, boon.opts)
+                            break
+                        end
                     end
                 end
             end
@@ -4138,7 +4149,43 @@ function game:openEncounter(cell, opts)
     -- A Crossroads: a branching gamble (models/crossroads.lua) with real stakes -- a relic, coin, an injury.
     -- Choosing commits and clears the stop; backing out (X/Esc) leaves it to reconsider. The mechanics come
     -- in through a ctx of helpers, so the dilemma data never touches a model directly.
-    if kind == "crossroads" then
+    -- THE MAW (Gluttony's stop, models/maw.lua): feed it N pieces from the pack and it hands back one sealed
+    -- find a rank above the best of them, with N climbing every feeding for the whole save. NEVER CLEARED --
+    -- an appetite does not close, only its price climbs -- so backing out and feeding it are the same to the
+    -- cell: it stands open either way.
+    if kind == "maw" then
+        local Maw = require("models.maw")
+        local close = function() game.activePanel = nil end
+        game.activePanel = require("ui.panels.maw").new({
+            title = cell.encounter.name or "The Maw",
+            price = Maw.price(game.player),
+            candidates = Maw.candidates(game.player),
+            onFeed = function(indices)
+                local floor = game.quest and game.quest.floorLevel
+                local find, why = Maw.feed(game.player, indices, floor)
+                game.activePanel = nil
+                if not find then
+                    game:pushToast("It will not take that: " .. tostring(why))
+                    return
+                end
+                game.activePanel = LootReveal.new({
+                    encounter = { name = cell.encounter.name or "The Maw" },
+                    description = "It gave this back. Next time it wants " .. Maw.price(game.player) .. ".",
+                    sealed = { find },
+                    onCollect = close,
+                    onCancel = close,
+                })
+                saveRun()
+            end,
+            onClose = close,
+        })
+        return
+    end
+
+    -- ...AND A CIRCLE'S OWN STOPS (Crossroads.STOPS: Gluttony's Carcass and Watering Hole, Lust's Still Water,
+    -- Mooring Post and Ferry) come down the same
+    -- branch with their one fixed question instead of a roll, and the four helpers only they call.
+    if kind == "crossroads" or Crossroads.STOPS[kind] then
         local rnd = function() return (love.math and love.math.random()) or math.random() end
         -- What the answer handed up unread, set by ctx.grantSealed below and read by the option's
         -- callback after it. See grantSealed for why the find cannot open its own reveal.
@@ -4237,12 +4284,21 @@ function game:openEncounter(cell, opts)
                 sealedFound = got
                 return true
             end,
+            -- The stops' own four (see Crossroads.STOPS). A flat share of each maximum, a full refill, the
+            -- elites read off the board, and a status the next fight on this floor opens with.
+            refill = function(share, stats) if game.player then Player.refill(game.player, share, stats) end end,
+            restore = function() if game.player then Player.restore(game.player) end end,
+            revealElites = function() return game:revealElites() end,
+            queueOpening = function(side, statusId, stacks)
+                if game.descent then Descent.queueOpening(game.descent, side, statusId, stacks) end
+            end,
+            ferry = function() return game:ferry() end,
         }
         -- THE CIRCLE PICKS THE QUESTION. `quest.sin` is on the floor descriptor already (models/
         -- descent.lua) and is read three lines up to filter the relic shelf; a floor draws the shared
         -- dilemmas plus its own sin's, so roughly half of what a player meets down here is Gluttony's or
         -- Pride's rather than nobody's.
-        local dilemma = Crossroads.roll(rnd, game.quest and game.quest.sin)
+        local dilemma = Crossroads.STOPS[kind] or Crossroads.roll(rnd, game.quest and game.quest.sin)
         local options = {}
         for _, o in ipairs(dilemma.options) do
             options[#options + 1] = {
@@ -4981,6 +5037,65 @@ function game:restStudy()
             if e and e.kind == "relic_cache" then grid:reveal(x, y, 1) end
         end
     end
+end
+
+-- WATCH THE ORDER (the Watering Hole's third choice, data/encounters/encounter_the_watering_hole.lua): lift
+-- the fog off every elite still standing on this floor. For this trip only -- Descent.reseatElites deals
+-- them onto fresh tiles on the next -- which is what reading who drinks first is worth. Returns how many.
+function game:revealElites()
+    local grid = game.grid
+    if not grid then return 0 end
+    local n = 0
+    for y = 1, grid.rows do
+        for x = 1, grid.cols do
+            local cell = grid.cells[y][x]
+            local e = cell.encounter
+            if e and e.kind == "elite" and not cell.cleared then
+                grid:reveal(x, y, 1)
+                n = n + 1
+            end
+        end
+    end
+    return n
+end
+
+-- RIDE THE FERRY (Lust's stop, data/encounters/encounter_the_ferry.lua): carry the company to ground it has
+-- not walked, somewhere far off on this floor, and it does not choose where. The Translation's move pointed
+-- the other way -- that one lands only on SEEN ground so a company is never dropped blind; this one lands
+-- only on UNSEEN ground, because not knowing where the boat puts you in is the whole of what it costs. Never
+-- onto a stop: the boat lands you beside what is there, not in it. Relaxes the distance a step at a time,
+-- as the Translation does. Returns whether it moved them.
+function game:ferry()
+    local grid, map = game.grid, game.map
+    if not (grid and map) then return false end
+    local fromX, fromY = map.px, map.py
+    local cands = {}
+    local want = Descent.translationMin(grid)
+    while #cands == 0 and want >= 1 do
+        for y = 1, grid.rows do
+            for x = 1, grid.cols do
+                local c = grid.cells[y][x]
+                -- ...and never into a room the floor is still hiding (a secret, a vault, a gated cell):
+                -- the boat lands on open ground.
+                if not c.seen and grid:typeWalkable(c.tile) and not c.encounter
+                    and not c.secret and not c.vault and not c.gate
+                    and not (grid.isHidden and grid:isHidden(c))
+                    and (math.abs(x - fromX) + math.abs(y - fromY)) >= want then
+                    cands[#cands + 1] = c
+                end
+            end
+        end
+        want = want - 1
+    end
+    if #cands == 0 then return false end
+    local to = cands[math.random(#cands)]
+    map.px, map.py = to.x, to.y
+    map.slidePrevX, map.slidePrevY = to.x, to.y
+    map:updateCamera()
+    map:snapCamera()
+    game:applyVision()
+    game:pushToast("The boat puts you in somewhere you have not been.")
+    return true
 end
 
 -- Apply the outcome of the generic non-combat modal once the player confirms it. Every stop the board

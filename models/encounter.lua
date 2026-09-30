@@ -225,6 +225,8 @@ Encounter.MARKER_KINDS = {
     "treasure", "rest", "merchant", "crossroads", "event",
     "relic_cache", "shrine", "weeping_stone", "anvil", "lectern", "translation",
     "spinner", "dark", "drop", "stair", "ascent", "road",
+    "carcass", "watering_hole", "maw", -- Gluttony's own stops (Descent.SINS' gluttony `stops`)
+    "still_pool", "mooring_post", "ferry", -- ...and Lust's
 }
 
 -- ONE SENTENCE PER KIND OF STOP, read by every surface that has to say what walking there does: the
@@ -256,6 +258,14 @@ Encounter.GLOSS = {
     shrine        = "An altar that trades. It wants gold up front, and what it gives back bites.",
     weeping_stone = "A stone that deals in rare goods and charges a body for them.",
     anvil         = "A cold forge. One piece you are carrying is tempered here, for nothing.",
+    -- GLUTTONY'S THREE (2026-09-29). Placeholder copy for the author's.
+    carcass       = "A fresh kill. Pick it over for a find, or eat to heal.",
+    watering_hole = "Everything drinks here. Drink first, wait your turn, or watch who comes.",
+    maw           = "It eats what you feed it and gives back something better. It wants more each time.",
+    -- LUST'S THREE (2026-09-29). Placeholder copy for the author's.
+    still_pool    = "A pool that shows you what you want. Reach in for a find, and pay for it in fire.",
+    mooring_post  = "Tie in to rest. The next fight opens with the company unable to move.",
+    ferry         = "A boat with no ferryman. It carries you somewhere on this floor you have not been.",
     -- THE ANVIL'S PAIR. Same gift, other half of the kit -- the line says which half, because the two
     -- stops share a colour on the board and are told apart by their marks alone (ui/overworld_map.lua).
     lectern       = "A book left chained open. One ability you are carrying is honed here, for nothing.",
