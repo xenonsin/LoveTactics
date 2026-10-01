@@ -220,6 +220,10 @@ local TROPHIES = {
     -- Pride's approach beasts and the Titan (2026-09-30): the Lioness's hold as a Hunter's, the Lion's roar as a
     -- Knight's coat, the Peacock-Basilisk's gaze as a Rogue's, and the Titan's chain as a Barbarian's.
     "utility_hold_the_quarry", "armor_golden_mane", "utility_peacocks_train", "weapon_titans_chain",
+    -- Pride's one-off elites' (2026-09-30, "Pride's Bestiary"): the Unicorn's horn as an Exorcist's blade, the
+    -- Sphinx's riddle as an Inquisitor's, the Phoenix's rising as a Priest's, the Tower-Giant's ambition as a
+    -- Barbarian's maul.
+    "weapon_horn_of_purity", "utility_sphinxs_riddle", "utility_phoenix_feather", "weapon_babel_maul",
 }
 
 local function vendorFor(class)

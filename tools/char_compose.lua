@@ -699,6 +699,13 @@ local CHARACTER_SILHOUETTE = {
     lion = "lorc/cat",
     peacock_basilisk = "delapouite/rooster",
     titan = "delapouite/atlas",
+    -- PRIDE'S ONE-OFF ELITES (2026-09-30). Four myths, each its own picture; the manticore already wears the
+    -- Greek sphinx, so the Sphinx takes the Egyptian one, and the Phoenix is the bennu bird it came from.
+    unicorn = "delapouite/unicorn",
+    sphinx = "delapouite/egyptian-sphinx",
+    phoenix = "delapouite/egyptian-bird",
+    phoenix_ember = "lorc/small-fire",                     -- what is left, and what comes back
+    tower_giant = "caro-asercion/tarot-16-the-tower",      -- the card of pride's fall
 }
 
 -- Reverse index: the character key a discipline names as its `exemplar` -> the discipline id. Built from

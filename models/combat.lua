@@ -7487,7 +7487,7 @@ function Combat.mitigatedDamage(target, base, tags, opts, attacker)
     -- A per-type immunity (Immune: Fire and kin) voids a hit carrying that tag outright -- before armor,
     -- resist, vulnerability, and even the raw path below. Sits beside the barrier read above and, like
     -- it, never mutates, so a hovered target reads the negation without spending anything.
-    if Status.immuneToDamage(target, tags) then return 0 end
+    if Status.immuneToDamage(target, tags, attacker) then return 0 end -- attacker: the Unicorn's worthiness
     -- Raw (armor-piercing) damage skips defense and tag resists entirely -- a Penetrating Strike
     -- that lands its full Power on the flesh. Barriers and vulnerabilities still apply (a ward is
     -- not armor). Floors at 1 like any hit.
@@ -8907,7 +8907,7 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     -- a barrier, spends nothing to do so: no charge, no ward consumed. Returned here as a 0, so an immune
     -- hit grants no rage, advances no threshold phase and provokes no counter, exactly as an absorbed one
     -- does. Placed ahead of the barrier so a blow you are already immune to cannot waste a ward charge.
-    local immune = Status.immuneToDamage(target, tags)
+    local immune = Status.immuneToDamage(target, tags, attacker) -- attacker: the Unicorn's worthiness
     if immune then
         Combat.logEvent(combat, "status",
             string.format("%s is immune to the blow (%s).", unitName(target), immune.name or immune.id), target)

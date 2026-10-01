@@ -223,6 +223,12 @@ return {
                 -- A cast of two by review: the Nio are the temple gate's pair, and the fight is the order they
                 -- fall in (whoever falls hands the other its chi). A third body would be a third gauge.
                 encounter_wrath_the_nio = true,
+                -- PRIDE'S ONE-OFF ELITES (2026-09-30, "Pride's Bestiary"): casts of one by design. The Sphinx's riddle
+                -- is the whole fight, the Phoenix's Ember would be stood over, and anything beside the Tower-Giant
+                -- would be standing under it. (The Unicorn rolls its band of pages, so it is not here.)
+                encounter_pride_the_sphinx = true,
+                encounter_pride_the_phoenix = true,
+                encounter_pride_the_tower_giant = true,
             }
             -- THE ROSTER, NOT THE HEAD-COUNT. Asked as "is this the same fight on every seed", because
             -- a stop is allowed to roll its SHAPE while holding its size: the Skeleton King's court is

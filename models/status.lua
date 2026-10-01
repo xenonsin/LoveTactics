@@ -660,9 +660,16 @@ function Status.outranked(unit)
     return unit ~= nil and unit.traits ~= nil and outranked(unit)
 end
 
-function Status.immuneToDamage(unit, tags)
+function Status.immuneToDamage(unit, tags, attacker)
     if not unit then return nil end
     if unit.traits and outranked(unit) then return RANK_WARD end
+    -- PRIDE'S ONE-OFF ELITES (models/pride_elites.lua): the Unicorn turns away a blow from an unworthy
+    -- body (a debuff, a curse or an injury on the ATTACKER, so it needs `attacker`), and the Sphinx takes
+    -- nothing while its riddle stands unanswered. Answered here beside the rank for the rank's reason.
+    if unit.traits and unit.combat then
+        local ward = require("models.pride_elites").ward(unit, attacker)
+        if ward then return ward end
+    end
     for _, s in ipairs(unit.statuses or {}) do
         local im = s.def.immune
         if im then

@@ -1139,6 +1139,15 @@ Grade.TRAIT_GRADE = {
     trait_golden_mane =                 1.0,  -- Golden Mane -- a kill heals allies within 2, Rattles foes
     trait_the_admired_gaze =            1.0,  -- The Gaze That Is Admired -- ignored, it Rattles (Stuns, on the bird)
     trait_the_chains_break =            1.0,  -- The Chains Break -- below half, +2 movement and +4 damage
+    -- PRIDE'S ONE-OFF ELITES (2026-09-30, "Pride's Bestiary"). The Unicorn's worthiness, the Phoenix's return and
+    -- the Tower-Giant's fall are bodies' own and never shelved. Of the drops: the Riddle (on the Sphinx's Riddle)
+    -- is an Empowered strike on a round the side happens to meet; Ambition (on the Babel Maul) is only a count --
+    -- the maul's own effect is what cashes it, and is weighed there.
+    trait_rejects_the_unworthy =        0.0,  -- Rejects the Unworthy -- the Unicorn's ward and cleanse
+    trait_the_riddle =                  1.0,  -- The Riddle -- a riddle a turn; met, Empowered
+    trait_never_repents =               0.0,  -- Never Repents -- the Phoenix's Ember
+    trait_ambition =                    0.5,  -- Ambition -- a stack a turn, consumed by what carries it
+    trait_the_proud_fall =              0.0,  -- The Proud Fall -- the Tower-Giant's crash
 }
 
 -- Which of the weights above were ADOPTED from the classifier's seed rather than weighed one by
