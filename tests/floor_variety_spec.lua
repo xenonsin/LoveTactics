@@ -65,6 +65,10 @@
 --       steal a boon off an ally; illusory duplicates only one of which is real; turn a party member for
 --       a turn (betrayal); stronger against a body with no ally beside it (isolation).
 --
+--   PRIDE -- BUILT 2026-09-30 ("Pride's Bestiary", four rounds of review). The elves (Unblemished), the lions,
+--     the masterless djinn and the Peacock-Basilisk and Titan on the approach; the angels (Incorruptible) on the
+--     seat; the Elf-Lord, the Unicorn and the Sphinx, the Throne, the Wishmaker, the Phoenix and the Tower-Giant
+--     as elites. The brief as it was written:
 --   PRIDE -- perfection, superiority, rejection, rebellion, self-importance, ego, ambition, the
 --     justified, no repentance, fame.
 --     Bodies: elves, angels.
@@ -97,14 +101,14 @@ local SPEC = 15 -- distinct creatures per floor
 
 -- circle/rung -> what it fielded when listed: the circles the 2026-09-22 cuts emptied, owed their
 -- creatures one circle at a time. (Greed's first floor was listed at 12 and closed at 16 with the beetles;
--- Wrath's seat was listed at 6 and closed at 15 with the goblins; its approach closed at 17 with the orcs.)
+-- Wrath's seat was listed at 6 and closed at 15 with the goblins; its approach closed at 17 with the orcs.
+-- Pride's two floors were listed at 5 each and closed on 2026-09-30 at 18 and 23 with the elves, lions and
+-- djinn on the approach and the angels on the seat, which also took both floors past FIGHT_SPEC.)
 local KNOWN_GAPS = {
     ["sloth/1"] = "3 creatures",
     ["sloth/2"] = "5 creatures",
     ["envy/1"]  = "4 creatures",
     ["envy/2"]  = "6 creatures",
-    ["pride/1"] = "5 creatures",
-    ["pride/2"] = "5 creatures",
     ["crown/1"] = "4 creatures -- the bottom floor",
 }
 
@@ -124,8 +128,6 @@ local KNOWN_FIGHT_GAPS = {
     ["sloth/2"] = "0 -- no ordinary fight at all",
     ["envy/1"]  = "1.0 effective fights",
     ["envy/2"]  = "1.0 effective fights",
-    ["pride/1"] = "1.0 effective fights",
-    ["pride/2"] = "1.4 effective fights",
     ["crown/1"] = "1.0 effective fights -- the bottom floor",
 }
 local KNOWN_ELITE_GAPS = {
@@ -133,8 +135,6 @@ local KNOWN_ELITE_GAPS = {
     ["sloth/2"] = "2 elites",
     ["envy/1"]  = "2 elites",
     ["envy/2"]  = "2 elites",
-    ["pride/1"] = "2 elites",
-    ["pride/2"] = "1 elite",
     ["crown/1"] = "2 elites -- the bottom floor",
 }
 

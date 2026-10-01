@@ -176,8 +176,11 @@ function Choir.plan(combat, unit)
     end
     if not item or Combat.itemBlockReason(unit, item) then return nil end
     for _, u in ipairs(combat.units or {}) do
-        if u.alive and u.side ~= unit.side and not Combat.isOffTile(u) and Combat.unitGap(unit, u) == 1 then
-            return { item = item, tx = unit.x, ty = unit.y, reason = "the wheel turns" }
+        -- Aimed at the neighbour itself: the wheel is a tile cast now (weapon_wheel_of_eyes.lua), and its
+        -- ring is the four orthogonal tiles, so a foe on the diagonal is not one it can turn on.
+        if u.alive and u.side ~= unit.side and not Combat.isOffTile(u)
+            and math.abs(u.x - unit.x) + math.abs(u.y - unit.y) == 1 then
+            return { item = item, tx = u.x, ty = u.y, reason = "the wheel turns" }
         end
     end
     return nil

@@ -45,6 +45,14 @@ return {
         speed = 3,
         cooldown = 5,
         cost = { stat = "mana", amount = 8 },
+        -- The wound it answers, shown: the most damage any one ally took since your last turn. It picks the
+        -- target rather than scaling the Ward, so the badge is a readout and `usable` below is the gate.
+        counter = function(unit)
+            local _, most = wounded(unit)
+            return most or 0
+        end,
+        counterGates = false,
+        counterLabel = "Wound",
         usable = function(unit)
             if wounded(unit) then return true end
             return false, "Nobody has been hurt since your last turn"

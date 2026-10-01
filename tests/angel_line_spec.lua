@@ -247,7 +247,7 @@ return {
             assert(plan and plan.item == wheel, "with a foe beside it, the wheel turns")
             local before = { hp(party[1]), hp(party[2]), hp(party[3]) }
             openTurn(c, ophan)
-            assert(Combat.useItem(c, ophan, wheel, ophan.x, ophan.y), "it turns")
+            assert(Combat.useItem(c, ophan, wheel, plan.tx, plan.ty), "it turns, aimed at the foe beside it")
             assert(hp(party[1]) < before[1] and hp(party[2]) < before[2], "both adjacent foes are struck")
             assert(hp(party[3]) == before[3], "the one two tiles off is not")
         end,

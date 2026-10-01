@@ -171,10 +171,10 @@ local Descent = {}
 -- rung has already put on that floor; a billing that names an elite runged onto the OTHER floor weights
 -- an id the floor cannot deal, which is a silent no-op. tests/elite_floor_spec.lua holds the two in step.
 --
--- AND TWO FLOORS NOW STAND NO ELITE AT ALL -- Sloth's approach and Pride's seat, each a circle the
--- 2026-09-22 cut left with a single elite. Both entries below say so where the hole is. A bare floor is
+-- TWO FLOORS ONCE STOOD NO ELITE AT ALL -- Sloth's approach and Pride's seat, each a circle the
+-- 2026-09-22 cut left with a single elite -- and both stood bare rather than doubled: a bare floor is
 -- what a depleted circle honestly looks like; the alternative was the same landmark on both of its
--- stairs, which is the thing this rule exists to stop.
+-- stairs, which is the thing this rule exists to stop. Both have elites of their own now.
 Descent.SINS = {
     { id = "gluttony", name = "Gluttony", vendor = "hunters_lodge", biome = "forest",
         scene = "conversation_descent_gluttony",
@@ -667,22 +667,18 @@ Descent.SINS = {
         -- NO LIEUTENANT. Marginalia is gone; the sworn stands in over the pages it outranks, which is
         -- the rank rule fielding its own centrepiece. It is what a replacement replaces.
         minor = { lead = "character_gilded_sworn", filler = "character_gilded_page" },
-        -- NO `seat`, AND NOTHING STANDS ON THAT FLOOR NOW. The Peerless was a human company and went
-        -- with the rest of them (2026-09-22); the spire has no second elite to promote in its place.
+        -- THE SPIRE IS FULL NOW ("Pride's Bestiary", 2026-09-30). The 2026-09-22 cut took the Peerless and
+        -- left the seat bare until the Apex Crystal (2026-09-24); the bestiary gave each stair five.
         --
-        -- IT USED TO FALL BACK, AND THE FALL-BACK WAS THE BUG. The reader was `rung == 2 and named.seat
-        -- or named.approach`, so a circle with no seat billed its APPROACH elite on both floors -- "the
-        -- one thing the named-elite rule exists to avoid", as this comment said while doing it. One
-        -- elite, one floor removed the possibility from the data (the Gallery is runged onto the
-        -- approach and cannot be dealt on the seat) and Descent.floorPool's reader is explicit now, so
-        -- the seat floor is bare rather than doubled. Sloth carries the mirror of this at `approach`.
-        --
-        -- This comment is still the marker for whoever authors the replacement; what it is no longer is
-        -- a description of a floor quietly billing the wrong body.
-        -- ...AND THE SEAT HAS AN ELITE AGAIN (2026-09-24): the Apex Crystal, top of Pride's slime order
-        -- (Rank). The crystal slimes stand on the approach beside the Gallery.
-        elites = { approach = "encounter_pride_the_gallery", seat = "encounter_the_apex_crystal",
-            spares = { "encounter_the_crystal_slimes" } } },
+        -- BILLED ON THE LINE'S LEADER. The approach is the elves' floor and the seat the angels', so the
+        -- standing threat on each is the body its race answers to: the Elf-Lord, whose Renown is the
+        -- court's own kills, and the Throne, the raid the choir is seated around. The Gallery and the Apex
+        -- Crystal step down to spares beside the one-offs runged onto the same stair.
+        elites = { approach = "encounter_pride_the_elf_lord", seat = "encounter_pride_the_throne",
+            spares = { "encounter_pride_the_gallery", "encounter_the_crystal_slimes",           -- rung 1
+                       "encounter_pride_the_unicorn", "encounter_pride_the_sphinx",              -- rung 1
+                       "encounter_the_apex_crystal", "encounter_pride_the_wishmaker",            -- rung 2
+                       "encounter_pride_the_phoenix", "encounter_pride_the_tower_giant" } } },   -- rung 2
 }
 
 -- WHAT COMES OFF THE BODY: the unique piece a rank pays for being put down, per sin, in the order it is

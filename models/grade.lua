@@ -549,6 +549,7 @@ Grade.TRAIT_GRADE = {
     -- Wound and Renown are a body's own and never shelved. Of the drops: the Livery and the Circlet pay for staying
     -- whole, the Veil turns one blow a round at full health, the Sandals walk every hostile ground, the Laurel is a
     -- capped line-wide damage climb on kills.
+    trait_unblemished =                 1.0,  -- Unblemished -- the race: a large lift until the first wound
     trait_untouchable =                 0.0,  -- Untouchable -- the Bladedancer, while Unblemished
     trait_born_to_the_height =          0.0,  -- Born to the Height -- the Starcaller on Exposure
     trait_will_not_admit =              0.0,  -- Will Not Admit the Wound -- the Highborn's Unblemished returns
