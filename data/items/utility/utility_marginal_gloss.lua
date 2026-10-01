@@ -13,7 +13,9 @@
 -- A GLOSS IS A NOTE IN A MARGIN -- somebody else's answer, written beside the thing it answers. Named
 -- for the object rather than the mechanic, which is how this whole tier is named.
 --
--- No `class` and no `price`: no vendor stocks it, no shelf can replace it. There is one.
+-- A MAGE'S TROPHY (2026-10-01, "there can never be creature drops"): a real class, `unstocked`, no
+-- `price` -- shown on the Arcanum's rack, refused as a monster drop, sold and bought back by nobody
+-- (docs/drops.md). `noSteal` stays: you took it off the body. `unlockLevel` is the floor that pays it.
 local Curve = require("models.curve")
 
 return {
@@ -22,7 +24,9 @@ return {
     flavor = "One line, in a hand that is not the author's, beside a passage the author got wrong.",
     sprite = "assets/items/marginal_gloss.png",
     type = "utility",
-    class = "creature",
+    class = "mage",
+    unlockLevel = 13,
+    unstocked = true,
     tags = { "relic" },
     noSteal = true,
     traits = { "trait_glossed" },

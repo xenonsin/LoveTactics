@@ -13,6 +13,11 @@
 -- fragment of the Gate Below's location (docs/item-text.md: story, not a rule; the tooltip prints it italic
 -- at the foot). The Gate is keyed off the QUEST finished, never off this item (questGate in
 -- models/quest.lua), so stashing it, wearing it, or losing it can never cost the endgame.
+--
+-- A ROGUE'S TROPHY (2026-10-01, "there can never be creature drops"): a real class, `unstocked`, no
+-- `price` -- shown on the Undercroft's rack, refused as a monster drop, sold and bought back by nobody
+-- (docs/drops.md). `unlockLevel` is the floor that pays it: Luxuria's seat, floor four. She still wears
+-- it in her grid: a rogue's piece is root stock, which a general may carry (tests/bestiary_spec.lua).
 local Curve = require("models.curve")
 
 return {
@@ -22,7 +27,9 @@ return {
         "faithful were unmade and the choir sang over it\".",
     sprite = "assets/items/reliquary_unbidden.png",
     type = "utility",
-    class = "creature",
+    class = "rogue",
+    unlockLevel = 4,
+    unstocked = true,
     tags = { "relic" },
     noSteal = true, -- nothing takes this off you; you took it off her
     traits = { "trait_her_court" },

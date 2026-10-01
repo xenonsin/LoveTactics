@@ -687,7 +687,7 @@ Descent.SINS = {
 -- "KILL A SIN, WEAR IT" is not a new idea here; it is the authored one, and this table is the wiring it
 -- never had. data/items/armor/armor_mail_of_the_unappeased.lua says it outright -- "the payment for a
 -- general, and the shape every one of the seven relics takes" -- and five more of those relics have been
--- sitting in their generals' own grids the whole time, `noSteal`, unpriced, on nobody's shelf. What a
+-- sitting in their generals' own grids the whole time, `noSteal` and unpriced. What a
 -- circle paid instead was a SHOP DOOR, which was a patch applied when the Quest Board was retired and
 -- seven houses could no longer open; the door opens on an errand now (models/errand.lua) and the body
 -- goes back to paying what it was carrying.
@@ -707,12 +707,14 @@ Descent.SINS = {
 -- a wearable piece of its own, and each carries the FIRST-PHASE rule that body was built to teach
 -- (data/items/utility/utility_anvils_face.lua and its six siblings).
 --
--- WHICH MAKES A CIRCLE A TWO-PIECE SET, in the order the circle taught it. The whole tier is built on one
--- rule -- a mini sin's second phase is its general's first -- so the lieutenant's piece is the cut-down
--- version and the general's is the thing it was cutting down. (Wrath's pair was the Anvil and Ira, who
--- never stopped sharpening; Furor replaced her and the Anvil's piece is only the stand-in lieutenant's now,
--- so Wrath's set is open until a lieutenant of its own is authored.) That is what
--- makes the second half of a circle worth walking to rather than a smaller copy of the first.
+-- THERE CAN NEVER BE CREATURE DROPS (2026-10-01). Every relic and every lieutenant's piece was once
+-- `class = "creature"` -- on nobody's shelf, so no counter could show one. Each now sits on a real class's
+-- rack as a TROPHY (`unstocked`, unpriced, shown and refused as a monster drop: docs/drops.md), and the
+-- body is still the only road to it. tests/sin_drops_spec.lua holds every entry below to a real class.
+--
+-- A CIRCLE IS NOT A SET. The lieutenant's piece used to be cut to read the condition its general's relic
+-- creates, making each circle a two-piece set; that rule is removed (2026-10-01). Each piece stands on
+-- its own, and a lieutenant authored later owes its general nothing.
 --
 -- AN EMPTY LIST IS STILL A PAYOUT, and the field stays even though nothing is empty today: a list runs
 -- out on a second playthrough, and Descent.dropFor then returns nil and the landing pays the house's
@@ -753,9 +755,8 @@ Descent.SINS = {
 -- and Lust's is two. A queued item is still reachable and a deleted one is not, so they keep their
 -- place until the bodies exist. `. drop-report bosses` re-asks the question and names them.
 --
--- ENTRY #1 NEVER MOVES. The relic is what the fight was built to hand over, and a circle is a
--- two-piece set in the order it taught it -- that is the whole argument above and the trim does not
--- touch it.
+-- ENTRY #1 NEVER MOVES. The relic is what the fight was built to hand over, and the lieutenant's piece is
+-- what its own fight was built to hand over -- the trim does not touch either.
 Descent.DROPS = {
     gluttony = { minor = { "utility_larder_hook" }, general = {
         "utility_maw_of_the_unfed",
@@ -773,7 +774,7 @@ Descent.DROPS = {
         -- and the Anchoress, the Renewal Staff to the Hamadryad.
         "ability_changing_partners", "utility_smelling_salts", "utility_saints_chalice",
     } },
-    -- The Tally's stick first -- it is the lieutenant's MIRROR of Avaritia's rule (tests/sin_drops_spec.lua)
+    -- The Tally's stick first -- the lieutenant's own piece, a Mammonite's trophy (tests/sin_drops_spec.lua)
     -- -- then Vesh's own (2026-09-25): his signature, his raise, his hand, his ledger and his call.
     greed    = { minor = { "utility_tally_stick", "ability_foreclosure", "ability_raise_the_owing",
                            "utility_the_dead_hand", "utility_ledger_of_the_lured", "ability_call_the_lured" }, general = {
@@ -799,8 +800,8 @@ Descent.DROPS = {
     } },
     -- Acedia's relic is her PIKE, and it took a second look to see it: it is tagged
     -- { "spear", "pierce", "physical", "melee", "relic" }, so a search for the bare `tags = { "relic" }`
-    -- the other six wear reports her as the one general with nothing to pay. She is not. The set is
-    -- whole.
+    -- the other six wear reports her as the one general with nothing to pay. She is not: it is a knight's
+    -- trophy, and her list is headed by it.
     sloth    = { minor = { "utility_unblown_horn" }, general = {
         "weapon_forsworn_pike",
         "consumable_bannerets_steel", "utility_closed_entry",

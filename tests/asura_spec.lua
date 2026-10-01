@@ -252,13 +252,13 @@ return {
         end,
     },
     {
-        name = "the drops: the Broken Vow heads Furor's list (a relic), and the rest are monk and fighter trophies",
+        name = "the drops: the Broken Vow heads Furor's list (a monk's relic), and the rest are monk and fighter trophies",
         fn = function()
             local list = Descent.DROPS.wrath.general
             assert(list[1] == "utility_the_broken_vow", "the relic first; got " .. tostring(list[1]))
             local want = { ability_thousand_hands = "monk", utility_burning_halo = "crusader",
                            ability_severing_blow = "fighter", utility_the_asuras_arm = "monk",
-                           utility_tapas_beads = "monk", utility_the_broken_vow = "creature" }
+                           utility_tapas_beads = "monk", utility_the_broken_vow = "monk" }
             for id, class in pairs(want) do
                 local found = false
                 for _, d in ipairs(list) do if d == id then found = true end end

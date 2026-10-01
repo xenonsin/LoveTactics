@@ -9,7 +9,9 @@
 -- purse, read live, so what you are hoarding is what you swing with. Spend the money and the damage goes
 -- back down, which is the honest half of greed and the reason it is capped.
 --
--- No `class` and no `price`: no vendor stocks it, no shelf can replace it. There is one.
+-- A MAMMONITE'S TROPHY (2026-10-01, "there can never be creature drops"): a real class, `unstocked`, no
+-- `price` -- shown on the rack, refused as a monster drop, sold and bought back by nobody (docs/drops.md).
+-- `noSteal` stays: you took it off the body. `unlockLevel` is the floor that pays it.
 local Curve = require("models.curve")
 
 return {
@@ -19,7 +21,9 @@ return {
         "here, and all of them were behind.",
     sprite = "assets/items/tally_stick.png",
     type = "utility",
-    class = "creature",
+    class = "mammonite",
+    unlockLevel = 5,
+    unstocked = true,
     tags = { "relic" },
     noSteal = true,
     traits = { "trait_assayers_tally" },

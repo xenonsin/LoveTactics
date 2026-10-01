@@ -11,7 +11,10 @@
 -- defining trait and this keeps it. It differs in TYPE from Wrath's armor on purpose -- the seven
 -- relics are a set of unlike things, never a matched trophy rack (docs/story.md, "The seven keys").
 --
--- No `class` and no `price`: no vendor stocks it, no shelf can replace it. There is one.
+-- A KNIGHT'S TROPHY (2026-10-01, "there can never be creature drops"): a real class, `unstocked`, no
+-- `price` -- shown on the Bastion's rack, refused as a monster drop, sold and bought back by nobody
+-- (docs/drops.md). `unlockLevel` is Acedia's seat, floor twelve. She still carries it: a knight's piece is
+-- root stock, which a general may wear (tests/bestiary_spec.lua).
 --
 -- The FLAVOR carries this general's fragment naming the Gate Below (docs/item-text.md: the line is
 -- story, not a rule, and the tooltip prints it italic at the foot). The Gate is keyed off the QUEST
@@ -26,7 +29,9 @@ return {
         "gate that was opened from within\".",
     sprite = "assets/items/forsworn_pike.png",
     type = "weapon",
-    class = "creature",
+    class = "knight",
+    unlockLevel = 12,
+    unstocked = true,
     tags = { "spear", "pierce", "physical", "melee", "relic" },
     hands = 2, -- a two-handed polearm, like every spear (Dual Wield pairs it only once forged to +5)
     noSteal = true, -- nothing takes this off you; you took it off her

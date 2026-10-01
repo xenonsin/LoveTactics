@@ -13,7 +13,10 @@
 -- SHIPPED FIDELITY: the trait it carries is the phase-one copy. The Host, the Pall, Covet and Grudge are
 -- deferred new work (see the trait and the chapter).
 --
--- No `class`, no `price`, `noSteal`. The FLAVOR carries this general's fragment of the Gate Below's
+-- An ALCHEMIST'S TROPHY (2026-10-01, "there can never be creature drops"): a real class, `unstocked`, no
+-- `price`, `noSteal` -- shown on the Crucible's rack, refused as a monster drop, sold and bought back by
+-- nobody (docs/drops.md). `unlockLevel` is the floor that pays it: Livia's seat, floor eight. She still
+-- wears it: an alchemist's piece is root stock, which a general may carry (tests/bestiary_spec.lua). The FLAVOR carries this general's fragment of the Gate Below's
 -- location (docs/item-text.md: story, not a rule). The Gate is keyed off the QUEST finished, never off
 -- this item (questGate in models/quest.lua), so stashing it, wearing it, or losing it can never cost the
 -- endgame.
@@ -26,7 +29,9 @@ return {
         "\"below the vats, where the shapeless envy the shaped\".",
     sprite = "assets/items/envious_glass.png",
     type = "utility",
-    class = "creature",
+    class = "alchemist",
+    unlockLevel = 8,
+    unstocked = true,
     tags = { "relic" },
     noSteal = true, -- nothing takes this off you; you took it off her
     traits = { "trait_covetous_reflection" },

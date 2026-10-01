@@ -13,7 +13,9 @@
 -- floor where you are outmatched it pays constantly -- and it pays least in the fights you were already
 -- winning, which is the right way round.
 --
--- No `class` and no `price`: no vendor stocks it, no shelf can replace it. There is one.
+-- An ALCHEMIST'S TROPHY (2026-10-01, "there can never be creature drops"): a real class, `unstocked`, no
+-- `price` -- shown on the Crucible's rack, refused as a monster drop, sold and bought back by nobody
+-- (docs/drops.md). `noSteal` stays: you took it off the body. `unlockLevel` is the floor that pays it.
 local Curve = require("models.curve")
 
 return {
@@ -23,7 +25,9 @@ return {
         "it as the first.",
     sprite = "assets/items/second_vessel.png",
     type = "utility",
-    class = "creature",
+    class = "alchemist",
+    unlockLevel = 7,
+    unstocked = true,
     tags = { "relic" },
     noSteal = true,
     traits = { "trait_covetous_eye" },

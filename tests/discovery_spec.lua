@@ -224,6 +224,16 @@ local TROPHIES = {
     -- Sphinx's riddle as an Inquisitor's, the Phoenix's rising as a Priest's, the Tower-Giant's ambition as a
     -- Barbarian's maul.
     "weapon_horn_of_purity", "utility_sphinxs_riddle", "utility_phoenix_feather", "weapon_babel_maul",
+    -- The sins' own payment (2026-10-01, "there can never be creature drops"): every general's relic and every
+    -- lieutenant's piece left the creature bucket for a real shelf, as trophies -- the first entry on each
+    -- Descent.DROPS list. Pride's Codex is reworked separately and is not named here.
+    "utility_maw_of_the_unfed", "utility_larder_hook",           -- Gluttony: hunter, hunter
+    "utility_reliquary_unbidden", "utility_beggars_bowl",        -- Lust: rogue, inquisitor
+    "utility_gilded_belly", "utility_tally_stick",               -- Greed: mammonite, mammonite
+    "utility_envious_glass", "utility_second_vessel",            -- Envy: alchemist, alchemist
+    "utility_the_broken_vow", "utility_anvils_face",             -- Wrath: monk, fighter
+    "weapon_forsworn_pike", "utility_unblown_horn",              -- Sloth: knight, knight
+    "utility_marginal_gloss",                                    -- Pride: mage
 }
 
 local function vendorFor(class)

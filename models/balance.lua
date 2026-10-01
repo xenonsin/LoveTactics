@@ -363,6 +363,13 @@ Balance.MAGNITUDE_WAIVERS = {
         .. " each shoved, with a body driven into another struck again for the full magnitude -- a crowd of"
         .. " four is eight landings. Per target it is held at the Labrys's weight (the other piece that may"
         .. " hit six), and the rung's 17 on each of them would make it the heaviest swing on the shelf.",
+    -- THE SINS' DROPS ON REAL SHELVES (2026-10-01, "there can never be creature drops").
+    weapon_forsworn_pike = "Acedia's relic, and the thrust is not what it sells: its rule (trait_unrelieved)"
+        .. " swears the whole enemy party into pairs at the bell and bites every body that ends a turn"
+        .. " apart from its partner, so the damage is paid by the board, not the swing. It was authored at"
+        .. " this weight as creature kit, off the ladder; moving it onto the knight's rack at slot 12 put"
+        .. " it on a scale it was never cut for, and raising the thrust to the rung's 14 would be changing"
+        .. " a relic's rule to satisfy a shelf it only stands on as a trophy.",
 }
 
 -- (Balance.EARLY_GATES -- "how many gates count as the opening shelf" -- lived here to bound the median

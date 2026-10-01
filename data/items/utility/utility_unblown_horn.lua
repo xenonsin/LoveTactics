@@ -14,7 +14,9 @@
 -- off it. It is the alarm nobody raised, and what it does now is make other people stand where they were
 -- put.
 --
--- No `class` and no `price`: no vendor stocks it, no shelf can replace it. There is one.
+-- A KNIGHT'S TROPHY (2026-10-01, "there can never be creature drops"): a real class, `unstocked`, no
+-- `price` -- shown on the Bastion's rack, refused as a monster drop, sold and bought back by nobody
+-- (docs/drops.md). `noSteal` stays: you took it off the body. `unlockLevel` is the floor that pays it.
 local Curve = require("models.curve")
 
 return {
@@ -23,7 +25,9 @@ return {
     flavor = "Slung on the wall by the stair, where the watch could reach it without standing up.",
     sprite = "assets/items/unblown_horn.png",
     type = "utility",
-    class = "creature",
+    class = "knight",
+    unlockLevel = 11,
+    unstocked = true,
     tags = { "relic" },
     noSteal = true,
     traits = { "trait_kept_watch" },

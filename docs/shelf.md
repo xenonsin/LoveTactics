@@ -144,8 +144,8 @@ about at any counter. `Vendor.stock` admits them on their `unlockLevel` now, and
 `lockReason = "monster drop"`. See [drops.md](drops.md#rift-only-pieces);
 `tests/discovery_spec.lua` holds it.
 
-Fourteen blueprints carry the flag. The seven generals' relics need none: they are `class = "creature"`
-with no `unlockLevel`, so no counter could quote one to begin with.
+The sins' relics and their lieutenants' pieces carry it as well (2026-10-01, *there can never be
+creature drops*): they left the `creature` bucket for real class shelves, where a rack can show them.
 
 **The obligation, which survives and is now met structurally.** A shelf *guarantees* an item is
 reachable; a drop table does not. That sentence is why the gate came off: reachability was statistical

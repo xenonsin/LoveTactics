@@ -9,7 +9,9 @@
 -- swinging; the bowl is paid in both cases. What the Reliquary adds is the ability to CAUSE the
 -- condition rather than wait for it.
 --
--- No `class` and no `price`: no vendor stocks it, no shelf can replace it. There is one.
+-- AN INQUISITOR'S TROPHY (2026-10-01, "there can never be creature drops"): a real class, `unstocked`, no
+-- `price` -- shown on the rack, refused as a monster drop, sold and bought back by nobody (docs/drops.md).
+-- `noSteal` stays: you took it off the body. `unlockLevel` is the floor that pays it.
 local Curve = require("models.curve")
 
 return {
@@ -18,7 +20,9 @@ return {
     flavor = "Carried through the nave for a hundred years. It has never held anything.",
     sprite = "assets/items/beggars_bowl.png",
     type = "utility",
-    class = "creature",
+    class = "inquisitor",
+    unlockLevel = 3,
+    unstocked = true,
     tags = { "relic" },
     noSteal = true,
     traits = { "trait_beggars_due" },

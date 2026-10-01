@@ -374,7 +374,8 @@ return {
                 assert(Item.defs[id], id .. " exists")
             end
             local relic = Item.defs.utility_gilded_belly
-            assert(relic.class == "creature" and relic.noSteal and not relic.price, "the relic is hers, unpriced")
+            assert(relic.class == "mammonite" and relic.unstocked and relic.noSteal and not relic.price,
+                "the relic is hers: a Mammonite's trophy, unpriced")
             assert(Item.defs.utility_bottomless_purse == nil, "Aurea's Purse went with her")
         end,
     },

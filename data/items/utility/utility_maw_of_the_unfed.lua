@@ -18,6 +18,10 @@
 -- fragment of the Gate Below's location (docs/item-text.md: story, not a rule). The Gate is keyed off the
 -- QUEST finished, never off this item (questGate in models/quest.lua), so stashing it, wearing it, or
 -- losing it can never cost the endgame.
+--
+-- A HUNTER'S TROPHY (2026-10-01, "there can never be creature drops"): a real class, `unstocked`, no
+-- `price` -- shown on the Lodge's rack, refused as a monster drop, sold and bought back by nobody
+-- (docs/drops.md). `unlockLevel` is the floor that pays it: Gula's seat, floor two.
 return {
     name = "Maw of the Unfed",
     description = "Becomes the power of the last body you killed, until the fight ends.",
@@ -25,7 +29,9 @@ return {
         "the horn: \"at the heart of the wood the hunt hollowed out\".",
     sprite = "assets/items/maw_of_the_unfed.png",
     type = "utility",
-    class = "creature",
+    class = "hunter",
+    unlockLevel = 2,
+    unstocked = true,
     tags = { "relic" },
     noSteal = true, -- nothing takes this off you; you took it off her
     traits = { "trait_palate" },

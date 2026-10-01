@@ -10,7 +10,9 @@
 -- exchange and thins as the fight takes its toll. It is the reward for being ahead, which is a real
 -- thing to build toward even with no relic feeding it.
 --
--- No `class` and no `price`: no vendor stocks it, no shelf can replace it. There is one.
+-- A HUNTER'S TROPHY (2026-10-01, "there can never be creature drops"): a real class, `unstocked`, no
+-- `price` -- shown on the Lodge's rack, refused as a monster drop, sold and bought back by nobody
+-- (docs/drops.md). `noSteal` stays: you took it off the body. `unlockLevel` is the floor that pays it.
 local Curve = require("models.curve")
 
 return {
@@ -19,7 +21,9 @@ return {
     flavor = "The Gralloch hung its catch on this. Nothing on it was ever taken down.",
     sprite = "assets/items/larder_hook.png",
     type = "utility",
-    class = "creature",
+    class = "hunter",
+    unlockLevel = 1,
+    unstocked = true,
     tags = { "relic" },
     noSteal = true,
     traits = { "trait_larder" },

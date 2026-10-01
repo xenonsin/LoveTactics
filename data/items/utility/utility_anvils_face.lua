@@ -13,7 +13,9 @@
 -- chipped, which is the answer to a swarm and worth carrying off the Anvil's floor before you have ever
 -- seen Ira.
 --
--- No `class` and no `price`: no vendor stocks it, no shelf can replace it. There is one.
+-- A FIGHTER'S TROPHY (2026-10-01, "there can never be creature drops"): a real class, `unstocked`, no
+-- `price` -- shown on the Colosseum's rack, refused as a monster drop, sold and bought back by nobody
+-- (docs/drops.md). `noSteal` stays: you took it off the body. `unlockLevel` is the floor that pays it.
 --
 -- No `flavor` fragment naming the Gate Below. There are exactly seven of those and they belong to the
 -- generals' relics (docs/item-text.md); a lieutenant's piece is kit, not a piece of the map.
@@ -26,7 +28,9 @@ return {
         "that did the work.",
     sprite = "assets/items/anvils_face.png",
     type = "utility",
-    class = "creature",
+    class = "fighter",
+    unlockLevel = 9,
+    unstocked = true,
     tags = { "relic" },
     noSteal = true, -- nothing takes this off you; you took it off the body
     traits = { "trait_anvil_face" },

@@ -121,7 +121,9 @@ Acedia, whose twenty-first entry needs twenty-one separate descents to Sloth.
 They got there honestly: when the Quest Board was retired, 64 unpriced pieces lost their only source in
 one stroke and were parked on the generals. Every one belongs to its circle, so the *placement* is right
 and the *concentration* is not. They move onto that circle's ordinary bodies; each general keeps her
-authored relic — the first entry, the one the fight is about — and a circle stays a two-piece set.
+authored relic — the first entry, the one the fight is about. (A circle was also once a two-piece set,
+the lieutenant's piece cut to read its general's relic; that rule was removed on 2026-10-01, and each
+piece now stands on its own.)
 
 > [shelf.md](shelf.md)'s standing obligation is what this measures against: *a shelf guarantees an item
 > is reachable; a drop table does not, and any item whose honest answer is "not at the depths people
@@ -356,10 +358,12 @@ written animal, not a list `. drop-assign` spread for coverage:
 | `character_wolf_alpha` | Ravener's Hide, In and Out |
 | `character_wolf_grunt` | Runner's Hide |
 
-**The seven generals' relics need no flag**, and that is worth knowing before anyone adds one: they are
-`class = "creature"` with no `unlockLevel`, so no counter could quote one to begin with and `unstocked`
-would be inert. The flag is for a piece that carries a real class and a real depth — one the shelf
-*would* otherwise deal.
+**The sins' relics carry it too, since 2026-10-01: there can never be creature drops.** They used to be
+`class = "creature"` with no `unlockLevel` — no counter could quote one, so the flag was inert, and no
+rack could show one either. Every general's relic and every lieutenant's piece (the head of each
+`Descent.DROPS` list) now sits on a real class's shelf with a real depth and `unstocked`, like any other
+body's own piece; `tests/sin_drops_spec.lua` holds every entry on those lists, and every body's `drops`,
+to a real class. A creature that fights with a drop wears a creature copy and drops the real piece.
 
 **One piece was deliberately left off.** `utility_endurance` is on the wolf grunt's list but reads as
 plain hunter shelf stock at `unlockLevel 2`; it stays buyable, and the grunt dropping it early is exactly
