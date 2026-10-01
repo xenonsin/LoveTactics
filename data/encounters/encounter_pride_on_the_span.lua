@@ -1,10 +1,10 @@
--- ON THE SPAN: a starcaller out on the Exposure that does nothing to it and pays it for standing there, and
--- retainers holding the way out to it.
--- Approved 2026-09-30 ("Pride's Bestiary").
+-- STARLIGHT WATCH: a starcaller lighting the company up with Witchlight and casting at the light, and retainers
+-- holding the way to it. Approved 2026-09-30 ("Pride's Bestiary") as On the Span; renamed 2026-10-01 when the
+-- Starcaller came off Exposure (data/characters/character_elf_starcaller.lua). The file keeps its id.
 local Band = require("models.band")
 
 return {
-    name = "On the Span",
+    name = "Starlight Watch",
     kind = "combat",
     weight = 4,
     condition = function(ctx) return ctx.biome == "spire" end,

@@ -5,7 +5,8 @@
 --   Elf Longbow       DRAWN STANCE: drawn unmoved, the shot cannot be avoided and carries through to the body
 --                     behind                                                             -> Heartstring Longbow
 --   Elf Bladedancer   UNTOUCHABLE: while Unblemished, every attack that rolls to hit is evaded -> Dancer's Veil
---   Elf Starcaller    BORN TO THE HEIGHT: Exposure does nothing to it; on it, +3 Magic Damage and +1 reach
+--   Elf Starcaller    BY STARLIGHT (reworked 2026-10-01): Starlight lays Witchlight around a foe; its spells strike
+--                     a Limned foe for 3 more, and it reaches a tile further while any foe is Limned
 --                                                                                        -> Skywalker's Sandals
 --   Elf Highborn      WILL NOT ADMIT THE WOUND: a full round unstruck and it is Unblemished again
 --                                                                                        -> Highborn Circlet
@@ -40,7 +41,7 @@ local SHELF = {
     armor_livery_of_the_house = "knight", weapon_heartstring_longbow = "hunter", armor_dancers_veil = "duelist",
     armor_skywalkers_sandals = "mage", utility_highborn_circlet = "knight", utility_laurel_of_renown = "warlord",
 }
-local ORGANS = { "utility_untouchable", "utility_born_to_the_height", "utility_will_not_admit", "utility_renown" }
+local ORGANS = { "utility_untouchable", "utility_by_starlight", "utility_will_not_admit", "utility_renown" }
 local FIGHTS = {
     encounter_pride_elf_patrol = "combat", encounter_pride_the_ring = "combat", encounter_pride_on_the_span = "combat",
     encounter_pride_the_court = "combat", encounter_pride_the_elf_lord = "elite",
@@ -219,20 +220,25 @@ return {
     },
     -- ------------------------------------------------------------------------------ the Starcaller
     {
-        name = "Born to the Height: Exposure does nothing to the Starcaller, and pays it +3 Magic Damage and a tile",
+        name = "By Starlight: Starlight Limns the company, and the Starcaller strikes the Limned harder and from further",
         fn = function()
-            local c = Fixture.combat(board(), body(1, 1),
-                { unit("character_elf_starcaller", 5, 5), unit("character_elf_retainer", 7, 5) })
-            local sc, ret = one(c, "character_elf_starcaller"), one(c, "character_elf_retainer")
-            local bolt = itemNamed(sc.char, "ability_ice_bolt").activeAbility
-            local magic, reach = Combat.flatStat(sc, "magicDamage"), Combat.abilityRange(c, sc, bolt)
-            -- Sided to the company, so to every elf it is a foe's ground.
-            Hazard.place(c, 5, 5, "hazard_exposure", { side = "party" })
-            Hazard.place(c, 7, 5, "hazard_exposure", { side = "party" })
-            assert(Status.has(ret, "status_vulnerable_pierce"), "Exposure opens an ordinary elf to the point")
-            assert(not Status.has(sc, "status_vulnerable_pierce"), "and does nothing to the Starcaller")
-            assert(Combat.flatStat(sc, "magicDamage") == magic + 3, "on it, +3 Magic Damage")
-            assert(Combat.abilityRange(c, sc, bolt) == reach + 1, "and a tile further out")
+            local c = Fixture.combat(board(), { body(5, 2), body(9, 9) }, { unit("character_elf_starcaller", 5, 5) })
+            local sc = one(c, "character_elf_starcaller")
+            local party = sided(c, "party")
+            local foe, far = party[1], party[2]
+            local boltItem = itemNamed(sc.char, "ability_ice_bolt")
+            local bolt = boltItem.activeAbility
+            local reach = Combat.abilityRange(c, sc, bolt)
+            local plain = Combat.computeDamage(c, sc, foe, boltItem)
+            local light = itemNamed(sc.char, "ability_starlight")
+            assert(light and light.noSteal and light.class == "creature", "Starlight is the Starcaller's own cast")
+            openTurn(c, sc)
+            assert(Combat.useItem(c, sc, light, foe.x, foe.y), "it lights the foe up")
+            assert(Hazard.at(c, foe.x, foe.y, "hazard_witchlight"), "Witchlight lies under the foe")
+            assert(Status.has(foe, "status_limned"), "and the foe standing in it is Limned")
+            assert(not Status.has(far, "status_limned"), "the one out of the light is not")
+            assert(Combat.computeDamage(c, sc, foe, boltItem) == plain + 3, "a spell strikes the Limned for 3 more")
+            assert(Combat.abilityRange(c, sc, bolt) == reach + 1, "and while a foe is Limned, it reaches a tile further")
         end,
     },
     {

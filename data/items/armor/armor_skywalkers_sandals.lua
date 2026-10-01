@@ -1,5 +1,6 @@
 -- THE SKYWALKER'S SANDALS: the Elf Starcaller's drop (data/characters/character_elf_starcaller.lua). Approved
--- 2026-09-30 ("Pride's Bestiary"). Born to the Height, worn anywhere: no hostile ground does anything to the
+-- 2026-09-30 ("Pride's Bestiary"). The Starcaller's first rule (Born to the Height, reworked into By Starlight on
+-- 2026-10-01; the sandals were kept), worn anywhere: no hostile ground does anything to the
 -- wearer, and standing in it the wearer casts for +2 Magic Damage (trait_skywalker, Hazard.shrugs). Armour, so it
 -- costs its square like every other piece.
 --

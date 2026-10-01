@@ -1,5 +1,6 @@
 -- SKYWALKER: the Skywalker's Sandals (data/items/armor/armor_skywalkers_sandals.lua), the Elf Starcaller's drop.
--- Approved 2026-09-30 ("Pride's Bestiary"). Born to the Height, widened to every ground and narrowed in what it
+-- Approved 2026-09-30 ("Pride's Bestiary"). The Starcaller's first rule (Born to the Height, since reworked into By
+-- Starlight), widened to every ground and narrowed in what it
 -- pays: no hostile zone does anything to the wearer (`groundproof`, Hazard.shrugs), and standing in one, +2 Magic
 -- Damage. The spire's height is one hazard; the sandals walk on all of them.
 local Hazard = require("models.hazard")

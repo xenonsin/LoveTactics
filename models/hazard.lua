@@ -240,16 +240,15 @@ end
 -- Combat.moveUnit for each newly entered path tile, and from Hazard.place when a hazard lands on an
 -- occupied tile. Side-agnostic: fire burns friend and foe alike.
 -- THE ELVES OF PRIDE: GROUNDPROOF. A trait declaring `groundproof = true` (the Skywalker's Sandals) shrugs every
--- HOSTILE zone; `groundproof = { [hazard id] = true }` (the Elf Starcaller's Born to the Height) shrugs the ones it
--- names. A shrugged zone does nothing to the body on entry, on landing or on a blast, and its planner reads it
--- as open floor. A friendly zone still serves, and deep water still drowns: that is the water, not the ground.
+-- HOSTILE zone. A shrugged zone does nothing to the body on entry, on landing or on a blast, and its planner reads
+-- it as open floor. A friendly zone still serves, and deep water still drowns: that is the water, not the ground.
+-- (A per-hazard table form served only the Starcaller's Born to the Height and went with it, 2026-10-01.)
 function Hazard.shrugs(unit, hazard)
     if not (unit and unit.traits and hazard and hazard.def) then return false end
     if hazard.def.disposition ~= "hostile" or hazard.id == "hazard_deep_water" then return false end
     if not require("models.trait").flag(unit, "groundproof") then return false end
     for _, t in ipairs(unit.traits) do
-        local g = t.def and t.def.groundproof
-        if g == true or (type(g) == "table" and g[hazard.id]) then return true end
+        if t.def and t.def.groundproof == true then return true end
     end
     return false
 end

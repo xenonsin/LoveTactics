@@ -1,8 +1,9 @@
--- THE ELF STARCALLER, rung 1: the elves' mage (approved 2026-09-30, "Pride's Bestiary"): BORN TO THE HEIGHT.
+-- THE ELF STARCALLER, rung 1: the elves' mage (approved 2026-09-30, "Pride's Bestiary"): BY STARLIGHT.
 --
--- The spire's Exposure does nothing to it, and standing on it, it casts for +3 Magic Damage from a tile further out
--- (utility_born_to_the_height) -- on top of Unblemished's own +4 and tile. So the open span is where it wants to
--- be, and the open span is where the company least wants to go and get it.
+-- Reworked 2026-10-01. It was Born to the Height, hung on the spire's Exposure, which the arena places with no owner
+-- and so does nothing to anyone. Now it brings its own light: Starlight lays Witchlight around a foe, and By
+-- Starlight (utility_by_starlight) strikes a Limned foe for 3 more and casts a tile further out while any foe is
+-- Limned -- on top of Unblemished's own +4 and tile. Step out of the light, or kill the one that lights it.
 --
 -- It drops the Skywalker's Sandals. On the mage table.
 return {
@@ -22,8 +23,8 @@ return {
         skill = 3, luck = 4,
     },
     startingItems = {
-        "weapon_wand",                "ability_ice_bolt", false,
-        "utility_born_to_the_height", false,              false,
+        "weapon_wand",          "ability_ice_bolt", "ability_starlight",
+        "utility_by_starlight", false,              false,
         false,                        false,              false,
     },
     drops = { "armor_skywalkers_sandals" },

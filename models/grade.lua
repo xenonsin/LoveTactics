@@ -545,13 +545,13 @@ Grade.TRAIT_GRADE = {
     trait_the_hornless_sister =         0.0,  -- The Hornless Sister -- mana drawn from her sister
     trait_borrowed_eyes =               1.0,  -- Borrowed Eyes -- Invisible foes within 4 are Limned
 
-    -- THE ELVES OF PRIDE (2026-09-30), the approach's line. Untouchable, Born to the Height, Will Not Admit the
+    -- THE ELVES OF PRIDE (2026-09-30), the approach's line. Untouchable, By Starlight, Will Not Admit the
     -- Wound and Renown are a body's own and never shelved. Of the drops: the Livery and the Circlet pay for staying
     -- whole, the Veil turns one blow a round at full health, the Sandals walk every hostile ground, the Laurel is a
     -- capped line-wide damage climb on kills.
     trait_unblemished =                 1.0,  -- Unblemished -- the race: a large lift until the first wound
     trait_untouchable =                 0.0,  -- Untouchable -- the Bladedancer, while Unblemished
-    trait_born_to_the_height =          0.0,  -- Born to the Height -- the Starcaller on Exposure
+    trait_by_starlight =                0.0,  -- By Starlight -- the Starcaller vs the Limned
     trait_will_not_admit =              0.0,  -- Will Not Admit the Wound -- the Highborn's Unblemished returns
     trait_renown =                      0.0,  -- Renown -- the Elf-Lord's count, lent to his elves
     trait_livery =                      0.5,  -- Livery of the House -- +3 Defense at full health

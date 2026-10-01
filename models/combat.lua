@@ -1009,7 +1009,7 @@ function Combat.abilityRange(combat, unit, ab, x, y)
     -- a tile further out while it rides high. Read here, the one reader, so the tell, the planner and the
     -- swing agree.
     if unit then range = range + Status.statBonus(unit, "range") end
-    -- THE ELVES OF PRIDE: ...and a live trait may too (Born to the Height: a tile further on Exposure).
+    -- THE ELVES OF PRIDE: ...and a live trait may too (By Starlight: a tile further while a foe is Limned).
     if unit then range = range + Trait.liveBonus(unit, "range") end
     -- A reach an ability only has FROM HIDING (`hiddenRange`): the Sabertooth's Pounce bites from three
     -- tiles when it came up to act unseen, and from beside you otherwise. A floor under the reach rather

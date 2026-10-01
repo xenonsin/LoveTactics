@@ -1129,7 +1129,8 @@ return {
     ["items/utility_the_last_lamp.png"] = { icon = "lorc/paper-lantern", by = "hand" },
     -- THE ELVES OF PRIDE (2026-09-30), the approach's line: four organs and six trophies.
     ["items/utility_untouchable.png"] = { icon = "felbrigg/dodge", by = "hand" },
-    ["items/utility_born_to_the_height.png"] = { icon = "lorc/peaks", by = "hand" },
+    ["items/utility_by_starlight.png"] = { icon = "caro-asercion/tarot-17-the-star", by = "hand" },
+    ["items/ability_starlight.png"] = { icon = "delapouite/star-formation", by = "hand" },
     ["items/utility_will_not_admit.png"] = { icon = "lorc/cracked-mask", by = "hand" },
     ["items/utility_renown.png"] = { icon = "delapouite/polar-star", by = "hand" },
     ["items/armor_livery_of_the_house.png"] = { icon = "delapouite/fleur-de-lys", by = "hand" },
