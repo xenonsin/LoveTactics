@@ -1101,6 +1101,8 @@ return {
     ["items/utility_borrowed_eyes.png"] = { icon = "lorc/third-eye", by = "hand" },
     ["items/utility_keeper_of_horns.png"] = { icon = "delapouite/shinto-shrine", by = "hand" },
     ["items/utility_oni_blood.png"] = { icon = "lorc/horned-helm", by = "hand" },
+    -- THE ELVES OF PRIDE (2026-09-30): the race's grant.
+    ["items/utility_elf_blood.png"] = { icon = "delapouite/elf-ear", by = "hand" },
     -- THE ASURA OF WRATH (2026-09-28): the blood, the arms by rank, the gate pair, and Furor's pieces.
     ["items/utility_asura_blood.png"] = { icon = "lorc/broken-heart-zone", by = "hand" },
     ["items/utility_the_broken_vow.png"] = { icon = "lorc/lotus", by = "hand" },
