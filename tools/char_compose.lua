@@ -706,6 +706,8 @@ local CHARACTER_SILHOUETTE = {
     phoenix = "delapouite/egyptian-bird",
     phoenix_ember = "lorc/small-fire",                     -- what is left, and what comes back
     tower_giant = "caro-asercion/tarot-16-the-tower",      -- the card of pride's fall
+    -- SUBLIMITAS (2026-10-01): Pride's lieutenant, the archmage who has only to see a working once.
+    sublimitas = "delapouite/warlock-eye",
 }
 
 -- Reverse index: the character key a discipline names as its `exemplar` -> the discipline id. Built from

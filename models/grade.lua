@@ -1149,6 +1149,10 @@ Grade.TRAIT_GRADE = {
     trait_never_repents =               0.0,  -- Never Repents -- the Phoenix's Ember
     trait_ambition =                    0.5,  -- Ambition -- a stack a turn, consumed by what carries it
     trait_the_proud_fall =              0.0,  -- The Proud Fall -- the Tower-Giant's crash
+    -- SUBLIMITAS (2026-10-01). Counter Magic with the mana and the cooldown taken off and a first-cast tax
+    -- put on: every spell lands once before it is answered. Graded at the parent's 3.0, since it rides the
+    -- Codex Unanswered (a Mage's trophy) as well as her organ.
+    trait_already_known =               3.0,  -- Already Known
 }
 
 -- Which of the weights above were ADOPTED from the classifier's seed rather than weighed one by

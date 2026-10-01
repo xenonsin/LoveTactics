@@ -1,39 +1,29 @@
--- Lifted off Sublimitas's body, and it kept her rule (data/traits/trait_counter_magic.lua): carry the
--- Codex and a single-target spell aimed at you is answered and unravelled -- you become the thing you
--- killed, the shape every one of the seven relics takes (compare data/items/utility/
--- utility_reliquary_unbidden.lua).
+-- Lifted off Sublimitas (data/characters/character_sublimitas.lua), and it kept her rule (data/traits/
+-- trait_already_known.lua): carry the Codex and every spell worked in your sight is written into it, and a spell
+-- you have already seen cast this fight is unravelled when it is aimed at you. The first casting of anything
+-- still lands -- the book has to read a working before it can answer it.
 --
--- It is a trap dressed as a reward, as it was on her: it answers only what is SHOWN, and it teaches the
--- bearer to believe that having the measure of every visible thing is the same as being unbeatable. The
--- one hand it can never answer is a mage who never shows it anything -- which is precisely the certainty
--- it quietly trains into you (docs/story.md, "The Arcanum").
+-- A MAGE'S TROPHY (reworked 2026-10-01, when she moved down to Pride's stair): `class = "mage"` and `unstocked`,
+-- so the Arcanum's rack shows it greyed and never sells it, and it is a real piece of mage kit rather than a
+-- creature's organ. Her own copy of the rule rides on her organ (utility_already_known); this is the one she
+-- drops. It answers only what is SHOWN, and teaches its bearer that having the measure of every visible thing
+-- is the same as being unbeatable (docs/story.md, "The Arcanum").
 --
--- SHIPPED FIDELITY: the trait it carries is a counter-magic reflex; the full "glance and cast it back,
--- then fill the board with copies of yourself" is deferred new work (see the trait and the chapter).
---
--- No `class`, no `price`, `noSteal`: there is one, and nothing takes it off you. The FLAVOR carries this
--- general's fragment of the Gate Below's location (docs/item-text.md: story, not a rule; the tooltip
--- prints it italic at the foot). The Gate is keyed off the QUEST finished, never off this item (questGate
--- in models/quest.lua), so stashing it, wearing it, or losing it can never cost the endgame.
+-- The FLAVOR carries a fragment of the Gate Below's location (docs/item-text.md: story, not a rule). The Gate
+-- is keyed off the QUEST finished, never off this item (questGate in models/quest.lua).
 local Curve = require("models.curve")
 
 return {
     name = "The Codex Unanswered",
-    description = "Deflects one spell aimed at you, for mana.",
+    description = "A spell you have already seen cast this fight is unravelled when aimed at you.",
     flavor = "Sublimitas's book, and it has never met a spell it did not already know. Tooled on the " ..
         "spine: \"where the shelves answer only themselves, and the readers were spent\".",
     sprite = "assets/items/codex_unanswered.png",
     type = "utility",
-    class = "creature",
+    class = "mage",
+    unlockLevel = 13, -- Pride's stair, where she stands
+    unstocked = true, -- her trophy: on the rack, never for sale
     tags = { "relic" },
-    noSteal = true, -- nothing takes this off you; you took it off her
-    traits = { "trait_counter_magic" },
-    -- Sublimitas answers a beat sooner and for less than an ordinary counterspell does -- she is the
-    -- Unequalled, and the book kept the habit. That used to be a trait of its own (Perfect Recall)
-    -- whose entire difference from Counter Magic was these two figures (Trait.param).
-    traitParams = {
-        cooldown = 6,
-        cost = { stat = "mana", amount = 12 },
-    },
+    traits = { "trait_already_known" },
     bonus = { magicDefense = Curve.ramp(3, 13) },
 }

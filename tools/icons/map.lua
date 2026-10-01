@@ -1218,6 +1218,8 @@ return {
     ["items/weapon_masonry_fist.png"] = { icon = "lorc/crumbling-ball", by = "hand" },
     ["items/utility_the_unfinished_tower.png"] = { icon = "delapouite/pisa-tower", by = "hand" },
     ["items/weapon_babel_maul.png"] = { icon = "lorc/flat-hammer", by = "hand" },
+    -- SUBLIMITAS (2026-10-01): her organ, an eye that has seen every working once.
+    ["items/utility_already_known.png"] = { icon = "lorc/surrounded-eye", by = "hand" },
     -- THE BLOOD COUNTESS (2026-09-27): the dance, the spikes, the pail, the tub, the hand that moves you.
     ["items/ability_the_waltz.png"] = { icon = "delapouite/ballerina-shoes", by = "hand" },
     ["items/armor_iron_maiden.png"] = { icon = "sbed/spikes", by = "hand" },

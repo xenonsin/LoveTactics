@@ -1,12 +1,10 @@
 -- Tests for the PRIDE CIRCLE: the castle's five bodies, its mini sin, and the rule they share.
 --
--- The tier's design rule, pinned as it is for every other circle: A MINI SIN'S SECOND PHASE IS ITS
--- GENERAL'S FIRST. Sublimitas's Codex Unanswered deflects every spell she can pay for, on a ten-tick
--- cooldown; the Marginal Note deflects the FIRST one and no others, and then closes its rank instead.
---
--- THE BODY THAT WORE THE NOTE IS GONE. Marginalia was deleted with the other six lieutenants
--- (2026-09-22, Descent.SINS' header) and the note is not, so the rule above is pinned on the ITEM alone
--- and the case that sized the blueprint is written out as a contract at the foot of this file.
+-- THE LIEUTENANT IS SUBLIMITAS NOW (2026-10-01). She moved down from the general's seat, an elf archmage
+-- whose Already Known unravels any spell she has seen (tests/sublimitas_spec.lua pins the rule), and the
+-- contract the deleted Marginalia case used to hold is held against her body below. The Marginal Note is
+-- still on disk and still pinned on the ITEM alone; its comparison against her old Counter Magic went with
+-- the Counter Magic.
 --
 -- The circle's own design property: POWER IS ADJACENCY. Both halves of the rank rule are measured live
 -- off the board (Trait.liveBonus), so a Pride body is genuinely bipolar rather than merely buffed -- and
@@ -127,19 +125,6 @@ return {
 
     -- ------------------------------------------------------------ the tier's rule
     {
-        name = "Marginalia answers one spell where Sublimitas answers every one she can pay for",
-        fn = function()
-            local mine = Trait.defs["trait_answered_once"]
-            local hers = Trait.defs["trait_counter_magic"]
-            assert(mine and hers, "both rules exist")
-            assert(mine.countersSpell and hers.countersSpell,
-                "the mini sin runs through the same seam, so there is one implementation to reason about")
-            assert(mine.cooldown > hers.cooldown * 100, string.format(
-                "the difference is the cooldown: %d against %d. Longer than any fight IS 'once'.",
-                mine.cooldown, hers.cooldown))
-        end,
-    },
-    {
         name = "Marginalia's second phase calls in the rank",
         fn = function()
             local note = Item.defs["utility_marginal_note"]
@@ -158,15 +143,25 @@ return {
             assert(summons, "the phase adds neighbours, which in this circle IS power")
         end,
     },
-    -- THE CASE THAT SIZED MARGINALIA IS GONE WITH THE BODY, and this is what it said so the replacement
-    -- can be held to it:
-    --
-    --     boss = true and a referenceLevel        a centrepiece that scales toward the shallows
-    --     health above character_gilded_sworn      it outweighs its circle's line body
-    --     health 60-85% of Sublimitas's            and stands below the sin whose stair it holds
-    --
-    -- The same band tests/wrath_circle_spec.lua argues out in full. Note the middle term is now the body
-    -- STANDING IN for the slot, so a replacement must clear its own stand-in.
+    {
+        -- THE CASE THAT SIZED MARGINALIA, held against the body that replaced her:
+        --
+        --     boss = true and a referenceLevel        a centrepiece that scales toward the shallows
+        --     health above character_gilded_sworn      it outweighs its circle's line body (its stand-in)
+        --     health 60-85% of the general's           and stands below the sin whose stair it holds
+        --
+        -- The same band tests/wrath_circle_spec.lua argues out in full.
+        name = "Sublimitas is sized as a lieutenant: over the line body, under the general",
+        fn = function()
+            local her = Character.defs["character_sublimitas"]
+            assert(her and her.boss and her.referenceLevel, "a centrepiece that scales toward the shallows")
+            local hp = her.stats.health
+            assert(hp > Character.defs["character_gilded_sworn"].stats.health, "she outweighs the line body")
+            local general = Character.defs["character_general_pride"].stats.health
+            assert(hp >= general * 0.6 and hp <= general * 0.85, string.format(
+                "she stands below the sin whose stair she holds: %d against %d", hp, general))
+        end,
+    },
 
     -- ------------------------------------------------------------ the mythic tops the rank up
     {

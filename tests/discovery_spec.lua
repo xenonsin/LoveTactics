@@ -234,6 +234,9 @@ local TROPHIES = {
     "utility_the_broken_vow", "utility_anvils_face",             -- Wrath: monk, fighter
     "weapon_forsworn_pike", "utility_unblown_horn",              -- Sloth: knight, knight
     "utility_marginal_gloss",                                    -- Pride: mage
+    -- SUBLIMITAS (2026-10-01): Pride's lieutenant, an elf archmage; her book is a Mage's trophy, not a
+    -- creature's organ.
+    "utility_codex_unanswered",
 }
 
 local function vendorFor(class)

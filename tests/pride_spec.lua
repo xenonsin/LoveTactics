@@ -1,6 +1,6 @@
 -- The Arcanum line's two rules, read the two ways (docs/story.md, "The Arcanum": the mage answers pride
--- with humility). Sublimitas's Counter Magic answers a spell aimed at her (data/traits/
--- trait_counter_magic.lua); Gyeom's Diligence banks a little strength from every action and her Ledger
+-- with humility). Sublimitas's Already Known unravels a spell she has seen, aimed at her (data/traits/
+-- trait_already_known.lua; the whole rule is pinned in tests/sublimitas_spec.lua); Gyeom's Diligence banks a little strength from every action and her Ledger
 -- releases it only once she has done her best four times over (data/traits/trait_ledger_diligence.lua,
 -- data/items/utility/utility_ledger.lua). Headless.
 
@@ -110,25 +110,26 @@ return {
         end,
     },
     {
-        name = "Sublimitas answers a spell aimed at her and unravels it; a sword is not",
+        name = "Sublimitas unravels a spell she has seen aimed at her; a sword she never learns",
         fn = function()
+            local Item = require("models.item")
             local c = Combat.new(arena(6, 6),
-                { { char = Character.instantiate("character_general_pride"), x = 1, y = 1 } },
+                { { char = Character.instantiate("character_sublimitas"), x = 1, y = 1 } },
                 { { char = Character.instantiate("character_mage"), x = 2, y = 1 } })
             local sublimitas, caster = c.units[1], c.units[2]
-            -- Counter Magic, not a Perfect Recall of its own: hers was a second trait identical but for
-            -- answering sooner and cheaper, and those two figures now ride on the codex.
-            assert(Trait.has(sublimitas, "trait_counter_magic"), "Sublimitas carries her rule")
+            assert(Trait.has(sublimitas, "trait_already_known"), "Sublimitas carries her rule")
 
-            -- A sword is not something she can unweave.
-            assert(not Trait.tryCounterMagic(c, sublimitas, caster, { "physical" }),
-                "steel passes through: she answers spells, not swings")
+            -- A sword is not something she can learn, so it is never something she unweaves.
+            local sword = Item.instantiate("weapon_iron_sword")
+            Trait.onAnyCast(c, caster, { item = sword, ability = sword.activeAbility })
+            assert(not Trait.tryUnravelKnown(c, sublimitas, caster, sword),
+                "steel passes through: she learns spells, not swings")
 
-            -- A single-target spell aimed at her is unravelled, for mana.
-            local manaBefore = Combat.resource(sublimitas.char, "mana")
-            assert(Trait.tryCounterMagic(c, sublimitas, caster, { "magical" }),
-                "she already knows the spell aimed at her")
-            assert(Combat.resource(sublimitas.char, "mana") == manaBefore - 12, "and it cost her mana to answer")
+            -- A spell she has not seen is not answered; once seen, it is.
+            local bolt = Item.instantiate("ability_fire_bolt")
+            assert(not Trait.tryUnravelKnown(c, sublimitas, caster, bolt), "an unseen spell lands")
+            Trait.onAnyCast(c, caster, { item = bolt, ability = bolt.activeAbility })
+            assert(Trait.tryUnravelKnown(c, sublimitas, caster, bolt), "she already knows the spell aimed at her")
         end,
     },
 }

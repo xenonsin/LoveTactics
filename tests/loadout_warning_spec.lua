@@ -118,7 +118,7 @@ return {
         fn = function()
             local char = fighter()
             -- Counter Magic: 14 mana every firing, against the fighter's ceiling of 5.
-            local short = Combat.unpayableCosts(char, Item.instantiate("utility_codex_unanswered"))
+            local short = Combat.unpayableCosts(char, Item.instantiate("utility_counter_magic"))
             assert(#short == 1 and short[1].stat == "mana", "the charm's trait is priced in mana it hasn't got")
         end,
     },

@@ -529,6 +529,68 @@ function Trait.tryCounterMagic(combat, unit, attacker, tags)
     return false
 end
 
+-- ---------------------------------------------------------------------------
+-- SUBLIMITAS: ALREADY KNOWN (Pride's lieutenant, data/traits/trait_already_known.lua)
+-- ---------------------------------------------------------------------------
+-- Counter Magic's sibling with the price taken out and the MEMORY put in: a bearer of an
+-- `unravelsKnown` trait learns every spell worked in its sight (a broadcast onAnyCast, so it learns
+-- after the cast has fully resolved -- the first casting always lands), and a spell it already knows,
+-- aimed at it, is unravelled before it begins. No mana, no cooldown: the limit is that every spell gets
+-- through ONCE, so a company answers her with breadth rather than with a bigger version of the same bolt.
+--
+-- The record lives on the bearer's status_already_known (one badge, counting what she knows; its
+-- tooltip lists them), so the readout and the rule are the same table and cannot disagree.
+
+-- Is `item` a SPELL, in the sense this rule learns? An ability (never a weapon -- a basic attack is not
+-- a working, however it is tagged) that is sorcery by Combat.isMagicItem's line: tagged `magical` or
+-- paid for in mana. A potion, a bomb or a sword skill is not something anybody memorises.
+function Trait.isSpell(item)
+    if not item or item.type ~= "ability" or not item.activeAbility then return false end
+    return require("models.combat").isMagicItem(item)
+end
+
+-- Does `unit` already know the spell `item` (this fight)?
+function Trait.knowsSpell(unit, item)
+    if not (unit and item and item.id) then return false end
+    local st = require("models.status").get(unit, "status_already_known")
+    return st ~= nil and st.known ~= nil and st.known[item.id] ~= nil
+end
+
+-- `unit` saw `caster` work `item`. Learns it when it is a spell, the caster stood in the bearer's sight,
+-- and it is not already known. Returns true when something new was learned.
+function Trait.learnSpell(combat, unit, caster, item)
+    if not (combat and unit and unit.alive and caster and item and item.id) then return false end
+    if not Trait.isSpell(item) or Trait.knowsSpell(unit, item) then return false end
+    local Combat = require("models.combat")
+    if caster ~= unit and not Combat.unitsSighted(combat, unit, caster) then return false end
+    local Status = require("models.status")
+    local st = Status.get(unit, "status_already_known")
+        or Status.apply(combat, unit, "status_already_known", { magnitude = 0 })
+    if not st then return false end
+    st.known = st.known or {}
+    st.order = st.order or {}
+    st.known[item.id] = item.name or item.id
+    st.order[#st.order + 1] = item.name or item.id
+    st.magnitude = #st.order
+    Combat.logEvent(combat, "status", string.format("%s now knows %s.",
+        (unit.char and unit.char.name) or "Unit", item.name or "the spell"), { unit, caster })
+    return true
+end
+
+-- Is the spell `item`, aimed by `attacker` at `unit`, unravelled because `unit` already knows it? Mutates
+-- nothing but the log, so the one caller (resolveCast's ward gate) may ask it on the real cast. A foe's
+-- working only: a Known heal from one's own side still lands.
+function Trait.tryUnravelKnown(combat, unit, attacker, item)
+    if not (unit and unit.alive and attacker and item) then return false end
+    if attacker.side == unit.side then return false end
+    if not Trait.flag(unit, "unravelsKnown") then return false end -- Sundered forgets nothing, but answers nothing
+    if not (Trait.isSpell(item) and Trait.knowsSpell(unit, item)) then return false end
+    require("models.combat").logEvent(combat, "action", string.format("%s already knows %s, and unravels it.",
+        (unit.char and unit.char.name) or "Unit", item.name or "the spell"), { unit, attacker })
+    return true
+end
+-- --------------------------------------------------------------- end SUBLIMITAS: ALREADY KNOWN
+
 -- Does a refusal to fall (a `revivesOnLethal` trait) catch a blow that would drop `unit`, standing it
 -- back up at a share of its (unreserved) max health -- half, unless the trait names its own
 -- `revivesAt`? Mirrors Trait.tryEvade in shape: Combat.dealFlatDamage consults it at the moment a hit

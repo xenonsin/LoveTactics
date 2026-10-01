@@ -35,7 +35,8 @@ function StatusTooltip.draw(status, mx, my, maxRight, origin)
     if not status then return end
     local def = status.def or {}
     local name = def.name or status.name or "Status"
-    local desc = def.description
+    -- A status whose copy is LIVE (`describe`: Already Known lists the spells it holds) writes its own line.
+    local desc = (def.describe and def.describe(status)) or def.description
     local col = def.color or { 0.9, 0.9, 0.95 }
     local title, body = fonts()
     local lineH = body:getHeight()

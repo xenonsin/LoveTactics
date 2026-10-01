@@ -13343,6 +13343,16 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
         end
     end
 
+    -- SUBLIMITAS: ALREADY KNOWN. A spell the aimed body has already seen cast this fight is unravelled
+    -- whole, on the cast ward's terms above -- single target, hostile, the caster still paid -- with no
+    -- charge to spend: what limits it is that every spell lands once before it is Known (Trait.learnSpell).
+    if target and target.alive and target.side ~= unit.side and Combat.isSingleTarget(ab)
+        and Trait.tryUnravelKnown(combat, target, unit, item) then
+        endTurn(combat, unit, Combat.actionSpeed(unit, ab, item))
+        return true, { damageDealt = 0, healed = 0, warded = true }
+    end
+    -- end SUBLIMITAS: ALREADY KNOWN
+
     -- AN AID WARD on the aimed body swallows a FRIENDLY working the same way (Status.aidWardOn -- the
     -- Sealed Hand). The mirror of the block above, side test inverted, and every clause of its fairness
     -- carries over unchanged: single-target only, one charge spent here, and the caster still paid.
