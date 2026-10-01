@@ -167,6 +167,10 @@ local TROPHIES = {
     "utility_oni_horn", "weapon_odachi", "consumable_questionable_stew", "ability_steel_thread",
     "ability_purifying_bell", "weapon_instant_draw_katana", "weapon_morning_star", "utility_borrowed_eyes",
     "ability_black_flame_dome",
+    -- The Elves of Pride's approach (2026-09-30): the Retainer's livery, the Longbow's bow, the Bladedancer's veil,
+    -- the Starcaller's sandals, the Highborn's circlet, the Elf-Lord's laurel.
+    "armor_livery_of_the_house", "weapon_heartstring_longbow", "armor_dancers_veil", "armor_skywalkers_sandals",
+    "utility_highborn_circlet", "utility_laurel_of_renown",
     -- The Vampires' (Wrath, 2026-09-26): the ghoul's vitae, the bat's whistle, the Fledgling's fang and scent,
     -- the Duelist's cloak, the Hemomancer's two spells, the Communicant's chalice, and the Sire's signet and box.
     "consumable_vitae", "ability_familiars_whistle", "weapon_hungering_fang", "utility_bloodhounds_scent",

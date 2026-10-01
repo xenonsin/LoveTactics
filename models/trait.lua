@@ -1433,7 +1433,9 @@ local function presenceOn(unit, stat)
                     -- bearer has right now (the Gilded Belly: data/traits/trait_gilded_belly.lua).
                     local v = p[stat]
                     if type(v) == "function" then
-                        local ok, out = pcall(v, bearer, combat)
+                        -- THE ELVES OF PRIDE: the body being lent to rides along third, for a presence that
+                        -- lends to its own kind only (the Elf-Lord's Renown, data/traits/trait_renown.lua).
+                        local ok, out = pcall(v, bearer, combat, unit)
                         v = ok and tonumber(out) or 0
                     end
                     total = total + v

@@ -544,6 +544,20 @@ Grade.TRAIT_GRADE = {
     trait_the_horned_sister =           0.0,  -- The Horned Sister -- her sister falls: Full Horn Out
     trait_the_hornless_sister =         0.0,  -- The Hornless Sister -- mana drawn from her sister
     trait_borrowed_eyes =               1.0,  -- Borrowed Eyes -- Invisible foes within 4 are Limned
+
+    -- THE ELVES OF PRIDE (2026-09-30), the approach's line. Untouchable, Born to the Height, Will Not Admit the
+    -- Wound and Renown are a body's own and never shelved. Of the drops: the Livery and the Circlet pay for staying
+    -- whole, the Veil turns one blow a round at full health, the Sandals walk every hostile ground, the Laurel is a
+    -- capped line-wide damage climb on kills.
+    trait_untouchable =                 0.0,  -- Untouchable -- the Bladedancer, while Unblemished
+    trait_born_to_the_height =          0.0,  -- Born to the Height -- the Starcaller on Exposure
+    trait_will_not_admit =              0.0,  -- Will Not Admit the Wound -- the Highborn's Unblemished returns
+    trait_renown =                      0.0,  -- Renown -- the Elf-Lord's count, lent to his elves
+    trait_livery =                      0.5,  -- Livery of the House -- +3 Defense at full health
+    trait_dancers_veil =                1.0,  -- Dancer's Veil -- at full health, one rolled blow a round evaded
+    trait_skywalker =                   1.0,  -- Skywalker -- hostile ground does nothing; +2 Magic Damage on it
+    trait_highborn_circlet =            1.0,  -- Highborn Circlet -- a round unstruck: heal 15%, +2 Damage
+    trait_laurel_of_renown =            1.0,  -- Laurel of Renown -- kills: +1 Damage to the line, up to 5
     -- THE ASURA OF WRATH (2026-09-28). The Gate Pair is a body's own. The Broken Vow is also the relic Furor pays:
     -- chi off every blow taken and a free full-pool Burst, against a drain on idle turns and a turn the game takes.
     trait_the_broken_vow =              1.0,  -- The Broken Vow -- chi when struck, drains idle, bursts at full

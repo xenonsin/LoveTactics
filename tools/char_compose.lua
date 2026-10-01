@@ -578,6 +578,14 @@ local CHARACTER_SILHOUETTE = {
     oni_horned_twin = "delapouite/yin-yang",
     oni_hornless_twin = "lorc/twin-shell",
     oni_general = "delapouite/spartan-helmet",
+    -- THE ELVES OF PRIDE (2026-09-30), the approach's line: the retainer's helm, the archer's arrow, the dancer's
+    -- swan, the starcaller's falling star, the highborn's face, the Lord's crown.
+    elf_retainer = "kier-heyl/elf-helmet",
+    elf_longbow = "delapouite/plain-arrow",
+    elf_bladedancer = "lorc/swan",
+    elf_starcaller = "delapouite/falling-star",
+    elf_highborn = "delapouite/woman-elf-face",
+    elf_lord = "delapouite/pschent-double-crown",
 
     -- THE FLIGHT (Gluttony's approach). The griffin gets the one griffin in the set; the Falconer's Glove's
     -- bird is split from the wood's hawk and may not be one picture with it (the two bears' rule above).

@@ -239,10 +239,26 @@ end
 -- Run every live hazard on (x, y) against `unit`: fire each def's onEnter. Called from
 -- Combat.moveUnit for each newly entered path tile, and from Hazard.place when a hazard lands on an
 -- occupied tile. Side-agnostic: fire burns friend and foe alike.
+-- THE ELVES OF PRIDE: GROUNDPROOF. A trait declaring `groundproof = true` (the Skywalker's Sandals) shrugs every
+-- HOSTILE zone; `groundproof = { [hazard id] = true }` (the Elf Starcaller's Born to the Height) shrugs the ones it
+-- names. A shrugged zone does nothing to the body on entry, on landing or on a blast, and its planner reads it
+-- as open floor. A friendly zone still serves, and deep water still drowns: that is the water, not the ground.
+function Hazard.shrugs(unit, hazard)
+    if not (unit and unit.traits and hazard and hazard.def) then return false end
+    if hazard.def.disposition ~= "hostile" or hazard.id == "hazard_deep_water" then return false end
+    if not require("models.trait").flag(unit, "groundproof") then return false end
+    for _, t in ipairs(unit.traits) do
+        local g = t.def and t.def.groundproof
+        if g == true or (type(g) == "table" and g[hazard.id]) then return true end
+    end
+    return false
+end
+
 function Hazard.onEnter(combat, unit, x, y)
     if not (unit and unit.alive) then return end
     for _, h in ipairs(Hazard.allAt(combat, x, y)) do
-        if h.def.onEnter then h.def.onEnter(ctxFor(combat, h, unit)) end
+        local shrugged = Hazard.shrugs(unit, h)
+        if h.def.onEnter and not shrugged then h.def.onEnter(ctxFor(combat, h, unit)) end
         -- A RIDER stamped onto the instance at placement, not declared by the blueprint: the Warden's
         -- Writ marks every zone its bearer lays with `halts`, so a warden's fire, rain and quicksand
         -- all take a turn off whoever walks in. Instance-level rather than blueprint-level because the
@@ -250,7 +266,7 @@ function Hazard.onEnter(combat, unit, x, y)
         --
         -- Foes only, on the zone's own reading of sides (Hazard.allied), so a warden never Halts its
         -- own line by standing in its own weather.
-        if h.halts and unit.alive and not Hazard.allied(h, unit.side) then
+        if h.halts and not shrugged and unit.alive and not Hazard.allied(h, unit.side) then
             local Status = require("models.status")
             Status.apply(combat, unit, "status_halted", { applier = h.owner })
         end
@@ -328,7 +344,7 @@ function Hazard.place(combat, x, y, id, opts)
     local Combat = require("models.combat")
     local occupant = Combat.unitAt(combat, x, y)
     if occupant then
-        if def.onEnter then def.onEnter(ctxFor(combat, hazard, occupant)) end
+        if def.onEnter and not Hazard.shrugs(occupant, hazard) then def.onEnter(ctxFor(combat, hazard, occupant)) end
     end
     return hazard
 end
@@ -439,6 +455,7 @@ end
 function Hazard.applyTo(combat, hazard, unit)
     if not (combat and hazard and hazard.alive and unit and unit.alive) then return false end
     if not (hazard.def and hazard.def.onEnter) then return false end
+    if Hazard.shrugs(unit, hazard) then return false end -- THE ELVES OF PRIDE: groundproof
     hazard.def.onEnter(ctxFor(combat, hazard, unit))
     return true
 end
@@ -649,7 +666,9 @@ function Hazard.tileBias(combat, x, y, side, unit)
     local score = 0
     for _, h in ipairs(Hazard.allAt(combat, x, y)) do
         local disp = h.def.disposition
-        if unit and h.def.welcomes and h.def.welcomes(unit) then
+        if Hazard.shrugs(unit, h) then
+            -- THE ELVES OF PRIDE: groundproof ground is open floor to the body that shrugs it.
+        elseif unit and h.def.welcomes and h.def.welcomes(unit) then
             score = score + Hazard.FRIENDLY_BIAS
         elseif disp == "hostile" then
             score = score - Hazard.HOSTILE_BIAS
@@ -681,7 +700,8 @@ function Hazard.tollMap(combat, unit)
     local out, any = {}, false
     for _, h in ipairs((combat and combat.hazards) or {}) do
         if h.alive and h.def and h.def.disposition == "hostile"
-            and not (unit and h.def.welcomes and h.def.welcomes(unit)) then
+            and not (unit and h.def.welcomes and h.def.welcomes(unit))
+            and not Hazard.shrugs(unit, h) then -- THE ELVES OF PRIDE: groundproof
             local k = h.x .. "," .. h.y
             out[k] = (out[k] or 0) + Hazard.PATH_TOLL
             any = true

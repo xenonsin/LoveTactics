@@ -1009,6 +1009,8 @@ function Combat.abilityRange(combat, unit, ab, x, y)
     -- a tile further out while it rides high. Read here, the one reader, so the tell, the planner and the
     -- swing agree.
     if unit then range = range + Status.statBonus(unit, "range") end
+    -- THE ELVES OF PRIDE: ...and a live trait may too (Born to the Height: a tile further on Exposure).
+    if unit then range = range + Trait.liveBonus(unit, "range") end
     -- A reach an ability only has FROM HIDING (`hiddenRange`): the Sabertooth's Pounce bites from three
     -- tiles when it came up to act unseen, and from beside you otherwise. A floor under the reach rather
     -- than an addition, so a field bonus on top still means what it says.
@@ -7237,7 +7239,32 @@ function Combat.rollsToHit(combat, user, target, item)
     if ab and ab.alwaysHits then return false end
     if item and item.alwaysHits then return false end
     if target.char and target.char.kind == "object" then return false end
+    -- THE ELVES OF PRIDE: a DRAWN STANCE shot (Combat.drawnStance) cannot be avoided.
+    if Combat.drawnStance(combat, user, item) then return false end
     return true
+end
+
+-- THE ELVES OF PRIDE: DRAWN STANCE (`drawnStance` on the Heartstring Longbow, the Elf Longbow's). A shot drawn
+-- on a turn the archer had not moved is not asked the dice, and carries through to the body behind (the
+-- weapon's own effect). A longbow looses a turn after the draw, so the draw is what is judged: the channel
+-- stamps it at commit (`drawn`), and Combat.resolveChannel hands it back as `drawnShot` while the shot
+-- resolves. Before the draw -- the forecast on the archer's own turn -- it is read off the turn itself.
+function Combat.drawnStance(combat, user, item)
+    -- Read off the blueprint: Item.instantiate copies a whitelist of fields, and this is not on it.
+    local def = item and (item.drawnStance and item or Item.defs[item.id or ""])
+    if not (def and def.drawnStance and user) then return false end
+    if user.drawnShot ~= nil then return user.drawnShot end
+    local turn = combat and combat.turn
+    return turn ~= nil and turn.unit == user and not turn.moved and not user.channel
+end
+
+-- THE ELVES OF PRIDE: THE DANCER'S VEIL (`veil`, data/traits/trait_dancers_veil.lua). At full health, the first
+-- attack each round that rolls to hit is evaded; the latch (`veilSpent`) is re-armed when the bearer's own
+-- turn ends. Pure: Combat.hitChance reads it, and the swing spends it.
+function Combat.veilReady(target)
+    if not (target and not target.veilSpent and Trait.flag(target, "veil")) then return false end
+    local hp = target.char and target.char.stats and target.char.stats.health
+    return hp ~= nil and (hp.current or 0) >= Combat.unreservedMax(target.char, "health")
 end
 
 -- The chance in 0..100 that `user` striking `target` with `item` connects. PURE -- no draw, no
@@ -7246,6 +7273,11 @@ end
 -- a hover. This is the number shown on screen; Combat.trueHit is the die it is handed to.
 function Combat.hitChance(combat, user, target, item)
     if not Combat.rollsToHit(combat, user, target, item) then return 100 end
+    -- THE ELVES OF PRIDE: an UNTOUCHABLE body (the Elf Bladedancer's) evades every blow that asks the dice while
+    -- it is Unblemished, and a ready Dancer's Veil evades one. Zero rather than a separate dodge, so the
+    -- forecast, the planner and the swing all say it.
+    if Trait.flag(target, "untouchable") and Status.has(target, "status_unblemished") then return 0 end
+    if Combat.veilReady(target) then return 0 end
     local hit = Item.hit(item) + flatStat(user, "skill") * 2 + flatStat(user, "luck") / 2
     local avoid = Combat.avoid(combat, target)
     local chance = math.max(0, math.min(100, math.floor(hit - avoid + 0.5)))
@@ -9453,6 +9485,9 @@ function Combat.dealDamage(combat, user, target, item, opts)
     -- everything downstream already handles a blow that drew no blood.
     if Combat.rollsToHit(combat, user, target, item) then
         if not Combat.trueHit(combat, Combat.hitChance(combat, user, target, item)) then
+            -- THE ELVES OF PRIDE: a ready Dancer's Veil was what turned it, and it is spent until the bearer's
+            -- turn ends.
+            if Combat.veilReady(target) then target.veilSpent = true end
             Combat.pushFx(combat, { type = "miss", unit = target })
             Combat.logEvent(combat, "damage",
                 string.format("%s misses %s.", unitName(user), unitName(target)), { user, target })
@@ -13112,7 +13147,9 @@ function Combat.useItem(combat, unit, item, tx, ty, windup, dest, spend)
         if ab.consumesItem then item.quantity = math.max(0, (item.quantity or 1) - 1) end
         -- `windup` = the commitment the effect scales its payoff on (undiscounted); the TELL it actually
         -- hangs for is timeTicks, which is what the badge below and endTurn (the resolution slot) bill.
-        unit.channel = { item = item, ab = ab, tx = tx, ty = ty, windup = ticks, held = held }
+        unit.channel = { item = item, ab = ab, tx = tx, ty = ty, windup = ticks, held = held,
+            -- THE ELVES OF PRIDE: was this a DRAWN STANCE draw (Combat.drawnStance)? Judged now, at the draw.
+            drawn = Combat.drawnStance(combat, unit, item) }
         Status.apply(combat, unit, "status_channeling", { duration = timeTicks + 1 })
         -- A view cue for the wind-up STARTING (the Channeling badge is silent -- hideLog). Pushed like
         -- every other fx event so the view sounds it once, on the real cast, and never on a dry-run
@@ -14277,8 +14314,13 @@ function Combat.resolveChannel(combat, unit)
     end
     Combat.logEvent(combat, "action",
         string.format("%s's %s resolves.", unitName(unit), pending.item.name or "channel"), unit)
+    -- THE ELVES OF PRIDE: the draw's stance rides the shot it looses (Combat.drawnStance).
+    if Item.defs[pending.item and pending.item.id or ""] and Item.defs[pending.item.id].drawnStance then
+        unit.drawnShot = pending.drawn == true
+    end
     local ok, info = resolveCast(combat, unit, pending.item, pending.ab, pending.tx, pending.ty, true,
         pending.windup, pending.held)
+    unit.drawnShot = nil
     -- SECOND UTTERANCE: a mage carrying the trait banks a free wind-up the moment a channel LANDS --
     -- never when one begins, and never when one is interrupted, so the charge is paid for by a spell
     -- that actually resolved. Granted after the cast rather than before so a caster cut down by its own

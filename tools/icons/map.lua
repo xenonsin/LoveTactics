@@ -1127,6 +1127,17 @@ return {
     ["items/utility_three_wishes.png"] = { icon = "delapouite/sparkles", by = "hand" },
     ["items/utility_the_lamp.png"] = { icon = "lorc/ball-glow", by = "hand" },
     ["items/utility_the_last_lamp.png"] = { icon = "lorc/paper-lantern", by = "hand" },
+    -- THE ELVES OF PRIDE (2026-09-30), the approach's line: four organs and six trophies.
+    ["items/utility_untouchable.png"] = { icon = "felbrigg/dodge", by = "hand" },
+    ["items/utility_born_to_the_height.png"] = { icon = "lorc/peaks", by = "hand" },
+    ["items/utility_will_not_admit.png"] = { icon = "lorc/cracked-mask", by = "hand" },
+    ["items/utility_renown.png"] = { icon = "delapouite/polar-star", by = "hand" },
+    ["items/armor_livery_of_the_house.png"] = { icon = "delapouite/fleur-de-lys", by = "hand" },
+    ["items/weapon_heartstring_longbow.png"] = { icon = "lorc/arrowed", by = "hand" },
+    ["items/armor_dancers_veil.png"] = { icon = "lorc/spinning-ribbons", by = "hand" },
+    ["items/armor_skywalkers_sandals.png"] = { icon = "lorc/mountaintop", by = "hand" },
+    ["items/utility_highborn_circlet.png"] = { icon = "delapouite/headband-knot", by = "hand" },
+    ["items/utility_laurel_of_renown.png"] = { icon = "delapouite/laurels-trophy", by = "hand" },
     -- THE ASURA OF WRATH (2026-09-28): the blood, the arms by rank, the gate pair, and Furor's pieces.
     ["items/utility_asura_blood.png"] = { icon = "lorc/broken-heart-zone", by = "hand" },
     ["items/utility_the_broken_vow.png"] = { icon = "lorc/lotus", by = "hand" },
