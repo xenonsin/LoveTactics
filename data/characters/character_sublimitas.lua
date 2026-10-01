@@ -32,7 +32,7 @@ return {
     portrait = "assets/portraits/sublimitas.png", -- large VN portrait for conversations (falls back if missing)
     archetype = "skirmish",
     stats = {
-        health = 140, mana = 110, stamina = 15,
+        health = 150, mana = 110, stamina = 15, -- 62.5% of the Morning Star's 240 (tests/pride_circle_spec.lua), inside tier 3
         staminaRegen = 2,
         damage = 7, magicDamage = 15, -- Unblemished lifts both by 4 until she is first wounded
         defense = 5, magicDefense = 14,

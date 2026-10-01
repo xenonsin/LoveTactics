@@ -4,15 +4,13 @@
 -- The stair guardian of the Pride circle, played over the fight. See
 -- conversation_descent_gluttony.lua for what this folder is and why every scene in it is one speaker.
 --
--- Sublimitas pacted for perfect comprehension: she has only to glance at a working to know it and cast
--- it herself. Perfection is a ceiling, and her rule is that ceiling as tactics -- a single-target spell
--- aimed at her is answered and unravelled, because she already knows it
--- (data/traits/trait_counter_magic.lua). The counterplay is not to show her your hand.
---
--- She is certain and she is bored, and the second is the part that is hers rather than the pact's.
+-- THE GUARDIAN IS SUPERBIA, THE MORNING STAR now (2026-10-01): Pride's general was reimagined as a fallen
+-- archangel, and Sublimitas -- whose voice the two lines below were written in -- moved down to the approach
+-- stair. The lines still read for a proud thing that is certain it will measure you, so they stand until the
+-- author writes the Morning Star's own (docs/story.md, "Superbia, the Morning Star").
 
 return {
-    title = "Sublimitas, the Unequalled",
+    title = "Superbia, the Morning Star",
     cast  = { "character_general_pride" },
 
     script = {

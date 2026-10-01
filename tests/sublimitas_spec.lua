@@ -148,7 +148,9 @@ return {
         fn = function()
             local def = Item.defs["utility_codex_unanswered"]
             assert(def.class == "mage" and def.unstocked and not def.price, "a Mage's piece, never for sale")
-            assert(not def.noSteal and not def.bound, "real kit, not a creature's organ")
+            -- Unstealable like every stair's piece (tests/sin_drops_spec.lua), but never bound: real kit, not
+            -- a creature's organ.
+            assert(not def.bound, "real kit, not a creature's organ")
             assert(def.description == "A spell you have already seen cast this fight is unravelled when aimed at you.",
                 "the rule reads as approved")
             assert(Character.defs["character_sublimitas"].drops[1] == "utility_codex_unanswered", "she drops it first")

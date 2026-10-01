@@ -21,17 +21,17 @@ local unit = Fixture.unit
 
 return {
     {
-        -- MARGINALIA IS DELETED AND THIS CASE IS THE MARKER. The slot holds the gilded sworn as a
-        -- stand-in over the pages it outranks (see the lieutenant note at the head of Descent.SINS),
-        -- which is at least the rank rule fielding its own centrepiece. It is named here on purpose:
-        -- seating a replacement reddens this case, and whoever does it owes the contract at the foot of
-        -- this file.
-        name = "Pride's lieutenant slot is filled, and by a stand-in that says so",
+        -- THE MARKER WAS ANSWERED (2026-10-01). The slot held the gilded sworn as a stand-in after
+        -- Marginalia was cut; Sublimitas holds it now, moved down when the general became Superbia, and the
+        -- contract at the foot of this file sizes her.
+        name = "Pride's lieutenant is Sublimitas over the elves, and its general is the Morning Star",
         fn = function()
             local sin
             for _, s in ipairs(Descent.SINS) do if s.id == "pride" then sin = s end end
-            assert(sin and sin.minor.lead == "character_gilded_sworn", "the sworn stands in for Marginalia")
-            assert(Character.defs[sin.minor.lead], "and whatever stands there is a body that loads")
+            assert(sin and sin.minor.lead == "character_sublimitas", "Sublimitas holds the approach stair")
+            assert(sin.minor.filler == "character_elf_retainer", "over the approach's own filler")
+            assert(sin.guardian.lead == "character_general_pride" and sin.guardian.filler == "character_seraph",
+                "the Morning Star holds the seat, with the Seraphs of her old court")
             assert(not Character.defs["character_marginalia"], "Marginalia is gone")
         end,
     },

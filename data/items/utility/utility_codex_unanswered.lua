@@ -23,6 +23,7 @@ return {
     class = "mage",
     unlockLevel = 13, -- Pride's stair, where she stands
     unstocked = true, -- her trophy: on the rack, never for sale
+    noSteal = true, -- a stair's piece stays with whoever earned it (tests/sin_drops_spec.lua)
     tags = { "relic" },
     traits = { "trait_already_known" },
     bonus = { magicDefense = Curve.ramp(3, 13) },

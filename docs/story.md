@@ -1391,33 +1391,45 @@ knowledge, read as a roll of the noble dead. It is the same trick the Bastion pl
 the Cathedral with its ascended saints, the Lodge with its named trophies: a casualty list recited as
 an honor. It needs no more invention than the naming.
 
-### Sublimitas, the Unequalled — the pride at the summit
+### Superbia, the Morning Star — the pride at the summit
 
-Sublimitas is a **human who made a pact with the Demon Lord** (see *Every general is a fallen human*,
-below), and the bargain's boon is **perfect comprehension**: she has only to *glance* at a working once
-to know its principles and cast it herself. She is, truly, the greatest mage of the age — celebrated,
-real, earned in her own eyes — and that is exactly the trap. **Perfection is a ceiling.** A mind that
-has decided there is nothing left for it to learn cannot be told anything, can admit no wrong, and will
-do **anything** to keep the summit it is certain it deserves. She is **Aura's pride**: she measures
-every mage by what they *show* her, weighs it against herself, and is sure the scale falls her way.
+**Reimagined 2026-10-01**, as Gula, Luxuria, Avaritia and Furor were before her: the circle's general is
+no longer a human archmage but the sin's own archetype. **Superbia is a fallen archangel** — the first
+and brightest of the choir, who would not kneel. Pride is the root the other six grew out of, and she is
+its oldest shape: the angels on her seat (the Throne, the Seraphs, the Ophanim) are the court she walked
+out of, and they foreshadow her as the asura foreshadow Furor. She breaks *Every general is a fallen
+human* the way Gula does — she was never human — and the Arcanum is her house because it is the human
+institution that most completely believes what she believed: *no one else can do what we do, so
+nothing we do can be wrong.*
 
-Her rule is the shipped foreshadow — **"answers every spell with your own"** — and it is a `onCast`
-answer written against the wired hook (see *Authoring the remaining six lines*): whatever the party
-throws at her *where she can see it*, she has already mastered, and turns back. It is pride that can
-only ever answer **the visible.** She also brings a devastating **original** kit — catastrophe magic,
-and **necromancy that raises the fallen (yours or hers) as her thralls**, the second-form mechanic that
-parallels Luxuria turning the blooded and Gula devouring the fallen. Two-phase, per the all-general
-rule: the human Archmage sheds into a demon who **fills the board with copies of herself**
-(`ability_doppelganger` / `Summon.copy`, already shipped) — *the only necessary mind, made literal.*
+Her rules are the sin read four ways. **Non Serviam** (rejection): a debuff laid on her rebounds onto
+whoever laid it — she will not wear another's will. **Light-Bearer** (fame): a foe that can see her at
+the start of its turn is Blinded, so the fight is played around the spire's corners. **Flawless Form**
+(perfection): no single blow takes more than a tenth of her — the mirror of the elves, who lose
+perfection to the first wound. And **no repentance**, in two phases: at two-thirds she calls her own
+**Reflections** (her host is herself), and at one-third she **falls** — Dante's image, Lucifer frozen at
+the bottom of the pit by his own wingbeats: she crashes into the spire and the black ice of **Cocytus**
+spreads a ring a turn until the board is her prison.
 
-The counterplay is the sin read as tactics: **do not show her your hand.** A party of flashy nukers
-feeds the mirror; the spell you stake the fight on is the spell she gives back. What she cannot answer
-is the mage who never shows her anything worth taking.
+### Sublimitas, the Unequalled — the summit's servant
 
-**Killing her frees nothing automatically.** The dead she raised do not lie back down at her death, the
-subjects do not return, and the appetite is the Arcanum's, not hers alone — kill Sublimitas and the
-house crowns its next Unequalled, because the realm still wants what only this place can do. You cannot
-end a practice by killing its finest product.
+Sublimitas is an **elf who made a pact with the Morning Star**, and the bargain's boon is **perfect
+comprehension**: she has only to *glance* at a working once to know it. She is, truly, the greatest
+mage of the age — celebrated, real, earned in her own eyes — and that is exactly the trap. **Perfection
+is a ceiling.** A mind that has decided there is nothing left for it to learn cannot be told anything,
+can admit no wrong, and will do **anything** to keep the summit it is certain it deserves. She is
+**Aura's pride**: she measures every mage by what they *show* her, and is sure the scale falls her way.
+She holds the **approach stair** — the circle's lieutenant, the house's finest product kneeling to the
+one thing above her (2026-10-01; she was the general until Superbia).
+
+Her rule is **Already Known**: any spell she has seen cast is unravelled when it is aimed at her, and a
+spell she has never seen lands. It is pride that can only ever answer **the visible.** The counterplay
+is the sin read as tactics: **do not show her your hand.** A party of flashy nukers feeds the mirror;
+what she cannot answer is the mage who never shows her anything worth taking.
+
+**Killing her frees nothing automatically.** The subjects do not return, and the appetite is the
+Arcanum's, not hers alone — kill Sublimitas and the house crowns its next Unequalled, because the realm
+still wants what only this place can do. You cannot end a practice by killing its finest product.
 
 ### Gyeom, the same summit reached the other way
 
@@ -1481,7 +1493,7 @@ precisely why she can hear no objection.
 | 7 | **The turn** | 3 | *(no fight)* | Sublimitas glances a working and reproduces it flawlessly — she is **not a fraud**; that is why she never stops and hears no objection. She measures Gyeom at a glance and dismisses her, and Gyeom must not correct her |
 | 8 | The break | 3 | **The Slope** — `assassinate` | Gyeom chooses the slope over the summit, deliberately; **second relic** (practice that persists) — improvement becomes a stance |
 | 9 | The approach | 3 | **The Next Unequalled** — `assassinate` | the scale of what her death will **not** undo — the subjects do not return, and the Arcanum will crown a new Unequalled |
-| 10 | The general | 4 | **Sublimitas, the Unequalled** — `assassinate` | two-phase (human Archmage → self-copying demon); she answers what you show and raises your fallen — until Gyeom releases what was concealed; the work survives her |
+| 10 | The general | 4 | **Superbia, the Morning Star** — `assassinate` | the fallen archangel the house's pride kneels to; Sublimitas holds the stair above her, and answers what you show until Gyeom releases what was concealed; the work survives them both |
 
 Slot 7 needs the antagonist to **speak without a fight** — the same seam flagged for Wrath's, Lust's,
 Gluttony's and Envy's slot 7. The rep-ladder soft-lock is gone with the ten slots on disk (the nine
@@ -1490,11 +1502,12 @@ as a **count of distinct completed quests**.
 
 ### The relic, and Gyeom's signatures
 
-**The general's drop — the Codex Unanswered** (a tome, differing in type from the armor / spear / mail /
-reliquary / bow / glass of the others): the vessel of Sublimitas's rule, carrying **"answers every
-spell with your own"** for whoever lifts it — worn, *you* now turn back what your foes cast at you, the
-same trap it was for her. `noSteal`, no `class`, no `price`, `gateHint` written into its flavor and
-consumed by `quest_the_gate_below` (`"where the shelves answer only themselves"`).
+**The general's relic is The Morning Star** — Superbia's Non Serviam for whoever lifts it: once a turn,
+a debuff laid on you rebounds onto whoever laid it. **Sublimitas's piece is the Codex Unanswered**, a
+tome carrying her rule: a spell you have already seen cast is unravelled when aimed at you. Both are
+**mage trophies** — on the Arcanum's shelf, seen and never sold — because there are no creature-class
+drops and no general/lieutenant set rule any more (2026-10-01). The Codex keeps its `gateHint`
+(`"where the shelves answer only themselves"`) for `quest_the_gate_below`.
 
 **Gyeom's signature is the Ledger** (`utility_ledger.lua`) — a grimoire she writes herself, bound, in
 the grid's center: **concealment, and release.** She fights **suppressed** — her displayed magic reads
@@ -1515,15 +1528,12 @@ work, flagged below.
 Two or three other unbuyables across the middle, no more (the 3×3 grid budget), all `class = "mage"`
 with no `price` — unbuyable, still tallying toward mage growth (see `docs/classes.md`).
 
-### Sublimitas and the two late rules
+### Superbia and the two late rules
 
-Sublimitas obeys both all-general rules (see *Every general is a fallen human*, below). **Human first
-form → demonic second:** the celebrated Archmage sheds into the demon the pact made of her, and the
-new form's signature is the shipped `ability_doppelganger` writ large — **she fills the board with
-copies of herself,** pride's answer to every problem being another of her. **The second finale
-mechanic** (parallel to Luxuria turning the blooded and Gula devouring the fallen): her **necromancy
-raises the fallen** — any downed unit, yours or her own, rises to her side and fights on. Both are
-deferred, flagged as new work.
+Superbia breaks the first all-general rule as Gula does: she was never human, so there is no first form
+to shed. She keeps the second — a finale mechanic beside Luxuria turning the blooded and Gula devouring
+the fallen — as **the Fall**: the board itself becomes her frozen prison. (Sublimitas's old planned
+human → demon shed and her raise-the-fallen finale are retired with her move to the stair.)
 
 ### What is built, and what is not
 
@@ -1544,9 +1554,12 @@ rank-4 gated, drops the Codex + `gateHint`). Four conversations — `vendor_arca
 `shades`. Coverage in `tests/pride_spec.lua` (Diligence banks and compounds; the Ledger releases at the
 fourth cast; Perfect Recall answers a spell and lets a sword through).
 
-**Not built:** the `status_pride` tell; the two-phase transform (human Archmage → self-copying demon)
-and its phase-two kit (`ability_doppelganger` writ large + the raise-the-fallen necromancy finale
-mechanic); the full glance-and-recast mirror over the shipped counter-magic reflex; Gyeom's second
+**Superseded 2026-10-01** (the paragraph above predates it): `character_general_pride` is now
+**Superbia, the Morning Star**, and Sublimitas is `character_sublimitas`, the approach stair's
+lieutenant, with Already Known in place of the counter-magic reflex; `tests/superbia_spec.lua` and
+`tests/sublimitas_spec.lua` hold them.
+
+**Not built:** the `status_pride` tell; Gyeom's second
 relic (the cross-battle Diligence persistence, touching `models/save.lua`); and the six mid-line quests
 and scenes — slots 3, 4, 6, 7, 8, 9 (slot 7 is the *speak-without-a-fight* seam shared with the other
 lines).
@@ -1616,7 +1629,7 @@ use; being owed is the only sensation the pact left her, so she must keep callin
 note collected is the only proof she is no longer the debtor she was. "Enough" is the thing the pact
 switched off.
 
-The name keeps the Latin sin-register (Ira, Luxuria, Gula, Acedia, Livia, Sublimitas) with the meaning
+The name keeps the Latin sin-register (Ira, Luxuria, Gula, Acedia, Livia, Superbia) with the meaning
 buried rather than stamped: **Aurea**, from *aureus / aurum* — **golden, of gold** — the hoard's own
 substance worn as a name, and a real name at that (a saint's, which is the disguise: her human form is
 the city's beloved philanthropist, greed dressed in generosity's costume, the robber baron with his name
@@ -2018,9 +2031,10 @@ them:
    uncontrollable rage — the deeper cage — instead; see *The Colosseum* above. The earlier "never chose /
    struck on her behalf" reading is retired. **Livia (Envy) is the one deliberate exception** — a
    *thing that wants to be human and did choose*, the inverse of the rule itself (a made thing bargaining
-   to become a person, not a person bargaining something away); see *The Crucible* above. **Sublimitas
-   (Pride) fits cleanly** — a human who pacted for perfect comprehension and became certain of her own
-   summit; see *The Arcanum* above.
+   to become a person, not a person bargaining something away); see *The Crucible* above. **Superbia
+   (Pride) is the second exception** (2026-10-01): a fallen archangel, never human — the sin's oldest
+   shape. The mortal who pacted with her, Sublimitas, now holds her approach stair; see *The Arcanum*
+   above.
 
 2. **Every general fight is two-phase — a human first form, then a demonic second form with more
    abilities.** The **reusable two-phase-transform subsystem** this wants now **ships** as
@@ -2030,8 +2044,8 @@ them:
    re-attach) — build the general transform against it and against the health-threshold precedent in
    `trait_hollow_crown` (which re-summons generals as the Crown's health falls past 75/50/25%). No
    general consumes it yet; Luxuria and Livia are the first two (the beloved Saint sheds into her demon
-   shape; the homunculus sheds its stolen human one), with Sublimitas a natural third — the Archmage
-   sheds into the demon who fills the board with copies of herself. **Gula (Gluttony) is the one
+   shape; the homunculus sheds its stolen human one). (Sublimitas was once pencilled as a third; she is
+   the mini boss now, and Superbia's phases are the Reflections and the Fall.) **Gula (Gluttony) is the one
    exception to this rule (2026-09-24):** she shipped two-phase and was cut to **one body** — the beast
    from the first turn. Her turning is the Lodge's fate, and it happened long before the company reaches
    her stair; see *The Hunter's Lodge* above.

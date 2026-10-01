@@ -658,15 +658,18 @@ Descent.SINS = {
             spares = { "encounter_the_glacier_king" } } },
     { id = "pride", name = "Pride", vendor = "arcanum", biome = "spire",
         scene = "conversation_descent_pride",
-        guardian = { lead = "character_general_pride", filler = "character_gilded_sworn" },
+        -- SUPERBIA, THE MORNING STAR (reimagined 2026-10-01, "Pride's Stairs"): the fallen archangel, held by
+        -- the Seraphs of the court she walked out of. Same id; Sublimitas moved down to the minor stair.
+        guardian = { lead = "character_general_pride", filler = "character_seraph" },
         -- SHE WILL NOT FIGHT BENEATH HERSELF. A count of circles already sealed, so Pride refuses a
         -- company that came straight down without proving anything -- the one gate satisfied by the RUN
         -- rather than by the floor, and the reason her circle reads as the end of a road even when the
         -- shuffle deals it early.
         gate = { kind = "worth", n = 3 },
-        -- NO LIEUTENANT. Marginalia is gone; the sworn stands in over the pages it outranks, which is
-        -- the rank rule fielding its own centrepiece. It is what a replacement replaces.
-        minor = { lead = "character_gilded_sworn", filler = "character_gilded_page" },
+        -- THE LIEUTENANT IS SUBLIMITAS (2026-10-01): the greatest mage of the age, an elf who pacted with the
+        -- Morning Star, holding court over the approach's elves. She replaced the Gilded Sworn, which had
+        -- stood in since Marginalia was cut.
+        minor = { lead = "character_sublimitas", filler = "character_elf_retainer" },
         -- THE SPIRE IS FULL NOW ("Pride's Bestiary", 2026-09-30). The 2026-09-22 cut took the Peerless and
         -- left the seat bare until the Apex Crystal (2026-09-24); the bestiary gave each stair five.
         --
@@ -810,8 +813,12 @@ Descent.DROPS = {
         "weapon_splitglass_saber", "weapon_sunderers_answer",
         "weapon_wardens_tongue",
     } },
-    pride    = { minor = { "utility_marginal_gloss" }, general = {
-        "utility_codex_unanswered",
+    -- Pride (2026-10-01, "Pride's Stairs"): Sublimitas's Codex on the minor stair, the Marginal Gloss behind it;
+    -- Superbia's relic first, then one piece per rule of hers (her light, her form, her host, her fall).
+    pride    = { minor = { "utility_codex_unanswered", "utility_marginal_gloss" }, general = {
+        "utility_the_morning_star",
+        "armor_halo_of_the_morning", "armor_perfect_plate", "utility_mirror_of_the_morning",
+        "ability_cocytus_wing",
         "armor_unravelling_habit", "weapon_overchannelled_staff",
         "weapon_unravelling_wand",
     } },

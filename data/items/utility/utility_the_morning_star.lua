@@ -12,10 +12,11 @@ return {
     flavor = "It was the brightest thing in the sky before dawn. It fell, and it is still the brightest thing.",
     sprite = "assets/items/utility_the_morning_star.png",
     type = "utility",
-    tags = { "charm", "holy" },
+    tags = { "charm", "holy", "relic" },
     class = "mage",
-    unlockLevel = 13,
+    unlockLevel = 14, -- the seat floor that pays a general's relic, as every circle's does (tests/sin_drops_spec.lua)
     unstocked = true,
+    noSteal = true, -- a relic stays with whoever earned it off the body
     traits = { "trait_non_serviam" },
     traitParams = { oncePerTurn = true, refusesAll = false },
 }

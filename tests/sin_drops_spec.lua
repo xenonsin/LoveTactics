@@ -34,8 +34,8 @@ local HEADS = {
     envy     = { "utility_envious_glass",        "utility_second_vessel",  "alchemist",  "alchemist" },
     wrath    = { "utility_the_broken_vow",       "utility_anvils_face",    "monk",       "fighter" },
     sloth    = { "weapon_forsworn_pike",         "utility_unblown_horn",   "knight",     "knight" },
-    -- Pride's relic is reworked on its own (not this file's to place); its lieutenant's Gloss is a mage's.
-    pride    = { "utility_codex_unanswered",     "utility_marginal_gloss", nil,          "mage" },
+    -- Pride's relic is Superbia's Morning Star; her lieutenant Sublimitas pays the Codex (2026-10-01).
+    pride    = { "utility_the_morning_star",     "utility_codex_unanswered", "mage",   "mage" },
 }
 
 local function isCreature(def) return def.class == "creature" end
