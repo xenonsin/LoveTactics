@@ -1088,6 +1088,17 @@ return {
     ["items/utility_war_saddle.png"] = { icon = "delapouite/saddle", by = "hand" },
     ["items/weapon_hobgoblins_lash.png"] = { icon = "lorc/slavery-whip", by = "hand" },
     ["items/weapon_redcaps_pike.png"] = { icon = "lorc/dripping-sword", by = "hand" },
+    -- SUPERBIA, THE MORNING STAR (Pride's general): her four organs, her spear, and the five trophies.
+    ["items/utility_non_serviam.png"] = { icon = "lorc/shield-reflect", by = "hand" },
+    ["items/utility_light_bearer.png"] = { icon = "lorc/orbital-rays", by = "hand" },
+    ["items/utility_flawless_form.png"] = { icon = "delapouite/round-star", by = "hand" },
+    ["items/utility_the_host_and_the_fall.png"] = { icon = "lorc/icebergs", by = "hand" },
+    ["items/weapon_spear_of_the_morning.png"] = { icon = "lorc/spears", by = "hand" },
+    ["items/utility_the_morning_star.png"] = { icon = "lorc/beveled-star", by = "hand" },
+    ["items/armor_halo_of_the_morning.png"] = { icon = "lorc/sun", by = "hand" },
+    ["items/armor_perfect_plate.png"] = { icon = "delapouite/custodian-helmet", by = "hand" },
+    ["items/utility_mirror_of_the_morning.png"] = { icon = "lorc/shattered-glass", by = "hand" },
+    ["items/ability_cocytus_wing.png"] = { icon = "delapouite/frozen-ring", by = "hand" },
     -- THE ANGELS OF PRIDE (2026-09-30): the race's grant, the choir's organs and natural hands, and the five trophies.
     ["items/utility_angel_blood.png"] = { icon = "lorc/angel-outfit", by = "hand" },
     ["items/utility_the_hymn.png"] = { icon = "caro-asercion/heraldic-sun", by = "hand" },

@@ -521,6 +521,15 @@ Grade.TRAIT_GRADE = {
     trait_heirs_torc =                  1.0,  -- Heir's Torc -- an ally falls: heal 25%, +3 Damage, to three
     trait_succession =                  0.5,  -- Succession -- fallen, your boons pass to the strongest ally
 
+    -- SUPERBIA, THE MORNING STAR (Pride's general). The Host and the Fall is her own and never shelved. Of the drops:
+    -- Non Serviam sends one debuff a turn back (the relic); Light-Bearer is a Blind on every foe that looks; Flawless
+    -- Form caps a wound at a quarter (the plate); the Mirror is two fragile bodies, once a fight.
+    trait_non_serviam =                 1.5,  -- Non Serviam -- a foe's debuff rebounds onto whoever laid it
+    trait_light_bearer =                1.5,  -- Light-Bearer -- foes that see you are Blinded for their turn
+    trait_flawless_form =               1.5,  -- Flawless Form -- no blow takes more than a share of max health
+    trait_the_host_and_the_fall =       0.0,  -- The Host and the Fall -- her two stages
+    trait_mirror_of_the_morning =       1.0,  -- Mirror of the Morning -- two Reflections, once, below 2/3
+
     -- THE ANGELS OF PRIDE (2026-09-30). Incorruptible, the Turning, the Sentence and Hosanna are a body's own and
     -- never shelved; Keeping Watch is the bookkeeping half of Virtue's Aegis, which is graded as the cast. Of the
     -- drops: the Hymn is a standing Blessing on every ally within 2; the Burning One a Burn on whoever stays.

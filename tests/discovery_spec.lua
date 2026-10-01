@@ -162,6 +162,9 @@ local TROPHIES = {
     -- wheel and the Throne's verdict.
     "utility_heralds_trumpet", "ability_virtues_aegis", "armor_seraphs_wing", "weapon_wheel_of_eyes",
     "ability_thrones_verdict",
+    -- Superbia's, the Morning Star (Pride's general): her relic, her halo, her form, her Host and her Fall.
+    "utility_the_morning_star", "armor_halo_of_the_morning", "armor_perfect_plate",
+    "utility_mirror_of_the_morning", "ability_cocytus_wing",
     -- The Oni's (Wrath, 2026-09-27): the Oni's horn, the Greatblade's sword and stew, the Shadow's thread, the
     -- Priestess's bell, the Swordmaster's katana, the Twins' morning star and borrowed eyes, the General's dome.
     "utility_oni_horn", "weapon_odachi", "consumable_questionable_stew", "ability_steel_thread",

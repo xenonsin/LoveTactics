@@ -144,9 +144,9 @@ local NAMED = {
     character_saber = { skill = 8, luck = 4, why = "the bout's champion: technique is her claim" },
 
     -- THE SEVEN GENERALS --------------------------------------------------
-    -- The Unequalled. Skill 10 is the only 10 in the game, and it is hers because it is literally her
-    -- epithet -- Pride's claim is not that she is strong but that nobody is better.
-    character_general_pride = { skill = 10, luck = 3, why = "the Unequalled: the only 10, and it is the point" },
+    -- Superbia, the Morning Star (since the Sublimitas body moved to its own blueprint). Her aim is not her
+    -- claim; her form is -- she is sure, and she is untouched.
+    character_general_pride = { skill = 8, luck = 4, why = "the Morning Star: sure of her aim, and sure she is never hit" },
     -- The Ever-Owed. Luck 10, the mirror of Pride's: Greed's domain IS fortune, so she is nearly
     -- impossible to crit and every attacker gives up their upside against her.
     character_general_greed = { skill = 8, luck = 4, why = "an old dragon: sure of her aim, and never lucky -- she never needed to be" },

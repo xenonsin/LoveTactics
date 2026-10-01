@@ -1168,6 +1168,9 @@ function Status.isImmune(unit, id, applier)
         and not (applier and applier.side ~= nil and applier.side == unit.side) then
         return { name = "Incorruptible" }
     end
+    -- SUPERBIA, THE MORNING STAR (Pride's general): NON SERVIAM. A foe's debuff is sent back before it gets
+    -- here (Status.apply); what reaches this line had nobody to send it to, and she refuses it all the same.
+    if unit and require("models.morning_star").refuses(unit, applier) then return { name = "Non Serviam" } end
     for _, s in ipairs((unit and unit.statuses) or {}) do
         for _, blocked in ipairs(s.def.grantsImmunity or {}) do
             -- The DEF, not the instance: the log below names the ward, and a name is a property of the
@@ -1222,6 +1225,16 @@ function Status.apply(combat, unit, id, opts)
     local def = Status.defs[id]
     assert(def, "unknown status id: " .. tostring(id))
     unit.statuses = unit.statuses or {}
+
+    -- SUPERBIA, THE MORNING STAR (Pride's general): NON SERVIAM. A foe's debuff laid on a bearer is sent back
+    -- onto whoever laid it, at the length it was laid, and never touches the bearer. Ahead of every wall below,
+    -- because a debuff that rebounds never reaches them (models/morning_star.lua).
+    local MorningStar = require("models.morning_star")
+    local sendTo, nonServiam = MorningStar.reboundTarget(unit, id, opts)
+    if sendTo then
+        MorningStar.rebound(combat, unit, id, opts, sendTo, nonServiam)
+        return nil
+    end
 
     -- A named immunity refuses the status outright, BEFORE the resistance curve and before the
     -- diminishing-returns tally: there is nothing to shorten and nothing to learn, so an immune body

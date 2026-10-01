@@ -4412,6 +4412,8 @@ end
 -- thing the Striders are for. The rule is "the ground stops mattering", not "nothing stops you".
 function Combat.isFlying(unit)
     if not (unit and unit.char) then return false end
+    -- SUPERBIA, THE MORNING STAR (Pride's general): after the Fall she can no longer fly (models/morning_star.lua).
+    if unit.grounded then return false end
     for _, item in ipairs(Character.eachItem(unit.char)) do
         if hasTag(item.tags, "flying") then return true end
     end
@@ -9024,6 +9026,9 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     -- Above the Mana Shield and the account below, so what those are asked to cover is the real wound.
     local crit = opts and opts.critical and dmg > 0
     if crit then dmg = dmg * Combat.CRIT_MULTIPLIER end
+    -- SUPERBIA, THE MORNING STAR (Pride's general): FLAWLESS FORM. No single wound takes more than its bearer's
+    -- cap, a share of max health -- past the crit, so a crit is capped too (models/morning_star.lua).
+    dmg = require("models.morning_star").woundCap(target, dmg)
     -- A Mana Shield (data/items/utility/utility_mana_shield.lua) pays the wound out of the wrong pool.
     -- It runs AFTER mitigation and not before, unlike the barrier above: armor still gets its full say,
     -- and what the shield is asked to cover is the number that would actually have reached the body.
@@ -9613,7 +9618,8 @@ function Combat.computeDamage(combat, user, target, item, opts)
     local rust = Status.tarnishOn(user, item)
     local base = (opts.amount or (ab and ab.damage) or 0) + flatStat(user, atkStat) + unarmedDamageBonus(user, item) + charmBonus - rust
     base = relicOutgoing(user, target, base)
-    return Combat.mitigatedDamage(target, base, tags, opts, user)
+    -- SUPERBIA, THE MORNING STAR (Pride's general): the hover quotes the wound cap the blow will meet.
+    return require("models.morning_star").woundCap(target, Combat.mitigatedDamage(target, base, tags, opts, user))
 end
 
 -- Pure: the damage `unit` striking a trap with `weapon` would deal -- the weapon's attack stat

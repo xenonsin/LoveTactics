@@ -272,7 +272,7 @@ local CHARACTER_SILHOUETTE = {
     -- Off the overlord helm, which stays with the rank classless boss (the Bandit Chief). The seven
     -- generals are the game's marquee kills and each is a SIN -- so each reads as its own.
     general_wrath = "delapouite/angry-eyes",
-    general_pride = "delapouite/imperial-crown",
+    general_pride = "lorc/expanded-rays", -- Superbia, the Morning Star: a fallen archangel's light
     general_greed = "lorc/double-dragon", -- Avaritia, an elder dragon (2026-09-25)
     general_envy = "lorc/voodoo-doll",              -- the Unborn: a made effigy of a person
     general_gluttony = "lorc/gluttony",
@@ -566,6 +566,8 @@ local CHARACTER_SILHOUETTE = {
     seraph = "lorc/celebration-fire",
     ophan = "caro-asercion/tarot-10-wheel-of-fortune",
     the_throne = "lorc/star-prominences",
+    -- SUPERBIA, THE MORNING STAR (Pride's general): her Reflections, drawn as the wings they borrow.
+    reflection_of_the_morning = "delapouite/fairy-wings",
     -- THE ONI OF WRATH (2026-09-27): the line body is the oni; the rest are drawn by their role in the clan --
     -- the student's bamboo, the greatblade's helm, the spy's star, the maiden's robe, the master, the two halves,
     -- the General's crest.
