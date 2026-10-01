@@ -9024,6 +9024,14 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     if dmg <= 0 then return 0 end
     local hp = target.char.stats.health
     hp.current = hp.current - dmg
+    -- THE KING EATS FIRST (Pride's lions, 2026-09-30; data/traits/trait_the_king_eats_first.lua): a lioness's
+    -- blow that would fell a foe while a Lion of her side stands leaves it at 1 -- she holds the prey for him.
+    -- Clamped here, before the shared pool, the cue and both death paths read the bar, so the held body walks
+    -- the survivor's branch and every number downstream is the wound it actually took.
+    if hp.current <= 0 and not target.fragile and Trait.sparesQuarry(combat, attacker, target) then
+        dmg = dmg + hp.current - 1
+        hp.current = 1
+    end
     -- A YOKED COMPANY shares one bar, so a blow on any of them is a blow on all of them.
     if target.sharedPool then Combat.syncSharedPool(combat) end
     -- Who last drew blood, kept on the body so killUnit can name a killer to the hooks that pay one
@@ -9220,6 +9228,11 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
         -- hovered target never quietly advances a trait. Raised, not necessarily thrown on this line:
         -- inside a resolving cast the answer waits for the effect to finish (see Combat.beginAnswers).
         inflictCarried()
+        -- ...and the STRIKER hears that its blow landed on a body still standing (Pride's lions, 2026-09-30: a foe
+        -- a lioness holds at 1 is Rooted, and the Hold the Quarry charm roots one brought below a quarter).
+        if attacker and attacker ~= target then
+            Trait.onBlowLanded(combat, attacker, target, { amount = dmg, before = hp.current + dmg })
+        end
         -- ...and the statuses riding the survivor get the same news (`wakes`), for the ones a blow is
         -- supposed to BREAK (Sleep) -- raised together so the hold cannot separate them.
         raiseAnswer(combat, target, { amount = dmg, tags = tags, source = source, attacker = attacker, critical = crit or nil,

@@ -206,6 +206,9 @@ local TROPHIES = {
     -- The flight's (Gluttony's approach, 2026-09-23): the hawk's bells as a Trapper's, and the Griffin's
     -- appetite and tithe as a Warbrewer's and a Beastmaster's.
     "utility_hawk_bells", "utility_gorgers_beak", "utility_tithe_feather",
+    -- Pride's approach beasts and the Titan (2026-09-30): the Lioness's hold as a Hunter's, the Lion's roar as a
+    -- Knight's coat, the Peacock-Basilisk's gaze as a Rogue's, and the Titan's chain as a Barbarian's.
+    "utility_hold_the_quarry", "armor_golden_mane", "utility_peacocks_train", "weapon_titans_chain",
 }
 
 local function vendorFor(class)

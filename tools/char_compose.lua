@@ -670,6 +670,12 @@ local CHARACTER_SILHOUETTE = {
     many_faced_king = "lorc/duality-mask",
     crystal_slime = "lorc/crystal-bars",
     apex_crystal = "lorc/crystal-eye",       -- a piece coming off, which is all it is
+    -- PRIDE'S LIONS, PEACOCK-BASILISK AND TITAN (2026-09-30). The rooster is the basilisk's own animal (the
+    -- cockatrice is a cock's egg hatched by a serpent); Atlas is the one titan in the set.
+    lioness = "delapouite/feline",
+    lion = "lorc/cat",
+    peacock_basilisk = "delapouite/rooster",
+    titan = "delapouite/atlas",
 }
 
 -- Reverse index: the character key a discipline names as its `exemplar` -> the discipline id. Built from

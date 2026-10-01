@@ -358,6 +358,11 @@ Balance.MAGNITUDE_WAIVERS = {
         .. " It is also the only Root that needs no weapon beside it -- a slot-10 blow on top of a"
         .. " weaponless range-3 Root at speed 4 would make it strictly the better Pinning Shot (slot 7,"
         .. " bow-gated, same status), folding the discipline's setup half into its shooting half.",
+    -- PRIDE'S TITAN (2026-09-30).
+    weapon_titans_chain = "the mace ladder prices ONE body, and this swing is every foe within 2 of the wielder,"
+        .. " each shoved, with a body driven into another struck again for the full magnitude -- a crowd of"
+        .. " four is eight landings. Per target it is held at the Labrys's weight (the other piece that may"
+        .. " hit six), and the rung's 17 on each of them would make it the heaviest swing on the shelf.",
 }
 
 -- (Balance.EARLY_GATES -- "how many gates count as the opening shelf" -- lived here to bound the median

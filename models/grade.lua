@@ -1095,6 +1095,17 @@ Grade.TRAIT_GRADE = {
     trait_spongeflesh =                 1.5,  -- Spongeflesh (at the mantle's quarter)
     trait_the_pit_grows =               3.5,  -- The Pit Grows
     trait_heartwood =                   2.0,  -- Heartwood
+
+    -- PRIDE'S LIONS, PEACOCK-BASILISK AND TITAN (2026-09-30). The King Eats First and the Lion's Share are a body's
+    -- own and never shelved. Of the drops: Hold the Quarry is a Root on a wound that crosses a quarter; the Golden
+    -- Mane a small heal and a Rattle on a kill; the Gaze, worn as the Peacock's Train, a Rattle at 2 for whoever
+    -- ignores you; the Chains Break is +2/+4 past half.
+    trait_the_king_eats_first =         0.0,  -- The King Eats First -- the lioness holds a foe at 1 for her Lion
+    trait_the_lions_share =             0.0,  -- The Lion's Share -- the Lion's roar on a kill
+    trait_hold_the_quarry =             1.0,  -- Hold the Quarry -- below a quarter: Rooted
+    trait_golden_mane =                 1.0,  -- Golden Mane -- a kill heals allies within 2, Rattles foes
+    trait_the_admired_gaze =            1.0,  -- The Gaze That Is Admired -- ignored, it Rattles (Stuns, on the bird)
+    trait_the_chains_break =            1.0,  -- The Chains Break -- below half, +2 movement and +4 damage
 }
 
 -- Which of the weights above were ADOPTED from the classifier's seed rather than weighed one by

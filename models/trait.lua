@@ -1802,4 +1802,25 @@ function Trait.onAllyStrike(combat, striker, foe)
     end
 end
 
+-- THE LIONS OF PRIDE (2026-09-30). Two questions asked from the STRIKER's side of a blow, which no hook above
+-- answers -- every other one hangs off the body that was hit.
+--
+-- Does `attacker` hold `target` at 1 rather than fell it? Read by Combat.dealFlatDamage before the death paths.
+-- A trait answers by declaring `sparesQuarry = function(combat, bearer, target)` (the lioness's, while a Lion of
+-- her side stands). Through Trait.flag, so a Sundered lioness kills like anybody else.
+function Trait.sparesQuarry(combat, attacker, target)
+    if not (combat and attacker and target and attacker ~= target and attacker.side ~= target.side) then
+        return false
+    end
+    local t = Trait.flag(attacker, "sparesQuarry")
+    return t ~= nil and t.def.sparesQuarry(combat, attacker, target) == true
+end
+
+-- `attacker` landed a wound on `target`, and `target` is still standing (`onBlowLanded`, fired on the striker from
+-- Combat.dealFlatDamage's survivor branch). ctx.target is the body, ctx.before its health before the wound.
+function Trait.onBlowLanded(combat, attacker, target, info)
+    if not (attacker and attacker.alive and target and target.alive) then return end
+    dispatch(combat, attacker, "onBlowLanded", { target = target, before = info.before, amount = info.amount })
+end
+
 return Trait

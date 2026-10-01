@@ -1287,4 +1287,15 @@ return {
     ["traps/snare_stake.png"] = { icon = "lorc/spiked-fence", by = "hand" },
     ["traps/snare_trap.png"] = { icon = "lorc/time-trap", by = "auto" },
     ["traps/spike_trap.png"] = { icon = "lorc/trap-mask", by = "auto" },
+    -- PRIDE'S LIONS, PEACOCK-BASILISK AND TITAN (2026-09-30): the organs, the Titan's swing, and the four trophies.
+    ["items/utility_the_king_eats_first.png"] = { icon = "lorc/paw", by = "hand" },
+    ["items/utility_the_lions_share.png"] = { icon = "lorc/food-chain", by = "hand" },
+    ["items/utility_the_admired_gaze.png"] = { icon = "lorc/gaze", by = "hand" },
+    ["items/utility_the_gods_chains.png"] = { icon = "lorc/imprisoned", by = "hand" },
+    ["items/utility_the_chains_break.png"] = { icon = "lorc/freedom-dove", by = "hand" },
+    ["items/weapon_hanging_chain.png"] = { icon = "lorc/chained-arrow-heads", by = "hand" },
+    ["items/utility_hold_the_quarry.png"] = { icon = "darkzaitzev/catch", by = "hand" },
+    ["items/armor_golden_mane.png"] = { icon = "lorc/hollow-cat", by = "hand" },
+    ["items/utility_peacocks_train.png"] = { icon = "delapouite/handheld-fan", by = "hand" },
+    ["items/weapon_titans_chain.png"] = { icon = "lorc/linked-rings", by = "hand" },
 }

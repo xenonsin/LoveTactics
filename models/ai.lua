@@ -294,7 +294,8 @@ AI.TEST_ORDER = {
 }
 AI.ACTION_ORDER = { "attack", "support", "cast", "retreat", "wait" }
 AI.TARGET_PREF_ORDER = { "nearest", "lowest_hp", "most_wounded", "lethal", "self", "objective",
-                         "drownable", "gilded", "sleeping" }
+                         "drownable", "gilded", "sleeping",
+                         "held" } -- Pride's lions (2026-09-30)
 
 -- Which tests take a `value`, and what shape it is. A test that takes none must not show a value
 -- field at all -- an editor offering "exists 0.4" is offering nonsense.
@@ -2242,6 +2243,11 @@ local function prefBonus(ctx, rule, cand, w)
         -- THE LYING-DOWN FIRST (the ghoul, character_ghoul.lua): a sleeper is a body that will not get up
         -- before the next blow, and the barrow-wight's touch is what puts it there.
         return Status.has(t, "status_sleep") and w.TARGET_PREF or 0
+    elseif pref == "held" then
+        -- THE LION'S SHARE (Pride's lions, 2026-09-30; character_lion.lua): prey a lioness holds -- Rooted at 1 --
+        -- is his, and he goes for it first.
+        local hp = t.char and t.char.stats and t.char.stats.health
+        return (hp and hp.current == 1 and Status.has(t, "status_root")) and w.TARGET_PREF or 0
     end
     return 0
 end
