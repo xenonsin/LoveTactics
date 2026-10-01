@@ -3676,6 +3676,10 @@ function Combat.startTurn(combat)
     -- Draught a strategy instead of a self-harm: a plague knight who has poisoned ITSELF is a walking
     -- source, and the sickness spreads out of its own tile. Only the bearer's foes ever catch it.
     if unit and Trait.flag(unit, "spreadsPoison") then Combat.spreadContagion(combat, unit) end
+    -- THE DJINN OF PRIDE (2026-09-30) -- WILL NOT STOOP: a djinn whose turn opens beside a foe blinks clear,
+    -- free, or is Shamed and loses the turn (models/djinn.lua). Past the status sweep, so the Shamed it may land
+    -- is this turn's and not swept by it.
+    if unit and unit.alive and Trait.flag(unit, "willNotStoop") then require("models.djinn").willNotStoop(combat, unit) end
     -- THE FIELD STILL (the Warbrewer's): a draught is brewed into the grid at the top of the turn. The
     -- flag carries the item id, so the charm decides what it makes and the engine only decides when.
     local still = unit and Trait.flag(unit, "brewsEachTurn")

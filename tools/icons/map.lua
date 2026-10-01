@@ -1103,6 +1103,16 @@ return {
     ["items/utility_oni_blood.png"] = { icon = "lorc/horned-helm", by = "hand" },
     -- THE ELVES OF PRIDE (2026-09-30): the race's grant.
     ["items/utility_elf_blood.png"] = { icon = "delapouite/elf-ear", by = "hand" },
+    -- THE DJINN OF PRIDE (2026-09-30): the race's grant, the three spells and the Coal, and the Wishmaker's pieces.
+    ["items/utility_will_not_stoop.png"] = { icon = "lorc/fluffy-swirl", by = "hand" },
+    ["items/ability_djinnis_breath.png"] = { icon = "lorc/windy-stripes", by = "hand" },
+    ["items/ability_ifrits_flame.png"] = { icon = "lorc/alien-fire", by = "hand" },
+    ["items/utility_ifrits_coal.png"] = { icon = "lorc/campfire", by = "hand" },
+    ["items/ability_marids_tide.png"] = { icon = "lorc/waves", by = "hand" },
+    ["items/ability_marids_flood.png"] = { icon = "lorc/water-bolt", by = "hand" },
+    ["items/utility_three_wishes.png"] = { icon = "delapouite/sparkles", by = "hand" },
+    ["items/utility_the_lamp.png"] = { icon = "lorc/ball-glow", by = "hand" },
+    ["items/utility_the_last_lamp.png"] = { icon = "lorc/paper-lantern", by = "hand" },
     -- THE ASURA OF WRATH (2026-09-28): the blood, the arms by rank, the gate pair, and Furor's pieces.
     ["items/utility_asura_blood.png"] = { icon = "lorc/broken-heart-zone", by = "hand" },
     ["items/utility_the_broken_vow.png"] = { icon = "lorc/lotus", by = "hand" },

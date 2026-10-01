@@ -582,6 +582,9 @@ function Trait.trySurvive(combat, unit)
         if require("models.storm").tear(combat, unit) then return true end
         unit.char.stats.health.current = 0
     end
+    -- THE DJINN OF PRIDE (2026-09-30) -- THREE WISHES (data/traits/trait_three_wishes.lua, the Wishmaker's): while
+    -- her Lamp stands, the blow that would fell her grants the wishes she has left, in order (models/djinn.lua).
+    if Trait.flag(unit, "wishesOnLethal") and require("models.djinn").onLethal(combat, unit) then return true end
     for _, t in ipairs(unit.traits) do
         -- HEAD DOWN (data/traits/trait_the_labyrinth.lua, the Minotaur's): a blow that would fell it from above a
         -- third of its health puts its head down instead -- Fury, at 1 health and unkillable for the window.

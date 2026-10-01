@@ -537,6 +537,14 @@ Grade.TRAIT_GRADE = {
     -- chi off every blow taken and a free full-pool Burst, against a drain on idle turns and a turn the game takes.
     trait_the_broken_vow =              1.0,  -- The Broken Vow -- chi when struck, drains idle, bursts at full
     trait_the_nio =                     0.0,  -- The Gate Pair -- a fallen twin's chi passes to the other
+    -- THE DJINN OF PRIDE (2026-09-30). Will Not Stoop, the Three Wishes and the Lamp are a body's own. Of the drops:
+    -- the Coal is an ember under every fire spell (the Emberwand's rider, on any staff); the Last Lamp is +4 magic
+    -- damage and a free flight for three turns, once a fight, below a third.
+    trait_will_not_stoop =              0.0,  -- Will Not Stoop -- a djinn beside a foe blinks or is Shamed
+    trait_three_wishes =                0.0,  -- Three Wishes -- the Wishmaker's lamp, a wish a third
+    trait_the_lamp =                    0.0,  -- The Lamp -- grants the wishes while it stands
+    trait_ifrits_coal =                 0.5,  -- Ifrit's Coal -- fire spells set the target's tile alight
+    trait_the_last_lamp =               1.0,  -- The Last Lamp -- below a third, Djinn Form for 3 turns
     -- THE VAMPIRES OF WRATH (2026-09-26). The Thirst, the Thrall, the Courier, Mist Step and Blood Bond are a body's
     -- own and never shelved. Of the drops: the Fang is a stacking +3 spent on a hit; the Scent is +2 movement and
     -- +20% against the bled; the Mistcloak voids one blow a fight; the Chalice is a small heal that pays for itself

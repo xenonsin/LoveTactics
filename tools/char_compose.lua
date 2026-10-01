@@ -599,6 +599,14 @@ local CHARACTER_SILHOUETTE = {
     asura_three_faced = "lorc/double-face-mask",
     asura_agyo = "delapouite/carnival-mask",
     asura_ungyo = "lorc/domino-mask",
+    -- THE DJINN OF PRIDE (2026-09-30): the three djinn by their element, the shape the Wishmaker wishes herself
+    -- into, the archmage herself, and her Lamp.
+    djinni = "delapouite/djinn",
+    ifrit = "lorc/ifrit",
+    marid = "lorc/splash",
+    great_djinn = "delapouite/turban",
+    the_wishmaker = "caro-asercion/tarot-01-the-magician",
+    the_lamp = "delapouite/glowing-artifact",
     -- ...AND ITS ELEMENTALS (2026-09-28). No element word in any of the three ids, so each is named here and
     -- tinted below rather than falling to the pale elemental bucket.
     blaze = "lorc/burning-embers",         -- the fire that will not stay where it was put

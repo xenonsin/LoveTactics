@@ -178,6 +178,9 @@ local TROPHIES = {
     "weapon_labrys", "utility_bulls_brow",
     -- Furor's (2026-09-28): his arms as a move, the Colosseum's own piece, his arm, his stillness.
     "ability_thousand_hands", "ability_severing_blow", "utility_the_asuras_arm", "utility_tapas_beads",
+    -- The djinn's (Pride's approach, 2026-09-30): the Djinni's gale, the Ifrit's coal, the Marid's tide; and the
+    -- Wishmaker's (Pride's seat): the Last Lamp.
+    "ability_djinnis_breath", "utility_ifrits_coal", "ability_marids_tide", "utility_the_last_lamp",
     -- Wrath's elementals' (the approach and the seat, 2026-09-28): each body's three rules, handed over one by one.
     "utility_flowwalkers_soles", "utility_heart_of_the_wildfire", "utility_coal_in_the_fist",
     "weapon_forked_rod", "utility_flashpan", "utility_static_coil",
