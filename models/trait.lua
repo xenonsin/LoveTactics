@@ -24,6 +24,7 @@
 --   * onAnyTurnEnd(ctx)  -- somebody ELSE's turn just ended; ctx.actor is who. A broadcast, like
 --                           onAnyDeath: a body that takes no turns (an egg) still hears it
 --   * onTurnEnd(ctx)     -- the bearer's OWN turn just ended (fired beside onAnyTurnEnd)
+--   * onAnyTurnStart(ctx) -- somebody ELSE's turn just opened; ctx.actor is who (Trait.onAnyTurnStart)
 --
 -- Two things carry traits, and both flow through Trait.attach:
 --   * a character blueprint  -- `traits = { "trait_wrath_rising" }` on data/characters/<id>.lua
@@ -1791,6 +1792,25 @@ function Trait.onAnyTurnEnd(combat, actor)
     for _, unit in ipairs(combat.units or {}) do
         if unit.alive and unit ~= actor and unit.traits and #unit.traits > 0 then
             dispatch(combat, unit, "onAnyTurnEnd", { actor = actor })
+        end
+    end
+end
+
+-- THE ANGELS OF PRIDE (2026-09-30, "Pride's Bestiary"): `actor`'s turn just OPENED, and every other living body
+-- that carries an `onAnyTurnStart` hook hears it. The mirror of onAnyTurnEnd, for a rule about where a body
+-- STANDS when its turn comes round rather than what it did: the Seraph's Burning One sets alight a foe that
+-- starts its turn beside it (data/traits/trait_the_burning_one.lua). Fired from Combat.startTurn past the
+-- actor's own status sweep. Pre-checked per body, so a field with no such hook pays one loop and no beat.
+function Trait.onAnyTurnStart(combat, actor)
+    if not (combat and actor and actor.alive) then return end
+    for _, unit in ipairs(combat.units or {}) do
+        if unit.alive and unit ~= actor and unit.traits and #unit.traits > 0 then
+            for _, t in ipairs(unit.traits) do
+                if t.def and t.def.onAnyTurnStart then
+                    dispatch(combat, unit, "onAnyTurnStart", { actor = actor })
+                    break
+                end
+            end
         end
     end
 end

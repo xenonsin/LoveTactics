@@ -521,6 +521,17 @@ Grade.TRAIT_GRADE = {
     trait_heirs_torc =                  1.0,  -- Heir's Torc -- an ally falls: heal 25%, +3 Damage, to three
     trait_succession =                  0.5,  -- Succession -- fallen, your boons pass to the strongest ally
 
+    -- THE ANGELS OF PRIDE (2026-09-30). Incorruptible, the Turning, the Sentence and Hosanna are a body's own and
+    -- never shelved; Keeping Watch is the bookkeeping half of Virtue's Aegis, which is graded as the cast. Of the
+    -- drops: the Hymn is a standing Blessing on every ally within 2; the Burning One a Burn on whoever stays.
+    trait_incorruptible =               0.0,  -- Incorruptible -- the race's wall against a foe's debuff and shove
+    trait_the_hymn =                    1.5,  -- The Hymn -- turn's end: allies within 2 are Blessed
+    trait_keeping_watch =               0.0,  -- Keeping Watch -- what Virtue's Aegis reads
+    trait_the_burning_one =             1.0,  -- The Burning One -- a foe starting its turn beside you Burns
+    trait_the_turning =                 0.0,  -- The Turning -- the Ophan's compulsion to strike
+    trait_the_sentence =                0.0,  -- The Sentence -- the Throne's chain
+    trait_hosanna =                     0.0,  -- Hosanna -- the Throne calls Heralds at each quarter
+
     -- THE ONI OF WRATH (2026-09-27). The Witch's Taint, the Clan Stands, Unmoved, the Keeper, the Lesson and the
     -- two sisters are a body's own and never shelved. Of the drops: the Horn is +3/+1 and a regen past half, with
     -- a crit taken snapping it; Borrowed Eyes is a reveal on a turn's end (the blind ward is weighed on the item).

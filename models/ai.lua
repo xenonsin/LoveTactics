@@ -1881,6 +1881,10 @@ function AI.preempt(combat, unit)
     -- with its head down runs at whoever is nearest.
     local maze = require("models.labyrinth").plan(combat, unit)
     if maze then return maze end
+    -- THE CHOIR (models/choir.lua, the angels of Pride): the Throne decrees whenever it holds none, and an Ophan
+    -- with a foe beside it turns.
+    local choir = require("models.choir").plan(combat, unit)
+    if choir then return choir end
     -- ON THE CHAIN (data/traits/trait_the_chain.lua): the War Ogre goes for whatever its Handler last struck.
     if unit.side ~= "party" and Trait.flag(unit, "chained") and unit.pointedAt and unit.pointedAt.alive
         and unit.pointedAt.side ~= unit.side then

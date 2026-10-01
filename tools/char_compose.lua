@@ -559,6 +559,13 @@ local CHARACTER_SILHOUETTE = {
     the_blood_countess = "delapouite/tiara",
     blood_basin = "delapouite/bathtub",
     the_gorged = "skoll/fat", -- (2026-09-27) the one that drank until it filled the room
+    -- THE ANGELS OF PRIDE (2026-09-30): drawn by the order of the choir -- the herald's dove, the virtue's star,
+    -- the seraph's fire, the ophan's wheel, the Throne's blaze.
+    herald = "lorc/freedom-dove",
+    virtue = "delapouite/seven-pointed-star",
+    seraph = "lorc/celebration-fire",
+    ophan = "caro-asercion/tarot-10-wheel-of-fortune",
+    the_throne = "lorc/star-prominences",
     -- THE ONI OF WRATH (2026-09-27): the line body is the oni; the rest are drawn by their role in the clan --
     -- the student's bamboo, the greatblade's helm, the spy's star, the maiden's robe, the master, the two halves,
     -- the General's crest.

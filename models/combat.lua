@@ -3649,6 +3649,9 @@ function Combat.startTurn(combat)
     -- Invisible right now", which the sweep would answer no to on the one beat that matters.
     local cameUpHidden = unit and Status.has(unit, "status_invisible") or false
     if unit then Status.onTurnStart(combat, unit) end
+    -- THE ANGELS OF PRIDE (2026-09-30): every other body hears this turn open (Trait.onAnyTurnStart) -- the
+    -- Seraph's Burning One, which sets alight a foe that starts its turn beside it.
+    if unit and unit.alive then Trait.onAnyTurnStart(combat, unit) end
     -- A KILL MADE FROM HIDING THAT KEPT ITS BEARER HIDDEN (Thrill of the Hunt) also opens the next
     -- turn hidden, whatever the blood tally says -- otherwise the veil it kept would lapse on the very
     -- beat it was kept for. Latched by the trait, spent here.

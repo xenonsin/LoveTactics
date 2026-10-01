@@ -158,6 +158,10 @@ local TROPHIES = {
     "utility_orc_scars", "weapon_unbroken_axe", "utility_warpaint", "ability_marching_drum",
     "ability_blood_offering", "ability_goad", "utility_pit_fighters_belt", "utility_heirs_torc",
     "ability_the_strongest_leads",
+    -- The Angels' (Pride, 2026-09-30): the Herald's trumpet, the Virtue's aegis, the Seraph's wing, the Ophan's
+    -- wheel and the Throne's verdict.
+    "utility_heralds_trumpet", "ability_virtues_aegis", "armor_seraphs_wing", "weapon_wheel_of_eyes",
+    "ability_thrones_verdict",
     -- The Oni's (Wrath, 2026-09-27): the Oni's horn, the Greatblade's sword and stew, the Shadow's thread, the
     -- Priestess's bell, the Swordmaster's katana, the Twins' morning star and borrowed eyes, the General's dome.
     "utility_oni_horn", "weapon_odachi", "consumable_questionable_stew", "ability_steel_thread",

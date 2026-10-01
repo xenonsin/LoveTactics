@@ -1139,7 +1139,7 @@ end
 -- immunity is a permanent grid decision, and a buff's is a window somebody spent a turn opening. Both
 -- answer the same question, so both are answered here rather than at the two call sites -- an immunity
 -- only one of the two gates honoured would be an immunity the tooltip could lie about.
-function Status.isImmune(unit, id)
+function Status.isImmune(unit, id, applier)
     local def = Status.defs[id]
     if not (def and def.debuff) then return false end -- never blocks a buff
     -- A QUEST OBJECTIVE IS NOT TAKEN. `bossProof` names a status that would remove a body from the
@@ -1151,6 +1151,15 @@ function Status.isImmune(unit, id)
     -- rule the next one forgets.
     if def.bossProof and unit and unit.char and unit.char.boss then
         return { name = "a quest objective" }
+    end
+    -- THE ANGELS OF PRIDE (2026-09-30, "Pride's Bestiary"): INCORRUPTIBLE. Nothing from outside the choir lands
+    -- on an angel -- no debuff a foe lays, and none off ground nobody of its side laid. What its OWN side hands
+    -- it still lands, so the applier is asked; a caller that names none (a preview, a hazard tick) is outside
+    -- the choir. Answered here beside the other walls so the tooltip and the blow read one answer
+    -- (data/traits/trait_incorruptible.lua).
+    if unit and require("models.trait").flag(unit, "incorruptible")
+        and not (applier and applier.side ~= nil and applier.side == unit.side) then
+        return { name = "Incorruptible" }
     end
     for _, s in ipairs((unit and unit.statuses) or {}) do
         for _, blocked in ipairs(s.def.grantsImmunity or {}) do
@@ -1211,7 +1220,7 @@ function Status.apply(combat, unit, id, opts)
     -- diminishing-returns tally: there is nothing to shorten and nothing to learn, so an immune body
     -- does not accumulate `_afflicted` counts it will never need. Returns nil exactly as a fully
     -- resisted application does, so every caller already handles it.
-    local ward = Status.isImmune(unit, id) or (combat and Status.allyWard(combat, unit, id))
+    local ward = Status.isImmune(unit, id, opts.applier) or (combat and Status.allyWard(combat, unit, id))
     if ward then
         if combat and not def.hideLog then
             local Combat = require("models.combat")
@@ -1652,6 +1661,8 @@ function Status.blocksForcedMove(unit)
     -- UNMOVED (data/traits/trait_unmoved.lua, the Oni Greatblade's): nothing moves her, and it is what she
     -- is rather than a status anyone can Cure.
     if unit and require("models.trait").flag(unit, "unmoved") then return true end
+    -- INCORRUPTIBLE (the angels of Pride, data/traits/trait_incorruptible.lua): no push and no pull lands on one.
+    if unit and require("models.trait").flag(unit, "incorruptible") then return true end
     -- LASHED TO THE MAST (data/traits/trait_mast_rope.lua). A Mast-Rope ties its bearer to every ally
     -- touching it: while they stand together, none of them can be shoved, pulled or thrown. Asked
     -- through the board the body stands on, and only once a presence trait exists at all (the rope
