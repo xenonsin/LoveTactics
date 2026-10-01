@@ -254,4 +254,47 @@ return {
                 "the fixture must actually differ, or this case proves nothing")
         end,
     },
+
+    -- ---------------------------------------------------------------------------
+    -- waveGhosts: the committed plan, previewed on the turn strip -- one ghost per body that lands,
+    -- at the slot it first acts.
+    -- ---------------------------------------------------------------------------
+    {
+        name = "waveGhosts previews every committed body at its arrival plus its opening initiative",
+        fn = function()
+            local c = combatWith(arena(8, 8))
+            local plan = Combat.previewWaveArrival(c,
+                { composition = { "character_bandit", "character_bandit" }, from = "top" })
+            c.clock = 10
+            c.waveState = { { fires = 0, nextAt = 25, committed = plan } }
+            local specs = Combat.waveGhosts(c)
+            assert(#specs == 2, "one ghost per committed body, got " .. #specs)
+            for i, g in ipairs(specs) do
+                local want = 15 + math.max(0, Combat.initiative(plan.chars[i]))
+                assert(math.abs(g.initiative - want) < 1e-9,
+                    "ghost acts at its arrival (15 ticks out) plus its opening initiative")
+                assert(g.unit.char == plan.chars[i] and g.unit.side == "enemy", "the ghost is the committed body")
+                assert(g.unit.alive == false, "a stand-in never reads as a body on the board")
+                assert(g.unit.tile == plan.tiles[i], "the stand-in names the tile it lands on, for the hover ring")
+            end
+            assert(#Combat.waveGhosts(c, 10) == 0, "15 ticks out is outside a 10-tick window: no ghost yet")
+            assert(#Combat.waveGhosts(c, 15) == 2, "inside the window, the ghosts surface with the board marker")
+            local again = Combat.waveGhosts(c)
+            assert(again[1].unit == specs[1].unit, "the stand-in is cached on the plan, so its slot eases")
+        end,
+    },
+    {
+        name = "waveGhosts shows nothing for an uncommitted or already-landed wave",
+        fn = function()
+            local c = combatWith(arena(8, 8))
+            local plan = Combat.previewWaveArrival(c, { composition = { "character_bandit" }, from = "top" })
+            c.clock = 10
+            c.waveState = { { fires = 0, nextAt = 25 } }
+            assert(#Combat.waveGhosts(c) == 0, "a wave outside its lead window has no plan to preview")
+            c.waveState = { { fires = 0, nextAt = 10, committed = plan } }
+            assert(#Combat.waveGhosts(c) == 0, "a wave that is due lands this beat; its real card takes over")
+            c.waveState = nil
+            assert(#Combat.waveGhosts(c) == 0, "a fight with no waves previews none")
+        end,
+    },
 }

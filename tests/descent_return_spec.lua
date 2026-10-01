@@ -211,33 +211,82 @@ return {
     },
     {
         -- A rest stop was the one thing on a floor with no downside, which made taking it an automatic
-        -- yes and made "spend the stop now or carry the damage deeper" not a decision at all.
-        name = "camping is risky, and the risk climbs with depth but never past its ceiling",
+        -- yes. Its price was a percent once (an ambush that took the verb); it is a CERTAIN fight now,
+        -- and the property that makes it a price is that it always comes and always comes NEXT.
+        name = "lighting the fire fills the prowl meter, so the next step out of camp throws a fight",
         fn = function()
-            local shallow = Descent.ambushChance(1)
-            local deep = Descent.ambushChance(Descent.FLOORS)
-            assert(shallow == Descent.AMBUSH_BASE,
-                "floor one camps at the base rate, got " .. shallow)
-            assert(deep > shallow, "camping deep must be riskier than camping at the mouth")
-
-            -- CAPPED WELL UNDER A COIN FLIP. Above 50% the honest advice becomes "never camp", and a
-            -- stop nobody takes is a stop that may as well not be dealt onto the floor.
-            assert(deep <= Descent.AMBUSH_MAX, "the bottom floor camps past the ceiling: " .. deep)
-            assert(Descent.AMBUSH_MAX < 50,
-                "the ambush ceiling is at or past a coin flip (" .. Descent.AMBUSH_MAX ..
-                "%), which makes never camping the correct play")
-
-            -- MONOTONIC, so a player who learns "deeper is worse" is never wrong on some middle floor.
-            local prev = -1
-            for f = 1, Descent.FLOORS do
-                local c = Descent.ambushChance(f)
-                assert(c >= prev, "the camp risk dips at floor " .. f)
-                prev = c
+            for leg = 0, 12 do
+                local run = { seed = 4242, leg = leg, prowl = 0 }
+                Descent.lightFire(run)
+                assert(not Descent.stepProwl({ seed = run.seed, leg = run.leg, prowl = run.prowl - 1 }),
+                    "precondition: the meter is not already past its top on leg " .. leg)
+                assert(Descent.stepProwl(run),
+                    "leg " .. leg .. ": the fire was lit and the next step found nothing")
             end
+            -- A meter already fuller than the fire would leave it is never wound BACK: camping must not
+            -- buy a company quiet steps it had not walked.
+            local run = { seed = 4242, leg = 0, prowl = 0 }
+            run.prowl = Descent.prowlTarget(run) + 3
+            local before = run.prowl
+            Descent.lightFire(run)
+            assert(run.prowl == before, "the fire emptied a meter it was supposed to fill")
+            -- No run, no meter: an authored quest's camp keeps the guarantee it was authored with.
+            Descent.lightFire(nil)
+        end,
+    },
+    {
+        -- THE CAMP IS LIT AGAIN EVERY TRIP, and it is the one place that comes back. A company re-enters
+        -- at its deepest mapped floor (Descent.entryFloor), so a camp spent for good was spent on trip
+        -- one, and every trip after stood on a floor with none.
+        name = "a kept floor's camp is lit again on the next trip, and the ambush's fight goes back to a camp",
+        fn = function()
+            local grid = {
+                cols = 3, rows = 1,
+                cells = { {
+                    { x = 1, y = 1, cleared = true,
+                      encounter = { kind = "rest", id = "encounter_rest", name = "A Moment's Rest" } },
+                    -- WHAT THE OLD AMBUSH LEFT: a fight written over the camp, which the re-arm then woke
+                    -- every trip -- the floor never had a camp again. A save carrying one gets it back.
+                    { x = 2, y = 1, cleared = true,
+                      encounter = { kind = "combat", name = "Ambushed at Camp", ambush = true } },
+                    { x = 3, y = 1, cleared = true, encounter = { kind = "treasure", id = "chest" } },
+                } },
+            }
+            local woken = Descent.rearmFloor(grid)
+            local cells = grid.cells[1]
+            assert(cells[1].encounter.kind == "rest" and not cells[1].cleared,
+                "the camp is still spent from the last trip")
+            assert(cells[2].encounter.kind == "rest" and not cells[2].cleared,
+                "the ambush's fight was woken again instead of handing the camp back")
+            assert(cells[3].cleared, "the re-lit camp took a cache with it -- only the camp comes back")
+            assert(woken == 0, "a camp was counted as a monster standing: " .. woken)
+        end,
+    },
+    {
+        -- THE PANEL QUOTES WHAT THE CAMP PAYS, so the forecast and the heal must be one number. Run the
+        -- forecast, then the camp, and read the bars: any drift between the two is the panel lying.
+        name = "the camp's forecast is the heal the camp then pays",
+        fn = function()
+            local Character = require("models.character")
+            local p = Player.new()
+            local a = Character.instantiate("character_alchemist")
+            a.stats.health.current = 7
+            p.roster = { a }
+            local rows, any = Player.campForecast(p)
+            assert(any, "a wounded company was told it had nothing to rest off")
+            assert(#rows == 1 and rows[1].from == 7, "the forecast did not start where the bar stands")
+            assert(a.stats.health.current == 7, "forecasting a camp healed somebody")
+            Player.camp(p)
+            assert(a.stats.health.current == rows[1].to,
+                "forecast said " .. rows[1].to .. ", the camp paid " .. a.stats.health.current)
 
-            -- AND IT IS A REAL NUMBER AT EVERY DEPTH -- a zero anywhere would be a floor where the
-            -- panel quotes nothing and the stop silently goes back to being free.
-            assert(Descent.ambushChance(1) > 0, "camping at the mouth reads as risk-free")
+            -- WHOLE, nothing is on offer: a heal that moves no bar would light the fire for nothing.
+            for _, stat in ipairs(Character.RESOURCE_STATS) do
+                local r = a.stats[stat]
+                if type(r) == "table" then r.current = r.max end
+            end
+            local _, anyLeft = Player.campForecast(p)
+            assert(not anyLeft, "a whole company was offered a heal")
         end,
     },
     {

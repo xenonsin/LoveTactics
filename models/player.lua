@@ -1047,7 +1047,11 @@ Player.CAMP_SHARE = 0.5
 -- watch a bar sit still while the game told them they had rested.
 --
 -- Returns nothing: the caller reads the live stats, and the panel took its "before" already.
-function Player.camp(player, share)
+--
+-- ONE LOOP FOR THE CAMP AND ITS FORECAST (Player.campForecast), so the number the camp panel quotes
+-- before the verb is pressed is the number the verb then pays, by construction. `visit` is handed each
+-- resource with where it stands and where a camp would leave it.
+local function eachCamped(player, share, visit)
     local Injury = require("models.injury")
     share = share or Player.CAMP_SHARE
     for _, char in ipairs(player.roster or {}) do
@@ -1060,12 +1064,35 @@ function Player.camp(player, share)
                     ceiling = math.max(1, math.floor(ceiling * injury))
                 end
                 local cur = resource.current or ceiling
+                local to = cur
                 if cur < ceiling then
-                    resource.current = math.min(ceiling, cur + math.ceil((ceiling - cur) * share))
+                    to = math.min(ceiling, cur + math.ceil((ceiling - cur) * share))
                 end
+                visit(char, stat, resource, cur, to)
             end
         end
     end
+end
+
+function Player.camp(player, share)
+    eachCamped(player, share, function(_, _, resource, cur, to)
+        if to > cur then resource.current = to end
+    end)
+end
+
+-- WHAT A CAMP WOULD GIVE, without giving it: one row per roster member, `{ char, from, to, max }` in
+-- health, plus `any` -- true when the camp would move ANY resource at all, mana and stamina included. The
+-- camp panel quotes the rows (`16 -> 28`) and uses `any` to decide whether a heal is on offer at all.
+function Player.campForecast(player, share)
+    local rows, byChar, any = {}, {}, false
+    eachCamped(player, share, function(char, stat, resource, cur, to)
+        if to > cur then any = true end
+        if stat == "health" and not byChar[char] then
+            byChar[char] = true
+            rows[#rows + 1] = { char = char, from = cur, to = to, max = resource.max or 0 }
+        end
+    end)
+    return rows, any
 end
 
 -- Give back `share` of each MAXIMUM, flat, where Player.camp gives back a share of what is missing:

@@ -160,6 +160,9 @@ return {
                     c.cleared = true
                     if c.encounter.kind == "combat" or c.encounter.kind == "elite" then
                         fights = fights + 1
+                    elseif c.encounter.kind == "rest" then
+                        -- The one place that comes back: a camp is lit again every trip (rearmFloor's
+                        -- header). descent_return_spec holds it; here it is neither a fight nor spent.
                     else
                         places = places + 1
                     end
@@ -175,7 +178,7 @@ return {
         for y = 1, grid.rows do
             for x = 1, grid.cols do
                 local c = grid.cells[y][x]
-                if c.encounter then
+                if c.encounter and c.encounter.kind ~= "rest" then
                     local fight = c.encounter.kind == "combat" or c.encounter.kind == "elite"
                     if fight and not c.cleared then stillUp = stillUp + 1 end
                     if not fight and c.cleared then stillSpent = stillSpent + 1 end

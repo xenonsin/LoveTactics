@@ -33,7 +33,7 @@ Debug.enabled = true
 -- A SEPARATE CONSTANT rather than a use of `enabled`, precisely so tools/web-build.ps1's -Release
 -- rewrite (anchored to the `Debug.enabled = true` line) leaves it alone. Set it to false here once
 -- the bug is found -- that is the whole of turning it off.
-Debug.probe = true
+Debug.probe = false
 
 -- Runtime toggles a developer flips from inside the game to test content out of order. Unlike
 -- `enabled` (a build constant), these change during a session -- so every reader must AND them with

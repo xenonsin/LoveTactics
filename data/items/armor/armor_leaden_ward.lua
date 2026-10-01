@@ -7,7 +7,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Leaden Ward",
-    description = "Drinks fire and lightning; does little against a blade.",
+    description = "Increases fire, lightning and magical resistance.",
     flavor = "The alchemists wear it over everything else. What they work with does not care how brave you are.",
     sprite = "assets/items/leaden_ward.png",
     type = "armor",

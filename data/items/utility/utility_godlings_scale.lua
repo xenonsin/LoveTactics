@@ -14,7 +14,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Godling's Scale",
-    description = "Resists fire. Allies within 2 of you gain damage and defense, and kobolds on your side treat you as their dragon.",
+    description = "Increases fire resistance. Allies within 2 of you gain damage and defense, and allied kobolds treat you as their dragon.",
     flavor = "A single scale the size of a shield, and still warm. The kobolds who see it on you will not look away.",
     sprite = "assets/items/utility_godlings_scale.png",
     type = "utility",

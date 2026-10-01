@@ -988,7 +988,7 @@ end
 -- sitting and is not meant to be; it is a place walked over many, which is the premise.
 --
 -- The same pass measured one rest per 2.0 fights at the top and per 3.0 at the bottom, which is why
--- camping stopped being free (Descent.ambushChance): a guaranteed full heal every second fight is not
+-- camping stopped being free (Descent.lightFire): a guaranteed full heal every second fight is not
 -- attrition, it is a pause button.
 Descent.FLOORS_PER_CIRCLE = 2
 
@@ -2766,6 +2766,14 @@ end
 --   secret doors    found is found; that is the whole point of keeping the floor
 --   a dropped pack  it is yours, and it is not a monster
 --
+-- EXCEPT THE CAMP, which is a place and is lit again every trip anyway (2026-10-01). The rule above is
+-- about what a place PAYS -- a cache re-dealt every trip down would be a printing press -- and a camp pays
+-- recovery, which the Ward at the top of the stair already pays in full and for free. Nothing a re-lit
+-- camp gives a company is more than walking out would. Spent for good, it was spent on the first trip:
+-- a company re-enters at its deepest mapped floor (Descent.entryFloor), so from the second trip on the
+-- floor it actually stood on had no camp at all. It still holds once PER TRIP -- this runs only when a
+-- kept board is re-entered, never on a resume -- so camps do not compound inside one (FLOOR_RESTS).
+--
 -- AND A RE-ARMED FIGHT PAYS IN FULL. It was tempting to suppress its spoils to stop a company farming
 -- a shallow floor forever, and it is the wrong trade: a fight that costs health and turns and hands back
 -- nothing does not respect the time it took, and the player who grinds anyway is now grinding for
@@ -2934,6 +2942,16 @@ function Descent.rearmFloor(grid)
             local e = c.encounter
             if e and e.wandering then
                 c.encounter, c.cleared = nil, nil
+            elseif e and e.ambush then
+                -- A CAMP THE OLD AMBUSH WROTE A FIGHT OVER (Descent.lightFire's header). It was a camp,
+                -- and waking it as a fight every trip was the bug, so a save carrying one gets its camp
+                -- back. The blueprint it overwrote was not kept; the generator only ever seats this one.
+                c.encounter = { kind = "rest", id = "encounter_rest", name = "A Moment's Rest" }
+                c.cleared = nil
+            elseif e and e.kind == "rest" and c.cleared then
+                -- THE FIRE IS LIT AGAIN, and it is the one place on the list below that comes back. See
+                -- the header: what a camp pays is recovery, and the Ward at the top pays all of it free.
+                c.cleared = nil
             elseif e and c.cleared and not e.mimic and (e.kind == "combat" or e.kind == "elite") then
                 c.cleared = nil
                 n = n + 1
@@ -3166,32 +3184,34 @@ end
 -- Camping, and what finds you while you do it
 -- ---------------------------------------------------------------------------
 
--- THE CHANCE A CAMP IS FOUND BEFORE THE FIRE IS LIT, as a percent, by depth.
+-- LIGHTING THE FIRE DRAWS THE FLOOR. A camp's verbs -- heal, bind -- are paid for by filling the prowl
+-- meter (Descent.PROWL_STEPS) to one step short of its top, so the next clear tile the company walks onto
+-- is the one something finds them on.
 --
--- A rest stop was the one thing on a floor with no downside: a free choice of heal / study / set a
--- bone, taken at zero risk, which made every camp an automatic yes and made the decision it is supposed
--- to be -- "do I spend the stop now or carry the damage deeper?" -- not a decision at all.
+-- A rest stop was the one thing on a floor with no downside, which made every camp an automatic yes and
+-- made the decision it is supposed to be -- "do I spend the stop now or carry the damage deeper?" -- not
+-- a decision at all. The first answer was an AMBUSH: a percent rolled on the verb (15 at the mouth, +2 a
+-- floor, 40 at most) that turned the stop into a fight and took the verb. It was quoted, and it was still
+-- weather -- the same choice on floor twelve came out a heal or a fight on a die -- and losing it wrote a
+-- fight over the camp that Descent.rearmFloor then woke on every trip after, so the floor never had a
+-- camp again. Removed 2026-10-01.
 --
--- WHAT AN AMBUSH COSTS IS THE CAMP, not the company. The stop converts to a fight and the verb is lost;
--- nothing is taken off the player and nothing follows them home. That is the same line every other
--- price in this game sits on (docs/the-count.md): a camp you did not get is not a confiscation.
+-- THE FIGHT ALWAYS COMES AND THE VERB ALWAYS LANDS. So the price is CERTAIN, which is what makes it a
+-- price: half of a deep wound is worth a fight and half of a scratch is not, and the company is the one
+-- that knows which it is carrying. It is the meter the player already reads on the floor rather than a
+-- second number on the panel, and it rides the same seam every rolled fight comes through (game:onArrive)
+-- -- the camp is never rewritten and nothing downstream learns a new way to start a battle.
 --
--- QUOTED BEFORE IT IS ROLLED (ui/panels/rest_choice.lua draws this number). A coin flip the player
--- cannot see is not a decision, it is weather -- and this game's standard is that a number names the
--- decision it is for. Knowing it is 38% on floor twelve is what makes carrying the damage one more
--- floor a real alternative.
+-- ONE SHORT OF THE TOP rather than at it, because stepProwl fills before it asks: at the top the very
+-- next step would fire, which is the same thing, but a meter left AT its target reads as a fight that
+-- should already have happened. And the target is this leg's own (prowlTarget), so the jitter cannot
+-- hand the company a free stretch the panel did not promise.
 --
--- THE RAMP IS THE FLOOR'S, so camping shallow stays close to free and camping deep is a gamble you take
--- on purpose. 15% at the mouth, +2 a floor, capped well under half -- because above a coin flip the
--- honest advice becomes "never camp", and a stop nobody takes is a stop that may as well not be dealt.
-Descent.AMBUSH_BASE = 15
-Descent.AMBUSH_PER_FLOOR = 2
-Descent.AMBUSH_MAX = 40
-
-function Descent.ambushChance(floor)
-    floor = math.max(1, floor or 1)
-    return math.min(Descent.AMBUSH_MAX,
-        Descent.AMBUSH_BASE + (floor - 1) * Descent.AMBUSH_PER_FLOOR)
+-- A no-op without a run: an authored quest's rest stop has no meter, and keeps the guarantee it was
+-- authored with (the prologue's camp before the Demon Champion).
+function Descent.lightFire(run)
+    if not run then return end
+    run.prowl = math.max(run.prowl or 0, Descent.prowlTarget(run) - 1)
 end
 
 -- ---------------------------------------------------------------------------

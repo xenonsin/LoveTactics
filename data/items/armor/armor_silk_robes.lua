@@ -5,7 +5,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Silk Robes",
-    description = "Light armor. Drinks in hostile magic, but little against steel.",
+    description = "Light armor. Increases magical resistance.",
     flavor = "The Arcanum dresses its own in silk and calls it discipline.",
     sprite = "assets/items/silk_robes.png",
     type = "armor",

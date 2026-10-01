@@ -20,7 +20,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Salamander Hide",
-    description = "Drinks fire. Does nothing whatever about anything else.",
+    description = "Increases fire resistance.",
     flavor = "The Crucible sells the bombs on the next shelf along and has never seen the arrangement as a problem.",
     sprite = "assets/items/armor_salamander_hide.png",
     type = "armor",

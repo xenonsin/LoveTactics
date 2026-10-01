@@ -376,7 +376,11 @@ return {
             local BattleMap = require("ui.battle_map")
             for tile, props in pairs(Arena.TILE_PROPS) do
                 local tint = BattleMap.TERRAIN_TINT[tile]
-                if props.walkable and props.moveCost > Arena.TILE_PROPS.ground.moveCost then
+                if BattleMap.UNWASHED[tile] then
+                    assert(not tint, tile .. " is declared unwashed and must draw on the open ground's tone")
+                    assert(BattleMap.ART[tile] == BattleMap.ART.ground,
+                        tile .. " is unwashed because it sits ON open ground, so it must take the ground's role")
+                elseif props.walkable and props.moveCost > Arena.TILE_PROPS.ground.moveCost then
                     assert(tint, tile .. " costs more than open field and must read as costly")
                 else
                     assert(not tint, tile .. " charges nothing extra, so it must not promise a penalty")

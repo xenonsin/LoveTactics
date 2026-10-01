@@ -1,27 +1,37 @@
 -- Rest, as a decision. Opened when the player steps onto a Rest tile (states/game.lua's openEncounter).
 -- A rest used to just refill the party; now it forces a choice between ways to spend the breather --
--- Heal the party, Sharpen a lasting combat edge, or Study the ground -- so a safe stop is a real weigh,
--- and the companions plug in (Xin strengthens Heal, Gyeom strengthens Study). One only; the others are
--- forgone. Modeled on ui/panels/loot_reveal.lua: a state owns it as game.activePanel and forwards input;
--- three-input + mouse-only.
+-- Heal the party, Sharpen a lasting combat edge, or Bind an injury -- so a safe stop is a real weigh.
+-- One only; the others are forgone. Modeled on ui/panels/loot_reveal.lua: a state owns it as
+-- game.activePanel and forwards input; three-input + mouse-only.
 --
---   RestChoice.new({ title=, onHeal=, onSharpen=, onStudy=, onBind=, onClose= })
+-- STUDY IS GONE (2026-10-01). It lifted the fog off the stair and opened the floor's secret doors, and
+-- on a kept floor (Descent.keepFloor) both are already done by the second trip -- so the row paid
+-- nothing on every camp but the first, while still drawing as a choice. game:restStudy survives: the
+-- Crossroads dilemmas reach it through `ctx.reveal`.
+--
+--   RestChoice.new({ title=, onHeal=, onSharpen=, onBind=, onClose=,
+--                    forecast = { { char=, from=, to=, max= }, ... },  -- Player.campForecast's rows
+--                    fire = true })                                     -- a descent: the verbs light it
+--
+-- EVERY ROW COMES AND GOES NOW, Rest included: states/game.lua passes `onHeal` only when the camp would
+-- move a bar, because a heal that moves nothing still lights the fire (Descent.lightFire) and buys a fight
+-- for nothing. A company with nothing to rest off and nothing to bind is told so, and offered only the
+-- way out.
 --
 -- BIND IS THE FOURTH AND IT IS NOT ALWAYS THERE. It sets a bone off every body carrying one
 -- (models/injury.lua), and it is the only thing underground that does -- the surface used to have a
 -- building for it and the price on that building is what took the building away. An injury is a condition
 -- of the expedition now, so the way to shed one mid-dive has to be a DECISION with an alternative, which
--- is exactly the shape this panel already is: binding is taken instead of healing, sharpening or
--- studying.
+-- is exactly the shape this panel already is: binding is taken instead of healing or sharpening.
 --
 -- Passed as a callback rather than gated in here, so the row draws only when somebody is actually
 -- carrying an injury (states/game.lua asks Injury.injured before it hands one over). A whole company is
 -- told that binding is not on offer by the row not being there, which is the same rule every other
 -- conditional control in the game draws under -- and it keeps this panel free of the injury model.
 --
--- APPENDED RATHER THAN INSERTED, on purpose: the three that were always here keep their positions and
--- their accents, so a player who has learned "Heal is the top one" is never wrong. The row that comes
--- and goes is the one at the bottom, where its arrival cannot move anything else.
+-- APPENDED RATHER THAN INSERTED, on purpose: Heal keeps the top, so a player who has learned "Heal is
+-- the top one" is never wrong. The row that comes and goes is the one at the bottom, where its arrival
+-- cannot move anything else.
 
 local CloseButton = require("ui.close_button")
 local InputMode = require("input_mode")
@@ -35,13 +45,18 @@ local BOX_W = 460
 local PAD = 26
 local OPT_H = 78
 local OPT_GAP = 12
+local FORECAST_LINE = 18 -- one line of the Rest row's forecast, two bodies to a line
+local ARROW = "→"
 
 -- Each option's accent, so they read apart at a glance: Heal jade (restore), Sharpen amber (power),
--- Study steel-blue (knowledge), Bind bone-pale (repair). Bind is deliberately NOT jade: it sits next to
--- Heal in the list and the two do different things to the same bar -- one fills it, one gives back the
--- part that would not fill -- so sharing a colour would be the panel saying they are the same offer.
+-- Bind bone-pale (repair). Bind is deliberately NOT jade: it sits next to Heal in the list and the two do
+-- different things to the same bar -- one fills it, one gives back the part that would not fill -- so
+-- sharing a colour would be the panel saying they are the same offer.
+--
+-- KEYED BY VERB, NOT BY ROW. This was a list indexed by position, which only held while every row was
+-- always drawn: with Sharpen parked, Bind slid up a slot and wore another verb's colour.
 local ACCENTS = {
-    { 0.42, 0.80, 0.62 }, { 0.86, 0.66, 0.30 }, { 0.50, 0.68, 0.92 }, { 0.88, 0.83, 0.72 },
+    heal = { 0.42, 0.80, 0.62 }, sharpen = { 0.86, 0.66, 0.30 }, bind = { 0.88, 0.83, 0.72 },
 }
 
 local function inRect(r, x, y) return x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h end
@@ -53,25 +68,28 @@ function RestChoice.new(opts)
     self.onClose = opts.onClose
     self.finished = false
     self.options = {
-        { label = "Heal",    desc = "Restore the whole party to full health.",                 cb = opts.onHeal },
-        -- The Reliquary is parked (2026-09-17), so a Study no longer has one to lift the fog from and
-        -- the line stops promising it. What it actually opens is the same as it ever was otherwise:
-        -- every secret door on the board, and the objective (game:restStudy).
-        { label = "Study",   desc = "Lift the fog from the objective, and open every secret door.", cb = opts.onStudy },
     }
+    -- REST, which was Heal and said "to full health" for a long time after Player.CAMP_SHARE made it half.
+    -- The description says what the share is; the forecast under it says what it comes to, body by body,
+    -- so the line cannot drift from the number again.
+    if opts.onHeal then
+        self.options[1] = { label = "Rest", accent = ACCENTS.heal,
+            desc = "Get back half of what is missing: health, mana and stamina.",
+            forecast = opts.forecast, cb = opts.onHeal }
+    end
     -- SHARPEN COMES AND GOES NOW, for the Bind row's reason rather than its own. Its whole payload was
     -- Honed Edge, a run relic, and models/relic.lua is parked -- so the camp has nothing to hand over
     -- and states/game.lua passes no `onSharpen`. Made conditional rather than deleted: the row is three
     -- lines from working again the day the relic shelf comes back, and a fixed row whose callback is
     -- nil is a control that draws and does nothing, which is the one thing a camp menu must not do.
     if opts.onSharpen then
-        table.insert(self.options, 2, { label = "Sharpen",
+        table.insert(self.options, 2, { label = "Sharpen", accent = ACCENTS.sharpen,
             desc = "Gain Honed Edge -- the front line opens every fight emboldened.",
             cb = opts.onSharpen })
     end
     -- ...and the one that comes and goes. See the header: no injury in the company, no row.
     if opts.onBind then
-        self.options[#self.options + 1] = { label = "Bind",
+        self.options[#self.options + 1] = { label = "Bind", accent = ACCENTS.bind,
             desc = "Set one injury on everybody carrying one. The held-back part of their bar comes back.",
             cb = opts.onBind }
     end
@@ -82,32 +100,35 @@ function RestChoice.new(opts)
     self.descFont = Theme.body(14)
     self.hintFont = Theme.body(13)
 
-    -- WHAT CAMPING HERE RISKS, as a percent, or nil in a leg that cannot be ambushed at all
-    -- (models/descent.lua's Descent.ambushChance; an authored quest's rest stop passes nothing).
-    --
-    -- QUOTED BEFORE ANY ROW IS PRESSED, which is the whole reason it is on this panel rather than in a
-    -- toast afterwards. The roll decides whether the company gets the verb it chose, so a player who
-    -- only learns the odds by losing one has been told nothing they could act on -- and the alternative
-    -- the number exists to price is real: carry the damage one more floor and camp shallower next time.
-    self.risk = (opts.risk or 0) > 0 and opts.risk or nil
+    -- WHAT THE VERBS COST, stated before any row is pressed: in a descent, every one of them lights the
+    -- fire, and the next step out of camp throws a fight (Descent.lightFire). Not a percent -- it always
+    -- happens -- so the line is a forecast, in the future tense, rather than odds. Drawn only when there
+    -- is a verb to pay it with.
+    self.fire = (opts.fire and #self.options > 0) or nil
 
     -- THE BAND EXISTS ONLY WHEN THE LINE DOES, and the rows and the box height both move with it. A
     -- panel that reserves a gap for a sentence it is not going to print reads as a layout with
-    -- something missing out of it; the host owns the rect, so it grows rather than overlaps.
-    local riskBand = self.risk and 22 or 0
+    -- something missing out of it; the host owns the rect, so it grows rather than overlaps. The same
+    -- holds for the empty camp's one line, and for the Rest row, which grows by its forecast.
+    local fireBand = (self.fire or #self.options == 0) and 22 or 0
+
+    local total = 0
+    for _, o in ipairs(self.options) do
+        o.h = OPT_H + (o.forecast and (math.ceil(#o.forecast / 2) * FORECAST_LINE + 4) or 0)
+        total = total + o.h + OPT_GAP
+    end
 
     self.boxW = BOX_W
-    self.boxH = 70 + riskBand + #self.options * (OPT_H + OPT_GAP) + 24
+    self.boxH = 70 + fireBand + total + 24
     self.boxX = Scale.WIDTH / 2 - BOX_W / 2
     self.boxY = Scale.HEIGHT / 2 - self.boxH / 2
-    self.riskY = self.boxY + 56
+    self.fireY = self.boxY + 56
     self.closeButton = CloseButton.new(self.boxX + BOX_W, self.boxY)
 
-    for i, o in ipairs(self.options) do
-        o.rect = {
-            x = self.boxX + PAD, y = self.boxY + 60 + riskBand + (i - 1) * (OPT_H + OPT_GAP),
-            w = BOX_W - PAD * 2, h = OPT_H,
-        }
+    local y = self.boxY + 60 + fireBand
+    for _, o in ipairs(self.options) do
+        o.rect = { x = self.boxX + PAD, y = y, w = BOX_W - PAD * 2, h = o.h }
+        y = y + o.h + OPT_GAP
     end
     return self
 end
@@ -140,19 +161,22 @@ function RestChoice:draw()
     Theme.set(Theme.accentAmber)
     love.graphics.printf(self.title, bx, by + 18, self.boxW, "center")
 
-    -- THE RISK, in the future tense and in the warning colour, because it describes something that has
-    -- not happened yet and may not. It names the thing at stake -- the camp, not the company -- so a
-    -- player reads it as "I might not get this" rather than as a threat to their bodies.
-    if self.risk then
-        love.graphics.setFont(self.hintFont)
+    -- THE FIRE, in the future tense and in the warning colour, because it describes something that has
+    -- not happened yet. It names the fight, not a chance of one: there is no roll left to quote.
+    love.graphics.setFont(self.hintFont)
+    if self.fire then
         Theme.set(Theme.accentWeapon)
-        love.graphics.printf(self.risk .. "% chance something finds the camp and the rest is lost",
-            bx, self.riskY, self.boxW, "center")
+        love.graphics.printf("The fire will draw the floor. Something will find you on your next step.",
+            bx, self.fireY, self.boxW, "center")
+    elseif #self.options == 0 then
+        Theme.set(Theme.muted)
+        love.graphics.printf("The company is whole. There is nothing to rest off.",
+            bx, self.fireY, self.boxW, "center")
     end
 
     for i, o in ipairs(self.options) do
         local r = o.rect
-        local accent = ACCENTS[i]
+        local accent = o.accent
         local focused = (i == self.focus)
         love.graphics.setColor(0.12, 0.13, 0.16, focused and 0.95 or 0.6)
         love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 7, 7)
@@ -170,6 +194,21 @@ function RestChoice:draw()
         love.graphics.setFont(self.descFont)
         love.graphics.setColor(0.78, 0.80, 0.86)
         love.graphics.printf(o.desc, r.x + 18, r.y + 42, r.w - 34, "left")
+
+        -- THE FORECAST, two bodies to a line: a name, then where the camp takes them, "16 -> 28". Read
+        -- off the same loop the camp runs (Player.campForecast), so it is the number that lands.
+        if o.forecast then
+            love.graphics.setFont(self.hintFont)
+            local colW = (r.w - 34) / 2
+            for k, f in ipairs(o.forecast) do
+                local cx = r.x + 18 + ((k - 1) % 2) * colW
+                local cy = r.y + OPT_H - 6 + math.floor((k - 1) / 2) * FORECAST_LINE
+                love.graphics.setColor(0.78, 0.80, 0.86)
+                love.graphics.print((f.char and f.char.name) or "?", cx, cy)
+                if f.to > f.from then love.graphics.setColor(accent[1], accent[2], accent[3]) end
+                love.graphics.printf(f.from .. " " .. ARROW .. " " .. f.to, cx, cy, colW - 14, "right")
+            end
+        end
     end
 
     local hint = InputMode.pick("D-pad choose  -  A confirm  -  B leave", nil,
@@ -206,6 +245,7 @@ function RestChoice:mousepressed(x, y, button)
 end
 
 function RestChoice:moveFocus(d)
+    if #self.options == 0 then return end
     self.focus = ((self.focus - 1 + d) % #self.options) + 1
 end
 

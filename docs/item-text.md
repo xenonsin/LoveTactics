@@ -22,8 +22,8 @@ flavor last — italic, dimmed, below a separator — so the mechanical read is 
 `tests/item_schema_spec.lua` enforces that both fields exist, differ, and that the description stays
 under its length ceiling. `tests/item_text_style_spec.lua` enforces the mechanical style rules below
 (banned filler, canonical durations, keyword capitalization, a status named-not-re-explained, no
-prose-frame lead like `Toggle:`, no row restated in the sentence, and one verb per mechanic —
-Consume/Summon/Deflect) so they cannot quietly drift. The filler and one-verb sweeps run over statuses
+prose-frame lead like `Toggle:`, no row restated in the sentence, one verb per mechanic —
+Consume/Summon/Deflect — and one phrase for a resistance) so they cannot quietly drift. The filler and one-verb sweeps run over statuses
 and traits as well as items, because the glossary column beside the tooltip is the same rules text.
 
 ## description — what it does
@@ -133,6 +133,14 @@ Several effect shapes have one canonical wording so the corpus reads uniform. Cl
   where it lands."` (The glossary defines Fire, Quicksand, Rain, Sacred Ground… beside the tooltip.)
 - **Armor-piercing is one phrase: `Damage ignores armor.`** Never describe it ("cuts through armor
   rather than at it", "ignoring armour entirely", "no ward turns it").
+- **A resistance is one phrase: `Increases <element> resistance.`** The tooltip's Resist row prints the
+  number, so the sentence names what goes up and stops: `"Increases fire resistance."`, `"Increases fire,
+  lightning and magical resistance."`, and a second stat folds into the same noun — `"Increases ice and
+  status resistance."` Never a coloured verb ("Drinks fire", "Drinks in hostile magic"), never the bare
+  `Resists fire`, and never a clause about what the piece does *not* resist ("does little against a
+  blade", "Does nothing whatever about anything else") — that is the absence-of-damage rule again. A coat
+  whose resist row is secondary to some other effect does not owe the phrase at all; this is the wording
+  for when the sentence speaks about a resistance, not a requirement that it must.
 - **`Summon` is the verb for creating a creature** (not Raises / Calls / Binds / Conjures), and its
   side + control read as adjectives: **`allied`/`enemy`** and **`uncontrollable`** (a creature that
   acts on its own AI). `"Raises corpses as zombies that fight for you but obey no orders"` →

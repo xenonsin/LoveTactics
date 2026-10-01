@@ -3544,6 +3544,44 @@ function Combat.channelGhosts(combat)
     return specs
 end
 
+-- Ghost timeline specs for every body a COMMITTED reinforcement wave is about to walk on
+-- (combat.waveState[i].committed, held by states/battle.lua's spawnWaves from LEAD_TICKS before the
+-- wave is due). One per landing tile, at the slot that body first acts: the ticks until the wave lands
+-- plus the opening initiative Combat.addUnit will give it there. A tile held when the wave lands turns
+-- its body back, so the ghost is a promise exactly as firm as the board's marker beside it.
+--
+-- The strip draws a ghost off a UNIT, and these bodies are not units yet, so each gets a stand-in
+-- carrying what a ghost card and the timeline's tie-break read (char, side, speed, index). It is cached
+-- on the plan so the panel's eased ghost slot keys the same table every frame, and it is `alive = false`
+-- so nothing that hovers or inspects a card can take it for a body on the board. It carries the `tile`
+-- it lands on, so hovering its card can light that tile's muster marker.
+--
+-- `within` (ticks) holds a wave back until it is that close, so the strip and the board's marker --
+-- which waits for the same window -- surface together. nil previews the whole commit window.
+function Combat.waveGhosts(combat, within)
+    local specs = {}
+    local clock = combat.clock or 0
+    for _, st in ipairs(combat.waveState or {}) do
+        local p = st.committed
+        if p and clock < st.nextAt and not (within and st.nextAt - clock > within) then
+            p.standIns = p.standIns or {}
+            local wait = st.nextAt - clock
+            for i, char in ipairs(p.chars or {}) do
+                local u = p.standIns[i]
+                if not u then
+                    u = { char = char, side = "enemy", control = "ai", alive = false, incoming = true,
+                          statuses = {}, speed = Combat.speed(char), index = #combat.units + i,
+                          tile = p.tiles and p.tiles[i] }
+                    p.standIns[i] = u
+                end
+                specs[#specs + 1] = { unit = u, initiative = wait + math.max(0, Combat.initiative(char)),
+                                      label = "arrives, acts here" }
+            end
+        end
+    end
+    return specs
+end
+
 function Combat.currentUnit(combat)
     return Combat.turnOrder(combat)[1]
 end

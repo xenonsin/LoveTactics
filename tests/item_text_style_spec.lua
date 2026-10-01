@@ -149,6 +149,19 @@ local ONE_VERB = {
     { word = "evades", say = "Deflect" },
 }
 
+-- A resistance is one phrase: "Increases fire resistance." (docs/item-text.md). The Resist row carries
+-- the number, and the six elemental coats had each found their own way to say it -- "Drinks fire",
+-- "Drinks in hostile magic", a bare "Resists fire" -- usually followed by a clause about what the piece
+-- did NOT resist. The tells are a resist or drink verb landing directly on a damage word; "resists less"
+-- (the Pyroclast's comparison) and "drinks it dry" (a hazard) never reach one, so they pass.
+--
+-- Built off Combat.ELEMENTS so a new element is covered the day it lands, plus the words the coats
+-- reached for that are not element tags.
+local Combat = require("models.combat")
+local RESIST_WORDS = { "magic", "magical", "physical", "cold", "heat", "hostile", "slash", "pierce", "impact" }
+for _, e in ipairs(Combat.ELEMENTS) do RESIST_WORDS[#RESIST_WORDS + 1] = e end
+local RESIST_FRAMES = { "%f[%a]resists?%s+", "%f[%a]drinks%s+", "%f[%a]drinks%s+in%s+" }
+
 local function eachItem()
     local out = {}
     for id, def in pairs(Item.defs) do out[#out + 1] = { id = id, def = def } end
@@ -238,6 +251,23 @@ return {
                     assert(not low:find("%f[%a]" .. rule.word .. "%f[%A]"),
                         entry.id .. ' says "' .. rule.word .. '" -- the game has one word for that'
                             .. ' mechanic and it is "' .. rule.say .. '" (docs/item-text.md)')
+                end
+            end
+        end,
+    },
+    {
+        name = "a resistance is written \"Increases <element> resistance\" (docs/item-text.md)",
+        fn = function()
+            for _, it in ipairs(eachItem()) do
+                for _, desc in ipairs(descriptions(it.def)) do
+                    local low = desc:lower()
+                    for _, frame in ipairs(RESIST_FRAMES) do
+                        for _, word in ipairs(RESIST_WORDS) do
+                            assert(not low:find(frame .. word .. "%f[%A]"),
+                                it.id .. ' says "' .. desc .. '" -- a resistance has one phrase,'
+                                    .. ' "Increases <element> resistance." (docs/item-text.md)')
+                        end
+                    end
                 end
             end
         end,

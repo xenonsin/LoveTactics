@@ -17,7 +17,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Rimecloth",
-    description = "Drinks cold, and shortens the frostbitten afflictions that come with it.",
+    description = "Increases ice and status resistance.",
     flavor = "The Crucible keeps a bolt of it in every ice-house and replaces it on a schedule nobody argues with.",
     sprite = "assets/items/armor_rimecloth.png",
     type = "armor",

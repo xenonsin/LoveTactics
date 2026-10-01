@@ -4338,67 +4338,52 @@ function game:openEncounter(cell, opts)
         return
     end
 
-    -- A Rest is a DECISION, not just a breather: Heal the party, Sharpen a lasting run edge, Study the
-    -- ground (models/relic.lua + the fog reveal), or Bind the company's injuries. One only; leaving (X/Esc)
-    -- forgoes it and leaves the cell to reconsider. The companions plug in here later (Xin strengthens
-    -- Heal, Gyeom strengthens Study).
+    -- A Rest is a DECISION, not just a breather: Heal the party, Sharpen a lasting run edge
+    -- (models/relic.lua, parked), or Bind the company's injuries. One only; leaving (X/Esc) forgoes it and
+    -- leaves the cell to reconsider.
     --
     -- BIND IS OFFERED ONLY TO A COMPANY THAT HAS SOMETHING TO BIND, which is why the callback is handed
     -- over conditionally rather than gated inside the panel: the row simply is not there for a whole
     -- company, and a control draws where it can be used. It is also the only bone-setting the floors
     -- have -- the Inn that used to do it for coin is gone (models/injury.lua) -- so it has to be spent
-    -- INSTEAD of the heal, the whetstone or the map, which is the property a counter never had.
+    -- INSTEAD of the heal, which is the property a counter never had.
     if kind == "rest" then
-        -- ...AND SOMETHING MAY FIND THE CAMP (Descent.ambushChance).
+        -- ...AND THE FIRE DRAWS THE FLOOR (Descent.lightFire). Every verb here fills the prowl meter, so
+        -- the next clear tile the company walks onto throws a fight. The verb always lands and the fight
+        -- always comes, and both are on the panel before anything is pressed -- which is what the dice
+        -- this replaced could not say. Backing out (X/Esc) lights nothing.
         --
-        -- Rolled on the VERB rather than on arrival, so backing out of the panel costs nothing and the
-        -- risk is only taken by a company that actually decided to stop. The number is quoted on the
-        -- panel before any of it is pressed, because a roll the player cannot see is weather rather than
-        -- a decision.
-        --
-        -- WHAT IT COSTS IS THE CAMP. The stop becomes a fight and the verb is lost -- nothing is taken
-        -- off the company, nothing follows them home. `openEncounter` is re-entered on the converted
-        -- cell rather than the battle being opened here, so an ambush runs down exactly the same path
-        -- as any other fight on the board: the same deployment, spoils, injuries and summary.
-        --
-        -- IN A DESCENT ONLY. An authored quest's rest stop has no floor to read a depth off and no
-        -- business being interrupted, so it keeps the guarantee it was authored with.
-        local risk = game.descent and Descent.ambushChance(Descent.depth(game.descent)) or 0
+        -- IN A DESCENT ONLY. An authored quest's rest stop has no meter, and keeps the guarantee it was
+        -- authored with.
         local function camp(verb)
             return function()
-                if risk > 0 and math.random(100) <= risk then
-                    cell.encounter = { kind = "combat", name = "Ambushed at Camp", ambush = true }
-                    cell.cleared = nil
-                    game.activePanel = nil
-                    game:pushToast("Something finds the camp before the fire is lit")
-                    saveRun()
-                    game:openEncounter(cell)
-                    return
-                end
                 cell.cleared = true
+                Descent.lightFire(game.descent)
                 verb()
                 saveRun()
             end
         end
+        -- THE HEAL IS QUOTED, NOT DESCRIBED. Each body's `16 -> 28` comes off the same loop the camp
+        -- runs (Player.campForecast), and a company with nothing missing is not offered a heal at all:
+        -- a row that lights the fire and moves no bar is a fight bought for nothing.
+        local forecast, anyMissing = Player.campForecast(game.player)
         game.activePanel = RestChoice.new({
             title = cell.encounter.name or "Make Camp",
-            risk = risk,
+            fire = game.descent ~= nil,
+            forecast = anyMissing and forecast or nil,
             onBind = (#Injury.injured(game.player) > 0) and camp(function()
                 game:restBind()
             end) or nil,
-            onHeal = camp(function()
+            onHeal = anyMissing and camp(function()
                 game:restHeal()
-            end),
+            end) or nil,
             -- NO `onSharpen` (2026-09-17). The verb's entire payload was a stacking grant of
             -- `relic_honed_edge`, and models/relic.lua is parked -- so the row is not passed and
             -- ui/panels/rest_choice.lua leaves it out rather than drawing a camp option that pays
             -- nothing. Honed Edge itself survives the park as a piece of gear; what a camp cannot do
             -- any more is mint one out of an hour and a whetstone.
-            onStudy = camp(function()
-                game:restStudy()
-                game:pushToast("You study the ground")
-                game.activePanel = nil
-            end),
+            -- NO `onStudy` either (2026-10-01): on a kept floor the fog and the secret doors it lifted are
+            -- already lifted by the second trip, so the row paid nothing on every camp but the first.
             onClose = function() game.activePanel = nil end,
         })
         return
@@ -5005,9 +4990,10 @@ function game:restBind()
     game.activePanel = nil
 end
 
--- STUDY (a rest's third choice): lift the fog off the objective and every Reliquary on the board, so the
--- run's back half can be planned around the boss and a looting route toward the caches. Reuses the grid's
--- own reveal, the same one Gyeom's Ledger and the Cartographer's Eye relic use.
+-- STUDY: lift the fog off the objective and every Reliquary on the board, so the run's back half can be
+-- planned around the boss and a looting route toward the caches. Reuses the grid's own reveal, the same
+-- one Gyeom's Ledger and the Cartographer's Eye relic use. It WAS a rest's third choice and is not any
+-- more (ui/panels/rest_choice.lua says why); the Crossroads dilemmas still reach it as `ctx.reveal`.
 function game:restStudy()
     local grid = game.grid
     if not grid then return end

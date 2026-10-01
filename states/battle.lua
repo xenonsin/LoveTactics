@@ -4818,6 +4818,9 @@ refreshView = function()
 
     overlays.reinforcements = reinforcements
     battle.reinforceCells = reinforceCells
+    -- A reinforcement's ghost card hovered on the strip lights the tile it lands on -- the muster
+    -- marker's half of the card-hover ring a living body gets (overlays.hover).
+    overlays.reinforceHover = battle.hoverUnit and battle.hoverUnit.incoming and battle.hoverUnit.tile or nil
 
     -- Your OWN ground, lit only while a reinforcement is being placed -- the same overlay the deployment
     -- phase draws, so the invitation reads identically whether it is the opening bell or the moment after
@@ -4928,8 +4931,13 @@ refreshView = function()
         end
     end
 
+    -- ...and every body a committed wave is about to walk on, at the slot it first acts
+    -- (Combat.waveGhosts). Held to the same one-turn window as the board marker above, so the card and
+    -- the tile it names surface together.
+    for _, g in ipairs(Combat.waveGhosts(battle.combat, Status.TICKS_PER_TURN)) do specs[#specs + 1] = g end
+
     -- Now the strip: the live order plus every ghost gathered above (the actor's aim, in-progress
-    -- channels, and any shoved target). Anchor the acting unit at rank 1 until the UI actually hands
+    -- channels, any shoved target, incoming reinforcements). Anchor the acting unit at rank 1 until the UI actually hands
     -- off -- the model charges its initiative and rebases the instant it acts (endTurn, inside useItem),
     -- a beat before resolveAdvance switches battle.current, so buildTimeline would otherwise re-rank the
     -- current card and slide it upward mid-attack while its damage still reads.

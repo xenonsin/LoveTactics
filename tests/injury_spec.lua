@@ -270,7 +270,7 @@ return {
 
     { name = "binding a camp sets one bone on everybody, and never more than one", fn = function()
         -- THE ONLY BONE-SETTING THE FLOORS HAVE, and it is a decision rather than a service: the camp
-        -- that binds is a camp that did not heal, sharpen or study (states/game.lua's restBind). One
+        -- that binds is a camp that did not heal or sharpen (states/game.lua's restBind). One
         -- rung at a time, so a company three fights into a bad dive cannot buy the whole ladder back at
         -- one stop.
         local p = company(2)

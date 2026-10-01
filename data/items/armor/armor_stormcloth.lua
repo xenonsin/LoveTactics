@@ -15,7 +15,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Stormcloth",
-    description = "Drinks lightning. Does nothing whatever about anything else.",
+    description = "Increases lightning resistance.",
     flavor = "The Crucible weaves the earthing wire in and bills for it separately, as a courtesy.",
     sprite = "assets/items/armor_stormcloth.png",
     type = "armor",

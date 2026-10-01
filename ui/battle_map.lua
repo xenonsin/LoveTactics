@@ -136,15 +136,16 @@ BattleMap.ART = {
     sand = "thicket", ice = "thicket", mire = "river", lava = "river",
     path = "path", bridge = "bridge", thicket = "thicket",
     grass = "grass", rock = "rock", river = "river",
-    -- The built work takes `grass`, the role every WALKABLE rise already uses (hill, rough) -- and
-    -- explicitly NOT `rock`, however much piled stone wants it. Grey is reserved for ground you cannot
-    -- enter (tests/biome_spec.lua pins the reservation), and the hill is the standing lesson: it wore
-    -- the rock role for its whole life because it was called `mountain`, so the best tile on the board
-    -- was painted the same grey as the wall beside it. A fort you are meant to walk INTO is the one
-    -- tile that can least afford that confusion. The two cover heaps take `thicket`, the role every
-    -- piece of walkable cover already uses (forest, sand, ice). The mark carries the identity; the role
-    -- only picks a plausible photograph once a real tileset sheet is loaded.
-    fort = "grass", dune = "thicket", drift = "thicket",
+    -- The built work stands ON the open ground, so it takes `path`, the open ground's own role. It
+    -- took `grass` first, as the walkable rises do, and on a castle board that role is dark mossy
+    -- stone: the fort sat on a floor of its own a shade off the walls, and players read the whole
+    -- square as masonry they could not enter. The mark is a parapet with open ground above it; the
+    -- ground behind the mark has to BE the open ground for that drawing to say "a body stands here".
+    -- Never `rock` either (tests/biome_spec.lua pins the reservation). The two cover heaps take
+    -- `thicket`, the role every piece of walkable cover already uses (forest, sand, ice). The mark
+    -- carries the identity; the role only picks a plausible photograph once a real tileset sheet is
+    -- loaded.
+    fort = "path", dune = "thicket", drift = "thicket",
 }
 
 -- Translucent wash over costly terrain (drawn on walkable tiles) so a tile's move penalty
@@ -165,13 +166,10 @@ BattleMap.TERRAIN_TINT = {
     water    = { 0.12, 0.34, 0.58, 0.34 },
     sand     = { 0.52, 0.40, 0.14, 0.26 }, -- dry ochre: heavy going, no cover
     mire     = { 0.14, 0.20, 0.10, 0.38 }, -- the heaviest wash, for the heaviest walkable floor
-    -- WARM, and deliberately in the rough's earthen key rather than in stone grey. The fort is the
-    -- one floor here that was built rather than weathered and the temptation is to paint it the colour
-    -- of the material -- but grey on this board means YOU CANNOT GO THERE, and a fort is a tile you are
-    -- meant to walk into. So it reads as worked earth and cut turf, which is what a low field work
-    -- mostly is anyway. Kept light (0.24) because it costs only two: the wash tracks COST, and a heavy
-    -- one here would promise the hill's price.
-    fort     = { 0.34, 0.26, 0.16, 0.24 },
+    -- NO `fort`, and it is the one costly floor without a wash (BattleMap.UNWASHED). The fort is a
+    -- thing standing on open ground, not a different ground: any wash at all set its square apart from
+    -- the floor around it, and a square set apart under a stone mark read as a wall. Its price is
+    -- said by the parapet and the tooltip.
     -- The cover each country grows, each washed in its own biome's key rather than in one shared tone:
     -- a dune has to read as sand piled up and a drift as snow piled up, or the parity between them
     -- becomes a sameness the eye has to work through. Both at the forest's own alpha, since all three
@@ -179,6 +177,10 @@ BattleMap.TERRAIN_TINT = {
     dune     = { 0.58, 0.44, 0.16, 0.28 },
     drift    = { 0.62, 0.72, 0.82, 0.28 },
 }
+
+-- Costly floors deliberately left unwashed, each one an OBJECT on open ground rather than a ground of
+-- its own (see `fort` above). Named so tests/biome_spec.lua can tell an exemption from an omission.
+BattleMap.UNWASHED = { fort = true }
 
 -- What a tile you CANNOT ENTER keeps of its colour. It was 0.55 (a flat 45% black over the top) back
 -- when the darkening was the entire difference between a wall and the walkable floor painted in the
@@ -735,6 +737,19 @@ function BattleMap:drawReinforcements()
                 self:drawMusterCount(wx, wy, tw, th, edge, tostring(math.ceil(m.ticks)), font)
             end
         end
+    end
+    -- The muster whose ghost card is hovered on the turn strip, ringed in the same cyan a hovered card
+    -- rings a living body with (drawHighlights' overlays.hover): one colour for "the one you are
+    -- pointing at", whether it stands on the board yet or is still on its way.
+    local hv = self.overlays.reinforceHover
+    if hv then
+        local wx, wy, hw, hh = self:cellBox(hv.x, hv.y, hv.w, hv.h)
+        love.graphics.setColor(0.75, 0.95, 1.0, 0.16)
+        love.graphics.rectangle("fill", wx + 2, wy + 2, hw - 4, hh - 4, 4, 4)
+        love.graphics.setColor(0.75, 0.95, 1.0, 0.95)
+        love.graphics.setLineWidth(2)
+        love.graphics.rectangle("line", wx + 2, wy + 2, hw - 4, hh - 4, 4, 4)
+        love.graphics.setLineWidth(1)
     end
     love.graphics.setColor(1, 1, 1, 1)
 end
