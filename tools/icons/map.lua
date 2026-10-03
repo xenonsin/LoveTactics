@@ -1128,6 +1128,8 @@ return {
     ["items/utility_oni_blood.png"] = { icon = "lorc/horned-helm", by = "hand" },
     -- THE ELVES OF PRIDE (2026-09-30): the race's grant.
     ["items/utility_elf_blood.png"] = { icon = "delapouite/elf-ear", by = "hand" },
+    -- THE FACELESS OF ENVY (2026-10-03): the race's grant.
+    ["items/utility_faceless_blood.png"] = { icon = "lorc/domino-mask", by = "hand" },
     -- THE DJINN OF PRIDE (2026-09-30): the race's grant, the three spells and the Coal, and the Wishmaker's pieces.
     ["items/utility_will_not_stoop.png"] = { icon = "lorc/fluffy-swirl", by = "hand" },
     ["items/ability_djinnis_breath.png"] = { icon = "lorc/windy-stripes", by = "hand" },

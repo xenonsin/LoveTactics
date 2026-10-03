@@ -218,6 +218,11 @@ local function buildCopyChar(src)
     return char
 end
 
+-- The copy builder, exported for the one caller that wants a body WITHOUT a unit to stand it in: a
+-- Faceless taking a companion's face wears the copy through Transform.apply's `opts.char`
+-- (models/faces.lua), which is the same body a doppelganger is built from, worn instead of fielded.
+Summon.copyChar = buildCopyChar
+
 -- Summon a duplicate of `summoner` itself -- same stats, same kit (a doppelganger), or a mute
 -- double that only has to look right (a decoy).
 --

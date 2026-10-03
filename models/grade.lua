@@ -559,6 +559,8 @@ Grade.TRAIT_GRADE = {
     -- whole, the Veil turns one blow a round at full health, the Sandals walk every hostile ground, the Laurel is a
     -- capped line-wide damage climb on kills.
     trait_unblemished =                 1.0,  -- Unblemished -- the race: a large lift until the first wound
+    -- THE FACELESS OF ENVY (2026-10-03): the race foundation. A face is a whole body's kit, carried on one pool.
+    trait_a_thousand_faces =            1.0,  -- A Thousand Faces -- the race: wears the face that answers the nearest foe
     trait_untouchable =                 0.0,  -- Untouchable -- the Bladedancer, while Unblemished
     trait_by_starlight =                0.0,  -- By Starlight -- the Starcaller vs the Limned
     trait_will_not_admit =              0.0,  -- Will Not Admit the Wound -- the Highborn's Unblemished returns

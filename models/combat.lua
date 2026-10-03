@@ -9872,7 +9872,9 @@ function Combat.dispellableOn(unit, n)
         -- A blessing is a status that is not a debuff and not one of the engine's own bookkeeping
         -- markers (`hideLog` covers Channeling, which is a pending spell rather than a boon -- stripping
         -- it here would make this a silent counterspell, which is exactly the power S5 gave up).
-        if def and not def.debuff and not def.hideLog then
+        -- `undispellable`: what a body IS rather than a blessing it holds (Envy's Faceless badge), so no strip
+        -- takes it and the Fairest does not count it.
+        if def and not def.debuff and not def.hideLog and not def.undispellable then
             out[#out + 1] = st.id
             if n and #out >= n then break end
         end

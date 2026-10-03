@@ -112,7 +112,12 @@ function Transform.apply(combat, unit, charId, opts)
     opts = opts or {}
     if not unit or not unit.alive then return nil end
     if Transform.isTransformed(unit) then return nil end -- one shape at a time; never nest bodies
-    if not Character.defs[charId] then return nil end
+    -- `opts.char` WEARS A BUILT BODY rather than a blueprint (Envy's Faceless, 2026-10-03): a companion
+    -- has no blueprint worth minting -- its grid and its growth are the save's, not data's -- so a body
+    -- that takes YOUR face is handed a copy of your char (Summon.copyChar) and wears that. Everything
+    -- below is the same transform: the pools still carry across, so a stolen face still never brings
+    -- a second health bar.
+    if not opts.char and not Character.defs[charId] then return nil end
 
     local Combat = require("models.combat")
     local Trait = require("models.trait")
@@ -122,8 +127,8 @@ function Transform.apply(combat, unit, charId, opts)
     -- enemy is fielded through Growth.spawn at the fight's level, and a shape it turns into mid-fight has
     -- to stand there too. The flat stats are the ones a shape takes over, so a level-1 shape on a deep
     -- floor would hit like a floor-one body. Left off, the shape is the blueprint as authored.
-    local shape = opts.level and require("models.growth").atLevel(charId, opts.level)
-        or Character.instantiate(charId)
+    local shape = opts.char or (opts.level and require("models.growth").atLevel(charId, opts.level)
+        or Character.instantiate(charId))
     carryContinuity(original, shape)
 
     -- The token that owns the shape's upkeep. `unit._shape` is a fresh table that exists for exactly
@@ -143,7 +148,7 @@ function Transform.apply(combat, unit, charId, opts)
     end
 
     Combat.logEvent(combat, "status", string.format("%s takes the shape of %s.",
-        original.name or "Unit", shape.name or charId), unit)
+        original.name or "Unit", shape.name or charId or "another"), unit)
     return shape
 end
 
