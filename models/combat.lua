@@ -9129,6 +9129,13 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     -- KNOWN attacker, so a poison tick or a fire leaves whatever struck last standing rather than
     -- overwriting it with nobody.
     if attacker then target.lastAttacker = attacker end
+    -- ENVY'S BESTIARY, slice E (2026-10-03): THE MARK (models/kinslayer.lua) needs the blow that FELLS a body, which
+    -- lastAttacker cannot say -- it outlives a burn on purpose. Stamped on every landed blow, attacker or none,
+    -- so the last one standing at a death is the felling one: a burn or a hazard leaves no killer. And the
+    -- striker keeps its own last landed hit, the number the Kinslayer's Mark multiplies.
+    target.lastBlowBy, target.lastBlowTaken = attacker, dmg
+    target.lastBlowItem = opts and opts.blowItem or nil
+    if attacker then attacker.lastHitDealt = dmg end
     -- Animation cue: the blow that actually landed (post-mitigation), flagged lethal so the view
     -- can punch a killing hit harder. The matching death cue is pushed by killUnit below.
     -- `tags` rides along untouched so the view can pick the blow's picture -- a slash arc, a fire
@@ -9375,6 +9382,9 @@ local function tryWardSpell(combat, user, target, item, tags, base, opts)
     -- them until the stack gives out. The first mirror to catch it is the one that gets to throw it.
     if combat._reflecting then return false end
     local mirror = Status.reflectorAgainst(target, hasTag(tags, "magical"))
+    -- ENVY'S BESTIARY, slice E (2026-10-03): THE HAND-MIRROR turns back every single-target attack, either school,
+    -- while its bearer holds more blessings than any ally (models/gorgon.lua).
+    if not mirror then mirror = require("models.gorgon").handMirror(combat, target) end
     if not mirror then return false end
     Combat.logEvent(combat, "status", string.format("%s's %s turns the blow back on %s!",
         unitName(target), mirror.name or mirror.id, unitName(user)), { target, user })
@@ -9855,6 +9865,9 @@ function Combat.applyHeal(combat, target, amount, opts)
         for _, u in ipairs(combat.units) do
             if u.alive and u.side == target.side then Combat.tally(u, "allyHealed", 1) end
         end
+        -- ENVY'S BESTIARY, slice E (2026-10-03): and the patient banks a `healedTaken` -- half of what makes a
+        -- body the Kinslayer's favoured one (models/kinslayer.lua).
+        Combat.tally(target, "healedTaken", 1)
     end
     return healed
 end

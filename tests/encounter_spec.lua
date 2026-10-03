@@ -236,6 +236,9 @@ return {
                 -- Mirror-Knight and two Homunculi", and its Time Was is priced on exactly that many guards to heal.
                 encounter_envy_the_brazen_head = true,
                 -- end ENVY'S SEAT, SLICE C
+                -- ENVY'S BESTIARY, slice E (2026-10-03): Medusa and the three statues of her garden, the review's
+                -- own number -- the garden is the fight's second half, and the adders grow the board anyway.
+                encounter_envy_medusa = true,
             }
             -- THE ROSTER, NOT THE HEAD-COUNT. Asked as "is this the same fight on every seed", because
             -- a stop is allowed to roll its SHAPE while holding its size: the Skeleton King's court is

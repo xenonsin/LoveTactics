@@ -234,6 +234,11 @@ local TROPHIES = {
     -- Sphinx's riddle as an Inquisitor's, the Phoenix's rising as a Priest's, the Tower-Giant's ambition as a
     -- Barbarian's maul.
     "weapon_horn_of_purity", "utility_sphinxs_riddle", "utility_phoenix_feather", "weapon_babel_maul",
+    -- ENVY'S BESTIARY, slice E (2026-10-03): Leviathan's rising as an Elementalist's and its wake as a Vanguard's,
+    -- Medusa's stare as a Shaman's, her hair as a Poisoner's and her mirror as an Artificer's, the Kinslayer's Mark
+    -- as a Duelist's.
+    "ability_undertow", "armor_leviathans_wake", "ability_gorgons_gaze", "armor_serpent_locks",
+    "utility_hand_mirror", "utility_the_mark",
     -- The sins' own payment (2026-10-01, "there can never be creature drops"): every general's relic and every
     -- lieutenant's piece left the creature bucket for a real shelf, as trophies -- the first entry on each
     -- Descent.DROPS list. Pride's Codex is reworked separately and is not named here.

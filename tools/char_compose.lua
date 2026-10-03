@@ -731,6 +731,13 @@ local CHARACTER_SILHOUETTE = {
     arachne = "lorc/web-spit",
     sewn_eyed_penitent = "cathelineau/nun-face",
     -- end ENVY'S SEAT, SLICE C
+    -- ENVY'S BESTIARY, slice E (2026-10-03): the serpent's tail breaking the sand, the Gorgon's own head, the adder
+    -- her blood springs, a statue from her garden, and the tiller who kept count.
+    leviathan = "delapouite/whale-tail",
+    medusa = "cathelineau/medusa-head",
+    adder = "skoll/cobra",
+    stone_challenger = "delapouite/colombian-statue",
+    the_kinslayer = "delapouite/farmer",
 }
 
 -- Reverse index: the character key a discipline names as its `exemplar` -> the discipline id. Built from

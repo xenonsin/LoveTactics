@@ -1203,6 +1203,17 @@ Grade.TRAIT_GRADE = {
     -- put on: every spell lands once before it is answered. Graded at the parent's 3.0, since it rides the
     -- Codex Unanswered (a Mage's trophy) as well as her organ.
     trait_already_known =               3.0,  -- Already Known
+    -- ENVY'S BESTIARY, slice E (2026-10-03): Leviathan, Medusa and the Kinslayer. Their bodies' own rules are never
+    -- shelved; of the drops, Gorgon's Blood (Serpent Locks) is a summon on a blow you have already taken, the Hand-
+    -- Mirror a rebound that wants the most blessings on the line, and the Mark a payback on a blow that felled you.
+    trait_under_the_sand =              0.0,  -- Under the Sand -- Leviathan's cycle
+    trait_stone_gaze =                  0.0,  -- Stone Gaze -- Medusa's
+    trait_her_garden =                  0.0,  -- Her Garden -- Medusa's statues wake
+    trait_turned_to_stone =             0.0,  -- Turned to Stone -- a statue held
+    trait_the_favoured =                0.0,  -- The Favoured One -- the Kinslayer's hunt
+    trait_gorgon_blood =                1.0,  -- Gorgon's Blood -- an adder when a blade cuts you
+    trait_hand_mirror =                 2.0,  -- Hand-Mirror -- single-target rebound while the most blessed
+    trait_the_mark =                    1.0,  -- The Mark -- the killer takes 7x a blow back
 }
 
 -- Which of the weights above were ADOPTED from the classifier's seed rather than weighed one by

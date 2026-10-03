@@ -1891,6 +1891,13 @@ function AI.preempt(combat, unit)
     local seatPlan = seat.headPlan(combat, unit) or seat.penitentPlan(combat, unit)
     if seatPlan then return seatPlan end
     -- end ENVY'S SEAT, SLICE C
+    -- ENVY'S BESTIARY, slice E (2026-10-03): LEVIATHAN under the sand takes no action -- the turn is the dive, and
+    -- the mark is laid at its end (models/leviathan.lua). THE KINSLAYER goes for the favoured one, the body of
+    -- the company healed or blessed most this fight (models/kinslayer.lua).
+    local sand = require("models.leviathan").plan(combat, unit)
+    if sand then return sand end
+    local hunt = require("models.kinslayer").plan(combat, unit)
+    if hunt then return hunt end
     -- ON THE CHAIN (data/traits/trait_the_chain.lua): the War Ogre goes for whatever its Handler last struck.
     if unit.side ~= "party" and Trait.flag(unit, "chained") and unit.pointedAt and unit.pointedAt.alive
         and unit.pointedAt.side ~= unit.side then

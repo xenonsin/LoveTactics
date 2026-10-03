@@ -1876,12 +1876,13 @@ end
 -- actor's own status sweep. Pre-checked per body, so a field with no such hook pays one loop and no beat.
 function Trait.onAnyTurnStart(combat, actor)
     if not (combat and actor and actor.alive) then return end
-    -- ENVY'S BESTIARY, SLICES B AND C (2026-10-03): ...and the actor hears its OWN turn open (`onTurnStart`), the
-    -- twin of onTurnEnd above, for a rule about the top of the bearer's own turn: the Mirror-Knight's mirror goes
-    -- back up, the Mask-Maker hands out its masks, the Colossus folds in its second face, a Homunculus stands
-    -- back up (trait_red_stone), Time Was writes down where its allies stand (trait_time_was). Past the status
-    -- sweep, so a Faceless has already put on this turn's face when it hears it. Both slices wrote this hook;
-    -- it is one hook.
+    -- ENVY'S BESTIARY, SLICES B, C AND E (2026-10-03): ...and the actor hears its OWN turn open (`onTurnStart`),
+    -- the twin of onTurnEnd above, for a rule about the top of the bearer's own turn: the Mirror-Knight's mirror
+    -- goes back up, the Mask-Maker hands out its masks, the Colossus folds in its second face, a Homunculus stands
+    -- back up (trait_red_stone), Time Was writes down where its allies stand (trait_time_was), and Leviathan rises
+    -- out of the mark it laid last turn or dives again (trait_under_the_sand). Past the status sweep, so a
+    -- Faceless has already put on this turn's face when it hears it. Three slices wrote this hook; it is one hook,
+    -- and it must fire once.
     if actor.traits then
         for _, t in ipairs(actor.traits) do
             if t.def and t.def.onTurnStart then

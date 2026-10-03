@@ -1409,4 +1409,19 @@ return {
     ["items/armor_golden_mane.png"] = { icon = "lorc/hollow-cat", by = "hand" },
     ["items/utility_peacocks_train.png"] = { icon = "delapouite/handheld-fan", by = "hand" },
     ["items/weapon_titans_chain.png"] = { icon = "lorc/linked-rings", by = "hand" },
+    -- ENVY'S BESTIARY, slice E (2026-10-03): Leviathan's, Medusa's and the Kinslayer's kit, the adder's and the
+    -- statues', and their six drops.
+    ["items/weapon_leviathan_jaws.png"] = { icon = "lorc/jawbone", by = "hand" },
+    ["items/utility_under_the_sand.png"] = { icon = "delapouite/eel", by = "hand" },
+    ["items/ability_undertow.png"] = { icon = "lorc/drowning", by = "hand" },
+    ["items/armor_leviathans_wake.png"] = { icon = "delapouite/trail", by = "hand" },
+    ["items/weapon_serpent_hair.png"] = { icon = "delapouite/hair-strands", by = "hand" },
+    ["items/utility_stone_gaze.png"] = { icon = "lorc/one-eyed", by = "hand" },
+    ["items/ability_gorgons_gaze.png"] = { icon = "lorc/falling-eye", by = "hand" },
+    ["items/armor_serpent_locks.png"] = { icon = "delapouite/snake-egg", by = "hand" },
+    ["items/utility_hand_mirror.png"] = { icon = "lorc/disc", by = "hand" },
+    ["items/weapon_adder_fang.png"] = { icon = "lorc/scar-wound", by = "hand" },
+    ["items/utility_turned_to_stone.png"] = { icon = "caro-asercion/philosopher-bust", by = "hand" },
+    ["items/utility_kinslayers_grudge.png"] = { icon = "lorc/broken-heart", by = "hand" },
+    ["items/utility_the_mark.png"] = { icon = "lorc/hazard-sign", by = "hand" },
 }
