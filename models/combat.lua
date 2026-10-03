@@ -8893,6 +8893,13 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     -- slams into on the way re-enters here (a wall, a trap it is flung across). It is already doomed
     -- and killUnit is queued, so a second death path would fell it twice; skip it.
     if target.mortallyWounded then return 0 end
+    -- ENVY'S MIRAGE (slice D, models/envy_oneoffs.lua): an illusion's blow lands nothing. Before every ward and
+    -- reflex below, because nothing struck the body at all.
+    if attacker and attacker ~= target and attacker.illusory then
+        Combat.logEvent(combat, "action", string.format("The blow passes through %s like heat off the sand.",
+            unitName(target)), target)
+        return 0
+    end
     -- An adjacent guardian (Oathward, Martyr's Vow) may take the blow in the target's place. The
     -- redirected hit re-enters here on the guardian, so its own armor, barrier and traits all apply.
     -- The shove does NOT ride along, though: a knockback is aimed at the ORIGINAL target and would fling
@@ -12737,6 +12744,8 @@ function Combat.curseItem(combat, victim, curseId)
             string.format("The hex finds no purchase on %s.", unitName(victim)), { victim })
         return nil, "warded"
     end
+    -- ENVY'S NAZAR (slice D, data/traits/trait_nazar.lua): the first debuff or curse each fight is turned aside.
+    if require("models.envy_oneoffs").turnAside(combat, victim, "hex") then return nil, "turned aside" end
 
     local pool = {}
     for i = 1, Character.MAX_INVENTORY do

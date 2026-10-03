@@ -239,6 +239,9 @@ return {
                 -- ENVY'S BESTIARY, slice E (2026-10-03): Medusa and the three statues of her garden, the review's
                 -- own number -- the garden is the fight's second half, and the adders grow the board anyway.
                 encounter_envy_medusa = true,
+                -- ENVY'S MIRAGE (slice D, 2026-10-03): a cast of one that is four bodies. It raises its own three
+                -- illusions at the bell, and an escort would be more things to sort beside "which one is real".
+                encounter_envy_the_mirage = true,
             }
             -- THE ROSTER, NOT THE HEAD-COUNT. Asked as "is this the same fight on every seed", because
             -- a stop is allowed to roll its SHAPE while holding its size: the Skeleton King's court is

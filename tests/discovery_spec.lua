@@ -264,6 +264,11 @@ local TROPHIES = {
     "utility_stone_heart", "ability_time_was", "utility_time_is_past", "utility_echoing_shell",
     "utility_weavers_shuttle", "utility_iron_thread",
     -- end ENVY'S SEAT, SLICE C
+    -- ENVY'S APPROACH ONE-OFFS (slice D, 2026-10-03): the Evil Eye's charm as an Exorcist's, the Mirage's trick as a
+    -- Ninja's, the Patchwork's stitch as an Apothecary's, the Shade's lee as an Assassin's cloak, the Weighers' scale
+    -- as an Inquisitor's, the Green-Eyed Monster's roar as a Barbarian's, and the eels' hide as a Skirmisher's boots.
+    "utility_nazar", "ability_mirage_step", "ability_surgeons_thread", "armor_shade_cloak",
+    "utility_scale_of_hearts", "ability_jealous_roar", "armor_eel_skin_boots",
 }
 
 local function vendorFor(class)

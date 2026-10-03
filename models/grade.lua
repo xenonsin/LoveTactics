@@ -1214,6 +1214,19 @@ Grade.TRAIT_GRADE = {
     trait_gorgon_blood =                1.0,  -- Gorgon's Blood -- an adder when a blade cuts you
     trait_hand_mirror =                 2.0,  -- Hand-Mirror -- single-target rebound while the most blessed
     trait_the_mark =                    1.0,  -- The Mark -- the killer takes 7x a blow back
+    -- ENVY'S APPROACH ONE-OFFS (slice D, 2026-10-03, "Envy's Bestiary"). The Eye, the Mirage, the Patchwork, the
+    -- Shade, the Weighing and the Green-Eyed Monster's spite are bodies' own and never shelved. Of the drops: the
+    -- Nazar turns aside one affliction a fight (the Cleansing Ward's weight, once); the Shade Cloak is half of a
+    -- concealment, and only against a wall; the Scale of Hearts is +4 on a blow into a fuller foe.
+    trait_the_eye_falls =               0.0,  -- The Eye Falls on Good Fortune -- the Evil Eye's look
+    trait_which_one_is_real =           0.0,  -- Which One Is Real -- the Mirage's illusions
+    trait_stitched_to_you =             0.0,  -- Stitched to You -- the Patchwork's stitch
+    trait_cast_by_you =                 0.0,  -- Cast by You -- the Shade's shadow
+    trait_the_weighing =                0.0,  -- The Weighing -- the Weighers' scale
+    trait_mocks_the_meat =              0.0,  -- Which Doth Mock the Meat -- the Green-Eyed Monster's +2 a pair
+    trait_nazar =                       1.0,  -- Nazar -- the first debuff or curse each fight is turned aside
+    trait_shade_cloak =                 1.0,  -- Shade Cloak -- beside a wall, Unseen
+    trait_scale_of_hearts =             1.0,  -- Scale of Hearts -- +4 against a foe with more current health
 }
 
 -- Which of the weights above were ADOPTED from the classifier's seed rather than weighed one by

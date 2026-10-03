@@ -1178,6 +1178,8 @@ function Status.isImmune(unit, id, applier)
     -- SUPERBIA, THE MORNING STAR (Pride's general): NON SERVIAM. A foe's debuff is sent back before it gets
     -- here (Status.apply); what reaches this line had nobody to send it to, and she refuses it all the same.
     if unit and require("models.morning_star").refuses(unit, applier) then return { name = "Non Serviam" } end
+    -- ENVY'S MIRAGE (slice D, models/envy_oneoffs.lua): an illusion weighs nothing, so the sand does not take it.
+    if id == "status_mired" and unit and unit.illusory then return { name = "weighs nothing" } end
     for _, s in ipairs((unit and unit.statuses) or {}) do
         for _, blocked in ipairs(s.def.grantsImmunity or {}) do
             -- The DEF, not the instance: the log below names the ward, and a name is a property of the

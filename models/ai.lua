@@ -1898,6 +1898,10 @@ function AI.preempt(combat, unit)
     if sand then return sand end
     local hunt = require("models.kinslayer").plan(combat, unit)
     if hunt then return hunt end
+    -- ENVY'S ONE-OFFS (slice D, models/envy_oneoffs.lua): the Weighers strike the heavier heart, a Sand-Eel dives
+    -- for the Fairest, and the Green-Eyed Monster roars at a pair standing side by side.
+    local envy = require("models.envy_oneoffs").plan(combat, unit)
+    if envy then return envy end
     -- ON THE CHAIN (data/traits/trait_the_chain.lua): the War Ogre goes for whatever its Handler last struck.
     if unit.side ~= "party" and Trait.flag(unit, "chained") and unit.pointedAt and unit.pointedAt.alive
         and unit.pointedAt.side ~= unit.side then

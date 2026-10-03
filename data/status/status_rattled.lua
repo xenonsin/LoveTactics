@@ -19,5 +19,9 @@ return {
     color = { 0.420, 0.392, 0.502 }, -- badge tint (dim slate, Blind's neighbourhood)
     duration = 9999,
     debuff = false,
+    -- ...AND NOT A BLESSING EITHER (2026-10-03). `debuff = false` keeps a Cure off an injury, but Combat.dispellableOn
+    -- reads "not a debuff" as "a blessing", so a Glass-Eater stripped Rattled OFF you as though it helped and Envy's
+    -- Fairest counted it as good fortune. It is neither, and `undispellable` says so.
+    undispellable = true,
     statBonus = { skill = -3, speed = -1 },
 }

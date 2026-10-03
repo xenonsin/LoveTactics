@@ -738,6 +738,15 @@ local CHARACTER_SILHOUETTE = {
     adder = "skoll/cobra",
     stone_challenger = "delapouite/colombian-statue",
     the_kinslayer = "delapouite/farmer",
+    -- ENVY'S APPROACH ONE-OFFS (slice D, 2026-10-03): seven families, each its own picture. Anubis is the
+    -- Weighers' own god; the eel is Leviathan at the size of a dog.
+    evil_eye = "lorc/cyclops",
+    mirage = "delapouite/sun-cloud",
+    patchwork = "delapouite/jawless-cyclop",
+    shade = "lorc/sunken-eye",
+    jackal_weigher = "delapouite/anubis",
+    green_eyed_monster = "lorc/eyestalk",
+    sand_eel = "delapouite/eel",
 }
 
 -- Reverse index: the character key a discipline names as its `exemplar` -> the discipline id. Built from
