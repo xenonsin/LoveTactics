@@ -1348,6 +1348,8 @@ Descent.FLOOR_FEATURE_KEYS = {
     -- because the floor rolls its combat on the walk instead (Descent.PROWL_STEPS). It rides this list
     -- for the reason the list exists -- so the instruments roll the same floor the game does.
     "wanderingCombat",
+    -- SLICE G: which stops may be a mimic (Mimic.kindsOn) -- every non-combat stop on Envy's waste.
+    "mimicKinds",
 }
 
 -- Copy every one of them from a floor's map onto a generate params table. Returns `params`.
@@ -4429,6 +4431,9 @@ function Descent.floorQuest(run, player)
                 and { min = Descent.FLOOR_DROPS.min, max = Descent.FLOOR_DROPS.max } or nil,
             trappedChestChance = Descent.TRAPPED_CHEST_CHANCE,
             mimicChance = Descent.MIMIC_CHEST_CHANCE,
+            -- SLICE G: ...and WHICH stops may be one -- the chest alone, but every non-combat stop on
+            -- Envy's waste (models/mimic.lua's Mimic.kindsOn). The Crown names none: the chest alone.
+            mimicKinds = require("models.mimic").kindsOn(sin.id),
             -- keyCount 0 because a floor is not a lock puzzle: the stair is always reachable.
             keyCount = 0,
             -- The way back up, standing on the tile the party walks in on. See EXIT below.

@@ -84,11 +84,98 @@ Mimic.CHANCE = 20
 -- ordinary roll would make beating the second mimic worth LESS than beating an ordinary body.
 Mimic.TROPHY = { id = "utility_still_hungry", chance = 40 }
 
--- Is this stop a chest with something in it that is awake? Asked of the CELL'S encounter (the plain
--- table the board serializes), like Encounter.opensBattle, because that is what every caller holds.
-function Mimic.lurks(enc)
-    return enc ~= nil and enc.kind == "treasure" and enc.mimic == true
+-- ---- SLICE G: ENVY'S MIMICS -- on the waste, nothing here is what it seems -------------------------
+--
+-- EVERY FACE A MIMIC MAY WEAR, AND THE ACT IT SPRINGS ON. A chest springs on Open; on Envy's floors
+-- every other stop the waste deals may be the same body wearing a different face, and each springs on
+-- that stop's OWN act -- the button that already is the decision the stop asks. That is the chest's
+-- argument held for eight stops instead of one: the act is the decision, the way out is the stop's own
+-- Leave/Cancel, and so walking away is always an answer.
+--
+-- THE THREE HAZARDS ARE THE EXCEPTION, AND THEIR ACT IS THE STEP. The Dark, the Turning Floor and the
+-- Translation resolve with no panel and no choice by design (states/game.lua's hazard header: "a hazard
+-- you are asked to confirm is a door"), so they have no act but walking onto a tile the board has
+-- already marked as one. Their mimic springs there, where the hazard would have, and "walk away" is
+-- answered the way a hazard always answers it: by routing round the marked tile. Giving them a confirm
+-- to spring on would be a panel only a mimic opens -- a tell, and the tell was refused.
+Mimic.FACES = {
+    treasure = "open",       -- the chest's lid (the shipped case)
+    anvil = "strike",        -- the Cold Forge's coals: pressing Forge
+    lectern = "strike",      -- the Cold Lectern's book: pressing Study
+    merchant = "buy",        -- the cart: pressing Buy on a ware
+    crossroads = "choose",   -- taking a road
+    dark = "step",           -- the hazards, whose only act is the step (above)
+    spinner = "step",
+    translation = "step",
+}
+
+-- WHICH FACES A FLOOR MAY DEAL, by circle. Everywhere else in the rift it is the chest alone, exactly as
+-- it shipped; on Envy's two floors it is every non-combat stop the waste deals, at the SAME rate
+-- (Mimic.CHANCE) -- a fifth of every stop, which is one or two a floor.
+--
+-- ORDERED LISTS rather than sets, so the floor descriptor that carries one walks the same on every
+-- machine (the rule Descent.SINS is ordered for).
+Mimic.EVERYWHERE = { "treasure" }
+Mimic.CIRCLE_KINDS = {
+    envy = { "anvil", "crossroads", "dark", "lectern", "merchant", "spinner", "translation", "treasure" },
+}
+
+-- The faces a floor of circle `sinId` may deal. Nil (the Crown, a campaign road) is the chest alone.
+function Mimic.kindsOn(sinId)
+    return (sinId and Mimic.CIRCLE_KINDS[sinId]) or Mimic.EVERYWHERE
 end
+
+-- May a stop of `kind` be alive on a board whose faces are `kinds` (a list; nil means the chest alone)?
+-- What Overworld:placeTraps asks before it rolls, so a floor with no list rolls exactly the cells it
+-- always rolled and its rng stream is untouched.
+function Mimic.mayLurk(kind, kinds)
+    for _, k in ipairs(kinds or Mimic.EVERYWHERE) do
+        if k == kind then return Mimic.FACES[kind] ~= nil end
+    end
+    return false
+end
+
+-- Is this stop a mimic still wearing its face? Asked of the CELL'S encounter (the plain table the board
+-- serializes), like Encounter.opensBattle, because that is what every caller holds. Once sprung the cell
+-- is an `elite`, which wears no face, so this answers false and a stop cannot spring twice.
+function Mimic.lurks(enc)
+    return enc ~= nil and enc.mimic == true and Mimic.FACES[enc.kind] ~= nil
+end
+
+-- Does pressing `act` on this stop spring it? THE ONE QUESTION EVERY STOP'S ACT ASKS (states/game.lua),
+-- so each stop's wiring is a single call and the table above is the only place a face's act is written.
+function Mimic.springsOn(enc, act)
+    return Mimic.lurks(enc) and Mimic.FACES[enc.kind] == act
+end
+
+-- WHAT A FACE THAT IS NOT A CHEST HAS SWALLOWED: a chest's worth, rolled at the floor's tier the way
+-- Treasure rolls its contents (Spoils.cache), falling back to the chest blueprint's authored floor where
+-- the catalogue is thin -- one payout rule for every face. THE MERCHANT'S STOCK IS NOT IT: a cart's
+-- mimic pays a chest like every other face, never what was on its counter (that variant was refused).
+--
+-- PINNED onto `enc.loot` the first time it is asked, the chest's own rule: the contents are the body's
+-- kit, so an unpinned roll would be re-rolling the fight. A chest that already pinned its haul is handed
+-- back unchanged. `opts` = { floorLevel, depth, player }, Spoils.cache's own inputs.
+--
+-- Both requires are lazy: models/descent.lua requires this file eagerly because it requires nothing.
+function Mimic.chestsWorth(enc, opts)
+    enc = enc or {}
+    if enc.loot then return enc.loot end
+    opts = opts or {}
+    local loot = {}
+    if opts.floorLevel then
+        loot = require("models.spoils").cache({
+            floorLevel = opts.floorLevel, depth = opts.depth, player = opts.player,
+        })
+    end
+    if #loot == 0 then
+        local def = require("models.encounter").get("encounter_treasure")
+        for _, id in ipairs((def and def.loot) or {}) do loot[#loot + 1] = id end
+    end
+    enc.loot = loot
+    return loot
+end
+-- ---- end SLICE G ------------------------------------------------------------------------------------
 
 -- The fight `enc` turns into, carrying `loot` -- the chest's resolved contents, which become both the
 -- body's kit and the win's guaranteed payout.

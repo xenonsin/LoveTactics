@@ -124,6 +124,9 @@ function Anvil.new(opts)
     self.prompt = opts.prompt or self.copy.prompt
     self.onStrike = opts.onStrike
     self.onLeave = opts.onLeave
+    -- SLICE G: asked on the press BEFORE the rung is taken; true swallows the strike. It is how a mimic
+    -- wearing this stop's face springs on the act and never on arrival (models/mimic.lua's FACES).
+    self.onAct = opts.onAct
     self.finished = false
 
     self.titleFont = Theme.display(28)
@@ -256,6 +259,7 @@ function Anvil:strike()
     if self.finished then return end
     local row = self:current()
     if not row then return end
+    if self.onAct and self.onAct(row) then self.finished = true; return end -- SLICE G (above)
     local newItem = Forge.grant(self.player, row.item)
     if not newItem then
         -- NO SECOND SENTENCE. The reason is already standing under the stats on the picked piece's own

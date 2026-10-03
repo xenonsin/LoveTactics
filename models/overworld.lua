@@ -1130,12 +1130,17 @@ function Overworld:placeTraps(params)
     -- answer on the second trip down, and worse, could be re-asked by stepping off the tile and back
     -- onto it. Rolled here, the third chest on floor six is a monster for the life of the playthrough,
     -- and the company that left it alone knows exactly where it is.
+    --
+    -- SLICE G: WHICH STOPS MAY BE ALIVE is the floor's `params.mimicKinds` (Mimic.kindsOn) -- the chest
+    -- alone everywhere but Envy's waste, where every non-combat stop wears a face. Nil is the chest alone,
+    -- so a board that names no list rolls exactly the cells it always rolled.
     local mimics = params.mimicChance or 0
     if mimics > 0 then
+        local Mimic = require("models.mimic")
         for y = 1, self.rows do
             for x = 1, self.cols do
                 local e = self.cells[y][x].encounter
-                if e and e.kind == "treasure" and self.rng:random(100) <= mimics then
+                if e and Mimic.mayLurk(e.kind, params.mimicKinds) and self.rng:random(100) <= mimics then
                     e.mimic = true
                 end
             end
@@ -2305,7 +2310,9 @@ local CELL_FIELDS = { "tile", "seen", "cleared", "picked", "encounter", "gate", 
 -- 2: some of the chests are mimics (placeTraps' third half, models/mimic.lua). A floor laid under 1
 --    has the flag on nothing, so every lid on it is dead wood forever -- exactly the invisible-forever
 --    failure this number exists for.
-Overworld.GEN_VERSION = 2
+-- 3: (SLICE G) on Envy's floors every non-combat stop may be a mimic (params.mimicKinds). A waste laid
+--    under 2 has the flag on its chests alone, so its forges, carts and roads could never stand up.
+Overworld.GEN_VERSION = 3
 
 function Overworld:snapshot()
     local cells = {}

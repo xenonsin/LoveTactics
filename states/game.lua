@@ -2089,6 +2089,31 @@ function game:teachRelics()
     })
 end
 
+-- THE HAND ON THE STOP (models/mimic.lua). Every face a mimic wears springs through here, on that
+-- stop's own act: rewrite the tile as the fight it always was and re-enter through the one seam every
+-- other fight on this board comes through (game:openEncounter), rather than launching a battle from
+-- inside a panel -- the combat branch owns the deployment, the flee offer, the walk-off, the injuries
+-- and every save between them, and a second launcher would be a second copy of all of it drifting.
+--
+-- `loot` is the chest's own contents when the face IS a chest; any other face has swallowed a chest's
+-- worth, rolled at this floor's tier (Mimic.chestsWorth) -- SLICE G, one payout rule for every face.
+-- Either way it rides across as `carried`, which arms the body AND is what the win hands over.
+function game:springMimic(cell, opts, loot)
+    local enc = cell.encounter
+    loot = loot or Mimic.chestsWorth(enc, { floorLevel = game.quest and game.quest.floorLevel,
+        depth = game.depth, player = game.player })
+    game.activePanel = nil
+    cell.encounter = Mimic.spring(enc, loot)
+    -- The tile is a different fight from the one that was memoised against it. Dropped rather than
+    -- recomputed: game:cellMuster rebuilds on the next read (and the sealed roll taken for a chest is
+    -- dropped with it -- an elite's husk chance is the same 0.50 a treasure's is, so the fight re-asks the
+    -- identical question).
+    if game.encounterMuster then game.encounterMuster[cell] = nil end
+    require("models.sound").play("battle.hit")
+    game:pushToast(enc.kind == "treasure" and "The chest stands up" or "It was a Mimic")
+    game:openEncounter(cell, opts)
+    return true
+end
 
 -- Engaging an encounter. Combat kinds (combat / elite / objective) drop into the
 -- battle arena; every non-combat kind below has a panel of its own, and the plain modal at the
@@ -3677,26 +3702,10 @@ function game:openEncounter(cell, opts)
                 and ("The lid is wired -- " .. (wired.name or "a trap") ..
                      ". Open it anyway, or leave it and come back for it.")
                 or nil,
-            -- THE HAND ON THE LID. Rewrite the tile as the fight it always was and re-enter through the
-            -- one seam every other fight on this board comes through (game:openEncounter), rather than
-            -- launching a battle from in here: the combat branch above owns the deployment, the flee
-            -- offer, the walk-off, the injuries and every save between them, and a second launcher would
-            -- be a second copy of all of it quietly drifting.
-            --
-            -- The chest's contents ride across as `carried`, which is what arms the body AND what the
-            -- win hands over -- one list, read twice.
-            onOpen = lurking and function()
-                game.activePanel = nil
-                cell.encounter = Mimic.spring(enc, loot)
-                -- The tile is a different fight from the one that was memoised against it. Dropped
-                -- rather than recomputed: game:cellMuster rebuilds on the next read (and the sealed
-                -- roll taken for the chest above is dropped with it -- an elite's husk chance is the
-                -- same 0.50 a treasure's is, so the fight re-asks the identical question).
-                if game.encounterMuster then game.encounterMuster[cell] = nil end
-                require("models.sound").play("battle.hit")
-                game:pushToast("The chest stands up")
-                game:openEncounter(cell, opts)
-                return true
+            -- THE HAND ON THE LID (game:springMimic, the seam every face springs through). The chest's
+            -- contents ride across as `carried`, which arms the body AND is what the win hands over.
+            onOpen = Mimic.springsOn(enc, "open") and function()
+                return game:springMimic(cell, opts, loot)
             end or nil,
             onCollect = function()
                 cell.cleared = true
@@ -4020,6 +4029,10 @@ function game:openEncounter(cell, opts)
             room = waysideRoom,
             title = cell.encounter.name,
             player = game.player,
+            -- SLICE G: on Envy's waste the bench may be a mimic, and it springs on the strike.
+            onAct = Mimic.springsOn(cell.encounter, "strike") and function()
+                return game:springMimic(cell, opts)
+            end or nil,
             onStrike = function(row)
                 cell.cleared = true
                 -- The new name already carries its "+n" (Item.instantiate bakes it on), so the toast
@@ -4118,6 +4131,9 @@ function game:openEncounter(cell, opts)
                 return "You have " .. total .. " already: " .. table.concat(parts, ", ") .. "."
             end,
             onBuy = function(entry)
+                -- SLICE G: on Envy's waste the cart may be a mimic, and it springs on Buy -- before the
+                -- coin moves, and it pays a chest's worth rather than the stock on its counter.
+                if Mimic.springsOn(cell.encounter, "buy") then game:springMimic(cell, opts); return false end
                 if not (game.player and Player.spendGold(game.player, entry.price)) then return false end
                 if entry.relic then
                     -- UNREACHABLE SINCE 2026-09-17: the shelf-building loop above no longer adds a
@@ -4304,6 +4320,9 @@ function game:openEncounter(cell, opts)
             options[#options + 1] = {
                 label = o.label, desc = o.desc,
                 cb = function()
+                    -- SLICE G: on Envy's waste the signpost may be a mimic; taking a road springs it,
+                    -- and the road's own stake is never paid.
+                    if Mimic.springsOn(cell.encounter, "choose") then return game:springMimic(cell, opts) end
                     cell.cleared = true
                     sealedFound = nil -- an answer reports its OWN find, never the last one's
                     relicGained = false -- ...and its own relic, on the same terms
@@ -4727,6 +4746,10 @@ function game:openEncounter(cell, opts)
     --
     -- Each marks its cell cleared, so a floor a company keeps (Descent.keepFloor) does not spring the
     -- same hole twice -- which is the difference between a hazard and a wall.
+
+    -- SLICE G: ON ENVY'S WASTE A HAZARD MAY BE A MIMIC, and its act is the step -- the only one a hazard
+    -- has (models/mimic.lua's FACES says why). It springs where the hazard would have, instead of it.
+    if Mimic.springsOn(cell.encounter, "step") then game:springMimic(cell, opts); return end
 
     -- THE DARK: vision to arm's length for a stretch of walking. Everything the board says at a distance
     -- -- a fight's tier pips, a reward past its guard, the way up -- has to be walked into instead.
