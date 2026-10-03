@@ -1,6 +1,7 @@
 -- The Crucible line's two rules, read the two ways (docs/story.md, "The Crucible": the alchemist answers
--- envy with kindness). Livia's Covetous Reflection takes the shape of your strongest at the opening bell
--- (data/traits/trait_covetous_reflection.lua); Ren's Aqua Vitae grants a copy of your strongest to your
+-- envy with kindness). The Envious Glass's Covetous Reflection takes the shape of your strongest at the opening
+-- bell (data/traits/trait_covetous_reflection.lua) -- Livia's rule, carried now by whoever wears her Glass, since
+-- the Many Faced One took her stair (slice F, tests/many_faced_one_spec.lua); Ren's Aqua Vitae grants a copy of your strongest to your
 -- own side, and only once she has given three times (data/items/utility/utility_aqua_vitae.lua). Headless.
 
 local Character = require("models.character")
@@ -26,17 +27,20 @@ end
 
 return {
     {
-        name = "Covetous Reflection: Livia opens the fight wearing a copy of your strongest",
+        name = "Covetous Reflection: the Glass's bearer opens the fight beside a copy of your strongest",
         fn = function()
-            -- A weak bandit and a strong warlord on the party side; she should covet the warlord.
+            -- A weak bandit and a strong warlord on the party side; the Glass should covet the warlord. Its
+            -- bearer is a bandit wearing Livia's Glass -- the body that wore it is gone from the game.
+            local bearer = Character.instantiate("character_bandit")
+            Character.addItem(bearer, require("models.item").instantiate("utility_envious_glass"))
             local c = Combat.new(arena(8, 8),
                 { { char = Character.instantiate("character_bandit"), x = 1, y = 1 },
                   { char = Character.instantiate("character_warlord"), x = 2, y = 1 } },
-                { { char = Character.instantiate("character_general_envy"), x = 6, y = 6 } })
+                { { char = bearer, x = 6, y = 6 } })
 
             local livia
             for _, u in ipairs(c.units) do if Trait.has(u, "trait_covetous_reflection") then livia = u end end
-            assert(livia, "Livia carries her rule (off the Glass in her grid)")
+            assert(livia, "the bearer carries the rule (off the Glass in its grid)")
 
             -- onCombatStart already fired in Combat.new: a copy now stands on her side.
             assert(countSide(c, livia.side) >= 2, "a coveted shape joined her at the opening bell")

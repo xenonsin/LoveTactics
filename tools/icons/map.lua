@@ -1130,6 +1130,11 @@ return {
     ["items/utility_elf_blood.png"] = { icon = "delapouite/elf-ear", by = "hand" },
     -- THE FACELESS OF ENVY (2026-10-03): the race's grant.
     ["items/utility_faceless_blood.png"] = { icon = "lorc/domino-mask", by = "hand" },
+    -- SLICE F, ENVY'S GENERAL (2026-10-03): the Many Faced One's organ, its relic and its two pieces.
+    ["items/utility_crown_of_a_thousand_faces.png"] = { icon = "lorc/architect-mask", by = "hand" },
+    ["items/utility_pretenders_crown.png"] = { icon = "delapouite/hedjet-white-crown", by = "hand" },
+    ["items/ability_splitting_image.png"] = { icon = "lorc/split-body", by = "hand" },
+    ["items/consumable_unmasking_powder.png"] = { icon = "delapouite/powder-bag", by = "hand" },
     -- THE DJINN OF PRIDE (2026-09-30): the race's grant, the three spells and the Coal, and the Wishmaker's pieces.
     ["items/utility_will_not_stoop.png"] = { icon = "lorc/fluffy-swirl", by = "hand" },
     ["items/ability_djinnis_breath.png"] = { icon = "lorc/windy-stripes", by = "hand" },

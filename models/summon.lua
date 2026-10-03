@@ -233,6 +233,9 @@ function Summon.copy(combat, summoner, x, y, opts)
     opts = opts or {}
 
     local char = buildCopyChar(summoner.char)
+    -- SLICE F (Envy's general, the Many Faced One): `opts.sharePool` stands the double on the caster's OWN
+    -- health pool, the same table by reference, so a blow on either is a blow on both (Splitting Image).
+    if opts.sharePool then char.stats.health = summoner.char.stats.health end
 
     local unit = Combat.addUnit(combat, char, summoner.side, x, y, {
         control = resolveControl(opts.control, summoner),
@@ -291,6 +294,11 @@ function Summon.copyOf(combat, copier, target, x, y, opts)
         local hp = char.stats.health
         if type(hp) == "table" then hp.current = math.max(1, math.floor((hp.max or 1) * opts.health + 0.5)) end
     end
+
+    -- SLICE F (Envy's general, the Many Faced One): `opts.sharePool` stands the copy on the COPIER's health
+    -- pool, the same table by reference -- the split's copies of the company are one creature
+    -- (models/many_faced.lua).
+    if opts.sharePool then char.stats.health = copier.char.stats.health end
 
     local summoner = copier
     if opts.summoner ~= nil then summoner = opts.summoner or nil end

@@ -1679,6 +1679,20 @@ function Trait.setup(combat)
     end
 end
 
+-- SLICE F (Envy's general, the Many Faced One): run one hook on one body's traits NOW, the ones `only` says yes
+-- to. For a body that puts on a whole new kit mid-fight and has to open it as though this were its bell -- the
+-- Many Faced One wearing a general (models/many_faced.lua). Outside the dispatch's re-entry latch on purpose:
+-- the first form is put on from inside the body's own onCombatStart, which the latch is holding. Sundering still
+-- silences it, as it silences the dispatch.
+function Trait.fire(combat, unit, hook, event, only)
+    if not (unit and unit.traits) or require("models.status").traitsDisabled(unit) then return end
+    local snapshot = {}
+    for _, t in ipairs(unit.traits) do snapshot[#snapshot + 1] = t end
+    for _, t in ipairs(snapshot) do
+        if t.def[hook] and (not only or only(t)) then t.def[hook](ctxFor(combat, unit, t, event or {})) end
+    end
+end
+
 -- The bearer took `info.amount` post-mitigation damage and lived. Fired from Combat.dealFlatDamage.
 -- A hard-controlled bearer (Stun, Frozen) is too rattled to answer: its counters, thorns and other
 -- on-hit reactions are suppressed, so the blow lands unanswered. (onStatusApplied is deliberately NOT

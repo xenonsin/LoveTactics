@@ -32,6 +32,9 @@ Court.QUICKEN_EVERY = 40   -- the Procession's period once she is below half (it
 Court.GUARD_COOLDOWN = 6   -- the sworn guard's own Oathward cooldown: one blow a turn, as the innate one
 
 local function hpFrac(unit)
+    -- SLICE F (Envy's general): the Many Faced One wearing her reads its FORM's share as her bar.
+    local form = unit and unit.formBar and require("models.many_faced").formFraction(unit)
+    if form then return form end
     local hp = unit and unit.char and unit.char.stats and unit.char.stats.health
     if not (hp and hp.max and hp.max > 0) then return 1 end
     return (hp.current or 0) / hp.max

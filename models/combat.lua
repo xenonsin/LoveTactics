@@ -10478,6 +10478,8 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
         summon = function() touchesBoard() return previewStandIn() end,
         copy = function() touchesBoard() return previewStandIn() end,
         copyOf = function() touchesBoard() return previewStandIn() end,
+        -- SLICE F (Envy's general): strips nothing in a dry run (Unmasking Powder).
+        revert = function() touchesBoard() return false end,
         -- Inert like the rest, but it records WHERE the shove would leave its target, because that is
         -- the tile the target's own answer would be thrown from -- and a counter is gated on reach.
         -- Without this the hover promises a parry the mace then shoves out of range of (see
@@ -10973,6 +10975,8 @@ function Combat.abilityOutput(unit, item)
             out.transformDuration = opts and opts.duration
             return true
         end,
+        -- SLICE F (Envy's general): no board, so no shape to strip (Unmasking Powder).
+        revert = function() return false end,
         -- No stash and no board here, so nothing is handed over -- but the item is recorded, so a
         -- describer can say what the cast would yield (ability_distil's draught).
         grantItem = function(_, itemId) out.grants = itemId; return nil end,
@@ -13917,6 +13921,12 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
             -- reservation above draws, for the same reason.
             if shaped and tgt == unit then Combat.tally(unit, "shifted", 1) end
             return shaped
+        end,
+        -- SLICE F (Envy's general, the Many Faced One): strip whatever shape `tgt` wears, putting the body
+        -- underneath back on the board (Unmasking Powder). False when it wore none.
+        revert = function(tgt)
+            if not tgt then return false end
+            return Transform.revert(combat, tgt)
         end,
         -- Shove a unit `distance` tiles straight away from the caster; a collision hurts everyone.
         knockback = function(tgt, distance, opts)

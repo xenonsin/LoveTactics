@@ -138,6 +138,9 @@ return {
         local max = hp.max or 0
         if max <= 0 then return end
         local fraction = (hp.current or 0) / max
+        -- SLICE F (Envy's general): a general worn as one of the Many Faced One's forms reads her phases off
+        -- the form's own share of the bar (models/many_faced.lua), so her thirds fall inside her form.
+        if ctx.unit.formBar then fraction = require("models.many_faced").formFraction(ctx.unit) or fraction end
 
         -- Cross as many thresholds as this one blow spans, running each phase's responses in order. A
         -- crossing may turn the enrage curve ON (the `enrage` response sets ctx.trait.enrageMagnitude),

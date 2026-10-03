@@ -558,7 +558,13 @@ Descent.SINS = {
         -- with 18 health at level 1. And the filler was character_homunculus_discard, which is CARGO: a
         -- `protect` objective with a holdGround posture, whose own header spends a paragraph on why it
         -- must never be fielded as a combatant. Both replaced by the circle's own stock.
-        guardian = { lead = "character_general_envy", filler = "character_glass_eater" },
+        -- THE MANY FACED ONE (2026-10-03, "Envy's Bestiary", slice F; models/many_faced.lua), on Livia's id. It
+        -- wears every general above Envy in turn, and each form calls the adds ITS stair fields -- so the court
+        -- on this stair is whoever the first form's escort and swarm are, re-cast at the bell. The escort slot
+        -- is seated as Gula's wolf alpha (the authored first form) and is only ever a placeholder for the
+        -- worth the stair is sized by. `waves = {}` makes it a WAVE BATTLE taken on its body (Descent.stairWin):
+        -- the forms install their own stairs' waves as they are put on.
+        guardian = { lead = "character_general_envy", filler = "character_wolf_alpha", waves = {} },
         -- SHE DOES NOT COME OUT FOR A COMPANY WITH NOTHING. Envy wants what you have, so the gate is
         -- carrying something worth wanting -- which makes it the one gate a player can fail by having
         -- been sensible, and the one that rewards walking onto her floor rich.
@@ -788,7 +794,10 @@ Descent.DROPS = {
         "armor_emberwalk_greaves", "ability_fire_from_the_sky", "utility_hoard_ledger",
     } },
     envy     = { minor = { "utility_second_vessel" }, general = {
-        "utility_envious_glass",
+        -- The Many Faced One's (slice F, 2026-10-03): the Pretender's Crown relic, then its split and the answer
+        -- to its masks. Livia's Envious Glass left the list with her; it stays on disk, an alchemist's trophy.
+        "utility_pretenders_crown",
+        "ability_splitting_image", "consumable_unmasking_powder",
     } },
     -- Furor's (settled on review 2026-09-28): his relic first, then his arms as a move, the halo he wears (The
     -- Burning Halo, which already was the approved "Halo of Fire"), the Colosseum's own piece, his arm, his

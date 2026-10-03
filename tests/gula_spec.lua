@@ -309,6 +309,13 @@ return {
                         "the dragon's stair is won on the dragon")
                     assert(win.waves and #win.waves >= 1 and win.waves[1].maxAlive,
                         "and her kobolds top up rather than flood")
+                elseif sin.id == "envy" then
+                    -- The fourth (slice F, 2026-10-03): the Many Faced One's stair is won on its body, and it
+                    -- declares no waves of its own -- each form installs its own stair's as it is put on
+                    -- (tests/many_faced_one_spec.lua).
+                    assert(win.type == "assassinate" and win.target == "character_general_envy",
+                        "the Many Faced One's stair is won on the Many Faced One")
+                    assert(win.waves and #win.waves == 0, "its forms bring the waves, not the stair")
                 else
                     assert(win.type == "killAll", sin.id .. "'s stair stays a clear")
                 end

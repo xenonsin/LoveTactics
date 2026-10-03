@@ -490,7 +490,7 @@ return {
     ["name.character_caravan_master"] = { en = "Caravan Master", ja = "" },  -- TODO
     ["name.character_clem"] = { en = "Clem", ja = "" },  -- TODO
     ["name.character_demon_lord"] = { en = "The Hollow Crown", ja = "" },  -- TODO
-    ["name.character_general_envy"] = { en = "Livia, the Unborn", ja = "" },  -- TODO
+    ["name.character_general_envy"] = { en = "The Many Faced One", ja = "" },  -- TODO
     ["name.character_general_gluttony"] = { en = "Gula, the Unsated", ja = "" },  -- TODO
     ["name.character_general_greed"] = { en = "Avaritia, the Unspent", ja = "" },  -- TODO
     ["name.character_general_lust"] = { en = "Luxuria, Queen of the Succubi", ja = "" },  -- TODO

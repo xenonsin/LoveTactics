@@ -1,61 +1,53 @@
--- The general of Envy, and the end of the Crucible's line (docs/story.md, "The Crucible"). Enemy
--- blueprint; the objective of data/quests/general_envy.lua. The finale (data/quests/quest_the_gate_below.lua)
--- already reserves a slot for her -- "general_envy" sits in its requiredQuests.
+-- THE MANY FACED ONE: the general of Envy, on floor twelve's stair. Reviewed over three rounds, 2026-10-01..03
+-- ("Envy's Bestiary", the general's rows), and it REPLACES Livia, the Unborn on the same id: the alchemist's
+-- homunculus who copied your strongest at the bell. Her rule and her Glass are left on disk (the Glass is still a
+-- trophy on the alchemist's rack), and nothing fields them now.
 --
--- WHO SHE IS: the college's masterpiece homunculus, the one that got far enough to WANT. What she wanted
--- was a self -- to be born, not made. She did not pact for power; she pacted with the Demon Lord for
--- humanity, and the bargain's cruelty is exact: it gave her the power to copy any human perfectly and
--- never once to BE one. She can be anyone and is no one. She is FMA's Envy and the noppera-bo: a hollow
--- thing that wears others' faces and has no face of its own.
+-- WHO IT IS: the face every Faceless envies, and the race's own crown (data/races/faceless.lua). Its soldiers
+-- wear soldiers; it wears GENERALS. The seat floor it stands under is its court, practising. Its own shape is seen
+-- for a moment at most, between faces: a crown of a thousand faces with no head under it.
 --
--- Her rule rides on the Glass in her grid (a blueprint's own `traits` field is never collected; only an
--- item's is -- models/trait.lua): "has no shape until it has seen yours" (data/traits/trait_covetous_reflection.lua)
--- -- at the opening bell she takes the shape of your strongest, and it fights for her. The counterplay is
--- the sin read as tactics: let nothing tower, and she finds a lesser shape to wear. The party Ren
--- flattens upward (character_ren.lua) gives her nothing worth coveting.
+-- THE FIGHT IS models/many_faced.lua, and the header there argues it in full:
+--   * it wears, in turn, the general of every circle above Envy in this run, in the order the company met them
+--     (Gula, Luxuria, Avaritia, Furor, Acedia on the authored way down; the circles BELOW, nearest first, when a
+--     shuffled campaign deals Envy early) -- each through the transform, real body and kit, openers fired;
+--   * each form calls that stair's escort and its waves, and its court shapeshifts into the next form's adds;
+--   * one bar in six equal shares -- five forms, then the split -- and dropping through a share moves on;
+--   * the split: an exact copy of each body in the company, items, stats and tactics, on one health pool.
 --
--- Her kit is her borrowed shape and the blank homunculi she conjures (ability_summon_homunculus). Statted
--- as a hollow thing that fights through what it steals: modest of itself, dangerous through the copy it
--- opens with. `assassinate` is the honest objective.
+-- REDUCED BY DESIGN. 540 is six shares of 90, so each form holds about three-eighths of what its general holds on
+-- her own stair. A form is that fight, shortened, which is the author's note: "their health could be reduced so
+-- the fights are not just repeats of all the floors". Its own flat stats are a placeholder in the strictest sense
+-- -- every form brings its own, and the split brings yours.
 --
--- TODO (see docs/story.md + the plan): the finale is not fully built. She should be TWO-PHASE -- the
--- borrowed shape sloughs off to reveal the running-quicksilver homunculus underneath -- and her second
--- form brings the Counterfeit Host (blank homunculi that copy a unit only once they SEE it), the Envious
--- Pall, Covet and Grudge. All are new work over what ships here.
+-- A Thousand Faces is its race's rule too, and is never allowed to choose: `faceLocked` is set at the bell, since
+-- its forms come from its own rule (the Crown of a Thousand Faces in its first cell, so it opens first).
 return {
-    name = "Livia, the Unborn",
-    race = "human",
+    name = "The Many Faced One",
+    race = "faceless",
     tier = 4,
-    -- WHAT LEVEL THESE NUMBERS WERE WRITTEN FOR. This body is authored as the fight it is at the end
-    -- of its line, and models/growth.lua scales it DOWN toward the shallows rather than growing it up
-    -- from a base -- so a descent that deals this circle as floor 1 meets a smaller version of the
-    -- same thing instead of an unkillable one. At this level the numbers below are exactly the
-    -- numbers. See Growth.spawn.
+    -- WHAT LEVEL THESE NUMBERS WERE WRITTEN FOR (models/growth.lua scales it down toward the shallows, so a
+    -- shuffled descent that deals Envy early meets a smaller version of the same thing).
     referenceLevel = 13,
     boss = true, -- a quest objective: immune to execute (Coup de Grace) and to Charm
+    revivable = false,
     sprite = "assets/chars/general_envy.png",
     portrait = "assets/portraits/general_envy.png", -- large VN portrait for conversations (falls back if missing)
+    archetype = "aggressive",
     stats = {
-        health = 271, mana = 80, stamina = 15,
-        staminaRegen = 2,
-        damage = 12, magicDamage = 12, -- middling of herself; the copy she opens with is the threat
-        defense = 12, magicDefense = 14,
-        movement = 4,
+        health = 540, mana = 60, stamina = 30, -- the one bar every form and the split are cut from
+        staminaRegen = 3,
+        damage = 12, magicDamage = 12,
+        defense = 10, magicDefense = 10,
+        movement = 4, -- 5 after the race
         speed = 4,
-        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
-        -- attacker's crit. Authored, and never grown -- these are what this body IS.
-        skill = 6, luck = 8,
+        -- Accuracy (docs/accuracy.md): authored, and never grown.
+        skill = 6, luck = 6,
     },
-    -- Her loadout as the 3x3 grid (row-major); false = an empty cell. Her rule rides on the Envious Glass
-    -- in the center (unstealable). Around it: the blank homunculi she fills the board with.
+    -- The crown first, so its opener runs before the race's and the forms are chosen before anything reshapes.
     startingItems = {
-        "ability_summon_homunculus", "ability_summon_homunculus", false,
-        "weapon_vitriol_wand",       "utility_envious_glass",     false,
-        false,                       false,                       false,
-    },
-    defaultAction = "weapon_vitriol_wand",
-    ai = {
-        { priority = "high", act = "attack", item = "weapon_vitriol_wand",
-          when = { subject = "any_foe", test = "in_reach" } },
+        "utility_crown_of_a_thousand_faces", false, false,
+        false,                               false, false,
+        false,                               false, false,
     },
 }

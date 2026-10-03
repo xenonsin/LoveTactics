@@ -150,8 +150,8 @@ local NAMED = {
     -- The Ever-Owed. Luck 10, the mirror of Pride's: Greed's domain IS fortune, so she is nearly
     -- impossible to crit and every attacker gives up their upside against her.
     character_general_greed = { skill = 8, luck = 4, why = "an old dragon: sure of her aim, and never lucky -- she never needed to be" },
-    -- The Unborn covets what others have, fortune included.
-    character_general_envy = { skill = 6, luck = 8, why = "covets the luck as well" },
+    -- The Many Faced One (slice F): its own line is a placeholder -- every form, and the split, brings another's.
+    character_general_envy = { skill = 6, luck = 6, why = "the Many Faced One: whatever it wears aims for it" },
     character_general_lust = { skill = 7, luck = 7, why = "practised and favoured in equal measure" },
     character_general_gluttony = { skill = 5, luck = 4, why = "appetite is not aim" },
     -- The Unrelieved does the minimum, and that is a stat line as much as a personality.

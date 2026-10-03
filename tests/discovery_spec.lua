@@ -212,6 +212,9 @@ local TROPHIES = {
     -- ledger as a Mammonite's, her ground as a Bulwark's greaves. After the Gilded Belly on her list.
     "ability_dragonfire", "utility_wingbeat_mantle", "ability_gild", "armor_emberwalk_greaves",
     "ability_fire_from_the_sky", "utility_hoard_ledger",
+    -- The Many Faced One's (Envy's general, slice F 2026-10-03): its split as a Ninja's, the answer to its masks
+    -- as a Bombardier's. After the Pretender's Crown on its list.
+    "ability_splitting_image", "consumable_unmasking_powder",
     -- The Sated's (Gluttony's seat, reworked 2026-09-23): the Retch as a Bombardier's, the Eat as a
     -- Barbarian's, the whole fight turned around as a Bulwark's coat, a devoured corpse as a
     -- Necromancer's, and being full as a Paladin's.
@@ -233,7 +236,9 @@ local TROPHIES = {
     "utility_maw_of_the_unfed", "utility_larder_hook",           -- Gluttony: hunter, hunter
     "utility_reliquary_unbidden", "utility_beggars_bowl",        -- Lust: rogue, inquisitor
     "utility_gilded_belly", "utility_tally_stick",               -- Greed: mammonite, mammonite
-    "utility_envious_glass", "utility_second_vessel",            -- Envy: alchemist, alchemist
+    "utility_pretenders_crown", "utility_second_vessel",         -- Envy: alchemist, alchemist
+    -- Livia's Glass left Envy's list with her (slice F, 2026-10-03) and stays a trophy on the alchemist's rack.
+    "utility_envious_glass",
     "utility_the_broken_vow", "utility_anvils_face",             -- Wrath: monk, fighter
     "weapon_forsworn_pike", "utility_unblown_horn",              -- Sloth: knight, knight
     "utility_marginal_gloss",                                    -- Pride: mage

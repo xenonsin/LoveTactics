@@ -561,6 +561,9 @@ Grade.TRAIT_GRADE = {
     trait_unblemished =                 1.0,  -- Unblemished -- the race: a large lift until the first wound
     -- THE FACELESS OF ENVY (2026-10-03): the race foundation. A face is a whole body's kit, carried on one pool.
     trait_a_thousand_faces =            1.0,  -- A Thousand Faces -- the race: wears the face that answers the nearest foe
+    -- SLICE F, ENVY'S GENERAL (2026-10-03): its organ's opener is the body's own; its relic is a whole kit per kill.
+    trait_the_many_faced =              0.0,  -- The Many Faced -- the Many Faced One's forms (a body's organ)
+    trait_pretenders_crown =            1.0,  -- Pretender's Crown -- wear what you killed until the next kill
     trait_untouchable =                 0.0,  -- Untouchable -- the Bladedancer, while Unblemished
     trait_by_starlight =                0.0,  -- By Starlight -- the Starcaller vs the Limned
     trait_will_not_admit =              0.0,  -- Will Not Admit the Wound -- the Highborn's Unblemished returns
