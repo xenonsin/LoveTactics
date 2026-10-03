@@ -37,8 +37,13 @@
 -- a grown room says what it is for once you are in it. This one had nowhere, and it is the only one
 -- back.
 --
--- IT IS A BUBBLE AND NOT A STAGE. No door is refused, no press is swallowed, and walking past it costs
--- nothing but the morning -- the player may open all nine cards in any order with it up. What spends it
+-- AND ON THAT ONE MORNING THE RAIL CAME BACK TOO (2026-10-01). The author asked for the mending to be
+-- forced, not merely pointed at: Rowan now ends the arrival saying she needs a priest, every other
+-- card refuses while she is owed it (openPanel), and the Cathedral's desk offers only the mending
+-- (models/counter.lua's Counter.context). It is gated on the same stage as the bubble, so it is one
+-- morning wide and is spent by the deed; every other morning the plaza still refuses nothing.
+--
+-- What spends it
 -- is the DEED, not the door (introAdvance): `player.hubIntro` runs "arrival" -> "ward" -> nil, and the
 -- "ward" stage is the ledger both this bubble and the mending room read (see coachingMend,
 -- teachInjuries and ui/panels/ward.lua). A flag cleared by opening a card would mark the lesson landed
@@ -540,12 +545,20 @@ end
 -- Activation seam handed to the building map: it opens the clicked building's panel, playing a
 -- vendor's one-time greeting first (see launchVendor). EVERY card, every morning.
 --
--- THE FIRST VISIT USED TO REFUSE ALL BUT THE CARD THE COACH POINTED AT, and that refusal is the half
--- of the old stage that did NOT come back with the bubble -- which is the whole of the 2026-09-23
--- restoration and the reason it is a restoration and not a revert (see the header). A guard in here --
--- on the coached morning, on a building id, on anything -- is the corridor returning, so this stays
--- one unconditional call; tests/hub_doors_spec.lua reads the body to keep it that way.
+-- ON THE FIRST MORNING, EVERY CARD BUT THE CATHEDRAL IS TURNED DOWN (2026-10-01). The author asked
+-- for the mending to be FORCED: Rowan walks out of Act 0 hurt and says she needs a priest, and the
+-- city holds the company to that until the bone is seen to. The refusal is one morning wide and no
+-- wider -- it reads the same `coachingMend` stage the bubble does, so it ends on the deed
+-- (introAdvance) and never on a door, and no other morning ever turns a card down. The press is not
+-- swallowed silently: it rings the cancel cue and walks the cursor back onto the Cathedral, under the
+-- bubble that says why. tests/hub_doors_spec.lua pins that the guard reads that one stage and names
+-- that one door, so it cannot quietly grow into the corridor the 2026-09-21 cut removed.
 local function openPanel(building)
+    if coachingMend() and building.id ~= MEND_DOOR then
+        Sound.play("ui.cancel")
+        focusMendCard()
+        return
+    end
     launchVendor(building)
 end
 

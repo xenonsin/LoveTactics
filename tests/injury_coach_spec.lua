@@ -243,6 +243,40 @@ return {
         end,
     },
     {
+        -- THE FIRST MORNING'S DESK OFFERS ONLY THE MENDING (2026-10-01). The plaza turns every other
+        -- card down on that morning (tests/hub_doors_spec.lua), and the Cathedral's own desk is held the
+        -- same way: the shelf and the rite stay off it until Rowan is seen to, so the one door the city
+        -- leaves open opens onto the one room that answers her. Read off Counter.context, the one place
+        -- that narrows it, and checked to let go once the stage is spent.
+        name = "the coached Cathedral desk offers only the mending, and lets go after",
+        fn = function()
+            local Counter = require("models.counter")
+            local Building = require("models.building")
+            local player = require("models.player").new()
+            local hurt = assert(player.roster[1], "a fresh save fields a company").id
+            player.injuries = { [hurt] = { "injury_blood_loss" } }
+            Injury.stamp(player)
+            player.injured = true -- the one-way mark that opens the mending (Injury.everInjured)
+            player.hubIntro = "ward"
+            local cathedral
+            for _, b in ipairs(Building.list(player)) do
+                if b.id == "cathedral" then cathedral = b end
+            end
+            assert(cathedral, "the Cathedral is on the plaza")
+
+            local ctx = Counter.context(player, cathedral)
+            assert(ctx.offers.mend, "the coached desk offers the mending")
+            for answer in pairs(ctx.offers) do
+                assert(answer == "mend", "the coached desk offers " .. answer .. " beside the mending")
+            end
+
+            player.hubIntro = nil
+            ctx = Counter.context(player, cathedral)
+            assert(ctx.offers.mend and ctx.offers.shelf,
+                "once the morning is spent the desk offers its shelf again")
+        end,
+    },
+    {
         -- THE COACHED MORNING IS A RAIL, and every half of it is here. The window one beat earlier
         -- taught both ways out and ranked neither; this room ranks them by offering ONE -- because on
         -- THIS morning resting benches Rowan for the descent the city is about to ask four bodies for,
@@ -364,7 +398,7 @@ return {
         -- tests/hub_doors_spec.lua is the subject: that case counts the city's coach lines, this one
         -- asserts the line is the mending's and that the words it resolves to name the room and the
         -- body.
-        name = "the plaza points at the mending, and turns no door down to do it",
+        name = "the plaza points at the mending",
         fn = function()
             local src = assert(love.filesystem.read("states/hub.lua"), "should be able to read the state")
 
@@ -378,8 +412,8 @@ return {
             assert(src:find("not Conversation.active", 1, true),
                 "the bubble draws over the arrival scene it is supposed to follow")
 
-            -- A POINTER, NOT A RAIL. The stage table and the door refusal are what the 2026-09-21 cut
-            -- was actually about, and neither may come back with the bubble.
+            -- NO STAGE TABLE. The door refusal came back for the first morning (2026-10-01, pinned in
+            -- tests/hub_doors_spec.lua), but the queue of coached cards behind it did not.
             -- The NAME survives in hub.lua's own history block, which is why this reads the
             -- definition rather than the word.
             assert(not src:find("INTRO_STAGES = {", 1, true),
@@ -396,8 +430,10 @@ return {
             -- a walk out to the Gate and back. Counted off the CALLS, so the definition alone cannot
             -- satisfy this.
             local _, calls = src:gsub("    focusMendCard%(%)", "")
-            assert(calls == 2,
-                "focusMendCard should be called on both routes into the morning, got " .. calls)
+            -- The third is the plaza's refusal (openPanel), which walks the cursor back under the
+            -- bubble when any other card is pressed on that morning.
+            assert(calls == 3,
+                "focusMendCard should be called on both routes into the morning and on a refusal, got " .. calls)
 
             -- The words themselves: the plate's line names the house and the body, and leaves nothing
             -- for a token that is never passed (this line takes none -- see the bag's header).

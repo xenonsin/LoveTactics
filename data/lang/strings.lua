@@ -384,6 +384,8 @@ return {
     ["line.conversation_prologue_arrival.3"] = { en = "This is what happens when the guild fails to clear enough of The Rift.", ja = "" },  -- TODO
     ["line.conversation_prologue_arrival.4"] = { en = "The deep floors get left alone, and whatever gathers down there comes up here.", ja = "" },  -- TODO
     ["line.conversation_prologue_arrival.5"] = { en = "Let's collect our pay and see what work The Rift is offering, {name}.", ja = "" },  -- TODO
+    ["line.conversation_prologue_arrival.6"] = { en = "PLACEHOLDER -- she says the Champion's blow is still on her, and she is hurt.", ja = "" },  -- TODO
+    ["line.conversation_prologue_arrival.7"] = { en = "PLACEHOLDER -- and that she needs a priest at the Cathedral before anything else.", ja = "" },  -- TODO
     ["line.conversation_prologue_ruins.1"] = { en = "Not too bad for your first job, but there's no time to rest.", ja = "" },  -- TODO
     ["line.conversation_prologue_ruins.2"] = { en = "Let's move to clear out the remaining demons and find survivors.", ja = "" },  -- TODO
     ["line.conversation_prologue_village.1"] = { en = "The demons that breached through the rift are up ahead, {name}.", ja = "" },  -- TODO
@@ -554,7 +556,7 @@ return {
     ["title.conversation_descent_gluttony"] = { en = "Gula, the Unsated", ja = "" },  -- TODO
     ["title.conversation_descent_greed"] = { en = "Avaritia, the Unspent", ja = "" },  -- TODO
     ["title.conversation_descent_lust"] = { en = "Luxuria, the Unbidden", ja = "" },  -- TODO
-    ["title.conversation_descent_pride"] = { en = "Sublimitas, the Unequalled", ja = "" },  -- TODO
+    ["title.conversation_descent_pride"] = { en = "Superbia, the Morning Star", ja = "" },  -- TODO
     ["title.conversation_descent_sloth"] = { en = "Acedia, the Unrelieved", ja = "" },  -- TODO
     ["title.conversation_descent_wrath"] = { en = "Furor, the Thousand-Armed", ja = "" },  -- TODO
     ["title.conversation_flight_champion"] = { en = "The Champion", ja = "" },  -- TODO

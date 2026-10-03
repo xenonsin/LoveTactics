@@ -1,4 +1,4 @@
--- THE PLAZA'S DOORS: every card opens, and none of them speaks.
+-- THE PLAZA'S DOORS: every card opens, except on the first morning (see the refusal case below).
 --
 -- This file used to be about the opposite. The city COACHED a door it had just grown -- a bubble on the
 -- card carrying the blueprint's own sentence, with every other card refused until that one had been
@@ -57,20 +57,24 @@ return {
         end,
     },
     {
-        -- NO CARD IS REFUSED. openPanel is the activation seam the building map calls with whatever was
-        -- pressed, and the whole of it is now "open that one". A guard in here -- on a tutorial stage, a
-        -- coached id, anything -- is the corridor coming back, so this reads the body rather than the
-        -- behaviour: an early `return` before launchVendor is a card the player pressed and nothing
-        -- happened to.
-        name = "the plaza refuses no card: every press opens the door it landed on",
+        -- ONE MORNING REFUSES, AND ONLY THAT ONE (2026-10-01). The plaza turned every card down for no
+        -- reason a player could see until 2026-09-21, and that was cut; the author then asked for the
+        -- first morning's mending to be FORCED, so openPanel refuses again -- but only while Rowan is
+        -- still owed her mending, and only cards that are not the Cathedral. What this pins is that
+        -- width: the guard reads the one stage the bubble reads and names the one door it points at.
+        -- A second condition in here is the corridor growing back a morning at a time.
+        name = "the plaza refuses only on the first morning, and only doors that are not the mending",
         fn = function()
             local body = openPanelBody(hubSource())
-            assert(not body:find("then return end", 1, true),
-                "openPanel turns a press down; the plaza does not do that any more")
-            -- One call and one line of work. A cheap floor rather than a parse: whatever grows here
-            -- later, it should not be a branch over which building was pressed.
+            assert(body:find("if coachingMend() and building.id ~= MEND_DOOR then", 1, true),
+                "openPanel's refusal is no longer gated on the first morning and the Cathedral alone")
+            local _, guards = body:gsub("\n%s+if ", "")
+            assert(guards == 1, "openPanel grew a second refusal; the plaza refuses on one morning only")
+            -- A refused press is heard, and the cursor goes back under the bubble that says why.
+            assert(body:find('Sound.play("ui.cancel")', 1, true), "a refused card makes no sound")
+            assert(body:find("focusMendCard()", 1, true), "a refused card leaves the cursor where it was")
             local _, calls = body:gsub("launchVendor%(", "")
-            assert(calls == 1, "openPanel should reach launchVendor once, unconditionally")
+            assert(calls == 1, "openPanel should reach launchVendor once")
         end,
     },
     {

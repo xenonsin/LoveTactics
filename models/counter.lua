@@ -66,6 +66,14 @@ Counter.LEAVE = "leave"
 function Counter.context(player, building)
     local ctx = Conversation.context(player)
     ctx.offers = Offer.openSet(player, building)
+    -- THE FIRST MORNING'S DESK OFFERS ONE ROOM. While Rowan is still owed her mending (`hubIntro ==
+    -- "ward"`, the stage states/hub.lua's plaza rail reads), every other room on this desk is held
+    -- back, so the Cathedral opens onto "Heal an injury" and the Exit line and nothing else. Narrowed
+    -- here rather than in the scene, so it is one stage read in one place and no desk line has to
+    -- learn a tutorial condition. A desk with no mending room is left alone.
+    if player and player.hubIntro == "ward" and ctx.offers.mend then
+        ctx.offers = { mend = true }
+    end
     ctx.news = Offer.newsSet(player, building)
     return ctx
 end

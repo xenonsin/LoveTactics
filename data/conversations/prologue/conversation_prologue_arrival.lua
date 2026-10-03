@@ -34,6 +34,14 @@
 --   * THE STREET ITSELF -- two townsfolk arguing over how many breaches this season, which is what
 --     made the cause an argument the city was already having rather than an explanation to the player.
 --
+-- AND IT ENDS ON HER WOUND (2026-10-01). Rowan was felled by the Champion (models/combat.lua's
+-- Combat.spendScriptedFell) and walks into the city carrying Blood Loss, and the city now HOLDS the
+-- company to seeing to it: every plaza card but the Cathedral refuses until she is mended
+-- (states/hub.lua's openPanel), and the Cathedral's desk offers only the mending (models/counter.lua).
+-- A rail with nobody saying why is a locked screen, so the last thing she says before the bubble goes
+-- up is that she is hurt and needs a priest. The two lines are PLACEHOLDERS; the words are the
+-- author's. Name the CATHEDRAL (the card's `name`), not "the Ward" -- that is the room behind its desk.
+--
 -- The city's ECONOMIC dependence on the Rift is deliberately not here -- no market stocked out of it,
 -- no treasury. It is a hole that has to be kept clear, and the reason to go down is that it pays.
 return {
@@ -46,5 +54,7 @@ return {
         { "character_rowan", "This is what happens when the guild fails to clear enough of The Rift.", tag = 3 },
         { "character_rowan", "The deep floors get left alone, and whatever gathers down there comes up here.", tag = 4 },
         { "character_rowan", "Let's collect our pay and see what work The Rift is offering, {name}.", tag = 5 },
+        { "character_rowan", "PLACEHOLDER -- she says the Champion's blow is still on her, and she is hurt.", tag = 6 },
+        { "character_rowan", "PLACEHOLDER -- and that she needs a priest at the Cathedral before anything else.", tag = 7 },
     },
 }
