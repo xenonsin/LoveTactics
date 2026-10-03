@@ -7317,6 +7317,8 @@ function Combat.hitChance(combat, user, target, item)
     -- it is Unblemished, and a ready Dancer's Veil evades one. Zero rather than a separate dodge, so the
     -- forecast, the planner and the swing all say it.
     if Trait.flag(target, "untouchable") and Status.has(target, "status_unblemished") then return 0 end
+    -- ENVY'S FACELESS, SLICE A: the same reflex worn off a Mask of Champions -- a status, until the first wound.
+    if Status.has(target, "status_untouchable") then return 0 end
     if Combat.veilReady(target) then return 0 end
     local hit = Item.hit(item) + flatStat(user, "skill") * 2 + flatStat(user, "luck") / 2
     local avoid = Combat.avoid(combat, target)
@@ -7383,6 +7385,11 @@ function Combat.forcesCrit(combat, user, target, item)
     -- FROM BELOW (Gram, data/traits/trait_from_below.lua): a bearer that has not moved this turn strikes a
     -- foe that CAME TO IT -- one that moved on its own last turn (its turnStartX/Y bookmark stands until
     -- its next turn opens) and now stands adjacent -- critically. The pit on the wyrm's path, carried.
+    -- ENVY'S FACELESS, SLICE A: A FACE FOR EVERY KILL (data/traits/trait_a_face_for_every_kill.lua). The Assassin's
+    -- first blow out of any face is a critical; a landed blow marks that face spent (`faceCritSpent`).
+    if Trait.flag(user, "critOutOfAFace") and user.faceWorn and user.faceCritSpent ~= user.faceWorn then
+        return true
+    end
     if Trait.flag(user, "critOnArrival") and not turn.moved and target.turnStartX and target.turnStartY
         and (target.x ~= target.turnStartX or target.y ~= target.turnStartY)
         and Combat.unitGap(user, target) <= 1 then

@@ -564,6 +564,16 @@ Grade.TRAIT_GRADE = {
     -- SLICE F, ENVY'S GENERAL (2026-10-03): its organ's opener is the body's own; its relic is a whole kit per kill.
     trait_the_many_faced =              0.0,  -- The Many Faced -- the Many Faced One's forms (a body's organ)
     trait_pretenders_crown =            1.0,  -- Pretender's Crown -- wear what you killed until the next kill
+    -- THE FACELESS OF ENVY, SLICE A (2026-10-03): the Assassin's, the Skin-Thief's and the Champion's own rules are
+    -- bodies' and never shelved. Of the drops: Faces of the Slain is only a count (Borrowed Face and Hall of Faces
+    -- cash it, and are weighed there); the Flaying Knife lends a cast and an action; the Mask wears one of three
+    -- champions' reflexes at a time.
+    trait_a_face_for_every_kill =       0.0,  -- A Face for Every Kill -- the Assassin's disguise, crit and kills
+    trait_the_flaying =                 0.0,  -- The Flaying -- the Skin-Thief's Halt and stolen face
+    trait_the_rifts_champions =         0.0,  -- The Rift's Champions -- the Champion's hand
+    trait_faces_of_the_slain =          0.5,  -- Faces of the Slain -- a kill banks a face, cashed by what carries it
+    trait_flaying_knife =               1.0,  -- Flaying Knife -- a hit lends one of the target's abilities this turn
+    trait_mask_of_champions =           1.0,  -- Mask of Champions -- one champion's reflex worn at a time
     trait_untouchable =                 0.0,  -- Untouchable -- the Bladedancer, while Unblemished
     trait_by_starlight =                0.0,  -- By Starlight -- the Starcaller vs the Limned
     trait_will_not_admit =              0.0,  -- Will Not Admit the Wound -- the Highborn's Unblemished returns

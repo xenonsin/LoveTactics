@@ -1679,19 +1679,9 @@ function Trait.setup(combat)
     end
 end
 
--- SLICE F (Envy's general, the Many Faced One): run one hook on one body's traits NOW, the ones `only` says yes
--- to. For a body that puts on a whole new kit mid-fight and has to open it as though this were its bell -- the
--- Many Faced One wearing a general (models/many_faced.lua). Outside the dispatch's re-entry latch on purpose:
--- the first form is put on from inside the body's own onCombatStart, which the latch is holding. Sundering still
--- silences it, as it silences the dispatch.
-function Trait.fire(combat, unit, hook, event, only)
-    if not (unit and unit.traits) or require("models.status").traitsDisabled(unit) then return end
-    local snapshot = {}
-    for _, t in ipairs(unit.traits) do snapshot[#snapshot + 1] = t end
-    for _, t in ipairs(snapshot) do
-        if t.def[hook] and (not only or only(t)) then t.def[hook](ctxFor(combat, unit, t, event or {})) end
-    end
-end
+-- SLICE F (Envy's general, the Many Faced One) also calls Trait.fire, to open a general's kit as it is put on
+-- mid-fight. The one definition is slice A's, further down: it goes through the same dispatch and lifts the
+-- re-entry latch, which is what the first form (put on from inside the body's own opener) needs.
 
 -- The bearer took `info.amount` post-mitigation damage and lived. Fired from Combat.dealFlatDamage.
 -- A hard-controlled bearer (Stun, Frozen) is too rattled to answer: its counters, thorns and other
@@ -1923,5 +1913,22 @@ function Trait.onBlowLanded(combat, attacker, target, info)
     if not (attacker and attacker.alive and target and target.alive) then return end
     dispatch(combat, attacker, "onBlowLanded", { target = target, before = info.before, amount = info.amount })
 end
+
+-- ------------------------------------------------------------- ENVY'S FACELESS, SLICE A (2026-10-03)
+-- Fire `hook` on `unit`'s traits from outside this file, optionally narrowed by `only(trait)`. Two callers:
+-- Faces.wear announces a face put on (`onFaceWorn`, the Assassin and the Champion read it), and the Champion
+-- runs a fresh face's race opener (`onCombatStart`, only the face's racial grant) as it is worn
+-- (models/stolen_faces.lua). The same dispatch every hook above goes through, with one difference: a face is
+-- often put on FROM INSIDE an opener (the race wears its first face at the bell), and that face's own opener
+-- must still run, so the re-entry latch for `hook` is lifted for this one explicit call and put back after it.
+-- Bounded all the same: a face's opener is narrowed by `only`, and Trait.MAX_DEPTH still holds.
+function Trait.fire(combat, unit, hook, info, only)
+    if not (combat and unit and unit.traits) then return end
+    local latched = unit._reacting and unit._reacting[hook]
+    if latched then unit._reacting[hook] = false end
+    dispatch(combat, unit, hook, info or {}, only)
+    if latched then unit._reacting[hook] = true end
+end
+-- ------------------------------------------------------------- end ENVY'S FACELESS, SLICE A
 
 return Trait

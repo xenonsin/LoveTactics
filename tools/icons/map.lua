@@ -1135,6 +1135,15 @@ return {
     ["items/utility_pretenders_crown.png"] = { icon = "delapouite/hedjet-white-crown", by = "hand" },
     ["items/ability_splitting_image.png"] = { icon = "lorc/split-body", by = "hand" },
     ["items/consumable_unmasking_powder.png"] = { icon = "delapouite/powder-bag", by = "hand" },
+    -- THE FACELESS OF ENVY, SLICE A (2026-10-03): the Assassin's, the Skin-Thief's and the Champion's organs, and
+    -- the four drops.
+    ["items/utility_a_face_for_every_kill.png"] = { icon = "delapouite/matryoshka-dolls", by = "hand" },
+    ["items/utility_the_flaying.png"] = { icon = "lorc/scalpel", by = "hand" },
+    ["items/utility_the_rifts_champions.png"] = { icon = "delapouite/theater", by = "hand" },
+    ["items/ability_borrowed_face.png"] = { icon = "delapouite/face-to-face", by = "hand" },
+    ["items/utility_hall_of_faces.png"] = { icon = "delapouite/portrait", by = "hand" },
+    ["items/weapon_flaying_knife.png"] = { icon = "skoll/trench-knife", by = "hand" },
+    ["items/utility_mask_of_champions.png"] = { icon = "lorc/double-face-mask", by = "hand" },
     -- THE DJINN OF PRIDE (2026-09-30): the race's grant, the three spells and the Coal, and the Wishmaker's pieces.
     ["items/utility_will_not_stoop.png"] = { icon = "lorc/fluffy-swirl", by = "hand" },
     ["items/ability_djinnis_breath.png"] = { icon = "lorc/windy-stripes", by = "hand" },

@@ -245,6 +245,10 @@ local TROPHIES = {
     -- SUBLIMITAS (2026-10-01): Pride's lieutenant, an elf archmage; her book is a Mage's trophy, not a
     -- creature's organ.
     "utility_codex_unanswered",
+    -- THE FACELESS OF ENVY, SLICE A (2026-10-03, "Envy's Bestiary"): the soldier's face as a Ninja's, the
+    -- Assassin's kills as an Assassin's, the Skin-Thief's flaying as a Thief's knife, the Champion's hand as a
+    -- Duelist's mask.
+    "ability_borrowed_face", "utility_hall_of_faces", "weapon_flaying_knife", "utility_mask_of_champions",
 }
 
 local function vendorFor(class)

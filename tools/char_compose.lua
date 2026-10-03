@@ -710,6 +710,12 @@ local CHARACTER_SILHOUETTE = {
     tower_giant = "caro-asercion/tarot-16-the-tower",      -- the card of pride's fall
     -- SUBLIMITAS (2026-10-01): Pride's lieutenant, the archmage who has only to see a working once.
     sublimitas = "delapouite/warlock-eye",
+    -- THE FACELESS OF ENVY, SLICE A (2026-10-03). The soldier is the blank face itself; the rest are drawn by
+    -- what each one takes -- the assassin's disguise, the thief's blade, the champion's helm.
+    faceless = "delapouite/invisible-face",
+    faceless_assassin = "delapouite/spy",
+    skin_thief = "skoll/stiletto",
+    faceless_champion = "lorc/crested-helmet",
 }
 
 -- Reverse index: the character key a discipline names as its `exemplar` -> the discipline id. Built from

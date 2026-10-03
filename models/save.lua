@@ -870,6 +870,20 @@ function Save.snapshot(player)
         -- THE MAW (models/maw.lua): how many times it has been fed, which is what its price climbs on. Elided
         -- while untouched.
         gluttonyMaw = player.gluttonyMaw and { fed = player.gluttonyMaw.fed or 0 } or nil,
+        -- ENVY'S FACELESS, SLICE A: THE SAVE REMEMBERS (models/stolen_faces.lua). Keyed by a Faceless Assassin's
+        -- blueprint id, the roster ids of the companions it has downed -- in its hand the next time it is met.
+        -- Elided while empty.
+        facesTaken = (function()
+            local src = player.facesTaken
+            if type(src) ~= "table" or not next(src) then return nil end
+            local out = {}
+            for keeper, ids in pairs(src) do
+                local list = {}
+                for _, id in ipairs(ids) do if type(id) == "string" then list[#list + 1] = id end end
+                if #list > 0 then out[keeper] = list end
+            end
+            return next(out) and out or nil
+        end)(),
         newItems = newItems,
         -- THE COUNTER WATERMARK: which classes' racks the market has already announced
         -- (Market.markOpened). Without it a load re-announces every blade the company has ever
@@ -1428,6 +1442,19 @@ function Save.restore(snap)
         } or nil,
         -- The Maw's feedings (models/maw.lua); nil reads as never fed (Maw.state makes the default).
         gluttonyMaw = type(snap.gluttonyMaw) == "table" and { fed = tonumber(snap.gluttonyMaw.fed) or 0 } or nil,
+        -- ENVY'S FACELESS, SLICE A: the faces a Faceless Assassin took (models/stolen_faces.lua); nil reads as none.
+        -- A companion who has since left the roster is skipped when the hand is built, not here.
+        facesTaken = type(snap.facesTaken) == "table" and (function()
+            local out = {}
+            for keeper, ids in pairs(snap.facesTaken) do
+                if type(keeper) == "string" and type(ids) == "table" then
+                    local list = {}
+                    for _, id in ipairs(ids) do if type(id) == "string" then list[#list + 1] = id end end
+                    if #list > 0 then out[keeper] = list end
+                end
+            end
+            return next(out) and out or nil
+        end)() or nil,
         newItems = newItems,
         -- The counter watermark, restored as written. A class that has since been renamed away
         -- simply never matches a live one and is inert, which is the same forgiving default the

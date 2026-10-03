@@ -98,6 +98,20 @@ end
 -- The three questions a face answers, scored off its blueprint so a hand can be ranked for each.
 local function score(id, form)
     local def = Character.defs[id]
+    -- ENVY'S FACELESS, SLICE A: a face may be a BUILT body (a companion's, copied off the save or off the board
+    -- -- models/stolen_faces.lua), whose pools are { max, current } and whose opening weapon is in its grid.
+    if type(id) == "table" then
+        local s = id.stats or {}
+        local hp = type(s.health) == "table" and s.health.max or s.health
+        if form == "bulwark" then return (s.defense or 0) + (s.magicDefense or 0) + (hp or 0) / 10 end
+        if form == "hunter" then
+            local act = id.inventory and require("models.combat").defaultAction(id)
+            local reach = (act and act.activeAbility and act.activeAbility.range) or 1
+            return (s.movement or 0) * 2 + (reach >= 3 and 10 or 0)
+        end
+        return math.max(s.damage or 0, s.magicDamage or 0)
+    end
+    -- end ENVY'S FACELESS, SLICE A
     local s = (def and def.stats) or {}
     if form == "bulwark" then return (s.defense or 0) + (s.magicDefense or 0) + (s.health or 0) / 10 end
     if form == "hunter" then
@@ -185,6 +199,9 @@ function Faces.wear(combat, unit, face)
     Combat.refreshPassives(unit)
     Trait.attach(unit, combat)
     unit.faceWorn = id
+    -- ENVY'S FACELESS, SLICE A: announce the face (`onFaceWorn`), for a body whose rule turns on what it has just
+    -- put on -- the Champion opens each face as it would have at the bell (models/stolen_faces.lua).
+    Trait.fire(combat, unit, "onFaceWorn", { face = id })
     return shape
 end
 
