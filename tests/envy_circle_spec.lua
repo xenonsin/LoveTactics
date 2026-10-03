@@ -41,20 +41,24 @@ end
 
 return {
     {
-        -- SECOND WATER IS DELETED AND THIS CASE IS THE MARKER. The slot holds the circle's line body as
-        -- a stand-in (see the lieutenant note at the head of Descent.SINS): the glass eater, whose
-        -- stripping fed her mirror, promoted for want of the thing it was feeding. It is named here on
-        -- purpose -- seating a replacement reddens this case, and whoever does it owes the contract
-        -- written out where the sizing case used to be, at the foot of this file.
-        name = "Envy's lieutenant slot is filled, and by a stand-in that says so",
+        -- LEVIATHAN HOLDS THE STAIR (2026-10-03, "Envy's Bestiary"), and the stand-in contract written at the foot
+        -- of this file is paid here. Two of its three terms carry over as written: a centrepiece that scales toward
+        -- the shallows, and a body that outweighs the circle's line body. The third -- 60-85% of the general's
+        -- health -- does NOT, and is replaced rather than dropped: the Many Faced One's bar is one pool spread over
+        -- five generals' forms and the split, so a lieutenant measured against it would be measured against six
+        -- fights. Leviathan stands below the WHOLE bar and above any one share of it.
+        name = "Envy's lieutenant is Leviathan, and it is sized like a stair boss",
         fn = function()
             local sin = sinNamed("envy")
             assert(sin, "the envy circle exists")
-            assert(sin.minor.lead == "character_glass_eater", "the eater stands in for Second Water")
-            assert(Character.defs[sin.minor.lead], "and whatever stands there is a body that loads")
+            assert(sin.minor.lead == "character_leviathan", "Leviathan holds the lieutenant's stair")
+            local lev, eater = Character.defs[sin.minor.lead], Character.defs["character_glass_eater"]
+            assert(lev and lev.boss and lev.referenceLevel, "a centrepiece that scales toward the shallows")
+            assert(lev.stats.health > eater.stats.health, "it outweighs its circle's line body")
+            local general = Character.defs["character_general_envy"]
+            assert(lev.stats.health < general.stats.health, "and stands below the general whose stair it guards")
+            assert(lev.stats.health > general.stats.health / 6, "and above any one of the general's six shares")
             assert(not Character.defs["character_second_water"], "Second Water is gone")
-            assert(sin.minor.lead ~= "character_homunculus",
-                "the alchemist's summon is not a stratum's centrepiece")
             assert(sin.minor.filler == "character_glass_mote", "escorted by the circle's own swarm")
             -- Cargo must never be fielded: the discard is a `protect` objective with a holdGround
             -- posture, and its own header says so at length.
@@ -201,7 +205,8 @@ return {
         end,
     },
     -- THE CASE THAT SIZED SECOND WATER IS GONE WITH THE BODY, and this is what it said so the
-    -- replacement can be held to it:
+    -- replacement can be held to it. PAID 2026-10-03 by Leviathan, in the first case above (the third term
+    -- restated against the Many Faced One's six-share bar):
     --
     --     boss = true and a referenceLevel   a centrepiece, and one that scales toward the shallows
     --     health above character_glass_eater  it outweighs its circle's line body

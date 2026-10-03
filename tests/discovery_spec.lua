@@ -245,7 +245,7 @@ local TROPHIES = {
     "utility_maw_of_the_unfed", "utility_larder_hook",           -- Gluttony: hunter, hunter
     "utility_reliquary_unbidden", "utility_beggars_bowl",        -- Lust: rogue, inquisitor
     "utility_gilded_belly", "utility_tally_stick",               -- Greed: mammonite, mammonite
-    "utility_pretenders_crown", "utility_second_vessel",         -- Envy: alchemist, alchemist
+    "utility_pretenders_crown", "utility_second_vessel",         -- Envy: alchemist; the Vessel was the stand-in's
     -- Livia's Glass left Envy's list with her (slice F, 2026-10-03) and stays a trophy on the alchemist's rack.
     "utility_envious_glass",
     "utility_the_broken_vow", "utility_anvils_face",             -- Wrath: monk, fighter

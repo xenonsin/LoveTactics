@@ -17,7 +17,7 @@ return {
     flavor = "The waste remembers being a sea. It only needs a reminder.",
     sprite = "assets/items/ability_undertow.png",
     type = "ability",
-    tags = { "earth", "magical" },
+    tags = { "earth", "magical", "relic" }, -- a stair's own piece (tests/sin_drops_spec.lua)
     class = "elementalist",
     unlockLevel = 11,
     unstocked = true,

@@ -569,14 +569,23 @@ Descent.SINS = {
         -- carrying something worth wanting -- which makes it the one gate a player can fail by having
         -- been sensible, and the one that rewards walking onto her floor rich.
         gate = { kind = "carry", n = 3 },
-        -- NO LIEUTENANT. Second Water is gone; the glass eater stands in -- the body whose stripping
-        -- fed her mirror, promoted for want of the thing it was feeding. It is what a replacement
-        -- replaces.
-        minor = { lead = "character_glass_eater", filler = "character_glass_mote" },
-        elites = { approach = "encounter_envy_the_unwanted",
-            seat = "encounter_envy_second_self",
+        -- LEVIATHAN HOLDS THE LIEUTENANT'S STAIR (2026-10-03, "Envy's Bestiary", slice E; models/leviathan.lua).
+        -- Envy's demon prince under a sea of sand: it rises under the Fairest -- whoever of the company holds the
+        -- most blessings -- and every hole it leaves is quicksand. The Glass-Motes stay as its swarm, and they are
+        -- the reason the fight is a decision: they strip blessings, so they move the mark. It replaces the
+        -- Glass-Eater that stood in after Second Water was deleted.
+        minor = { lead = "character_leviathan", filler = "character_glass_mote" },
+        -- THE BESTIARY'S ELITES (2026-10-03). Each floor bills the body its line answers to: MEDUSA on the approach
+        -- (her gaze, her adders, her garden; the Hand-Mirror is Perseus), THE WATER MIRROR on the seat (the
+        -- Faceless line's test: it shows the company itself). Everything else is a spare beside its rung --
+        -- the Unwanted, the Mimic Slimes and the Mirage on the approach; the Second Self (kept beside the Water
+        -- Mirror on review), the Many-Faced King, the Brazen Head and the Kinslayer on the seat.
+        elites = { approach = "encounter_envy_medusa",
+            seat = "encounter_envy_the_water_mirror",
             -- ENVY'S SLIMES (2026-09-24): they become you and want what you get (Mimicry, Begrudge).
-            spares = { "encounter_the_mimic_slimes", "encounter_the_many_faced_king" } } },
+            spares = { "encounter_the_mimic_slimes", "encounter_the_many_faced_king",
+                "encounter_envy_the_unwanted", "encounter_envy_second_self", "encounter_envy_the_mirage",
+                "encounter_envy_the_brazen_head", "encounter_envy_the_kinslayer" } } },
     { id = "wrath", name = "Wrath", vendor = "colosseum", biome = "volcanic",
         scene = "conversation_descent_wrath",
         -- The Champion held this slot and held it CORRECTLY -- a real body carrying a Demon Sigil with
@@ -793,7 +802,9 @@ Descent.DROPS = {
         "ability_dragonfire", "utility_wingbeat_mantle", "ability_gild",
         "armor_emberwalk_greaves", "ability_fire_from_the_sky", "utility_hoard_ledger",
     } },
-    envy     = { minor = { "utility_second_vessel" }, general = {
+    -- Leviathan's pieces (2026-10-03): its eruption as a cast, its wake as a coat. Second Vessel was the stand-in
+    -- Glass-Eater's and comes off with it; each stair pays its own pieces.
+    envy     = { minor = { "ability_undertow", "armor_leviathans_wake" }, general = {
         -- The Many Faced One's (slice F, 2026-10-03): the Pretender's Crown relic, then its split and the answer
         -- to its masks. Livia's Envious Glass left the list with her; it stays on disk, an alchemist's trophy.
         "utility_pretenders_crown",

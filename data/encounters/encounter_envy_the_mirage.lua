@@ -7,6 +7,9 @@
 return {
     name = "Mirage",
     kind = "elite",
+    -- `alone = true` (2026-10-03, on integration): its three doubles are made at the bell, so the cast the floor rates is one body and reads as a light fight -- and the floor's median filter
+    -- (Descent.floorPool) dropped it from the pool entirely. The Labyrinth's and the Sphinx's reason.
+    alone = true,
     weight = 1,
     condition = function(ctx) return ctx.biome == "desert" end,
     rung = 1,

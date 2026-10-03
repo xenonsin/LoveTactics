@@ -8,6 +8,9 @@
 return {
     name = "The Water Mirror",
     kind = "elite",
+    -- `alone = true` (2026-10-03, on integration): its roster is the company's own copies, made at the bell, so the cast the floor rates is the pool alone -- and the floor's median filter
+    -- (Descent.floorPool) dropped it from the pool entirely. The Labyrinth's and the Sphinx's reason.
+    alone = true,
     weight = 2,
     condition = function(ctx) return ctx.biome == "desert" end,
     rung = 2,

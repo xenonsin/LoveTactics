@@ -31,7 +31,8 @@ local HEADS = {
     gluttony = { "utility_maw_of_the_unfed",     "utility_larder_hook",    "hunter",     "hunter" },
     lust     = { "utility_reliquary_unbidden",   "utility_beggars_bowl",   "rogue",      "inquisitor" },
     greed    = { "utility_gilded_belly",         "utility_tally_stick",    "mammonite",  "mammonite" },
-    envy     = { "utility_pretenders_crown",     "utility_second_vessel",  "alchemist",  "alchemist" },
+    -- Envy's lieutenant is Leviathan now (2026-10-03), and it pays its own eruption on the elementalist's shelf.
+    envy     = { "utility_pretenders_crown",     "ability_undertow",       "alchemist",  "elementalist" },
     wrath    = { "utility_the_broken_vow",       "utility_anvils_face",    "monk",       "fighter" },
     sloth    = { "weapon_forsworn_pike",         "utility_unblown_horn",   "knight",     "knight" },
     -- Pride's relic is Superbia's Morning Star; her lieutenant Sublimitas pays the Codex (2026-10-01).

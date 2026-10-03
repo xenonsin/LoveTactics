@@ -55,6 +55,12 @@
 --       every hit TAKEN; blindness that makes a swing land on whatever is nearest, friend or foe; floods
 --       and fires that spread on their own; a trap that a charging body cannot refuse to walk into.
 --
+--   ENVY -- BUILT 2026-10-03 ("Envy's Bestiary", three rounds). The Faceless (A Thousand Faces: they wear any
+--     character in the game) and the Water Mirror on the seat, with the Homunculus, the Brazen Head, Echo, Arachne
+--     and the Sewn-Eyed; the Evil Eye, the Mirage, the Patchwork, the Shade, the Jackal Weighers, the Green-Eyed
+--     Monster and the Sand-Eels on the approach; Medusa and the Kinslayer as elites; Leviathan on the lieutenant's
+--     stair and the Many Faced One on the general's; any non-combat stop on the waste may be a Mimic. The brief as
+--     it was written:
 --   ENVY -- mirrors, illusions, copying, fear, jealousy, comparison, deception, betrayal, suffering,
 --     resentment, isolation, corruption.
 --     Bodies: doppelgangers, changelings, the faceless, alchemy, and mimics filling most fights.
@@ -103,12 +109,16 @@ local SPEC = 15 -- distinct creatures per floor
 -- creatures one circle at a time. (Greed's first floor was listed at 12 and closed at 16 with the beetles;
 -- Wrath's seat was listed at 6 and closed at 15 with the goblins; its approach closed at 17 with the orcs.
 -- Pride's two floors were listed at 5 each and closed on 2026-09-30 at 18 and 23 with the elves, lions and
--- djinn on the approach and the angels on the seat, which also took both floors past FIGHT_SPEC.)
+-- djinn on the approach and the angels on the seat, which also took both floors past FIGHT_SPEC. Envy's two
+-- floors were listed at 4 and 6 and re-measured on 2026-10-03 after "Envy's Bestiary": the seat closed at 27
+-- creatures, 11.8 effective fights and 5 elites; the approach closed its fights at 7.0 and its elites at 4 and
+-- stands at 13 creatures.)
 local KNOWN_GAPS = {
     ["sloth/1"] = "3 creatures",
     ["sloth/2"] = "5 creatures",
-    ["envy/1"]  = "4 creatures",
-    ["envy/2"]  = "6 creatures",
+    -- Envy's approach after its bestiary (2026-10-03): 10 families against Gluttony's 9, but two bodies short on
+    -- the body count -- its one-offs come in ones. Re-measured, not closed; the seat closed at 27.
+    ["envy/1"]  = "13 creatures",
     ["crown/1"] = "4 creatures -- the bottom floor",
 }
 
@@ -126,15 +136,11 @@ local ELITE_SPEC = 4 -- distinct elites a floor can seat (Gluttony's seat has 4)
 local KNOWN_FIGHT_GAPS = {
     ["sloth/1"] = "0 -- no ordinary fight at all",
     ["sloth/2"] = "0 -- no ordinary fight at all",
-    ["envy/1"]  = "1.0 effective fights",
-    ["envy/2"]  = "1.0 effective fights",
     ["crown/1"] = "1.0 effective fights -- the bottom floor",
 }
 local KNOWN_ELITE_GAPS = {
     ["sloth/1"] = "1 elite",
     ["sloth/2"] = "2 elites",
-    ["envy/1"]  = "2 elites",
-    ["envy/2"]  = "2 elites",
     ["crown/1"] = "2 elites -- the bottom floor",
 }
 
