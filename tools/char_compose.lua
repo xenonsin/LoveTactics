@@ -723,6 +723,14 @@ local CHARACTER_SILHOUETTE = {
     faceless_assassin = "delapouite/spy",
     skin_thief = "skoll/stiletto",
     faceless_champion = "lorc/crested-helmet",
+    -- ENVY'S SEAT, SLICE C (2026-10-03): the one-off families. The made thing in its flask, Friar Bacon's bust,
+    -- the voice that is only somebody else, the weaver's thread, and a penitent's wimple.
+    red_homunculus = "delapouite/water-flask",
+    brazen_head = "caro-asercion/philosopher-bust",
+    echo = "lorc/inner-self",
+    arachne = "lorc/web-spit",
+    sewn_eyed_penitent = "cathelineau/nun-face",
+    -- end ENVY'S SEAT, SLICE C
 }
 
 -- Reverse index: the character key a discipline names as its `exemplar` -> the discipline id. Built from

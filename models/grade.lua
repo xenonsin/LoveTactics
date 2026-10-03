@@ -584,6 +584,22 @@ Grade.TRAIT_GRADE = {
     trait_still_pool =                  0.0,  -- The Still Pool -- copies the company, untouchable while one stands
     trait_polished_shield =             0.5,  -- Polished Shield -- a melee attacker is Rattled
     trait_twofold_hauberk =             0.5,  -- Twofold Hauberk -- +3 defense per foe within 2, up to 2
+    -- ENVY'S SEAT, SLICE C (2026-10-03): the one-off families. The bodies' own rules are never shelved. Of the drops:
+    -- the Stone Heart is a refusal banked off kills; Time Was is the record its rewind reads (the cast is weighed
+    -- on the ability); Time Is Past is a ring of Stun on a death; the Shell is Idle off a foe's cast; the Shuttle
+    -- lends a repeated foe ability once; Iron Thread is the Skull-Lantern's light (the blind ward is on the item).
+    trait_red_stone =                   0.0,  -- Red Stone -- the Homunculus's lives
+    trait_three_utterances =            0.0,  -- Three Utterances -- the Brazen Head's order and ledger
+    trait_only_repeats =                0.0,  -- Only Repeats -- the Echo's half-power repeat
+    trait_the_tapestry =                0.0,  -- The Tapestry -- Arachne's cast-back
+    trait_hunts_by_ear =                0.0,  -- Hunts by Ear -- the Penitents strike the last to act
+    trait_stone_heart =                 1.0,  -- Stone Heart -- a kill banks a refusal, to 3
+    trait_time_was =                    0.0,  -- Time Was -- the record the ability's rewind reads
+    trait_time_is_past =                1.0,  -- Time Is Past -- fall, and foes within 3 are Stunned
+    trait_echoing_shell =               1.0,  -- Echoing Shell -- a foe's cast within 3 leaves you Idle
+    trait_weavers_shuttle =             1.0,  -- Weaver's Shuttle -- a foe's repeated ability, lent once
+    trait_iron_thread =                 0.5,  -- Iron Thread -- foes within 2 are Limned
+    -- end ENVY'S SEAT, SLICE C
     trait_untouchable =                 0.0,  -- Untouchable -- the Bladedancer, while Unblemished
     trait_by_starlight =                0.0,  -- By Starlight -- the Starcaller vs the Limned
     trait_will_not_admit =              0.0,  -- Will Not Admit the Wound -- the Highborn's Unblemished returns

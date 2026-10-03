@@ -232,6 +232,10 @@ return {
                 -- THE FACELESS OF ENVY, SLICE B (2026-10-03): a cast of one by design. The Water Mirror's fight is
                 -- the copies it makes of the company at the bell, so its roster is the company's, not a band's.
                 encounter_envy_the_water_mirror = true,
+                -- ENVY'S SEAT, SLICE C (2026-10-03): a cast fixed by review. The Brazen Head fights "behind a
+                -- Mirror-Knight and two Homunculi", and its Time Was is priced on exactly that many guards to heal.
+                encounter_envy_the_brazen_head = true,
+                -- end ENVY'S SEAT, SLICE C
             }
             -- THE ROSTER, NOT THE HEAD-COUNT. Asked as "is this the same fight on every seed", because
             -- a stop is allowed to roll its SHAPE while holding its size: the Skeleton King's court is

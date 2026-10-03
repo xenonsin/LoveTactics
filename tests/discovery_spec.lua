@@ -253,6 +253,12 @@ local TROPHIES = {
     -- Assassin's kills as an Assassin's, the Skin-Thief's flaying as a Thief's knife, the Champion's hand as a
     -- Duelist's mask.
     "ability_borrowed_face", "utility_hall_of_faces", "weapon_flaying_knife", "utility_mask_of_champions",
+    -- ENVY'S SEAT, SLICE C (2026-10-03): the one-off families' -- the Homunculus's stone as an Apothecary's, the
+    -- Brazen Head's last two words as a Theurge's and an Artificer's, the Echo's shell as a Spellbreaker's,
+    -- Arachne's shuttle as a Theurge's, the Penitents' wire as an Inquisitor's.
+    "utility_stone_heart", "ability_time_was", "utility_time_is_past", "utility_echoing_shell",
+    "utility_weavers_shuttle", "utility_iron_thread",
+    -- end ENVY'S SEAT, SLICE C
 }
 
 local function vendorFor(class)

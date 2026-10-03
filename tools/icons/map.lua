@@ -1156,6 +1156,26 @@ return {
     ["items/armor_twofold_hauberk.png"] = { icon = "willdabeast/chain-mail", by = "hand" },
     ["items/ability_faceless_retinue.png"] = { icon = "delapouite/invisible-face", by = "hand" },
     ["items/ability_still_water.png"] = { icon = "lorc/shield-echoes", by = "hand" },
+    -- ENVY'S SEAT, SLICE C (2026-10-03): the one-off families' kit -- the Homunculus's heart, the Brazen Head's voice
+    -- and three utterances, the Echo's, Arachne's and the Penitents' -- and their six drops.
+    ["items/utility_red_stone_heart.png"] = { icon = "lorc/mineral-heart", by = "hand" },
+    ["items/utility_stone_heart.png"] = { icon = "delapouite/heart-battery", by = "hand" },
+    ["items/utility_brazen_voice.png"] = { icon = "delapouite/public-speaker", by = "hand" },
+    ["items/ability_time_is_spoken.png"] = { icon = "delapouite/time-synchronization", by = "hand" },
+    ["items/ability_time_was_spoken.png"] = { icon = "delapouite/anticlockwise-rotation", by = "hand" },
+    ["items/ability_time_is_past_spoken.png"] = { icon = "delapouite/time-dynamite", by = "hand" },
+    ["items/ability_time_was.png"] = { icon = "delapouite/player-time", by = "hand" },
+    ["items/utility_time_is_past.png"] = { icon = "delapouite/alarm-clock", by = "hand" },
+    ["items/utility_only_repeats.png"] = { icon = "skoll/talk", by = "hand" },
+    ["items/weapon_borrowed_voice.png"] = { icon = "delapouite/speaker", by = "hand" },
+    ["items/utility_echoing_shell.png"] = { icon = "lorc/spiral-shell", by = "hand" },
+    ["items/utility_the_tapestry.png"] = { icon = "delapouite/mesh-network", by = "hand" },
+    ["items/weapon_spinnerets.png"] = { icon = "lorc/swirl-string", by = "hand" },
+    ["items/utility_weavers_shuttle.png"] = { icon = "caro-asercion/spinning-wheel", by = "hand" },
+    ["items/utility_sewn_eyes.png"] = { icon = "lorc/sunken-eye", by = "hand" },
+    ["items/weapon_penitents_scourge.png"] = { icon = "lorc/thorn-helix", by = "hand" },
+    ["items/utility_iron_thread.png"] = { icon = "lorc/triple-needle", by = "hand" },
+    -- end ENVY'S SEAT, SLICE C
     -- THE DJINN OF PRIDE (2026-09-30): the race's grant, the three spells and the Coal, and the Wishmaker's pieces.
     ["items/utility_will_not_stoop.png"] = { icon = "lorc/fluffy-swirl", by = "hand" },
     ["items/ability_djinnis_breath.png"] = { icon = "lorc/windy-stripes", by = "hand" },
