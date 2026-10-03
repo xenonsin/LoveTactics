@@ -274,7 +274,7 @@ local CHARACTER_SILHOUETTE = {
     general_wrath = "delapouite/angry-eyes",
     general_pride = "lorc/expanded-rays", -- Superbia, the Morning Star: a fallen archangel's light
     general_greed = "lorc/double-dragon", -- Avaritia, an elder dragon (2026-09-25)
-    general_envy = "delapouite/invisible-face",     -- slice F: the Many Faced One, a crown with no head under it
+    general_envy = "delapouite/imperial-crown",     -- slice F: the Many Faced One, a crown with no head under it
     general_gluttony = "lorc/gluttony",
     general_lust = "lorc/pentagram-rose",           -- the pacted Saint
     general_sloth = "delapouite/broken-wall",       -- the Bastion's own wall, given way
@@ -693,6 +693,13 @@ local CHARACTER_SILHOUETTE = {
     glacier_king = "lorc/icebergs",
     mimic_slime = "lorc/gooey-eyed-sun",
     many_faced_king = "lorc/duality-mask",
+    -- THE FACELESS OF ENVY, SLICE B (2026-10-03): the copy, the knight with a mirror for a shield, the heap, the
+    -- maker of masks, and the pool they come out of.
+    doppelganger = "lorc/one-eyed",
+    mirror_knight = "lorc/rosa-shield",
+    faceless_colossus = "lorc/android-mask",
+    mask_maker = "delapouite/jason-mask",
+    the_water_mirror = "delapouite/waterfall",
     crystal_slime = "lorc/crystal-bars",
     apex_crystal = "lorc/crystal-eye",       -- a piece coming off, which is all it is
     -- PRIDE'S LIONS, PEACOCK-BASILISK AND TITAN (2026-09-30). The rooster is the basilisk's own animal (the

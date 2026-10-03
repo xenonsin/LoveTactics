@@ -670,6 +670,13 @@ function Status.immuneToDamage(unit, tags, attacker)
         local ward = require("models.pride_elites").ward(unit, attacker)
         if ward then return ward end
     end
+    -- THE FACELESS OF ENVY, SLICE B (2026-10-03): the Water Mirror takes nothing while a copy it made stands,
+    -- and a copy that KNOWS its attacker (its original; Still Water's named foe) takes nothing from that body.
+    -- Two field reads, so a body with neither pays nothing more (models/masks.lua).
+    if unit.knows or unit.mirrorCopies then
+        local ward = require("models.masks").ward(unit, attacker)
+        if ward then return ward end
+    end
     for _, s in ipairs(unit.statuses or {}) do
         local im = s.def.immune
         if im then

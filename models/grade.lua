@@ -574,6 +574,16 @@ Grade.TRAIT_GRADE = {
     trait_faces_of_the_slain =          0.5,  -- Faces of the Slain -- a kill banks a face, cashed by what carries it
     trait_flaying_knife =               1.0,  -- Flaying Knife -- a hit lends one of the target's abilities this turn
     trait_mask_of_champions =           1.0,  -- Mask of Champions -- one champion's reflex worn at a time
+    -- THE FACELESS OF ENVY, SLICE B (2026-10-03). Exact Copy, Mirrored, Two Faces, the Mask-Maker's Hand and the Still
+    -- Pool are a body's own. Of the drops: the Shield is Rattled on a melee attacker (Spiteful Ichor's shape, a
+    -- lighter status); the Hauberk is up to +6 defense in a crowd.
+    trait_exact_copy =                  0.0,  -- Exact Copy -- the Doppelganger wears the nearest foe
+    trait_mirrored =                    0.0,  -- Mirrored -- both mirrors each turn, one blow a round
+    trait_two_faces =                   0.0,  -- Two Faces -- the Colossus lends the runner-up face's kit
+    trait_the_mask_maker =              0.0,  -- The Mask-Maker's Hand -- hands a company of faces out
+    trait_still_pool =                  0.0,  -- The Still Pool -- copies the company, untouchable while one stands
+    trait_polished_shield =             0.5,  -- Polished Shield -- a melee attacker is Rattled
+    trait_twofold_hauberk =             0.5,  -- Twofold Hauberk -- +3 defense per foe within 2, up to 2
     trait_untouchable =                 0.0,  -- Untouchable -- the Bladedancer, while Unblemished
     trait_by_starlight =                0.0,  -- By Starlight -- the Starcaller vs the Limned
     trait_will_not_admit =              0.0,  -- Will Not Admit the Wound -- the Highborn's Unblemished returns

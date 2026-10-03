@@ -1144,6 +1144,18 @@ return {
     ["items/utility_hall_of_faces.png"] = { icon = "delapouite/portrait", by = "hand" },
     ["items/weapon_flaying_knife.png"] = { icon = "skoll/trench-knife", by = "hand" },
     ["items/utility_mask_of_champions.png"] = { icon = "lorc/double-face-mask", by = "hand" },
+    -- THE FACELESS OF ENVY, SLICE B (2026-10-03): the Doppelganger's, Mirror-Knight's, Colossus's, Mask-Maker's and
+    -- Water Mirror's organs, and their five drops.
+    ["items/utility_exact_copy.png"] = { icon = "delapouite/ceremonial-mask", by = "hand" },
+    ["items/utility_mirrored.png"] = { icon = "lorc/shield-bounces", by = "hand" },
+    ["items/utility_two_faces.png"] = { icon = "lorc/totem-mask", by = "hand" },
+    ["items/utility_mask_makers_hand.png"] = { icon = "lorc/curly-mask", by = "hand" },
+    ["items/utility_still_pool.png"] = { icon = "lorc/psychic-waves", by = "hand" },
+    ["items/ability_doppel_step.png"] = { icon = "sbed/doubled", by = "hand" },
+    ["items/armor_polished_shield.png"] = { icon = "willdabeast/round-shield", by = "hand" },
+    ["items/armor_twofold_hauberk.png"] = { icon = "willdabeast/chain-mail", by = "hand" },
+    ["items/ability_faceless_retinue.png"] = { icon = "delapouite/invisible-face", by = "hand" },
+    ["items/ability_still_water.png"] = { icon = "lorc/shield-echoes", by = "hand" },
     -- THE DJINN OF PRIDE (2026-09-30): the race's grant, the three spells and the Coal, and the Wishmaker's pieces.
     ["items/utility_will_not_stoop.png"] = { icon = "lorc/fluffy-swirl", by = "hand" },
     ["items/ability_djinnis_breath.png"] = { icon = "lorc/windy-stripes", by = "hand" },

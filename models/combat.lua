@@ -9386,6 +9386,12 @@ local function tryWardSpell(combat, user, target, item, tags, base, opts)
     Combat.dealFlatDamage(combat, user, base, tags, mirror.name or mirror.id, target, opts)
     Combat.endBeat(combat)
     combat._reflecting = nil
+    -- THE FACELESS OF ENVY, SLICE B (2026-10-03): a mirror that turns ONE blow a round (`mirrorOnce`, the
+    -- Mirror-Knight's) goes down -- both schools at once -- until its bearer's next turn puts it back up.
+    if Trait.flag(target, "mirrorOnce") then
+        Status.remove(combat, target, "status_reflect_physical")
+        Status.remove(combat, target, "status_reflect_magic")
+    end
     return true
 end
 

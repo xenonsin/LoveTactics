@@ -1891,6 +1891,14 @@ function AI.preempt(combat, unit)
         local plan = strikePlan(combat, unit, unit.pointedAt, "on the chain")
         if plan then return plan end
     end
+    -- THE FACELESS OF ENVY, SLICE B (2026-10-03): a Water Mirror copy goes for its own original first, when it
+    -- can reach it this turn (models/masks.lua). A Taunt still outranks it. Never a body the player drives.
+    local orig = unit.mirrorOf
+    if unit.side ~= "party" and orig and orig.alive and orig.side ~= unit.side
+        and not Status.has(unit, "status_taunt") then
+        local plan = strikePlan(combat, unit, orig, "its original")
+        if plan then return plan end
+    end
     -- GOLD FEVER is the same compulsion with a different cause (data/status/status_gold_fever.lua): the
     -- dwarf that saw the gold taken goes for whoever took it. It carries its target in the same field.
     local taunt = Status.get(unit, "status_taunt")

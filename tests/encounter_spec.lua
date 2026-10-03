@@ -229,6 +229,9 @@ return {
                 encounter_pride_the_sphinx = true,
                 encounter_pride_the_phoenix = true,
                 encounter_pride_the_tower_giant = true,
+                -- THE FACELESS OF ENVY, SLICE B (2026-10-03): a cast of one by design. The Water Mirror's fight is
+                -- the copies it makes of the company at the bell, so its roster is the company's, not a band's.
+                encounter_envy_the_water_mirror = true,
             }
             -- THE ROSTER, NOT THE HEAD-COUNT. Asked as "is this the same fight on every seed", because
             -- a stop is allowed to roll its SHAPE while holding its size: the Skeleton King's court is

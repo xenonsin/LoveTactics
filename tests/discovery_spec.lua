@@ -192,6 +192,10 @@ local TROPHIES = {
     -- The djinn's (Pride's approach, 2026-09-30): the Djinni's gale, the Ifrit's coal, the Marid's tide; and the
     -- Wishmaker's (Pride's seat): the Last Lamp.
     "ability_djinnis_breath", "utility_ifrits_coal", "ability_marids_tide", "utility_the_last_lamp",
+    -- The Faceless of Envy's seat, slice B (2026-10-03): the Doppelganger's, Mirror-Knight's, Colossus's, Mask-Maker's
+    -- and the Water Mirror's.
+    "ability_doppel_step", "armor_polished_shield", "armor_twofold_hauberk", "ability_faceless_retinue",
+    "ability_still_water",
     -- Wrath's elementals' (the approach and the seat, 2026-09-28): each body's three rules, handed over one by one.
     "utility_flowwalkers_soles", "utility_heart_of_the_wildfire", "utility_coal_in_the_fist",
     "weapon_forked_rod", "utility_flashpan", "utility_static_coil",

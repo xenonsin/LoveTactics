@@ -25,6 +25,7 @@
 --                           onAnyDeath: a body that takes no turns (an egg) still hears it
 --   * onTurnEnd(ctx)     -- the bearer's OWN turn just ended (fired beside onAnyTurnEnd)
 --   * onAnyTurnStart(ctx) -- somebody ELSE's turn just opened; ctx.actor is who (Trait.onAnyTurnStart)
+--   * onTurnStart(ctx)   -- the bearer's OWN turn just opened (fired beside onAnyTurnStart; Envy, slice B)
 --
 -- Two things carry traits, and both flow through Trait.attach:
 --   * a character blueprint  -- `traits = { "trait_wrath_rising" }` on data/characters/<id>.lua
@@ -1871,6 +1872,19 @@ end
 -- actor's own status sweep. Pre-checked per body, so a field with no such hook pays one loop and no beat.
 function Trait.onAnyTurnStart(combat, actor)
     if not (combat and actor and actor.alive) then return end
+    -- THE FACELESS OF ENVY, SLICE B (2026-10-03): ...and the actor hears its OWN turn open (`onTurnStart`), the
+    -- twin of onTurnEnd above, for a rule about the top of the bearer's turn: the Mirror-Knight's mirror goes
+    -- back up, the Mask-Maker hands out its masks, the Colossus folds in its second face. Past the status
+    -- sweep, so a Faceless has already put on this turn's face when it hears it.
+    if actor.traits then
+        for _, t in ipairs(actor.traits) do
+            if t.def and t.def.onTurnStart then
+                dispatch(combat, actor, "onTurnStart", {})
+                break
+            end
+        end
+    end
+    if not actor.alive then return end
     for _, unit in ipairs(combat.units or {}) do
         if unit.alive and unit ~= actor and unit.traits and #unit.traits > 0 then
             for _, t in ipairs(unit.traits) do
