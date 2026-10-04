@@ -1128,6 +1128,8 @@ return {
     ["items/utility_oni_blood.png"] = { icon = "lorc/horned-helm", by = "hand" },
     -- THE ELVES OF PRIDE (2026-09-30): the race's grant.
     ["items/utility_elf_blood.png"] = { icon = "delapouite/elf-ear", by = "hand" },
+    -- SLOTH'S BESTIARY, FOUNDATION (2026-10-04): the troll race's organ, Indifferent.
+    ["items/utility_troll_blood.png"] = { icon = "sbed/regeneration", by = "hand" },
     -- THE FACELESS OF ENVY (2026-10-03): the race's grant.
     ["items/utility_faceless_blood.png"] = { icon = "lorc/domino-mask", by = "hand" },
     -- SLICE F, ENVY'S GENERAL (2026-10-03): the Many Faced One's organ, its relic and its two pieces.
