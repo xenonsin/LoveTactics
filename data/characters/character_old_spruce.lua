@@ -21,6 +21,7 @@ return {
     tier = 3,
     plant = true,
     unarmed = false, -- it never attacks; the roots are its whole kit
+    neverAttacks = true, -- ...so no Faceless wears it as a face (models/faces.lua)
     revivable = false,
     sprite = "assets/chars/old_spruce.png",
     archetype = "defensive",

@@ -57,6 +57,9 @@ function Faces.isEligible(id)
     if (def.tier or 0) < 1 then return false end
     if def.race == "object" or def.race == "human" or def.race == Faces.RACE then return false end
     if def.boss or tostring(id):find("^character_general_") then return false end
+    -- SLOTH'S DREAMERS (slice E): a body that never attacks (`neverAttacks`, the Old Spruce) is not a fighter, and
+    -- a Faceless that put it on would stand rooted and swing at nothing for the rest of the fight.
+    if def.neverAttacks then return false end
     local fp = def.footprint
     if fp and ((fp.w or 1) > 1 or (fp.h or 1) > 1) then return false end
     local hp = def.stats and def.stats.health
