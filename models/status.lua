@@ -1231,11 +1231,21 @@ function Status.allyWard(combat, unit, id)
             -- allies standing within it.
             if t and t.def.wardRadius
                 and require("models.combat").unitGap(u, unit) > t.def.wardRadius then t = nil end
-            if t then
+            -- end SLOTH'S BESTIARY, SLICE C
+            -- SLOTH'S DREAMERS (slice E, Baku's Ward): a ward may reach only `wardsRadius` tiles from its bearer,
+            -- and may answer each refusal (`onWarded`, the ward's heal). Both absent on the Signet, which is
+            -- unchanged.
+            local reaches = t and (not t.def.wardsRadius
+                or require("models.combat").unitGap(u, unit) <= t.def.wardsRadius)
+            if reaches then
                 for _, blocked in ipairs(t.def.wardsAllies or {}) do
-                    if blocked == id then return t.item or t.def end
+                    if blocked == id then
+                        if t.def.onWarded then t.def.onWarded(combat, u, unit, id) end
+                        return t.item or t.def
+                    end
                 end
             end
+            -- end SLOTH'S DREAMERS (slice E)
         end
     end
     return nil

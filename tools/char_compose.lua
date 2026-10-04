@@ -771,6 +771,11 @@ local CHARACTER_SILHOUETTE = {
     cairn_keeper = "lorc/dread-skull",
     frost_worm = "delapouite/worms",
     noonday_demon = "lorc/diablo-skull",
+    -- SLOTH'S DREAMERS (slice E, 2026-10-04): the moth, the tapir the Baku is drawn as, and the tree.
+    poppy_moth = "lorc/butterfly",
+    baku = "delapouite/tapir",
+    old_spruce = "caro-asercion/birch-trees",
+    -- end SLOTH'S DREAMERS (slice E)
 }
 
 -- Reverse index: the character key a discipline names as its `exemplar` -> the discipline id. Built from

@@ -1271,6 +1271,16 @@ Grade.TRAIT_GRADE = {
     trait_peat_black_spear =            1.0,  -- Peat-Black Spear -- a foe ending its turn in reach is struck
     trait_cairn_stone =                 1.5,  -- Cairn Stone -- allies within 3 not moved, Charmed or Taunted
     trait_meridian_charm =              1.0,  -- Meridian Charm -- idle foes within 3 grow Listless
+    -- SLOTH'S DREAMERS (slice E, 2026-10-04, "Sloth's Bestiary"). The moth's dust, Baku's meal and the Spruce's roots
+    -- are bodies' own and never shelved. Of the drops: the Censer is a reflexive sleep on a three-turn rest; the Ward
+    -- refuses one status within 2 and heals on it; the Staff grows a blocker on a turn that struck nothing.
+    trait_poppy_dust =                  0.0,  -- Poppy Dust -- the Poppy-Moth's cloud
+    trait_dream_eating =                0.0,  -- Dream-Eating -- Baku feeds on sleepers within 3
+    trait_will_not_be_hurried =         0.0,  -- Will Not Be Hurried -- the Old Spruce's roots
+    trait_poppy_censer =                1.0,  -- Poppy Censer -- struck, foes beside you sleep; rests 3 turns
+    trait_bakus_ward =                  1.0,  -- Baku's Ward -- no Sleep on allies within 2, and a heal per refusal
+    trait_spruce_staff =                1.0,  -- Spruce Staff -- a root rises on a turn that attacked nothing
+    -- end SLOTH'S DREAMERS (slice E)
 }
 
 -- Which of the weights above were ADOPTED from the classifier's seed rather than weighed one by

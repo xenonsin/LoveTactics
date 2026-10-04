@@ -1500,4 +1500,14 @@ return {
     ["items/weapon_heat_of_the_day.png"] = { icon = "delapouite/striped-sun", by = "hand" },
     ["items/utility_noonday_haze.png"] = { icon = "delapouite/aztec-calendar-sun", by = "hand" },
     ["items/utility_meridian_charm.png"] = { icon = "delapouite/tribal-pendant", by = "hand" },
+    -- SLOTH'S DREAMERS (slice E, 2026-10-04): the organs, the bodies' own blows, and the three trophies.
+    ["items/utility_poppy_dust.png"] = { icon = "lorc/butterfly-warning", by = "hand" },
+    ["items/weapon_moth_wings.png"] = { icon = "lorc/flower-twirl", by = "hand" },
+    ["items/utility_poppy_censer.png"] = { icon = "quoting/poppy", by = "hand" },
+    ["items/utility_dream_eating.png"] = { icon = "delapouite/elephant-head", by = "hand" },
+    ["items/weapon_baku_tusks.png"] = { icon = "delapouite/elephant", by = "hand" },
+    ["items/utility_bakus_ward.png"] = { icon = "delapouite/dream-catcher", by = "hand" },
+    ["items/utility_will_not_be_hurried.png"] = { icon = "delapouite/spiked-trunk", by = "hand" },
+    ["items/weapon_spruce_staff.png"] = { icon = "delapouite/wood-stick", by = "hand" },
+    -- end SLOTH'S DREAMERS (slice E)
 }

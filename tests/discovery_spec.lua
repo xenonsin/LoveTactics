@@ -283,6 +283,9 @@ local TROPHIES = {
     -- SLOTH'S BESTIARY, SLICE C (2026-10-04): the Bog Bodies' spear as a Sentinel's, the Cairn-Keeper's stone as a
     -- Warlord's, the Frost Worm's note as a Shaman's, and the Noonday Demon's afternoon as an Inquisitor's charm.
     "weapon_peat_black_spear", "utility_cairn_stone", "ability_worms_trill", "utility_meridian_charm",
+    -- SLOTH'S DREAMERS (slice E, 2026-10-04): the moth's cloud as an Apothecary's censer, Baku's charm as an
+    -- Exorcist's ward, the Old Spruce's wood as a Druid's staff.
+    "utility_poppy_censer", "utility_bakus_ward", "weapon_spruce_staff",
 }
 
 local function vendorFor(class)
