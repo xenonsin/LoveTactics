@@ -241,6 +241,10 @@ local TROPHIES = {
     -- as a Duelist's.
     "ability_undertow", "armor_leviathans_wake", "ability_gorgons_gaze", "armor_serpent_locks",
     "utility_hand_mirror", "utility_the_mark",
+    -- SLOTH'S TOLLKEEPERS, SLICE F (2026-10-04): the Collector's pike as a Knight's, the Bailiff's bar as a Bulwark's,
+    -- the Outrider's lance as a Vanguard's, Mora's ledger as a Mammonite's.
+    "weapon_collectors_pike", "armor_bailiffs_bar", "weapon_passing_lance", "utility_toll_ledger",
+    -- end SLOTH'S TOLLKEEPERS, SLICE F
     -- The sins' own payment (2026-10-01, "there can never be creature drops"): every general's relic and every
     -- lieutenant's piece left the creature bucket for a real shelf, as trophies -- the first entry on each
     -- Descent.DROPS list. Pride's Codex is reworked separately and is not named here.

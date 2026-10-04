@@ -1912,6 +1912,11 @@ function AI.preempt(combat, unit)
     local heave = require("models.sloth_trolls").ogrePlan(combat, unit)
     if heave then return heave end
     -- end SLOTH'S TROLLS
+    -- SLOTH'S TOLLKEEPERS, SLICE F (2026-10-04, models/toll.lua): the Due goes for whoever felled the Tollkeeper it
+    -- climbed out of; the Outrider rides the lane through the most foes and never ends a turn beside one.
+    local toll = require("models.toll").plan(combat, unit)
+    if toll then return toll end
+    -- end SLOTH'S TOLLKEEPERS, SLICE F
     -- ON THE CHAIN (data/traits/trait_the_chain.lua): the War Ogre goes for whatever its Handler last struck.
     if unit.side ~= "party" and Trait.flag(unit, "chained") and unit.pointedAt and unit.pointedAt.alive
         and unit.pointedAt.side ~= unit.side then

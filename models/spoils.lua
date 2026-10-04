@@ -626,6 +626,10 @@ end
 local function bodyDefs(unit)
     local out = {}
     local char = unit and unit.char
+    -- SLOTH'S TOLLKEEPERS, SLICE F (2026-10-04): a body that WITHHOLDS its list answers for none of it -- Mora, whose
+    -- gate a company paid its way through, pays her drop only if she falls (models/toll.lua, Toll.passage).
+    if char and char.dropsWithheld then return out end
+    -- end SLOTH'S TOLLKEEPERS, SLICE F
     local def = char and char.id and Character.defs[char.id]
     if def then out[#out + 1] = def end
     local original = unit and unit._shape and unit._shape.char

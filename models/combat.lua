@@ -5388,6 +5388,10 @@ function Combat.stepMove(combat, walk)
     walk.walked = (walk.walked or 0) + stepTerrainCost(combat, walk.unit, tile.x, tile.y, walk.flying,
         Combat.isAquatic(walk.unit), Combat.isLavaborn(walk.unit), fromX, fromY)
     Combat.enterTile(combat, walk.unit, tile.x, tile.y, "walk", fromX, fromY)
+    -- SLOTH'S TOLLKEEPERS, SLICE F (2026-10-04): EXIT FEE. A step that carries a body out of a Tollkeeper's reach is
+    -- struck on the way out (models/toll.lua). A walk only, like the overwatch below: a shove or a blink pays nothing.
+    require("models.toll").exitFee(combat, walk.unit, fromX, fromY)
+    -- end SLOTH'S TOLLKEEPERS, SLICE F
     -- A unit walking into an opposing Overwatch stance's firing line is shot for it. Only a walk
     -- triggers this (not a knockback or a summon appearing), so it lives here rather than in enterTile.
     Combat.triggerOverwatch(combat, walk.unit)
@@ -15210,6 +15214,12 @@ end
 function Combat.outcomeFor(combat, side)
     side = side or "party"
     local foe = Combat.OPPOSING[side] or "enemy"
+
+    -- SLOTH'S TOLLKEEPERS, SLICE F (2026-10-04): PASSAGE PAID. A company whose every living body walked through
+    -- Mora's gate has won, not been wiped out -- asked ahead of the wipe check, because the board is empty of it
+    -- either way (models/toll.lua).
+    if require("models.toll").passedThrough(combat, side) then return "win" end
+    -- end SLOTH'S TOLLKEEPERS, SLICE F
 
     -- Wiped out -- unless somebody is still on the bench. A company of eight is a company of eight all
     -- the way down: the fight is over when there is no one left to send in, not when the four who

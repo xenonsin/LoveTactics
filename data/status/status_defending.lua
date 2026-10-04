@@ -15,5 +15,12 @@ return {
     hideDuration = true,    -- the fallback countdown is meaningless -- hide it in the tooltip
     magnitude = 8,          -- default +defense when the granting shield sets no waitBehavior.defense
     magnitudeStat = "defense", -- the flat stat this status's magnitude raises (via Status.statBonus)
-    onTurnStart = function(ctx) ctx.expire() end,
+    onTurnStart = function(ctx)
+        -- SLOTH'S TOLLKEEPERS, SLICE F (2026-10-04): a brace LENT by a barrier (the Bailiff, the Bailiff's Bar)
+        -- holds until the lender's next turn, not the bearer's -- stamped `heldBy`, taken down by the lender's
+        -- own turn opening (models/toll.lua). A lender gone from the field holds nothing up.
+        local by = ctx.status.heldBy
+        if by and by ~= ctx.unit and by.alive then return end
+        ctx.expire()
+    end,
 }

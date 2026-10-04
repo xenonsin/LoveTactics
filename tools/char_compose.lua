@@ -779,6 +779,14 @@ local CHARACTER_SILHOUETTE = {
     -- SLOTH'S STAIRS, SLICE G (2026-10-04): the dream-thing who puts the world to bed.
     the_sandman = "lorc/moon",
     -- end SLOTH'S STAIRS, SLICE G
+    -- SLOTH'S TOLLKEEPERS, SLICE F (2026-10-04): the collector's quill, the bailiff's keys, the hollow mount, the
+    -- purse that climbs out of a fallen keeper, and Mora's gate.
+    toll_collector = "delapouite/scroll-quill",
+    bailiff = "delapouite/keyring",
+    outrider = "lorc/horse-head",
+    the_due = "badges/purse",
+    mora = "delapouite/india-gate",
+    -- end SLOTH'S TOLLKEEPERS, SLICE F
 }
 
 -- Reverse index: the character key a discipline names as its `exemplar` -> the discipline id. Built from

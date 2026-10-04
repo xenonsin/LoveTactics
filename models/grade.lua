@@ -594,6 +594,15 @@ Grade.TRAIT_GRADE = {
     trait_the_long_sleep =              2.0,  -- The Long Sleep -- Desidia's relic
     trait_restless =                    1.0,  -- Restless -- Restless Mail
     -- end SLOTH'S STAIRS, SLICE G
+    -- SLOTH'S TOLLKEEPERS, SLICE F (2026-10-04): the line's organ and Mora's are bodies' own and never shelved. Of the
+    -- drops, the Bar lends its brace on a Defend, and the Ledger Roots a foe that casts within 3 on its next turn.
+    trait_exit_fee =                    0.0,  -- Exit Fee -- a foe walking out of reach is struck
+    trait_barred =                      0.0,  -- Barred -- impact breaks a Tollkeeper's brace
+    trait_what_it_was_owed =            0.0,  -- What It Was Owed -- a Due climbs out of a fallen Tollkeeper
+    trait_passage_paid =                0.0,  -- Passage Paid -- an idle turn at Mora's gate walks a body off the board
+    trait_the_barrier =                 1.0,  -- The Barrier -- the Bailiff's brace lent to the line (the Bar's on Defend)
+    trait_toll_of_hours =               1.5,  -- Toll of Hours -- an ability used near it Roots its user next turn
+    -- end SLOTH'S TOLLKEEPERS, SLICE F
     -- SLICE F, ENVY'S GENERAL (2026-10-03): its organ's opener is the body's own; its relic is a whole kit per kill.
     trait_the_many_faced =              0.0,  -- The Many Faced -- the Many Faced One's forms (a body's organ)
     trait_pretenders_crown =            1.0,  -- Pretender's Crown -- wear what you killed until the next kill

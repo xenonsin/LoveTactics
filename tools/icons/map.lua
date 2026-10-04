@@ -1169,6 +1169,19 @@ return {
     ["items/utility_nightmare_lantern.png"] = { icon = "lorc/pumpkin-lantern", by = "hand" },
     ["items/armor_restless_mail.png"] = { icon = "lorc/worried-eyes", by = "hand" },
     -- end SLOTH'S STAIRS, SLICE G
+    -- SLOTH'S TOLLKEEPERS, SLICE F (2026-10-04): the line's organ, the bodies' own kit, and their four drops.
+    ["items/utility_exit_fee.png"] = { icon = "badges/coins", by = "hand" },
+    ["items/weapon_toll_pike.png"] = { icon = "lorc/halberd", by = "hand" },
+    ["items/weapon_gate_bar.png"] = { icon = "delapouite/medieval-gate", by = "hand" },
+    ["items/utility_the_barrier.png"] = { icon = "delapouite/barricade", by = "hand" },
+    ["items/weapon_ride_past.png"] = { icon = "delapouite/horseshoe", by = "hand" },
+    ["items/weapon_dues_claws.png"] = { icon = "lorc/flame-claws", by = "hand" },
+    ["items/utility_toll_of_hours.png"] = { icon = "delapouite/gate", by = "hand" },
+    ["items/weapon_collectors_pike.png"] = { icon = "delapouite/sharp-halberd", by = "hand" },
+    ["items/armor_bailiffs_bar.png"] = { icon = "delapouite/dungeon-gate", by = "hand" },
+    ["items/weapon_passing_lance.png"] = { icon = "delapouite/horse-head", by = "hand" },
+    ["items/utility_toll_ledger.png"] = { icon = "delapouite/book-cover", by = "hand" },
+    -- end SLOTH'S TOLLKEEPERS, SLICE F
     -- THE FACELESS OF ENVY (2026-10-03): the race's grant.
     ["items/utility_faceless_blood.png"] = { icon = "lorc/domino-mask", by = "hand" },
     -- SLICE F, ENVY'S GENERAL (2026-10-03): the Many Faced One's organ, its relic and its two pieces.
