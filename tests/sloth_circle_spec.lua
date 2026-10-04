@@ -30,18 +30,23 @@ local unit, openTurn, itemNamed = Fixture.unit, Fixture.openTurn, Fixture.itemNa
 
 return {
     {
-        -- THE LATE WATCH IS DELETED AND THIS CASE IS THE MARKER -- and this is the loudest of the seven
-        -- slots, because the tundra rolls exactly two bodies and one of them is tier 1, so the stand-in
-        -- is this circle's own ELITE and the stratum bills the Long Winter twice. Named here on purpose:
-        -- seating a replacement reddens this case, and whoever does it owes the contract at the foot of
-        -- this file.
-        name = "Sloth's lieutenant slot is filled, and by the only body left to fill it",
+        -- THE SLOT IS FILLED (2026-10-04, "Sloth's Bestiary", slice G). The Long Winter stood in here, billed
+        -- twice in one stratum, until the Sandman was built for it; this case was the marker that said seating a
+        -- replacement owes the contract the Late Watch's sizing case left behind (written out at the foot of
+        -- this file). The Sandman is held to it here, against the general he heralds. The line body that contract
+        -- also asks for is the circle's line slices' to seat, not this one's.
+        name = "Sloth's lieutenant is the Sandman, and he stands below the sin whose stair he holds",
         fn = function()
             local sin
             for _, s in ipairs(Descent.SINS) do if s.id == "sloth" then sin = s end end
-            assert(sin and sin.minor.lead == "character_the_long_winter",
-                "the Long Winter stands in for the Late Watch")
-            assert(Character.defs[sin.minor.lead], "and whatever stands there is a body that loads")
+            assert(sin and sin.minor.lead == "character_the_sandman", "the Sandman holds the lieutenant's stair")
+            assert(sin.guardian.lead == "character_general_sloth", "and Desidia holds the general's, on Acedia's id")
+            local lieutenant, general = Character.defs[sin.minor.lead], Character.defs[sin.guardian.lead]
+            assert(lieutenant and general, "both bodies load")
+            assert(lieutenant.boss and lieutenant.referenceLevel, "a centrepiece that scales toward the shallows")
+            local share = lieutenant.stats.health / general.stats.health
+            assert(share >= 0.6 and share <= 0.85, string.format(
+                "the lieutenant holds %.0f%% of the general's health; the stair band is 60-85%%", share * 100))
             assert(not Character.defs["character_the_late_watch"], "the Late Watch is gone")
         end,
     },

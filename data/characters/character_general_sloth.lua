@@ -1,27 +1,30 @@
--- The general of Sloth, and the end of the Bastion's line (docs/story.md, "The Bastion: sloth,
--- designed"). Enemy blueprint; the objective of data/quests/general_sloth.lua.
+-- DESIDIA, THE DREAMER: the general of Sloth, on floor 10's stair ("Sloth's Bestiary", slice G, 2026-10-04; designed
+-- from the circle's brief, every rule approved on review). Enemy blueprint; the objective of the circle's stair.
 --
--- Acedia held the greatest post on the Watch and was the order's living emblem -- the doctrine is
--- named for her. When the Bastion wrote her post off she did not hold and she did not die: she
--- NEGOTIATED, her life and her company's for the gate, and the land beyond it paid. The sin is not
--- the cowardice. It is the fifteen years since, spent making the cowardice true -- walking the line
--- telling knights that no post is worth holding, with the authority of a name the order still reads
--- aloud off every Oathkeeper Shield as a martyr's.
+-- A god asleep under the glacier, so large the board is the lid of her tomb. The only part of her above the ice is a
+-- 3x3 sleeping face at the far edge of the board. Desidia is Latin for idleness.
 --
--- Her rule is in `traits`, and it is a rigged demonstration rather than an attack
--- (data/traits/trait_unrelieved.lua): she swears the party into pairs nobody chose and bites whoever
--- ends a turn alone. The counterplay is the opposite of Wrath's -- not burst, but FORMATION. Move as
--- pairs, keep the huddle tight, and accept that the huddle is exactly where her company's spears want
--- you. Sloth is being stuck, not being outdamaged.
+-- ACEDIA LEFT THIS ID. The Unrelieved -- the knight who negotiated her post away -- held it until the author removed
+-- her; the id stays because the stair, the Many Faced One's forms, the Hollow Crown and the scene name it. Her pike
+-- and the Bastion pieces that queued behind it stay on disk. The descent's scene still speaks in Acedia's voice
+-- (data/conversations/descent/conversation_descent_sloth.lua), which is the author's to rewrite.
 --
--- Statted as a wall rather than a threat: enormous health and defense, real magic resistance, and
--- damage that is frankly poor for a general. She is not trying to kill you. Every turn you spend on
--- her is a turn her sworn pairs are billing you for, so the pressure is the CLOCK -- which is why she
--- can afford to be this slow, and why `assassinate` is the honest objective. Grinding her guard down
--- is the losing line, and it is meant to look tempting.
+-- A GIANT, the Titan's record (data/races/giant.lua): a body built on the scale of the old wars, humanoid in shape,
+-- with nothing granted -- the record a god's prisoner already stands on, and the honest bucket for something whose
+-- face alone fills nine tiles. Not a demon: nothing about a sleep burns.
+--
+-- HER RULES ride on three organs (a blueprint's own `traits` field is never collected), and models/desidia.lua argues
+-- them in full: the Long Sleep (Dormant, a turn banked a round, Stir from every attack and ability on the board, and
+-- at 10 every banked turn at once, each a sweep down a marked row), the Drowse (whoever took a turn and did not move
+-- gains Drowsy), What the Sleepers Dream (a sleeping foe's nightmare stands up on her side) and her phase two (awake
+-- and spent, any round with no blow on her puts her back to sleep, banking from zero).
+--
+-- SHE NEVER MOVES (`movement = 0`, and the Dreamer is `unmoved`): the face is the top of a body under the ice. Awake,
+-- she breathes on whoever is in reach of it; her real weight is the bank. 300 health on nine tiles, struck from
+-- beside any of them -- a company that keeps hitting her is the company keeping her awake, which is the decision.
 return {
-    name = "Acedia, the Unrelieved",
-    race = "human",
+    name = "Desidia, the Dreamer",
+    race = "giant",
     tier = 4,
     -- WHAT LEVEL THESE NUMBERS WERE WRITTEN FOR. This body is authored as the fight it is at the end
     -- of its line, and models/growth.lua scales it DOWN toward the shallows rather than growing it up
@@ -32,35 +35,24 @@ return {
     boss = true, -- a quest objective: immune to execute (Coup de Grace) and to Charm
     sprite = "assets/chars/general_sloth.png",
     portrait = "assets/portraits/general_sloth.png", -- large VN portrait for conversations (falls back if missing)
-    -- She has never once had to chase (movement 2, "the clock is the weapon"). `defensive` holds her
-    -- where she stands until the fight reaches her, then commits -- which is exactly the `assassinate`
-    -- problem: the party must come to her through her sworn company (models/ai.lua).
-    archetype = "defensive",
+    -- NINE TILES: the face above the ice, seated at the far edge as the fight opens (Desidia.seat).
+    footprint = { w = 3, h = 3 },
     stats = {
-        health = 240, mana = 40, stamina = 23,
-        staminaRegen = 2,
-        damage = 12, magicDamage = 0, -- poor, and it never climbs: the clock is the weapon
-        defense = 22, magicDefense = 16, -- no soft answer the way Ira is soft to magic
-        movement = 2, -- she does not chase. She has never once had to
-        speed = 2,
-        -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
-        -- attacker's crit. Authored, and never grown -- these are what this body IS.
-        skill = 3, luck = 3,
+        health = 300, mana = 0, stamina = 30,
+        staminaRegen = 5,
+        damage = 16, magicDamage = 14,
+        defense = 10, magicDefense = 10,
+        movement = 0, -- she does not move; the glacier is the rest of her
+        speed = 3,
+        skill = 4, luck = 2,
     },
-    traits = { "trait_unrelieved" },
-    -- Her loadout as the 3x3 grid (row-major); false = an empty cell. The pike is the relic that comes
-    -- off her body (data/items/weapon/weapon_forsworn_pike.lua) and the shield is the Bastion's own
-    -- rank-4 stock -- she is still, in every visible respect, one of theirs. That is the point of the
-    -- silhouette: nothing about her reads as a demon.
     startingItems = {
-        false, false,                    false,
-        false, "weapon_forsworn_pike",   "armor_oathkeeper_shield",
-        false, false,                    false,
+        false, "weapon_desidias_breath", false,
+        "utility_the_dreamer", "utility_the_drowse", "utility_what_the_sleepers_dream",
+        false, false, false,
     },
-    -- Basic tactics (models/ai.lua): once something is finally in reach, the pike takes the foe closest
-    -- to falling. Her real weapon is trait_unrelieved and the clock; this is only her idle swing.
-    ai = {
-        { priority = "high", act = "attack", targetPref = "lowest_hp",
-          when = { subject = "foe_lowest_hp", test = "hp_pct_below", value = 0.5 } },
-    },
+    -- Her fall pays her own pieces (Descent.DROPS.sloth.general pays the same list, relic first).
+    drops = { "utility_the_long_sleep", "ability_lull", "utility_nightmare_lantern", "armor_restless_mail" },
+    defaultAction = "weapon_desidias_breath",
+    archetype = "defensive",
 }

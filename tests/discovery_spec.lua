@@ -286,6 +286,13 @@ local TROPHIES = {
     -- SLOTH'S DREAMERS (slice E, 2026-10-04): the moth's cloud as an Apothecary's censer, Baku's charm as an
     -- Exorcist's ward, the Old Spruce's wood as a Druid's staff.
     "utility_poppy_censer", "utility_bakus_ward", "weapon_spruce_staff",
+    -- SLOTH'S STAIRS, SLICE G (2026-10-04): the Sandman's sowing as a Trapper's and his hourglass as a Ninja's;
+    -- Desidia's Long Sleep as a Knight's relic, her Drowse as a Warden's Lull, her sleepers' shades as a
+    -- Necromancer's lantern, and the coat that refuses her sleep as a Knight's. Acedia's Pike and the Unblown Horn
+    -- above left Sloth's lists and stay trophies on the knight's rack.
+    "ability_sandmans_pouch", "utility_the_hourglass", "utility_the_long_sleep", "ability_lull",
+    "utility_nightmare_lantern", "armor_restless_mail",
+    -- end SLOTH'S STAIRS, SLICE G
 }
 
 local function vendorFor(class)

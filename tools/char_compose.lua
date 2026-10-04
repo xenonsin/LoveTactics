@@ -277,7 +277,7 @@ local CHARACTER_SILHOUETTE = {
     general_envy = "delapouite/imperial-crown",     -- slice F: the Many Faced One, a crown with no head under it
     general_gluttony = "lorc/gluttony",
     general_lust = "lorc/pentagram-rose",           -- the pacted Saint
-    general_sloth = "delapouite/broken-wall",       -- the Bastion's own wall, given way
+    general_sloth = "delapouite/ice-iris",          -- slice G: Desidia, a sleeping face under the glacier
 
     -- Off the rock golem, which the Crucible Golem keeps. The discard is the same made thing as the
     -- homunculus above and must not read as it: what the Crucible's cargo IS on the board is the one
@@ -776,6 +776,9 @@ local CHARACTER_SILHOUETTE = {
     baku = "delapouite/tapir",
     old_spruce = "caro-asercion/birch-trees",
     -- end SLOTH'S DREAMERS (slice E)
+    -- SLOTH'S STAIRS, SLICE G (2026-10-04): the dream-thing who puts the world to bed.
+    the_sandman = "lorc/moon",
+    -- end SLOTH'S STAIRS, SLICE G
 }
 
 -- Reverse index: the character key a discipline names as its `exemplar` -> the discipline id. Built from

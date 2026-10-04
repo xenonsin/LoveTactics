@@ -640,19 +640,22 @@ Descent.SINS = {
                 "encounter_wrath_the_nio", "encounter_wrath_the_meditation_hall" } } },
     { id = "sloth", name = "Sloth", vendor = "bastion", biome = "tundra",
         scene = "conversation_descent_sloth",
-        guardian = { lead = "character_general_sloth", filler = "character_the_long_winter" },
+        -- DESIDIA, THE DREAMER (2026-10-04, "Sloth's Bestiary", slice G; models/desidia.lua), on Acedia's id: a god
+        -- asleep under the glacier, a 3x3 face at the far edge. The escort slot is the circle's own stock standing
+        -- in for the Mare, which another slice builds; the coordinator swaps it in at integration.
+        guardian = { lead = "character_general_sloth", filler = "character_ice_elemental" },
         -- NOTHING. SHE IS ASLEEP AND THE STAIR STANDS OPEN.
         --
         -- The only gate that is a pure reading of its own sin, and the one to protect in review: the
-        -- post nobody came back to is guarded by nobody, so a company may simply walk past Acedia and
+        -- post nobody came back to is guarded by nobody, so a company may simply walk past Desidia and
         -- go down. Fighting her is opt-in, and sealing her circle costs health and mule slots the run
         -- could have spent elsewhere -- which under an extraction descent is a real decision rather
         -- than a formality. Every other circle asks something; this one asks whether you want to.
         gate = { kind = "none" },
-        -- NO LIEUTENANT, AND NOTHING ORDINARY LEFT TO STAND IN. The Late Watch is gone and the tundra
-        -- rolls exactly two bodies -- an elemental at tier 1 and the Long Winter -- so the stand-in is
-        -- this circle's own ELITE and the stratum bills it twice. Loudest of the seven; replace first.
-        minor = { lead = "character_the_long_winter", filler = "character_ice_elemental" },
+        -- THE SANDMAN HOLDS THE LIEUTENANT'S STAIR (2026-10-04, "Sloth's Bestiary", slice G; models/sandman.lua):
+        -- her herald, whose sleep is the first taste of hers. His swarm is the Poppy Moths, which another slice
+        -- builds; the circle's ice elemental stands in until the coordinator swaps them in at integration.
+        minor = { lead = "character_the_sandman", filler = "character_ice_elemental" },
         -- NO `approach`, AND NOW NOTHING STANDS ON THAT FLOOR AT ALL. The Winter Hart is gone, so the
         -- Long Winter is the tundra's only elite -- and under one elite, one floor it can stand only on
         -- the rung it is billed at (the blueprint's `rung`). Sloth's approach floor seats NO elite.
@@ -821,17 +824,14 @@ Descent.DROPS = {
         "weapon_given_hour", "weapon_kingsfall", "weapon_long_count", "weapon_mired_maul", "weapon_reapers_due",
         "weapon_tempo_debt", "weapon_the_stillness", "weapon_whitening",
     } },
-    -- Acedia's relic is her PIKE, and it took a second look to see it: it is tagged
-    -- { "spear", "pierce", "physical", "melee", "relic" }, so a search for the bare `tags = { "relic" }`
-    -- the other six wear reports her as the one general with nothing to pay. She is not: it is a knight's
-    -- trophy, and her list is headed by it.
-    sloth    = { minor = { "utility_unblown_horn" }, general = {
-        "weapon_forsworn_pike",
-        "consumable_bannerets_steel", "utility_closed_entry",
-        "utility_forty_one_marks", "utility_names_he_kept", "utility_relief_order",
-        "utility_struck_name", "weapon_lending_blade",
-        "weapon_splitglass_saber", "weapon_sunderers_answer",
-        "weapon_wardens_tongue",
+    -- The Sandman's pieces (slice G, 2026-10-04): his sowing as a Trapper's, his hourglass as a Ninja's. The Unblown
+    -- Horn was the empty slot's and comes off with it; it stays on disk, a knight's trophy.
+    sloth    = { minor = { "ability_sandmans_pouch", "utility_the_hourglass" }, general = {
+        -- Desidia's (slice G): the Long Sleep relic, then her Drowse turned on foes, her sleepers' shades, and the
+        -- coat that refuses her circle's sleep. Acedia's Forsworn Pike and the ten Bastion pieces queued behind it
+        -- left the list with her; they stay on disk.
+        "utility_the_long_sleep",
+        "ability_lull", "utility_nightmare_lantern", "armor_restless_mail",
     } },
     -- Pride (2026-10-01, "Pride's Stairs"): Sublimitas's Codex on the minor stair, the Marginal Gloss behind it;
     -- Superbia's relic first, then one piece per rule of hers (her light, her form, her host, her fall).

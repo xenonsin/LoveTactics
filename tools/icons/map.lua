@@ -1153,6 +1153,22 @@ return {
     ["items/weapon_hags_weight.png"] = { icon = "delapouite/pillow", by = "hand" },
     ["items/utility_mares_bridle.png"] = { icon = "delapouite/horse-head", by = "hand" },
     -- end SLOTH'S COLD, SLICE D
+    -- SLOTH'S STAIRS, SLICE G (2026-10-04): the Sandman's and Desidia's organs and blows, and their six trophies.
+    ["items/weapon_sand_from_his_hands.png"] = { icon = "delapouite/grain", by = "hand" },
+    ["items/utility_sand_in_the_eyes.png"] = { icon = "delapouite/tired-eye", by = "hand" },
+    ["items/utility_run_through_the_glass.png"] = { icon = "delapouite/clockwise-rotation", by = "hand" },
+    ["items/utility_bad_dreams.png"] = { icon = "caro-asercion/tarot-18-the-moon", by = "hand" },
+    ["items/ability_sandmans_pouch.png"] = { icon = "delapouite/hand-bag", by = "hand" },
+    ["items/utility_the_hourglass.png"] = { icon = "delapouite/solar-time", by = "hand" },
+    ["items/weapon_desidias_breath.png"] = { icon = "delapouite/ice-spell-cast", by = "hand" },
+    ["items/utility_the_dreamer.png"] = { icon = "delapouite/bed", by = "hand" },
+    ["items/utility_the_drowse.png"] = { icon = "delapouite/snail-eyes", by = "hand" },
+    ["items/utility_what_the_sleepers_dream.png"] = { icon = "delapouite/dream-catcher", by = "hand" },
+    ["items/utility_the_long_sleep.png"] = { icon = "delapouite/person-in-bed", by = "hand" },
+    ["items/ability_lull.png"] = { icon = "delapouite/pillow", by = "hand" },
+    ["items/utility_nightmare_lantern.png"] = { icon = "lorc/pumpkin-lantern", by = "hand" },
+    ["items/armor_restless_mail.png"] = { icon = "lorc/worried-eyes", by = "hand" },
+    -- end SLOTH'S STAIRS, SLICE G
     -- THE FACELESS OF ENVY (2026-10-03): the race's grant.
     ["items/utility_faceless_blood.png"] = { icon = "lorc/domino-mask", by = "hand" },
     -- SLICE F, ENVY'S GENERAL (2026-10-03): the Many Faced One's organ, its relic and its two pieces.

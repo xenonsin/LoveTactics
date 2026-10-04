@@ -60,6 +60,14 @@ return {
         ctx.log("status", string.format("%s is jolted awake!",
             (ctx.unit.char and ctx.unit.char.name) or "Unit"))
         ctx.expire()
+        -- SLOTH'S BESTIARY, SLICE G (2026-10-04): BAD DREAMS. A sleep the Sandman laid is stamped `badDreams`
+        -- (models/sandman.lua), and a BLOW that wakes it leaves the sleeper Rattled until the end of its next turn.
+        -- Here and only here, because this is the one path that is a blow: a Cure and the clock end the sleep
+        -- through onExpire and leave no bad dream behind. After the expire, so the refund has already moved
+        -- the turn the Rattle is measured to.
+        if ctx.status.badDreams and ctx.combat then
+            require("models.sandman").badDreams(ctx.combat, ctx.unit, ctx.status.opener)
+        end
     end,
     onExpire = function(ctx)
         -- Fires on EVERY removal path (countdown, damage, Cure, dispel). Give back the ticks the

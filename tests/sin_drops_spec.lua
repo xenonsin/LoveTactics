@@ -34,7 +34,9 @@ local HEADS = {
     -- Envy's lieutenant is Leviathan now (2026-10-03), and it pays its own eruption on the elementalist's shelf.
     envy     = { "utility_pretenders_crown",     "ability_undertow",       "alchemist",  "elementalist" },
     wrath    = { "utility_the_broken_vow",       "utility_anvils_face",    "monk",       "fighter" },
-    sloth    = { "weapon_forsworn_pike",         "utility_unblown_horn",   "knight",     "knight" },
+    -- Sloth's stairs are Desidia and the Sandman now (slice G, 2026-10-04): her Long Sleep on the knight's shelf, his
+    -- sowing on the trapper's.
+    sloth    = { "utility_the_long_sleep",       "ability_sandmans_pouch", "knight",     "trapper" },
     -- Pride's relic is Superbia's Morning Star; her lieutenant Sublimitas pays the Codex (2026-10-01).
     pride    = { "utility_the_morning_star",     "utility_codex_unanswered", "mage",   "mage" },
 }

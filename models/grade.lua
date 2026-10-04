@@ -580,6 +580,20 @@ Grade.TRAIT_GRADE = {
     trait_hag_ridden =                  0.0,  -- Hag-Ridden -- the Mare rides a sleeper
     trait_mares_bridle =                0.5,  -- The Mare's Bridle -- your blows do not wake a sleeping foe
     -- end SLOTH'S COLD, SLICE D
+    -- SLOTH'S STAIRS, SLICE G (2026-10-04): the Sandman and Desidia. Their bodies' own rules are never shelved. Of the
+    -- drops: the Glass rides the Hourglass (a step of 4 off a foe that closed, and a patch behind); the Sleepers'
+    -- shades ride the Nightmare Lantern (a body of the foe's for as long as it sleeps, which you must arrange); the
+    -- Long Sleep is up to three actions in a row, paid for in turns of doing nothing; Restless is one refusal and an
+    -- Empowered blow.
+    trait_sand_in_the_eyes =            0.0,  -- Sand in the Eyes -- the Sandman's sowing
+    trait_bad_dreams =                  0.0,  -- Bad Dreams -- the Sandman's woken sleepers
+    trait_the_dreamer =                 0.0,  -- The Dreamer -- Desidia's Long Sleep and her phase two
+    trait_the_drowse =                  0.0,  -- The Drowse -- Desidia's cold
+    trait_run_through_the_glass =       1.5,  -- Run Through the Glass -- the Hourglass
+    trait_what_the_sleepers_dream =     1.5,  -- What the Sleepers Dream -- the Nightmare Lantern
+    trait_the_long_sleep =              2.0,  -- The Long Sleep -- Desidia's relic
+    trait_restless =                    1.0,  -- Restless -- Restless Mail
+    -- end SLOTH'S STAIRS, SLICE G
     -- SLICE F, ENVY'S GENERAL (2026-10-03): its organ's opener is the body's own; its relic is a whole kit per kill.
     trait_the_many_faced =              0.0,  -- The Many Faced -- the Many Faced One's forms (a body's organ)
     trait_pretenders_crown =            1.0,  -- Pretender's Crown -- wear what you killed until the next kill

@@ -497,7 +497,7 @@ return {
     ["name.character_general_greed"] = { en = "Avaritia, the Unspent", ja = "" },  -- TODO
     ["name.character_general_lust"] = { en = "Luxuria, Queen of the Succubi", ja = "" },  -- TODO
     ["name.character_general_pride"] = { en = "Superbia, the Morning Star", ja = "" },  -- TODO
-    ["name.character_general_sloth"] = { en = "Acedia, the Unrelieved", ja = "" },  -- TODO
+    ["name.character_general_sloth"] = { en = "Desidia, the Dreamer", ja = "" },  -- TODO
     ["name.character_general_wrath"] = { en = "Furor, the Thousand-Armed", ja = "" },  -- TODO
     ["name.character_gyeom"] = { en = "Gyeom", ja = "" },  -- TODO
     ["name.character_kaya"] = { en = "Kaya", ja = "" },  -- TODO
