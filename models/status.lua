@@ -1215,6 +1215,10 @@ function Status.allyWard(combat, unit, id)
     for _, u in ipairs(combat.units or {}) do
         if u.alive and u.side == unit.side then
             local t = Trait.flag(u, "wardsAllies")
+            -- SLOTH'S BESTIARY, SLICE C (2026-10-04): a ward with a `wardRadius` (the Cairn Stone) holds only the
+            -- allies standing within it.
+            if t and t.def.wardRadius
+                and require("models.combat").unitGap(u, unit) > t.def.wardRadius then t = nil end
             if t then
                 for _, blocked in ipairs(t.def.wardsAllies or {}) do
                     if blocked == id then return t.item or t.def end
@@ -1697,6 +1701,9 @@ function Status.blocksForcedMove(unit)
     if unit and require("models.trait").flag(unit, "unmoved") then return true end
     -- INCORRUPTIBLE (the angels of Pride, data/traits/trait_incorruptible.lua): no push and no pull lands on one.
     if unit and require("models.trait").flag(unit, "incorruptible") then return true end
+    -- SLOTH'S BESTIARY, SLICE C (2026-10-04): the CAIRN STONE holds every ally within 3 of its bearer in place
+    -- (data/traits/trait_cairn_stone.lua, models/sloth_bog.lua).
+    if unit and require("models.sloth_bog").anchored(unit) then return true end
     -- LASHED TO THE MAST (data/traits/trait_mast_rope.lua). A Mast-Rope ties its bearer to every ally
     -- touching it: while they stand together, none of them can be shoved, pulled or thrown. Asked
     -- through the board the body stands on, and only once a presence trait exists at all (the rope

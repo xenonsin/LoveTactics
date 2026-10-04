@@ -246,6 +246,11 @@ return {
                 -- two Trolls -- the ogre's ammunition, and one fewer is a lesson it may never get to teach.
                 encounter_sloth_the_heave = true,
                 -- end SLOTH'S TROLLS
+                -- SLOTH'S BESTIARY, SLICE C (2026-10-04): the review's own counts. Past Caring is the Demon and three
+                -- Bog Bodies -- the skirmish ceiling, with the Demon counting every blow the peat swallows -- and the
+                -- Trill is a Frost Worm with two Bog Bodies holding the lanes.
+                encounter_sloth_past_caring = true,
+                encounter_sloth_the_trill = true,
             }
             -- THE ROSTER, NOT THE HEAD-COUNT. Asked as "is this the same fight on every seed", because
             -- a stop is allowed to roll its SHAPE while holding its size: the Skeleton King's court is

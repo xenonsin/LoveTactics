@@ -4401,7 +4401,10 @@ end
 -- which was survivable while the only term was terrain and became a real hazard the moment a tile's
 -- price could depend on the board: three readers that disagree mean the move overlay offers a tile the
 -- route preview will not walk to. Add a term here and all three learn it at once.
-local function stepTerrainCost(combat, unit, x, y, flying, aquatic, lavaborn)
+--
+-- SLOTH'S BESTIARY, SLICE C (2026-10-04): `fx, fy` is the tile the step leaves, for the one term that depends on
+-- the step rather than the tile -- THE MIRE HOLDS (models/sloth_bog.lua's mireToll). Every caller passes it.
+local function stepTerrainCost(combat, unit, x, y, flying, aquatic, lavaborn, fx, fy)
     if flying then return 1 end
     local tiles = combat.arena and combat.arena.tiles
     local worst = 0
@@ -4421,6 +4424,7 @@ local function stepTerrainCost(combat, unit, x, y, flying, aquatic, lavaborn)
     local ease = Combat.terrainEase(combat, unit, x, y)
     if ease and worst > ease then worst = ease end
     return worst + Combat.watchTax(combat, unit, x, y)
+        + require("models.sloth_bog").mireToll(combat, unit, fx, fy, x, y) -- SLOTH'S BESTIARY, SLICE C
 end
 
 -- The full movement graph for a unit this turn: a Dijkstra over the arena weighted by tile
@@ -4608,7 +4612,7 @@ local function moveGraph(combat, unit, tolls)
                     -- Priced by the shared reader rather than in the loop above: the legality question
                     -- (may this body stand here) and the cost question (what does standing here cost)
                     -- are different, and only the second one grows terms. See stepTerrainCost.
-                    local step = stepTerrainCost(combat, unit, nx, ny, flying, aquatic, lavaborn)
+                    local step = stepTerrainCost(combat, unit, nx, ny, flying, aquatic, lavaborn, cur.x, cur.y)
                     local ncost = cur.cost + step
                     if ncost <= budget then
                         local nk = key(nx, ny)
@@ -5210,7 +5214,7 @@ function Combat.planMoveVia(combat, unit, cells)
         -- Priced by the same reader the derived path uses, so a hand-steered detour costs exactly what
         -- walking it costs -- including the ground watched by an enemy's Overwatch. This used to
         -- re-derive the terrain arithmetic locally; see stepTerrainCost on why it no longer may.
-        cost = cost + stepTerrainCost(combat, unit, c.x, c.y, flying, aquatic, lavaborn)
+        cost = cost + stepTerrainCost(combat, unit, c.x, c.y, flying, aquatic, lavaborn, p.x, p.y)
         if cost > budget + scentMove(combat, unit) then return nil, "too far" end
     end
     -- SCENT OF BLOOD: the extra movement only buys a walk that ends where the scent leads (models/thirst.lua).
@@ -5331,7 +5335,8 @@ function Combat.walkStop(combat, unit, path)
         -- on the tile BEFORE it, and never pays for the tile it refused. Mirrors Combat.stepMove's
         -- pre-step check, so the drawn route stops on the tile the feet will.
         if grants and not carrying and bodyInTheWay(combat, unit, t.x, t.y) then return i - 1, cost end
-        cost = cost + stepTerrainCost(combat, unit, t.x, t.y, flying, Combat.isAquatic(unit), Combat.isLavaborn(unit))
+        cost = cost + stepTerrainCost(combat, unit, t.x, t.y, flying, Combat.isAquatic(unit), Combat.isLavaborn(unit),
+            path[i - 1].x, path[i - 1].y)
         if grants and not carrying then return i, cost end
         carrying = grants
     end
@@ -5381,7 +5386,7 @@ function Combat.stepMove(combat, walk)
     -- STATIC (models/storm.lua): every tile walked stores a charge on a bearer of the Arc's rule.
     require("models.storm").stepped(combat, walk.unit)
     walk.walked = (walk.walked or 0) + stepTerrainCost(combat, walk.unit, tile.x, tile.y, walk.flying,
-        Combat.isAquatic(walk.unit), Combat.isLavaborn(walk.unit))
+        Combat.isAquatic(walk.unit), Combat.isLavaborn(walk.unit), fromX, fromY)
     Combat.enterTile(combat, walk.unit, tile.x, tile.y, "walk", fromX, fromY)
     -- A unit walking into an opposing Overwatch stance's firing line is shot for it. Only a walk
     -- triggers this (not a knockback or a summon appearing), so it lives here rather than in enterTile.
@@ -9081,6 +9086,14 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     -- SUPERBIA, THE MORNING STAR (Pride's general): FLAWLESS FORM. No single wound takes more than its bearer's
     -- cap, a share of max health -- past the crit, so a crit is capped too (models/morning_star.lua).
     dmg = require("models.morning_star").woundCap(target, dmg)
+    -- SLOTH'S BESTIARY, SLICE C (2026-10-04): PAST FEELING. A wound at or under the Bog-Bound's threshold does
+    -- nothing, judged on what would really land (past armour and the crit). Nothing reached the flesh, so -- as
+    -- with a barrier -- no rage, no threshold phase, no answer, and no blood drawn (models/sloth_bog.lua).
+    if dmg > 0 and require("models.sloth_bog").pastFeeling(target, dmg) == 0 then
+        Combat.logEvent(combat, "status", string.format("%s does not feel it (%d).", unitName(target), dmg), target)
+        Combat.pushFx(combat, { type = "miss", unit = target })
+        return 0
+    end
     -- A Mana Shield (data/items/utility/utility_mana_shield.lua) pays the wound out of the wrong pool.
     -- It runs AFTER mitigation and not before, unlike the barrier above: armor still gets its full say,
     -- and what the shield is asked to cover is the number that would actually have reached the body.
@@ -9143,6 +9156,8 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     target.lastBlowBy, target.lastBlowTaken = attacker, dmg
     target.lastBlowItem = opts and opts.blowItem or nil
     if attacker then attacker.lastHitDealt = dmg end
+    -- SLOTH'S BESTIARY, SLICE C: the striker drew blood this turn, which is what Listless counts and what clears it.
+    if attacker then require("models.sloth_bog").struck(combat, attacker, target) end
     -- Animation cue: the blow that actually landed (post-mitigation), flagged lethal so the view
     -- can punch a killing hit harder. The matching death cue is pushed by killUnit below.
     -- `tags` rides along untouched so the view can pick the blow's picture -- a slash arc, a fire
@@ -9687,7 +9702,9 @@ function Combat.computeDamage(combat, user, target, item, opts)
     local base = (opts.amount or (ab and ab.damage) or 0) + flatStat(user, atkStat) + unarmedDamageBonus(user, item) + charmBonus - rust
     base = relicOutgoing(user, target, base)
     -- SUPERBIA, THE MORNING STAR (Pride's general): the hover quotes the wound cap the blow will meet.
-    return require("models.morning_star").woundCap(target, Combat.mitigatedDamage(target, base, tags, opts, user))
+    -- SLOTH'S BESTIARY, SLICE C: ...and the Bog-Bound's Past Feeling, so a blow at or under it quotes 0.
+    return require("models.sloth_bog").pastFeeling(target,
+        require("models.morning_star").woundCap(target, Combat.mitigatedDamage(target, base, tags, opts, user)))
 end
 
 -- Pure: the damage `unit` striking a trap with `weapon` would deal -- the weapon's attack stat

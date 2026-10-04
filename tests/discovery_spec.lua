@@ -278,6 +278,9 @@ local TROPHIES = {
     -- Warden's, the yeti's roar as a Hunter's mantle, and the Dread's whiteout as a Ninja's cloak.
     "utility_sleepers_claws", "armor_hibernal_hide", "armor_yeti_hide_mantle", "armor_whiteout_cloak",
     -- end SLOTH'S BESTIARY, SLICE A
+    -- SLOTH'S BESTIARY, SLICE C (2026-10-04): the Bog Bodies' spear as a Sentinel's, the Cairn-Keeper's stone as a
+    -- Warlord's, the Frost Worm's note as a Shaman's, and the Noonday Demon's afternoon as an Inquisitor's charm.
+    "weapon_peat_black_spear", "utility_cairn_stone", "ability_worms_trill", "utility_meridian_charm",
 }
 
 local function vendorFor(class)

@@ -761,6 +761,11 @@ local CHARACTER_SILHOUETTE = {
     yeti = "lorc/monkey",
     dread_of_the_whiteout = "delapouite/gorilla",
     -- end SLOTH'S BESTIARY, SLICE A
+    -- SLOTH'S BESTIARY, SLICE C (2026-10-04): the Bog-Bound's soldier and keeper, the worm, and the noon.
+    bog_body = "lorc/bandaged",
+    cairn_keeper = "lorc/dread-skull",
+    frost_worm = "delapouite/worms",
+    noonday_demon = "lorc/diablo-skull",
 }
 
 -- Reverse index: the character key a discipline names as its `exemplar` -> the discipline id. Built from

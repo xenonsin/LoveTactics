@@ -1251,6 +1251,18 @@ Grade.TRAIT_GRADE = {
     trait_sleepers_claws =              1.0,  -- Sleeper's Claws -- idle turns bank extra bare-handed blows
     trait_hibernal_hide =               1.0,  -- Hibernal Hide -- the waking blow halved, the next blow +50%
     -- end SLOTH'S BESTIARY, SLICE A
+    -- SLOTH'S BESTIARY, SLICE C (2026-10-04): the Bog-Bound, the Frost Worm and the Noonday Demon. The organs are
+    -- bodies' own and never shelved. Of the drops: the Peat-Black Spear strikes a foe that settles in its reach,
+    -- the Cairn Stone is the Sire's Signet's ward at a reach of 3 with an anchor beside it, and the Meridian Charm
+    -- weighs an idle foe -3 Damage a stack.
+    trait_past_feeling =                0.0,  -- Past Feeling -- the Bog-Bound shrug a blow of 8 or less
+    trait_the_mire_holds =              0.0,  -- The Mire Holds -- 2 movement to step away from one
+    trait_deeper_peat =                 0.0,  -- Deeper Peat -- the Cairn-Keeper doubles both within 3
+    trait_death_throes_frost =          0.0,  -- Death Throes -- the Frost Worm freezes everything within 2
+    trait_the_noonday_demon =           0.0,  -- Listless -- the Noonday Demon's afternoon
+    trait_peat_black_spear =            1.0,  -- Peat-Black Spear -- a foe ending its turn in reach is struck
+    trait_cairn_stone =                 1.5,  -- Cairn Stone -- allies within 3 not moved, Charmed or Taunted
+    trait_meridian_charm =              1.0,  -- Meridian Charm -- idle foes within 3 grow Listless
 }
 
 -- Which of the weights above were ADOPTED from the classifier's seed rather than weighed one by

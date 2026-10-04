@@ -1475,4 +1475,19 @@ return {
     ["items/armor_yeti_hide_mantle.png"] = { icon = "delapouite/winter-hat", by = "hand" },
     ["items/armor_whiteout_cloak.png"] = { icon = "delapouite/ice-iris", by = "hand" },
     -- end SLOTH'S BESTIARY, SLICE A
+    -- SLOTH'S BESTIARY, SLICE C (2026-10-04): the Bog-Bound, the Frost Worm and the Noonday Demon -- the organs,
+    -- the bodies' own blows, and the three trophies.
+    ["items/utility_bog_bound.png"] = { icon = "delapouite/swamp", by = "hand" },
+    ["items/weapon_bog_spear.png"] = { icon = "lorc/halberd", by = "hand" },
+    ["items/weapon_peat_black_spear.png"] = { icon = "delapouite/sharp-halberd", by = "hand" },
+    ["items/utility_deeper_peat.png"] = { icon = "lorc/dripping-stone", by = "hand" },
+    ["items/weapon_grave_cold.png"] = { icon = "sbed/tombstone", by = "hand" },
+    ["items/utility_cairn_stone.png"] = { icon = "lorc/stone-tower", by = "hand" },
+    ["items/weapon_frost_worm_bite.png"] = { icon = "cathelineau/earth-worm", by = "hand" },
+    ["items/ability_the_trill.png"] = { icon = "lorc/sonic-boom", by = "hand" },
+    ["items/utility_rime_gut.png"] = { icon = "lorc/ice-bomb", by = "hand" },
+    ["items/ability_worms_trill.png"] = { icon = "lorc/brain-freeze", by = "hand" },
+    ["items/weapon_heat_of_the_day.png"] = { icon = "delapouite/striped-sun", by = "hand" },
+    ["items/utility_noonday_haze.png"] = { icon = "delapouite/aztec-calendar-sun", by = "hand" },
+    ["items/utility_meridian_charm.png"] = { icon = "delapouite/tribal-pendant", by = "hand" },
 }
