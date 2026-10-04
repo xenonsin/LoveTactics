@@ -1091,6 +1091,18 @@ end
 -- this refuses only an act that hurts. A swooning priest still heals, a swooning knight still braces
 -- and still walks, and anybody can still cleanse -- which is the counterplay, since a Cure lifts it.
 -- It is Sleep with the turn left in the player's hands.
+-- SLOTH'S COLD, SLICE D (2026-10-04): the status on `unit` that forbids it to AID its allies (`forbidsAid` --
+-- Cold-Hearted, the Snow Queen's splinter), or nil. Swooning's mirror: that one refuses what hurts, this one
+-- refuses what helps. Read by Combat.itemBlockReason (a support cast that spreads), Combat.useItem and
+-- Combat.abilityTargets (any cast aimed at another ally).
+function Status.forbidsAid(unit)
+    for _, s in ipairs((unit and unit.statuses) or {}) do
+        if s.def.forbidsAid then return s end
+    end
+    return nil
+end
+-- end SLOTH'S COLD, SLICE D
+
 function Status.forbidsHarm(unit)
     for _, s in ipairs((unit and unit.statuses) or {}) do
         if s.def.disablesHarm then return s end
@@ -1617,7 +1629,10 @@ end
 -- `serial` is the combat's status stamp at the moment the blow LANDED (see Status.apply): a status
 -- applied after that -- by the same cast, before its held blows were reported -- did not feel the blow and
 -- is skipped. Nil (an unheld, unstamped report) reports to everything, as it always did.
-function Status.onDamaged(combat, unit, amount, tags, serial)
+-- SLOTH'S COLD, SLICE D (2026-10-04): `sparesSleep` -- the blow was one that does not wake a sleeper (the
+-- Yuki-onna's kiss, the Mare's ride, the Mare's Bridle; Combat.sparesSleep). Handed to the hook as
+-- ctx.sparesSleep, and read by Sleep alone.
+function Status.onDamaged(combat, unit, amount, tags, serial, sparesSleep)
     -- RE-ENTRY GUARD, and it is load-bearing rather than defensive. A hook here is free to deal damage
     -- (Rimebitten's cold bites the bearer on every hit), and that damage re-enters Combat.dealFlatDamage,
     -- which fires this hook again -- on the same body, for the bite it just landed. Without the latch
@@ -1635,6 +1650,7 @@ function Status.onDamaged(combat, unit, amount, tags, serial)
         if s.def.onDamaged and not (serial and s.serial and s.serial > serial) then
             local ctx = ctxFor(combat, unit, s)
             ctx.amount, ctx.tags = amount, tags
+            ctx.sparesSleep = sparesSleep -- SLOTH'S COLD, SLICE D
             s.def.onDamaged(ctx)
         end
     end

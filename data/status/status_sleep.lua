@@ -54,6 +54,9 @@ return {
         -- Woken. The refund itself is onExpire's job -- ctx.expire routes through Status.remove, which
         -- fires it on the way out -- so a blow and a Cure settle the debt through the same line.
         if not ctx.status.slept then return end
+        -- SLOTH'S COLD (2026-10-04): a blow that spares a sleeper does not wake it -- the Yuki-onna's kiss, a
+        -- sleeper the Mare is riding, a striker wearing the Mare's Bridle (Combat.sparesSleep).
+        if ctx.sparesSleep then return end
         ctx.log("status", string.format("%s is jolted awake!",
             (ctx.unit.char and ctx.unit.char.name) or "Unit"))
         ctx.expire()

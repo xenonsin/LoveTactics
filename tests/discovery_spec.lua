@@ -170,6 +170,8 @@ local TROPHIES = {
     "utility_oni_horn", "weapon_odachi", "consumable_questionable_stew", "ability_steel_thread",
     "ability_purifying_bell", "weapon_instant_draw_katana", "weapon_morning_star", "utility_borrowed_eyes",
     "ability_black_flame_dome",
+    -- SLOTH'S COLD, SLICE D (2026-10-04): the Yuki-onna's breath, the Snow Queen's splinter, the Mare's bridle.
+    "utility_white_silence", "ability_splinter_of_the_mirror", "utility_mares_bridle",
     -- The Elves of Pride's approach (2026-09-30): the Retainer's livery, the Longbow's bow, the Bladedancer's veil,
     -- the Starcaller's sandals, the Highborn's circlet, the Elf-Lord's laurel.
     "armor_livery_of_the_house", "weapon_heartstring_longbow", "armor_dancers_veil", "armor_skywalkers_sandals",

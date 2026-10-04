@@ -122,6 +122,31 @@ function Wall.dispelIn(combat, cells)
     return n
 end
 
+-- SLOTH'S COLD, SLICE D (2026-10-04): melt every wall on `cells` whose blueprint names one of `tags` in its
+-- `meltsUnder` list -- the Glass Palace's ice (data/walls/ice_wall.lua) goes whole under fire, whatever its
+-- health. Called beside Hazard.douse on a cast's footprint, and by Combat.strikeWall for a blow that carries the
+-- element. Returns the number melted.
+function Wall.meltIn(combat, cells, tags)
+    local n = 0
+    if not tags then return 0 end
+    for _, c in ipairs(cells or {}) do
+        local w = Wall.at(combat, c.x, c.y)
+        local melts = w and w.def.meltsUnder
+        if melts then
+            local hit = false
+            for _, m in ipairs(melts) do
+                for _, t in ipairs(tags) do if t == m then hit = true end end
+            end
+            if hit then
+                destroy(combat, w, string.format("%s melts.", w.name or "The wall"))
+                n = n + 1
+            end
+        end
+    end
+    return n
+end
+-- end SLOTH'S COLD, SLICE D
+
 -- Count timed walls down by `elapsed` ticks; fade any whose time is up. Called from Combat.rebase
 -- with the ticks that just elapsed, beside Status.tick / Hazard.tick.
 function Wall.tick(combat, elapsed)

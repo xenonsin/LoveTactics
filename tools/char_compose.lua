@@ -641,6 +641,11 @@ local CHARACTER_SILHOUETTE = {
     troll_scarlord = "lorc/scar-wound",
     sloth_ogre = "lorc/falling-boulder",  -- what it does instead of walking
     -- end SLOTH'S TROLLS
+    -- SLOTH'S COLD, SLICE D (2026-10-04): the snow woman, the Queen of the glass palace, and the night-hag.
+    yuki_onna = "cathelineau/witch-face",     -- a woman's face in the snow, and nobody else's
+    snow_queen = "skoll/chess-queen",         -- the one piece on the board that moves every way
+    the_mare = "lorc/horse-head",             -- the night's mare, which was never a horse
+    -- end SLOTH'S COLD, SLICE D
 
     -- THE PRIDE CIRCLE. Four constructs and two humanoids, all of them armour of one sort or another.
     gilded_page = "lorc/armor-vest",

@@ -1143,6 +1143,16 @@ return {
     ["items/ability_cant_be_bothered.png"] = { icon = "lorc/ice-cube", by = "hand" },
     ["items/ability_ogres_heave.png"] = { icon = "delapouite/weight-lifting-up", by = "hand" },
     -- end SLOTH'S TROLLS
+    -- SLOTH'S COLD, SLICE D (2026-10-04): the Yuki-onna's, the Snow Queen's and the Mare's organs and drops.
+    ["items/weapon_snow_kiss.png"] = { icon = "delapouite/ice-spell-cast", by = "hand" },
+    ["items/utility_snow_sleep.png"] = { icon = "delapouite/person-in-bed", by = "hand" },
+    ["items/utility_white_silence.png"] = { icon = "sbed/flake", by = "hand" },
+    ["items/weapon_shard_bolt.png"] = { icon = "lorc/frozen-arrow", by = "hand" },
+    ["items/utility_glass_palace.png"] = { icon = "lorc/white-tower", by = "hand" },
+    ["items/ability_splinter_of_the_mirror.png"] = { icon = "delapouite/ice-iris", by = "hand" },
+    ["items/weapon_hags_weight.png"] = { icon = "delapouite/pillow", by = "hand" },
+    ["items/utility_mares_bridle.png"] = { icon = "delapouite/horse-head", by = "hand" },
+    -- end SLOTH'S COLD, SLICE D
     -- THE FACELESS OF ENVY (2026-10-03): the race's grant.
     ["items/utility_faceless_blood.png"] = { icon = "lorc/domino-mask", by = "hand" },
     -- SLICE F, ENVY'S GENERAL (2026-10-03): the Many Faced One's organ, its relic and its two pieces.

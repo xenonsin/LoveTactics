@@ -8671,12 +8671,26 @@ end
 --     the inline dispatch never reached a corpse;
 --   * a counter thrown during the flush finds the hold already popped, so ITS answer dispatches inline
 --     (the swing is not a cast) -- the recursion guards in models/trait.lua are unchanged.
+-- SLOTH'S COLD, SLICE D (2026-10-04): does this blow leave a sleeper asleep? Three things say so, and nothing
+-- else: the blow itself (`opts.sparesSleep` -- the Yuki-onna's kiss), its striker (a `sparesSleepers` trait --
+-- the Mare's Bridle), or the body it lands on (a sleeper the Mare is riding, while the Mare is beside it --
+-- status_hag_ridden). Read only by Sleep's own onDamaged, so every other status still hears the blow.
+function Combat.sparesSleep(combat, attacker, target, opts)
+    if opts and opts.sparesSleep then return true end
+    if attacker and Trait.flag(attacker, "sparesSleepers") then return true end
+    local ridden = target and Status.get(target, "status_hag_ridden")
+    local mare = ridden and target.riddenBy
+    if mare and mare.alive and Combat.unitGap(mare, target) <= 1 then return true end
+    return false
+end
+-- end SLOTH'S COLD, SLICE D
+
 local function dispatchAnswer(combat, held)
     Trait.onDamaged(combat, held.unit, held)
     -- The statuses riding the survivor get the same news, for the ones a blow is supposed to BREAK
     -- (Sleep). After the traits, so a reflex that answers the blow is not robbed of its trigger by the
     -- very hit that wakes its bearer -- the order the inline dispatch ran in, carried across the hold.
-    if held.wakes then Status.onDamaged(combat, held.unit, held.amount, held.tags, held.serial) end
+    if held.wakes then Status.onDamaged(combat, held.unit, held.amount, held.tags, held.serial, held.sparesSleep) end
     -- ...and the striker's ALLIES beside the struck body get their opening (Trait.onAllyStrike -- what a
     -- follow-up hangs on). Fired here, at the same settled moment onDamaged is, so a follow-up is judged
     -- by the board as it finally stands rather than mid-effect.
@@ -9290,7 +9304,8 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
         -- tree on exactly this beat -- data/status/status_heartbound.lua).
         raiseAnswer(combat, target, { amount = dmg, tags = tags, source = source, attacker = attacker, critical = crit or nil,
             blow = opts and opts.blowItem,
-            area = opts and opts.area, wakes = true })
+            area = opts and opts.area, wakes = true,
+            sparesSleep = Combat.sparesSleep(combat, attacker, target, opts) }) -- SLOTH'S COLD, SLICE D
         applyKnockback()
         return dmg
     end
@@ -9355,7 +9370,8 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
         -- supposed to BREAK (Sleep) -- raised together so the hold cannot separate them.
         raiseAnswer(combat, target, { amount = dmg, tags = tags, source = source, attacker = attacker, critical = crit or nil,
             blow = opts and opts.blowItem,
-            area = opts and opts.area, wakes = true })
+            area = opts and opts.area, wakes = true,
+            sparesSleep = Combat.sparesSleep(combat, attacker, target, opts) }) -- SLOTH'S COLD, SLICE D
         applyKnockback()
     end
     return dmg
@@ -11211,6 +11227,8 @@ function Combat.abilityTargets(combat, unit, item)
             -- `excludeSelf`: an ally-target cast that means somebody ELSE (the Lash: a goblin whipped into
             -- acting again, never the whipper).
             if valid and ab.excludeSelf and other == unit then valid = false end
+            -- SLOTH'S COLD, SLICE D: a Cold-Hearted body aims nothing at an ally (Combat.useItem refuses it too).
+            if valid and other ~= unit and other.side == unit.side and Status.forbidsAid(unit) then valid = false end
             -- `onlyAt(unit, other)`: a cast that means one KIND of body (a vampire's Feed drinks only from a
             -- thrall; Wing-Swap trades only with a Familiar). Refused in Combat.useItem as well.
             if valid and ab.onlyAt and not ab.onlyAt(unit, other) then valid = false end
@@ -12344,6 +12362,14 @@ function Combat.itemBlockReason(unit, item)
         return { kind = "swooning", reason = "swooning", text = "Swooning -- cannot bring itself to strike" }
     end
 
+    -- SLOTH'S COLD, SLICE D (2026-10-04): COLD-HEARTED (status_cold_hearted) refuses a kindness that SPREADS --
+    -- a support cast with an area, or one aimed only at somebody else. A self-only cast is still the body's own;
+    -- a cast aimed at one ally is refused at the aim (Combat.useItem, Combat.abilityTargets).
+    if Status.forbidsAid(unit) and Combat.isSupportAbility(ab) and (ab.aoe or ab.excludeSelf) then
+        return { kind = "cold_hearted", reason = "cold-hearted", text = "Cold-Hearted -- cannot aid an ally" }
+    end
+    -- end SLOTH'S COLD, SLICE D
+
     -- BLOODLUST (models/thirst.lua): a body in it may use only its bite -- a weapon, or its bare teeth.
     if Status.has(unit, "status_bloodlust") and item.type ~= "weapon" then
         return { kind = "bloodlust", reason = "bloodlust", text = "Bloodlust -- only a weapon" }
@@ -13137,6 +13163,10 @@ function Combat.useItem(combat, unit, item, tx, ty, windup, dest, spend)
     if target and not seesRed then
         if ab.target == "enemy" and target.side == unit.side then return false, "invalid target" end
         if ab.target == "ally" and target.side ~= unit.side then return false, "invalid target" end
+    end
+    -- SLOTH'S COLD, SLICE D: Cold-Hearted aims nothing at an ally -- no heal, no buff, no swap.
+    if target and target ~= unit and target.side == unit.side and Status.forbidsAid(unit) then
+        return false, "cold-hearted"
     end
     if target then
         if ab.target == "self" and target ~= unit then return false, "invalid target" end
@@ -14271,6 +14301,8 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
     -- `dousedByTags`, so a fire cast burns off a web or a briar (both declare fire) and a slash does
     -- nothing to anything. It was gated on water back when water was the only element any zone named.
     Hazard.douse(combat, footprint, castTags)
+    -- SLOTH'S COLD, SLICE D: ...and a wall that melts under the cast's element goes too (the Glass Palace's ice).
+    Wall.meltIn(combat, footprint, castTags)
 
     -- A DAMAGING cast breaks what STANDS in its footprint. Props are furniture, not bodies, so
     -- fx.aoeUnits never turns one up and a data-file effect that iterates its victims will never hit
@@ -14592,7 +14624,10 @@ function Combat.strikeWall(combat, unit, weapon, x, y)
 
     Combat.logEvent(combat, "trap", string.format("%s strikes %s.", unitName(unit), wall.name or "a wall"), unit)
     Combat.pushFx(combat, { type = "cast", unit = unit, tx = x, ty = y, support = false, tags = Combat.fxTags(weapon, ab) })
-    Wall.damage(combat, wall, Combat.computeTrapDamage(unit, weapon))
+    -- SLOTH'S COLD, SLICE D: a blow carrying what the wall melts under takes it whole.
+    if Wall.meltIn(combat, { { x = x, y = y } }, collectTags(weapon, nil)) == 0 then
+        Wall.damage(combat, wall, Combat.computeTrapDamage(unit, weapon))
+    end
 
     endTurn(combat, unit, ab.speed or Combat.DEFAULT_SPEED)
     return true, { wall = wall }

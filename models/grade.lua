@@ -572,6 +572,14 @@ Grade.TRAIT_GRADE = {
     trait_bridge_tax =                  1.5,  -- Bridge Tax -- a foe's ability within 2 is struck first, for a swing
     trait_grafted_troll_arm =           1.5,  -- Grafted Troll Arm -- a tenth a turn; heals from allies do nothing
     -- end SLOTH'S TROLLS
+    -- SLOTH'S COLD, SLICE D (2026-10-04): the Glass Palace and Hag-Ridden are bodies' own. Of the drops: Snow-Sleep
+    -- (White Silence) is a Sleep laid on whoever stands still near the bearer over three turns; the Bridle keeps a
+    -- Sleep the company laid from being undone by its own blows.
+    trait_snow_sleep =                  1.0,  -- Snow-Sleep -- a foe that stands still within 3 gains Drowsy
+    trait_glass_palace =                0.0,  -- The Glass Palace -- the Snow Queen raises ice walls through the company
+    trait_hag_ridden =                  0.0,  -- Hag-Ridden -- the Mare rides a sleeper
+    trait_mares_bridle =                0.5,  -- The Mare's Bridle -- your blows do not wake a sleeping foe
+    -- end SLOTH'S COLD, SLICE D
     -- SLICE F, ENVY'S GENERAL (2026-10-03): its organ's opener is the body's own; its relic is a whole kit per kill.
     trait_the_many_faced =              0.0,  -- The Many Faced -- the Many Faced One's forms (a body's organ)
     trait_pretenders_crown =            1.0,  -- Pretender's Crown -- wear what you killed until the next kill
