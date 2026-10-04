@@ -13153,6 +13153,14 @@ function Combat.useItem(combat, unit, item, tx, ty, windup, dest, spend)
     -- nowhere later -- every tax, discount and inversion has landed by the second reading. Paid at
     -- COMMIT rather than at resolution, because that is when the pool empties: a channel that is
     -- interrupted still emptied it, and the measure answers the spending, not the spell.
+    -- SLOTH'S TROLLS (slice B, 2026-10-04): THE TOLL. A keeper standing over this body strikes it before the use
+    -- resolves (models/sloth_trolls.lua). Asked here -- validated, nothing yet spent -- so a body the toll fells
+    -- has paid for nothing and its action never arrives; the turn is over with it, as a body cut down on its
+    -- approach is (true, so no caller reads it as a refusal and asks the corpse to choose again).
+    if require("models.sloth_trolls").collect(combat, unit, item) and not unit.alive then
+        return true, { damageDealt = 0, healed = 0, tolled = true }
+    end
+    -- end SLOTH'S TROLLS
     local manaBefore = Combat.resource(unit.char, "mana")
     Combat.spendCosts(combat, unit, ab)
     drinkSpentMana(combat, unit, item, manaBefore)
@@ -13668,6 +13676,16 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
         end,
         heal = function(tgt, amount)
             if not tgt then return 0 end
+            -- SLOTH'S TROLLS (slice B, 2026-10-04): the Grafted Troll Arm's price. A heal from another body of
+            -- the bearer's side does nothing (`refusesAllyHeals`). Here, because this is the heal path that
+            -- knows who the healer is.
+            if tgt ~= unit and tgt.side == unit.side and (amount or 0) > 0
+                and Trait.flag(tgt, "refusesAllyHeals") then
+                Combat.logEvent(combat, "status",
+                    string.format("%s's grafted arm takes nothing from an ally.", unitName(tgt)), tgt)
+                return 0
+            end
+            -- end SLOTH'S TROLLS
             local h = Combat.applyHeal(combat, tgt, amount)
             result.healed = result.healed + h
             -- THE SHARED LEDGER (the Apothecary's): a heal that landed also lends the patient a share

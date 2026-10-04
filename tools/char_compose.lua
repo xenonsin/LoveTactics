@@ -634,6 +634,13 @@ local CHARACTER_SILHOUETTE = {
     -- ground and the mini sin are what remain.
     the_long_winter = "lorc/icicles-fence",   -- the ground it leaves, not the shape it has
     the_late_watch = "lorc/frozen-block",     -- a relief that came too late to be one
+    -- SLOTH'S TROLLS (slice B, 2026-10-04): the troll itself, the one under the bridge, the one that scars, and
+    -- the ogre that will not get up (a body of its own, so it does not borrow the reference ogre's picture).
+    troll = "skoll/troll",
+    toll_troll = "delapouite/rope-bridge",
+    troll_scarlord = "lorc/scar-wound",
+    sloth_ogre = "lorc/falling-boulder",  -- what it does instead of walking
+    -- end SLOTH'S TROLLS
 
     -- THE PRIDE CIRCLE. Four constructs and two humanoids, all of them armour of one sort or another.
     gilded_page = "lorc/armor-vest",

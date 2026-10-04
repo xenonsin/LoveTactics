@@ -563,6 +563,15 @@ Grade.TRAIT_GRADE = {
     trait_a_thousand_faces =            1.0,  -- A Thousand Faces -- the race: wears the face that answers the nearest foe
     -- SLOTH'S BESTIARY, FOUNDATION (2026-10-04): the troll race. Not playable, so a body's organ and never shelved.
     trait_indifferent =                 0.0,  -- Indifferent -- the troll race: never dodges, regrows unless burned
+    -- SLOTH'S TROLLS (slice B, 2026-10-04). The Toll is the Toll-Troll's organ and never shelved. Of the drops:
+    -- Scarring Blows is the Unclosing Parry's wound on your own swing, a turn long (and the Scarlord's organ carries
+    -- it too); Bridge Tax is Keen Senses narrowed to abilities within 2; the Grafted Arm is a tenth a turn, priced
+    -- by refusing every ally's heal.
+    trait_the_toll =                    0.0,  -- The Toll -- the Toll-Troll strikes first whatever acts in its reach
+    trait_scarring_blows =              1.5,  -- Scarring Blows -- a struck foe cannot be healed until your next turn
+    trait_bridge_tax =                  1.5,  -- Bridge Tax -- a foe's ability within 2 is struck first, for a swing
+    trait_grafted_troll_arm =           1.5,  -- Grafted Troll Arm -- a tenth a turn; heals from allies do nothing
+    -- end SLOTH'S TROLLS
     -- SLICE F, ENVY'S GENERAL (2026-10-03): its organ's opener is the body's own; its relic is a whole kit per kill.
     trait_the_many_faced =              0.0,  -- The Many Faced -- the Many Faced One's forms (a body's organ)
     trait_pretenders_crown =            1.0,  -- Pretender's Crown -- wear what you killed until the next kill

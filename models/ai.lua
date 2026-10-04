@@ -1907,6 +1907,11 @@ function AI.preempt(combat, unit)
     local banking = require("models.sloth_beasts").plan(combat, unit)
     if banking then return banking end
     -- end SLOTH'S BESTIARY, SLICE A
+    -- SLOTH'S TROLLS (slice B, 2026-10-04): CAN'T BE BOTHERED. The Ogre never walks: it throws whoever is beside it
+    -- at the farthest of the company in reach, or a slab of ice with nobody beside it (models/sloth_trolls.lua).
+    local heave = require("models.sloth_trolls").ogrePlan(combat, unit)
+    if heave then return heave end
+    -- end SLOTH'S TROLLS
     -- ON THE CHAIN (data/traits/trait_the_chain.lua): the War Ogre goes for whatever its Handler last struck.
     if unit.side ~= "party" and Trait.flag(unit, "chained") and unit.pointedAt and unit.pointedAt.alive
         and unit.pointedAt.side ~= unit.side then

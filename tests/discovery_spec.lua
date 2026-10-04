@@ -264,6 +264,11 @@ local TROPHIES = {
     "utility_stone_heart", "ability_time_was", "utility_time_is_past", "utility_echoing_shell",
     "utility_weavers_shuttle", "utility_iron_thread",
     -- end ENVY'S SEAT, SLICE C
+    -- SLOTH'S TROLLS (slice B, 2026-10-04): the troll's blood as an Apothecary's and its arm as a Plague Knight's,
+    -- the toll as a Mammonite's tax, the Scarlord's club as a fighter's, and the Ogre's throw as a Barbarian's.
+    "consumable_troll_blood", "utility_grafted_troll_arm", "utility_bridge_tax", "weapon_scarring_club",
+    "ability_ogres_heave",
+    -- end SLOTH'S TROLLS
     -- ENVY'S APPROACH ONE-OFFS (slice D, 2026-10-03): the Evil Eye's charm as an Exorcist's, the Mirage's trick as a
     -- Ninja's, the Patchwork's stitch as an Apothecary's, the Shade's lee as an Assassin's cloak, the Weighers' scale
     -- as an Inquisitor's, the Green-Eyed Monster's roar as a Barbarian's, and the eels' hide as a Skirmisher's boots.

@@ -1130,6 +1130,19 @@ return {
     ["items/utility_elf_blood.png"] = { icon = "delapouite/elf-ear", by = "hand" },
     -- SLOTH'S BESTIARY, FOUNDATION (2026-10-04): the troll race's organ, Indifferent.
     ["items/utility_troll_blood.png"] = { icon = "sbed/regeneration", by = "hand" },
+    -- SLOTH'S TROLLS (slice B, 2026-10-04): the trolls' clubs and organs, the Ogre's throw, and the five trophies.
+    ["items/weapon_troll_club.png"] = { icon = "delapouite/3d-hammer", by = "hand" },
+    ["items/weapon_bridge_maul.png"] = { icon = "delapouite/thor-hammer", by = "hand" },
+    ["items/utility_the_toll.png"] = { icon = "delapouite/arch-bridge", by = "hand" },
+    ["items/utility_bridge_tax.png"] = { icon = "delapouite/price-tag", by = "hand" },
+    ["items/weapon_scarlords_club.png"] = { icon = "lorc/claw-hammer", by = "hand" },
+    ["items/utility_scarring_blows.png"] = { icon = "lorc/spotted-wound", by = "hand" },
+    ["items/weapon_scarring_club.png"] = { icon = "delapouite/stake-hammer", by = "hand" },
+    ["items/consumable_troll_blood.png"] = { icon = "delapouite/water-flask", by = "hand" },
+    ["items/utility_grafted_troll_arm.png"] = { icon = "delapouite/forearm", by = "hand" },
+    ["items/ability_cant_be_bothered.png"] = { icon = "lorc/ice-cube", by = "hand" },
+    ["items/ability_ogres_heave.png"] = { icon = "delapouite/weight-lifting-up", by = "hand" },
+    -- end SLOTH'S TROLLS
     -- THE FACELESS OF ENVY (2026-10-03): the race's grant.
     ["items/utility_faceless_blood.png"] = { icon = "lorc/domino-mask", by = "hand" },
     -- SLICE F, ENVY'S GENERAL (2026-10-03): the Many Faced One's organ, its relic and its two pieces.

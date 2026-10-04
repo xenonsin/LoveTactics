@@ -242,6 +242,10 @@ return {
                 -- ENVY'S MIRAGE (slice D, 2026-10-03): a cast of one that is four bodies. It raises its own three
                 -- illusions at the bell, and an escort would be more things to sort beside "which one is real".
                 encounter_envy_the_mirage = true,
+                -- SLOTH'S TROLLS (slice B, 2026-10-04): a cast fixed by review. The Heave is an Ogre, a Scarlord and
+                -- two Trolls -- the ogre's ammunition, and one fewer is a lesson it may never get to teach.
+                encounter_sloth_the_heave = true,
+                -- end SLOTH'S TROLLS
             }
             -- THE ROSTER, NOT THE HEAD-COUNT. Asked as "is this the same fight on every seed", because
             -- a stop is allowed to roll its SHAPE while holding its size: the Skeleton King's court is
