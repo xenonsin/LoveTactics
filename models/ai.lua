@@ -1902,6 +1902,11 @@ function AI.preempt(combat, unit)
     -- for the Fairest, and the Green-Eyed Monster roars at a pair standing side by side.
     local envy = require("models.envy_oneoffs").plan(combat, unit)
     if envy then return envy end
+    -- SLOTH'S BESTIARY, SLICE A (2026-10-04): a ground sloth with no foe in its reach does nothing at all, and banks
+    -- the turn (models/sloth_beasts.lua). Never a body the player drives.
+    local banking = require("models.sloth_beasts").plan(combat, unit)
+    if banking then return banking end
+    -- end SLOTH'S BESTIARY, SLICE A
     -- ON THE CHAIN (data/traits/trait_the_chain.lua): the War Ogre goes for whatever its Handler last struck.
     if unit.side ~= "party" and Trait.flag(unit, "chained") and unit.pointedAt and unit.pointedAt.alive
         and unit.pointedAt.side ~= unit.side then

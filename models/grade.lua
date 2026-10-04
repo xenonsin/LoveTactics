@@ -1229,6 +1229,19 @@ Grade.TRAIT_GRADE = {
     trait_nazar =                       1.0,  -- Nazar -- the first debuff or curse each fight is turned aside
     trait_shade_cloak =                 1.0,  -- Shade Cloak -- beside a wall, Unseen
     trait_scale_of_hearts =             1.0,  -- Scale of Hearts -- +4 against a foe with more current health
+
+    -- SLOTH'S BESTIARY, SLICE A (2026-10-04): the ground sloths and the yeti. The bank and the drag are bodies' own.
+    -- The roar and the whiteout are each a body's AND a drop's (the mantle and the cloak carry them through
+    -- traitParams or as they stand), so they are weighed as the drops: a Root on one lonely foe within 3 a turn, and
+    -- the Shadow Mantle's concealment at 2. Sleeper's Claws is up to three more bare-handed landings bought with
+    -- idle turns; the Hibernal Hide halves one waking blow and adds half to the next.
+    trait_banked_turns =                0.0,  -- Banked Turns -- the sloths' bank (a body's organ)
+    trait_drag_into_the_white =         0.0,  -- Drag Into the White -- the Dread's haul (a body's organ)
+    trait_whiteout_roar =               1.0,  -- Whiteout Roar -- lonely foes nearby are Rooted (the Yeti-Hide Mantle)
+    trait_whiteout =                    1.0,  -- Whiteout -- Unseen to foes beyond 2 (the Whiteout Cloak)
+    trait_sleepers_claws =              1.0,  -- Sleeper's Claws -- idle turns bank extra bare-handed blows
+    trait_hibernal_hide =               1.0,  -- Hibernal Hide -- the waking blow halved, the next blow +50%
+    -- end SLOTH'S BESTIARY, SLICE A
 }
 
 -- Which of the weights above were ADOPTED from the classifier's seed rather than weighed one by

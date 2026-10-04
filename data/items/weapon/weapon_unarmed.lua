@@ -33,6 +33,17 @@ return {
             -- ...plus the arms an asura grows as its chi rises (models/asura.lua; Furor, the Thousand-Armed).
             local hits = 1 + ((fx.user.unarmedBonus and fx.user.unarmedBonus.hits) or 0)
                 + require("models.asura").grownHits(fx.user)
+            -- SLOTH'S BESTIARY, SLICE A (2026-10-04): ...and the blows a monk's Sleeper's Claws banked on the turns
+            -- it did not attack (status_banked), spent whole by this strike. Through fx.clearStatus, which the
+            -- previews hold inert, so a hover quotes the flurry and spends nothing.
+            if require("models.trait").flag(fx.user, "spendsBankOnFist") then
+                local banked = require("models.bank").count(fx.user)
+                if banked > 0 then
+                    hits = hits + banked
+                    fx.clearStatus(fx.user, "status_banked")
+                end
+            end
+            -- end SLOTH'S BESTIARY, SLICE A
             for _ = 1, hits do
                 if fx.target and fx.target.alive then fx.damage(fx.target) end
             end

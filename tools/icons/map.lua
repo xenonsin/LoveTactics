@@ -1448,4 +1448,18 @@ return {
     ["items/ability_jealous_roar.png"] = { icon = "delapouite/unbalanced", by = "hand" },
     ["items/weapon_eel_surge.png"] = { icon = "delapouite/shark-bite", by = "hand" },
     ["items/armor_eel_skin_boots.png"] = { icon = "delapouite/chelsea-boot", by = "hand" },
+    -- SLOTH'S BESTIARY, SLICE A (2026-10-04): the ground sloths' and the yeti's organs and blows, and four trophies.
+    ["items/utility_banked_turns.png"] = { icon = "delapouite/pillow", by = "hand" },
+    ["items/utility_deep_bank.png"] = { icon = "delapouite/person-in-bed", by = "hand" },
+    ["items/weapon_ground_sloth_claws.png"] = { icon = "lorc/triple-claws", by = "hand" },
+    ["items/weapon_megatherium_sweep.png"] = { icon = "lorc/radar-sweep", by = "hand" },
+    ["items/weapon_yeti_claws.png"] = { icon = "lorc/shining-claw", by = "hand" },
+    ["items/utility_whiteout_roar.png"] = { icon = "delapouite/ice-spell-cast", by = "hand" },
+    ["items/utility_the_whiteout.png"] = { icon = "sbed/flake", by = "hand" },
+    ["items/utility_drag_into_the_white.png"] = { icon = "delapouite/pulley-hook", by = "hand" },
+    ["items/utility_sleepers_claws.png"] = { icon = "delapouite/brass-knuckles", by = "hand" },
+    ["items/armor_hibernal_hide.png"] = { icon = "lorc/moon", by = "hand" },
+    ["items/armor_yeti_hide_mantle.png"] = { icon = "delapouite/winter-hat", by = "hand" },
+    ["items/armor_whiteout_cloak.png"] = { icon = "delapouite/ice-iris", by = "hand" },
+    -- end SLOTH'S BESTIARY, SLICE A
 }

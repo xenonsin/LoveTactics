@@ -923,6 +923,11 @@ function Status.damageTakenScale(unit, attacker)
     local scale = 1
     for _, s in ipairs((unit and unit.statuses) or {}) do
         if s.def.damageTakenScale then scale = scale * s.def.damageTakenScale end
+        -- SLOTH'S BESTIARY, SLICE A (2026-10-04): ...or one INSTANCE's, a rider handed to a status that does not
+        -- otherwise scale anything -- the Hibernal Hide pads the Sleep it lands under, so the blow that wakes the
+        -- wearer is halved and the padding leaves with the sleep (data/traits/trait_hibernal_hide.lua).
+        if s.damageTakenScale then scale = scale * s.damageTakenScale end
+        -- end SLOTH'S BESTIARY, SLICE A
         -- ...EXCEPT FROM ONE BODY (the orc Pit-Fighter's Challenge, the Pit-Fighter's Belt): the share is
         -- taken off every blow but the one struck by the instance's `exempt`. Asked only when the blow has a
         -- striker to compare -- a trap, a burn or a hover with no attacker in hand reads it as full.

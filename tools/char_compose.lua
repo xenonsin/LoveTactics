@@ -747,6 +747,13 @@ local CHARACTER_SILHOUETTE = {
     jackal_weigher = "delapouite/anubis",
     green_eyed_monster = "lorc/eyestalk",
     sand_eel = "delapouite/eel",
+    -- SLOTH'S BESTIARY, SLICE A (2026-10-04): the ground sloths and the yeti. The mammoth stands in for the
+    -- Megatherium, the Ice Age's other giant; the matriarch is the bigger ape.
+    ground_sloth = "caro-asercion/sloth",
+    old_sloth = "delapouite/mammoth",
+    yeti = "lorc/monkey",
+    dread_of_the_whiteout = "delapouite/gorilla",
+    -- end SLOTH'S BESTIARY, SLICE A
 }
 
 -- Reverse index: the character key a discipline names as its `exemplar` -> the discipline id. Built from
