@@ -783,7 +783,7 @@ local CHARACTER_SILHOUETTE = {
     -- purse that climbs out of a fallen keeper, and Mora's gate.
     toll_collector = "delapouite/scroll-quill",
     bailiff = "delapouite/keyring",
-    outrider = "lorc/horse-head",
+    outrider = "skoll/mounted-knight", -- integration: the Mare already wears the horse's head
     the_due = "badges/purse",
     mora = "delapouite/india-gate",
     -- end SLOTH'S TOLLKEEPERS, SLICE F

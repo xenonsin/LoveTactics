@@ -251,6 +251,13 @@ return {
                 -- Trill is a Frost Worm with two Bog Bodies holding the lanes.
                 encounter_sloth_past_caring = true,
                 encounter_sloth_the_trill = true,
+                -- SLOTH'S BESTIARY, INTEGRATION (2026-10-04): the three fights whose bodies came from two slices,
+                -- at the counts the review approved. Can't Be Bothered is the Ogre and two Ground Sloths (one sloth
+                -- and it has nobody to be thrown at); the Long Afternoon is the Demon, a Scarlord and one Troll; the
+                -- White Road is Yuki-onna and two Yeti (the pair she cannot sleep and they cannot root).
+                encounter_sloth_cant_be_bothered = true,
+                encounter_sloth_the_long_afternoon = true,
+                encounter_sloth_the_white_road = true,
             }
             -- THE ROSTER, NOT THE HEAD-COUNT. Asked as "is this the same fight on every seed", because
             -- a stop is allowed to roll its SHAPE while holding its size: the Skeleton King's court is

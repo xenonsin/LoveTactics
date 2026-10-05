@@ -119,8 +119,9 @@ end
 -- Is `item` an ability whose blow can be thrown again? An ability (never a weapon swing) that declares damage.
 -- What does not wound -- a heal, a ward, a debuff -- has nothing to repeat at the caster.
 function EnvySeat.repeatable(item)
+    -- `and` hands back `false` for a non-ability, not nil, so the guard asks for a table rather than for non-nil.
     local ab = item and item.type == "ability" and item.activeAbility
-    return ab ~= nil and type(ab.damage) == "number" and ab.damage > 0
+    return type(ab) == "table" and type(ab.damage) == "number" and ab.damage > 0
 end
 
 -- `from` throws the blow of `item` at `at`, from its own tile, at `scale` of the ability's own damage. A

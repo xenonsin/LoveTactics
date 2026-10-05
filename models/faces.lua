@@ -80,20 +80,45 @@ function Faces.eligible()
     return pool
 end
 
+-- A face's place in one deal: a hash of the deal's salt and the face's own id, so where a face ranks depends on
+-- nothing but itself. Plain arithmetic, no bit library (the web engine is Lua 5.1), and every product stays
+-- under 2^53. The string pass folds the bytes; the Park-Miller rounds after it spread the fold, because the
+-- pass alone ranks ids that share a prefix next to each other.
+local function rank(salt, id)
+    local s = tostring(salt) .. ":" .. tostring(id)
+    local h = 5381
+    for i = 1, #s do h = (h * 33 + s:byte(i)) % 4294967291 end
+    h = h % 2147483647
+    if h == 0 then h = 1 end
+    for _ = 1, 3 do h = (h * 16807) % 2147483647 end
+    return h
+end
+
 -- Deal `n` distinct faces into `unit.faceHand`, off the fight's own seeded roll. `from` narrows the deck (the
 -- Champion's hand is the rift's champions, not the whole bestiary).
+--
+-- RANKED, NOT DRAWN BY POSITION (Sloth's Bestiary integration, 2026-10-04). The deal used to take `n` seeded
+-- indices into the sorted deck, so every body added ANYWHERE in the bestiary shifted every index and re-dealt
+-- every Faceless fight in the game -- each new circle silently re-measured Envy (slice E had to fence the Old
+-- Spruce out, and the next line pushed The One Who Has Not Acted past the skirmish budget on a hand of three
+-- faces none of which was new). Now the fight's roll is drawn ONCE as a salt and every face is ranked by its own
+-- hash against it: a new body changes a hand only when it ranks into it.
 function Faces.deal(combat, unit, n, from)
     local Combat = require("models.combat")
     local deck = {}
     for _, id in ipairs(from or Faces.eligible()) do
         if Character.defs[id] then deck[#deck + 1] = id end
     end
-    local hand = {}
     n = math.min(n or Faces.HAND, #deck)
-    for _ = 1, n do
-        local i = Combat.roll(combat, #deck)
-        hand[#hand + 1] = table.remove(deck, i)
-    end
+    local salt = Combat.roll(combat, 2147483646)
+    local keyed = {}
+    for _, id in ipairs(deck) do keyed[#keyed + 1] = { id = id, r = rank(salt, id) } end
+    table.sort(keyed, function(a, b)
+        if a.r ~= b.r then return a.r < b.r end
+        return a.id < b.id
+    end)
+    local hand = {}
+    for i = 1, n do hand[i] = keyed[i].id end
     unit.faceHand = hand
     return hand
 end

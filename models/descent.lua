@@ -641,9 +641,9 @@ Descent.SINS = {
     { id = "sloth", name = "Sloth", vendor = "bastion", biome = "tundra",
         scene = "conversation_descent_sloth",
         -- DESIDIA, THE DREAMER (2026-10-04, "Sloth's Bestiary", slice G; models/desidia.lua), on Acedia's id: a god
-        -- asleep under the glacier, a 3x3 face at the far edge. The escort slot is the circle's own stock standing
-        -- in for the Mare, which another slice builds; the coordinator swaps it in at integration.
-        guardian = { lead = "character_general_sloth", filler = "character_ice_elemental" },
+        -- asleep under the glacier, a 3x3 face at the far edge. Her escort is the Mare, the nightmare that rides the
+        -- sleepers she makes.
+        guardian = { lead = "character_general_sloth", filler = "character_the_mare" },
         -- NOTHING. SHE IS ASLEEP AND THE STAIR STANDS OPEN.
         --
         -- The only gate that is a pure reading of its own sin, and the one to protect in review: the
@@ -653,27 +653,22 @@ Descent.SINS = {
         -- than a formality. Every other circle asks something; this one asks whether you want to.
         gate = { kind = "none" },
         -- THE SANDMAN HOLDS THE LIEUTENANT'S STAIR (2026-10-04, "Sloth's Bestiary", slice G; models/sandman.lua):
-        -- her herald, whose sleep is the first taste of hers. His swarm is the Poppy Moths, which another slice
-        -- builds; the circle's ice elemental stands in until the coordinator swaps them in at integration.
-        minor = { lead = "character_the_sandman", filler = "character_ice_elemental" },
-        -- NO `approach`, AND NOW NOTHING STANDS ON THAT FLOOR AT ALL. The Winter Hart is gone, so the
-        -- Long Winter is the tundra's only elite -- and under one elite, one floor it can stand only on
-        -- the rung it is billed at (the blueprint's `rung`). Sloth's approach floor seats NO elite.
+        -- her herald, whose sleep is the first taste of hers. His swarm is the Poppy-Moths, which put to sleep
+        -- whatever strikes them.
+        minor = { lead = "character_the_sandman", filler = "character_poppy_moth" },
+        -- THE TUNDRA IS FULL NOW ("Sloth's Bestiary", 2026-10-04). Until it, this circle was the loudest of
+        -- the seven: its whole rollable cast was three slimes, an ice elemental and the Long Winter, with no
+        -- ordinary fight on either floor and the Long Winter standing in on the lieutenant's stair as well.
         --
-        -- WHICH IS THE HONEST READING, AND IT IS WORTH PROTECTING FROM THE OBVIOUS FIX. What it replaced
-        -- was the same body standing on both of this circle's stairs, which is precisely the thing the
-        -- rule exists to stop: an elite met twice in a stratum is traffic. A floor with no standing
-        -- threat is a hole an AUTHOR fills; a floor billing the landmark two floors down is a hole
-        -- papered over. Pride carries the mirror of this at `seat`.
-        --
-        -- This circle is the loudest of the seven either way -- its whole rollable cast is an ice
-        -- elemental and this elite, which is also why `minor.lead` above is standing in for a
-        -- lieutenant. A second tundra elite closes both holes at once.
-        -- ...AND THE APPROACH HAS AN ELITE AGAIN (2026-09-24): Sloth's three slimes, together -- one takes
-        -- your turns (Torpid), one taxes your effort (Numbed), one grows while you are busy (Drift). The
-        -- hole this comment describes above is closed by them, not by a second landmark.
-        elites = { approach = "encounter_the_still_slimes", seat = "encounter_sloth_long_winter",
-            spares = { "encounter_the_glacier_king" } } },
+        -- BILLED ON EACH FLOOR'S GRANDEST THREAT. The approach bills the Snow Queen, whose splinters and glass
+        -- walls are the floor's one fight that asks for fire above everything; the seat bills Mora, at the head
+        -- of the Tollkeepers who hold it. Everything else is a spare beside its rung -- the Still Slimes keep
+        -- their place, and the Long Winter steps down from billing to a spare.
+        elites = { approach = "encounter_sloth_the_snow_queen", seat = "encounter_sloth_mora",
+            spares = { "encounter_the_still_slimes", "encounter_sloth_the_old_sloth",                 -- rung 1
+                       "encounter_sloth_dread_of_the_whiteout",                                     -- rung 1
+                       "encounter_sloth_long_winter", "encounter_the_glacier_king",               -- rung 2
+                       "encounter_sloth_baku" } } },                                                -- rung 2
     { id = "pride", name = "Pride", vendor = "arcanum", biome = "spire",
         scene = "conversation_descent_pride",
         -- SUPERBIA, THE MORNING STAR (reimagined 2026-10-01, "Pride's Stairs"): the fallen archangel, held by

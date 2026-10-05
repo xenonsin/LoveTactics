@@ -88,7 +88,10 @@
 --       commander when outranked.
 --
 --   SLOTH -- refusing to act, taxing, pacifism, sleep, laziness, wastefulness, passivity, apathy,
---     indifference, fear, no commitment.
+--     indifference, fear, no commitment. BUILT 2026-10-04 ("Sloth's Bestiary"): ground sloths, yeti, trolls,
+--       the Bog-Bound, the Frost Worm, the Noonday Demon, Yuki-onna, the Snow Queen and the Ogre on the approach;
+--       the Tollkeepers and Mora, Baku and the poppy-moths, the Mare and the Old Spruce on the seat; the Sandman
+--       and Desidia on the stairs. Kept below as the brief it was built from.
 --     Bodies (all suggested): the giant ground sloth, snails and slugs, tortoises, dormice, myconids and
 --       spore-caps (a sleep that is breathed), lotus-eaters, a sleeping giant, treants and dryads (rooted),
 --       mummies and bog bodies, a sandman or poppy-moths, drones of a hive that does not work, ticks
@@ -112,10 +115,10 @@ local SPEC = 15 -- distinct creatures per floor
 -- djinn on the approach and the angels on the seat, which also took both floors past FIGHT_SPEC. Envy's two
 -- floors were listed at 4 and 6 and re-measured on 2026-10-03 after "Envy's Bestiary": the seat closed at 27
 -- creatures, 11.8 effective fights and 5 elites; the approach closed its fights at 7.0 and its elites at 4 and
--- stands at 13 creatures.)
+-- stands at 13 creatures. Sloth's two floors were listed at 3 and 5 creatures, with no ordinary fight and 1 and 2
+-- elites, and closed every ratchet on 2026-10-04 after "Sloth's Bestiary": the approach at 18 creatures, 8.0
+-- effective fights and 4 elites; the seat at 24, about 10.3 and 5.)
 local KNOWN_GAPS = {
-    ["sloth/1"] = "3 creatures",
-    ["sloth/2"] = "5 creatures",
     -- Envy's approach after its bestiary (2026-10-03): 10 families against Gluttony's 9, but two bodies short on
     -- the body count -- its one-offs come in ones. Re-measured, not closed; the seat closed at 27.
     ["envy/1"]  = "13 creatures",
@@ -134,13 +137,9 @@ local ELITE_SPEC = 4 -- distinct elites a floor can seat (Gluttony's seat has 4)
 -- (Greed's two floors were listed at 3 elites each and closed on 2026-09-26: the Paymaster on the approach,
 -- the Thing Under the Seam and the Gilded King on the seat.)
 local KNOWN_FIGHT_GAPS = {
-    ["sloth/1"] = "0 -- no ordinary fight at all",
-    ["sloth/2"] = "0 -- no ordinary fight at all",
     ["crown/1"] = "1.0 effective fights -- the bottom floor",
 }
 local KNOWN_ELITE_GAPS = {
-    ["sloth/1"] = "1 elite",
-    ["sloth/2"] = "2 elites",
     ["crown/1"] = "2 elites -- the bottom floor",
 }
 
