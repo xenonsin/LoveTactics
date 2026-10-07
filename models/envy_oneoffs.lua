@@ -310,6 +310,90 @@ function Envy.turnAside(combat, unit, what)
     return true
 end
 
+-- ---------------------------------------------------------------------------------- the Wasting Ones
+--
+-- ENVY'S APPROACH, ROUND 4 (2026-10-06, "Envy's Bestiary"): the two bodies the approach still owed, from Ovid's
+-- Envy (Metamorphoses II), who never smiles except at another's pain and wastes at the sight of their success.
+-- Each body is one of those two lines, and each rule is carried by a trait flag so the player's drop runs the
+-- same code pointed the other way:
+--
+--   THE THIN SMILE         `smilesAtPain`: every wound a foe of the bearer takes where the bearer can see it heals
+--                          the bearer by `heal` (2). Heard from Combat.dealFlatDamage, the one funnel every wound
+--                          runs through, so a Bleed tick feeds it as surely as a sword does.
+--   GRIEF AT YOUR FORTUNE  `griefAtFortune`: when a foe of the bearer is healed or freshly blessed where the bearer
+--                          can see it (and within `reach`, when the granter names one), the bearer leaps beside it
+--                          and strikes -- once a round, re-armed at the end of its own turn.
+--
+-- THE LUNGE IS NOTED, THEN THROWN AT A SETTLED MOMENT. A heal lands in the middle of a resolving cast, and a strike
+-- thrown from there would move a body mid-effect (the reason Combat.beginAnswers holds every on-hit answer). So the
+-- heal or blessing only marks the leap (`unit.lungeAt`), and the trait throws it once the action is finished: when
+-- the cast resolves (onAnyCast) or the turn ends (onAnyTurnEnd).
+
+Envy.SMILE_HEAL = 2
+
+-- Can `watcher` see `body` across the board?
+local function sees(combat, watcher, body)
+    return Combat().hasLineOfSight(combat, watcher.x, watcher.y, body.x, body.y)
+end
+
+-- A wound of `dmg` just landed on `target`. Every body with the Thin Smile on the other side that saw it is healed.
+-- Returns how many smiled.
+function Envy.thinSmile(combat, target, dmg)
+    if not (combat and target and (dmg or 0) > 0) then return 0 end
+    local T, n = require("models.trait"), 0
+    for _, u in ipairs(combat.units or {}) do
+        local t = u ~= target and u.alive and u.side ~= target.side and T.flag(u, "smilesAtPain")
+        if t and not Combat().isOffTile(u) and sees(combat, u, target) then
+            if Combat().applyHeal(combat, u, T.param(t, "heal", Envy.SMILE_HEAL)) > 0 then n = n + 1 end
+        end
+    end
+    return n
+end
+
+-- Is this fresh status a blessing in the sense the Kinslayer counts one? (models/kinslayer.lua's noteBlessing.)
+local function isBlessing(status)
+    local def = status and (status.def or Status().defs[status.id])
+    return def ~= nil and not def.debuff and not def.undispellable and not def.hideLog
+end
+
+-- `body` was healed or blessed. Every griever on the other side that saw it, and has its leap to spend, marks it.
+-- Nothing is noted before the first turn: a company that walks in wearing its opening boons has not yet prospered
+-- where anybody could see.
+function Envy.noteFortune(combat, body, status)
+    if not (combat and body and body.alive) then return end
+    if combat.turn == nil and (combat.turnCount or 0) == 0 then return end
+    if status and not isBlessing(status) then return end
+    local T = require("models.trait")
+    for _, u in ipairs(combat.units or {}) do
+        local t = u.alive and u.side ~= body.side and not u.griefSpent and not u.lungeAt and T.flag(u, "griefAtFortune")
+        if t and not Combat().isOffTile(u) and sees(combat, u, body) then
+            local reach = T.param(t, "reach", nil)
+            if not reach or Combat().unitGap(u, body) <= reach then u.lungeAt = body end
+        end
+    end
+end
+
+-- Throw the leap `griever` has marked, if it still can: beside the body (a free tile in its ring), then one blow
+-- with whichever weapon reaches. Returns the damage dealt, or nil when nothing was thrown.
+function Envy.lunge(combat, griever)
+    local body = griever and griever.lungeAt
+    if not body then return nil end
+    griever.lungeAt = nil
+    if not (griever.alive and body.alive) or griever.griefSpent or Combat().isOffTile(body) then return nil end
+    if Status().disablesReactions(griever) then return nil end
+    local C = Combat()
+    if C.unitGap(griever, body) > 1 then
+        local x, y = C.openTileNear(combat, body.x, body.y)
+        if not x or not C.teleportUnit(combat, griever, x, y) then return nil end
+    end
+    local weapon = C.answeringWeapon(combat, griever, C.unitGap(griever, body))
+    if not weapon then return nil end
+    griever.griefSpent = true
+    C.logEvent(combat, "action", string.format("%s cannot bear it, and is on %s.", nameOf(griever), nameOf(body)),
+        { griever, body })
+    return C.answerStrike(combat, griever, body, weapon)
+end
+
 -- ------------------------------------------------------------------------------------------- the planner
 
 -- What one of these bodies does with its turn when its rule decides it, for AI.preempt; nil leaves the turn to

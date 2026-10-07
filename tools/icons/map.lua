@@ -1500,6 +1500,13 @@ return {
     ["items/ability_jealous_roar.png"] = { icon = "delapouite/unbalanced", by = "hand" },
     ["items/weapon_eel_surge.png"] = { icon = "delapouite/shark-bite", by = "hand" },
     ["items/armor_eel_skin_boots.png"] = { icon = "delapouite/chelsea-boot", by = "hand" },
+    -- ENVY'S APPROACH, ROUND 4 (2026-10-06): the Wasting Ones' organs and blows, and their two trophies.
+    ["items/utility_smiles_at_pain.png"] = { icon = "sbed/health-increase", by = "hand" },
+    ["items/weapon_viper_fed_bite.png"] = { icon = "delapouite/snake-jar", by = "hand" },
+    ["items/utility_the_thin_smile.png"] = { icon = "delapouite/shattered-heart", by = "hand" },
+    ["items/utility_grief_at_fortune.png"] = { icon = "lorc/leaf-skeleton", by = "hand" },
+    ["items/weapon_withering_staff.png"] = { icon = "delapouite/water-diviner-stick", by = "hand" },
+    ["items/utility_thorned_staff.png"] = { icon = "delapouite/jump-across", by = "hand" },
     -- SLOTH'S BESTIARY, SLICE A (2026-10-04): the ground sloths' and the yeti's organs and blows, and four trophies.
     ["items/utility_banked_turns.png"] = { icon = "delapouite/piggy-bank", by = "hand" },
     ["items/utility_deep_bank.png"] = { icon = "delapouite/bunk-beds", by = "hand" },

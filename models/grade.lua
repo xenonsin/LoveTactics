@@ -1269,6 +1269,11 @@ Grade.TRAIT_GRADE = {
     trait_nazar =                       1.0,  -- Nazar -- the first debuff or curse each fight is turned aside
     trait_shade_cloak =                 1.0,  -- Shade Cloak -- beside a wall, Unseen
     trait_scale_of_hearts =             1.0,  -- Scale of Hearts -- +4 against a foe with more current health
+    -- ENVY'S APPROACH, ROUND 4 (2026-10-06): the Wasting Ones. Each rule is a body's AND a drop's (the Thin Smile
+    -- and the Thorned Staff carry them through traitParams), so each weighs what the drop is worth: a heal of 2 on
+    -- every wound seen, and one free leap-and-strike a round.
+    trait_the_thin_smile =              1.0,  -- The Thin Smile -- heal 2 on every wound a foe takes in sight
+    trait_grief_at_fortune =            1.0,  -- Grief at Your Fortune -- a foe healed or blessed is leapt on
 
     -- SLOTH'S BESTIARY, SLICE A (2026-10-04): the ground sloths and the yeti. The bank and the drag are bodies' own.
     -- The roar and the whiteout are each a body's AND a drop's (the mantle and the cloak carry them through

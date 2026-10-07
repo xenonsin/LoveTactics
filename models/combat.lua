@@ -9237,6 +9237,8 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     if dmg > 0 and hasTag(tags, "bleed") then
         require("models.basin").onBleed(combat, target, dmg)
     end
+    -- THE THIN SMILE (models/envy_oneoffs.lua, 2026-10-06): every wound is seen, and whoever smiles at it is fed.
+    if dmg > 0 then require("models.envy_oneoffs").thinSmile(combat, target, dmg) end
     -- A blow may CARRY hard control (a hammer's Stun, an ice bolt's Freeze): `opts.inflicts` names a
     -- status that lands WITH the hit rather than after it. The distinction is the whole point --
     -- an effect that applies its stun on the line after `fx.damage` applies it one line too late,
@@ -9912,6 +9914,8 @@ function Combat.applyHeal(combat, target, amount, opts)
         -- ENVY'S BESTIARY, slice E (2026-10-03): and the patient banks a `healedTaken` -- half of what makes a
         -- body the Kinslayer's favoured one (models/kinslayer.lua).
         Combat.tally(target, "healedTaken", 1)
+        -- ...and GRIEF AT YOUR FORTUNE (models/envy_oneoffs.lua, 2026-10-06): a griever who saw it marks its leap.
+        require("models.envy_oneoffs").noteFortune(combat, target)
     end
     return healed
 end

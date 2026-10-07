@@ -280,6 +280,9 @@ local TROPHIES = {
     -- as an Inquisitor's, the Green-Eyed Monster's roar as a Barbarian's, and the eels' hide as a Skirmisher's boots.
     "utility_nazar", "ability_mirage_step", "ability_surgeons_thread", "armor_shade_cloak",
     "utility_scale_of_hearts", "ability_jealous_roar", "armor_eel_skin_boots",
+    -- ENVY'S APPROACH, ROUND 4 (2026-10-06): the Wasting One's smile as a Plague Knight's, and the Pale Crone's leap
+    -- as a Skirmisher's.
+    "utility_the_thin_smile", "utility_thorned_staff",
     -- SLOTH'S BESTIARY, SLICE A (2026-10-04): the Ground Sloth's bank as a Monk's fist, the Old Sloth's hide as a
     -- Warden's, the yeti's roar as a Hunter's mantle, and the Dread's whiteout as a Ninja's cloak.
     "utility_sleepers_claws", "armor_hibernal_hide", "armor_yeti_hide_mantle", "armor_whiteout_cloak",

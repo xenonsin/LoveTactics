@@ -759,6 +759,9 @@ local CHARACTER_SILHOUETTE = {
     jackal_weigher = "delapouite/anubis",
     green_eyed_monster = "lorc/eyestalk",
     sand_eel = "delapouite/eel",
+    -- ENVY'S APPROACH, ROUND 4 (2026-10-06): Ovid's Envy and her kind -- the smile at your pain, and her grief.
+    wasting_one = "lorc/sharp-smile",
+    pale_crone = "badges/sad",
     -- SLOTH'S BESTIARY, SLICE A (2026-10-04): the ground sloths and the yeti. The mammoth stands in for the
     -- Megatherium, the Ice Age's other giant; the matriarch is the bigger ape.
     ground_sloth = "caro-asercion/sloth",
