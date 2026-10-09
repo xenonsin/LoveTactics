@@ -592,7 +592,9 @@ end
 function Status.barrierAgainst(unit, magical)
     local want = magical and "magical" or "physical"
     for _, s in ipairs(unit.statuses or {}) do
-        if s.def.negates == want or s.def.negates == "any" then return s end
+        -- THE CROWN'S BESTIARY, SLICE B (2026-10-09): a barrier worth an AMOUNT (`pool`, the Bulwark of the Fallen)
+        -- eats nothing whole; it pays a wound down after armour instead (models/crown_demons.lua's soakBarrier).
+        if (s.def.negates == want or s.def.negates == "any") and not s.pool then return s end
     end
     return nil
 end

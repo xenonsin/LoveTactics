@@ -258,6 +258,12 @@ return {
                 encounter_sloth_cant_be_bothered = true,
                 encounter_sloth_the_long_afternoon = true,
                 encounter_sloth_the_white_road = true,
+                -- THE CROWN'S BESTIARY, SLICE B (2026-10-09): casts fixed by review. The Tribunal is three bodies
+                -- and no band, because its lesson is the order they die in; the Balor is itself, a Chain Fiend and
+                -- two Pit Imps -- the escort its Death Throes are meant to be dropped into.
+                encounter_crown_the_tribunal = true,
+                encounter_crown_the_balor = true,
+                -- end THE CROWN'S BESTIARY, SLICE B
             }
             -- THE ROSTER, NOT THE HEAD-COUNT. Asked as "is this the same fight on every seed", because
             -- a stop is allowed to roll its SHAPE while holding its size: the Skeleton King's court is

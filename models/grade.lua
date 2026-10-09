@@ -1277,6 +1277,12 @@ Grade.TRAIT_GRADE = {
     -- every wound seen, and one free leap-and-strike a round.
     trait_the_thin_smile =              1.0,  -- The Thin Smile -- heal 2 on every wound a foe takes in sight
     trait_grief_at_fortune =            1.0,  -- Grief at Your Fortune -- a foe healed or blessed is leapt on
+    -- THE CROWN'S BESTIARY, SLICE B (2026-10-09): the demonic creatures and the Death Knight. Each rule is a body's
+    -- AND a drop's (Last Breath and Oathbound Plate carry them through traitParams, smaller), so each weighs what the
+    -- drop is worth: a burst on falling, and a barrier off a fallen ally.
+    trait_hellfire_throes =             1.0,  -- Death Throes (fire) -- on death, fire to every body nearby
+    trait_bulwark_of_the_fallen =       1.0,  -- Bulwark of the Fallen -- a fallen ally's health as a barrier
+    -- end THE CROWN'S BESTIARY, SLICE B
 
     -- SLOTH'S BESTIARY, SLICE A (2026-10-04): the ground sloths and the yeti. The bank and the drag are bodies' own.
     -- The roar and the whiteout are each a body's AND a drop's (the mantle and the cloak carry them through

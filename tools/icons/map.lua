@@ -1510,6 +1510,21 @@ return {
     ["items/utility_grief_at_fortune.png"] = { icon = "lorc/leaf-skeleton", by = "hand" },
     ["items/weapon_withering_staff.png"] = { icon = "delapouite/water-diviner-stick", by = "hand" },
     ["items/utility_thorned_staff.png"] = { icon = "delapouite/jump-across", by = "hand" },
+    -- THE CROWN'S BESTIARY, SLICE B (2026-10-09): the demonic creatures' and the Death Knight's organs and blows,
+    -- and their five trophies.
+    ["items/weapon_the_offer.png"] = { icon = "lorc/wasp-sting", by = "hand" },
+    ["items/ability_signed_in_blood.png"] = { icon = "delapouite/contract", by = "hand" },
+    ["items/weapon_drag_below.png"] = { icon = "delapouite/pirate-hook", by = "hand" },
+    ["items/ability_hook_and_drag.png"] = { icon = "lorc/fishhook-fork", by = "hand" },
+    ["items/weapon_fit_the_crime.png"] = { icon = "lorc/barbed-arrow", by = "hand" },
+    ["items/ability_furys_verdict.png"] = { icon = "caro-asercion/tarot-11-justice", by = "hand" },
+    ["items/weapon_flame_lash.png"] = { icon = "carl-olsen/flame", by = "hand" },
+    ["items/ability_hellfire_ring.png"] = { icon = "delapouite/firewall", by = "hand" },
+    ["items/utility_balor_throes.png"] = { icon = "lorc/crowned-explosion", by = "hand" },
+    ["items/utility_last_breath.png"] = { icon = "lorc/spiky-explosion", by = "hand" },
+    ["items/utility_bulwark_of_the_fallen.png"] = { icon = "lorc/skull-shield", by = "hand" },
+    ["items/armor_oathbound_plate.png"] = { icon = "delapouite/black-knight-helm", by = "hand" },
+    -- end THE CROWN'S BESTIARY, SLICE B
     -- SLOTH'S BESTIARY, SLICE A (2026-10-04): the ground sloths' and the yeti's organs and blows, and four trophies.
     ["items/utility_banked_turns.png"] = { icon = "delapouite/piggy-bank", by = "hand" },
     ["items/utility_deep_bank.png"] = { icon = "delapouite/bunk-beds", by = "hand" },

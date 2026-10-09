@@ -764,6 +764,13 @@ local CHARACTER_SILHOUETTE = {
     -- ENVY'S APPROACH, ROUND 4 (2026-10-06): Ovid's Envy and her kind -- the smile at your pain, and her grief.
     wasting_one = "lorc/sharp-smile",
     pale_crone = "badges/sad",
+    -- THE CROWN'S BESTIARY, SLICE B (2026-10-09): the demonic creatures, and the champion the Crown kept.
+    pit_imp = "lorc/imp",
+    chain_fiend = "lorc/crossed-chains",
+    erinys = "lorc/steelwing-emblem",
+    balor = "skoll/burning-skull",
+    death_knight = "lorc/heavy-helm",
+    -- end THE CROWN'S BESTIARY, SLICE B
     -- SLOTH'S BESTIARY, SLICE A (2026-10-04): the ground sloths and the yeti. The mammoth stands in for the
     -- Megatherium, the Ice Age's other giant; the matriarch is the bigger ape.
     ground_sloth = "caro-asercion/sloth",

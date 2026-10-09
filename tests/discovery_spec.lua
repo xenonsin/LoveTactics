@@ -283,6 +283,11 @@ local TROPHIES = {
     -- ENVY'S APPROACH, ROUND 4 (2026-10-06): the Wasting One's smile as a Plague Knight's, and the Pale Crone's leap
     -- as a Skirmisher's.
     "utility_the_thin_smile", "utility_thorned_staff",
+    -- THE CROWN'S BESTIARY, SLICE B (2026-10-09): the Pit Imp's Offer as a Warlord's, the Chain Fiend's hook as a
+    -- Trapper's, the Erinys's arrow as an Inquisitor's, the Balor's throes as a Bombardier's, and the Death
+    -- Knight's bulwark as a Sentinel's plate.
+    "ability_signed_in_blood", "ability_hook_and_drag", "ability_furys_verdict", "utility_last_breath",
+    "armor_oathbound_plate",
     -- SLOTH'S BESTIARY, SLICE A (2026-10-04): the Ground Sloth's bank as a Monk's fist, the Old Sloth's hide as a
     -- Warden's, the yeti's roar as a Hunter's mantle, and the Dread's whiteout as a Ninja's cloak.
     "utility_sleepers_claws", "armor_hibernal_hide", "armor_yeti_hide_mantle", "armor_whiteout_cloak",

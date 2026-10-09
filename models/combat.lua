@@ -5464,6 +5464,8 @@ function Combat.moveUnit(combat, unit, x, y)
     -- quietly make rough ground fill the gate faster. `path` carries the origin on the front, so the
     -- step count is one less than its length.
     Combat.tally(unit, "tilesMoved", math.max(0, #plan.path - 1))
+    -- THE CROWN'S BESTIARY, SLICE B (2026-10-09): a walk is a deed the Erinys answers (models/crown_demons.lua).
+    if #plan.path > 1 then require("models.crown_demons").noteDeed(combat, unit, "moved") end
     return true, cost
 end
 
@@ -9123,6 +9125,13 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
         dmg = dmg - surfeit
         if dmg <= 0 then return 0 end
     end
+    -- THE CROWN'S BESTIARY, SLICE B (2026-10-09): a Physical Barrier worth an amount (the Bulwark of the Fallen)
+    -- pays a physical wound out of its pool, after armour, as the Surfeit does (models/crown_demons.lua).
+    local pooled = require("models.crown_demons").soakBarrier(combat, target, dmg, tags)
+    if pooled > 0 then
+        dmg = dmg - pooled
+        if dmg <= 0 then return 0 end
+    end
     local soaked = Combat.soakIntoMana(combat, target, dmg)
     if soaked > 0 then
         dmg = dmg - soaked
@@ -9239,6 +9248,8 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     end
     -- THE THIN SMILE (models/envy_oneoffs.lua, 2026-10-06): every wound is seen, and whoever smiles at it is fed.
     if dmg > 0 then require("models.envy_oneoffs").thinSmile(combat, target, dmg) end
+    -- THE CROWN'S BESTIARY, SLICE B (2026-10-09): a striker under Blood Debt runs up what it deals.
+    if dmg > 0 and attacker then require("models.crown_demons").noteDealt(attacker, dmg) end
     -- A blow may CARRY hard control (a hammer's Stun, an ice bolt's Freeze): `opts.inflicts` names a
     -- status that lands WITH the hit rather than after it. The distinction is the whole point --
     -- an effect that applies its stun on the line after `fx.damage` applies it one line too late,
@@ -13234,6 +13245,11 @@ function Combat.useItem(combat, unit, item, tx, ty, windup, dest, spend)
     -- the moment she swings a weapon. Counted at commit like `cast` above, so a draught poured into a
     -- channel still counts.
     if item and item.type == "consumable" then Combat.tally(unit, "consumed", 1) end
+    -- THE CROWN'S BESTIARY, SLICE B (2026-10-09): a swing or a cast is a deed the Erinys answers
+    -- (models/crown_demons.lua). A drink is neither.
+    if item and (item.type == "weapon" or item.type == "ability") then
+        require("models.crown_demons").noteDeed(combat, unit, item.type == "weapon" and "attacked" or "cast")
+    end
     Combat.unlockConsume(unit, item)
 
     -- A channeled ability (a large AOE spell) doesn't resolve now: the caster winds up for its
@@ -13755,6 +13771,8 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
             -- itself knows only the patient) -- what a mercy signature gated on healing counts. An
             -- AoE heal that lands on three allies is three, which is what "heal N times" reads as.
             if h > 0 then Combat.tally(unit, "healDone", 1) end
+            -- THE CROWN'S BESTIARY, SLICE B (2026-10-09): a heal is a deed the Erinys answers (models/crown_demons.lua).
+            if h > 0 then require("models.crown_demons").noteDeed(combat, unit, "healed") end
             return h
         end,
         -- Restore a resource (e.g. the parasitic staff refunding mana to fx.user on hit).
