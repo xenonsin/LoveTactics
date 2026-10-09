@@ -566,6 +566,17 @@ Grade.TRAIT_GRADE = {
     -- THE CROWN'S BESTIARY, FOUNDATION (2026-10-09): the Archon race. Not playable, so both are a body's organ.
     trait_spirit_body =                 0.0,  -- Spirit Body -- the Archon race: a wisp walks back to raise the body
     trait_homeward =                    0.0,  -- Homeward -- the wisp's own walk home
+    -- THE CROWN'S BESTIARY, SLICE E (2026-10-09): three organs, and four drops. The Cup is a rule a foe must play
+    -- around within 2; the Mouth is a Gallows Seed with no cast, only beside a foe's patient; Two Heads is a banked
+    -- extra strike paid for in slash wounds taken; Hydra's Blood is Poison on every blow plus a death spread.
+    trait_lethe_haze =                  0.0,  -- Lethe Haze -- the Lethe-Drinker's organ
+    trait_never_full =                  0.0,  -- Never Full -- the Hungry Ghost's organ
+    trait_two_for_one =                 0.0,  -- Two for One -- the Lernaean Hydra's heads
+    trait_cup_of_lethe =                2.0,  -- Cup of Lethe -- foes within 2 cannot repeat an ability
+    trait_pinhole_mouth =               2.0,  -- Pinhole Mouth -- a foe's heal within 2 heals you
+    trait_two_heads =                   2.0,  -- Two Heads -- slash taken banks extra strikes (up to 3)
+    trait_hydras_blood =                2.5,  -- Hydra's Blood -- blows Poison; Poison spreads on a death
+    -- end THE CROWN'S BESTIARY, SLICE E
     -- SLOTH'S TROLLS (slice B, 2026-10-04). The Toll is the Toll-Troll's organ and never shelved. Of the drops:
     -- Scarring Blows is the Unclosing Parry's wound on your own swing, a turn long (and the Scarlord's organ carries
     -- it too); Bridge Tax is Keen Senses narrowed to abilities within 2; the Grafted Arm is a tenth a turn, priced

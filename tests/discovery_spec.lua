@@ -305,6 +305,11 @@ local TROPHIES = {
     "ability_sandmans_pouch", "utility_the_hourglass", "utility_the_long_sleep", "ability_lull",
     "utility_nightmare_lantern", "armor_restless_mail",
     -- end SLOTH'S STAIRS, SLICE G
+    -- THE CROWN'S BESTIARY, SLICE E (2026-10-09): the Lethe-Drinker's cup as a Warden's, the Hungry Ghost's mouth as
+    -- a Spellbreaker's, and all three of the Lernaean Hydra's: a Barbarian's hide, a Crusader's sear, a Poisoner's
+    -- blood.
+    "utility_cup_of_lethe", "utility_pinhole_mouth", "armor_two_heads", "ability_cauterise", "utility_hydras_blood",
+    -- end THE CROWN'S BESTIARY, SLICE E
 }
 
 local function vendorFor(class)

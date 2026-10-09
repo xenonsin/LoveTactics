@@ -737,6 +737,12 @@ local CHARACTER_SILHOUETTE = {
     faceless_champion = "lorc/crested-helmet",
     -- THE CROWN'S BESTIARY, FOUNDATION (2026-10-09): the spirit a fallen Archon throws clear.
     archon_wisp = "delapouite/soul",
+    -- THE CROWN'S BESTIARY, SLICE E (2026-10-09): the drowned thing the dead drink from, the ghost that is never
+    -- full, and the beast of Lerna.
+    lethe_drinker = "lorc/tentacles-skull",
+    hungry_ghost = "lorc/leaky-skull",
+    lernaean_hydra = "lorc/hydra",
+    -- end THE CROWN'S BESTIARY, SLICE E
     -- ENVY'S SEAT, SLICE C (2026-10-03): the one-off families. The made thing in its flask, Friar Bacon's bust,
     -- the voice that is only somebody else, the weaver's thread, and a penitent's wimple.
     red_homunculus = "delapouite/water-flask",

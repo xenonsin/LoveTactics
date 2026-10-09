@@ -3655,6 +3655,8 @@ function Combat.startTurn(combat)
         -- makes an extra action part of the same turn rather than a new one, since a surge re-opens
         -- combat.turn straight from endTurn and never comes back through this function.
         unit.turnFlags = nil
+        -- THE CROWN, SLICE E: last turn's abilities become what a Lethe Haze forbids (models/lethe.lua).
+        require("models.lethe").turnOpened(unit)
         -- WHAT IT HAS PAID OUT SINCE (Combat.heldItsTurn): the turn's spend tally, opened at 0 here and
         -- added to at every spend, so a body that comes back around having reached for no pool at all
         -- still reads 0 -- the gate The Unasked drains on (data/traits/trait_unasked.lua). Zeroed rather
@@ -9892,6 +9894,10 @@ function Combat.applyHeal(combat, target, amount, opts)
         if not ok then error(drunk, 0) end
         return 0
     end
+    -- THE CROWN, SLICE E (2026-10-09): NEVER FULL. A heal landing within 2 of a Hungry Ghost (or a foe's within 2
+    -- of a Pinhole Mouth) is eaten whole, under the seed's own relay guard (models/lethe.lua).
+    if require("models.lethe").tryEat(combat, target, amount) then return 0 end
+    -- end THE CROWN, SLICE E
     -- A DEFERRAL banks the heal instead of landing it (the Sealed Hour). Negative on the ledger, since
     -- the ledger is denominated in damage -- and this is the whole reason a deferral is a bargain
     -- rather than a pure ward: healing banked under it does not save anyone in the meantime either.
@@ -10078,6 +10084,12 @@ function Combat.reanimate(combat, corpse, fraction)
     -- of what makes a scripted beat hold, so it is asked about directly rather than inferred from which
     -- of the two states the body landed in.
     if corpse.noRevive then return false end
+    -- THE CROWN, SLICE E (2026-10-09): ...AND A BODY THAT CANNOT BE HEALED CANNOT BE STOOD BACK UP. An Unclosing
+    -- Wound (or anything else that `blocksHealing`) refuses the raise while it holds -- Envy's rule for the
+    -- Homunculus (models/envy_seat.lua) made general, and what Cauterise promises. It is also what keeps an
+    -- Archon's wisp from raising its body (models/spirit.lua comes through here).
+    if Status.blocksHealing(corpse) then return false end
+    -- end THE CROWN, SLICE E
     if Combat.unitAt(combat, corpse.x, corpse.y) then return false end
     fraction = fraction or 0.5
     corpse.alive = true
@@ -10296,7 +10308,8 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
     local effectiveAmount = castAmount(combat, unit, ab, tx, ty, auraMods, item)
     -- The brave rule, forecast: a swing that lands twice has to PREVIEW as landing twice, or the
     -- panel quotes half the wound the player is about to deal (Item.strikes).
-    local strikes = Item.strikes(ab)
+    -- THE CROWN, SLICE E: the Hydra's heads and a banked Two Heads forecast too, and are not spent by a hover.
+    local strikes = require("models.lerna").strikes(unit, item, ab)
     local fx = {
         user = unit, target = target, item = item, combat = combat, tx = tx, ty = ty,
         dest = dest, -- a two-stage throw's chosen landing (Heave); nil for every single-aim ability
@@ -12439,6 +12452,12 @@ function Combat.itemBlockReason(unit, item)
         return { kind = "broken", reason = "broken", text = "Broken -- mend it at the Forge" }
     end
 
+    -- THE CROWN, SLICE E (2026-10-09): LETHE HAZE. The ability this body used last turn is refused while a
+    -- hazing foe stands within its reach (models/lethe.lua). Here so the slot, the press and the planner agree.
+    local lethe = require("models.lethe").barred(unit, item)
+    if lethe then return lethe end
+    -- end THE CROWN, SLICE E
+
     local cost = costBlock(unit, ab)
     if cost then return cost end
     if not Combat.adjacencyMet(unit.char, item) then
@@ -13229,6 +13248,8 @@ function Combat.useItem(combat, unit, item, tx, ty, windup, dest, spend)
     -- end SLOTH'S TROLLS
     local manaBefore = Combat.resource(unit.char, "mana")
     Combat.spendCosts(combat, unit, ab)
+    -- THE CROWN, SLICE E: what was committed this turn is what a Lethe Haze remembers next turn (models/lethe.lua).
+    require("models.lethe").used(unit, item)
     drinkSpentMana(combat, unit, item, manaBefore)
     -- ...and the cast's own cooldown starts at commit, beside the cost and for the same reason: a
     -- channel that is interrupted still spent its window. Set before the effect, so an effect that
@@ -13561,7 +13582,8 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
     -- How many times a swing of this lands (Item.strikes -- the brave rule). Read ONCE per cast, not
     -- per blow: it is a property of the weapon, and an effect that damages several bodies must strike
     -- each of them the same number of times.
-    local strikes = Item.strikes(ab)
+    -- THE CROWN, SLICE E: ...counted per head on the Hydra's jaws, plus what a Two Heads coat banked (spent here).
+    local strikes = require("models.lerna").strikes(unit, item, ab, true)
     -- THE ARCANE CONDUIT (the Battlemage's): a charm that sharpens the items sitting NEXT TO IT in the
     -- grid, funded by the caster's banked Arcane rather than free. Read here, in resolveCast, which is
     -- the REAL cast path -- the damage preview goes through Combat.computeDamage and never reaches this,

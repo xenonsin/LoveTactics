@@ -1187,6 +1187,19 @@ return {
     -- THE CROWN'S BESTIARY, FOUNDATION (2026-10-09): the Archon race's organ and its wisp's.
     ["items/utility_archon_spirit.png"] = { icon = "delapouite/soul", by = "hand" },
     ["items/utility_wisp_homeward.png"] = { icon = "delapouite/candles", by = "hand" },
+    -- THE CROWN'S BESTIARY, SLICE E (2026-10-09): the Lethe-Drinker, the Hungry Ghost and the Lernaean Hydra --
+    -- their organs, their weapons and their five pieces.
+    ["items/utility_lethe_haze.png"] = { icon = "delapouite/river", by = "hand" },
+    ["items/utility_cup_of_lethe.png"] = { icon = "lorc/bubbling-bowl", by = "hand" },
+    ["items/weapon_hungry_grasp.png"] = { icon = "lorc/evil-hand", by = "hand" },
+    ["items/utility_never_full.png"] = { icon = "lorc/mouth-watering", by = "hand" },
+    ["items/utility_pinhole_mouth.png"] = { icon = "lorc/eyedropper", by = "hand" },
+    ["items/weapon_hydra_jaws.png"] = { icon = "lorc/insect-jaws", by = "hand" },
+    ["items/utility_two_for_one.png"] = { icon = "delapouite/triceratops-head", by = "hand" },
+    ["items/armor_two_heads.png"] = { icon = "delapouite/sauropod-head", by = "hand" },
+    ["items/ability_cauterise.png"] = { icon = "sbed/burn", by = "hand" },
+    ["items/utility_hydras_blood.png"] = { icon = "lorc/goo-skull", by = "hand" },
+    -- end THE CROWN'S BESTIARY, SLICE E
     -- SLICE F, ENVY'S GENERAL (2026-10-03): the Many Faced One's organ, its relic and its two pieces.
     ["items/utility_crown_of_a_thousand_faces.png"] = { icon = "lorc/architect-mask", by = "hand" },
     ["items/utility_pretenders_crown.png"] = { icon = "delapouite/hedjet-white-crown", by = "hand" },
