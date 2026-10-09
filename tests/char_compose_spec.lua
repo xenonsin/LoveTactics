@@ -83,6 +83,20 @@ local ALIAS = {
     -- end THE RIFT'S ADVENTURERS, SLICE B
 }
 
+-- THE RIFT'S ADVENTURERS, SLICE C (2026-10-09): an adventurer body (`adventurer = true`) is its class's
+-- race-free stand-in and borrows its exemplar's sprite on purpose (models/adventurers.lua) -- the same
+-- person as a class, met in a party. Derived from the blueprints rather than listed, so all 45 bodies are
+-- covered by one statement and a new one cannot be forgotten.
+do
+    local Class = require("models.class")
+    for key, def in pairs(defs) do
+        local class = def.adventurer and (def.discipline or def.class)
+        local exemplar = class and Class.defs[class] and Class.defs[class].exemplar
+        if exemplar and defs[exemplar] then ALIAS[key] = exemplar end
+    end
+end
+-- end THE RIFT'S ADVENTURERS, SLICE C
+
 -- Are these two blueprints allowed to converge? The relation is symmetric, and it composes through the
 -- alias target, so a future third blueprint of somebody already aliased may share with both of them
 -- rather than only with the base -- which a bare one-hop lookup would have failed on.

@@ -14,6 +14,10 @@ return {
     price = 475,
     unlockLevel = 9,
     activeAbility = {
+        -- THE RIFT'S ADVENTURERS, SLICE C (2026-10-09): a totem stands on EMPTY ground, which the planner
+        -- never offered (it aims a tile cast only where a body stands); models/ai_aims.lua names the open
+        -- cells beside the line instead.
+        aiAims = function(combat, unit) return require("models.ai_aims").besideAllies(combat, unit) end,
         target = "tile",
         range = 3,
         speed = 5,

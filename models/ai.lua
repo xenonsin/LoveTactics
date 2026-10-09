@@ -297,7 +297,9 @@ AI.TARGET_PREF_ORDER = { "nearest", "lowest_hp", "most_wounded", "lethal", "self
                          "drownable", "gilded", "sleeping",
                          "held", -- Pride's lions (2026-09-30)
                          "hemmed", -- THE CROWN'S BESTIARY, SLICE D: the Hollow Crown's hunt
-                         "hazardous" } -- THE RIFT'S ADVENTURERS, SLICE A: the Bulwark's shove
+                         "hazardous", -- THE RIFT'S ADVENTURERS, SLICE A: the Bulwark's shove
+                         -- THE RIFT'S ADVENTURERS, SLICE C: the inquisitor's knife, the spellbreaker's break
+                         "marked", "channeling" }
 
 -- Which tests take a `value`, and what shape it is. A test that takes none must not show a value
 -- field at all -- an editor offering "exists 0.4" is offering nonsense.
@@ -1174,6 +1176,7 @@ function AI.candidates(combat, unit, items, tiles, wantSupport)
                                 x = tile.x, y = tile.y, steps = tile.steps or 0, toll = tile.toll,
                                 item = item, target = nil, tx = cell.x, ty = cell.y,
                                 moved = tile.x ~= unit.x or tile.y ~= unit.y,
+                                aimed = true, -- THE RIFT'S ADVENTURERS, SLICE C: see outcomeScore's `aiPlants`
                             }
                         end
                     end
@@ -1288,6 +1291,16 @@ local function outcomeScore(combat, unit, cand, w, previews)
     if score == 0 and preview.mutates == true
         and Combat.isSupportAbility(cand.item.activeAbility) then
         score = score + w.MUTATION
+    -- THE RIFT'S ADVENTURERS, SLICE C (2026-10-09). ...AND A HOSTILE CAST THAT PLANTS SOMETHING, offered at a
+    -- cell its own `aiAims` chose. A summoned sentry, a buried charge, a snare stake: hostile in intent, and
+    -- not one of them lands an entry the turn it is cast, so the planner could never lay a trap or call a
+    -- spirit -- the Saboteur, Warden, Shaman and Artificer were each carrying a signature that never fired.
+    -- The gore whiff the support-only rule above guards against is a blow aimed at a BODY that missed;
+    -- this is credited only on an aimed-at-ground candidate of an ability that declares `aiPlants = true`,
+    -- so no existing cast's reading moves.
+    elseif score == 0 and preview.mutates == true and cand.aimed and cand.item.activeAbility.aiPlants then
+        score = score + w.MUTATION
+    -- end THE RIFT'S ADVENTURERS, SLICE C
     end
     return score, lethal
 end
@@ -2341,6 +2354,15 @@ local function prefBonus(ctx, rule, cand, w)
         end
         return 0
     -- end THE RIFT'S ADVENTURERS, SLICE A
+    -- THE RIFT'S ADVENTURERS, SLICE C (2026-10-09). THE MARKED FIRST: the inquisitor's Needle executes a
+    -- Marked foe under a third, so the body it branded is the one its knife is for
+    -- (character_adv_inquisitor.lua). THE CHANNELLER FIRST: a Silence breaks a wind-up paid in mana, so the
+    -- spellbreaker's break is worth something only on the body winding one up (character_adv_spellbreaker).
+    elseif pref == "marked" then
+        return Status.has(t, "status_mark") and w.TARGET_PREF or 0
+    elseif pref == "channeling" then
+        return t.channel and w.TARGET_PREF or 0
+    -- end THE RIFT'S ADVENTURERS, SLICE C
     end
     return 0
 end

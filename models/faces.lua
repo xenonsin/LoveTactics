@@ -60,6 +60,10 @@ function Faces.isEligible(id)
     -- SLOTH'S DREAMERS (slice E): a body that never attacks (`neverAttacks`, the Old Spruce) is not a fighter, and
     -- a Faceless that put it on would stand rooted and swing at nothing for the rest of the fight.
     if def.neverAttacks then return false end
+    -- THE RIFT'S ADVENTURERS, SLICE C (2026-10-09): an adventurer body is race-free, and its blueprint's
+    -- `race` is only a placeholder that lets it load; it is never fielded as itself (models/adventurers.lua),
+    -- so a Faceless must not put it on either.
+    if def.adventurer then return false end
     local fp = def.footprint
     if fp and ((fp.w or 1) > 1 or (fp.h or 1) > 1) then return false end
     local hp = def.stats and def.stats.health

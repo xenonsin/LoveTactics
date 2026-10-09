@@ -34,6 +34,11 @@ return {
     price = 610,
     unlockLevel = 12,
     activeAbility = {
+        -- THE RIFT'S ADVENTURERS, SLICE C (2026-10-09): what this leaves is on EMPTY ground, so the planner
+        -- aims it at open cells (models/ai_aims.lua) and credits the plant (models/ai.lua, `aiPlants`).
+        -- Without both, no AI body could ever cast it.
+        aiAims = function(combat, unit) return require("models.ai_aims").beside(combat, unit) end,
+        aiPlants = true,
         target = "tile",
         range = 2, -- set down beside you: you carried it here
         speed = 6,

@@ -843,6 +843,13 @@ end
 
 -- The discipline whose exemplar is character `id` (tokenId form, no `character_` prefix), or nil.
 local function disciplineFor(id)
+    -- THE RIFT'S ADVENTURERS, SLICE C (2026-10-09): an adventurer body (`adv_<class>`) reuses its
+    -- exemplar's sprite path (models/adventurers.lua), and the composer writes one file per path, so it
+    -- must resolve to the SAME composition or whichever blueprint the walk meets first would redraw the
+    -- exemplar's token. It reads as its discipline exactly as the exemplar does.
+    local adv = id:match("^adv_([%w_]+)$")
+    if adv and Class.defs[adv] and Class.defs[adv].exemplar then return adv end
+    -- end THE RIFT'S ADVENTURERS, SLICE C
     return EXEMPLAR_DISCIPLINE["character_" .. id]
 end
 
@@ -1142,7 +1149,16 @@ function M.run(args)
     local defs = Registry.load("data/characters", "data.characters")
     local keys = {}
     for key in pairs(defs) do keys[#keys + 1] = key end
-    table.sort(keys)
+    -- THE RIFT'S ADVENTURERS, SLICE C (2026-10-09): an adventurer body borrows its exemplar's sprite, and
+    -- `character_adv_*` sorts ahead of nearly every exemplar, so a plain sort made the borrower the file's
+    -- first namesake and composed the exemplar's token from it -- without the exemplar's boss disc.
+    -- Adventurers go last, so the owner composes and the borrower rides along.
+    table.sort(keys, function(a, b)
+        local aa, ba = defs[a].adventurer and 1 or 0, defs[b].adventurer and 1 or 0
+        if aa ~= ba then return aa < ba end
+        return a < b
+    end)
+    -- end THE RIFT'S ADVENTURERS, SLICE C
 
     ensureDir(toAssets and ASSET_ROOT or PREVIEW_ROOT)
     ensureDir(PREVIEW_ROOT .. "/staging")

@@ -165,6 +165,7 @@ setmetatable(Character.defs, {
         return def
     end,
 })
+-- end THE RIFT'S ADVENTURERS, SLICE C
 
 -- The first empty grid cell (1..MAX_INVENTORY), or nil if the grid is full.
 function Character.firstEmptySlot(char)
