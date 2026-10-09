@@ -13,4 +13,10 @@ return {
     onDeath = function(ctx)
         require("models.spirit").release(ctx.combat, ctx.unit)
     end,
+    -- THE CROWN'S BESTIARY, SLICE A (2026-10-09): an Archon struck and still standing is what a Greater Archon's
+    -- ward answers (models/archon_court.lua). Heard here because every Archon carries this trait and no hook
+    -- broadcasts a wound to the bodies around it.
+    onDamaged = function(ctx)
+        require("models.archon_court").struck(ctx.combat, ctx.unit)
+    end,
 }

@@ -310,6 +310,10 @@ local TROPHIES = {
     -- blood.
     "utility_cup_of_lethe", "utility_pinhole_mouth", "armor_two_heads", "ability_cauterise", "utility_hydras_blood",
     -- end THE CROWN'S BESTIARY, SLICE E
+    -- THE CROWN'S BESTIARY, SLICE A (2026-10-09): the Lesser Archon's edge as a Battlemage's, the Greater Archon's
+    -- beam as a Mage's, the Warden's post as a Sentinel's, and the Duke's Ascension as a Champion's.
+    "utility_mana_edge", "ability_killing_magic", "utility_wardens_post", "utility_ascension",
+    -- end THE CROWN'S BESTIARY, SLICE A
 }
 
 local function vendorFor(class)

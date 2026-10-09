@@ -1200,6 +1200,20 @@ return {
     ["items/ability_cauterise.png"] = { icon = "sbed/burn", by = "hand" },
     ["items/utility_hydras_blood.png"] = { icon = "lorc/goo-skull", by = "hand" },
     -- end THE CROWN'S BESTIARY, SLICE E
+    -- THE CROWN'S BESTIARY, SLICE A (2026-10-09): the four Archons' organs and blows, the Ascended Duke's spell, and
+    -- the four trophies.
+    ["items/weapon_mana_cut_blade.png"] = { icon = "lorc/energy-sword", by = "hand" },
+    ["items/utility_mana_edge.png"] = { icon = "lorc/thunder-blade", by = "hand" },
+    ["items/ability_killing_magic.png"] = { icon = "lorc/sinusoidal-beam", by = "hand" },
+    ["items/utility_ward_of_the_court.png"] = { icon = "lorc/double-ringed-orb", by = "hand" },
+    ["items/weapon_gatekeepers_glaive.png"] = { icon = "delapouite/glaive", by = "hand" },
+    ["items/utility_hold_the_gate.png"] = { icon = "lorc/magic-gate", by = "hand" },
+    ["items/utility_wardens_post.png"] = { icon = "lorc/doorway", by = "hand" },
+    ["items/utility_ducal_ascension.png"] = { icon = "lorc/triorb", by = "hand" },
+    ["items/utility_ducal_command.png"] = { icon = "badges/crown", by = "hand" },
+    ["items/utility_ascension.png"] = { icon = "delapouite/uprising", by = "hand" },
+    ["items/ability_sentence_of_the_court.png"] = { icon = "lorc/laser-blast", by = "hand" },
+    -- end THE CROWN'S BESTIARY, SLICE A
     -- SLICE F, ENVY'S GENERAL (2026-10-03): the Many Faced One's organ, its relic and its two pieces.
     ["items/utility_crown_of_a_thousand_faces.png"] = { icon = "lorc/architect-mask", by = "hand" },
     ["items/utility_pretenders_crown.png"] = { icon = "delapouite/hedjet-white-crown", by = "hand" },

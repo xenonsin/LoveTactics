@@ -936,6 +936,9 @@ function Status.damageTakenScale(unit, attacker)
         local except = s.def.damageTakenScaleExcept
         if except and attacker and attacker ~= s.exempt then scale = scale * except end
     end
+    -- THE CROWN'S BESTIARY, SLICE A (2026-10-09): HOLD THE GATE -- a holding Warden's cover halves a blow struck
+    -- from beyond its reach (models/archon_court.lua). A live read of where three bodies stand, not a status.
+    scale = scale * require("models.archon_court").gateScale(unit, attacker)
     return scale
 end
 

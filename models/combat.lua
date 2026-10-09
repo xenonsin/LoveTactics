@@ -7543,7 +7543,9 @@ function Combat.mitigatedDamage(target, base, tags, opts, attacker)
     -- A barrier of the incoming school swallows the hit whole: report 0 so the damage preview reads
     -- the negation. Combat.dealFlatDamage makes the same check and is the one that CONSUMES the
     -- barrier -- this read never mutates, so a hovered target never spends someone's ward.
-    if Status.barrierAgainst(target, magical) then return 0 end
+    -- THE CROWN'S BESTIARY, SLICE A (2026-10-09): ...unless the blow passes through barriers (`opts.throughBarrier`,
+    -- the Greater Archon's Killing Magic).
+    if not (opts and opts.throughBarrier) and Status.barrierAgainst(target, magical) then return 0 end
     -- A per-type immunity (Immune: Fire and kin) voids a hit carrying that tag outright -- before armor,
     -- resist, vulnerability, and even the raw path below. Sits beside the barrier read above and, like
     -- it, never mutates, so a hovered target reads the negation without spending anything.
@@ -7556,6 +7558,8 @@ function Combat.mitigatedDamage(target, base, tags, opts, attacker)
         return math.max(damageFloor(base), math.floor(base + vuln + 0.5))
     end
     local defStat = magical and "magicDefense" or "defense"
+    -- THE CROWN'S BESTIARY, SLICE A (2026-10-09): MANA EDGE -- a striker that lands on the lower defense.
+    defStat = require("models.archon_court").defenseStat(target, defStat, tags, attacker)
     local defense = flatStat(target, defStat)
     local resist = 0
     for _, t in ipairs(tags) do
@@ -7583,7 +7587,7 @@ end
 -- the sum of its parts rather than one opaque number.
 -- Mirrors mitigatedDamage exactly (same magical/raw switch, same defense stat, same per-tag resist
 -- and vulnerability), so what the tooltip lists always sums to the number in the line above it.
-function Combat.damageBreakdown(target, base, tags, opts, baseParts, dmg)
+function Combat.damageBreakdown(target, base, tags, opts, baseParts, dmg, attacker)
     tags = tags or {}
     local rows = {}
     -- `signed` rows render with an explicit +/- (the mitigation half of the receipt); base-power rows
@@ -7620,13 +7624,15 @@ function Combat.damageBreakdown(target, base, tags, opts, baseParts, dmg)
         mitigated = base + vuln
     else
         local defStat = magical and "magicDefense" or "defense"
+        -- THE CROWN'S BESTIARY, SLICE A: the same Mana Edge swap mitigatedDamage made, so the rows sum.
+        defStat = require("models.archon_court").defenseStat(target, defStat, tags, attacker)
         -- Split the target's defense the same way as the attack stat above: its base, then equipment,
         -- then each buff/debuff by name, every one a separate signed subtraction. A +defense buff cuts
         -- the damage (a larger minus); a -defense debuff feeds it (the minus flips to a plus). The parts
         -- sum to flatStat(target, defStat) -- the exact value mitigatedDamage subtracted.
         local defBase = (target.char and target.char.stats[defStat]) or 0
         local defItemTotal = (target.bonus and target.bonus[defStat]) or 0
-        if defBase ~= 0 then add(magical and "Magic defense" or "Defense", -defBase, false, true) end
+        if defBase ~= 0 then add(defStat == "magicDefense" and "Magic defense" or "Defense", -defBase, false, true) end
         -- One row per piece of gear that moves defense, named after the item; any unattributed
         -- remainder (a summon's folded bonus, a test fixture) closes under a generic "Equipment".
         local defAttributed = 0
@@ -7653,7 +7659,7 @@ function Combat.damageBreakdown(target, base, tags, opts, baseParts, dmg)
         mitigated = base - defense - resist + vuln
     end
     -- The wing's share (Combat.mitigatedDamage), named so the rows above do not appear to sum wrong.
-    local takenScale = Status.damageTakenScale(target)
+    local takenScale = Status.damageTakenScale(target, attacker)
     if takenScale ~= 1 and not (opts and opts.raw) then
         add(string.format("Only x%g reaches it", takenScale), nil)
     end
@@ -8994,7 +9000,8 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
             string.format("%s is immune to the blow (%s).", unitName(target), immune.name or immune.id), target)
         return 0
     end
-    local barrier = Status.barrierAgainst(target, hasTag(tags or {}, "magical"))
+    -- THE CROWN'S BESTIARY, SLICE A (2026-10-09): Killing Magic passes through barriers (`opts.throughBarrier`).
+    local barrier = not (opts and opts.throughBarrier) and Status.barrierAgainst(target, hasTag(tags or {}, "magical"))
     if barrier then
         -- What the ward SWALLOWED, banked on the instance. Almost every barrier ignores this; the
         -- Kept Wound (data/status/status_kept_wound.lua) is the one that reads it back, throwing
@@ -9219,7 +9226,7 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     -- same base, tags and opts the hit resolved with; a flat source (trap/burn) carried no baseParts,
     -- so its breakdown falls back to a single "Base" row.
     if entry then
-        entry.detail = Combat.damageBreakdown(target, base, tags, opts, opts and opts.baseParts, dmg)
+        entry.detail = Combat.damageBreakdown(target, base, tags, opts, opts and opts.baseParts, dmg, attacker)
     end
     -- A CONJUNCTION rings: everyone else bound into the same working takes a share of what just landed
     -- here (Combat.echoWound). Placed after the wound and its log line so the reading order matches the

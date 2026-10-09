@@ -743,6 +743,14 @@ local CHARACTER_SILHOUETTE = {
     hungry_ghost = "lorc/leaky-skull",
     lernaean_hydra = "lorc/hydra",
     -- end THE CROWN'S BESTIARY, SLICE E
+    -- THE CROWN'S BESTIARY, SLICE A (2026-10-09): the court, humanoid every one -- the robe, the senior's wings, the
+    -- keeper's watched door, the Duke on its seat, and the halo it Ascends into.
+    lesser_archon = "lorc/robe",
+    greater_archon = "lorc/angel-outfit",
+    archon_warden = "delapouite/door-watcher",
+    archon_duke = "delapouite/throne-king",
+    archon_duke_ascended = "lorc/spiked-halo",
+    -- end THE CROWN'S BESTIARY, SLICE A
     -- ENVY'S SEAT, SLICE C (2026-10-03): the one-off families. The made thing in its flask, Friar Bacon's bust,
     -- the voice that is only somebody else, the weaver's thread, and a penitent's wimple.
     red_homunculus = "delapouite/water-flask",

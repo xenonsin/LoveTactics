@@ -577,6 +577,15 @@ Grade.TRAIT_GRADE = {
     trait_two_heads =                   2.0,  -- Two Heads -- slash taken banks extra strikes (up to 3)
     trait_hydras_blood =                2.5,  -- Hydra's Blood -- blows Poison; Poison spreads on a death
     -- end THE CROWN'S BESTIARY, SLICE E
+    -- THE CROWN'S BESTIARY, SLICE A (2026-10-09): the Archons. The ward, the Duke's Ascension and Command are bodies'
+    -- organs. Hold the Gate is the Warden's AND the Sentinel's post; the Mana Edge and Ascension are drops only.
+    trait_ward_of_the_court =           0.0,  -- Ward of the Court -- a struck Archon is warded, on a cooldown
+    trait_ducal_ascension =             0.0,  -- Ducal Ascension -- the Duke takes wisps and Ascends at three
+    trait_ducal_command =               0.0,  -- Command -- the court near the Duke acts before the company
+    trait_hold_the_gate =               1.0,  -- Hold the Gate -- standing still halves ranged blows on the line
+    trait_mana_edge =                   1.0,  -- Mana Edge -- blows land on the lower defense, +3
+    trait_ascension =                   1.0,  -- Ascension -- three downs: +6 Damage, +2 Movement for the fight
+    -- end THE CROWN'S BESTIARY, SLICE A
     -- SLOTH'S TROLLS (slice B, 2026-10-04). The Toll is the Toll-Troll's organ and never shelved. Of the drops:
     -- Scarring Blows is the Unclosing Parry's wound on your own swing, a turn long (and the Scarlord's organ carries
     -- it too); Bridge Tax is Keen Senses narrowed to abilities within 2; the Grafted Arm is a tenth a turn, priced

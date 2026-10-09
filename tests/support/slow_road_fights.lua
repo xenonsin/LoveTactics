@@ -238,8 +238,19 @@
 -- measurement of the ground as it ships, not a raise.
 --
 -- Measured 2026-09-24 at DEPTH 11, cave, four bodies, RNG pinned per fight.
+--
+-- THE CROWN'S BESTIARY, SLICE A (2026-10-09): THE GATEHOUSE, and it is the dwarves' story told by a different rule.
+-- The Warden's Hold the Gate halves every blow struck from beyond 2 on the court behind it, and the review's counter
+-- is "close in" -- which the harness company does not do: its archer takes most of the fight's turns, shooting at
+-- half. With the cover switched off the same fight measured 24; trimming the Warden to the foot of its rung, taking
+-- its plate off (31 in chainmail, 31 with a buckler) and moving it to another growth table did not bring it under.
+-- Every Archon is also raised once by its wisp, and the wisps take turns of their own. Recorded rather than tuned
+-- away, because the cover is the approved design and the budget is measuring a company that will not walk into it.
+-- Measured at DEPTH 11, underworld, four bodies.
 
 return {
     encounter_greed_the_strongroom = 32,
     encounter_greed_the_assay_office = 45,
+    -- THE CROWN'S BESTIARY, SLICE A
+    encounter_crown_the_gatehouse = 35,
 }
