@@ -58,7 +58,6 @@ return {
     "ability_scouring_mercy",
     "ability_sealed_hour",
     "ability_set_charge",
-    "ability_shared_burden",
     "ability_shieldbreak",
     "ability_sleep",
     "ability_smite",

@@ -823,6 +823,15 @@ local CHARACTER_SILHOUETTE = {
     -- end SLOTH'S TOLLKEEPERS, SLICE F
 }
 
+-- THE RIFT'S ADVENTURERS, SLICE B (2026-10-09): the race-free adventurer bodies wear their discipline
+-- exemplar's body. Each reuses the exemplar's sprite file (tests/char_compose_spec.lua aliases the pair),
+-- so it must resolve to the same silhouette or the composer would draw one file two ways.
+for _, class in ipairs({ "barbarian", "sentinel", "assassin", "druid", "necromancer", "monk", "poisoner",
+    "crusader", "mammonite", "summoner", "trapper", "apothecary", "champion", "poacher" }) do
+    CHARACTER_SILHOUETTE["adv_" .. class] = DISCIPLINE_SILHOUETTE[class]
+end
+-- end THE RIFT'S ADVENTURERS, SLICE B
+
 -- Reverse index: the character key a discipline names as its `exemplar` -> the discipline id. Built from
 -- the discipline blueprints so the mapping lives in one place (data/classes/*.lua) and a repointed
 -- exemplar follows automatically. A character that is no discipline's exemplar is simply absent here, and

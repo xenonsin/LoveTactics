@@ -63,6 +63,24 @@ local ALIAS = {
     character_kobold_skeleton = "character_kobold_skulker",
     -- ...and a dead Gilt Wyrm, stood up by the Paymaster's reveal (2026-09-26): the wyrm's token in bone.
     character_bone_wyrm = "character_gilt_wyrm",
+
+    -- THE RIFT'S ADVENTURERS, SLICE B (2026-10-09): a race-free adventurer body is its discipline's
+    -- exemplar met as traffic, and wears the exemplar's token (tools/char_compose.lua says the same).
+    character_adv_barbarian = "character_barbarian",
+    character_adv_sentinel = "character_sentinel",
+    character_adv_assassin = "character_assassin",
+    character_adv_druid = "character_druid",
+    character_adv_necromancer = "character_necromancer",
+    character_adv_monk = "character_monk",
+    character_adv_poisoner = "character_poisoner",
+    character_adv_crusader = "character_crusader",
+    character_adv_mammonite = "character_mammonite",
+    character_adv_summoner = "character_summoner",
+    character_adv_trapper = "character_trapper_ambusher",
+    character_adv_apothecary = "character_apothecary",
+    character_adv_champion = "character_champion",
+    character_adv_poacher = "character_poacher",
+    -- end THE RIFT'S ADVENTURERS, SLICE B
 }
 
 -- Are these two blueprints allowed to converge? The relation is symmetric, and it composes through the
