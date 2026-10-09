@@ -20,4 +20,10 @@ return Adventurers.party({
     name = "The Shieldwall",
     core = { "paladin", "battlemage", "crusader" },
     grow = { "spellbreaker", "vanguard", "theurge" },
+    combo = "The Paladin's aura cuts the damage taken by every ally beside him. The Battlemage strikes"
+        .. " and casts in one action from inside it, and the Crusader heals on every kill. From floor 12"
+        .. " a Vanguard strips your armour, from 13 a Spellbreaker Silences your caster, and on 15 a"
+        .. " Theurge channels inside the aura.",
+    counter = "Pull them apart: a body stepped off the paladin's aura takes full damage. Keep your casters"
+        .. " back from the spellbreaker.",
 })

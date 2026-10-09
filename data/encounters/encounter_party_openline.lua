@@ -14,4 +14,9 @@ return Adventurers.party({
     name = "Open the Line",
     core = { "vanguard", "duelist", "barbarian" },
     grow = { "champion", "warlord", "warbrewer" },
+    combo = "The Vanguard's knockback strips guard and armour from your front body. The Duelist locks"
+        .. " onto it and grows stronger each turn the two stay locked. The Barbarian walks through the"
+        .. " gap. Grows with a Champion, a Warlord and on floor 15 a Warbrewer.",
+    counter = "Rotate who stands at the front so the duelist's lock resets. Kill the vanguard and your"
+        .. " armour stays on.",
 })

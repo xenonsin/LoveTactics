@@ -16,6 +16,14 @@ a rogue.
 
 So a class does not say *who may carry this*. It says *what kind of answer this is*.
 
+> **ONE EXCEPTION, AND IT IS A RACE, NEVER A CLASS.** The sixteen race items (`models/adventurers.lua`'s
+> `RACE_ITEMS` -- Mountain's Root, Flawless Shot, Red Mark...) carry `race = "<race>"`, and no body of
+> another race may equip one (`Character.canCarry`, asked by `Character.addItem` and every Loadout
+> landing path). The author picked a hard gate over three softer options on 2026-10-09 ("The Rift's
+> Adventurers", round 3). It does not reach classes: asked in the same round whether classes should
+> restrict more generally, the answer was left open, and until it is answered every other piece in the
+> game is carried by anyone.
+
 There are three different ideas in this codebase that all sound like "class", and they are decoupled
 on purpose. Keep them apart:
 

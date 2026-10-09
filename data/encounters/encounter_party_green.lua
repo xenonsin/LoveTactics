@@ -14,4 +14,8 @@ return Adventurers.party({
     name = "Green Hands",
     core = { "herbalist", "bombardier", "alchemist" },
     grow = { "poisoner", "plague_knight", "necromancer" },
+    combo = "The Bombardier covers the board in craters. The Herbalist harvests those hazards into brews"
+        .. " mid-fight, a poison for you or a cure for them. The Alchemist throws what she brews. Grows"
+        .. " with a Poisoner, a Plague Knight and a Necromancer.",
+    counter = "Kill the herbalist before she harvests, or fight on clean ground away from the craters.",
 })

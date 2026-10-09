@@ -14,4 +14,9 @@ return Adventurers.party({
     name = "The Contagion",
     core = { "plague_knight", "poisoner", "necromancer" },
     grow = { "alchemist", "fighter", "herbalist" },
+    combo = "The Plague Knight poisons whoever stands next to him, and the Poisoner's coatings stack"
+        .. " more. Whatever falls poisoned, the Necromancer bursts where it lies, poisoning the bodies"
+        .. " around it. On floor 12 a Herbalist harvests the poison into brews.",
+    counter = "Don't trade in melee with the plague knight, and don't let a poisoned body fall near your"
+        .. " others. Cure or Cleanse before the bodies drop.",
 })

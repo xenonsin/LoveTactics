@@ -14,4 +14,8 @@ return Adventurers.party({
     name = "Hit and Gone",
     core = { "ninja", "skirmisher", "hunter" },
     grow = { "assassin", "thief", "inquisitor" },
+    combo = "The Skirmisher moves after every strike and never ends a turn where it swung. The Ninja"
+        .. " blinks out of reach and leaves a clone to take the blow. The Hunter marks a body for both."
+        .. " Grows with an Assassin, a Thief and an Inquisitor.",
+    counter = "Use what doesn't miss: area spells, hazards and blasts. Kill the hunter, who stands still.",
 })

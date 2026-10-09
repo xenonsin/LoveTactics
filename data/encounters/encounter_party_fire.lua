@@ -14,4 +14,9 @@ return Adventurers.party({
     name = "Fire and Steel",
     core = { "fighter", "alchemist", "mage" },
     grow = { "hunter", "bombardier", "battlemage" },
+    combo = "The Mage lays burning ground; the Alchemist throws a Fire Bomb into it and drinks an elixir"
+        .. " that raises the Fighter's blow. The Fighter sweeps the front and pays health to swing."
+        .. " Deeper, a Bombardier adds craters and a Battlemage casts fire with every swing.",
+    counter = "Stay off the burning tiles and let the fighter come to you: every swing costs him. Kill the"
+        .. " mage before the ground spreads.",
 })

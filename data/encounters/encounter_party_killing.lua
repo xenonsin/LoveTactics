@@ -14,4 +14,8 @@ return Adventurers.party({
     name = "The Killing Ground",
     core = { "artificer", "trapper", "knight" },
     grow = { "hunter", "bulwark", "poacher" },
+    combo = "The Artificer sets turrets that cover a trapped lane. The Trapper fills it. The Knight"
+        .. " taunts and Halts you inside it. Grows with a Hunter, a Bulwark to push you in, and a Poacher"
+        .. " for whatever is Rooted.",
+    counter = "Don't take the lane. Come round the side, and break the turrets before you engage.",
 })

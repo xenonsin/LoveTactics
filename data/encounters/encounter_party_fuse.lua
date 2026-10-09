@@ -14,4 +14,9 @@ return Adventurers.party({
     name = "The Fuse",
     core = { "saboteur", "bombardier", "artificer" },
     grow = { "bulwark", "trapper", "hunter" },
+    combo = "The Saboteur plants charges you can't see and sets them off when you're standing on one. The"
+        .. " Bombardier's blasts set off any charge nearby. The Artificer's turrets keep you from"
+        .. " crossing quickly. Grows with a Bulwark to push you onto the charges, a Trapper and a Hunter.",
+    counter = "Kill the saboteur before he picks his moment, and keep your bodies spread so one blast takes"
+        .. " one of them.",
 })

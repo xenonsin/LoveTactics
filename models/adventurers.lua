@@ -191,6 +191,9 @@ function Adventurers.party(spec)
         party = true,
         core = spec.core,
         grow = spec.grow,
+        -- The approved words, printed by the wiki's Adventurers page (tools/wiki_gen.lua).
+        combo = spec.combo,
+        counter = spec.counter,
         depth = Adventurers.openingFloor(spec.core),
         weight = 1,
         enemyCap = Adventurers.MAX,

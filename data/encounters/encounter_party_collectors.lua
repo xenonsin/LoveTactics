@@ -14,4 +14,8 @@ return Adventurers.party({
     name = "The Collectors",
     core = { "mammonite", "thief", "sentinel" },
     grow = { "rogue", "bulwark", "warlord" },
+    combo = "The Thief steals off you; the Mammonite banks coin on every blow and spends it on damage,"
+        .. " tempo and his own survival. The Sentinel covers the mammonite while the purse fills. Deeper,"
+        .. " a Rogue steals too and a Bulwark pushes you away from the purse.",
+    counter = "Kill the mammonite before he banks enough to spend, and kill the thief to stop feeding him.",
 })

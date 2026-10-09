@@ -14,4 +14,10 @@ return Adventurers.party({
     name = "Raise the Fallen",
     core = { "necromancer", "monk", "druid" },
     grow = { "knight", "plague_knight", "fighter" },
+    combo = "The Druid takes bear shape and holds the front. The Monk banks chi and spends it all on one"
+        .. " heavy blow. Any body that falls, yours included, the Necromancer raises to fight on their"
+        .. " side, or bursts where it lies. On floor 9 a Plague Knight poisons the bodies before they"
+        .. " fall.",
+    counter = "Don't let anyone go down near the necromancer, and kill him early. Burst him before the"
+        .. " monk's bank fills.",
 })

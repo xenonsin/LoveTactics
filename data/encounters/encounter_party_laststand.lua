@@ -14,4 +14,10 @@ return Adventurers.party({
     name = "The Last Stand",
     core = { "barbarian", "sentinel", "alchemist" },
     grow = { "crusader", "warlord", "fighter" },
+    combo = "The Barbarian hits harder the more hurt he is. The Sentinel stands beside him and takes"
+        .. " every blow meant for him, so he can sit at low health without dying. The Alchemist raises"
+        .. " his damage with elixirs. From floor 6 a Crusader's kills heal him and a Warlord's banner"
+        .. " stands over them.",
+    counter = "Kill the sentinel first, or push the barbarian off him. A wounded barbarian with nobody"
+        .. " covering him dies in one blow.",
 })

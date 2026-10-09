@@ -176,6 +176,20 @@ The codebase is organized into layers loaded via `require()`. See
   cleared. `Descent.lostPacks` derives the readout by walking the boards, so there is no second ledger
   to go stale.
 
+  **PEOPLE ARE BACK IN TRAFFIC, AS ADVENTURING PARTIES** (`models/adventurers.lua`, 2026-10-09). The
+  2026-09-22 deletion of human companies stands for what it named -- a company met by a company stalls --
+  and these return under the limits written against it: a core of three that grows with depth to six
+  (`Adventurers.sizeAt`), at most one sustain body per three, and a budget of their own
+  (`tests/party_budget_spec.lua`). A party is written in CLASSES: one race-free body per class
+  (`character_adv_<class>`), fielded as `character_adv_<class>@<race>`, which `Character.defs` resolves
+  lazily so `pairs` never sees the derived ids. Half the bodies come from a race that leans to the class.
+  A party opens on the floor its deepest class unlocks and never leaves; parties take 20% of a floor's
+  ordinary draws (`Descent.floorPool`), excused the light-fight filter because **every class open on a
+  floor must stand in some party there** -- a body drops from its own class shelf half the time and its
+  parents' the other half (`Spoils.lootSharesOf`), so the parties are what keep every shelf droppable.
+  Sixteen race items are the game's ONE equip gate (`Character.canCarry`; docs/classes.md says why). The
+  wiki prints them on their own Adventurers page, apart from the bestiary.
+
   See [docs/overworld.md](docs/overworld.md) for the floor it is walked on and
   [docs/identification.md](docs/identification.md) for what a floor pays.
 

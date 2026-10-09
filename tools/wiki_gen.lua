@@ -40,6 +40,7 @@ local Character = require("models.character")
 local Race = require("models.race")
 local Descent = require("models.descent")
 local Status = require("models.status")
+local Adventurers = require("models.adventurers")
 
 local M = {}
 
@@ -437,9 +438,47 @@ local function bodyOrder(a, b)
     return a < b
 end
 
+-- THE ADVENTURERS ARE KEPT APART FROM THE NATIVES (the author: "in the wiki, keep them separate from
+-- the natural species of the floor"). A party is written in classes and fielded as
+-- `character_adv_<class>@<race>` (models/adventurers.lua), so a body here is addressed by its CLASS:
+-- every variant links to the one race-free body it was derived from, on the Adventurers page.
+local ADV_PAGE = "Adventurers"
+local ADV_BODIES = {}   -- ordered base charIds
+local ADV_PARTIES = {}  -- ordered { id, def }
+
+local function advCatalogue()
+    local Encounter = require("models.encounter")
+    ADV_BODIES, ADV_PARTIES = {}, {}
+    for id, def in pairs(Character.defs) do
+        if def.adventurer then ADV_BODIES[#ADV_BODIES + 1] = id end
+    end
+    local function floorOfBody(id) return Adventurers.floorOf(Adventurers.classOf(id)) end
+    table.sort(ADV_BODIES, function(a, b)
+        local fa, fb = floorOfBody(a), floorOfBody(b)
+        if fa ~= fb then return fa < fb end
+        return bodyName(a) < bodyName(b)
+    end)
+    for _, id in ipairs(ADV_BODIES) do
+        HEADING[id] = bodyName(id)
+        ANCHOR[id] = anchorOf(HEADING[id])
+    end
+    for id, def in pairs(Encounter.defs) do
+        if def.party then ADV_PARTIES[#ADV_PARTIES + 1] = { id = id, def = def } end
+    end
+    table.sort(ADV_PARTIES, function(a, b)
+        if a.def.depth ~= b.def.depth then return a.def.depth < b.def.depth end
+        return a.def.name < b.def.name
+    end)
+    for _, p in ipairs(ADV_PARTIES) do
+        HEADING[p.id] = p.def.name
+        ANCHOR[p.id] = anchorOf(p.def.name)
+    end
+end
+
 local function bodyCatalogue()
     BODY_KINDS, BODIES, KIND_OF, HEADING, ANCHOR = {}, {}, {}, {}, {}
     for id, def in pairs(Character.defs) do
+      if not def.adventurer then
         -- A blueprint whose race the registry does not know still gets a page rather than vanishing,
         -- for the same reason an unknown item type does: a bucket nobody has taught this tool about
         -- is still content. tests/data_spec is what fails such a blueprint, not this.
@@ -451,6 +490,7 @@ local function bodyCatalogue()
         if not BODIES[kind] then BODIES[kind] = {}; BODY_KINDS[#BODY_KINDS + 1] = kind end
         BODIES[kind][#BODIES[kind] + 1] = id
         KIND_OF[id] = kind
+      end
     end
     table.sort(BODY_KINDS, function(a, b) return kindName(a) < kindName(b) end)
     for kind, list in pairs(BODIES) do
@@ -471,6 +511,7 @@ local function bodyCatalogue()
             ANCHOR[id] = anchorOf(HEADING[id])
         end
     end
+    advCatalogue()
 end
 
 -- WHOSE KIT A PIECE IS: itemId -> { charId, ... }, over EVERY blueprint rather than the placed ones.
@@ -511,6 +552,11 @@ end
 -- built for, which is what keeps a caller that runs before bodyCatalogue() honest rather than broken.
 local function bodyLink(charId)
     local name = cell(bodyName(charId))
+    if Adventurers.classOf(charId) then
+        local base = Adventurers.split(charId)
+        if not ANCHOR[base] then return name end
+        return "[" .. name .. "](" .. ADV_PAGE .. "#" .. ANCHOR[base] .. ")"
+    end
     local kind = KIND_OF[charId]
     if not kind or not ANCHOR[charId] then return name end
     return "[" .. name .. "](" .. bestiaryPageOf(kind) .. "#" .. ANCHOR[charId] .. ")"
@@ -1247,10 +1293,23 @@ local function riftFloors()
         -- which of its circle's two floors it is (models/encounter.lua's `depth` and `rung`).
         local ctx = { depth = floor, rung = Descent.floorWithinCircle(floor),
             biome = quest.map.biome, quest = quest }
-        local combat, elite = {}, {}
-        for _, entry in ipairs(Descent.floorPool(ctx)) do
+        local combat, elite, parties = {}, {}, {}
+        local pool = Descent.floorPool(ctx)
+        local combatTotal = 0
+        for _, entry in ipairs(pool) do
+            if entry.kind == "combat" then combatTotal = combatTotal + (entry.weight or 0) end
+        end
+        for _, entry in ipairs(pool) do
             local def = Encounter.get(entry.id)
-            if def and (entry.kind == "combat" or entry.kind == "elite") then
+            if def and def.party then
+                -- A PARTY IS PRINTED APART from the floor's own bodies, in its own table, and keeps its
+                -- weight in the ordinary share's denominator (an empty row) so a native's share stays a
+                -- share of every ordinary fight, parties included.
+                parties[#parties + 1] = { id = entry.id, def = def,
+                    share = combatTotal > 0 and (entry.weight or 0) / combatTotal or 0,
+                    classes = Adventurers.members(def.core, def.grow, floor) }
+                combat[#combat + 1] = { ids = {}, weight = entry.weight }
+            elseif def and (entry.kind == "combat" or entry.kind == "elite") then
                 local row = { ids = compositionIds(def, ctx), weight = entry.weight }
                 if entry.kind == "combat" then combat[#combat + 1] = row else elite[#elite + 1] = row end
             end
@@ -1293,6 +1352,7 @@ local function riftFloors()
             end)(),
             ward = ward,
             bodies = floorBodies(combat, elite),
+            parties = parties,
         }
     end
 
@@ -1364,6 +1424,32 @@ local function floorsPage()
         line()
     end
 
+    -- THE VISITORS, apart from the natives: an adventuring party is not of this circle and walks every
+    -- floor from its opening one down (models/adventurers.lua), so it gets a table of its own rather
+    -- than rows mixed into the circle's.
+    local function partyTable(rows)
+        if not rows or #rows == 0 then return end
+        table.sort(rows, function(a, b) return a.def.name < b.def.name end)
+        line("**Parties met here**")
+        line()
+        line("| Party | Who stands in it | Ordinary fights |")
+        line("| --- | --- | :--: |")
+        for _, row in ipairs(rows) do
+            local who = {}
+            for _, c in ipairs(row.classes) do
+                local base = Adventurers.bodyOf(c)
+                local nm = cell(Class.displayName(c) or c)
+                who[#who + 1] = ANCHOR[base] and ("[" .. nm .. "](" .. ADV_PAGE .. "#" .. ANCHOR[base] .. ")") or nm
+            end
+            local name = cell(row.def.name)
+            if ANCHOR[row.id] then name = "[" .. name .. "](" .. ADV_PAGE .. "#" .. ANCHOR[row.id] .. ")" end
+            line("| " .. name .. " | " .. table.concat(who, ", ") .. " | " .. share(row.share) .. " |")
+        end
+        line()
+        line("_Each body's race is rolled when the party is fielded. See [Adventurers](" .. ADV_PAGE .. ")._")
+        line()
+    end
+
     for floor = 1, Descent.FLOORS do
         local f = floors[floor]
         line("## " .. floorHeading(floor))
@@ -1379,6 +1465,7 @@ local function floorsPage()
             line()
         end
         bodyTable(f.bodies)
+        partyTable(f.parties)
     end
 
     return table.concat(out, "\n")
@@ -1885,6 +1972,208 @@ local function bestiaryIndexPage()
 end
 
 -- ---------------------------------------------------------------------------
+-- Adventurers: the parties, and the bodies they are made of
+-- ---------------------------------------------------------------------------
+--
+-- APART FROM THE BESTIARY ON PURPOSE (the author's call). A native belongs to a circle and its page is
+-- its kind; an adventurer belongs to no circle, walks every floor from its opening one down, and is a
+-- CLASS before it is a race -- the race is rolled when its party is fielded. So it is addressed by class,
+-- and its section is written in the Bestiary's own shape (a `## heading`, the `charId` under it) so the
+-- spec that walks every body's entry walks these too.
+
+local function shelfLink(classId)
+    return "[" .. cell(Class.displayName(classId) or classId) .. "](" .. pageOf(classId) .. ")"
+end
+
+local function advClassLink(classId)
+    local base = Adventurers.bodyOf(classId)
+    local nm = cell(Class.displayName(classId) or classId)
+    if not ANCHOR[base] then return nm end
+    return "[" .. nm .. "](#" .. ANCHOR[base] .. ")"
+end
+
+local function raceWord(race)
+    local def = Race.get(race)
+    return cell((def and def.name) or race)
+end
+
+local function pct(x) return tostring(math.floor(x * 100 + 0.5)) .. "%" end
+
+-- A party's membership as runs of floors: one row per stretch where the same classes stand.
+local function partyRuns(def)
+    local runs = {}
+    for floor = def.depth, Descent.FLOORS do
+        local who = Adventurers.members(def.core, def.grow, floor)
+        local key = table.concat(who, ",")
+        local last = runs[#runs]
+        if last and last.key == key then last.to = floor
+        else runs[#runs + 1] = { from = floor, to = floor, key = key, who = who } end
+    end
+    return runs
+end
+
+local function partySection(out, p)
+    local function line(x) out[#out + 1] = x or "" end
+    local def = p.def
+    line("## " .. cell(def.name))
+    line()
+    line("`" .. p.id .. "` · opens on " .. floorLink(def.depth) .. " · an ordinary fight · up to "
+        .. Adventurers.MAX .. " bodies")
+    line()
+    if def.combo then line(cell(def.combo)); line() end
+    if def.counter then line("**How you beat it** — " .. cell(def.counter)); line() end
+    line("| Floors | Bodies | Who stands in it |")
+    line("| :--: | :--: | --- |")
+    for _, run in ipairs(partyRuns(def)) do
+        local who = {}
+        for _, c in ipairs(run.who) do who[#who + 1] = advClassLink(c) end
+        local floors = run.from == run.to and tostring(run.from) or (run.from .. "–" .. run.to)
+        line("| " .. floors .. " | " .. #run.who .. " | " .. table.concat(who, ", ") .. " |")
+    end
+    line()
+    local shelves, seen = {}, {}
+    for _, c in ipairs(def.core) do if not seen[c] then seen[c] = true; shelves[#shelves + 1] = c end end
+    for _, c in ipairs(def.grow) do if not seen[c] then seen[c] = true; shelves[#shelves + 1] = c end end
+    local links = {}
+    for _, c in ipairs(shelves) do links[#links + 1] = shelfLink(c) end
+    line("**Pays from** — " .. table.concat(links, " · "))
+    line()
+end
+
+local function advBodySection(out, charId, statCols)
+    local function line(x) out[#out + 1] = x or "" end
+    local def = Character.defs[charId]
+    local class = Adventurers.classOf(charId)
+    line("## " .. cell(HEADING[charId] or bodyName(charId)))
+    line()
+    local meta = { "`" .. charId .. "`" }
+    if def.tier then meta[#meta + 1] = "tier " .. tostring(def.tier) end
+    if def.archetype then meta[#meta + 1] = cell(def.archetype) .. " posture" end
+    meta[#meta + 1] = shelfLink(class) .. " shelf"
+    meta[#meta + 1] = "walks from " .. floorLink(Adventurers.floorOf(class))
+    line(table.concat(meta, " · "))
+    line()
+    local stats = statsOf(charId)
+    if stats and statCols and #statCols > 0 then
+        local heads, seps, vals = {}, {}, {}
+        for i, st in ipairs(statCols) do
+            heads[i] = st.head
+            seps[i] = "---:"
+            local v = stats[st.key]
+            vals[i] = type(v) == "number" and tostring(v) or "—"
+        end
+        line("| " .. table.concat(heads, " | ") .. " |")
+        line("| " .. table.concat(seps, " | ") .. " |")
+        line("| " .. table.concat(vals, " | ") .. " |")
+        line()
+    end
+    local facts = {}
+    local function fact(label, value)
+        if value then facts[#facts + 1] = "| **" .. label .. "** | " .. value .. " |" end
+    end
+    local leaning = {}
+    for _, r in ipairs(Adventurers.leaningRaces(class)) do leaning[#leaning + 1] = raceWord(r) end
+    fact("Usually", #leaning > 0 and (table.concat(leaning, ", ") .. " — half the time; any people otherwise") or nil)
+    fact("Carries", kitLine(def))
+    local sig = {}
+    if def.signatureWeapon then sig[#sig + 1] = itemLink(def.signatureWeapon) end
+    if def.signatureAbility then sig[#sig + 1] = itemLink(def.signatureAbility) end
+    fact("Signature", #sig > 0 and table.concat(sig, " · ") or nil)
+    local raceItems = {}
+    for _, r in ipairs(Adventurers.RACES) do
+        local itemId = Adventurers.raceItemOf(r, class)
+        if itemId and Item.defs[itemId] then
+            raceItems[#raceItems + 1] = "as " .. raceWord(r):lower() .. ": " .. itemLink(itemId)
+        end
+    end
+    fact("Race item", #raceItems > 0 and table.concat(raceItems, " · ") or nil)
+    local shares, order = Spoils.lootSharesOf(def), {}
+    for c in pairs(shares) do order[#order + 1] = c end
+    table.sort(order, function(a, b)
+        if shares[a] ~= shares[b] then return shares[a] > shares[b] end
+        return a < b
+    end)
+    local drops = {}
+    for _, c in ipairs(order) do drops[#drops + 1] = shelfLink(c) .. " " .. pct(shares[c]) end
+    fact("Drops from", #drops > 0 and table.concat(drops, " · ") or nil)
+    local stands = {}
+    for _, p in ipairs(ADV_PARTIES) do
+        local seen = false
+        for _, c in ipairs(p.def.core) do if c == class then seen = true end end
+        for _, c in ipairs(p.def.grow) do if c == class then seen = true end end
+        if seen then stands[#stands + 1] = "[" .. cell(p.def.name) .. "](#" .. ANCHOR[p.id] .. ")" end
+    end
+    fact("Stands in", #stands > 0 and table.concat(stands, " · ") or nil)
+    if #facts > 0 then
+        line("| | |")
+        line("|---|---|")
+        for _, row in ipairs(facts) do line(row) end
+    end
+    line()
+end
+
+local function adventurersPage()
+    local out = {}
+    local function line(x) out[#out + 1] = x or "" end
+    line(banner("Adventurers: models/adventurers.lua + data/encounters/encounter_party_*.lua."))
+    line()
+    line("# Adventurers")
+    line()
+    line("Rival parties of people, met on **every floor** of the rift and kept apart here from the "
+        .. "circles' own creatures. **" .. #ADV_PARTIES .. " parties** made of **" .. #ADV_BODIES
+        .. " bodies**, one for every class.")
+    line()
+    line("- **Written in classes.** Each body's race is rolled when its party is fielded: half the time a "
+        .. "people that leans to the class, otherwise any of the " .. #Adventurers.RACES
+        .. " playable peoples. Most bulwarks are dwarves; you will meet a goblin one.")
+    line("- **The floor gates the class.** A party first appears on the floor its deepest class opens on "
+        .. "(one class level is one floor), and never leaves after that. It grows instead: **3** bodies on "
+        .. "floors 1–2, **4** on 3–5, **5** on 6–9 and **6** from floor 10.")
+    line("- **A fifth of the ordinary fights.** Parties take " .. pct(Adventurers.SHARE) .. " of a floor's "
+        .. "ordinary draws between them. Every class open on a floor stands in some party there.")
+    line("- **Drops come off the class shelves.** A body of an earned class pays its own shelf half the "
+        .. "time and its parents' the other half.")
+    line("- **Race items.** Some pairings carry an item only that people may equip — the one equip gate "
+        .. "in the game. Your own company can carry them too, on a body of the right people.")
+    line()
+    line("## Race leanings")
+    line()
+    line("| People | Leans to |")
+    line("| --- | --- |")
+    for _, r in ipairs(Adventurers.RACES) do
+        local cs = {}
+        for _, c in ipairs(Adventurers.LEAN[r]) do cs[#cs + 1] = advClassLink(c) end
+        line("| " .. raceWord(r) .. " | " .. table.concat(cs, ", ") .. " |")
+    end
+    line()
+    line("## Race items")
+    line()
+    line("| People | Class | Item |")
+    line("| --- | --- | --- |")
+    for _, r in ipairs(Adventurers.RACES) do
+        local cs = {}
+        for c in pairs(Adventurers.RACE_ITEMS[r] or {}) do cs[#cs + 1] = c end
+        table.sort(cs)
+        for _, c in ipairs(cs) do
+            local itemId = Adventurers.RACE_ITEMS[r][c]
+            line("| " .. raceWord(r) .. " | " .. advClassLink(c) .. " | "
+                .. (Item.defs[itemId] and itemLink(itemId) or ("`" .. itemId .. "`")) .. " |")
+        end
+    end
+    line()
+    for _, p in ipairs(ADV_PARTIES) do partySection(out, p) end
+    local statCols = liveStatCols(ADV_BODIES)
+    if #statCols > 0 then
+        local key = {}
+        for i, st in ipairs(statCols) do key[i] = "**" .. st.head .. "** " .. st.label end
+        line("Each body's stats are printed as its usual people. Stat columns: " .. table.concat(key, " · ") .. ".")
+        line()
+    end
+    for _, id in ipairs(ADV_BODIES) do advBodySection(out, id, statCols) end
+    return table.concat(out, "\n")
+end
+
+-- ---------------------------------------------------------------------------
 -- Statuses: every status, and everything that names it
 -- ---------------------------------------------------------------------------
 --
@@ -2114,6 +2403,8 @@ local function homePage(byClass, classIds)
     end
     local nStatus = 0
     for _ in pairs(Status.defs) do nStatus = nStatus + 1 end
+    line("- **[Adventurers](Adventurers)** — the " .. #ADV_PARTIES .. " rival parties met on every floor, "
+        .. "and the " .. #ADV_BODIES .. " bodies they are made of, apart from the circles' own creatures.")
     line("- **[Statuses](Statuses)** — all " .. nStatus .. " statuses: what each one does, and every "
         .. "piece that applies, ends or wards it.")
     line("- **[Items](Items)** — all " .. total .. " items, by class and type.")
@@ -2135,6 +2426,7 @@ local function sidebarPage(byClass, classIds)
     for _, kind in ipairs(BODY_KINDS) do
         line("  - [" .. kindName(kind) .. "](" .. bestiaryPageOf(kind) .. ")")
     end
+    line("- [Adventurers](Adventurers)")
     line("- [Statuses](Statuses)")
     line("- [Items](Items)")
     for _, id in ipairs(classIds) do
@@ -2180,6 +2472,7 @@ function M.render()
         { name = "Items", body = indexPage(byClass, classIds) },
         { name = "The-Rift", body = floorsPage() },
         { name = "Bestiary", body = bestiaryIndexPage() },
+        { name = "Adventurers", body = adventurersPage() },
         { name = "Statuses", body = statusPage() },
     }
     for _, id in ipairs(classIds) do

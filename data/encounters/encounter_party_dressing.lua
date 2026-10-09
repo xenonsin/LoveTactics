@@ -14,4 +14,8 @@ return Adventurers.party({
     name = "Field Dressing",
     core = { "priest", "fighter", "hunter" },
     grow = { "knight", "barbarian", "crusader" },
+    combo = "The Priest heals the Fighter and wards his tile, so he can trade blows he would lose alone."
+        .. " The Hunter picks at whoever is trading with him. Deeper, a Barbarian takes the front and a"
+        .. " Crusader heals himself on every kill.",
+    counter = "The front line is the bait. Reach past it to the priest; without the heals it can't hold.",
 })

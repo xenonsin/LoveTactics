@@ -14,4 +14,9 @@ return Adventurers.party({
     name = "The Bait",
     core = { "champion", "apothecary", "hunter" },
     grow = { "shaman", "monk", "summoner" },
+    combo = "The Champion's Provoke pulls your attacks onto him, and he strikes back at everyone who"
+        .. " bites. The Apothecary keeps him standing with doses. The Hunter shoots whoever took the"
+        .. " bait. From floor 9 a Shaman's spirits fight around him.",
+    counter = "Ignore the taunt where you can and kill the apothecary first. The champion is built to be"
+        .. " attacked; he isn't built to win on his own.",
 })

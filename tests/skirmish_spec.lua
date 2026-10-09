@@ -289,7 +289,14 @@ return {
         end
 
         local worst, worstId = 0, nil
+        -- AN ADVENTURING PARTY IS TIMED BY ITS OWN CASE (tests/party_budget_spec.lua), not against this
+        -- budget: it is a company of up to six people with its own cap, approved as such, and holding it
+        -- to a four-body skirmish's length would be asking it to be a different fight.
+        local natives = {}
         for _, e in ipairs(weightedByKind("combat")) do
+            if not e.def.party then natives[#natives + 1] = e end
+        end
+        for _, e in ipairs(natives) do
             local player = companyAtDepth(DEPTH)
             if love and love.math and love.math.setRandomSeed then love.math.setRandomSeed(20260809)
             else math.randomseed(20260809) end

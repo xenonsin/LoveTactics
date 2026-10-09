@@ -14,4 +14,9 @@ return Adventurers.party({
     name = "Stripped Bare",
     core = { "exorcist", "thief", "knight" },
     grow = { "rogue", "spellbreaker", "hunter" },
+    combo = "The Thief's blow takes a buff off you and gives it to him. The Exorcist's rites strip what's"
+        .. " left, clear your wards and banish your summons. The Knight holds the line while they work."
+        .. " On floor 13 a Spellbreaker Silences whoever tries to put the buffs back.",
+    counter = "Don't open with buffs; they'll be stolen or stripped. Fight plain, and kill the thief before"
+        .. " he wears your own boons.",
 })

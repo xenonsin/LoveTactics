@@ -14,4 +14,9 @@ return Adventurers.party({
     name = "Bottom of the Cup",
     core = { "warbrewer", "vanguard", "monk" },
     grow = { "barbarian", "champion", "warlord" },
+    combo = "The Warbrewer drinks a draught mid-swing at no cost to his action. The Vanguard strips your"
+        .. " armour ahead of him. The Monk banks chi off the openings and spends it on one heavy blow."
+        .. " Fielded at six: a Barbarian, a Champion and a Warlord.",
+    counter = "Kill the warbrewer before the draughts stack. Keep your armoured body away from the"
+        .. " vanguard.",
 })

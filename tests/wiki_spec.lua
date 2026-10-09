@@ -67,7 +67,9 @@ end
 local function bestiarySections()
     local out = {}
     for _, page in ipairs(pages) do
-        if page.name:match("^Bestiary%-") then
+        -- ...and the Adventurers page, which carries the rift's parties' bodies in the same shape, apart
+        -- from the natives (tools/wiki_gen.lua's adventurersPage).
+        if page.name:match("^Bestiary%-") or page.name == "Adventurers" then
             local heading, id, buf
             local function flush()
                 if id then out[id] = { page = page.name, heading = heading, body = table.concat(buf, "\n") } end
@@ -445,6 +447,42 @@ return {
                 counted = counted + #bodies[kind]
             end
             assert(counted == onDisk, "the kind buckets hold " .. counted .. " of " .. onDisk)
+        end,
+    },
+
+    {
+        -- THE ADVENTURERS ARE KEPT APART FROM THE NATIVES (the author, "The Rift's Adventurers"): every
+        -- adventurer body has its entry on the Adventurers page and none on a bestiary kind page, every
+        -- party has a section there, and every floor of the rift prints its parties in a table of their
+        -- own rather than among the circle's bodies.
+        name = "adventuring parties and their bodies live on their own page, apart from the bestiary",
+        fn = function()
+            local Encounter = require("models.encounter")
+            local page = byName["Adventurers"]
+            assert(page, "no Adventurers page")
+            local bodies = 0
+            for id, def in pairs(Character.defs) do
+                if def.adventurer then
+                    bodies = bodies + 1
+                    assert(sections[id] and sections[id].page == "Adventurers",
+                        id .. " is not on the Adventurers page")
+                end
+            end
+            assert(bodies >= 45, "expected an adventurer body per class, found " .. bodies)
+            for id, def in pairs(Encounter.defs) do
+                if def.party then
+                    assert(page:find("\n## " .. (def.name:gsub("%p", "%%%0")) .. "\n"),
+                        id .. " has no section on the Adventurers page")
+                end
+            end
+            local rift = byName["The-Rift"]
+            local floors = 0
+            for _ in rift:gmatch("%*%*Parties met here%*%*") do floors = floors + 1 end
+            assert(floors == require("models.descent").FLOORS,
+                "only " .. floors .. " floors print their parties apart")
+            for _, host in ipairs({ "_Sidebar", "Home" }) do
+                assert(byName[host]:find("(Adventurers)", 1, true), "Adventurers is not linked from " .. host)
+            end
         end,
     },
 

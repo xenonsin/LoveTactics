@@ -14,4 +14,9 @@ return Adventurers.party({
     name = "Snare Line",
     core = { "trapper", "bulwark", "hunter" },
     grow = { "poacher", "artificer", "barbarian" },
+    combo = "The Trapper lays traps on the approach before you get there. The Bulwark pushes you onto"
+        .. " them. The Hunter shoots what's caught. From floor 8 a Poacher hits Rooted bodies far harder,"
+        .. " and from floor 10 an Artificer's turrets cover the trapped lane.",
+    counter = "Walk the board slowly and read the traps, or kill the bulwark first so nothing pushes you"
+        .. " into them.",
 })

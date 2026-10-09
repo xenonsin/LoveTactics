@@ -14,4 +14,9 @@ return Adventurers.party({
     name = "The Summoning",
     core = { "summoner", "warlord", "elementalist" },
     grow = { "shaman", "knight", "totemist" },
+    combo = "The Summoner banks mana and fields elementals. The Warlord's banners make them hit harder."
+        .. " The Elementalist's sigils reshape the summoning spell. Deeper, a Shaman's spirits fight"
+        .. " beside the elementals and on floor 13 a Totemist's field cancels your spells.",
+    counter = "Kill the summoner and the elementals stop coming. Fight off the banner, and bring an"
+        .. " exorcist to Banish them.",
 })
