@@ -218,7 +218,11 @@ function Adventurers.variant(defs, id)
     if not race then return nil end
     local base = rawget(defs, baseId)
     local Race = require("models.race")
-    if not (base and Race.get(race)) then return nil end
+    -- Only the eight peoples a party is drawn from: a race that merely EXISTS (a dragon, an archon) is
+    -- not one an adventurer can be, and resolving it would field a creature as a hireable body.
+    local playable = false
+    for _, r in ipairs(Adventurers.RACES) do if r == race then playable = true break end end
+    if not (base and playable and Race.get(race)) then return nil end
     local out = {}
     for k, v in pairs(base) do out[k] = v end
     out.race = race
