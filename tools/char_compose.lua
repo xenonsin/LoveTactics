@@ -754,7 +754,7 @@ local CHARACTER_SILHOUETTE = {
     -- THE CROWN'S BESTIARY, SLICE C (2026-10-09): the hound, the dog at the gate and its heads, the pit's locust and
     -- the Reaper.
     hellhound = "delapouite/jumping-dog",
-    cerberus = "lorc/hydra",
+    cerberus = "lorc/triple-beak", -- three mouths; the Hydra holds lorc/hydra (integration remap, 2026-10-09)
     cerberus_head = "delapouite/labrador-head",
     pit_locust = "lorc/dragonfly",
     reaper = "lorc/hood",
