@@ -86,8 +86,19 @@ local ALIAS = {
 -- Are these two blueprints allowed to converge? The relation is symmetric, and it composes through the
 -- alias target, so a future third blueprint of somebody already aliased may share with both of them
 -- rather than only with the base -- which a bare one-hop lookup would have failed on.
+-- THE RIFT'S ADVENTURERS, SLICE A (2026-10-09): an adventurer body (`character_adv_<class>`) IS its
+-- class's exemplar on the board -- it names the exemplar's sprite and tools/char_compose.lua resolves it
+-- through the exemplar -- so it aliases by the same pointer rather than a row per class.
+local Class = require("models.class")
+local function aliasOf(key)
+    if ALIAS[key] then return ALIAS[key] end
+    local class = key:match("^character_adv_([%w_]+)$")
+    return (class and Class.defs[class] and Class.defs[class].exemplar) or key
+end
+-- end THE RIFT'S ADVENTURERS, SLICE A
+
 local function aliased(a, b)
-    return (ALIAS[a] or a) == (ALIAS[b] or b)
+    return aliasOf(a) == aliasOf(b)
 end
 
 return {

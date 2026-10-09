@@ -296,7 +296,8 @@ AI.ACTION_ORDER = { "attack", "support", "cast", "retreat", "wait" }
 AI.TARGET_PREF_ORDER = { "nearest", "lowest_hp", "most_wounded", "lethal", "self", "objective",
                          "drownable", "gilded", "sleeping",
                          "held", -- Pride's lions (2026-09-30)
-                         "hemmed" } -- THE CROWN'S BESTIARY, SLICE D: the Hollow Crown's hunt
+                         "hemmed", -- THE CROWN'S BESTIARY, SLICE D: the Hollow Crown's hunt
+                         "hazardous" } -- THE RIFT'S ADVENTURERS, SLICE A: the Bulwark's shove
 
 -- Which tests take a `value`, and what shape it is. A test that takes none must not show a value
 -- field at all -- an editor offering "exists 0.4" is offering nonsense.
@@ -2311,6 +2312,35 @@ local function prefBonus(ctx, rule, cand, w)
         end
         return (least and HollowCrown.openAround(ctx.combat, t) == least) and w.TARGET_PREF or 0
     -- end THE CROWN'S BESTIARY, SLICE D
+    -- THE RIFT'S ADVENTURERS, SLICE A (2026-10-09): CAN THIS BODY BE PUT ON BAD GROUND? `drownable`'s
+    -- question widened from deep water to everything a shove or a haul can land a body on: a hostile
+    -- hazard (fire, a crater), a live powder keg's blast, a trap its own side did not set. The Bulwark's
+    -- whole part in the Snare Line and Into the Fire is that push, and a dry run cannot see it -- the
+    -- burn lands on the victim's next tick, not inside the preview. Scans the dominant axis both ways:
+    -- up to three tiles AWAY (Push is Knockback 3, a mace 2) and every tile back TOWARD the caster (Pull
+    -- drags its catch over all it crosses). A bias like the rest.
+    elseif pref == "hazardous" then
+        local combat = ctx.combat
+        local dx = (t.x > ctx.unit.x and 1) or (t.x < ctx.unit.x and -1) or 0
+        local dy = (t.y > ctx.unit.y and 1) or (t.y < ctx.unit.y and -1) or 0
+        if math.abs(t.x - ctx.unit.x) >= math.abs(t.y - ctx.unit.y) then dy = 0 else dx = 0 end
+        if dx == 0 and dy == 0 then return 0 end
+        local function bad(x, y)
+            if Hazard.tileBias(combat, x, y, t.side, t) < 0 or Prop.tileBias(combat, x, y) < 0 then return true end
+            for _, trap in ipairs(combat.traps or {}) do
+                if trap.alive and trap.x == x and trap.y == y and trap.side ~= t.side then return true end
+            end
+            return false
+        end
+        local back = math.max(0, math.abs(t.x - ctx.unit.x) + math.abs(t.y - ctx.unit.y) - 1)
+        for step = 1, 3 do
+            if bad(t.x + dx * step, t.y + dy * step) then return w.TARGET_PREF end
+        end
+        for step = 1, back do
+            if bad(t.x - dx * step, t.y - dy * step) then return w.TARGET_PREF end
+        end
+        return 0
+    -- end THE RIFT'S ADVENTURERS, SLICE A
     end
     return 0
 end

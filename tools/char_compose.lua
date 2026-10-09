@@ -921,9 +921,26 @@ local function kindOf(def, id)
     return "humanoid" -- most portraitless enemies are people; a beast is caught by CREATURE_MATCH above
 end
 
+-- THE RIFT'S ADVENTURERS, SLICE A (2026-10-09): an adventurer body (`adv_<class>`, models/adventurers.lua)
+-- is drawn as its class's EXEMPLAR -- the same token, so it rides the exemplar's sprite file and adds no
+-- art. Resolved by pointer (Class.defs[class].exemplar) rather than a row per class, so all 45 bodies are
+-- covered and a re-pointed exemplar carries its adventurer with it. tests/char_compose_spec.lua aliases
+-- the two for the same reason. Returns the exemplar's blueprint and tokenId, or nil.
+local function adventurerExemplar(id)
+    local class = id:match("^adv_([%w_]+)$")
+    local ex = class and Class.defs[class] and Class.defs[class].exemplar
+    if not ex then return nil end
+    local ok, def = pcall(require, "data.characters." .. ex)
+    if not (ok and type(def) == "table") then return nil end
+    return def, (ex:gsub("^character_", ""))
+end
+-- end THE RIFT'S ADVENTURERS, SLICE A
+
 -- The silhouette slug: creature/name match first, then class (humanoid) or element (elemental), then the
 -- kind bucket. Mirrors icon-map's "name first, family fallback".
 local function slugFor(def, id)
+    local exDef, exId = adventurerExemplar(id) -- THE RIFT'S ADVENTURERS, SLICE A
+    if exDef then return slugFor(exDef, exId) end
     if id:find("avatar", 1, true) then return AVATAR_SILHOUETTE end
     -- A named body wins over EVERY guess below it: the guesses hand a whole bucket one picture, and this
     -- is where an occupant that is not the bucket's generic head is lifted out. Exact key, no substring.
@@ -963,6 +980,8 @@ local CHARACTER_TINT = {
 }
 
 local function tintFor(def, id)
+    local exDef, exId = adventurerExemplar(id) -- THE RIFT'S ADVENTURERS, SLICE A
+    if exDef then return tintFor(exDef, exId) end
     if CHARACTER_TINT[id] then return CHARACTER_TINT[id] end
     local element = elementOf(id)
     if element and ELEMENT_TINT[element] then return ELEMENT_TINT[element] end
