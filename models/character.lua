@@ -145,15 +145,23 @@ for _, def in pairs(Character.defs) do
 end
 
 -- A FIELDED ADVENTURER'S RACE RIDES IN ITS ID (models/adventurers.lua): `character_adv_bulwark@dwarf`
--- is the race-free bulwark wearing a dwarf. Resolved on first lookup and memoized, through __index so
--- that `pairs` over the blueprints never sees the 360 derived ids -- every sweep, spec and tool that
--- walks the real files still walks exactly the real files, while every path that holds an id (the
--- arena, muster, the drop draw, a save) gets a blueprint back like any other.
+-- is the race-free bulwark wearing a dwarf. Resolved on first lookup through __index so that `pairs`
+-- over the blueprints never sees the 360 derived ids -- every sweep, spec and tool that walks the real
+-- files still walks exactly the real files, while every path that holds an id (the arena, muster, the
+-- drop draw, a save) gets a blueprint back like any other.
+--
+-- MEMOIZED IN A SIDE TABLE, NEVER rawset INTO THE DEFS. Writing the resolved variant back into
+-- Character.defs made it a real key, so the first fight that fielded a party put its derived ids into
+-- every later `pairs` sweep -- and the bestiary's "every body has one entry" walk then failed on a
+-- body a party had happened to field earlier in the same run. Caught by slice B of the build.
+local VARIANTS = {}
 setmetatable(Character.defs, {
     __index = function(defs, id)
         if type(id) ~= "string" or not id:find("@", 1, true) then return nil end
+        local hit = VARIANTS[id]
+        if hit ~= nil then return hit or nil end
         local def = require("models.adventurers").variant(defs, id)
-        if def then rawset(defs, id, def) end
+        VARIANTS[id] = def or false
         return def
     end,
 })
