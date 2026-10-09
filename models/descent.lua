@@ -76,9 +76,11 @@ local Descent = {}
 --     DELVING DEEPER is the circle's own verb; a new ground was built for it (data/biomes/cave.lua, the
 --     caverns carve with rock for walls and loose gold on the floor), and the slimes followed. The keep
 --     is left the Thinwall Keep it was, and fields no circle -- a ninth ground and eight circles.
---   * ...WHICH LEAVES THE CROWN THE UNDERWORLD ALONE, and the undead Greed left behind in it. The
---     bottom floor used to borrow Greed's pool wholesale -- you re-fought floors five and six under the
---     last stair -- and now it has the Bone Orchard, the Barrow Lord and the Skeleton King to itself.
+--   * ...WHICH LEAVES THE CROWN THE UNDERWORLD ALONE. The bottom floor used to borrow Greed's pool
+--     wholesale -- you re-fought floors five and six under the last stair -- and then kept the undead Greed
+--     left behind in it (the Bone Orchard, the Barrow Lord, the Skeleton King). Those went back up to
+--     Greed's barrows on 2026-10-09 ("The Crown's Bestiary"), and the underworld fields its own court now:
+--     the Archons, the demonic creatures and the dogs at the gate.
 --
 -- THE SIN ITSELF STANDS ON THE STAIR. Not a strong body of that house's cast -- the general who IS
 -- that circle, by name, every time you walk it. Megaera is at the end of Tartarus on your first run
@@ -545,11 +547,15 @@ Descent.SINS = {
         -- deep_bane, runged 2) beside the Counting Hall, the King Slime and the Nest.
         -- THE GILDED KING IS A SPARE ON THE SEAT (2026-09-26): the dead king in his plates and his gilded
         -- guard, the fight that pays as it is hit. Its own `rung = 2` stands it on floor six.
+        -- THE DEAD KNIGHTS CAME BACK UP FROM THE CROWN (2026-10-09, "The Crown's Bestiary": "Move this to
+        -- greed"). The Barrow Lord stands on the approach with Vesh's dead (`rung = 1`) and the Skeleton King on
+        -- the seat beside the Gilded King (`rung = 2`); both are spares, and the Bone Orchard is ordinary traffic.
         elites = { approach = "encounter_fen_ooze", seat = "encounter_greed_the_counting_hall",
             spares = { "encounter_the_king_slime", "encounter_greed_the_nest",
                 "encounter_greed_the_gold_golem", "encounter_greed_the_brood_queen",
                 "encounter_greed_the_paymaster", "encounter_greed_the_deep_bane",
-                "encounter_greed_the_gilded_king" } } },
+                "encounter_greed_the_gilded_king", "encounter_the_barrow_lord",
+                "encounter_the_skeleton_king" } } },
     { id = "envy", name = "Envy", vendor = "alchemist", biome = "desert",
         scene = "conversation_descent_envy",
         -- THE SECOND OF THE TWO BROKEN LEADS. character_homunculus is the alchemist's SUMMON -- its own

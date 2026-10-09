@@ -12,9 +12,8 @@
 -- about the third. It is the same silhouette as the two beside it, which is what makes the difference
 -- read as a RULE rather than as a bigger monster.
 --
--- `depth = 6` (it read `minDay = 12` against the retired calendar) and the underworld: comfortably behind the common version
--- (data/encounters/encounter_the_bone_orchard.lua, depth 3), so the damage-type lesson has been taught
--- somewhere cheap before the rule is stacked on top of it -- and gated to the stratum that owns it.
+-- Greed's deeps, on the approach beside the common version (data/encounters/encounter_the_bone_orchard.lua),
+-- so the damage-type lesson is taught cheaply on the same floor the rule is stacked on top of it.
 --
 -- KILLALL, WHICH IS THE DEFAULT AND MUST STAY IT. The Lord is emphatically not an `assassinate` mark:
 -- that objective ends the fight the instant the named body falls, and the instant this body falls is
@@ -31,18 +30,13 @@ return {
     -- It also gated Lust's own elites off Lust's own floors: converted from the retired calendar they
     -- asked for floors three and four, and Lust owns one and two.
     --
-    -- AND NO `rung` EITHER, WHICH IS THE ONE PLACE THAT IS NOT AN OVERSIGHT. Every other elite in the
-    -- tree carries one, because a circle owns TWO floors and a biome lock alone would stand the same
-    -- landmark on both of them -- one elite, one floor (models/encounter.lua's eligibility note).
-    --
-    -- The underworld is not a circle. It is the Hollow Crown, the single floor under all seven
-    -- (Descent.biomeAt returns it where `sinAt` returns nothing), so the ground IS the pin: this is
-    -- eligible on floor fifteen and nowhere else, which is already exactly one floor. A rung on top of
-    -- that would be a second opinion about a floor that has no sibling to be told apart from -- and it
-    -- would read as 1 or 2 by an accident of arithmetic (floorWithinCircle(15) happens to be 1), which
-    -- is a number nothing down here means. tests/elite_floor_spec.lua counts floors rather than reading
-    -- fields, so it holds this the same way it holds the other twenty.
-    condition = function(ctx) return ctx.biome == "underworld" end,
+    -- MOVED TO GREED (2026-10-09, "The Crown's Bestiary": "Move this to greed"), and so it carries a `rung`
+    -- now, which it used to argue it should not: under the Hollow Crown the ground was the pin, because the
+    -- underworld is one floor. Greed owns two, and a biome lock alone would stand this landmark on both -- one
+    -- elite, one floor (models/encounter.lua's eligibility note). It stands on the approach (`rung = 1`) with
+    -- the rest of Vesh's dead; the Skeleton King holds the seat.
+    condition = function(ctx) return ctx.biome == "cave" end,
+    rung = 1,
     -- The lord is one body and always will be; the rank behind him is a band, so the same barrow met
     -- on two floors is not the same count twice (models/band.lua). An `elite` seats six
     -- (Arena.ELITE_CAP), which is the room the guard is allowed to grow into.

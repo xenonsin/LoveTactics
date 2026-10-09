@@ -30,16 +30,19 @@
 -- room to spare. The deeper orchard is a nastier SHAPE, not a longer fight -- the archer replaces a
 -- walker rather than joining it, so the board stays three bodies and gets harder to walk at.
 --
--- Gated to the underworld, the same predicate every circle keeps its stock with, so the stratum means
--- something and no engine work was needed to say so.
+-- MOVED TO GREED (2026-10-09, "The Crown's Bestiary": "Move this to greed"). It stood under the Hollow Crown
+-- because the underworld was the ground Greed's dead were left on; the bottom floor has its own court now, and
+-- the dead knights went back to the circle that lured them down -- floor five's barrows, beside Vesh, the Hollow
+-- King, and the dwarf and kobold skeletons he raises. Gated to the deeps by the same predicate every circle
+-- keeps its stock with, and homed on the approach (`rung = 1`) with the rest of the lich's dead.
 local Band = require("models.band")
 
 return {
     name = "The Bone Orchard",
     kind = "combat",
-    -- Ordinary weight: this IS what the underworld is, not a thing it sometimes deals. The lesson is
-    -- cheap and the bodies are chaff, so meeting it often is the point.
-    weight = 5,
+    -- An ordinary weight among the barrows' other fights. It was 5 when it was the whole of the underworld;
+    -- on Greed's approach it is one of the lich's dead among several.
+    weight = 3,
     -- Shallow on purpose, and the whole difference from the ooze. There is no board here a company can
     -- be unable to win, so it needs no safety margin -- it only needs to arrive before the deep
     -- version of itself (data/encounters/encounter_the_barrow_knight.lua, depth 12).
@@ -51,7 +54,8 @@ return {
     --
     -- Which of a circle's floors a thing bills on is Descent.SINS' `elites` for the standing threat, and
     -- `rung` for anything an author wants split across the approach and the seat.
-    condition = function(ctx) return ctx.biome == "underworld" end,
+    condition = function(ctx) return ctx.biome == "cave" end,
+    rung = 1,
     -- THREE BODIES, AND IT IS A CEILING RATHER THAN A BUDGET. Written first as four-plus-two and
     -- measured at 54 unit-turns against tests/skirmish_spec.lua's budget of 22 -- two and a half times
     -- an ordinary stop, which is what happens when you put six bodies on a board and then hand the
@@ -69,8 +73,9 @@ return {
         -- That is "a nastier shape, not a longer one" written as arithmetic.
         --
         -- The band says how many knights; it does not say whether the archer is there, because that is
-        -- the depth telling the player the orchard has learned to shoot back (`vary = 0`).
-        local bows = ((ctx.depth or 1) >= 14) and 1 or 0
+        -- the depth telling the player the orchard has learned to shoot back (`vary = 0`). It read "depth 14",
+        -- which Greed never reaches; the deeper orchard is now the one that strays onto the seat (rung 2).
+        local bows = ((ctx.rung or 1) >= 2) and 1 or 0
         local list = Band.fill({}, ctx, "character_skeleton_knight",
             { base = 2, per = 8, max = 3 - bows })
         if bows > 0 then

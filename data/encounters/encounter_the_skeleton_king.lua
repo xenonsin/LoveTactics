@@ -12,11 +12,9 @@
 -- version of the rule they have already met once. The archer is in there so that clearing the court is
 -- not simply a matter of walking forward.
 --
--- `depth = 12` (it read `minDay = 22` against the retired calendar) and the underworld: a full ten days behind the Lord
--- (data/encounters/encounter_the_barrow_lord.lua, depth 12) and nineteen behind the common dead
--- (encounter_the_bone_orchard.lua, depth 3), so the ladder is walked in order -- which weapon, then
--- which bar, then which body -- and each rung has been taught somewhere cheaper before it is charged
--- for.
+-- Greed's seat, a floor below the Lord (data/encounters/encounter_the_barrow_lord.lua) and the common dead
+-- (encounter_the_bone_orchard.lua) on the approach, so the ladder is walked in order -- which weapon, then
+-- which bar, then which body -- and each rung has been taught somewhere cheaper before it is charged for.
 --
 -- KILLALL, WHICH IS THE DEFAULT AND MUST STAY IT. The King is emphatically not an `assassinate` mark:
 -- that objective ends the fight the instant the named body falls, and this is the one fight in the game
@@ -34,18 +32,13 @@ return {
     -- It also gated Lust's own elites off Lust's own floors: converted from the retired calendar they
     -- asked for floors three and four, and Lust owns one and two.
     --
-    -- AND NO `rung` EITHER, WHICH IS THE ONE PLACE THAT IS NOT AN OVERSIGHT. Every other elite in the
-    -- tree carries one, because a circle owns TWO floors and a biome lock alone would stand the same
-    -- landmark on both of them -- one elite, one floor (models/encounter.lua's eligibility note).
-    --
-    -- The underworld is not a circle. It is the Hollow Crown, the single floor under all seven
-    -- (Descent.biomeAt returns it where `sinAt` returns nothing), so the ground IS the pin: this is
-    -- eligible on floor fifteen and nowhere else, which is already exactly one floor. A rung on top of
-    -- that would be a second opinion about a floor that has no sibling to be told apart from -- and it
-    -- would read as 1 or 2 by an accident of arithmetic (floorWithinCircle(15) happens to be 1), which
-    -- is a number nothing down here means. tests/elite_floor_spec.lua counts floors rather than reading
-    -- fields, so it holds this the same way it holds the other twenty.
-    condition = function(ctx) return ctx.biome == "underworld" end,
+    -- MOVED TO GREED (2026-10-09, "The Crown's Bestiary": "Move this to greed"), and so it carries a `rung`
+    -- now, which it used to argue it should not: under the Hollow Crown the ground was the pin, because the
+    -- underworld is one floor. Greed owns two. It stands on the seat (`rung = 2`) beside the Gilded King, a
+    -- floor below the Barrow Lord, so the barrows' ladder is still walked in order: which weapon, then which
+    -- bar, then which body.
+    condition = function(ctx) return ctx.biome == "cave" end,
+    rung = 2,
     -- THREE SUBJECTS, ALWAYS -- AND THE ROLL MOVES THEIR SHAPE INSTEAD OF THEIR NUMBER.
     --
     -- The count here is not free the way an escort's is: trait_court_of_bone pays the King thirty mana
