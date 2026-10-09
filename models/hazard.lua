@@ -272,6 +272,26 @@ function Hazard.onEnter(combat, unit, x, y)
     end
 end
 
+-- THE CROWN'S BESTIARY, SLICE C (2026-10-09): `onTurnEnd(ctx)` on a hazard def -- a body ENDED A TURN standing on
+-- it (Combat's endTurn and Combat.wait, beside Status.onTurnEnd). The Lethe Shallows: crossing grey water costs
+-- nothing, and stopping in it is what makes you forget (data/hazards/hazard_lethe_shallows.lua). A body on more
+-- than one tile hears each zone once, on whichever of its cells first finds it.
+function Hazard.onTurnEnd(combat, unit)
+    if not (unit and unit.alive and unit.x and combat and combat.hazards) then return end
+    local heard = {}
+    for dx = 0, (unit.w or 1) - 1 do
+        for dy = 0, (unit.h or 1) - 1 do
+            for _, h in ipairs(Hazard.allAt(combat, unit.x + dx, unit.y + dy)) do
+                if h.def.onTurnEnd and not heard[h.id] and unit.alive and not Hazard.shrugs(unit, h) then
+                    heard[h.id] = true
+                    h.def.onTurnEnd(ctxFor(combat, h, unit))
+                end
+            end
+        end
+    end
+end
+-- end THE CROWN'S BESTIARY, SLICE C
+
 -- Place a hazard of blueprint `id` at (x, y). Appends a runtime hazard to combat.hazards and returns
 -- it -- or nil if the tile can't hold one. A hazard can't sit on impassable terrain (nothing stands
 -- on a wall), but -- unlike a trap -- it MAY be placed on a tile a unit occupies (hazards are meant

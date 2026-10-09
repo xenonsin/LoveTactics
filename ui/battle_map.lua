@@ -1985,6 +1985,14 @@ function BattleMap:drawHpBar(u, wx, wy, alpha)
         love.graphics.rectangle("fill", bx, by, bw * ratio, bh, 2, 2)
     end
 
+    -- THE CROWN'S BESTIARY, SLICE C (2026-10-09): while a Reaper stands, every bar carries its line at a quarter
+    -- (models/gate_and_pit.lua's GatePit.line) -- under it, the scythe's sweep downs the body outright.
+    local reap = self.combat and require("models.gate_and_pit").line(self.combat)
+    if reap then
+        love.graphics.setColor(0.96, 0.93, 0.86, 0.95 * al)
+        love.graphics.rectangle("fill", bx + math.floor(bw * reap) - 1, by - 1, 2, bh + 2)
+    end
+
     -- A boss's bar is finished as an instrument: a bronze frame around it, and nothing else. The phase
     -- notches this once cut into it are drawn on the turn strip's card instead (ui/combat_panel.lua's
     -- drawResourceBar, off the same Combat.bossThresholds) -- there the bar runs the width of a card

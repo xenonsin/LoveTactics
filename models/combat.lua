@@ -3876,6 +3876,8 @@ local function endTurn(combat, unit, actionCost, defer)
         unit.tempoDebt = nil
     end
     Status.onTurnEnd(combat, unit)
+    -- THE CROWN'S BESTIARY, SLICE C: ...and the ground the turn ended on (Hazard.onTurnEnd -- the Lethe Shallows).
+    Hazard.onTurnEnd(combat, unit)
     -- ...and the field hears the turn end: an egg is brooded by who stands beside it, the Godling eats
     -- the worshipper that does (Trait.onAnyTurnEnd).
     Trait.onAnyTurnEnd(combat, unit)
@@ -3978,6 +3980,7 @@ function Combat.wait(combat, unit)
     local moveCost = turnMoveCost(combat, unit) + (unit.tempoDebt or 0)
     unit.tempoDebt = nil
     Status.onTurnEnd(combat, unit)
+    Hazard.onTurnEnd(combat, unit) -- THE CROWN'S BESTIARY, SLICE C: a wait ends a turn on its ground too
     Trait.onAnyTurnEnd(combat, unit)
     Combat.feedHunger(combat, unit, false)
     local nxt = nextUnit(combat, unit)
@@ -8926,6 +8929,11 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     -- slams into on the way re-enters here (a wall, a trap it is flung across). It is already doomed
     -- and killUnit is queued, so a second death path would fell it twice; skip it.
     if target.mortallyWounded then return 0 end
+    -- THE CROWN'S BESTIARY, SLICE C (2026-10-09): THREE HEADS. A blow on Cerberus's body lands on its fullest head,
+    -- which holds a third of its bar (models/gate_and_pit.lua). Re-entered on the head, so its own wards answer.
+    local headHit = require("models.gate_and_pit").redirect(combat, target)
+    if headHit then return Combat.dealFlatDamage(combat, headHit, base, tags, source, attacker, opts) end
+    -- end THE CROWN'S BESTIARY, SLICE C
     -- ENVY'S MIRAGE (slice D, models/envy_oneoffs.lua): an illusion's blow lands nothing. Before every ward and
     -- reflex below, because nothing struck the body at all.
     if attacker and attacker ~= target and attacker.illusory then
@@ -9173,7 +9181,9 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     -- blow that would fell a foe while a Lion of her side stands leaves it at 1 -- she holds the prey for him.
     -- Clamped here, before the shared pool, the cue and both death paths read the bar, so the held body walks
     -- the survivor's branch and every number downstream is the wound it actually took.
-    if hp.current <= 0 and not target.fragile and Trait.sparesQuarry(combat, attacker, target) then
+    -- THE CROWN'S BESTIARY, SLICE C: ...or the BLOW itself says so (`opts.spares`, the Torment ability's strike).
+    if hp.current <= 0 and not target.fragile
+        and ((opts and opts.spares) or Trait.sparesQuarry(combat, attacker, target)) then
         dmg = dmg + hp.current - 1
         hp.current = 1
     end

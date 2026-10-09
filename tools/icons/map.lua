@@ -1214,6 +1214,24 @@ return {
     ["items/utility_ascension.png"] = { icon = "delapouite/uprising", by = "hand" },
     ["items/ability_sentence_of_the_court.png"] = { icon = "lorc/laser-blast", by = "hand" },
     -- end THE CROWN'S BESTIARY, SLICE A
+    -- THE CROWN'S BESTIARY, SLICE C (2026-10-09): the hounds', Cerberus's, the locusts' and the Reaper's kit, and
+    -- their four trophies.
+    ["items/weapon_hellhound_bite.png"] = { icon = "delapouite/saber-toothed-cat-head", by = "hand" },
+    ["items/ability_hellfire_breath.png"] = { icon = "lorc/unfriendly-fire", by = "hand" },
+    ["items/utility_hearth_born.png"] = { icon = "sbed/burn", by = "hand" },
+    ["items/utility_hellhound_collar.png"] = { icon = "delapouite/basset-hound-head", by = "hand" },
+    ["items/weapon_three_mouths.png"] = { icon = "lorc/hydra", by = "hand" },
+    ["items/utility_cerberus_head.png"] = { icon = "delapouite/labrador-head", by = "hand" },
+    ["items/utility_each_head_a_third.png"] = { icon = "lorc/triple-skulls", by = "hand" },
+    ["items/utility_honey_cake.png"] = { icon = "delapouite/honey-jar", by = "hand" },
+    ["items/ability_three_heads.png"] = { icon = "lorc/three-burning-balls", by = "hand" },
+    ["items/weapon_pit_locust_sting.png"] = { icon = "lorc/wasp-sting", by = "hand" },
+    ["items/utility_seek_death.png"] = { icon = "delapouite/fly", by = "hand" },
+    ["items/ability_torment.png"] = { icon = "lorc/back-pain", by = "hand" },
+    ["items/weapon_reapers_scythe.png"] = { icon = "lorc/grim-reaper", by = "hand" },
+    ["items/utility_the_line.png"] = { icon = "lorc/skull-crossed-bones", by = "hand" },
+    ["items/ability_the_harvest.png"] = { icon = "lorc/chopped-skull", by = "hand" },
+    -- end THE CROWN'S BESTIARY, SLICE C
     -- SLICE F, ENVY'S GENERAL (2026-10-03): the Many Faced One's organ, its relic and its two pieces.
     ["items/utility_crown_of_a_thousand_faces.png"] = { icon = "lorc/architect-mask", by = "hand" },
     ["items/utility_pretenders_crown.png"] = { icon = "delapouite/hedjet-white-crown", by = "hand" },

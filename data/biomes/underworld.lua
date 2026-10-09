@@ -9,9 +9,10 @@ return {
     layout = "caverns", -- cellular automata: bellies and necks (models/layouts/caverns.lua)
     spacing = 2, -- kept for the river band; the carve no longer reads it
     rivers = { min = 2, max = 3 }, -- rivers of fire; the bridges over them are the map's real doors
-    -- Signature ground: a spoil heap, which Exposes whoever stands in it -- head down, hands full, in a
-    -- warren where something is always coming round the corner. The only hazard in the game a player
-    -- should WANT to step in, which is the sharpest small statement Greed has.
-    -- See data/hazards/hazard_spoil_heap.lua.
-    hazard = { id = "hazard_spoil_heap", min = 1, max = 2 },
+    -- Signature ground: the Lethe Shallows, pools of grey water where a body that ends its turn forgets every status
+    -- it carries, good and bad ("The Crown's Bestiary", 2026-10-09). The bottom of the rift is where what you built
+    -- on the way down comes off -- your blessings with your burns -- so where a body stops is a choice about what it
+    -- is willing to lose. It replaced the Spoil Heap, which was Greed's ground left here when the circles were dealt
+    -- their own. See data/hazards/hazard_lethe_shallows.lua.
+    hazard = { id = "hazard_lethe_shallows", min = 1, max = 2 },
 }

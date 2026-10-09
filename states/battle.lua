@@ -3754,7 +3754,10 @@ function battle.offerHeadPicker(current, item, cx, cy, plan, commit)
     end
     battle.headPicker = require("ui.panels.choice").new({
         title = item.name or "Strike",
-        prompt = "A blow on a head does not wound the body.",
+        -- THE CROWN'S BESTIARY, SLICE C: Cerberus's heads ARE its bar (models/gate_and_pit.lua), so it says so.
+        prompt = require("models.trait").flag(body, "eachHeadAThird")
+            and "Each head is a third of its health. A blow on the body lands on the fullest head."
+            or "A blow on a head does not wound the body.",
         options = options,
         onClose = function() battle.headPicker = nil end,
     })

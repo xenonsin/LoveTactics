@@ -586,6 +586,17 @@ Grade.TRAIT_GRADE = {
     trait_mana_edge =                   1.0,  -- Mana Edge -- blows land on the lower defense, +3
     trait_ascension =                   1.0,  -- Ascension -- three downs: +6 Damage, +2 Movement for the fight
     -- end THE CROWN'S BESTIARY, SLICE A
+    -- THE CROWN'S BESTIARY, SLICE C (2026-10-09): the hounds, the locusts and the Reaper. Hearth-Born, Each Head a
+    -- Third, Honey-Cake, Seek Death and the Line are a body's own and never shelved. Of the drops: the Collar is
+    -- fireproof summons that heal 3 in fire; Three Heads is two extra swings once, bought by its ability.
+    trait_hearth_born =                 0.0,  -- Hearth-Born -- the hellhound heals and hits harder in fire
+    trait_each_head_a_third =           0.0,  -- Each Head a Third -- Cerberus's bar is its three heads
+    trait_honey_cake =                  0.0,  -- Honey-Cake -- a Cerberus head quieted by a Sleep or a draught
+    trait_seek_death =                  0.0,  -- Seek Death -- the locust's sting holds at 1 and Torments
+    trait_the_line =                    0.0,  -- The Line -- the Reaper's threshold, drawn on every bar
+    trait_hearth_collar =               1.0,  -- Hellhound Collar -- summons fireproof, heal 3 in fire
+    trait_three_heads =                 1.0,  -- Three Heads -- the next melee blow strikes two more beside you
+    -- end THE CROWN'S BESTIARY, SLICE C
     -- SLOTH'S TROLLS (slice B, 2026-10-04). The Toll is the Toll-Troll's organ and never shelved. Of the drops:
     -- Scarring Blows is the Unclosing Parry's wound on your own swing, a turn long (and the Scarlord's organ carries
     -- it too); Bridge Tax is Keen Senses narrowed to abilities within 2; the Grafted Arm is a tenth a turn, priced

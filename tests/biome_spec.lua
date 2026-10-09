@@ -217,7 +217,7 @@ return {
                 forest = "hazard_web", -- sweetbriar until the wood became Gluttony's; see forest.lua
                 castle = "hazard_threshold",
                 cave = "hazard_coin_heap", -- Greed's deeps: loose gold (2026-09-24)
-                underworld = "hazard_spoil_heap",
+                underworld = "hazard_lethe_shallows", -- the Crown's own ground, after Greed's heap (2026-10-09)
             }) do
                 local layout = Arena.generateLayout({ seed = 7, party = 2, enemies = 2, biome = biome })
                 assert(#layout.hazards >= 1, biome .. " should seed its signature ground")

@@ -12,11 +12,15 @@ return {
     spread = { intoTag = "burnable" }, -- creeps into adjacent burnable tiles
     -- EMBERWALK (Avaritia, and the Emberwalk Greaves lifted off her): fire ground does not touch a body
     -- carrying the flag, and its planner walks through it as if it were floor.
+    -- ...and so does a HEARTH-BORN hellhound, and a summon wearing its Collar's master (models/gate_and_pit.lua):
+    -- the fire is where a hound heals.
     welcomes = function(unit)
-        return unit ~= nil and require("models.trait").flag(unit, "emberwalk") ~= nil
+        return unit ~= nil and (require("models.trait").flag(unit, "emberwalk") ~= nil
+            or require("models.gate_and_pit").fireproof(unit))
     end,
     onEnter = function(ctx)
         if ctx.unit and require("models.trait").flag(ctx.unit, "emberwalk") then return end
+        if ctx.unit and require("models.gate_and_pit").fireproof(ctx.unit) then return end
         -- ctx.amount (the Fireball/Flask item's level-scaled burn) sets how hard the Burn sears; nil
         -- (an arena-authored blaze) falls back to Burn's own blueprint magnitude.
         ctx.applyStatus(ctx.unit, "status_burn", { magnitude = ctx.amount })
