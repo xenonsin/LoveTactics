@@ -3,7 +3,7 @@
 -- harder, so the fight is won by dousing it, soaking the hounds, or dragging them off it (trait_hearth_born).
 --
 -- NO `rung`, AND THAT IS NOT AN OVERSIGHT: the underworld is the single floor under all seven circles, so the ground
--- is the pin (data/encounters/encounter_the_skeleton_king.lua argues it in full).
+-- is the pin (models/descent.lua's Descent.CROWN_ELITES says the same for the floor's elites).
 local Band = require("models.band")
 
 return {

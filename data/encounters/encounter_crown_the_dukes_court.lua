@@ -4,7 +4,7 @@
 -- wisps before they get there.
 --
 -- `elite`, so Arena.ELITE_CAP (6) seats the whole court. NO `rung`: the underworld is one floor, and the ground is
--- its pin (encounter_the_skeleton_king.lua's header).
+-- its pin. It is the floor's standing elite, billed at Descent.CROWN_ELITES.
 local Band = require("models.band")
 
 return {

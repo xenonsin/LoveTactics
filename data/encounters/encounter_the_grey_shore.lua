@@ -6,11 +6,11 @@
 -- reflex answer to a hurt body (the same heal again) is refused twice over, and what it is left with is
 -- position: heal away from the ghosts, pull the wounded back out of the haze, or kill the Drinker first.
 --
--- THE GROUND IT WANTS is Lethe Shallows, the underworld's signature hazard, which another slice builds. This file
--- names it here and nowhere else: when the shallows land, the board is where they belong, not this composition.
+-- THE GROUND IT WANTS is Lethe Shallows (data/hazards/hazard_lethe_shallows.lua), the underworld's signature
+-- hazard. The biome seeds it on every board, so this composition does not ask for it.
 --
 -- AND NO `rung` EITHER, WHICH IS THE ONE PLACE THAT IS NOT AN OVERSIGHT: the bottom floor sits under all seven
--- circles and has no approach or seat, so the ground is the pin (encounter_the_bone_orchard.lua's header).
+-- circles and has no approach or seat, so the ground is the pin.
 --
 -- Three bodies at most, under the ordinary ceiling of four: the second ghost arrives as the road goes on.
 local Band = require("models.band")

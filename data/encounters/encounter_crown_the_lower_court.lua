@@ -3,7 +3,7 @@
 -- that plate does nothing against a Mana Edge.
 --
 -- NO `rung`, and that is not an oversight: the underworld is the single floor under all seven circles, so the ground
--- IS the pin (data/encounters/encounter_the_skeleton_king.lua argues it in full).
+-- IS the pin (models/descent.lua's Descent.CROWN_ELITES says the same for the floor's elites).
 local Band = require("models.band")
 
 return {

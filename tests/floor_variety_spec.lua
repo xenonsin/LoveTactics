@@ -100,6 +100,15 @@
 --       spreads to whoever stands still; a toll that taxes a move or an action rather than gold; a
 --       pacifist that never attacks but must still be got past; a body that banks the turns it skips;
 --       a body that walks away the moment it is engaged (no commitment).
+--
+--   THE CROWN -- BUILT 2026-10-09 ("The Crown's Bestiary", five rounds). The bottom floor had no brief; these themes
+--     were suggested and the author kept five: the Bargain, Hollowness, Damnation, the Gate and the End, the Pit
+--     (Forgetting was struck). Bodies: the Archons -- a humanoid court of their own, NOT the demon race -- on Spirit
+--     Body (a fallen Archon's wisp walks home to raise it): Lesser, Greater, Warden and the Duke; the demonic creatures
+--     (Pit Imp, Chain Fiend, Erinys, the Balor); the Death Knight; the Hellhound and Cerberus; the Pit Locust; the
+--     Lethe-Drinker, the Hungry Ghost, the Reaper and the Lernaean Hydra. Ground: Lethe Shallows. The Hollow Crown is
+--     the First Archon, fought in four phases (the Court, the Seven Wants, the Pit Opens, the Last Hour). Its old
+--     undead (the Bone Orchard, the Barrow Lord, the Skeleton King) went up to Greed.
 
 local Descent = require("models.descent")
 local Encounter = require("models.encounter")
@@ -118,9 +127,10 @@ local SPEC = 15 -- distinct creatures per floor
 -- stood at 13 creatures until round 4 (2026-10-06) brought Ovid's Wasting Ones and the Pale Crone, closing it at 15
 -- creatures and 11 families, with 10.0 effective fights. Sloth's two floors were listed at 3 and 5 creatures, with no ordinary fight and 1 and 2
 -- elites, and closed every ratchet on 2026-10-04 after "Sloth's Bestiary": the approach at 18 creatures, 8.0
--- effective fights and 4 elites; the seat at 24, about 10.3 and 5.)
+-- effective fights and 4 elites; the seat at 24, about 10.3 and 5. The Crown's floor was listed at 4 creatures,
+-- 1.0 effective fights and 2 elites, and closed every ratchet on 2026-10-09 after "The Crown's Bestiary": 16
+-- creatures in 12 families, 8.0 effective fights and 4 elites, with its old undead moved up to Greed.)
 local KNOWN_GAPS = {
-    ["crown/1"] = "4 creatures -- the bottom floor",
 }
 
 local function isCreature(id)
@@ -135,10 +145,8 @@ local ELITE_SPEC = 4 -- distinct elites a floor can seat (Gluttony's seat has 4)
 -- (Greed's two floors were listed at 3 elites each and closed on 2026-09-26: the Paymaster on the approach,
 -- the Thing Under the Seam and the Gilded King on the seat.)
 local KNOWN_FIGHT_GAPS = {
-    ["crown/1"] = "1.0 effective fights -- the bottom floor",
 }
 local KNOWN_ELITE_GAPS = {
-    ["crown/1"] = "2 elites -- the bottom floor",
 }
 
 -- What a floor can field, read off the same pool the floor deals from: its distinct creatures, its

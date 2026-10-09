@@ -1730,7 +1730,10 @@ function Descent.floorPool(ctx)
             -- to THIS stair, never to the circle's other one -- the share picks among the two or three
             -- runged here, and a billing naming a body runged onto the other floor weights an id that
             -- is not in the list. tests/elite_floor_spec.lua walks the fifteen floors and counts.
-            local named = sin and sin.elites
+            -- ...and the bottom floor, which is no circle and so has no entry in SINS to name one from: it
+            -- bills Descent.CROWN_ELITES instead (the Crown's Bestiary, 2026-10-09).
+            local named = (sin and sin.elites)
+                or (not sin and Descent.isBottom(ctx.depth or 0) and Descent.CROWN_ELITES) or nil
             local mine
             -- SPELT OUT RATHER THAN `rung == 2 and named.seat or named.approach`, which is how this read
             -- and which quietly did something else: a circle with no `seat` (Pride) fell through the
@@ -4017,6 +4020,16 @@ Descent.WARD_SHARE = 0.75
 -- truncated, and a marker that prices nine bodies for a player who meets eight is the one failure
 -- Muster exists to prevent. Set to what the cast can carry, and raising it is a content decision.
 Descent.CROWN_STEP = 1.3
+
+-- THE BOTTOM FLOOR'S STANDING ELITE (2026-10-09, "The Crown's Bestiary"). A circle names its elites in SINS; the
+-- Crown is no circle, so its floor bills here. The Archon Duke's court is the race line's own elite, the way the
+-- Elf-Lord answers for the spire's approach; the Balor, Cerberus and Lerna are its spares. One floor, so both
+-- rungs name the same fight (floorWithinCircle(15) happens to read 1, a number nothing down here means).
+Descent.CROWN_ELITES = {
+    approach = "encounter_crown_the_dukes_court",
+    seat = "encounter_crown_the_dukes_court",
+    spares = { "encounter_crown_the_balor", "encounter_crown_cerberus", "encounter_crown_lerna" },
+}
 
 -- What this floor's stair should be worth, and what its ward should be.
 function Descent.stairTarget(floor)
