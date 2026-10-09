@@ -1670,6 +1670,12 @@ local function fallbackMove(ctx, mode)
         -- fuse; with none on the board it closes on the fight like anybody else.
         elseif Trait.flag(unit, "stormKin") then
             home = require("models.storm").partner(combat, unit)
+        -- THE CROWN'S BESTIARY, FOUNDATION (2026-10-09): ...and an Archon's wisp (`seeksBody`, models/spirit.lua)
+        -- walks to the body it tore loose from, or to whatever has called it instead. Its body lies DOWN, so the
+        -- `alive` test below would throw it away; with nowhere left to go it holds, and its own turn end lets it fade.
+        elseif Trait.flag(unit, "seeksBody") then
+            home = require("models.spirit").goal(combat, unit)
+            if not home then return nil end
         elseif not (home and home.alive) then
             local kin = {}
             for _, u in ipairs(allies(ctx)) do

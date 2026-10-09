@@ -1184,6 +1184,9 @@ return {
     -- end SLOTH'S TOLLKEEPERS, SLICE F
     -- THE FACELESS OF ENVY (2026-10-03): the race's grant.
     ["items/utility_faceless_blood.png"] = { icon = "lorc/domino-mask", by = "hand" },
+    -- THE CROWN'S BESTIARY, FOUNDATION (2026-10-09): the Archon race's organ and its wisp's.
+    ["items/utility_archon_spirit.png"] = { icon = "delapouite/soul", by = "hand" },
+    ["items/utility_wisp_homeward.png"] = { icon = "delapouite/candles", by = "hand" },
     -- SLICE F, ENVY'S GENERAL (2026-10-03): the Many Faced One's organ, its relic and its two pieces.
     ["items/utility_crown_of_a_thousand_faces.png"] = { icon = "lorc/architect-mask", by = "hand" },
     ["items/utility_pretenders_crown.png"] = { icon = "delapouite/hedjet-white-crown", by = "hand" },

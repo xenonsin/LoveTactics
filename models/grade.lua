@@ -563,6 +563,9 @@ Grade.TRAIT_GRADE = {
     trait_a_thousand_faces =            1.0,  -- A Thousand Faces -- the race: wears the face that answers the nearest foe
     -- SLOTH'S BESTIARY, FOUNDATION (2026-10-04): the troll race. Not playable, so a body's organ and never shelved.
     trait_indifferent =                 0.0,  -- Indifferent -- the troll race: never dodges, regrows unless burned
+    -- THE CROWN'S BESTIARY, FOUNDATION (2026-10-09): the Archon race. Not playable, so both are a body's organ.
+    trait_spirit_body =                 0.0,  -- Spirit Body -- the Archon race: a wisp walks back to raise the body
+    trait_homeward =                    0.0,  -- Homeward -- the wisp's own walk home
     -- SLOTH'S TROLLS (slice B, 2026-10-04). The Toll is the Toll-Troll's organ and never shelved. Of the drops:
     -- Scarring Blows is the Unclosing Parry's wound on your own swing, a turn long (and the Scarlord's organ carries
     -- it too); Bridge Tax is Keen Senses narrowed to abilities within 2; the Grafted Arm is a tenth a turn, priced
