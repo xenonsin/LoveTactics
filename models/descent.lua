@@ -1672,7 +1672,11 @@ function Descent.floorPool(ctx)
     for _, e in ipairs(pool) do
         -- An elite that stands `alone` is excused the share below, so it is not rated into its median.
         local standsAlone = e.kind == "elite" and (Encounter.get(e.id) or {}).alone == true
-        if (e.kind == "combat" or e.kind == "elite") and not standsAlone then
+        -- A PARTY IS KEPT OUT OF THE MEDIAN TOO (models/adventurers.lua): its weight is set as a share
+        -- below rather than earned against the circle's own fights, and a six-strong company rated into
+        -- the median would raise the bar every one of the circle's beasts is measured against.
+        local isParty = (Encounter.get(e.id) or {}).party == true
+        if (e.kind == "combat" or e.kind == "elite") and not standsAlone and not isParty then
             local ok, worth = pcall(Muster.encounter, Encounter.get(e.id), {
                 depth = ctx.depth,
                 quest = ctx.quest,
@@ -1784,6 +1788,10 @@ function Descent.floorPool(ctx)
         -- rating meaningless cannot also move the bar for every other fight on the floor.
         local aloneDef = e.kind == "elite" and Encounter.get(e.id)
         local excused = aloneDef and aloneDef.alone == true
+        -- ...and a party is excused both rules as well, because a floor must field EVERY class open on it
+        -- (tests/adventurers_spec.lua): each party is what lets its classes' shelves drop here, so a
+        -- filter that dropped one as light would quietly take a shelf off the floor.
+        if (Encounter.get(e.id) or {}).party == true then excused = true end
         if (e.kind == "combat" or e.kind == "elite") and not excused then
             light = median ~= nil and rated[e.id] ~= nil
                 and rated[e.id] < median * Descent.MIN_SHARE
@@ -1811,6 +1819,27 @@ function Descent.floorPool(ctx)
         end
         if not light then
             out[#out + 1] = { id = e.id, kind = e.kind, name = e.name, weight = weight }
+        end
+    end
+
+    -- THE PARTIES TAKE A FIXED SHARE OF THE FLOOR'S ORDINARY DRAWS, split evenly between them
+    -- (Adventurers.SHARE, 20%: the author's note on "The Rift's Adventurers"). Set here, after the
+    -- filter, because a share is a statement about the pool as dealt: the circle's own fights keep the
+    -- rest whatever their weights add up to, and one more party opening on a deep floor thins each
+    -- party rather than thinning the circle.
+    do
+        local Adventurers = require("models.adventurers")
+        local native, parties = 0, {}
+        for _, e in ipairs(out) do
+            if e.kind == "combat" then
+                if (Encounter.get(e.id) or {}).party == true then parties[#parties + 1] = e
+                else native = native + e.weight end
+            end
+        end
+        if #parties > 0 then
+            -- A floor with no native fight at all still deals its parties, at a nominal weight.
+            local total = native > 0 and native * Adventurers.SHARE / (1 - Adventurers.SHARE) or 1
+            for _, e in ipairs(parties) do e.weight = total / #parties end
         end
     end
 

@@ -1096,12 +1096,24 @@ function Party:refuseUnread(item)
     return true
 end
 
+-- Refuse a race item on a body of another race, out loud (Character.canCarry -- the one equip gate,
+-- models/adventurers.lua). Asked at the top of every path that lands a piece on a member, beside
+-- refuseUnread, for the same reason: it has to stop the landing, and a refusal with no sentence reads
+-- as a dropped click.
+function Party:refuseRace(char, item)
+    local ok, why = Character.canCarry(char, item)
+    if ok then return false end
+    self:setMsg(why, false)
+    return true
+end
+
 -- STASH -> current grid cell. Index into the pool maps 1:1 to the stash, since the pool was fed
 -- player.stash directly.
 function Party:placeIntoGrid(stashIndex, cell)
     local char = self:currentChar()
     if not (char and self.player) then return end
     if self:refuseUnread(self:poolList()[stashIndex]) then return end
+    if self:refuseRace(char, self:poolList()[stashIndex]) then return end
     if Item.isBound(char.inventory[cell]) then return end -- a bound relic can't be displaced from its cell
     local incoming = self:poolTake(stashIndex)
     if not incoming then return end
@@ -1124,6 +1136,7 @@ function Party:transferStashToGrid(poolIndex, cell)
     local stashIndex = self:stashIndex(poolIndex)
     local stashItem = self:poolList()[stashIndex]
     if not stashItem then return end
+    if self:refuseRace(self:currentChar(), stashItem) then return end
     if Item.isStackable(stashItem) and (stashItem.quantity or 1) > 1 then
         self:openQuantityPopup(stashItem, cell)
     else
@@ -1231,6 +1244,7 @@ function Party:giveGridItemToMember(cell, memberIdx)
     local item = char.inventory[cell]
     if not item then return end
     if Item.isBound(item) then self.grid:cancelPickup() return end -- a bound relic can't be given away
+    if self:refuseRace(member, item) then self.grid:cancelPickup() return end
     Character.removeItem(char, item)
     if not Character.addItem(member, item) then
         -- No room: return it to where it came from (its cell just freed up).
@@ -1251,6 +1265,7 @@ function Party:givePoolItemToMember(poolIndex, memberIdx)
     local item = self:poolList()[stashIndex]
     if not item then return end
     if self:refuseUnread(item) then self.pool:cancelPickup(); return end
+    if self:refuseRace(member, item) then self.pool:cancelPickup(); return end
     self:poolTake(stashIndex)
     if not Character.addItem(member, item) then
         self:poolPut(item)
@@ -1307,6 +1322,7 @@ function Party:equipStashItem(poolIndex)
     local stashItem = self:poolList()[self:stashIndex(poolIndex)]
     if not (char and stashItem) then return end
     if self:refuseUnread(stashItem) then return end
+    if self:refuseRace(char, stashItem) then return end
     local slot = Character.firstEmptySlot(char)
     if not slot and not self:canMergeStack(char, stashItem) then
         self:setMsg((char.name or "This character") .. "'s inventory is full.", false)

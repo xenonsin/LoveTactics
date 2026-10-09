@@ -67,7 +67,8 @@ local function randomizeLoadout(char, pool, taken)
     local function draw(ids)
         local available = {}
         for _, id in ipairs(ids) do
-            if not taken[id] then available[#available + 1] = id end
+            -- ...and never a race item on a body of another race (Character.canCarry, the one gate).
+            if not taken[id] and Character.canCarry(char, Item.defs[id]) then available[#available + 1] = id end
         end
         if #available == 0 then return nil end
         local id = available[love.math.random(#available)]

@@ -144,6 +144,20 @@ for _, def in pairs(Character.defs) do
     def.kind = Race.kindOf(def.race)
 end
 
+-- A FIELDED ADVENTURER'S RACE RIDES IN ITS ID (models/adventurers.lua): `character_adv_bulwark@dwarf`
+-- is the race-free bulwark wearing a dwarf. Resolved on first lookup and memoized, through __index so
+-- that `pairs` over the blueprints never sees the 360 derived ids -- every sweep, spec and tool that
+-- walks the real files still walks exactly the real files, while every path that holds an id (the
+-- arena, muster, the drop draw, a save) gets a blueprint back like any other.
+setmetatable(Character.defs, {
+    __index = function(defs, id)
+        if type(id) ~= "string" or not id:find("@", 1, true) then return nil end
+        local def = require("models.adventurers").variant(defs, id)
+        if def then rawset(defs, id, def) end
+        return def
+    end,
+})
+
 -- The first empty grid cell (1..MAX_INVENTORY), or nil if the grid is full.
 function Character.firstEmptySlot(char)
     for i = 1, Character.MAX_INVENTORY do
@@ -322,7 +336,24 @@ end
 -- first merges into an existing same-id stack up to that stack's cap; only the leftover claims the
 -- first empty grid cell. Returns true once the whole item is placed, false if the grid is full and
 -- blocks the remainder (any amount already merged into an existing stack stays merged).
+local RACE_PLURAL = { dwarf = "dwarves", elf = "elves", human = "humans", goblin = "goblins",
+    kobold = "kobolds", naga = "naga", oni = "oni", orc = "orcs" }
+
+-- MAY THIS BODY CARRY THIS ITEM AT ALL? The one equip gate in the game, and it is a RACE gate only:
+-- a race item (models/adventurers.lua's RACE_ITEMS) names its race and no other body may equip it
+-- (the author, round 3 of "The Rift's Adventurers", 2026-10-09, option C). A class still gates
+-- nothing -- docs/classes.md's "anyone can carry anything" holds for every other piece. Takes a live
+-- item or a blueprint. Returns false plus the sentence a refusal says.
+function Character.canCarry(char, item)
+    local def = item and (Item.defs[item.id] or item)
+    local race = def and def.race
+    if not race then return true end
+    if char and char.race == race then return true end
+    return false, (def.name or "That item") .. " can only be carried by " .. (RACE_PLURAL[race] or race) .. "."
+end
+
 function Character.addItem(char, item)
+    if not Character.canCarry(char, item) then return false end
     if Item.isStackable(item) then
         for _, existing in ipairs(Character.eachItem(char)) do
             if existing.id == item.id and Item.isStackable(existing) then

@@ -703,8 +703,9 @@ local function rankCandidates(enemyUnits, r, player)
                     if item and item.id then add(own, item.id, seenOwn) end
                 end
             end
-            local lootClass = Spoils.lootClassOf(def, unit)
-            if lootClass then classes[lootClass] = true end
+            for c, share in pairs(Spoils.lootSharesOf(def, unit)) do
+                classes[c] = (classes[c] or 0) + share
+            end
         end
     end
 
@@ -712,13 +713,28 @@ local function rankCandidates(enemyUnits, r, player)
     for id, def in pairs(Item.defs) do
         if def.class and classes[def.class] then add(house, id, seenHouse) end
     end
+    -- HOW MUCH EACH CLASS'S STOCK WEIGHS IN THE HOUSE HALF (Spoils.lootSharesOf). The house half keeps
+    -- the total it always had -- one per item -- so the body's own kit keeps its BODY_PREFERENCE edge over
+    -- it; what changes is how that total divides between shelves. A body of one class pays its one shelf
+    -- exactly as before. An assassin pays half assassin and half rogue however many pieces each shelf has
+    -- at this rank, which is the author's split rather than whichever shelf happens to be deeper.
+    local perClass, shareSum = {}, 0
+    for _, e in ipairs(house) do
+        local c = Item.defs[e.id].class
+        perClass[c] = (perClass[c] or 0) + 1
+    end
+    for c in pairs(perClass) do shareSum = shareSum + classes[c] end
+    for _, e in ipairs(house) do
+        local c = Item.defs[e.id].class
+        e.weight = (#house * classes[c] / shareSum) / perClass[c]
+    end
 
     local pool = {}
     for _, e in ipairs(own) do
         pool[#pool + 1] = { id = e.id, weight = prize[e.id] and 1 or Spoils.BODY_PREFERENCE }
     end
     for _, e in ipairs(house) do
-        if not seenOwn[e.id] then pool[#pool + 1] = { id = e.id, weight = 1 } end
+        if not seenOwn[e.id] then pool[#pool + 1] = { id = e.id, weight = e.weight or 1 } end
     end
     return pool
 end
@@ -740,6 +756,37 @@ local function anyAtRank(r, player)
         end
     end
     return pool
+end
+
+-- WHICH SHELVES A BODY PAYS FROM, AND IN WHAT SHARE: { class = share }, shares summing to 1.
+--
+-- A body of an EARNED class pays its own shelf half the time and its parents' the other half -- a
+-- subclass's root takes the whole other half, a crossing's two parents a quarter each (the author,
+-- 2026-10-09, "The Rift's Adventurers": "any leaf classes can drop items from their root class", then
+-- "can drop from both, but 50% chance should be it's own class"). So an assassin pays assassin and
+-- rogue stock, a paladin paladin, knight and priest. A root, and a body with no discipline, pays the one
+-- shelf Spoils.lootClassOf names.
+--
+-- The class is read off `discipline` first, which is where a body names its earned class; `class` on a
+-- body is its root (its growth table). Read the other way round, an assassin paid rogue stock only.
+Spoils.OWN_CLASS_SHARE = 0.5
+
+function Spoils.lootSharesOf(def, unit)
+    local Class = require("models.class")
+    local own = def and def.discipline
+    if own and Class.defs[own] and Class.isEarned(own) then
+        local parents = Class.parents(own)
+        if #parents > 0 then
+            local out = { [own] = Spoils.OWN_CLASS_SHARE }
+            local each = (1 - Spoils.OWN_CLASS_SHARE) / #parents
+            for _, p in ipairs(parents) do out[p] = (out[p] or 0) + each end
+            return out
+        end
+        return { [own] = 1 }
+    end
+    local c = Spoils.lootClassOf(def, unit)
+    if c then return { [c] = 1 } end
+    return {}
 end
 
 -- WHICH CLASS'S STOCK A BODY PAYS. Its own where it declares one, and otherwise the house of the
