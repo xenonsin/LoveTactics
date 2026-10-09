@@ -1011,6 +1011,8 @@ function Combat.abilityRange(combat, unit, ab, x, y)
     if unit then range = range + Status.statBonus(unit, "range") end
     -- THE ELVES OF PRIDE: ...and a live trait may too (By Starlight: a tile further while a foe is Limned).
     if unit then range = range + Trait.liveBonus(unit, "range") end
+    -- THE RIFT'S ADVENTURERS, SLICE D: ...and an Unblemished Flawless Shot puts a bow a tile further out.
+    if unit then range = range + require("models.race_items").rangeBonus(unit, ab) end
     -- A reach an ability only has FROM HIDING (`hiddenRange`): the Sabertooth's Pounce bites from three
     -- tiles when it came up to act unseen, and from beside you otherwise. A floor under the reach rather
     -- than an addition, so a field bonus on top still means what it says.
@@ -7297,6 +7299,11 @@ function Combat.rollsToHit(combat, user, target, item)
     if target.char and target.char.kind == "object" then return false end
     -- THE ELVES OF PRIDE: a DRAWN STANCE shot (Combat.drawnStance) cannot be avoided.
     if Combat.drawnStance(combat, user, item) then return false end
+    -- THE RIFT'S ADVENTURERS, SLICE D: an Unblemished Flawless Shot's bow, and a Grudge Purse's steal from the
+    -- Feud, are not asked the dice (models/race_items.lua).
+    local RaceItems = require("models.race_items")
+    if RaceItems.sureShot(user, item) or RaceItems.sureSteal(user, target, item) then return false end
+    -- end THE RIFT'S ADVENTURERS, SLICE D
     return true
 end
 
@@ -8950,6 +8957,8 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     -- the caller's, which an area sweep may reuse across targets) drops the shove and keeps the rest.
     local guardian = Combat.tryRedirect(combat, target, base, tags)
     if guardian then
+        -- THE RIFT'S ADVENTURERS, SLICE D: a Sworn Shield Blesses the ally it took the blow for.
+        require("models.race_items").tookBlow(combat, guardian, target)
         local redirected = opts
         if opts and opts.knockback then
             redirected = {}
@@ -9716,8 +9725,10 @@ function Combat.dealDamage(combat, user, target, item, opts)
         -- bargain: the tempo is only yours while the duel is.
         if user ~= target then
             if user.streakTarget == target then
-                user.streakCount = (user.streakCount or 1) + 1
-                Combat.tally(user, "repeatStrike", 1)
+                -- THE RIFT'S ADVENTURERS, SLICE D: an Unblemished Perfect Form builds it two at a time.
+                local step = require("models.race_items").streakStep(user)
+                user.streakCount = (user.streakCount or 1) + step
+                Combat.tally(user, "repeatStrike", step)
             else
                 if user.streakTarget then Combat.resetChargesOn(user, "targetSwitch") end
                 user.streakTarget, user.streakCount = target, 1
@@ -11686,7 +11697,10 @@ function Combat.quaff(combat, unit, item)
     if not stat then return 0 end
     local ab = item.activeAbility
     local amount = ab.healing or ab.restore or 0
-    item.quantity = math.max(0, (item.quantity or 1) - 1)
+    -- THE RIFT'S ADVENTURERS, SLICE D: a Well Stocked bearer's first use of each consumable is free.
+    if not require("models.race_items").spareUse(unit, item) then
+        item.quantity = math.max(0, (item.quantity or 1) - 1)
+    end
     Combat.logEvent(combat, "action",
         string.format("%s downs %s.", unitName(unit), item.name or "a potion"), unit)
     if stat == "health" then return Combat.applyHeal(combat, unit, amount) end
@@ -12562,7 +12576,8 @@ end
 -- (Combat.revealInventory), and a log line that read "the Jealous Resin holds" would hand over an item
 -- the player has not earned the right to see.
 function Combat.steal(combat, thief, victim)
-    if Trait.flag(victim, "wardsTheft") then
+    -- THE RIFT'S ADVENTURERS, SLICE D: ...or a Mountain's Root on it or beside it (models/race_items.lua).
+    if Trait.flag(victim, "wardsTheft") or require("models.race_items").rooted(victim) then
         Combat.logEvent(combat, "action",
             string.format("%s cannot get into %s's kit.", unitName(thief), unitName(victim)),
             { thief, victim })
@@ -12658,7 +12673,8 @@ function Combat.strip(combat, holder, victim, opts)
     -- A body in its revive window may be robbed when the caller says so (`opts.downed`, the ghoul's
     -- Grave-Robber); a cold corpse and a body that is simply gone may not.
     if not (victim.alive or (opts.downed and victim.incapacitated)) then return taken end
-    if Trait.flag(victim, "wardsTheft") then
+    -- THE RIFT'S ADVENTURERS, SLICE D: ...or a Mountain's Root on it or beside it (models/race_items.lua).
+    if Trait.flag(victim, "wardsTheft") or require("models.race_items").rooted(victim) then
         Combat.logEvent(combat, "action", string.format("%s cannot get anything off %s.",
             unitName(holder or victim), unitName(victim)), { holder, victim })
         return taken
@@ -13346,7 +13362,10 @@ function Combat.useItem(combat, unit, item, tx, ty, windup, dest, spend)
         -- tell: the player has half the time to walk clear, and the blow at the end is no softer.
         -- Floored at one tick -- a wind-up still has to hang for a beat.
         local timeTicks = math.max(1, math.floor(ticks * Status.costMultiplier(unit) + 0.5))
-        if ab.consumesItem then item.quantity = math.max(0, (item.quantity or 1) - 1) end
+        -- THE RIFT'S ADVENTURERS, SLICE D: a Well Stocked bearer's first use of each consumable is free.
+        if ab.consumesItem and not require("models.race_items").spareUse(unit, item) then
+            item.quantity = math.max(0, (item.quantity or 1) - 1)
+        end
         -- `windup` = the commitment the effect scales its payoff on (undiscounted); the TELL it actually
         -- hangs for is timeTicks, which is what the badge below and endTurn (the resolution slot) bill.
         unit.channel = { item = item, ab = ab, tx = tx, ty = ty, windup = ticks, held = held,
@@ -14507,7 +14526,9 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
     -- slot STAYS in the inventory as an empty stack -- Combat.isDepleted then blocks activation
     -- until it's restocked (Character.addItem merges a fresh stack back in). Non-stacked items
     -- carry quantity 1, so this leaves an empty, greyed-out slot after their single use.
-    if ab.consumesItem and not auraMods.preserve and not alreadyConsumed then
+    -- THE RIFT'S ADVENTURERS, SLICE D: a Well Stocked bearer's first use of each consumable is free.
+    if ab.consumesItem and not auraMods.preserve and not alreadyConsumed
+        and not require("models.race_items").spareUse(unit, item) then
         item.quantity = math.max(0, (item.quantity or 1) - 1)
     end
 

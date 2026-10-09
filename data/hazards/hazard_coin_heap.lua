@@ -59,6 +59,8 @@ return {
             Combat.logEvent(combat, "action", string.format("%s puts the gilt plate back on.", name), unit)
             return
         end
+        -- THE RIFT'S ADVENTURERS, SLICE D: a Hoardkeeper banks loose gold twice (models/race_items.lua).
+        gold = require("models.race_items").heapTake(unit, gold)
         if unit.side == "party" then
             Combat.bounty(combat, gold)
             ctx.consume()

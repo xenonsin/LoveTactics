@@ -606,6 +606,26 @@ Grade.TRAIT_GRADE = {
     trait_usurper =                     1.0,  -- Usurper -- a foe's boons pass to you when it falls within 3
     trait_crown_of_thorns =             1.5,  -- Crown of Thorns -- a foe within 2 loses a tenth per ability
     -- end THE CROWN'S BESTIARY, SLICE D
+    -- THE RIFT'S ADVENTURERS, SLICE D (2026-10-09): the sixteen race items. Each is a clause on its class's own
+    -- engine and does nothing off it -- a bow, a stance, a guard, a trap -- so each is weighed beside the class
+    -- charm it sharpens. The race gate is not priced in: it decides who may carry the piece, not what it does.
+    trait_mountains_root =              2.0,  -- Mountain's Root -- unmovable, unrobbable, and the line beside you
+    trait_hoardkeeper =                 1.0,  -- Hoardkeeper -- no skim off you; a heap banks twice
+    trait_flawless_shot =               2.0,  -- Flawless Shot -- while Unblemished, bow shots never miss, +1 reach
+    trait_perfect_form =                2.0,  -- Perfect Form -- while Unblemished, the streak builds two a blow
+    trait_blood_tally =                 1.5,  -- Blood Tally -- each Proven is a tenth of health spent, for Fury
+    trait_trophy_banner =               1.5,  -- Trophy Banner -- an ally's kill in your banner's field: Proven
+    trait_grudge_purse =                1.0,  -- Grudge Purse -- steals from the Feud never miss
+    trait_never_alone =                 1.0,  -- Never Alone -- your own charges keep you from Cowering
+    trait_many_hands =                  2.0,  -- Many Hands -- your traps beside the target count for Pack
+    trait_dragon_kin =                  2.0,  -- Dragon-Kin -- your summoned beast is a dragon for the Eye
+    trait_constrict =                   2.5,  -- Constrict -- a blow on a Poisoned foe Roots it
+    trait_shed_skin =                   2.5,  -- Shed Skin -- once, below half: shed every status, heal a fifth
+    trait_horned_fist =                 2.0,  -- Horned Fist -- Horn Out fills the chi bank
+    trait_red_mark =                    1.5,  -- Red Mark -- a blink that kills sends you Horn Out
+    trait_sworn_shield =                1.5,  -- Sworn Shield -- a blow taken for an ally Blesses it
+    trait_well_stocked =                2.5,  -- Well Stocked -- each consumable has one more use a fight
+    -- end THE RIFT'S ADVENTURERS, SLICE D
     -- SLOTH'S TROLLS (slice B, 2026-10-04). The Toll is the Toll-Troll's organ and never shelved. Of the drops:
     -- Scarring Blows is the Unclosing Parry's wound on your own swing, a turn long (and the Scarlord's organ carries
     -- it too); Bridge Tax is Keen Senses narrowed to abilities within 2; the Grafted Arm is a tenth a turn, priced

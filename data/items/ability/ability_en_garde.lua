@@ -24,7 +24,9 @@ return {
         effect = function(fx)
             local u = fx.user
             if u.enGardeTarget == fx.target then
-                u.enGardeStacks = math.min((u.enGardeStacks or 0) + 1, 5)
+                -- THE RIFT'S ADVENTURERS, SLICE D: an Unblemished Perfect Form builds it two at a time.
+                local step = require("models.race_items").streakStep(u)
+                u.enGardeStacks = math.min((u.enGardeStacks or 0) + step, 5)
             else
                 u.enGardeTarget = fx.target
                 u.enGardeStacks = 1

@@ -22,9 +22,8 @@ return {
         cost = { stat = "stamina", amount = 8 },
         damage = Curve.ramp(12, 22), -- the base, at full health; scaled up by the missing fraction below
         effect = function(fx)
-            local hp = fx.user.char.stats.health
-            local ratio = (hp.max and hp.max > 0) and (hp.current / hp.max) or 1
-            local missing = math.max(0, 1 - ratio)
+            -- THE RIFT'S ADVENTURERS, SLICE D: the health spent, read where a Blood Tally adds its Proven to it.
+            local missing = require("models.race_items").healthSpent(fx.user)
             fx.damage(fx.target, { amount = fx.amount * (1 + missing) }) -- x1 full -> x2 at 0 HP
         end,
     },

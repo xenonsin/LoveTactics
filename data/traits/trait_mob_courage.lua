@@ -25,6 +25,8 @@ local function check(ctx)
             if Combat.unitGap(u, other) <= RADIUS then near = true break end
         end
     end
+    -- THE RIFT'S ADVENTURERS, SLICE D: a Never Alone bearer's own hidden charges count as goblins beside it.
+    if not near and require("models.race_items").chargeNear(combat, u, RADIUS) then near = true end
     if any and not near then
         ctx.applyStatus(u, "status_cowering", { duration = TURN + 1 })
     end

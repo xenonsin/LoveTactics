@@ -1618,4 +1618,22 @@ return {
     ["items/utility_will_not_be_hurried.png"] = { icon = "delapouite/spiked-trunk", by = "hand" },
     ["items/weapon_spruce_staff.png"] = { icon = "delapouite/wood-stick", by = "hand" },
     -- end SLOTH'S DREAMERS (slice E)
+    -- THE RIFT'S ADVENTURERS, SLICE D (2026-10-09): the sixteen race items.
+    ["items/utility_mountains_root.png"] = { icon = "lorc/mountains", by = "hand" },
+    ["items/utility_hoardkeeper.png"] = { icon = "lorc/locked-chest", by = "hand" },
+    ["items/utility_flawless_shot.png"] = { icon = "lorc/on-target", by = "hand" },
+    ["items/utility_perfect_form.png"] = { icon = "delapouite/fencer", by = "hand" },
+    ["items/utility_blood_tally.png"] = { icon = "lorc/fanged-skull", by = "hand" },
+    ["items/utility_trophy_banner.png"] = { icon = "delapouite/tusks-flag", by = "hand" },
+    ["items/utility_grudge_purse.png"] = { icon = "badges/purse", by = "hand" },
+    ["items/utility_never_alone.png"] = { icon = "lorc/explosive-materials", by = "hand" },
+    ["items/utility_many_hands.png"] = { icon = "felbrigg/underhand", by = "hand" },
+    ["items/utility_dragon_kin.png"] = { icon = "lorc/dragon-head", by = "hand" },
+    ["items/utility_constrict.png"] = { icon = "lorc/snake", by = "hand" },
+    ["items/utility_shed_skin.png"] = { icon = "delapouite/sand-snake", by = "hand" },
+    ["items/utility_horned_fist.png"] = { icon = "delapouite/oni", by = "hand" },
+    ["items/utility_red_mark.png"] = { icon = "darkzaitzev/shuriken", by = "hand" },
+    ["items/utility_sworn_shield.png"] = { icon = "lorc/rosa-shield", by = "hand" },
+    ["items/utility_well_stocked.png"] = { icon = "badges/flask", by = "hand" },
+    -- end THE RIFT'S ADVENTURERS, SLICE D
 }

@@ -26,6 +26,8 @@ return {
                 kin = kin + 1
             end
         end
+        -- THE RIFT'S ADVENTURERS, SLICE D: a Many Hands bearer's own traps beside the target count as kin.
+        kin = kin + require("models.race_items").trapsBeside(combat, unit, target)
         return PER_KIN * math.min(kin, MAX_KIN)
     end,
 }

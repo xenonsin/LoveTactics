@@ -20,6 +20,8 @@ local Devotion = {}
 Devotion.EYE_RADIUS = 3
 
 function Devotion.isDragon(unit)
+    -- THE RIFT'S ADVENTURERS, SLICE D: ...and a beast bonded to a Dragon-Kin bearer (models/race_items.lua).
+    if unit ~= nil and require("models.race_items").beastIsDragon(unit) then return true end
     return unit ~= nil and require("models.trait").flag(unit, "dragonkin") ~= nil
 end
 

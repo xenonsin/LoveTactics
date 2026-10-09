@@ -24,6 +24,8 @@ return {
         if not target or not target.alive then return end
         if target.side == ctx.unit.side then return end -- allies are not a revenue stream
         if target.summoned then return end              -- a conjuration carries no purse
+        -- THE RIFT'S ADVENTURERS, SLICE D: a Hoardkeeper's banked gold cannot be stolen.
+        if require("models.race_items").keepsHoard(target) then return end
         local taken = ctx.combat and require("models.combat").skimGold(ctx.combat, ctx.unit, ctx.def.gold) or 0
         if taken > 0 then
             ctx.log("action", string.format("%s lifts %d gold in the exchange.",

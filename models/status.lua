@@ -1742,6 +1742,10 @@ function Status.blocksForcedMove(unit)
     -- SLOTH'S BESTIARY, SLICE C (2026-10-04): the CAIRN STONE holds every ally within 3 of its bearer in place
     -- (data/traits/trait_cairn_stone.lua, models/sloth_bog.lua).
     if unit and require("models.sloth_bog").anchored(unit) then return true end
+    -- THE RIFT'S ADVENTURERS, SLICE D (2026-10-09): MOUNTAIN'S ROOT holds its bearer and every ally beside it
+    -- (models/race_items.lua).
+    if unit and require("models.race_items").rooted(unit) then return true end
+    -- end THE RIFT'S ADVENTURERS, SLICE D
     -- LASHED TO THE MAST (data/traits/trait_mast_rope.lua). A Mast-Rope ties its bearer to every ally
     -- touching it: while they stand together, none of them can be shoved, pulled or thrown. Asked
     -- through the board the body stands on, and only once a presence trait exists at all (the rope

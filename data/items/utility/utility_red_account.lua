@@ -34,9 +34,8 @@ return {
         effect = function(fx)
             -- Read the debt BEFORE Fury lands: Fury drops him to 1 HP itself, so measuring afterwards
             -- would price every cast identically at 99% and make the gate decorative.
-            local h = fx.user.char and fx.user.char.stats and fx.user.char.stats.health
-            local max = (h and h.max) or 0
-            local spent = max > 0 and (1 - ((h.current or 0) / max)) or 0
+            -- THE RIFT'S ADVENTURERS, SLICE D: the health spent, read where a Blood Tally adds its Proven to it.
+            local spent = require("models.race_items").healthSpent(fx.user)
             fx.applyStatus(fx.user, "status_fury")
             fx.applyStatus(fx.user, "status_empowered", { magnitude = math.floor(spent * 100) })
         end,
