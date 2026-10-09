@@ -41,7 +41,8 @@ return {
 
             -- A boss is delivered its rule the same way.
             local boss = Character.instantiate("character_demon_lord")
-            assert(boss.inventory[5] and boss.inventory[5].id == "armor_hollow_crown", "the boss relic is centered")
+            -- (The Hollow Crown's organ, slice D: its old centre-cell armour is the company's relic now.)
+            assert(boss.inventory[5] and boss.inventory[5].id == "utility_the_first_archon", "the boss organ is centered")
             assert(boss.inventory[5].traits[1] == "trait_hollow_crown", "carrying the boss's rule")
         end,
     },

@@ -295,7 +295,8 @@ AI.TEST_ORDER = {
 AI.ACTION_ORDER = { "attack", "support", "cast", "retreat", "wait" }
 AI.TARGET_PREF_ORDER = { "nearest", "lowest_hp", "most_wounded", "lethal", "self", "objective",
                          "drownable", "gilded", "sleeping",
-                         "held" } -- Pride's lions (2026-09-30)
+                         "held", -- Pride's lions (2026-09-30)
+                         "hemmed" } -- THE CROWN'S BESTIARY, SLICE D: the Hollow Crown's hunt
 
 -- Which tests take a `value`, and what shape it is. A test that takes none must not show a value
 -- field at all -- an editor offering "exists 0.4" is offering nonsense.
@@ -2298,6 +2299,18 @@ local function prefBonus(ctx, rule, cand, w)
         -- is his, and he goes for it first.
         local hp = t.char and t.char.stats and t.char.stats.health
         return (hp and hp.current == 1 and Status.has(t, "status_root")) and w.TARGET_PREF or 0
+    -- THE CROWN'S BESTIARY, SLICE D (2026-10-09): HEMMED IN FIRST (the Hollow Crown, character_demon_lord.lua): the
+    -- foe with the fewest open tiles around it -- the one the Pit has cornered (HollowCrown.openAround). A bias like
+    -- the rest; ties all score, so the planner's own weighing picks among them.
+    elseif pref == "hemmed" then
+        local HollowCrown = require("models.hollow_crown")
+        local least
+        for _, f in ipairs(foes(ctx)) do
+            local n = HollowCrown.openAround(ctx.combat, f)
+            if not least or n < least then least = n end
+        end
+        return (least and HollowCrown.openAround(ctx.combat, t) == least) and w.TARGET_PREF or 0
+    -- end THE CROWN'S BESTIARY, SLICE D
     end
     return 0
 end

@@ -227,11 +227,12 @@ end }
 tests[#tests + 1] = { name = "a body's own resist layers OVER its race's, never under", fn = function()
     -- Flesh first, then what was put on top of it -- the same order the item fold uses one layer
     -- further out. A body that is tougher than its kin says so on its blueprint and wins the tag.
-    local lord = Character.instantiate("character_demon_lord")
+    -- The Balor, which authors a resist line of its own (the Hollow Crown read here until it became an Archon,
+    -- slice D 2026-10-09). Whatever the blueprint and the grid say, the race cannot be the thing that makes a
+    -- demon LESS answerable to holy than its race declares.
+    local balor = Character.instantiate("character_balor")
     local race = Race.get("demon").resist.holy
-    -- The Lord's own crown carries -8; whatever the blueprint and the grid say, the race cannot be the
-    -- thing that makes a demon LESS answerable to holy than its race declares.
-    assert(lord.resist == nil or (lord.resist.holy or race) <= race,
+    assert(balor.resist == nil or (balor.resist.holy or race) <= race,
         "a blueprint may deepen its race's weakness, never soften it into an advantage")
 end }
 

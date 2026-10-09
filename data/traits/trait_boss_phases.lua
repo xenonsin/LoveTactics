@@ -5,7 +5,8 @@
 -- of max health, `ctx.trait.stacks` as the phase cursor, a while-loop so one huge blow crosses several
 -- thresholds at once -- but the effect at each threshold is a LIST of typed `responses` read from DATA,
 -- not one hard-coded summon. So a boss gets phased behavior by authoring a relic, no new Lua:
---   * the Hollow Crown is three { kind = "summon" } phases,
+--   * the Hollow Crown WAS three { kind = "summon" } phases (it has four of its own now, slice D 2026-10-09, in
+--     models/hollow_crown.lua -- a court, an omen a turn, a falling board and a count, none of them data-shaped),
 --   * Rising Wrath is one { kind = "enrage" } phase.
 -- We ADD this alongside those two rather than refactoring them -- both are short, test-pinned, and
 -- narratively load-bearing (their headers celebrate being one-hook bespoke rules) -- so this reproduces

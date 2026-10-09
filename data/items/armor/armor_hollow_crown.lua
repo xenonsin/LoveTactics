@@ -1,28 +1,27 @@
--- The Demon Lord's crown, and its whole fight. It has no sin of its own -- the seven were its
--- appetites -- so it brings only this: as it is worn down it reaches for the generals you already
--- killed and puts them back on, one at a time (data/traits/hollow_crown.lua). The rule now rides on
--- the crown, delivered to the boss through its grid exactly as a party member's signature is.
+-- THE HOLLOW CROWN: the relic the last fight pays, first on the Crown's list (Descent.DROPS.crown; "The Crown's
+-- Bestiary", slice D, approved over rounds 3-4). A warlord's trophy: unstocked, so it hangs on the rack greyed as a
+-- monster drop and is never sold, and the body at the bottom of the rift is the only road to it.
 --
--- `bound = true` (models/item.lua) matters here: it can never be stolen. A party rogue that could
--- pickpocket the Crown would strip the boss of its entire fight -- bound forbids that, the same way it
--- keeps a hero's signature nailed to its cell. Its blueprint places it in the center of its grid.
+-- WHAT IT IS, in the approved words: +3 damage for each different status on you, good or bad. The Crown was hollow
+-- because seven people carried its wants away; worn, it fills with whatever the fight hangs on its wearer, a Haste
+-- and a Burn alike. Read live (trait_wanting), so a Cure that strips a bad status also takes a share of the edge --
+-- which is the decision it hands the warlord.
 --
--- No `class`/`price`: it is not gear anyone shops for. The defense curve is flavor -- the player never
--- forges an enemy's relic -- so only its base value is ever seen.
+-- IT USED TO BE THE BODY'S OWN ORGAN under this id, the centre cell of the Crown's grid. The organ is
+-- utility_the_first_archon now; this id is the company's.
 local Curve = require("models.curve")
 
 return {
     name = "The Hollow Crown",
-    description = "At 75%, 50%, and 25% health: summon a fallen general.",
-    flavor = "As it fails, it wears the dead. It had no sin of its own. The seven were its appetites.",
-    sprite = "assets/items/sig_hollow_crown.png",
-    type = "armor", -- a crown: `bound` (not the type) is what locks it in place
-    class = "creature",
-    tags = { "signature", "relic" },
-    bound = true,
-    traits = { "trait_hollow_crown" },
-    -- levels 0..10 (only base is ever used). The square is the armour cost table applying to a crown
-    -- because a crown is `type = "armor"` -- see the note on the type above. The Demon Lord is the
-    -- one body in the game that pays it for headgear, and it walks the last fight at 3.
-    bonus = { defense = Curve.ramp(6, 16), movement = -1 },
+    description = "+3 damage for each different status on you, good or bad.",
+    flavor = "Wanting is what fills it.",
+    sprite = "assets/items/armor_hollow_crown.png",
+    type = "armor",
+    tags = { "helm", "relic" },
+    class = "warlord",
+    unlockLevel = 15, -- the bottom floor, which is the only place it falls from
+    unstocked = true,
+    noSteal = true, -- a relic stays with whoever earned it off the body
+    traits = { "trait_wanting" },
+    bonus = { defense = Curve.ramp(2, 12), movement = -1 },
 }

@@ -679,6 +679,13 @@ function Status.immuneToDamage(unit, tags, attacker)
         local ward = require("models.masks").ward(unit, attacker)
         if ward then return ward end
     end
+    -- THE CROWN'S BESTIARY, SLICE D (2026-10-09): THE COURT CONVENES -- the Hollow Crown takes nothing while a holding
+    -- Archon Warden stands within 2 of its throne (models/hollow_crown.lua, phase 1). One field read for every other body.
+    if unit.hollowCrown then
+        local ward = require("models.hollow_crown").ward(unit)
+        if ward then return ward end
+    end
+    -- end THE CROWN'S BESTIARY, SLICE D
     for _, s in ipairs(unit.statuses or {}) do
         local im = s.def.immune
         if im then

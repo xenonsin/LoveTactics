@@ -220,7 +220,8 @@ Balance.ARMOR_SHARE = 0.40
 -- "one good armour tag's worth" and that piling more on turns a Resistance into an Immunity, which the
 -- damage floor exists to keep distinct. Nothing symmetrical applies going the other way: a weakness has
 -- no floor to collide with, it makes a fight SHORTER rather than unwinnable, and the game already ships
--- one at -8 (data/items/utility/utility_demonic_essence.lua's holy line, on the Demon Lord's crown).
+-- one at -8 (data/items/utility/utility_demonic_essence.lua's holy line, worn by the Hollow Crown until it became an
+-- Archon, 2026-10-09).
 Balance.INNATE_BUDGET = { [1] = 2, [2] = 3, [3] = 4, [4] = 5 }
 Balance.INNATE_WEAKNESS_FACTOR = 2
 

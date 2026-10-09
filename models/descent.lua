@@ -843,6 +843,15 @@ Descent.DROPS = {
         "armor_unravelling_habit", "weapon_overchannelled_staff",
         "weapon_unravelling_wand",
     } },
+    -- THE CROWN'S BESTIARY, SLICE D (2026-10-09): THE BOTTOM PAYS TOO. Not a sin -- Descent.sinAt answers nil down
+    -- there -- so nothing that walks Descent.SINS reads this entry; Descent.crownDropFor does, and the bottom's win
+    -- (states/game.lua's endsDescent branch) grants it before the credits. The relic first, then its four trophies,
+    -- the same list the body declares as its `drops`.
+    crown    = { general = {
+        "armor_hollow_crown",
+        "utility_omen", "ability_the_floor_gives_way", "utility_usurper", "utility_crown_of_thorns",
+    } },
+    -- end THE CROWN'S BESTIARY, SLICE D
 }
 
 -- WHAT A SPENT SET PAYS INSTEAD, in units of the house's own forge stock.
@@ -890,6 +899,16 @@ function Descent.dropFor(player, sin, isGeneral)
     end
     return nil
 end
+
+-- THE CROWN'S BESTIARY, SLICE D (2026-10-09): what the Hollow Crown pays -- the first piece of Descent.DROPS.crown the
+-- company does not already hold, or nil once a run has taken them all. Walked exactly as Descent.dropFor walks a sin's.
+function Descent.crownDropFor(player)
+    for _, id in ipairs((Descent.DROPS.crown or {}).general or {}) do
+        if not ownsItem(player, id) then return id end
+    end
+    return nil
+end
+-- end THE CROWN'S BESTIARY, SLICE D
 
 -- WHAT CLEARING AN OBJECTIVE IS ABOUT TO PAY, so the victory screen can name it instead of the corner of
 -- the map. Returns `{ gold, items = {ids}, materials = {[id]=n}, vouchers }`, or nil for an objective that
@@ -957,6 +976,8 @@ function Descent.objectiveReward(player, run, objSpec)
     local depth = Descent.depth(run)
     local beaten = Descent.sinAt(run, depth)
     local dropId = Descent.dropFor(player, beaten, Descent.isGeneralFloor(depth))
+    -- THE CROWN'S BESTIARY, SLICE D: the bottom has no sin, and pays the Crown's own list.
+    if Descent.isBottom(depth) then dropId = Descent.crownDropFor(player) end
     if dropId then
         out.items[#out.items + 1] = dropId
     else
@@ -4262,22 +4283,60 @@ end
 -- while Superbia on the floor above read 2.42x and Invidia 2.58x -- a run whose one win condition was
 -- not its hardest fight. Descent.stairTarget is the top of the ramp here because the Crown is the
 -- bottom of the stack, so it is the largest target by construction.
+-- THE CROWN'S BESTIARY, SLICE D (2026-10-09): THE CROWN'S ESCORT IS ITS OWN COURT OF ARCHONS, and the Champions who
+-- stood here are gone. Its first phase is the court -- a Warden holding within 2 of the throne keeps it whole, and
+-- every fallen Archon's wisp walks to the throne -- so the court is dealt in the order that phase needs it: a Warden
+-- first (phase 1 needs at least one), a Greater Archon to ward it, then Lessers, and round again.
+Descent.CROWN_COURT = {
+    "character_archon_warden", "character_greater_archon", "character_lesser_archon", "character_lesser_archon",
+}
+
+-- The Crown and the first `n` of its court, in the order the court is dealt.
+function Descent.crownGuard(n)
+    local list = { "character_demon_lord" }
+    for i = 1, math.max(0, n or 0) do
+        list[#list + 1] = Descent.CROWN_COURT[((i - 1) % #Descent.CROWN_COURT) + 1]
+    end
+    return list
+end
+
+-- What that guard is worth, rated the way the marker over it will rate it (Descent.guardWorthOf's measure).
+function Descent.crownWorth(floor, n)
+    local Muster = require("models.muster")
+    local Growth = require("models.growth")
+    local level = Descent.dangerLevel({ floor = floor })
+    local total = 0
+    for _, id in ipairs(Descent.crownGuard(n)) do
+        local ok, char = pcall(Growth.spawn, id, level, Descent.floorLevel({ floor = floor }))
+        if ok and char then total = total + Muster.rate(char) end
+    end
+    return total
+end
+
+-- How many of the court the Crown fields on `floor` of `run`, and what that is worth against its target: the step
+-- above the last general (Descent.CROWN_STEP) or the ramp, whichever is higher. Bounded by GUARD_MAX, so a court too
+-- light to reach the step stops at the arena's cap and says so, rather than being padded with another kind of body.
+--
+-- AND IT IS TOO LIGHT, MEASURED (2026-10-09): the full court of eight is worth 7489 against a target of 9297 -- the
+-- Crown 1329, a Warden 904, a Greater 751, a Lesser 713 -- which is 1.05x the seventh circle's 7152, so the bottom is
+-- still the heaviest stair but no longer by the step. Eight Wardens would only reach 8561, and the Champions it
+-- replaced 9005: the step has outgrown every cast the cap allows since the last general got heavier.
+function Descent.crownCourtSize(floor, run)
+    local plan = Descent.stairPlan(run)
+    local last = (plan[Descent.CIRCLE_FLOORS] or {}).worth or 0
+    local target = math.max(Descent.stairTarget(floor), last * Descent.CROWN_STEP)
+    local n = 1
+    while n < Descent.GUARD_MAX and Descent.crownWorth(floor, n) < target do n = n + 1 end
+    return n, Descent.crownWorth(floor, n), target
+end
+-- end THE CROWN'S BESTIARY, SLICE D
+
 local function crownComposition(floor, run)
     return function()
         -- A STEP ABOVE THE LAST GENERAL rather than the next point on the ramp -- see
         -- Descent.CROWN_STEP. Read off the plan so the two cannot drift: whatever the seventh circle
-        -- turns out to field, this clears it by the same margin.
-        local plan = Descent.stairPlan(run)
-        local last = (plan[Descent.CIRCLE_FLOORS] or {}).worth or 0
-        local target = math.max(Descent.stairTarget(floor), last * Descent.CROWN_STEP)
-        local n = 1
-        while n < Descent.GUARD_MAX
-            and Descent.guardWorth("character_demon_lord", "character_champion", floor, n) < target do
-            n = n + 1
-        end
-        local list = { "character_demon_lord" }
-        for _ = 1, n do list[#list + 1] = "character_champion" end
-        return list
+        -- turns out to field, this clears it by the same margin. (Sized in Descent.crownCourtSize.)
+        return Descent.crownGuard((Descent.crownCourtSize(floor, run)))
     end
 end
 

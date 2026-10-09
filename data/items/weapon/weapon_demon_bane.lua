@@ -1,8 +1,10 @@
 -- Demon Bane: a consecrated blade that carries the `holy` tag on every swing. Holy is routed like
 -- physical damage -- it scales off the wielder's Damage stat and is mitigated by Defense -- so any
 -- fighter can carry it; the tag only matters where something is written to take (or shrug off) holy.
--- Demonic flesh resists it in the negative (data/items/utility/utility_demonic_essence.lua), so against the
--- Hollow Crown and its shades this cuts far deeper than the raw numbers suggest.
+-- Demonic flesh resists it in the negative (data/races/demon.lua), so against the demons of the pit -- the
+-- Balor, the imps, the fiends at the bottom of the rift -- this cuts far deeper than the raw numbers suggest.
+-- It was once said to be forged for the Hollow Crown; the Crown is an Archon now (slice D, 2026-10-09), with no
+-- holy line, and takes it like anybody else.
 --
 -- Sold at the Bastion, and a sword, which is what settles it: the Cathedral consecrates the steel but it
 -- does not carry it -- the faithful bear no edge (docs/classes.md), and a knight holding a holy blade is

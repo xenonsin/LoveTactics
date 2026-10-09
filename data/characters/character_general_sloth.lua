@@ -5,7 +5,7 @@
 -- 3x3 sleeping face at the far edge of the board. Desidia is Latin for idleness.
 --
 -- ACEDIA LEFT THIS ID. The Unrelieved -- the knight who negotiated her post away -- held it until the author removed
--- her; the id stays because the stair, the Many Faced One's forms, the Hollow Crown and the scene name it. Her pike
+-- her; the id stays because the stair, the Many Faced One's forms and the scene name it. Her pike
 -- and the Bastion pieces that queued behind it stay on disk. The descent's scene still speaks in Acedia's voice
 -- (data/conversations/descent/conversation_descent_sloth.lua), which is the author's to rewrite.
 --

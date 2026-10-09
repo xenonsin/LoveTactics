@@ -2939,6 +2939,15 @@ function game:openEncounter(cell, opts)
                             -- order of the seven circles instead of walking the authored one
                             -- (models/descent.lua's Descent.sinOrder). Written BEFORE clearRun, so the
                             -- next run opened off this player is already the shuffled kind.
+                            -- THE CROWN'S BESTIARY, SLICE D (2026-10-09): ...and the Crown pays its own piece, the
+                            -- relic first (Descent.crownDropFor). Into the bag, which the unpack below empties onto
+                            -- the shelf, so New Game+ carries it.
+                            local crownDrop = game.player and Descent.crownDropFor(game.player)
+                            if crownDrop then
+                                Player.stow(game.player, Item.instantiate(crownDrop))
+                                Player.markNew(game.player, Player.NEW_STASH, crownDrop)
+                            end
+                            -- end THE CROWN'S BESTIARY, SLICE D
                             Player.finishCampaign(game.player)
                             clearRun()
                             if game.player then Player.unpack(game.player) end

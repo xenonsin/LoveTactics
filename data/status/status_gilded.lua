@@ -23,4 +23,17 @@ return {
         ctx.log("action", string.format("%s's gilding is prised off: %d gold.",
             (ctx.unit.char and ctx.unit.char.name) or "It", BOUNTY), ctx.unit)
     end,
+    -- THE CROWN'S BESTIARY, SLICE D (2026-10-09): the gilding the Hollow Crown lays when it acts Greed is thin, and an
+    -- impact blow breaks it (`breaksOnImpact`, stamped on that instance alone by models/hollow_crown.lua -- a dwarf's
+    -- gilding is armour and stays).
+    onDamaged = function(ctx)
+        if not ctx.status.breaksOnImpact then return end
+        for _, t in ipairs(ctx.tags or {}) do
+            if t == "impact" then
+                ctx.expire()
+                return
+            end
+        end
+    end,
+    -- end THE CROWN'S BESTIARY, SLICE D
 }

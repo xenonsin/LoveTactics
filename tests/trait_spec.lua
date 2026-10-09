@@ -517,36 +517,31 @@ return {
         end,
     },
     {
-        name = "the Hollow Crown wears a general as its health falls past a threshold",
+        -- THE CROWN NO LONGER WEARS THE DEAD (slice D, 2026-10-09): its phases are read off its own bar now, and
+        -- one blow that spans two of them still owes both. tests/hollow_crown_spec.lua pins each phase whole.
+        name = "the Hollow Crown crosses a phase as its health falls past a threshold, and two on one blow",
         fn = function()
+            local HollowCrown = require("models.hollow_crown")
             local lord = Character.instantiate("character_demon_lord")
-            local c = Combat.new(arena(10, 10), { unit("character_rowan", 1, 1) }, { unit(lord, 5, 5) })
+            local c = Combat.new(arena(13, 13), { unit("character_rowan", 6, 12) }, { unit(lord, 5, 1) })
             local boss = c.units[2]
+            local max = boss.char.stats.health.max
 
-            assert(#c.units == 2, "no shades before the first threshold")
+            -- No court on a bare board, so it is down to its wants from the bell.
+            assert(HollowCrown.phase(boss) == 2, "no court: the wants from the first beat")
 
-            -- 462 health, and the blow lands after its defense (5 of its own plus what it wears),
-            -- leaving it just under 75%: one threshold crossed. The margin is comfortable, so this
-            -- reads the CROSSING rather than an exact arithmetic the balance pass would keep moving.
-            Combat.dealFlatDamage(c, boss, 140, nil, "test")
-            assert(boss.alive, "it should still be standing")
-            assert(#c.units == 3, "crossing 75% should call up exactly one shade")
+            -- Raw blows, so the arithmetic reads the CROSSING and not a defense the balance pass keeps moving.
+            Combat.dealFlatDamage(c, boss, math.floor(max * 0.2), {}, "test", nil, { raw = true })
+            assert(boss.alive and HollowCrown.phase(boss) == 2, "80% is still the wants")
 
-            local shade = c.units[3]
-            assert(shade.summoner == boss, "the shade is sustained by the Crown")
-            assert(shade.side == "enemy", "and fights on its side")
+            -- One enormous blow past both half and a quarter runs both stages, in order.
+            Combat.dealFlatDamage(c, boss, math.floor(max * 0.62), {}, "test", nil, { raw = true })
+            assert(boss.alive, "still alive under a quarter")
+            assert(HollowCrown.phase(boss) == 4, "a blow past half and a quarter crosses both")
+            assert((boss.w or 1) == 1, "and it stepped off the throne on the way")
 
-            -- One enormous blow can cross two thresholds at once, and owes a shade for each.
-            -- 210 lands, taking it from 300 to 90: past 50% (210) and 25% (105) in one blow.
-            Combat.dealFlatDamage(c, boss, 230, nil, "test")
-            assert(boss.alive, "still alive at ~21%")
-            assert(#c.units == 5, "a blow past both 50% and 25% should call up two more")
-
-            -- Killing the Crown takes its borrowed shapes with it -- what keeps `assassinate` honest.
-            Combat.dealFlatDamage(c, boss, 9999, nil, "test")
+            Combat.dealFlatDamage(c, boss, 9999, {}, "test", nil, { raw = true })
             assert(not boss.alive, "the Crown falls")
-            assert(not shade.alive, "and the shades fall with the thing that was wearing them")
-            assert(#c.units == 5, "the lethal blow summons nothing: onDamaged skips a corpse")
         end,
     },
     {

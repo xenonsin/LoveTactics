@@ -597,6 +597,15 @@ Grade.TRAIT_GRADE = {
     trait_hearth_collar =               1.0,  -- Hellhound Collar -- summons fireproof, heal 3 in fire
     trait_three_heads =                 1.0,  -- Three Heads -- the next melee blow strikes two more beside you
     -- end THE CROWN'S BESTIARY, SLICE C
+    -- THE CROWN'S BESTIARY, SLICE D (2026-10-09): the Hollow Crown's four drops. Its own four phases stay at the 3.0
+    -- trait_hollow_crown always carried, below, so the stair's worth does not move with the rewrite. Wanting is the
+    -- relic, weighed with the general's relics; the Omen is a whole line Hasted on a tell, capped once a foe a round;
+    -- the Usurper is a foe's boons on a kill nearby; the Thorns tax a foe's every ability within 2.
+    trait_wanting =                     2.0,  -- Wanting -- +3 Damage per different status on you
+    trait_omen =                        1.5,  -- Omen -- a foe winds up, every ally is Hasted a turn
+    trait_usurper =                     1.0,  -- Usurper -- a foe's boons pass to you when it falls within 3
+    trait_crown_of_thorns =             1.5,  -- Crown of Thorns -- a foe within 2 loses a tenth per ability
+    -- end THE CROWN'S BESTIARY, SLICE D
     -- SLOTH'S TROLLS (slice B, 2026-10-04). The Toll is the Toll-Troll's organ and never shelved. Of the drops:
     -- Scarring Blows is the Unclosing Parry's wound on your own swing, a turn long (and the Scarlord's organ carries
     -- it too); Bridge Tax is Keen Senses narrowed to abilities within 2; the Grafted Arm is a tenth a turn, priced

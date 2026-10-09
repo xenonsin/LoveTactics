@@ -318,6 +318,10 @@ local TROPHIES = {
     -- beam as a Mage's, the Warden's post as a Sentinel's, and the Duke's Ascension as a Champion's.
     "utility_mana_edge", "ability_killing_magic", "utility_wardens_post", "utility_ascension",
     -- end THE CROWN'S BESTIARY, SLICE A
+    -- THE CROWN'S BESTIARY, SLICE D (2026-10-09): the Hollow Crown's relic as a Warlord's, its omen as a Theurge's, its
+    -- falling floor as a Bombardier's, its taking as a Warlord's and its thorns as an Inquisitor's.
+    "armor_hollow_crown", "utility_omen", "ability_the_floor_gives_way", "utility_usurper", "utility_crown_of_thorns",
+    -- end THE CROWN'S BESTIARY, SLICE D
 }
 
 local function vendorFor(class)

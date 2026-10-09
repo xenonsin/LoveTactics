@@ -346,9 +346,10 @@ tests[#tests + 1] = { name = "a demon takes holy the harder", fn = function()
     -- of those, and nothing on the blueprint would say so.
     --
     -- MEASURED ON THE UNIT THAT FIGHTS, not on the blueprint, because the body is not obliged to carry
-    -- the line itself. The Demon Lord's holy weakness lives on the crown it wears
+    -- the line itself. A demon's holy weakness may live on a piece it wears
     -- (data/items/utility/utility_demonic_essence.lua's `resist = { holy = -8 }`, bound and unstealable,
-    -- so it can never come off), which is the same statement made one layer out -- and the fold that
+    -- so it can never come off; the Hollow Crown wore it until it became an Archon, 2026-10-09), which is
+    -- the same statement made one layer out -- and the fold that
     -- flattens the two is exactly what the player's Smite reads. Asserting on `def.resist` would have
     -- failed that body for being written the more interesting way.
     local weak = {}

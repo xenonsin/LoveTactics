@@ -10,8 +10,8 @@
 -- it is, rather than because a spec went looking afterwards.
 --
 -- KEPT NARROW. The -3 here is the floor every demon stands on; the ones whose fiction wants more still
--- carry their own (the Demon Lord's crown, utility_demonic_essence, is -8 and bound, so it never comes
--- off). tests/bestiary_spec.lua measures the finished UNIT rather than the blueprint, which is what
+-- carry their own (utility_demonic_essence is -8 and bound, so it never comes off; the Hollow Crown wore it until
+-- it became an Archon, 2026-10-09). tests/bestiary_spec.lua measures the finished UNIT rather than the blueprint, which is what
 -- lets the line live one layer out like that -- and it goes on measuring the unit, so this file makes
 -- the rule cheap to keep rather than replacing the check that keeps it.
 --

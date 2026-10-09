@@ -71,8 +71,8 @@ function Desidia.isAsleep(unit) return state(unit).asleep == true end
 -- ------------------------------------------------------------------------------------------ the bell
 
 -- SEATED AT THE FAR EDGE, the face above the ice: the edge farther from where her foes stand, centred along it.
--- Only a body her own size is moved -- a general worn as somebody else's form (the Many Faced One, the Crown) keeps
--- its tile and its footprint.
+-- Only a body her own size is moved -- a general worn as somebody else's form (the Many Faced One) keeps its tile
+-- and its footprint. The Hollow Crown's throne is her size and is seated by this same call (models/hollow_crown.lua).
 function Desidia.seat(combat, unit)
     if (unit.w or 1) < 3 then return end
     local cols, rows = dims(combat)

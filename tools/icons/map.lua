@@ -776,7 +776,6 @@ return {
     ["items/sig_ground_given.png"] = { icon = "lorc/burning-round-shot", by = "auto" },
     ["items/sig_hallowed_chalice.png"] = { icon = "lorc/pouring-chalice", by = "auto" },
     ["items/sig_held_oath.png"] = { icon = "lorc/bordered-shield", by = "auto" },
-    ["items/sig_hollow_crown.png"] = { icon = "delapouite/crenel-crown", by = "auto" },
     ["items/sig_last_call.png"] = { icon = "lorc/plastron", by = "auto" },
     ["items/sig_last_order.png"] = { icon = "sbed/blaster", by = "auto" },
     ["items/sig_ledger.png"] = { icon = "delapouite/notebook", by = "auto" },
@@ -1232,6 +1231,16 @@ return {
     ["items/utility_the_line.png"] = { icon = "lorc/skull-crossed-bones", by = "hand" },
     ["items/ability_the_harvest.png"] = { icon = "lorc/chopped-skull", by = "hand" },
     -- end THE CROWN'S BESTIARY, SLICE C
+    -- THE CROWN'S BESTIARY, SLICE D (2026-10-09): the Hollow Crown's organ, its relic (on the crown icon the body's
+    -- old sig_hollow_crown wore), its four trophies and the mine's trap.
+    ["items/utility_the_first_archon.png"] = { icon = "cathelineau/old-king", by = "hand" },
+    ["items/armor_hollow_crown.png"] = { icon = "delapouite/crenel-crown", by = "hand" },
+    ["items/utility_omen.png"] = { icon = "delapouite/extra-vision", by = "hand" },
+    ["items/ability_the_floor_gives_way.png"] = { icon = "delapouite/hole", by = "hand" },
+    ["items/utility_usurper.png"] = { icon = "delapouite/pschent-double-crown", by = "hand" },
+    ["items/utility_crown_of_thorns.png"] = { icon = "lorc/spiky-eclipse", by = "hand" },
+    ["traps/the_floor_gives_way.png"] = { icon = "delapouite/spiky-pit", by = "hand" },
+    -- end THE CROWN'S BESTIARY, SLICE D
     -- SLICE F, ENVY'S GENERAL (2026-10-03): the Many Faced One's organ, its relic and its two pieces.
     ["items/utility_crown_of_a_thousand_faces.png"] = { icon = "lorc/architect-mask", by = "hand" },
     ["items/utility_pretenders_crown.png"] = { icon = "delapouite/hedjet-white-crown", by = "hand" },
