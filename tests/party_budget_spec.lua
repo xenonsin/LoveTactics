@@ -10,9 +10,16 @@
 -- if deeper). A party that resolves at six resolves smaller.
 --
 -- ITS OWN BUDGET, NOT THE SKIRMISH'S: a six-body company is a bigger fight than a four-body skirmish by
--- design (the author: "it's max a party of 6"). PARTY_TURN_BUDGET is set from the first measurement with
--- headroom, the way SKIRMISH_TURN_BUDGET was, and is a guard against a party growing into a stall rather
--- than a number to nudge when it fails.
+-- design (the author: "it's max a party of 6").
+--
+-- PARTIES ARE MEANT TO BE HARD, AND THIS IS ONLY A STALL GUARD (the author, 2026-10-09). Measured first:
+-- at six, 14 of the 24 parties BEAT the company, and the fights ran 17 to 163 unit-turns (The Long
+-- Invocation 163, Raise the Fallen 113, Banner and Beast 94) against a native's six to eight. Offered
+-- weaker bodies, smaller parties or elite billing, the author picked "keep them hard": a party is a
+-- fight that can wipe a company. So the budget is the measured worst with a little headroom, and what it
+-- guards is the old failure -- a fight that never ends -- not difficulty. A party that wins is fine; a
+-- party that runs past this has grown toward the 400-turn mirror match, and that is the regression.
+-- Raising it to make a new party pass is the move this comment exists to stop.
 
 local Autobattle = require("models.autobattle")
 local Combat = require("models.combat")
@@ -24,7 +31,7 @@ local Descent = require("models.descent")
 local Experience = require("models.experience")
 local Adventurers = require("models.adventurers")
 
-local PARTY_TURN_BUDGET = 60
+local PARTY_TURN_BUDGET = 180 -- measured worst 163 (encounter_party_invocation), 2026-10-09
 
 local function companyAtDepth(depth)
     local player = Player.new()

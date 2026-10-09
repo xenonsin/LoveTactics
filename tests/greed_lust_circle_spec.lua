@@ -1183,7 +1183,9 @@ return {
             local swept = 0
             for id, enc in pairs(Encounter.defs) do
                 local ctx = { biome = "swamp", depth = 1, rung = enc.rung or 1, quest = { sin = "lust" } }
-                if enc.composition and (not enc.condition or enc.condition(ctx)) then
+                -- An adventuring party is not Lust's roster: it walks every floor and is no circle's
+                -- (models/adventurers.lua), so the circle's own composition rule does not bind it.
+                if enc.composition and not enc.party and (not enc.condition or enc.condition(ctx)) then
                     for depth = 1, Descent.FLOORS do
                         ctx.depth = depth
                         local roster = enc.composition

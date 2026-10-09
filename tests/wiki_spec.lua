@@ -446,7 +446,14 @@ return {
                 end
                 counted = counted + #bodies[kind]
             end
-            assert(counted == onDisk, "the kind buckets hold " .. counted .. " of " .. onDisk)
+            -- ...the adventurers excepted, which sit on their own page apart from the bestiary (the case
+            -- below holds that), so the kind buckets carry every body but those.
+            local adventurers = 0
+            for _, def in pairs(Character.defs) do
+                if def.adventurer then adventurers = adventurers + 1 end
+            end
+            assert(counted + adventurers == onDisk, "the kind buckets hold " .. counted .. " of "
+                .. (onDisk - adventurers) .. " native bodies")
         end,
     },
 
