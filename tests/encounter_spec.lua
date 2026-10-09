@@ -264,6 +264,9 @@ return {
                 encounter_crown_the_tribunal = true,
                 encounter_crown_the_balor = true,
                 -- end THE CROWN'S BESTIARY, SLICE B
+                -- THE CROWN'S BESTIARY, INTEGRATION (2026-10-09): Lerna is the Hydra and one Chain Fiend, fixed by
+                -- review -- the fiend is there to hook bodies into the heads, and a second would make it the fiend's fight.
+                encounter_crown_lerna = true,
             }
             -- THE ROSTER, NOT THE HEAD-COUNT. Asked as "is this the same fight on every seed", because
             -- a stop is allowed to roll its SHAPE while holding its size: the Skeleton King's court is
