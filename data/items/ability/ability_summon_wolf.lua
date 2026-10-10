@@ -28,6 +28,12 @@ return {
     price = 565,
     unlockLevel = 11,
     activeAbility = {
+        -- THE AI CAN LAY THIS NOW (2026-10-09): its mark is open ground, which the planner never offered a
+        -- cast until `aiAims` names the cells worth trying (models/ai_aims.lua), and a plant that lands no
+        -- entry the turn it is cast is credited through `aiPlants` (models/ai.lua) -- only for a body whose
+        -- own rule names it, so the generic archer that merely carries one does not start calling wolves.
+        aiAims = function(combat, unit) return require("models.ai_aims").beside(combat, unit) end,
+        aiPlants = true,
         target = "tile",
         range = 1,
         speed = 6,

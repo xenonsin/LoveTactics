@@ -10602,6 +10602,17 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
         -- ability_the_question faulted while building their arguments and previewed as nothing at all.
         dispelUnit = function(tgt, n) touchesBoard() return Combat.dispellableOn(tgt, n) end,
         summon = function() touchesBoard() return previewStandIn() end,
+        -- A SHAPE TAKEN, answered the way the live verb would answer it (Transform.apply's own refusals:
+        -- a dead body, a body already wearing a shape, a blueprint that does not exist) and marked as a
+        -- board change. This table had no `transform` at all, so a Wild Shape's effect faulted inside the
+        -- pcall below and previewed as nothing -- and the planner never takes a cast that does nothing, so
+        -- no druid in the game ever took a shape (2026-10-09). Answering true lets the effect go on to
+        -- apply the shape's status, which is the entry the planner prices.
+        transform = function(tgt, charId)
+            touchesBoard()
+            return tgt ~= nil and tgt.alive and not Transform.isTransformed(tgt)
+                and Character.defs[charId] ~= nil or false
+        end,
         copy = function() touchesBoard() return previewStandIn() end,
         copyOf = function() touchesBoard() return previewStandIn() end,
         -- SLICE F (Envy's general): strips nothing in a dry run (Unmasking Powder).

@@ -21,6 +21,12 @@ return {
     unlockLevel = 12,
     unstocked = true,
     activeAbility = {
+        -- THE AI CAN LAY THIS NOW (2026-10-09): its mark is open ground, which the planner never offered a
+        -- cast until `aiAims` names the cells worth trying (models/ai_aims.lua), and a plant that lands no
+        -- entry the turn it is cast is credited through `aiPlants` (models/ai.lua). Before this, every
+        -- body carrying it -- the trapper, the summoner, their exemplars -- held it and never once used it.
+        aiAims = function(combat, unit) return require("models.ai_aims").beside(combat, unit) end,
+        aiPlants = true,
         target = "tile",
         range = 1,
         speed = 6,

@@ -7,10 +7,8 @@
 -- back between them. Every call is refused while its own elemental is still up, so the rules below
 -- simply walk down the list. Kill him and the elementals stop coming.
 --
--- THE SUMMON RULES DO NOT FIRE YET, and the exemplar's do not either. An elemental is called onto an
--- EMPTY tile, and the planner only aims at tiles a body stands on (no `aiAims` on the summons); and a
--- summon is not flagged support, so models/ai.lua's MUTATION credit would not reach it if it could aim.
--- Until both land he fights with the staff.
+-- The summon rules fire since the elementals learned `aiAims` and `aiPlants` (2026-10-09): an elemental
+-- is called onto EMPTY ground beside him, which the planner never offered before.
 return {
     name = "Summoner",
     race = "kobold",

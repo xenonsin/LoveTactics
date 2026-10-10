@@ -6,10 +6,8 @@
 -- bear; until then the bow, and the Thorn Whip to haul a body to her side. The mana is the archer's
 -- whole: the shape reserves a share of it, so a druid with no pool could not change at all.
 --
--- THE BEAR RULE DOES NOT FIRE YET, and the exemplar's does not either. The dry run Combat.previewAbility
--- takes of a self-transform reports nothing done (no status, no `mutates`), so models/ai.lua's outcome
--- gate refuses it and she fights with the bow and the whip. The rule is the shape her turn should
--- have, and it will hold the moment the preview learns what a transform does.
+-- The bear rule fires since the dry run learned `transform` (Combat.previewAbility, 2026-10-09): before
+-- that the preview faulted on the missing verb, reported nothing, and the planner refused the shape.
 return {
     name = "Druid",
     race = "elf",

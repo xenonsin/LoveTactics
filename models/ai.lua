@@ -1297,8 +1297,10 @@ local function outcomeScore(combat, unit, cand, w, previews)
     -- spirit -- the Saboteur, Warden, Shaman and Artificer were each carrying a signature that never fired.
     -- The gore whiff the support-only rule above guards against is a blow aimed at a BODY that missed;
     -- this is credited only on an aimed-at-ground candidate of an ability that declares `aiPlants = true`,
-    -- so no existing cast's reading moves.
-    elseif score == 0 and preview.mutates == true and cand.aimed and cand.item.activeAbility.aiPlants then
+    -- so no existing cast's reading moves -- and only when the body's own rule NAMED the item
+    -- (`namedByRule`, set in AI.plan), so a plant is an authored intention and never a free discovery.
+    elseif score == 0 and preview.mutates == true and cand.aimed and cand.namedByRule
+        and cand.item.activeAbility.aiPlants then
         score = score + w.MUTATION
     -- end THE RIFT'S ADVENTURERS, SLICE C
     end
@@ -2465,6 +2467,15 @@ function AI.plan(combat, unit)
                 end
                 if act ~= "support" then
                     for _, c in ipairs(AI.candidates(combat, unit, usable, tiles, false)) do pool[#pool + 1] = c end
+                end
+                -- A RULE THAT NAMES ITS ITEM ASKED FOR THIS CAST, which is what outcomeScore's `aiPlants`
+                -- credit reads (2026-10-09). A hostile plant is laid by a body whose author wrote it down
+                -- -- the trapper's jaws, the summoner's elementals -- and never discovered by the free
+                -- planner on a body that merely happens to carry one: the generic templates in
+                -- Descent.COMPANY carry a spike trap and a fire elemental, and a company that started
+                -- laying them moved every fight-length spec measured against it.
+                if entry.item then
+                    for _, c in ipairs(pool) do c.namedByRule = true end
                 end
 
                 -- Score everything, then throw out whatever accomplishes NOTHING before ranking the
