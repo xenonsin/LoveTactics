@@ -41,10 +41,11 @@ return {
         -- count behind it is a backstop, not a second route worth taking: a player who never takes her
         -- posting still gets the room, last of all, because PvP is the one door the core loop does not
         -- need and the only one that opens onto a whole other mode.
-        -- 6 -> 7 with the study on five and the touchstone's backstop on six: this one is LAST by
-        -- design, so it moves whenever anything is inserted ahead of it.
+        -- 6 -> 7 with the study on five and the touchstone's backstop on six, then 7 -> 8 when the
+        -- hiring board took six: this one is LAST by design, so it moves whenever anything is inserted
+        -- ahead of it.
         { answer = "duel", panel = "pvp",
-          gate = { any = { { quest = "quest_colosseum_slot_01" }, { trips = 7 } } } },
+          gate = { any = { { quest = "quest_colosseum_slot_01" }, { trips = 8 } } } },
     },
     description = "Blood and sand, and a card posted for anyone who wants a name.",
 }

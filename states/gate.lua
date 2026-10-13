@@ -548,6 +548,11 @@ local function toggleFocus()
     return true
 end
 
+-- Typed letters, for the Armory's rename of a hire while it is open over the Gate.
+function gate.textinput(t)
+    if gate.panel and gate.panel.textinput then gate.panel:textinput(t) end
+end
+
 function gate.keypressed(key)
     if gate.panel then return route("keypressed", key) end
     if key == "escape" then

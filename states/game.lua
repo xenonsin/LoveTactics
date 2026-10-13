@@ -5823,6 +5823,16 @@ function game.wheelmoved(dx, dy)
     if panel and panel.wheelmoved then panel:wheelmoved(dx, dy) end
 end
 
+-- Typed letters, for the Armory's rename of a hire while the Loadout is open underground.
+function game.textinput(t)
+    if battling() then
+        if game.battle.textinput then return game.battle.textinput(t) end
+        return
+    end
+    local panel = game.activePanel
+    if panel and panel.textinput then panel:textinput(t) end
+end
+
 function game.keypressed(key)
     if battling() then return game.battle.keypressed(key) end
     if game.activePanel then

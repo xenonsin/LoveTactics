@@ -48,7 +48,11 @@ function NameEntry.new(opts)
     local self = setmetatable({}, NameEntry)
     self.prompt = opts.prompt or "What is your name?"
     self.onSubmit = opts.onSubmit
-    self.text = ""
+    -- OPTIONAL WAY BACK OUT, for a host that opens this over something (the Armory's rename of a hire).
+    -- Character creation passes none, so its name stays required. With one: Esc, B on an empty field,
+    -- and a Cancel button in the top corner, which is the mouse's way out.
+    self.onCancel = opts.onCancel
+    self.text = opts.text and opts.text:sub(1, MAX_LEN) or ""
     self.row, self.col = 1, 1
 
     self.titleFont = Theme.display(40)
@@ -136,8 +140,20 @@ function NameEntry:textinput(t)
     if t:match("^[%a%-' ]$") then self:addChar(t) end
 end
 
+-- The Cancel button's rect, or nil when the host gave no way out.
+function NameEntry:cancelRect()
+    if not self.onCancel then return nil end
+    return { x = Scale.WIDTH - 160, y = 24, w = 136, h = 44 }
+end
+
+local function inRect(r, x, y)
+    return r and x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h
+end
+
 function NameEntry:keypressed(key)
-    if key == "backspace" then
+    if key == "escape" and self.onCancel then
+        self.onCancel()
+    elseif key == "backspace" then
         self:backspace()
     elseif key == "return" or key == "kpenter" then
         self:submit()
@@ -183,7 +199,7 @@ function NameEntry:gamepadpressed(joystick, button)
         local k = self:keyAt(self.row, self.col)
         if k then self:pressLabel(k.label) end
     elseif button == "b" then
-        self:backspace()
+        if self.text == "" and self.onCancel then self.onCancel() else self:backspace() end
     elseif button == "start" then
         self:submit()
     end
@@ -200,6 +216,7 @@ end
 
 function NameEntry:mousepressed(x, y, button)
     if button ~= 1 then return end
+    if inRect(self:cancelRect(), x, y) then self.onCancel() return end
     for _, k in ipairs(self.keys) do
         if x >= k.x and x <= k.x + k.w and y >= k.y and y <= k.y + k.h then
             self.row, self.col = k.r, k.c
@@ -210,6 +227,7 @@ function NameEntry:mousepressed(x, y, button)
 end
 
 function NameEntry:cursorKind(x, y)
+    if inRect(self:cancelRect(), x, y) then return "hand" end
     for _, k in ipairs(self.keys) do
         if x >= k.x and x <= k.x + k.w and y >= k.y and y <= k.y + k.h then return "hand" end
     end
@@ -254,6 +272,16 @@ function NameEntry:draw()
         love.graphics.rectangle("line", k.x, k.y, k.w, k.h, 6, 6)
         love.graphics.setColor(0.95, 0.95, 0.95)
         love.graphics.printf(k.label, k.x, k.y + k.h / 2 - 12, k.w, "center")
+    end
+
+    local cancel = self:cancelRect()
+    if cancel then
+        love.graphics.setColor(0.20, 0.23, 0.32)
+        love.graphics.rectangle("fill", cancel.x, cancel.y, cancel.w, cancel.h, 6, 6)
+        love.graphics.setColor(0.5, 0.55, 0.7)
+        love.graphics.rectangle("line", cancel.x, cancel.y, cancel.w, cancel.h, 6, 6)
+        love.graphics.setColor(0.95, 0.95, 0.95)
+        love.graphics.printf("Cancel", cancel.x, cancel.y + cancel.h / 2 - 12, cancel.w, "center")
     end
 
     -- Control hints.

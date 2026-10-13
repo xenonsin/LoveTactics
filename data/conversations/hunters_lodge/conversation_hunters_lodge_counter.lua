@@ -20,6 +20,7 @@ return {
         { "hunters_lodge", "So. What is it.", tag = 2, id = "desk", choices = {
             { "Visit hunter class trainer", tag = 3, answer = "shelf", when = { offer = "shelf" } },
             { "Buy a meal", tag = 4, answer = "supper", when = { offer = "supper" } },
+            { "Look over the hiring board", tag = 6, answer = "hire", when = { offer = "hire" } },
             { "Leave", tag = 5, answer = "leave" },
         } },
     },

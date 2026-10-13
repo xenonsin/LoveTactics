@@ -190,6 +190,18 @@ The codebase is organized into layers loaded via `require()`. See
   Sixteen race items are the game's ONE equip gate (`Character.canCarry`; docs/classes.md says why). The
   wiki prints them on their own Adventurers page, apart from the bestiary.
 
+  **AND THE COMPANY CAN HIRE STRANGERS** (`models/hire.lua`, `ui/panels/hire.lua`, 2026-10-12). Three
+  per homecoming on the Hunter's Lodge desk (trip 6 on the room schedule), 40g each, in the seven roots
+  plus any class the company has opened, of any of the eight playable peoples (`Adventurers.LEAN` at
+  50%). **A hire is a function of its id** -- `character_hire@<class>.<race>.<roll>` re-derives the name,
+  the zero-sum stat spread, the one-stat aptitude (`personalGrowth`), the tint and the rung-0 kit -- so
+  `Character.defs` resolves it lazily beside the adventurer variants and a save needs only the id; the
+  board itself is stamped on `player.hireBoard` because its class pool and a gifted stranger's find
+  read live state. Hiring never raises a shelf (`Quest.shelfRung` reads the roster's best holder, so a
+  hire's technique is capped at what somebody already holds). Hires never speak and are never
+  companions; the Armory's Manage handle renames or dismisses them. They are why 14 of the 16 race
+  items can be worn at all -- every authored body is human. `tests/hire_spec.lua` holds it.
+
   See [docs/overworld.md](docs/overworld.md) for the floor it is walked on and
   [docs/identification.md](docs/identification.md) for what a floor pays.
 
@@ -339,7 +351,7 @@ is `max(bounties, deepest)`, and depth is bursty: measured, a company that dived
 first trip came home to four doors at once and then three empty homecomings, while a floor-one farmer's
 city froze forever. Trips climb one at a time, so **one room per homecoming** falls out of the unit.
 Trips pace the city; depth paces the shelves. The schedule: counter 1, supper 2, forge 3, book 4,
-study 5, reading (first unread find, or 6), duel (Saber's posting, or 7) — plus the mending, which is
+study 5, hiring board 6, reading (first unread find, or 7), duel (Saber's posting, or 8) — plus the mending, which is
 Act 0's. The two backstops sit last on purpose, so inserting a room pushes them rather than colliding.
 `quiet = true` lets a room open without announcing its house (every shelf is quiet — a class rung is a
 reward the player cannot see), and `announce = {...}` is the one condition under which a quiet room

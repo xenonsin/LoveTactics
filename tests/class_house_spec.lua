@@ -157,7 +157,7 @@ return {
         name = "the rooms behind the doors keep their own schedule",
         fn = function()
             -- THE BACKSTOP IS UNTOUCHED, which is the other half of the change. Opening the house early
-            -- must not drag the room behind it forward: the duel is still the seventh trip whether or
+            -- must not drag the room behind it forward: the duel is still the eighth trip whether or
             -- not somebody declared fighter on the first morning.
             local p = emptyCompany()
             p.roster = { bodyOf("fighter") }
@@ -168,7 +168,7 @@ return {
             assert(not Offer.openSet(p, def).duel,
                 "...and the duel is not: a house opening early does not open its rooms early")
 
-            p.runsStarted = 7
+            p.runsStarted = 8
             assert(Offer.openSet(p, def).duel, "the duel arrives on its own gate, as it always did")
         end,
     },
@@ -185,8 +185,8 @@ return {
                 { trips = 2, class = "hunter" },     -- supper
                 { trips = 3, class = "knight" },     -- the forge
                 { trips = 4, class = "mage" },       -- the bestiary
-                { trips = 6, class = "alchemist" },  -- the reading
-                { trips = 7, class = "fighter" },    -- the duel
+                { trips = 7, class = "alchemist" },  -- the reading
+                { trips = 8, class = "fighter" },    -- the duel
             }
             for _, row in ipairs(schedule) do
                 local id = houseOf(row.class)

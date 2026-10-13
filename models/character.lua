@@ -160,7 +160,14 @@ setmetatable(Character.defs, {
         if type(id) ~= "string" or not id:find("@", 1, true) then return nil end
         local hit = VARIANTS[id]
         if hit ~= nil then return hit or nil end
-        local def = require("models.adventurers").variant(defs, id)
+        -- A HIRE IS RESOLVED THE SAME WAY (models/hire.lua): `character_hire@<class>.<race>.<roll>` is a
+        -- stranger off the Lodge's board, everything rolled about them re-derived from the id.
+        local def
+        if id:find("^character_hire@") then
+            def = require("models.hire").variant(defs, id)
+        else
+            def = require("models.adventurers").variant(defs, id)
+        end
         VARIANTS[id] = def or false
         return def
     end,
@@ -235,6 +242,16 @@ function Character.spriteOf(char)
         end
     end
     return char.sprite
+end
+
+-- THE COLOUR A BODY'S TOKEN IS DRAWN IN, as three multipliers -- white for every authored body, a light
+-- palette tint for a hire (models/hire.lua's TINTS). Every surface that draws a body's sprite at rest
+-- multiplies by this, so a stranger reads as a different body of the same class on the board, the rail
+-- and the board of the Lodge alike.
+function Character.tintOf(char)
+    local t = char and char.tint
+    if type(t) ~= "table" then return 1, 1, 1 end
+    return t[1] or 1, t[2] or 1, t[3] or 1
 end
 
 -- Which field on an ITEM carries a bonus to `key`: `maxBonus` for a resource pool, `bonus` for a flat
@@ -729,6 +746,11 @@ function Character.instantiate(id, progress)
         -- and no signature verb); the strip degrades gracefully when they are.
         signatureWeapon = def.signatureWeapon,
         signatureAbility = def.signatureAbility,
+        -- A STRANGER OFF THE HIRING BOARD (models/hire.lua): `hire` is what lets the Armory offer to let
+        -- them go, and `tint` is the colour their class token is drawn in (Character.tintOf). Both nil on
+        -- every authored body.
+        hire = def.hire,
+        tint = def.tint,
         level = (progress and progress.level) or 1,
         growth = (progress and progress.growth) or {},
         -- The fractional part a blended level-up could not spend in whole points, carried into the next

@@ -356,6 +356,7 @@ return {
     ["line.conversation_hunters_lodge_counter.3"] = { en = "Visit hunter class trainer", ja = "" },  -- TODO
     ["line.conversation_hunters_lodge_counter.4"] = { en = "Buy a meal", ja = "" },  -- TODO
     ["line.conversation_hunters_lodge_counter.5"] = { en = "Leave", ja = "" },  -- TODO
+    ["line.conversation_hunters_lodge_counter.6"] = { en = "Look over the hiring board", ja = "" },  -- TODO
     ["line.conversation_hunters_lodge_discipline_unlocked.1"] = { en = "You walk the {discipline}'s trail now, {name}. The Lodge sets out gear for the ones who get this far. It is yours to draw.", ja = "" },  -- TODO
     ["line.conversation_hunters_lodge_discipline_unlocked.2"] = { en = "Then it's earned. Show me.", ja = "" },  -- TODO
     ["line.conversation_hunters_lodge_discipline_unlocked.3"] = { en = "That path knows when to stop. Take the kit. Remember the lesson with it.", ja = "" },  -- TODO

@@ -259,6 +259,7 @@ return {
                 { house = "bastion",       room = "forge",    need = 3 },
                 { house = "arcanum",       room = "bestiary", need = 4 },
                 { house = "arcanum",       room = "study",    need = 5 },
+                { house = "hunters_lodge", room = "hire",     need = 6 },
             }
             for _, r in ipairs(rooms) do
                 for trip = 0, r.need do

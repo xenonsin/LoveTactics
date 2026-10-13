@@ -123,7 +123,7 @@ end
 -- So intent opens the house. Declare a class in the Roll -- or hire a body born to one -- and the house
 -- that shelves it is on the square before the panel has finished closing. The trips gate on each
 -- house's other room is untouched and is still the backstop: a player who declares nothing sees exactly
--- today's schedule, and the duel is still the seventh trip either way.
+-- today's schedule, and the duel is still the eighth trip either way.
 --
 -- ASKED OF THE SHELF, not of the root, so a body declared Ninja opens both the houses that sell a
 -- Ninja's gear (Vendor.shelves) -- the same rule the rack itself already runs on.

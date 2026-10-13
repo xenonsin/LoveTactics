@@ -44,6 +44,13 @@ return {
         -- The kitchen keeps its own vendor: its portrait, its name and its one-time greeting all hang
         -- off `cafe`, and it sells no items at all (data/vendors/cafe.lua).
         { answer = "supper", panel = "cafe", vendor = "cafe", gate = { trips = 2 } },
+        -- THE HIRING BOARD (models/hire.lua, ui/panels/hire.lua): strangers who come to the Lodge looking
+        -- for a company. The Lodge feeds travellers, which makes it the city's tavern -- Wizardry forms its
+        -- party in one. Sixth homecoming, inserted ahead of the two backstops (the touchstone's reading
+        -- and the duel), which the schedule keeps last so that an insertion pushes them rather than
+        -- landing two rooms on one trip. The Lodge's door is already up from supper, so this arrives
+        -- as a new line on a desk the player already knows rather than as a card.
+        { answer = "hire", panel = "hire", gate = { trips = 6 } },
     },
     description = "Bows, traps, and one hot supper before the road.",
 }

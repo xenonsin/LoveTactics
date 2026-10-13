@@ -967,6 +967,12 @@ local function debugMintUnidentified(n)
     buildMap()
 end
 
+-- Typed letters, for a panel holding a text field (the Armory's rename of a hire). Forwarded only to a
+-- panel that asks for them, so every other room ignores a keystroke it never wanted.
+function hub.textinput(t)
+    if activePanel and activePanel.textinput then activePanel:textinput(t) end
+end
+
 function hub.keypressed(key)
     if activePanel then
         activePanel:keypressed(key)

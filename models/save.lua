@@ -852,6 +852,20 @@ function Save.snapshot(player)
         -- older save loads with no meal held, which reads as a company that has not been to the counter
         -- yet, which is exactly what it is.
         meal = player.meal,
+        -- THE HIRING BOARD (models/hire.lua): this homecoming's three strangers, stamped once and kept so
+        -- a reload never re-deals them. Each offer is its id (which re-derives the whole stranger), the
+        -- gift a gifted one carries, and whether it has been taken. Purely additive: an older save loads
+        -- with no board, and the next visit to the Lodge deals one.
+        hireBoard = player.hireBoard and {
+            trip = player.hireBoard.trip,
+            offers = (function()
+                local out = {}
+                for i, o in ipairs(player.hireBoard.offers or {}) do
+                    out[i] = { id = o.id, gift = o.gift, hired = o.hired and true or nil }
+                end
+                return out
+            end)(),
+        } or nil,
         materials = materials,
         recipes = recipes,
         visitedVendors = visitedVendors,
@@ -1329,6 +1343,10 @@ function Save.restore(snap)
         -- because zero is a seed and "no seed yet" is not.
         seed = tonumber(snap.seed),
         runsStarted = tonumber(snap.runsStarted) or 0, -- descents begun this lap; absent means none yet
+        hireBoard = snap.hireBoard and {
+            trip = tonumber(snap.hireBoard.trip) or 0,
+            offers = snap.hireBoard.offers or {},
+        } or nil, -- models/hire.lua; absent until the Lodge's board has been dealt
         ngPlus = snap.ngPlus or 0, -- absent on a save from before New Game+, and on any first run
         campaignsFinished = snap.campaignsFinished or 0, -- absent until the campaign has been beaten once
         day = snap.day or 1, -- the calendar; absent on a fresh save and on any save older than it

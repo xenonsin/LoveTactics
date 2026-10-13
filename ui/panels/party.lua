@@ -36,6 +36,8 @@ local NoteTooltip = require("ui.note_tooltip")
 local ButtonPrompt = require("ui.button_prompt")
 local DebugMenu = require("ui.panels.debug_menu") -- the right-click item menu (development builds only)
 local TutorialNote = require("ui.panels.tutorial_note") -- the window the Tactics tab opens with, once
+local Choice = require("ui.panels.choice") -- the Manage / Dismiss questions a hire's handle asks
+local NameEntry = require("ui.name_entry") -- renaming a hire
 local InputMode = require("input_mode")
 local Character = require("models.character")
 local Player = require("models.player")
@@ -685,6 +687,71 @@ function Party:close()
     -- saving would write a fabricated roster over the player's real one.
     if self.persist and self.player and Player.save then Player.save() end
     if self.onClose then self.onClose() end
+end
+
+-- ---------------------------------------------------------------------------
+-- A hire's handle: Rename, Dismiss (models/hire.lua)
+-- ---------------------------------------------------------------------------
+
+function Party:canManage(char)
+    return char ~= nil and char.hire == true and self.player ~= nil and not self.debugAll
+end
+
+-- The question the handle asks. Dismiss is offered only in the city: underground there is no shelf
+-- for a departing hire's gear to go back to, and a control that cannot be legal is not drawn.
+function Party:openManage()
+    local char = self:currentChar()
+    if not self:canManage(char) then return end
+    local options = {
+        { label = "Rename", cb = function() self.modal = nil; self:openRename(char) end },
+    }
+    if not Player.packOpen(self.player) then
+        options[#options + 1] = { label = "Dismiss", accent = { 0.88, 0.58, 0.52 },
+            cb = function() self.modal = nil; self:confirmDismiss(char) end }
+    end
+    options[#options + 1] = { label = "Cancel", cb = function() self.modal = nil end }
+    self.modal = Choice.new({
+        title = char.name or "?",
+        prompt = "Hired at the Lodge.",
+        options = options,
+        onClose = function() self.modal = nil end,
+    })
+end
+
+function Party:openRename(char)
+    self.modal = NameEntry.new({
+        prompt = "What do you call them?",
+        text = char.name,
+        onSubmit = function(name)
+            char.name = name
+            self.modal = nil
+        end,
+        onCancel = function() self.modal = nil end,
+    })
+end
+
+function Party:confirmDismiss(char)
+    self.modal = Choice.new({
+        title = "Let " .. (char.name or "them") .. " Go?",
+        prompt = "Their gear goes back to the stash. They will not come back.",
+        options = {
+            { label = "Dismiss", accent = { 0.88, 0.58, 0.52 }, cb = function()
+                self.modal = nil
+                if require("models.hire").dismiss(self.player, char.id) then
+                    if self.charIndex > #self.chars then self.charIndex = math.max(1, #self.chars) end
+                    self.railCursor = self.charIndex
+                    self:setEditedChar()
+                    if Player.save then Player.save() end
+                end
+            end },
+            { label = "Cancel", cb = function() self.modal = nil end },
+        },
+        onClose = function() self.modal = nil end,
+    })
+end
+
+function Party:textinput(t)
+    if self.modal and self.modal.textinput then self.modal:textinput(t) end
 end
 
 function Party:currentChar()
@@ -1964,6 +2031,10 @@ end
 -- ---------------------------------------------------------------------------
 
 function Party:update(dt)
+    if self.modal then
+        if self.modal.update then self.modal:update(dt) end
+        return
+    end
     -- Top the debug catalog back up between actions, so an equipped item is instantly replaced.
     if self.debugAll and self:catalogIdle() then self:restockCatalog() end
     if self.note then self.note:update(dt) return end
@@ -2031,6 +2102,7 @@ function Party:draw()
     -- ...except the lesson, which is modal over the item menu too: it dims the whole screen and every
     -- input below is routed to it while it stands.
     if self.note then self.note:draw() end
+    if self.modal then self.modal:draw() end
     love.graphics.setColor(1, 1, 1)
 end
 
@@ -2058,7 +2130,7 @@ function Party:drawRailPortrait(char, i, rx, ry, rw, rh)
     local sprite = Character.spriteOf(char)
     local px, py, ps = rx + (rw - PORTRAIT) / 2, ry + 4, PORTRAIT
     if type(sprite) == "userdata" then
-        love.graphics.setColor(1, 1, 1)
+        love.graphics.setColor(Character.tintOf(char))
         local sw, sh = sprite:getDimensions()
         local scale = math.min(ps / sw, ps / sh)
         love.graphics.draw(sprite, px + ps / 2, py + ps / 2, 0, scale, scale, sw / 2, sh / 2)
@@ -2113,6 +2185,22 @@ function Party:drawFocus()
     love.graphics.setFont(self.headFont)
     Theme.set(Theme.ink)
     love.graphics.printf(char.name or "?", x, y, self.focusW, "center")
+
+    -- A HIRE'S HANDLE (models/hire.lua): Rename, and in the city Dismiss. Drawn only on a hire, since
+    -- the avatar and the seven can neither be let go nor renamed -- a control that is never legal on
+    -- them is not drawn on them.
+    self.manageRect = nil
+    if self:canManage(char) then
+        love.graphics.setFont(self.smallFont)
+        local label = "Manage (" .. (InputMode.isGamepad() and "R3" or "M") .. ")"
+        local lw = self.smallFont:getWidth(label) + 12
+        local r = { x = x + self.focusW - lw, y = y + 2, w = lw, h = self.smallFont:getHeight() + 6 }
+        self.manageRect = r
+        local hot = self.mx and pointIn(r, self.mx, self.my)
+        Theme.set(hot and Theme.ink or Theme.muted)
+        love.graphics.rectangle("line", r.x, r.y, r.w, r.h, 4, 4)
+        love.graphics.printf(label, r.x, r.y + 3, r.w, "center")
+    end
 
     -- Level + the class this body stands in, which is the one thing its stat growth is taken from
     -- (Growth.classOf). The clause used to name whichever house led a ranking of what the member had
@@ -2182,6 +2270,16 @@ function Party:drawFocus()
 
             Theme.set(Theme.muted)
             love.graphics.print(row.label, cx, sy)
+            -- THE APTITUDE MARK: this body grows faster in this stat (Growth.personal -- a companion's
+            -- authored table, or a hire's rolled one). A small amber rise beside the label, on the row
+            -- it is about, so it never competes with the number's own right-hand slot.
+            local personal = Growth.personal(char)
+            if personal and (personal[row.key] or 0) > 0 then
+                local lx = cx + self.bodyFont:getWidth(row.label) + 6
+                local my = sy + rowH / 2
+                Theme.set(Theme.accentAmber)
+                love.graphics.polygon("fill", lx, my + 3, lx + 8, my + 3, lx + 4, my - 4)
+            end
 
             -- The row's right-hand slot holds ONE of three things, in this order of precedence:
             -- the item in hand's delta (the question the player is actively asking), the level
@@ -2781,7 +2879,9 @@ function Party:openItemDebug(x, y)
 end
 
 function Party:cursorKind(x, y)
+    if self.modal then return self.modal:cursorKind(x, y) end
     if self.note then return self.note:cursorKind(x, y) end
+    if self.manageRect and pointIn(self.manageRect, x, y) then return "hand" end
     if self.itemDebug then return self.itemDebug:cursorKind(x, y) end
     if self.quantityPopup then return self.quantityPopup:cursorKind(x, y) end
     if self.closeButton:contains(x, y) then return "hand" end
@@ -2805,6 +2905,7 @@ end
 
 function Party:mousemoved(x, y)
     self.mx, self.my = x, y
+    if self.modal then self.modal:mousemoved(x, y) return end
     if self.note then self.note:mousemoved(x, y) return end
     if self.itemDebug then self.itemDebug:mousemoved(x, y) return end
     if self.quantityPopup then self.quantityPopup:mousemoved(x, y) return end
@@ -2830,6 +2931,7 @@ end
 
 function Party:wheelmoved(_, dy)
     if dy == 0 then return end
+    if self.modal then return end -- a question scrolls nothing under it
     if self.note then return end -- a window with one button out scrolls nothing
     if self.itemDebug then self.itemDebug:wheelmoved(0, dy) return end
     if self.quantityPopup then self.quantityPopup:wheelmoved(dy) return end
@@ -2857,12 +2959,14 @@ function Party:mousepressed(x, y, button)
     -- the debug context menu is the next one down, then the split-quantity popup, which still owns the
     -- pointer under it. Only once all three are closed does a right-click over a cell -- grid or stash
     -- -- open the menu on that item.
+    if self.modal then self.modal:mousepressed(x, y, button) return end
     if self.note then self.note:mousepressed(x, y, button) return end
     if self.itemDebug then self.itemDebug:mousepressed(x, y, button) return end
     if self.quantityPopup then self.quantityPopup:mousepressed(x, y, button) return end
     if button == 2 then self:openItemDebug(x, y) return end
     if button ~= 1 then return end
     if self.closeButton:mousepressed(x, y, button) then self:close() return end
+    if self.manageRect and pointIn(self.manageRect, x, y) then self:openManage() return end
 
     for _, m in ipairs(self.modes) do
         if pointIn(self.segRects[m], x, y) then self:setMode(m) return end
@@ -3015,6 +3119,7 @@ function Party:mousereleased(x, y, button)
 end
 
 function Party:keypressed(key)
+    if self.modal then self.modal:keypressed(key) return end
     if self.note then self.note:keypressed(key) return end
     if self.itemDebug then self.itemDebug:keypressed(key) return end
     if self.quantityPopup then self.quantityPopup:keypressed(key) return end
@@ -3035,6 +3140,8 @@ function Party:keypressed(key)
         self:toggleDebugAll()
     elseif key == "g" then
         self:toggleGrowthPeek()
+    elseif key == "m" and not editor then
+        self:openManage()
     elseif key == "tab" then
         self:cycleFocus(1)
     elseif key == "q" then
@@ -3067,6 +3174,7 @@ function Party:keypressed(key)
 end
 
 function Party:gamepadpressed(joystick, button)
+    if self.modal then self.modal:gamepadpressed(joystick, button) return end
     if self.note then self.note:gamepadpressed(joystick, button) return end
     if self.itemDebug then self.itemDebug:gamepadpressed(joystick, button) return end
     if self.quantityPopup then self.quantityPopup:gamepadpressed(joystick, button) return end
@@ -3100,6 +3208,10 @@ function Party:gamepadpressed(joystick, button)
         elseif self.focus == "grid" then
             self.grid:setDefaultAt(self.grid.cursor)
         end
+    elseif button == "rightstick" then
+        -- The keyboard's M: the one button this panel had left, spent on the one member-level verb a
+        -- hire has that nobody else does.
+        self:openManage()
     elseif button == "leftstick" then
         -- The keyboard's G. X and Back are both spoken for above, and the stick click is the only free
         -- button left that is not already load-bearing somewhere in this panel.

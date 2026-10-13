@@ -1568,7 +1568,8 @@ function BattleMap:drawUnits()
                     love.graphics.draw(sprite, cx, footY, rot, dsx, dsy, sw / 2, sh)
                     love.graphics.setShader()
                 else
-                    love.graphics.setColor(tint, tint, tint, a)
+                    local hr, hg, hb = Character.tintOf(u.char)
+                    love.graphics.setColor(tint * hr, tint * hg, tint * hb, a)
                     love.graphics.draw(sprite, cx, footY, rot, dsx, dsy, sw / 2, sh)
                 end
                 if flash > 0 then -- additive pop, so the sprite brightens rather than just recolors
