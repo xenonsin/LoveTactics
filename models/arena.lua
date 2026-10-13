@@ -87,7 +87,12 @@ Arena.BIOME_TERRAIN = {
     -- its name says: the answer for an id nothing declares.
     forest   = { fill = "forest", rise = "hill", block = "mountain" },
     desert   = { fill = "dune",   rise = "hill", block = "mountain" },
-    tundra   = { fill = "drift",  rise = "hill", block = "mountain" },
+    -- THE MELTWATER REACH, AND ITS WALLS ARE THE LEADS. The biome is named for the water that did not set
+    -- (data/biomes/tundra.lua) and its boards were walled in rock, so not one tile of meltwater reached a
+    -- fight. `deep` is the swamp's substitution below, for the swamp's reason: unwalkable exactly as the
+    -- mountain was, so the three draws and the walkable print of every seed are unchanged -- the walls are
+    -- open water now, sight-clear and drowning, painted in the tileset's meltwater (`river` role).
+    tundra   = { fill = "drift",  rise = "hill", block = "deep" },
     volcanic = { fill = "rough",  rise = "hill", block = "lava" },
     -- THE FEN, AND ITS WALLS ARE WATER. The blocker was `mountain` -- a rock face in a bog, which
     -- nobody ever looked at twice because it produced a playable board. It is `deep` now: the thing a
@@ -226,10 +231,10 @@ end
 -- (Arena.BIOME_TERRAIN). Tundra fights on ice, volcanic fights around lava, and both of them fight on
 -- ground that was shaped to be fought on.
 --
--- One guarantee died with the profiles and was rehomed rather than lost: `band = "cross"` promised a
--- crossing exactly one free ford, tuned so the board could never be cut in half. That promise now
--- belongs to whichever layout lays the water -- models/layouts/floes.lua guarantees the fords when it
--- cuts the tundra's leads, which is the same rule made of real water.
+-- One guarantee went with the profiles: `band = "cross"` promised a crossing exactly one free ford, tuned
+-- so the board could never be cut in half. Nothing lays a channel across a fight board now -- the water
+-- a board holds is its `block` scatter (the tundra's leads, the fen's deep), which sits only on the middle
+-- band and never walls a side off, and tests/arena_spec.lua's "never strands a spawn" case holds that.
 
 -- Default objective when an encounter/quest doesn't specify one.
 local DEFAULT_OBJECTIVE = { type = "killAll" }

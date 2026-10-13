@@ -17,9 +17,10 @@
 -- What changes is the story the carve tells: the castle's warren is a keep you are inside, this one is
 -- a stair you are climbing, and the tileset is what has to carry that difference (data/tilesets/spire.lua).
 --
--- Signature ground: EXPOSURE, and it is the one thing the castle cannot have. Up here there is nothing
+-- Signature ground: the OPEN SPAN, and it is the one thing the castle cannot have. Up here there is nothing
 -- overhead and nothing to put your back to, so the ground opens whoever stands in it to the point
--- (data/hazards/hazard_exposure.lua). A keep's threshold punishes the body holding a doorway; a tower's
+-- (data/hazards/hazard_open_span.lua). It named the Coveted Blood's sided cloud (hazard_exposure) until
+-- 2026-10-12, which a board with no owner read as everyone's ally and so opened nobody. A keep's threshold punishes the body holding a doorway; a tower's
 -- open span punishes the body that stopped moving on it -- the same idea about formations, told from the
 -- other side, which is what keeps the two strata from playing the same.
 return {
@@ -31,5 +32,5 @@ return {
     layout = "rooms", -- chambers and landings, cut by recursive splits (as the castle carves)
     spacing = 2, -- a warren, like the keep it was cut out of
     rivers = 0,  -- no rivers up a tower
-    hazard = { id = "hazard_exposure", min = 1, max = 3 },
+    hazard = { id = "hazard_open_span", min = 1, max = 3 },
 }

@@ -15,7 +15,7 @@ return {
     name = "Threshold",
     description = "Inflicts Disarmed on units standing on it.",
     tags = { "arcane" },
-    duration = 20,
+    duration = 9999, -- the ground does not expire: a doorway is not a doorway for twenty ticks
     disposition = "hostile",
     onEnter = function(ctx)
         ctx.applyStatus(ctx.unit, "status_disarmed")

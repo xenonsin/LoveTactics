@@ -1,6 +1,7 @@
 -- BY STARLIGHT: the Elf Starcaller's (data/items/utility/utility_by_starlight.lua). Reworked 2026-10-01 off Born to
 -- the Height, which hung the Starcaller on the spire's Exposure -- a zone the arena places with no owner, so it read
--- every body as an ally and did nothing to anyone. The author picked Witchlight over a Starfield of its own and over
+-- every body as an ally and did nothing to anyone. (The spire's ground was fixed 2026-10-12 -- it is the unsided
+-- Open Span now, data/hazards/hazard_open_span.lua -- but the Starcaller stays off it.) The author picked Witchlight over a Starfield of its own and over
 -- Darkness.
 --
 -- So the Starcaller brings its own light (ability_starlight lays Witchlight around a foe) and reads by it:

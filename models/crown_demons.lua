@@ -203,6 +203,13 @@ function Crown.bulwark(combat, bearer, fallen, share, reach)
     return amount
 end
 
+-- Pure: what is left of `target`'s pooled barrier, or 0. The read the damage forecast makes (Combat.computeDamage
+-- and Combat.previewAbility subtract it from a physical blow without spending it) and the badge/tooltip print.
+function Crown.barrierPool(target)
+    local st = target and target.statuses and Status().get(target, Crown.BULWARK)
+    return (st and st.pool and st.pool > 0) and st.pool or 0
+end
+
 -- Pay a physical wound out of `target`'s pooled barrier, after armour. Magic passes it by. Returns how much of
 -- `dmg` it covered; the barrier goes when the pool is spent.
 function Crown.soakBarrier(combat, target, dmg, tags)

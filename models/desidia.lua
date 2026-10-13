@@ -9,7 +9,8 @@
 --   THE LONG SLEEP   she opens Dormant (status_dormant) and does nothing while she sleeps. Every round she sleeps
 --                    she banks a turn (status_banked, models/bank.lua, no cap), shown on her badge, and marks the
 --                    row that turn will sweep (hazard_waking_row) -- the row her foes crowd most as she banks it.
---                    Every attack or ability used anywhere on the board adds a Stir (status_stir); at 10 she wakes
+--                    Every attack or ability her FOES use anywhere on the board adds a Stir (status_stir) -- her
+--                    own side's workings make no noise she hears; at 10 she wakes
 --                    and takes every banked turn at once, each a sweep down its marked row. A blow on her wakes
 --                    her early (Dormant's own rule), and the bank is spent the same way.
 --   THE DROWSE       at the end of each round every body on the board, either side, that took a turn and did not
@@ -205,9 +206,13 @@ function Desidia.wake(combat, unit, cause)
     return n
 end
 
--- A STIR: an attack or an ability used anywhere on the board, while she sleeps.
-function Desidia.stir(combat, unit)
+-- A STIR: an attack or an ability used anywhere on the board by one of her FOES, while she sleeps. Her own side's
+-- workings do not count: the noise that wakes her is the company's, so the clock runs on what the company does with
+-- its turns -- a board where her Mares cast freely used to wake her on her own side's schedule, which priced the
+-- company's restraint at nothing. `caster` is the body that cast; a call without one (a script) still stirs her.
+function Desidia.stir(combat, unit, caster)
     if not (unit.alive and Desidia.isAsleep(unit)) then return end
+    if caster and caster.side == unit.side then return end
     Status.apply(combat, unit, Desidia.STIR, { magnitude = 1, applier = unit })
     if Status.stacksOf(unit, Desidia.STIR) >= Desidia.WAKE_AT then Desidia.wake(combat, unit, "stir") end
 end

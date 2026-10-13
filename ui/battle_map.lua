@@ -523,7 +523,9 @@ end
 --
 -- A HEAD answers yes as well, always (Combat.spawnHeads): it stands on no tile of its own, so it has no
 -- body to draw, no bar to hang over the board and no board badge -- it would otherwise draw a second
--- token on top of the body it grows from. Its card on the turn strip is where it is read.
+-- token on top of the body it grows from. Its card on the turn strip is where it is read: a head that
+-- takes turns (the Chimera's) has an ordinary card, and a timeless one (Cerberus's) a PASSIVE card with
+-- no turn number, seated right after its body's (Combat.seatPassiveHeads).
 function BattleMap:heldUnit(u)
     if u and u.headOf then return true end
     -- ...and so does a body something has SWALLOWED (Combat.swallow): it is inside the eater, reads its

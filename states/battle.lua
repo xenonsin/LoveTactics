@@ -4946,8 +4946,17 @@ refreshView = function()
     -- current card and slide it upward mid-attack while its damage still reads.
     local entries = Combat.buildTimeline(battle.combat, specs)
     for i, e in ipairs(entries) do
-        if e.unit == current and not e.preview then
+        if e.unit == current and not e.preview and not e.passive then
             table.remove(entries, i); table.insert(entries, 1, e); break
+        end
+    end
+    -- ...and its timeless heads' passive cards (Combat.seatPassiveHeads) travel with it, so they sit
+    -- just above the pinned card rather than at the rank the body is being re-sorted to.
+    local seat = 2
+    for i = 2, #entries do
+        local e = entries[i]
+        if e.passive and e.passiveOf == current then
+            table.remove(entries, i); table.insert(entries, seat, e); seat = seat + 1
         end
     end
 

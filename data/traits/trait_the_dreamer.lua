@@ -3,7 +3,7 @@
 -- argues it in full; this file only says when each step runs.
 --
 --   onCombatStart  she is seated at the far edge, and opens Dormant
---   onAnyCast      an attack or ability used anywhere adds a Stir while she sleeps; at 10 she wakes
+--   onAnyCast      an attack or ability a FOE uses anywhere adds a Stir while she sleeps; at 10 she wakes
 --   onDamaged      a blow wakes her early -- and, awake, is the blow that keeps her up this round
 --   onTurnEnd      asleep, she banks a turn and marks its row; awake, a round without a blow puts her back under
 --   onDeath        her rows go with her
@@ -18,7 +18,7 @@ return {
     notAReaction = true,
     unmoved = true,
     onCombatStart = function(ctx) D().open(ctx.combat, ctx.unit) end,
-    onAnyCast = function(ctx) D().stir(ctx.combat, ctx.unit) end,
+    onAnyCast = function(ctx) D().stir(ctx.combat, ctx.unit, ctx.caster) end,
     onDamaged = function(ctx) D().struck(ctx.combat, ctx.unit, ctx.amount) end,
     onTurnEnd = function(ctx) D().turnEnd(ctx.combat, ctx.unit) end,
     onDeath = function(ctx) D().onDeath(ctx.combat, ctx.unit) end,

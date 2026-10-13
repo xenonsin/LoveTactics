@@ -145,6 +145,13 @@ AI.WEIGHTS = {
     -- reach swings; one with nothing better to do opens the ward. Paid only for a status the target is
     -- not already wearing -- see outcomeScore.
     BUFF         = 3,
+    -- A hostile single-target cast aimed into a foe's CAST WARD (the Sealed Reliquary) is refused whole
+    -- (Combat.castRefusal) and previews nothing -- but it SPENDS the ward, which is the intended answer to
+    -- one: throw something cheap at it first, so the spell that matters lands. Worth about a status, so
+    -- it clears the `outcome` gate and loses to any real blow; SPEND then prefers the cheapest working to
+    -- pop it with, and an expensive one nets below zero. Already Known and the aid ward earn nothing --
+    -- there is no charge to spend on the first, and the second refuses this side's own aid.
+    WARD_POP     = 3,
 }
 
 -- ---------------------------------------------------------------------------
@@ -1216,6 +1223,11 @@ local function outcomeScore(combat, unit, cand, w, previews)
         previews[k] = preview
     end
     if not preview then return 0, false end
+    -- A refused cast (Combat.castRefusal) previews one empty entry; only a foe's cast ward pays, and only
+    -- for popping it. See AI.WEIGHTS.WARD_POP.
+    if preview.refusal then
+        return (preview.refusal.kind == "cast" and (w.WARD_POP or 0) or 0), false
+    end
 
     local score, lethal = 0, false
     for _, e in ipairs(preview.order or {}) do
@@ -1234,6 +1246,10 @@ local function outcomeScore(combat, unit, cand, w, previews)
         -- catches your own man catches him for certain.
         local odds = Combat.landChance(combat, unit, e.unit, cand.item)
         score = score + (e.damage or 0) * odds * (friendly and -w.FRIENDLY_FIRE or w.DAMAGE)
+        -- A pooled barrier's share (Crown.soakBarrier) is a wound the body does not feel YET: the pool is a
+        -- second health bar in front of the first, so spending it is progress, priced exactly as damage is.
+        -- It never counts toward the kill below -- the forecast's `damage` alone decides that.
+        score = score + (e.absorbed or 0) * odds * (friendly and -w.FRIENDLY_FIRE or w.DAMAGE)
         score = score + (e.heal or 0) * (friendly and w.HEAL or -w.HEAL)
         -- A status is priced by WHOSE body it lands on and WHICH WAY it points, which is two questions
         -- where this used to ask one. `friendly and 0` meant a status on my own side was worth

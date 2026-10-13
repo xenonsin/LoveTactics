@@ -1,7 +1,7 @@
 -- THE ELF STARCALLER, rung 1: the elves' mage (approved 2026-09-30, "Pride's Bestiary"): BY STARLIGHT.
 --
 -- Reworked 2026-10-01. It was Born to the Height, hung on the spire's Exposure, which the arena places with no owner
--- and so does nothing to anyone. Now it brings its own light: Starlight lays Witchlight around a foe, and By
+-- and so did nothing to anyone (that ground is the unsided Open Span since 2026-10-12). Now it brings its own light: Starlight lays Witchlight around a foe, and By
 -- Starlight (utility_by_starlight) strikes a Limned foe for 3 more and casts a tile further out while any foe is
 -- Limned -- on top of Unblemished's own +4 and tile. Step out of the light, or kill the one that lights it.
 --

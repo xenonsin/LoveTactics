@@ -42,5 +42,9 @@ return {
     -- pays the same list on his stair.
     drops = { "ability_sandmans_pouch", "utility_the_hourglass" },
     defaultAction = "weapon_sand_from_his_hands",
-    archetype = "defensive",
+    -- AGGRESSIVE, and it was `defensive`. Run Through the Glass fires only when a foe ends its turn BESIDE him, and a
+    -- defender who holds his ground until provoked is a body the company simply leaves at range: the rule that is half
+    -- his fight almost never came up. He closes to contact now, so standing next to him is something the company has
+    -- to answer rather than something it can decline.
+    archetype = "aggressive",
 }

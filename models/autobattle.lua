@@ -33,6 +33,17 @@ Autobattle.MAX_TURNS = 500
 -- (executeEnemyAction -> resolvePlanAction): plan, walk, act, and pass if the action did not happen,
 -- so a turn can never soft-lock on a unit that did nothing.
 local function takeTurn(combat, unit)
+    -- A unit surfacing mid-channel takes no turn of its own: its slot IS the wind-up landing. The same
+    -- branch states/battle.lua's update takes ahead of the AI's (resolveChannel, then advanceTurn --
+    -- which is only the view's hand-off). resolveChannel ends the turn itself, through resolveCast's
+    -- endTurn, so nothing here passes after it. Without this a channel started by plan.windup never
+    -- came down headless: the caster re-planned over the top of its own spell every time its slot
+    -- came round. Checked before `control` because a charmed-off caster's spell still lands.
+    if unit.channel then
+        Combat.resolveChannel(combat, unit)
+        return
+    end
+
     -- A body nobody drives (a charmed-off construct, a scripted prop) simply hands the turn on.
     if unit.control == "none" then
         Combat.pass(combat, unit)

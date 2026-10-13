@@ -11,11 +11,10 @@
 -- the crossing, not the standing. On the board where crossing is already the expensive part, it is the
 -- one hazard that punishes exactly what the biome is about.
 return {
-    -- A PLACE, not a terrain category (models/biome.lua's naming note). The carve is called `drowned`
-    -- because that is what happened to the wood that stood here; the name says the same thing.
+    -- A PLACE, not a terrain category (models/biome.lua's naming note). The fen is a wood that
+    -- drowned, and the name says so.
     name = "Drowned Fen",
     tileset = "swamp", -- data/tilesets/swamp.lua (art for this biome)
-    layout = "drowned", -- the forest carve, a third of it under shallows (models/layouts/drowned.lua)
     spacing = 4, -- loose, like the forest it drowned
     rivers = { min = 2, max = 4 }, -- the wettest surface biome; water is the default, not a feature
     hazard = { id = "hazard_grasping_hollow", min = 1, max = 2 },

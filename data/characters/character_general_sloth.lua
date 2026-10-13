@@ -14,7 +14,7 @@
 -- face alone fills nine tiles. Not a demon: nothing about a sleep burns.
 --
 -- HER RULES ride on three organs (a blueprint's own `traits` field is never collected), and models/desidia.lua argues
--- them in full: the Long Sleep (Dormant, a turn banked a round, Stir from every attack and ability on the board, and
+-- them in full: the Long Sleep (Dormant, a turn banked a round, Stir from every attack and ability her foes use, and
 -- at 10 every banked turn at once, each a sweep down a marked row), the Drowse (whoever took a turn and did not move
 -- gains Drowsy), What the Sleepers Dream (a sleeping foe's nightmare stands up on her side) and her phase two (awake
 -- and spent, any round with no blow on her puts her back to sleep, banking from zero).

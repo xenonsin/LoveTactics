@@ -3484,6 +3484,9 @@ end
 -- a preview ghost sorts AFTER real entries at an exact tie, so the live card stays lower in a
 -- bottom-anchored strip.
 --
+-- A timeless head rides along as a PASSIVE entry after its body (Combat.seatPassiveHeads, below):
+-- `passive = true`, never an actor -- anything that wants the turn order must skip it.
+--
 -- Every branch is guarded so comparing an entry with itself returns false (a
 -- valid weak order -- an unguarded `return not a.preview` here would assert x < x and corrupt sort);
 -- two ghosts of the same unit only ever tie if their slots coincide, and then rank equal (fine).
@@ -3505,7 +3508,39 @@ function Combat.buildTimeline(combat, ghosts)
         if a.unit.side ~= b.unit.side then return SIDE_RANK[a.unit.side] < SIDE_RANK[b.unit.side] end
         return a.unit.index < b.unit.index
     end)
-    return entries
+    return Combat.seatPassiveHeads(combat, entries)
+end
+
+-- A TIMELESS HEAD (Cerberus's) takes no turn, so it is in no order -- and it stands on no tile either,
+-- so without a card here it could be read nowhere but the body's head picker. Each living one gets a
+-- PASSIVE card directly after its body's live card: `passive = true`, carrying the body's initiative
+-- so a reader that sorts or prices by it sees the head where the body is. It is never an actor:
+-- turnOrder, rebase and the clock all still ask Combat.inTimeline, which a timeless head fails, and the
+-- strip gives it no turn number. A head that takes turns of its own (the Chimera's) is already in the
+-- order as an ordinary entry, and is left alone.
+function Combat.seatPassiveHeads(combat, entries)
+    local heads
+    for _, u in ipairs(combat.units) do
+        local body = u.headOf
+        if body and u.alive and u.timeless and Combat.inTimeline(body) then
+            heads = heads or {}
+            heads[body] = heads[body] or {}
+            table.insert(heads[body], u)
+        end
+    end
+    if not heads then return entries end
+    local out = {}
+    for _, e in ipairs(entries) do
+        out[#out + 1] = e
+        local hs = not e.preview and not e.passive and heads[e.unit]
+        if hs then
+            for _, h in ipairs(hs) do
+                out[#out + 1] = { unit = h, preview = false, passive = true, initiative = e.initiative,
+                                  passiveOf = e.unit }
+            end
+        end
+    end
+    return out
 end
 
 -- Like the live turn order, but with extra GHOST copies of `unit` inserted where it would
@@ -8924,6 +8959,16 @@ function Combat.echoWound(combat, target, dmg)
     return total
 end
 
+-- Pure: would a blow from `attacker` (carrying `opts`) that would fell `target` instead HOLD it at 1 health?
+-- The blow says so itself (`opts.spares` -- Torment's strike), or the striker's trait does (Trait.sparesQuarry:
+-- a Pit Locust's Seek Death, a Lioness while a Lion of her side stands). A `fragile` body is never held. One
+-- question for both halves: Combat.dealFlatDamage clamps the live wound with it, and Combat.previewAbility caps
+-- the forecast with it, so the hover never promises a kill the blow will not take.
+function Combat.heldAtOne(combat, attacker, target, opts)
+    if not target or target.fragile then return false end
+    return ((opts and opts.spares) or Trait.sparesQuarry(combat, attacker, target)) and true or false
+end
+
 function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opts)
     -- Debug: an invulnerable target (toggled from the right-click debug menu, debug builds only)
     -- shrugs off every blow. Guarded here at the one funnel ALL damage runs through -- a strike, a
@@ -9191,8 +9236,7 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     -- Clamped here, before the shared pool, the cue and both death paths read the bar, so the held body walks
     -- the survivor's branch and every number downstream is the wound it actually took.
     -- THE CROWN'S BESTIARY, SLICE C: ...or the BLOW itself says so (`opts.spares`, the Torment ability's strike).
-    if hp.current <= 0 and not target.fragile
-        and ((opts and opts.spares) or Trait.sparesQuarry(combat, attacker, target)) then
+    if hp.current <= 0 and Combat.heldAtOne(combat, attacker, target, opts) then
         dmg = dmg + hp.current - 1
         hp.current = 1
     end
@@ -9744,7 +9788,23 @@ end
 -- Pure: the post-mitigation damage `user` striking `target` with `item` (and `opts`, e.g.
 -- { amount = 0.5 }) WOULD deal, computed exactly like Combat.dealDamage but without touching HP or
 -- the log. Drives the target-hover damage preview so its number always matches the real hit.
+--
+-- THE CROWN'S BESTIARY, SLICE B: a POOLED Physical Barrier (the Bulwark of the Fallen) pays a physical wound
+-- down after armour (Crown.soakBarrier, live), so the forecast subtracts what is left of the pool -- read,
+-- never spent. Split from the rest so previewAbility can carry the pool across the strikes of one cast
+-- instead of letting every strike be soaked by the whole of it (computeDamageBeforePool, below).
+local computeDamageBeforePool
 function Combat.computeDamage(combat, user, target, item, opts)
+    local d, magical = computeDamageBeforePool(combat, user, target, item, opts)
+    if d > 0 and not magical then
+        d = d - math.min(d, require("models.crown_demons").barrierPool(target))
+    end
+    return d
+end
+
+-- The forecast up to (not including) the pooled barrier. Returns the figure and whether the blow is magical,
+-- which is the one thing the pool asks of it.
+computeDamageBeforePool = function(combat, user, target, item, opts)
     opts = opts or {}
     local tags = collectTags(item, opts)
     -- The hover asks the same question the blow does. It did NOT, for as long as the Resonant Grip was
@@ -9767,7 +9827,8 @@ function Combat.computeDamage(combat, user, target, item, opts)
     -- SUPERBIA, THE MORNING STAR (Pride's general): the hover quotes the wound cap the blow will meet.
     -- SLOTH'S BESTIARY, SLICE C: ...and the Bog-Bound's Past Feeling, so a blow at or under it quotes 0.
     return require("models.sloth_bog").pastFeeling(target,
-        require("models.morning_star").woundCap(target, Combat.mitigatedDamage(target, base, tags, opts, user)))
+        require("models.morning_star").woundCap(target, Combat.mitigatedDamage(target, base, tags, opts, user))),
+        magical
 end
 
 -- Pure: the damage `unit` striking a trap with `weapon` would deal -- the weapon's attack stat
@@ -10292,6 +10353,18 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
     local previewHeld = windup and math.max(0, math.floor(windup) - windLo) or nil
     local target = Combat.unitAt(combat, tx, ty)
     local entries, order = {}, {}
+    -- A WARDED aim (Combat.castRefusal: the cast ward, Already Known, the aid ward) is refused whole before
+    -- the effect runs, so the forecast is one entry on the aimed body with nothing on it but the refusal's
+    -- name. One entry rather than an empty order on purpose: the click is still a CAST (it spends the
+    -- ward and the turn), so Combat.castDoesSomething must keep reading it as one.
+    local refusal = Combat.castRefusal(combat, unit, item, ab, target)
+    if refusal then
+        local e = { unit = target, damage = 0, heal = 0, statuses = {}, lethal = false, warded = refusal.name,
+                    refusal = refusal }
+        entries[target] = e
+        order[1] = e
+        return { entries = entries, order = order, mutates = false, warded = refusal.name, refusal = refusal }
+    end
     -- Would a LIVE cast touch the BOARD, beyond the units this dry run reports? Every inert helper
     -- below flips it: a trap laid, a hazard painted, a wall raised, a body summoned or raised, a
     -- teleport, a theft, a reveal. Nothing about the numbers changes -- it exists so a caller can ask
@@ -10444,10 +10517,32 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
             -- path has: a forecast never kills anything, so there is no corpse to stop short of, and
             -- quoting the flurry in full is the honest ceiling to commit against.
             local d = 0
-            for _ = 1, strikes do
-                d = d + Combat.computeDamage(combat, unit, tgt, item, withAuraTags(strikeOpts(opts), auraTags))
-            end
             local e = entryFor(tgt)
+            -- A POOLED barrier (the Bulwark) is carried across every strike and every blow of this cast, so
+            -- the forecast soaks what the pool would really cover once and no more (Crown.soakBarrier).
+            if e.poolLeft == nil then e.poolLeft = require("models.crown_demons").barrierPool(tgt) end
+            for _ = 1, strikes do
+                local one, magical = computeDamageBeforePool(combat, unit, tgt, item,
+                    withAuraTags(strikeOpts(opts), auraTags))
+                if one > 0 and not magical and e.poolLeft > 0 then
+                    local covered = math.min(one, e.poolLeft)
+                    e.poolLeft = e.poolLeft - covered
+                    -- Kept apart from `damage`, which is what the body loses: what the pool eats is still
+                    -- a wound spent on the way to it, and the planner prices it as one (ai.lua's
+                    -- outcomeScore). Folding it to 0 alone left a company holding position for five turns
+                    -- while the Tribunal's knight stood behind a pool it could have been chipping.
+                    e.absorbed = (e.absorbed or 0) + covered
+                    one = one - covered
+                end
+                d = d + one
+            end
+            -- A blow that HOLDS its target at 1 (Combat.heldAtOne: Torment, Seek Death, the Lioness) cannot
+            -- take the body past 1, so the forecast caps there exactly as the live clamp does.
+            if d > 0 and Combat.heldAtOne(combat, unit, tgt, opts) then
+                local hpNow = (tgt.char and tgt.char.stats and tgt.char.stats.health
+                    and tgt.char.stats.health.current) or 0
+                d = math.max(0, math.min(d, hpNow - 1 - e.damage))
+            end
             e.damage = e.damage + d
             -- A blow that folds a shove in (opts.knockback -- the Iron Mace, the Sworn Aegis) never
             -- passes through fx.knockback, so record where it would leave the target here, exactly as
@@ -13537,6 +13632,32 @@ function Combat.conductLightning(combat, unit, cells, tags, amount, source)
     return total
 end
 
+-- Pure: would the working `ab` (on `item`), cast by `unit` at `target`, be REFUSED whole before its effect
+-- runs? Answers a descriptor { kind = "cast"|"known"|"aid", status = <the ward, or nil for "known">,
+-- name = <what refuses it> } or nil. Mutates nothing -- no charge spent, no log -- so the hover forecast
+-- (Combat.previewAbility), the intent strip and the planner see the same refusal the live cast meets;
+-- resolveCast asks it and then does the spending. The three gates, in the order the live cast asks them:
+--
+--   "cast"  the CAST WARD (Status.castWardOn -- the Sealed Reliquary): a hostile single-target working.
+--   "known" ALREADY KNOWN (Trait.wouldUnravelKnown -- Sublimitas): a hostile single-target spell she has seen.
+--   "aid"   the AID WARD (Status.aidWardOn -- the Sealed Hand): a FRIENDLY single-target working.
+function Combat.castRefusal(combat, unit, item, ab, target)
+    ab = ab or (item and item.activeAbility)
+    if not (unit and ab and target and target.alive) then return nil end
+    if not Combat.isSingleTarget(ab) then return nil end
+    if target.side ~= unit.side then
+        local ward = Status.castWardOn(target)
+        if ward then return { kind = "cast", status = ward, name = ward.name or ward.id } end
+        if Trait.wouldUnravelKnown(target, unit, item) then
+            return { kind = "known", name = "Already Known" }
+        end
+    else
+        local ward = Status.aidWardOn(target)
+        if ward then return { kind = "aid", status = ward, name = ward.name or ward.id } end
+    end
+    return nil
+end
+
 -- Resolve a cast's actual effect: build the effect context, run the ability, settle the water/fire
 -- interaction and reaction traits, then end the turn by charging ab.speed. Shared by an instant cast
 -- (Combat.useItem calls it immediately) and a channel that has finished winding up (Combat.resolveChannel
@@ -13561,47 +13682,26 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
     -- stopped, not the casting. Returning before the effect (and before the cast log's sub-events) is
     -- what makes this categorical rather than a mitigation: no damage, no status, no displacement, no
     -- summon. Combat.beginAnswers is deliberately not opened, since nothing happened to answer.
-    if target and target.alive and target.side ~= unit.side and Combat.isSingleTarget(ab) then
-        local ward = Status.castWardOn(target)
-        if ward then
-            Status.consumeBarrier(combat, target, ward)
+    -- The three gates are ASKED by Combat.castRefusal (pure, shared with the preview and the planner) and
+    -- SETTLED here: the charge spent, the line logged, the turn ended.
+    local refusal = Combat.castRefusal(combat, unit, item, ab, target)
+    if refusal then
+        if refusal.kind == "cast" then
+            Status.consumeBarrier(combat, target, refusal.status)
             Combat.logEvent(combat, "status", string.format("%s's %s swallows %s whole.",
-                unitName(target), ward.name or ward.id, item.name or "the working"), { target, unit })
-            -- The turn still ends and still bills its initiative, on the same reasoning: the casting
-            -- happened. Returning resolveCast's own (true, result) shape so every caller -- the battle
-            -- state, the AI, the channel resolver -- reads a spent action exactly as it always does.
-            endTurn(combat, unit, Combat.actionSpeed(unit, ab, item))
-            return true, { damageDealt = 0, healed = 0, warded = true }
+                unitName(target), refusal.status.name or refusal.status.id, item.name or "the working"), { target, unit })
+        elseif refusal.kind == "known" then
+            Trait.tryUnravelKnown(combat, target, unit, item) -- logs the unravelling; asked and answered true above
+        else -- "aid"
+            Status.consumeBarrier(combat, target, refusal.status)
+            Combat.logEvent(combat, "status", string.format("%s's %s refuses %s.",
+                unitName(target), refusal.status.name or refusal.status.id, item.name or "the working"), { target, unit })
         end
-    end
-
-    -- SUBLIMITAS: ALREADY KNOWN. A spell the aimed body has already seen cast this fight is unravelled
-    -- whole, on the cast ward's terms above -- single target, hostile, the caster still paid -- with no
-    -- charge to spend: what limits it is that every spell lands once before it is Known (Trait.learnSpell).
-    if target and target.alive and target.side ~= unit.side and Combat.isSingleTarget(ab)
-        and Trait.tryUnravelKnown(combat, target, unit, item) then
+        -- The turn still ends and still bills its initiative, on the same reasoning: the casting
+        -- happened. Returning resolveCast's own (true, result) shape so every caller -- the battle
+        -- state, the AI, the channel resolver -- reads a spent action exactly as it always does.
         endTurn(combat, unit, Combat.actionSpeed(unit, ab, item))
         return true, { damageDealt = 0, healed = 0, warded = true }
-    end
-    -- end SUBLIMITAS: ALREADY KNOWN
-
-    -- AN AID WARD on the aimed body swallows a FRIENDLY working the same way (Status.aidWardOn -- the
-    -- Sealed Hand). The mirror of the block above, side test inverted, and every clause of its fairness
-    -- carries over unchanged: single-target only, one charge spent here, and the caster still paid.
-    --
-    -- Written as its own block rather than by loosening the test above, because the two are opposite
-    -- purchases and must stay legible as such. The note above says a ward that ate its own side's heals
-    -- "would be a curse" -- and that is exactly right: this one IS a curse, put on an enemy on purpose,
-    -- so it is spelled out separately instead of making one gate ambiguous about whose side it serves.
-    if target and target.alive and target.side == unit.side and Combat.isSingleTarget(ab) then
-        local ward = Status.aidWardOn(target)
-        if ward then
-            Status.consumeBarrier(combat, target, ward)
-            Combat.logEvent(combat, "status", string.format("%s's %s refuses %s.",
-                unitName(target), ward.name or ward.id, item.name or "the working"), { target, unit })
-            endTurn(combat, unit, Combat.actionSpeed(unit, ab, item))
-            return true, { damageDealt = 0, healed = 0, warded = true }
-        end
     end
 
     -- A visible "someone is acting" beat on the CASTER, pushed for every ability -- a heal, a summon,

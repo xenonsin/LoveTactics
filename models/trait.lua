@@ -578,14 +578,20 @@ function Trait.learnSpell(combat, unit, caster, item)
     return true
 end
 
--- Is the spell `item`, aimed by `attacker` at `unit`, unravelled because `unit` already knows it? Mutates
--- nothing but the log, so the one caller (resolveCast's ward gate) may ask it on the real cast. A foe's
--- working only: a Known heal from one's own side still lands.
-function Trait.tryUnravelKnown(combat, unit, attacker, item)
+-- WOULD the spell `item`, aimed by `attacker` at `unit`, be unravelled because `unit` already knows it?
+-- Pure -- no log, no mutation -- so the damage preview, the intent strip and the AI can ask it of a cast
+-- that has not happened (Combat.castRefusal). A foe's working only: a Known heal from one's own side lands.
+function Trait.wouldUnravelKnown(unit, attacker, item)
     if not (unit and unit.alive and attacker and item) then return false end
     if attacker.side == unit.side then return false end
     if not Trait.flag(unit, "unravelsKnown") then return false end -- Sundered forgets nothing, but answers nothing
-    if not (Trait.isSpell(item) and Trait.knowsSpell(unit, item)) then return false end
+    return (Trait.isSpell(item) and Trait.knowsSpell(unit, item)) and true or false
+end
+
+-- The live form: the same answer, plus the log line. Mutates nothing but the log, so the one caller
+-- (resolveCast's ward gate) may ask it on the real cast.
+function Trait.tryUnravelKnown(combat, unit, attacker, item)
+    if not Trait.wouldUnravelKnown(unit, attacker, item) then return false end
     require("models.combat").logEvent(combat, "action", string.format("%s already knows %s, and unravels it.",
         (unit.char and unit.char.name) or "Unit", item.name or "the spell"), { unit, attacker })
     return true

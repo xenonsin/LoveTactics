@@ -657,7 +657,7 @@ function CombatPanel:trackTempo(dt, layout)
     local seen, deltas = {}, {}
     for _, e in ipairs(layout) do
         local entry = e.entry
-        if not entry.preview and entry.initiative then
+        if not entry.preview and not entry.passive and entry.initiative then
             local u = entry.unit
             seen[u] = entry.initiative
             local was = self.lastInit[u]
@@ -1183,8 +1183,9 @@ function CombatPanel:entryLayout()
     -- token shows. A preview slot consumes no number: a ghost is a hypothetical and a repeat is a
     -- projection, and neither is anybody's turn.
     local num = {}
+    -- A timeless head's PASSIVE card (Combat.seatPassiveHeads) consumes none either: it takes no turn.
     for i = startIndex, #entries do
-        if not entries[i].preview then
+        if not entries[i].preview and not entries[i].passive then
             turnNo = turnNo + 1
             num[i] = turnNo
         end
@@ -1533,7 +1534,8 @@ end
 -- initiativeAt, the way statusBadgeRects is, so the tooltip lands exactly on what is drawn rather
 -- than on a second guess at where it went.
 function CombatPanel:initiativeRect(entry, ex, ew, ey)
-    if not (self.view.showInitiative and entry and entry.initiative) then return nil end
+    -- A passive head card has no wait of its own: it never acts, so it quotes none.
+    if not (self.view.showInitiative and entry and entry.initiative) or entry.passive then return nil end
     local text = string.format("%.1f", self:shownWait(entry.initiative))
     local tw = self.smallFont:getWidth(text)
     local iconW, gap = 7, 3
@@ -1544,7 +1546,7 @@ function CombatPanel:initiativeRect(entry, ex, ew, ey)
 end
 
 function CombatPanel:drawInitiative(entry, ex, ew, ey, tempo)
-    if not (self.view.showInitiative and entry.initiative) then return end
+    if not (self.view.showInitiative and entry.initiative) or entry.passive then return end
     love.graphics.setFont(self.smallFont)
     local text = string.format("%.1f", self:shownWait(entry.initiative))
     local tw = self.smallFont:getWidth(text)

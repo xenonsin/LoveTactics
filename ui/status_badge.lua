@@ -22,6 +22,12 @@ end
 function StatusBadge.label(st)
     -- A status whose COUNT is the whole read (`badgeCount`: the Blood Basin's fill) prints the count instead.
     if st.def and st.def.badgeCount then return tostring(st.magnitude or 0) end
+    -- ...and a status may name its own label off its live state (`badgeText(st)`, nil to fall through):
+    -- a pooled Physical Barrier prints what is left of its pool.
+    if st.def and st.def.badgeText then
+        local t = st.def.badgeText(st)
+        if t then return t end
+    end
     return (st.def and st.def.abbr) or (st.name or "?"):sub(1, 1)
 end
 

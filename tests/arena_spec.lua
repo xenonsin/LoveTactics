@@ -536,4 +536,40 @@ return {
             end
         end,
     },
+    {
+        -- The Meltwater Reach was walled in rock, so not one tile of its namesake water reached a fight.
+        -- Its blocker is `deep` now, and that swap must move nothing but the material: the walkable print
+        -- of every seed is the forest's (whose blocker is still the mountain), and the water drowns.
+        name = "a tundra board lays its meltwater leads",
+        fn = function()
+            local function mask(L)
+                local parts = {}
+                for y = 1, L.rows do
+                    for x = 1, L.cols do
+                        local p = Arena.TILE_PROPS[L.tiles[y][x]]
+                        parts[#parts + 1] = (p and p.walkable) and "1" or "0"
+                    end
+                end
+                return table.concat(parts)
+            end
+            for seed = 1, 25 do
+                local L = Arena.generateLayout({ biome = "tundra", seed = seed, party = 4, enemies = 3 })
+                local F = Arena.generateLayout({ biome = "forest", seed = seed, party = 4, enemies = 3 })
+                local deep = 0
+                for y = 1, L.rows do
+                    for x = 1, L.cols do
+                        assert(L.tiles[y][x] ~= "mountain", "seed " .. seed .. ": a tundra board laid rock")
+                        if L.tiles[y][x] == "deep" then deep = deep + 1 end
+                    end
+                end
+                assert(deep >= 1, "seed " .. seed .. ": a tundra board laid no meltwater")
+                assert(mask(L) == mask(F), "seed " .. seed .. ": the water moved the walkable print")
+                local drowns = 0
+                for _, h in ipairs(Arena.terrainZones(L.tiles, L.rows, L.cols)) do
+                    if h.id == "hazard_deep_water" then drowns = drowns + 1 end
+                end
+                assert(drowns == deep, string.format("seed %d: %d leads stand %d drowning zones", seed, deep, drowns))
+            end
+        end,
+    },
 }

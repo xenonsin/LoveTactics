@@ -16,8 +16,9 @@ return {
     -- that did not set: the meltwater leads are the only thing on an open field worth routing around.
     name = "Meltwater Reach",
     tileset = "tundra", -- data/tilesets/tundra.lua (art for this biome)
-    layout = "floes", -- open flats quartered by meltwater (models/layouts/floes.lua)
     spacing = 3, -- between the forest's open trails and the castle's warren
-    rivers = { min = 1, max = 2 }, -- meltwater leads: the part of the cold that did not set
+    -- The meltwater leads are the fight board's walls: the tundra's `block` is `deep` (models/arena.lua's
+    -- BIOME_TERRAIN). The `layout = "floes"` and `rivers` fields that once laid them on the map went with
+    -- the carves; nothing read either.
     hazard = { id = "hazard_black_ice", min = 1, max = 3 },
 }

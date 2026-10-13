@@ -312,8 +312,11 @@ local function buildRawBlocks(action)
         blocks[#blocks + 1] = { kind = "stat", label = "Applies",
             value = def.name or st.id or "status", valueColor = def.color or VALUE }
     end
+    -- A REFUSED working (Combat.castRefusal): a ward or Already Known swallows it whole.
+    if entry and entry.warded then
+        blocks[#blocks + 1] = { kind = "note", text = entry.warded .. ": the cast will be refused", color = WARN }
     -- Nothing measurable (a non-damaging cast on this unit): say so rather than an empty panel.
-    if not entry or ((entry.damage or 0) == 0 and (entry.heal or 0) == 0 and #(entry.statuses or {}) == 0) then
+    elseif not entry or ((entry.damage or 0) == 0 and (entry.heal or 0) == 0 and #(entry.statuses or {}) == 0) then
         blocks[#blocks + 1] = { kind = "note", text = "No direct effect", color = MUTED }
     end
 

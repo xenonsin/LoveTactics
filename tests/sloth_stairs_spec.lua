@@ -103,6 +103,17 @@ return {
         end,
     },
     {
+        name = "the Sandman closes to contact, so Run Through the Glass comes up",
+        fn = function()
+            -- His flight fires on a foe ending its turn BESIDE him; held back as a defender he was simply left at range.
+            local AI = require("models.ai")
+            local posture, postureName = AI.posture({ char = Character.instantiate("character_the_sandman") })
+            assert(postureName == "aggressive", "an aggressive body, got " .. tostring(postureName))
+            assert(posture.move == "approach", "that walks at the company")
+            assert(posture.engage({}), "without waiting to be struck")
+        end,
+    },
+    {
         name = "Desidia is a 3x3 giant on Acedia's id who never moves, carrying her rules as organs",
         fn = function()
             local def = Character.defs["character_general_sloth"]
@@ -343,6 +354,21 @@ return {
             assert(hp(onRow) < before, "the foe on the marked row is swept")
             assert(hp(offRow) == beforeOff, "the foe off it is not")
             assert(not Hazard.at(c, 1, 9, "hazard_waking_row"), "the rows are lifted")
+        end,
+    },
+    {
+        name = "only her foes' workings stir her: her own side casts in silence",
+        fn = function()
+            -- Her Mares used to wake her on their own schedule, which priced the company's restraint at nothing.
+            local c, d = desidiaBoard({ walker(2, 9) }, { walker(8, 2) })
+            local foe = party(c)[1]
+            local mare
+            for _, u in ipairs(c.units) do if u.side == d.side and u ~= d then mare = u end end
+            assert(mare, "the fixture seats one of her own")
+            for _ = 1, 3 do Trait.onAnyCast(c, mare, { item = {} }) end
+            assert(Status.stacksOf(d, "status_stir") == 0, "three casts from her side: no Stir")
+            Trait.onAnyCast(c, foe, { item = {} })
+            assert(Status.stacksOf(d, "status_stir") == 1, "one from a foe: one Stir")
         end,
     },
     {

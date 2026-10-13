@@ -108,6 +108,33 @@ return {
         end,
     },
     {
+        name = "a wind-up the planner starts comes down when the caster's slot comes round",
+        fn = function()
+            -- The loop had no channel branch, so a Fireball begun on one turn was never resolved: the
+            -- caster surfaced mid-channel, re-planned over the top of its own spell, and the fight ran
+            -- to the guard. A mage holding nothing but the wind-up against a target that only stands
+            -- there, so the only way this fight ends is the spell landing.
+            local map = Fixture.new(10, 10)
+            local mage = Fixture.unit("character_mage", 3, 3, { isolate = "bare", items = { "ability_fireball" } })
+            local dummy = Fixture.unit("character_bandit", 3, 6, { stats = { health = 5 } })
+            local combat = Fixture.combat(map, { mage }, { dummy })
+            local caster = combat.units[1]
+            assert(caster.char.inventory[1] and caster.char.inventory[1].activeAbility.windup,
+                "the fixture's only action is a wind-up")
+            combat.units[2].control = "none"
+
+            local result, turns = Autobattle.run(combat, { maxTurns = 60 })
+
+            local resolved = false
+            for _, e in ipairs(combat.log or {}) do
+                if e.text:find("Fireball resolves", 1, true) then resolved = true end
+            end
+            assert(resolved, "the channel resolved (no 'resolves' line in the log)")
+            assert(caster.channel == nil, "and nothing is left hanging on the caster")
+            assert(result == "win", "so the fight finishes; got " .. tostring(result) .. " after " .. turns)
+        end,
+    },
+    {
         name = "an undecidable fight trips the guard instead of hanging",
         fn = function()
             -- A `survive` objective is scored against a clock states/battle.lua advances, not the

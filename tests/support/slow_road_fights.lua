@@ -248,9 +248,34 @@
 -- away, because the cover is the approved design and the budget is measuring a company that will not walk into it.
 -- Measured at DEPTH 11, underworld, four bodies.
 
+-- ---------------------------------------------------------------------------
+-- AND A FIFTH ROLL, 2026-10-13. THE HARNESS WAS WRONG AGAIN: NO WIND-UP EVER LANDED.
+-- ---------------------------------------------------------------------------
+--
+-- models/autobattle.lua's takeTurn had no branch for a unit surfacing mid-channel, so a caster who
+-- began a wind-up re-planned over the top of it when its slot came round, and the spell never came
+-- down. The fix is the one branch states/battle.lua always took (resolveChannel on the caster's own
+-- slot). The only wind-up the measuring company carries is the mage's Fireball (Descent.COMPANY), so
+-- 133 of the 142 road fights replay turn for turn; the nine that cast it move both ways, mean 8.72 ->
+-- 8.84:
+--
+--     the gatehouse   35 -> 50     the strongroom  32 -> 45     the bone orchard  17 -> 25 (NEW ROW)
+--     the assay       45 -> 32     pride, the court  18 -> 12
+--
+-- THE RISES ARE THE MAGE MISSING, NOT THE ENEMY STIFFENING. Logged, the Fireball is aimed at a cluster
+-- that has moved or died by the time it lands four ticks later -- the wind-up's own promise ("foes get
+-- several turns to leave the blast") -- so a whole turn and a slot go on scorched ground. Before the fix
+-- that miss was free: the channel was thrown away and the mage acted again. These are the first numbers
+-- measured with the wind-up costing what it costs a player. Re-recorded on Keno's call over tuning the
+-- three fights (which would be compensating the monsters for the mage's aim) and over teaching the
+-- planner to discount a wind-up against bodies that can walk out of it (the honest fix, left owed).
+-- Measured at DEPTH 11, each fight on its own ground, four bodies, RNG pinned per fight.
+
 return {
-    encounter_greed_the_strongroom = 32,
-    encounter_greed_the_assay_office = 45,
+    encounter_greed_the_strongroom = 45,
+    encounter_greed_the_assay_office = 32,
     -- THE CROWN'S BESTIARY, SLICE A
-    encounter_crown_the_gatehouse = 35,
+    encounter_crown_the_gatehouse = 50,
+    -- The fifth roll: an ordinary undead stop the Fireball's miss carries over the budget.
+    encounter_the_bone_orchard = 25,
 }

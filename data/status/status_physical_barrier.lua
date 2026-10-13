@@ -20,4 +20,16 @@ return {
     duration = 20, -- ~4 turns at Status.TICKS_PER_TURN, matching the magical barrier
     magnitude = 1, -- blows it swallows before it is spent; the granting spell raises it
     negates = "physical",
+    -- A POOLED barrier (`st.pool` -- the Bulwark of the Fallen, models/crown_demons.lua) eats no blow whole:
+    -- it pays physical wounds down out of an amount, so it reads and badges as that amount.
+    describe = function(st)
+        if st and st.pool then
+            return string.format("Absorbs %d more physical damage.", st.pool)
+        end
+        return "Warded: the next physical attack is negated."
+    end,
+    badgeText = function(st)
+        if st and st.pool then return tostring(st.pool) end
+        return nil
+    end,
 }
