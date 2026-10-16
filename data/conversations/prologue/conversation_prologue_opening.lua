@@ -8,15 +8,17 @@
 --
 -- IT DOES NOT MENTION ROWAN OR XIN. The author's call: the narration is the city's and yours.
 --
--- A NARRATOR, not a cast member: the speaker is no blueprint, so the cast entry names it (blank) and
--- carries no portrait. Every line is the author's to write.
+-- A NARRATOR: the speaker is no blueprint, so its cast entry carries a BLANK name, and ui/dialogue.lua
+-- draws neither a bust nor a name plate for a blank-named member (otherwise an entry without art stands
+-- on the box as a grey placeholder).
+-- Every line is the author's to write.
 return {
     title = "The Rift",
-    cast  = { { id = "narrator", name = " " } },
+    cast  = { { id = "narrator", name = "" } },
 
     script = {
-        { "narrator", "PLACEHOLDER -- a city built around a rift, a hole in the world that goes down and does not close.", tag = 1 },
-        { "narrator", "PLACEHOLDER -- the whole city lives on what adventurers carry up out of it.", tag = 2 },
-        { "narrator", "PLACEHOLDER -- and you have come to go down, and make a name for yourself.", tag = 3 },
+        { "narrator", "PLACEHOLDER -- a city built around a rift, a hole in the world that goes down and does not close.", tag = 1, name = "" },
+        { "narrator", "PLACEHOLDER -- the whole city lives on what adventurers carry up out of it.", tag = 2, name = "" },
+        { "narrator", "PLACEHOLDER -- and you have come to go down, and make a name for yourself.", tag = 3, name = "" },
     },
 }

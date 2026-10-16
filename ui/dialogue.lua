@@ -816,10 +816,13 @@ function Dialogue:draw()
     -- either side of it are staged that way, so it would be the odd one out.
     local activeMember = activeId and self.castById[activeId]
     if not self.overScene then
+        -- A blank-named member is a NARRATOR (conversation_prologue_opening): it has no body to stand on
+        -- the box, so it draws no bust rather than a grey placeholder.
+        local function onStage(m) return m and m.name and m.name:match("%S") end
         for _, member in ipairs(self.cast) do
-            if member.id ~= activeId then self:drawPortrait(member, false) end
+            if member.id ~= activeId and onStage(member) then self:drawPortrait(member, false) end
         end
-        if activeMember then self:drawPortrait(activeMember, true) end
+        if onStage(activeMember) then self:drawPortrait(activeMember, true) end
     end
 
     -- Scene title, top-left -- suppressed over a live scene, where that corner belongs to whatever
@@ -852,8 +855,9 @@ function Dialogue:draw()
         love.graphics.rectangle("line", self.boxX, self.boxY, self.boxW, self.boxH, Theme.R, Theme.R)
 
         -- Speaker name plate, sitting on the top edge of the box near the active speaker's slot --
-        -- which is out on the screen here, where the cast is standing.
-        if speakerName then
+        -- which is out on the screen here, where the cast is standing. A blank name is a NARRATOR
+        -- (conversation_prologue_opening): no plate at all, rather than an empty box.
+        if speakerName and speakerName:match("%S") then
             love.graphics.setFont(self.nameFont)
             local plateW = self.nameFont:getWidth(speakerName) + 36
             local plateX = (activeMember and activeMember.centerX or self.boxX + 120) - plateW / 2
