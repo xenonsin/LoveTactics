@@ -1307,6 +1307,24 @@ local function applyUnitPassives(unit)
             maxBonus[stat] = (maxBonus[stat] or 0) + amount
         end
     end
+    -- THE CLASS BOOST (Class.boostOf): what standing in a class pays while it is the declared one -- a
+    -- root one level of its growth table, an earned class two, the Novice nothing. Folded HERE, beside
+    -- the grid, the meal and the relics, for the reason all three give: its +2 defense has to be the same
+    -- quantity a coat's +2 is. Rebuilt every setup and never baked into char.stats, so changing class
+    -- in town changes it at the next fight. The company's own side only -- a bandit whose blueprint says
+    -- knight is not standing in a class anybody chose -- and only a body carrying an UNLOCK LEDGER
+    -- (`char.unlocked`, written by Class.grandfather on every save and load of a roster body and by
+    -- every unlock): that is what makes a body a member of a company rather than a blueprint fielded
+    -- bare, which an escort, a test fixture and a freshly minted stand-in all are.
+    if unit.side == "party" and not unit.summoned and not unit.noClassBoost and unit.char.unlocked then
+        for stat, amount in pairs(Class.boostOf(unit.char) or {}) do
+            if Character.bonusField(stat) == "maxBonus" then
+                maxBonus[stat] = (maxBonus[stat] or 0) + amount
+            else
+                unit.bonus[stat] = (unit.bonus[stat] or 0) + amount
+            end
+        end
+    end
     unit.char.maxBonus = maxBonus
     -- THE ONE RULE BAG EVERY CONSUMER READS, and it is per-UNIT: the bearer's gear first, then whatever
     -- the run's relics declared. Relics come second so that first-wins resolves in the item's favour --
@@ -1322,7 +1340,13 @@ local function applyUnitPassives(unit)
 end
 
 function Combat.applyPassives(combat)
-    for _, unit in ipairs(combat.units) do applyUnitPassives(unit) end
+    for _, unit in ipairs(combat.units) do
+        -- An AUTHORED board (the prologue's lesson, combat.alwaysHits) is tuned to the point, and a class
+        -- boost would move its arithmetic: the class boost below stays off there. Stamped on the unit so
+        -- every later re-fold of this unit (a strip, a morph) agrees.
+        unit.noClassBoost = combat.alwaysHits and true or nil
+        applyUnitPassives(unit)
+    end
 end
 
 -- THE RARE TIER'S STRUCTURAL INVERSIONS -- the two that move the POOLS rather than the stats, and so
@@ -2177,6 +2201,25 @@ end
 --   consumed                -- a drink committed to               (Combat.useItem)
 --   stolen                  -- an item lifted off somebody        (Combat.steal)
 --   shifted                 -- took a new shape ITSELF            (fx.transform)
+-- CLASS DEEDS (data/class_requirements.lua): the counters a class unlock asks a body to have run up.
+-- Banked onto char.deeds on a won fight (Class.bankDeeds), each attributed to the acting unit:
+--   killMelee / killSpell / killRanged  -- felled a foe adjacent & physical / with magic / from 3+ tiles
+--   killWounded             -- felled a foe while itself below half health     (Combat.dealDamage)
+--   killExecute             -- felled a foe that was below a quarter health     (Combat.dealDamage)
+--   killFlanked             -- felled a foe with 2+ allies standing beside it   (Combat.dealDamage)
+--   killUndead              -- felled an undead foe                             (Combat.dealDamage)
+--   hitControlled           -- landed a blow on a Stunned or Rooted foe         (Combat.dealDamage)
+--   tauntDrawn              -- a taunted foe threw a blow at it (the TAUNTER)   (Combat.dealDamage)
+--   weaknessHit             -- landed a blow on a weakness                      (Combat.dealFlatDamage)
+--   slammed                 -- shoved a foe into a wall, a prop or a body       (Combat.knockback)
+--   guarded                 -- took a blow meant for an ally                    (Combat.tryRedirect)
+--   healGiven / healBeast   -- HP restored to an ally / a heal on a beast ally  (the cast's fx.heal)
+--   poisonApplied / rootApplied / disarmApplied / charmBeast -- landed that status on a foe
+--   areaTriple              -- one area cast caught 3+ foes                     (resolveCast)
+--   goldEarned              -- coin skimmed off the enemy mid-fight             (Combat.skimGold)
+--   revived                 -- stood a downed ally back up                      (fx.reanimate)
+--   summoned                -- cast a summon that stood                         (fx.summon)
+--   (consumed and unarmedHit above are deeds too.)
 -- ---------------------------------------------------------------------------
 
 -- Add `n` (default 1) to `unit`'s running count of `event`. Nil-safe on both the unit and its
@@ -2190,6 +2233,67 @@ end
 -- How many of `event` `unit` has racked up this battle (0 if none).
 function Combat.tallyCount(unit, event)
     return (unit and unit.tally and unit.tally[event]) or 0
+end
+
+-- CLASS DEEDS, the blow's half (see the vocabulary above). What a kill or a hit has to be judged
+-- against is the board BEFORE the blow lands -- the foe's health, the striker's, who was standing
+-- beside it -- so Combat.dealDamage snapshots it here and judges after. Nil for a blow that is not one
+-- side striking the other (self-damage, a friendly splash), which banks no deed.
+function Combat.deedContext(combat, user, target, magical)
+    if not (user and target and user ~= target and user.char and target.char) then return nil end
+    if user.side == target.side then return nil end
+    local uh, th = user.char.stats.health, target.char.stats.health
+    if type(uh) ~= "table" or type(th) ~= "table" then return nil end
+    local flank = 0
+    for _, u in ipairs(combat.units or {}) do
+        if u ~= user and u.alive and not u.incapacitated and u.side == user.side
+            and Combat.unitGap(user, u) == 1 then
+            flank = flank + 1
+        end
+    end
+    return {
+        magical = magical,
+        gap = Combat.unitGap(user, target),
+        wounded = (uh.current or 0) * 2 < (uh.max or 0),
+        execute = (th.current or 0) * 4 < (th.max or 0),
+        flanked = flank >= 2,
+        undead = Character.isUndead(target.char),
+        controlled = Status.has(target, "status_stun") or Status.has(target, "status_root"),
+    }
+end
+
+-- A kill, judged against the board deedContext saw.
+function Combat.tallyKillDeeds(user, ctx)
+    if not (user and ctx) then return end
+    if ctx.magical then
+        Combat.tally(user, "killSpell", 1)
+    elseif ctx.gap <= 1 then
+        Combat.tally(user, "killMelee", 1)
+    end
+    if ctx.gap >= 3 then Combat.tally(user, "killRanged", 1) end
+    if ctx.wounded then Combat.tally(user, "killWounded", 1) end
+    if ctx.execute then Combat.tally(user, "killExecute", 1) end
+    if ctx.flanked then Combat.tally(user, "killFlanked", 1) end
+    if ctx.undead then Combat.tally(user, "killUndead", 1) end
+end
+
+-- A status that LANDED (Status.apply returned an instance), banked on whoever laid it when it is one of
+-- the four a class asks for and it was laid on the other side. `side` is the target's side BEFORE the
+-- status landed -- Charm flips it, so reading it afterwards would call every charmed foe a friend.
+-- Nil-safe on every argument.
+local DEED_STATUSES = {
+    status_poison = "poisonApplied",
+    status_root = "rootApplied",
+    status_disarmed = "disarmApplied",
+}
+function Combat.tallyStatusDeed(applier, target, id, landed, side)
+    if not (landed and applier and target and applier ~= target) then return end
+    if applier.side == (side or target.side) then return end
+    local key = DEED_STATUSES[id]
+    if key then Combat.tally(applier, key, 1) end
+    if id == "status_charm" and target.char and target.char.kind == "beast" then
+        Combat.tally(applier, "charmBeast", 1)
+    end
 end
 
 -- CHI: the monk's charge, and the one tally that is a spendable POOL rather than a running total.
@@ -5730,6 +5834,10 @@ function Combat.knockback(combat, source, target, distance, opts)
             -- target into the obstacle. A pinned shove (moved == 0) never slides the body, so without
             -- this the impact's damage number would pile onto the strike's on the very same tile and
             -- the two would blur into one unreadable figure. Beat 1, like a counter (see pushFx).
+            -- CLASS DEEDS: a foe driven into something, banked on whoever shoved it (the Bulwark's).
+            if source and source ~= target and source.side and source.side ~= target.side then
+                Combat.tally(source, "slammed", 1)
+            end
             Combat.beginBeat(combat)
             Combat.dealFlatDamage(combat, target, hit, { "physical", "impact" }, "the impact")
             -- Whatever stopped it takes the same blow back, each in its own currency.
@@ -5986,6 +6094,18 @@ function Combat.grantItem(combat, unit, itemId, opts)
     opts = opts or {}
     local item = Item.instantiate(itemId, opts.quantity or 1, opts.level or 0)
     item.ephemeral = true
+    -- A GRANT THAT MERGES ONTO A STACK THE BODY OWNS is not a new cell, so `ephemeral` on the grant never
+    -- reaches the grid and the +1 would walk home for good -- a free potion a fight. So every stack the
+    -- grant could merge into remembers what it held BEFORE the first grant (`ownedQuantity`), and
+    -- Combat.releaseClaims cuts it back to at most that. "At most": what was drunk mid-fight is counted
+    -- against the granted ones first, so a bought potion is never lost to a grant.
+    if Item.isStackable(item) then
+        for _, existing in ipairs(Character.eachItem(unit.char)) do
+            if existing.id == item.id and not existing.ephemeral and existing.ownedQuantity == nil then
+                existing.ownedQuantity = existing.quantity
+            end
+        end
+    end
     if not Character.addItem(unit.char, item) then
         Combat.logEvent(combat, "system",
             string.format("%s has nowhere to put %s.", unitName(unit), item.name or "it"), unit)
@@ -9002,6 +9122,8 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     -- the caller's, which an area sweep may reuse across targets) drops the shove and keeps the rest.
     local guardian = Combat.tryRedirect(combat, target, base, tags)
     if guardian then
+        -- CLASS DEEDS: a blow taken for an ally, banked on the guardian (the Sentinel's deed).
+        if guardian ~= target then Combat.tally(guardian, "guarded", 1) end
         -- THE RIFT'S ADVENTURERS, SLICE D: a Sworn Shield Blesses the ally it took the blow for.
         require("models.race_items").tookBlow(combat, guardian, target)
         local redirected = opts
@@ -9269,6 +9391,10 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     -- already IN `dmg`; this is only the cue for it, so ui/burst_fx.lua can flare a "weak point struck"
     -- over the impact and the player can read at a glance that the tag they chose is the one that bites.
     local vulnerable = Status.vulnerability(target, tags) > 0
+    -- CLASS DEEDS: a wound that struck a weakness, banked on the striker (the Elementalist's deed).
+    if vulnerable and attacker and attacker ~= target and attacker.side ~= target.side then
+        Combat.tally(attacker, "weaknessHit", 1)
+    end
     -- `critical` rides the damage cue rather than travelling as a beat of its own, for the same reason
     -- `vulnerable` and `lethal` do: what the view needs is not "a crit happened somewhere" but "THIS
     -- number is a crit", so it can float it bigger, in its own colour, with its own sound. A separate
@@ -9357,7 +9483,8 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
                 if o == c.opts then o = {}; for k, v in pairs(c.opts) do o[k] = v end end
                 o.magnitude = o.critMagnitude
             end
-            Status.apply(combat, target, c.id, o)
+            local side = target.side
+            Combat.tallyStatusDeed(attacker, target, c.id, Status.apply(combat, target, c.id, o), side)
         end
     end
     -- A blow may CARRY a shove (the Iron Mace, the Sworn Aegis): `opts.knockback = { distance, amount }`
@@ -9662,6 +9789,12 @@ function Combat.dealDamage(combat, user, target, item, opts)
     -- This is the only path that knows the ITEM -- a trap or a Burn tick reaches the flat path with no
     -- ability at all, and passes no attacker either, so it provokes nothing regardless.
     if ab and not Combat.isSingleTarget(ab) then opts.area = true end
+    -- CLASS DEEDS: a blow thrown at the body that taunted its thrower is an attack that taunt DREW --
+    -- banked on the TAUNTER, landed or not, because drawing the swing is the whole of the deed.
+    do
+        local taunt = user ~= target and Status.get(user, "status_taunt")
+        if taunt and taunt.taunter == target then Combat.tally(target, "tauntDrawn", 1) end
+    end
     -- A counter or a mirror may unmake the cast entirely before it reaches the target's armor.
     if tryWardSpell(combat, user, target, item, tags, base, opts) then return 0 end
     -- DOES IT LAND? The one place a real, aimed blow asks the dice (see the ACCURACY section above).
@@ -9715,7 +9848,15 @@ function Combat.dealDamage(combat, user, target, item, opts)
     -- can tell WHICH weapon struck it. `blow`, not `item`: a trait's ctx already spends `item` on the
     -- piece that granted the trait, and the event's keys are copied over it.
     opts.blowItem = opts.blowItem or item
+    -- CLASS DEEDS: the board as it stood before the blow, so a kill can be judged against it (the
+    -- foe's health, the striker's, who flanked it). A kill is read off the `kill` tally moving.
+    local deedCtx = Combat.deedContext(combat, user, target, magical)
+    local killsBefore = Combat.tallyCount(user, "kill")
     local dealt = Combat.dealFlatDamage(combat, target, base, tags, nil, user, opts)
+    if deedCtx then
+        if dealt > 0 and deedCtx.controlled then Combat.tally(user, "hitControlled", 1) end
+        if Combat.tallyCount(user, "kill") > killsBefore then Combat.tallyKillDeeds(user, deedCtx) end
+    end
     -- Let the attacker's statuses record what they just did (Fury banks damage dealt to heal from
     -- later). Fired here, where the attacker is known, only for a survived-or-not real hit.
     Status.onDealDamage(combat, user, dealt)
@@ -11670,6 +11811,8 @@ function Combat.skimGold(combat, unit, amount)
     if not combat or not amount or amount <= 0 then return 0 end
     if not unit or unit.side ~= "party" then return 0 end
     combat.skimmed = (combat.skimmed or 0) + amount
+    Combat.tally(unit, "goldEarned", amount) -- CLASS DEEDS: the Mammonite's
+
     return amount
 end
 
@@ -12437,6 +12580,13 @@ function Combat.releaseClaims(char)
             -- borrowed power, ephemeral like any other, with the relic it replaced kept on `morphOf`.
             -- The borrowed power goes; the relic comes back to the same cell it left.
             if item.ephemeral then char.inventory[i] = item.morphOf end
+            -- ...and the granted share of an OWNED stack goes the same way (Combat.grantItem's
+            -- `ownedQuantity`): the stack comes home holding no more than it walked in with.
+            if not item.ephemeral and item.ownedQuantity ~= nil then
+                item.quantity = math.min(item.quantity or 0, item.ownedQuantity)
+                item.ownedQuantity = nil
+                if item.quantity <= 0 then char.inventory[i] = nil end
+            end
             -- A HEX THAT WENT FOR A WALK (data/items/ability/ability_let_it_walk.lua). The Shaman spent
             -- a binding to summon something and the bell decides what it cost: a spirit still standing
             -- hands the curse back to the piece it came off, and a spirit that fell took the binding
@@ -13040,7 +13190,10 @@ function Combat.strikeWith(combat, user, weapon, tx, ty)
             if not t then return nil end
             opts = opts or {}
             if opts.applier == nil then opts.applier = user end
-            return Status.apply(combat, t, id, opts)
+            local side = t.side
+            local landed = Status.apply(combat, t, id, opts)
+            Combat.tallyStatusDeed(opts.applier, t, id, landed, side) -- CLASS DEEDS
+            return landed
         end,
         knockback = function(t, distance, opts)
             if not t then return 0 end
@@ -13078,7 +13231,9 @@ function Combat.strikeWith(combat, user, weapon, tx, ty)
                 d = d + hit
                 if hit > 0 then
                     for _, st in ipairs(auraStatuses) do
-                        Status.apply(combat, tgt, st.id, coatingOpts(st.opts, user))
+                        local side = tgt.side
+                        Combat.tallyStatusDeed(user, tgt, st.id,
+                            Status.apply(combat, tgt, st.id, coatingOpts(st.opts, user)), side)
                     end
                     if auraMods.lifesteal > 0 then
                         result.healed = result.healed + Combat.applyHeal(combat, user, math.floor(hit * auraMods.lifesteal))
@@ -13753,6 +13908,9 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
         end
     end
     local result = { damageDealt = 0, healed = 0 }
+    -- CLASS DEEDS: every foe this cast drew blood from, so an area that catches three or more banks the
+    -- Bombardier's deed once the effect has run (below, after ab.effect).
+    local deedFoesHit, deedFoeCount = {}, 0
     -- The initiative this action bills at end of turn. Read through Combat.actionSpeed rather than off
     -- `ab.speed` directly, so the number charged here is the number the timeline ghost and the hover
     -- preview already quoted -- a Quickened Sigil's discount included. An effect may still override it
@@ -13876,7 +14034,9 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
                 d = d + hit
                 if hit > 0 then
                     for _, st in ipairs(auraStatuses) do
-                        Status.apply(combat, tgt, st.id, coatingOpts(st.opts, unit))
+                        local side = tgt.side
+                        Combat.tallyStatusDeed(unit, tgt, st.id,
+                            Status.apply(combat, tgt, st.id, coatingOpts(st.opts, unit)), side)
                     end
                     -- A neighboring Vampiric Strike charm makes this weapon drink: the caster heals a
                     -- share of the damage it just dealt. Per LANDING, not per swing -- the charm reads
@@ -13887,6 +14047,10 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
                 end
             end
             result.damageDealt = result.damageDealt + d
+            if d > 0 and tgt.side ~= unit.side and not deedFoesHit[tgt] then
+                deedFoesHit[tgt] = true
+                deedFoeCount = deedFoeCount + 1
+            end
             -- TWINNED (a neighbouring Twinned Sigil): a single-target cast forks into one more body
             -- beside the one it was aimed at. Re-entered through this same closure, so the fork carries
             -- everything the original did -- the aura's granted tags, its on-hit status, its lifesteal
@@ -13940,6 +14104,12 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
             -- itself knows only the patient) -- what a mercy signature gated on healing counts. An
             -- AoE heal that lands on three allies is three, which is what "heal N times" reads as.
             if h > 0 then Combat.tally(unit, "healDone", 1) end
+            -- CLASS DEEDS: HP given to an ally (the Priest's), and a heal landing on a beast of this
+            -- side (the Druid's). Only someone else's wounds: tending your own is not a deed.
+            if h > 0 and tgt ~= unit and tgt.side == unit.side then
+                Combat.tally(unit, "healGiven", h)
+                if tgt.char and tgt.char.kind == "beast" then Combat.tally(unit, "healBeast", 1) end
+            end
             -- THE CROWN'S BESTIARY, SLICE B (2026-10-09): a heal is a deed the Erinys answers (models/crown_demons.lua).
             if h > 0 then require("models.crown_demons").noteDeed(combat, unit, "healed") end
             return h
@@ -13955,7 +14125,10 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
             if not tgt then return nil end
             opts = opts or {}
             if opts.applier == nil then opts.applier = unit end
-            return Status.apply(combat, tgt, id, opts)
+            local side = tgt.side
+            local landed = Status.apply(combat, tgt, id, opts)
+            Combat.tallyStatusDeed(opts.applier, tgt, id, landed, side) -- CLASS DEEDS
+            return landed
         end,
         -- Does `tgt` currently carry status `id`? What a conditional strike keys its bonus off (a blow
         -- that bites harder against a burned, poisoned or marked foe).
@@ -14167,6 +14340,8 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
         summon = function(charId, px, py, opts)
             local summoned = Summon.spawn(combat, unit, charId, px, py, opts)
             if summoned and summoned.alive then
+                -- CLASS DEEDS: a summon cast (the Summoner's). Not a weapon's incidental plant.
+                if not (opts and opts.noClaim) then Combat.tally(unit, "summoned", 1) end
                 if not (opts and opts.noClaim) then item.activeSummon = summoned end
                 if reserve then Combat.reserve(unit.char, reserve.stat, reserve.amount, summoned) end
                 Combat.summonRiders(combat, unit, summoned)
@@ -14361,7 +14536,13 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
             return Combat.corpsesIn(combat, cells or Combat.aoeCells(combat, ab, tx, ty, unit))
         end,
         -- Reanimate a corpse in place at `fraction` health (Revive). Returns true on success.
-        reanimate = function(corpse, fraction) return Combat.reanimate(combat, corpse, fraction) end,
+        reanimate = function(corpse, fraction)
+            local side = corpse and corpse.side
+            local ok = Combat.reanimate(combat, corpse, fraction)
+            -- CLASS DEEDS: an ally stood back up, banked on whoever did it (the Necromancer's).
+            if ok and corpse ~= unit and side == unit.side then Combat.tally(unit, "revived", 1) end
+            return ok
+        end,
         -- Consume a corpse and raise a `charId` zombie on the caster's side where it lay (Raise Dead).
         raise = function(corpse, charId, opts) return Combat.raiseZombie(combat, unit, corpse, charId, opts) end,
         -- Strike the aimed tile with another of the caster's weapons, running ITS own ability effect --
@@ -14459,6 +14640,7 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
     -- a blow that shoves its target away answers from where the shove left it, not from where it landed.
     Combat.beginAnswers(combat)
     if ab.effect then ab.effect(fx) end
+    if deedFoeCount >= 3 and not Combat.isSingleTarget(ab) then Combat.tally(unit, "areaTriple", 1) end
 
     -- IN AND OUT: the charm's step, taken here because it has no ability effect of its own to take it
     -- in. A hit-and-run WEAPON steps inside its own effect, one line above this -- so

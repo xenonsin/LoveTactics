@@ -103,8 +103,29 @@ GATES.cursed = function(player, want)
     return is(require("models.curse").noticed(player), want)
 end
 
+-- A ROOM THAT IS SHUT ON PURPOSE. `gate = { parked = true }` keeps the offer declared -- so the desk line
+-- that names it still has a room to point at (tests/conversation_spec.lua) -- and opens it for nobody.
+-- Lifting a park is deleting the key. The hiring board is the one parked room (data/buildings/hunters_lodge.lua).
+GATES.parked = function()
+    return false
+end
+
 GATES.quest = function(player, questId)
     return player ~= nil and require("models.player").hasCompleted(player, questId) == true
+end
+
+-- SOMETHING THE COMPANY IS WEARING HAS WORN THROUGH (Player.brokenKit). Live rather than one-way: it is
+-- only ever read as the forge's EVENT on the city schedule below, and the ledger there is what keeps the
+-- room once it has opened -- so this has no memory to keep.
+GATES.broken = function(player)
+    return player ~= nil and #require("models.player").brokenKit(player) > 0
+end
+
+-- THE ROOM HAS BEEN ADMITTED BY THE CITY SCHEDULE (Offer.SCHEDULE, below). `gate = { city = "<house>.<answer>" }`
+-- -- the value names the room's line in the schedule, which is where its trip, its event and its slot
+-- all live, so a blueprint carries one word and the trip table is in one place.
+GATES.city = function(player, room)
+    return Offer.admitted(player, room)
 end
 
 -- SOMEBODY IN THIS COMPANY IS TRAINING FOR WHAT THIS HOUSE SELLS.
@@ -129,6 +150,10 @@ end
 -- Ninja's gear (Vendor.shelves) -- the same rule the rack itself already runs on.
 --
 -- One-way, via Class.taken: changing class back must never take a card off the plaza.
+--
+-- (SUPERSEDED FOR THE SHELVES, 2026-10-15: no shipped offer names this gate any more. The shelves open
+-- on the city schedule below, where the player's choice is a class UNLOCKED rather than declared, and it
+-- buys the next trip's slot rather than the door on the spot. Kept as vocabulary, like `expeditions`.)
 GATES.declared = function(player, want, vendorId)
     local Vendor = require("models.vendor")
     local def = vendorId and Vendor.defs[vendorId]
@@ -139,6 +164,171 @@ GATES.declared = function(player, want, vendorId)
         end
     end
     return is(held, want)
+end
+
+-- ---------------------------------------------------------------------------
+-- THE CITY SCHEDULE -- one SHELF and one FEATURE per trip home
+-- ---------------------------------------------------------------------------
+--
+-- WHY A SCHEDULE AND NOT A GATE PER ROOM. Each room used to carry its own `trips` count, and the seven
+-- shelves carried none at all -- quiet, opened on the player declaring the class (`declared`). Two
+-- complaints came out of that: the houses arrived "random and delayed" (a shelf opened on whichever
+-- class happened to be in the roster, and the rest waited on the room queue), and nothing stopped two
+-- arrivals landing on one homecoming the moment an event gate and a trip count coincided. So the city
+-- now opens off one table: every trip home admits AT MOST ONE NEW SHELF AND ONE NEW FEATURE, and the
+-- whole city is open by trip 7 when nothing intervenes:
+--
+--     trip  shelf        feature
+--      0    knight       mending (on Rowan's injury)
+--      1    priest       reading
+--      2    mage         market counter
+--      3    alchemist    forge
+--      4    hunter       supper
+--      5    rogue        bestiary
+--      6    fighter      duel
+--      7    --           study
+--
+-- WHAT JUMPS THE QUEUE, in this order, within a slot:
+--   1. A PROBLEM IN HAND. A feature whose `event` holds -- a body to mend, a hex to lift, a find nobody
+--      can read, a piece worn through -- takes the feature slot ahead of the schedule. The rite and the
+--      mending have no trip at all: they are only ever admitted by their problem.
+--   2. THE PLAYER'S CHOICE. A root class UNLOCKED by any body on the roster pulls its house's shelf into
+--      the next free shelf slot. "Next": the slot of the trip the unlock happens on is normally already
+--      spent by the time a body can unlock anything (that is a town act), so the pull lands on the next
+--      homecoming -- and the scheduled shelf it displaces waits one trip, as everything behind it does.
+--      Other event rooms (the duel's posting) take the feature slot the same way.
+--   3. THE SCHEDULE. The earliest-scheduled room whose trip has come.
+-- An ADVANCED class takes no slot: its rows join its root's shelf (Vendor.shelves asks parents), and a
+-- body can only unlock one once it holds the root -- whose shelf the pull has already brought.
+--
+-- A ROOM ONCE ADMITTED STAYS ADMITTED, and that is the ledger: `player.opened = { rooms = { [room] =
+-- trip }, through = n }`. `rooms` is what both readers answer from -- the door (Offer.any) and the desk
+-- line (Offer.openSet) go through GATES.city, which is one call -- and `through` is the last trip whose
+-- slots are CLOSED. The current trip's slots stay open, so a problem that arrives mid-visit with the
+-- slot still empty is admitted on the spot; a trip already behind the company is never refilled (that
+-- would put two rooms on one homecoming after the fact).
+--
+-- NOTHING IS ADMITTED UNDERGROUND (or on the Gate screen, where Descent.new has already advanced the
+-- trip count): the slots of a homecoming belong to what the company carries HOME. While a run is seated
+-- the ledger is read and never written.
+--
+-- WRITTEN AS IT IS READ, the way Curse.noticed writes its mark: there is no "a trip ended" beat in the
+-- city to hang it on, and every reader is already asking. Persisted by models/save.lua as `opened`.
+Offer.SCHEDULE = {
+    -- `class` is the root the house shelves (data/vendors/<id>.lua) -- what the pull asks about.
+    shelves = {
+        { room = "bastion.shelf",       class = "knight",    trip = 0 },
+        { room = "cathedral.shelf",     class = "priest",    trip = 1 },
+        { room = "arcanum.shelf",       class = "mage",      trip = 2 },
+        { room = "alchemist.shelf",     class = "alchemist", trip = 3 },
+        { room = "hunters_lodge.shelf", class = "hunter",    trip = 4 },
+        { room = "undercroft.shelf",    class = "rogue",     trip = 5 },
+        { room = "colosseum.shelf",     class = "fighter",   trip = 6 },
+    },
+    -- IN PRIORITY ORDER for the events: the problems first (mend, lift, read, forge), then the other
+    -- event (the duel's posting). The schedule half is sorted by `trip` regardless of position.
+    features = {
+        { room = "cathedral.mend",       event = { injury = true } },        -- Act 0 carries Rowan up: trip 0
+        { room = "cathedral.lift",       event = { cursed = true } },
+        { room = "alchemist.read",       event = { unidentified = true }, trip = 1 },
+        { room = "bastion.forge",        event = { broken = true },       trip = 3 },
+        { room = "colosseum.duel",       event = { quest = "quest_colosseum_slot_01" }, trip = 6 },
+        { room = "undercroft.counter",   trip = 2 },
+        { room = "hunters_lodge.supper", trip = 4 },
+        { room = "arcanum.bestiary",     trip = 5 },
+        { room = "arcanum.study",        trip = 7 },
+    },
+}
+
+local SLOT_OF = {}
+for slot, list in pairs(Offer.SCHEDULE) do
+    for _, entry in ipairs(list) do SLOT_OF[entry.room] = slot end
+end
+
+-- Has ANY body on the roster unlocked root `class`? Asked through Class.canUse when the per-body unlock
+-- ledger exists; until then a body counts its own declared class, or an explicit `char.unlocked` mark.
+-- (Not Class.isUnlocked: that reads every root as held from the first morning, so it would pull all seven.)
+local function rootUnlocked(player, class)
+    local Class = require("models.class")
+    for _, char in ipairs((type(player) == "table" and player.roster) or {}) do
+        if type(Class.canUse) == "function" then
+            if Class.canUse(char, class) then return true end
+        elseif (type(char.unlocked) == "table" and char.unlocked[class])
+            or Class.declaredOf(char) == class then
+            return true
+        end
+    end
+    return false
+end
+
+local function ledger(player)
+    local l = player.opened
+    if type(l) ~= "table" then l = {}; player.opened = l end
+    l.rooms = type(l.rooms) == "table" and l.rooms or {}
+    l.through = tonumber(l.through) or -1
+    return l
+end
+
+local function slotUsed(rooms, slot, trip)
+    for room, at in pairs(rooms) do
+        if at == trip and SLOT_OF[room] == slot then return true end
+    end
+    return false
+end
+
+-- The room the `slot` admits on `trip`, or nil. See the priority list above.
+local function pick(player, rooms, slot, trip)
+    local list = Offer.SCHEDULE[slot]
+    local best
+    if slot == "features" then
+        for _, e in ipairs(list) do
+            if not rooms[e.room] and e.event and Offer.open(player, e.event) then return e.room end
+        end
+    else
+        for _, e in ipairs(list) do
+            if not rooms[e.room] and (not best or e.trip < best.trip) and rootUnlocked(player, e.class) then
+                best = e
+            end
+        end
+        if best then return best.room end
+    end
+    for _, e in ipairs(list) do
+        if not rooms[e.room] and e.trip and e.trip <= trip and (not best or e.trip < best.trip) then
+            best = e
+        end
+    end
+    return best and best.room or nil
+end
+
+-- Bring the ledger up to the current trip. Returns the rooms table.
+function Offer.sync(player)
+    if type(player) ~= "table" then return {} end
+    local l = ledger(player)
+    if player.descentRun ~= nil then return l.rooms end -- underground: read, never write
+    local now = require("models.player").tripsHome(player)
+    for trip = l.through + 1, now do
+        for slot in pairs(Offer.SCHEDULE) do
+            if not slotUsed(l.rooms, slot, trip) then
+                local room = pick(player, l.rooms, slot, trip)
+                if room then l.rooms[room] = trip end
+            end
+        end
+    end
+    if now - 1 > l.through then l.through = now - 1 end
+    return l.rooms
+end
+
+-- Is `room` ("<house>.<answer>") open on the city schedule? What GATES.city answers.
+function Offer.admitted(player, room)
+    assert(SLOT_OF[room], "unknown city room '" .. tostring(room) .. "' -- add it to Offer.SCHEDULE")
+    if type(player) ~= "table" then return false end
+    return Offer.sync(player)[room] ~= nil
+end
+
+-- The trip `room` was admitted on, or nil while it is shut.
+function Offer.openedOn(player, room)
+    if type(player) ~= "table" then return nil end
+    return Offer.sync(player)[room]
 end
 
 -- Is one offer open for this player? `vendorId` is the house the offer stands in, handed to any gate

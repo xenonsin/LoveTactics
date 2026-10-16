@@ -15,9 +15,9 @@ return {
     flavor = "A binding lapses. The Arcanum finds that reassuring; the elemental does not.",
     sprite = "assets/items/ability_summon_fire_elemental.png",
     type = "ability",
-    class = "summoner",
-    price = 210,
-    unlockLevel = 3,
+    class = "mage", -- moved off the Summoner shelf (2026-10-15): the Summoner deed is "cast 10 summons", so a mage must be able to buy one
+    price = 345,
+    unlockLevel = 6, -- one rung before the Summoner's Mage 7 gate
     tags = { "summon", "fire" },
     activeAbility = {
         -- THE AI CAN LAY THIS NOW (2026-10-09): its mark is open ground, which the planner never offered a

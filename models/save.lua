@@ -180,6 +180,10 @@ local function snapshotCharacter(char)
     -- when it differs, so an ordinary recruit diffs clean.
     local bp = Character.defs[char.id]
     if char.name and char.name ~= (bp and bp.name) then snap.name = char.name end
+    -- ...and a people that differs from the blueprint's, which is the avatar's once the Charter's roll
+    -- is filled in (Character.setRace). Handed back through instantiate on load, so the race's stat line,
+    -- resist and grid grant are rebuilt rather than restored. Additive: no field changed shape.
+    if char.race and char.race ~= (bp and bp.race) then snap.race = char.race end
 
     -- The player's pinned default action (a grid cell index, set in the Loadout screen). Optional --
     -- omitted when unset, so a character that never chose one diffs clean and loads back to the auto
@@ -266,6 +270,26 @@ local function snapshotCharacter(char)
         if amount and amount > 0 then atLevel[id] = amount end
     end
     if next(atLevel) then snap.techniqueAtLevel = atLevel end
+
+    -- THE UNLOCK LEDGER (Class.isUnlocked): every class this body has made its own, the one it stands in
+    -- included (Class.grandfather), plus the deed counters an unlock asks for (char.deeds) and the root
+    -- gifts already collected (char.giftsTaken). All three additive and omitted while empty, so
+    -- Save.VERSION does not move -- an older save loads with each body grandfathered into its class.
+    local Class = require("models.class")
+    Class.grandfather(char)
+    local unlocked, deeds, gifts = {}, {}, {}
+    for id, on in pairs(char.unlocked or {}) do
+        if on then unlocked[id] = true end
+    end
+    for key, n in pairs(char.deeds or {}) do
+        if n and n > 0 then deeds[key] = n end
+    end
+    for id, on in pairs(char.giftsTaken or {}) do
+        if on then gifts[id] = true end
+    end
+    if next(unlocked) then snap.unlocked = unlocked end
+    if next(deeds) then snap.deeds = deeds end
+    if next(gifts) then snap.giftsTaken = gifts end
 
     return snap
 end
@@ -591,6 +615,13 @@ function Save.snapshot(player)
         if taken then classesTaken[classId] = true end
     end
 
+    -- EVERY ELITE THIS COMPANY HAS BEATEN, by encounter id (models/encounter_battle.lua): the first win
+    -- over each pays a Charter Seal, and this is what makes it the first. Additive; nil elided.
+    local elitesBeaten
+    for encId, beaten in pairs(player.elitesBeaten or {}) do
+        if beaten then elitesBeaten = elitesBeaten or {}; elitesBeaten[encId] = true end
+    end
+
     -- Story flags (models/story_effect.lua's `effect = { flag = ... }`, read back by a scene's
     -- `when = { flag = ... }`). Same shape and same additive rule as the two above: Save.VERSION does
     -- NOT move, and an older save loads with nothing flagged -- which reads as a player who has not
@@ -873,6 +904,8 @@ function Save.snapshot(player)
         met = met,
         announcedDisciplines = announcedDisciplines,
         classesTaken = classesTaken,
+        elitesBeaten = elitesBeaten,
+        opened = player.opened, -- the city ledger (models/offer.lua): a room opened by an event stays open
         flags = flags,
         -- AVARITIA'S HOARD (models/hoard.lua): heaps carried out of her treasury, trips in, the Shrine
         -- broken. Elided while untouched, so a save that never reached her floor carries nothing.
@@ -1026,6 +1059,7 @@ local function restoreCharacter(snap)
         technique = snap.technique,
         techniqueSpent = snap.techniqueSpent,
         techniqueAtLevel = snap.techniqueAtLevel,
+        race = snap.race,
     })
 
     -- Experience toward the next level, restored onto the body rather than passed through instantiate:
@@ -1062,6 +1096,29 @@ local function restoreCharacter(snap)
     if snap.aiRules then char.aiRules = snap.aiRules end
     if snap.archetype ~= nil then char.archetype = snap.archetype or nil end
     if snap.autoBattle then char.autoBattle = true end
+
+    -- The unlock ledger, deeds and root gifts (see snapshotCharacter). An unknown class id is dropped
+    -- like any other stale reference; the body is then grandfathered into the class it stands in.
+    local Class = require("models.class")
+    for id, on in pairs(snap.unlocked or {}) do
+        if on and Class.defs[id] then
+            char.unlocked = char.unlocked or {}
+            char.unlocked[id] = true
+        end
+    end
+    for key, n in pairs(snap.deeds or {}) do
+        if type(n) == "number" and n > 0 then
+            char.deeds = char.deeds or {}
+            char.deeds[key] = n
+        end
+    end
+    for id, on in pairs(snap.giftsTaken or {}) do
+        if on then
+            char.giftsTaken = char.giftsTaken or {}
+            char.giftsTaken[id] = true
+        end
+    end
+    Class.grandfather(char)
     return char
 end
 
@@ -1299,6 +1356,12 @@ function Save.restore(snap)
         if taken then classesTaken[classId] = true end
     end
 
+    -- Elites beaten (the seal ledger). Kept unfiltered, like the flags: a deleted encounter id is inert.
+    local elitesBeaten = {}
+    for encId, beaten in pairs(snap.elitesBeaten or {}) do
+        if beaten and type(encId) == "string" then elitesBeaten[encId] = true end
+    end
+
     -- Story flags. Deliberately NOT filtered against any registry, unlike the id sets around it: a flag
     -- is a record that something was answered, not a pointer at a blueprint, and there is nothing to
     -- check it against. An orphaned flag whose scene was deleted is inert -- no `when` asks for it.
@@ -1451,6 +1514,8 @@ function Save.restore(snap)
         met = met,
         announcedDisciplines = announcedDisciplines,
         classesTaken = classesTaken,
+        elitesBeaten = elitesBeaten,
+        opened = snap.opened,
         flags = flags,             -- absent on a save from before this existed; empty reads as unanswered
         -- Avaritia's hoard (models/hoard.lua); nil reads as untouched (Hoard.state makes the default).
         greedHoard = type(snap.greedHoard) == "table" and {

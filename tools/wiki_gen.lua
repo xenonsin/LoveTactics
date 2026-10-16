@@ -1797,7 +1797,11 @@ local function bodySection(out, charId, queues, statCols)
     end
     if def.tier then meta[#meta + 1] = "tier " .. tostring(def.tier) end
     if def.archetype then meta[#meta + 1] = cell(def.archetype) .. " posture" end
-    if def.class then
+    -- The Novice is a class with no shelf (data/classes/novice.lua), so it has no Items page to link:
+    -- it is named in plain text rather than pointing at a page the generator never writes.
+    if def.class and Class.isStarter and Class.isStarter(def.class) then
+        meta[#meta + 1] = cell(Class.displayName(def.class) or def.class) .. " (no shelf)"
+    elseif def.class then
         meta[#meta + 1] = "[" .. cell(Class.displayName(def.class) or def.class) .. "]("
             .. pageOf(def.class) .. ") shelf"
     end

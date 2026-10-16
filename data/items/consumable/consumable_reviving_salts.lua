@@ -25,7 +25,7 @@ return {
     tags = { "salts", "restorative" },
     class = "alchemist",
     price = 225,
-    unlockLevel = 11,
+    unlockLevel = 0, -- a standing item (2026-10-15): the Necromancer deed is \"revive allies 15 times\", and a gate on the one revive a company can carry would price a need
     activeAbility = {
         target = "tile",
         support = true, -- friendly cast: preview green

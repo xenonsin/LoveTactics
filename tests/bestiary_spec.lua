@@ -98,7 +98,8 @@ tests[#tests + 1] = { name = "a declared class is one of the seven", fn = functi
     -- chaff keeps the fallback, with the reason written into character_bandit.lua rather than left for
     -- the next person to rediscover through tests/enemy_scaling_spec.lua.
     for id, def in pairs(Character.defs) do
-        if def.class then
+        -- The starter (the Novice, the avatar's) is a class too, but no shelf hangs off it.
+        if def.class and not Class.isStarter(def.class) then
             assert(Class.roots()[def.class], id .. ": unknown class " .. tostring(def.class))
             assert(def.kind == "humanoid", id .. ": a " .. tostring(def.kind) .. " has no shelf. "
                 .. "Creature kit is natural weapons only.")

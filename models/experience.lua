@@ -20,7 +20,9 @@
 -- THE ONE SEAM THAT RESOLVES. Combat awards experience as it happens (Experience.credit, from
 -- Combat.useItem and the felling blow in dealFlatDamage), which is only a counter going up. Turning
 -- that counter into levels happens in exactly one place -- states/game.lua's post-fight seam, which
--- every won fight already passes through -- plus a catch-up on load (Player.resolveLevels). Keeping
+-- every won fight already passes through -- plus a catch-up on load (Player.resolveLevels), and, for the
+-- bodies standing on the board, the battle's settle seam (Experience.resolveOnBoard), which plays the
+-- level-up mid-fight and leaves the post-fight seam only the bench to resolve. Keeping
 -- resolution to one seam is what lets combat stay ignorant of modes and of rosters.
 --
 -- Pure model -- no love.graphics -- so it loads under the headless runner.
@@ -363,6 +365,59 @@ end
 function Experience.resolve(char)
     if not char then return nil end
     return Growth.resolve(char, Experience.levelFor(char.xp))
+end
+
+-- RESOLVE THE BODIES STANDING ON A LIVE BOARD, mid-fight -- the Fire Emblem level-up, which plays the
+-- moment the experience crosses rather than in a toast after the fight (ui/levelup_card.lua). Called by
+-- states/battle.lua on the same settle seam the class-rung floater waits for (releaseGrowthAward), so
+-- the level lands between one action and the next with nothing else moving on the board.
+--
+-- `units` is combat.units; `roster` is the campaign company, and only a unit whose CHARACTER is on it
+-- is resolved: a summon, a charmed foe or an escorted ally is player-controlled without being anybody
+-- this ladder grows. Returns `{ unit, summary }` per body that advanced, in board order.
+--
+-- THE POOLS RISE BY THE GAIN, AND THAT NEEDED A CORRECTION. Growth's bake clamps `current` to the BASE
+-- max, which is right in town and wrong here: on a board, gear's resource passives raise the ceiling
+-- through char.maxBonus (Combat.unreservedMax), so a body standing above its base max would LOSE health
+-- by levelling. Current is re-set to what it was plus the gain, clamped to the live ceiling instead.
+--
+-- Leaves the post-fight seam nothing to do: Growth.resolve is a no-op on a body already at the level
+-- its experience entitles it to (Experience.resolveParty then returns no row for it).
+function Experience.resolveOnBoard(units, roster)
+    local onRoster = {}
+    for _, char in ipairs(roster or {}) do onRoster[char] = true end
+    local out, seen = {}, {}
+    for _, unit in ipairs(units or {}) do
+        local char = unit and unit.char
+        if char and onRoster[char] and not seen[char] and not unit.summoned
+            and unit.control == "player" then
+            seen[char] = true
+            local before = {}
+            for _, stat in ipairs({ "health", "mana", "stamina" }) do
+                local pool = char.stats and char.stats[stat]
+                if type(pool) == "table" then before[stat] = pool.current or pool.max end
+            end
+            local summary = Experience.resolve(char)
+            if summary then
+                local okC, Combat = pcall(require, "models.combat")
+                for stat, was in pairs(before) do
+                    local pool = char.stats[stat]
+                    local ceiling = (okC and Combat.unreservedMax) and Combat.unreservedMax(char, stat)
+                        or pool.max
+                    -- A downed body stays down: the level is banked, the corpse does not stand up.
+                    if unit.alive == false then
+                        pool.current = was
+                    else
+                        pool.current = math.min(was + ((summary.gains and summary.gains[stat]) or 0), ceiling)
+                    end
+                end
+                -- The speed stat is the timeline's tie-break, snapshotted on the unit at setup.
+                unit.speed = (char.stats and char.stats.speed) or 0
+                out[#out + 1] = { unit = unit, summary = summary }
+            end
+        end
+    end
+    return out
 end
 
 -- Resolve a whole company, returning the list of members that advanced. ONE CALL SITE -- states/game

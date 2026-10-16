@@ -44,7 +44,10 @@ tests[#tests + 1] = { name = "every class is well-formed: a root stands alone, a
         assert(def.classes == nil, id .. ": still carries a `classes` list -- `requires` is the one field")
         assert(def.requiredLevel == nil, id .. ": still carries `requiredLevel` -- it is `requires` now")
 
-        if Class.isRoot(id) then
+        if Class.isStarter(id) then
+            -- The Novice (data/classes/novice.lua): below the roots, every body holds it, nothing gates it.
+            assert(not next(def.requires or {}), id .. " is the starter and carries no gate")
+        elseif Class.isRoot(id) then
             assert(not next(def.requires or {}),
                 id .. " is a root and must be held from the first morning, with no gate")
             -- The creature bucket is not a career and demonstrates nothing (data/classes/creature.lua).
@@ -70,24 +73,35 @@ tests[#tests + 1] = { name = "every class is well-formed: a root stands alone, a
     end
 end }
 
--- THE ONE THAT KEEPS THE MARKET STOCKED. Every root is unlocked for a company that has done nothing,
--- and if that ever stops being true the counter's rotation pool empties in silence -- Vendor.stock
--- greys a row whose class is locked, Market.stock refuses to deal a greyed row, and nothing else in the
--- tree would notice that the shop had gone quiet.
+-- THE ONE THAT KEEPS THE MARKET STOCKED. A root's stock is never greyed by the CLASS lock, whatever the
+-- company has unlocked -- and if that ever stops being true the counter's rotation pool empties in
+-- silence: Vendor.stock greys a row whose class is locked, Market.stock refuses to deal a greyed row,
+-- and nothing else in the tree would notice that the shop had gone quiet.
 --
--- Asserted against a bare Player.new rather than a fixture, because "has done nothing" is the whole
--- condition being pinned.
-tests[#tests + 1] = { name = "every root class is unlocked for a company that has done nothing", fn = function()
-    local Player = require("models.player")
-    local fresh = Player.new()
+-- IT USED TO ASSERT THAT EVERY ROOT IS UNLOCKED FOR A FRESH COMPANY. That stopped being true on purpose
+-- (2026-10-15): every class, roots included, is unlocked per body with a deed and a Charter Seal
+-- (Class.unlock), and a fresh avatar is a Novice. What the market needed from that sentence was never
+-- the unlock -- it was that a root's shelf is not behind the class lock -- so that is what is pinned,
+-- against an EMPTY unlocked set, which is the strongest form of "has done nothing".
+tests[#tests + 1] = { name = "a root's stock is never behind the class lock, whatever is unlocked", fn = function()
     local roots = 0
     for id in pairs(Class.defs) do
-        if Class.isRoot(id) then
-            roots = roots + 1
-            assert(Class.isUnlocked(fresh, id), id .. " is a root and is locked on a fresh save")
-        end
+        if Class.isRoot(id) then roots = roots + 1 end
     end
     assert(roots == 8, "expected 8 roots -- the seven houses plus creature -- found " .. roots)
+    for itemId, def in pairs(Item.defs) do
+        if def.class and Class.isRoot(def.class) then
+            local why = Vendor.lockReason(def, Class.CLASS_LEVEL_CAP, {}, {})
+            assert(why ~= "class", itemId .. " is " .. def.class .. " stock and greys behind the class lock")
+        end
+    end
+    -- ...and the Novice, which is held by every body, answers no to a COMPANY question: it opens no shelf.
+    local Player = require("models.player")
+    local fresh = Player.new()
+    assert(not Class.isUnlocked(fresh, "novice"), "the starter is no company's shelf")
+    for _, char in ipairs(fresh.roster) do
+        assert(Class.isUnlocked(char, "novice"), "but every body holds it")
+    end
 end }
 
 -- A locked path COLLAPSES to its header on the shelf (ui/panels/shop.lua), so the section detail is the
@@ -206,7 +220,7 @@ tests[#tests + 1] = { name = "every earned class stocks at least five reachable 
 
     local short = {}
     for did in pairs(Class.defs) do
-        if not Class.isRoot(did) then
+        if not Class.isRoot(did) and not Class.isStarter(did) then
             local n = count[did] or 0
             if n < FLOOR then short[#short + 1] = string.format("%s (%d)", did, n) end
         end
@@ -380,6 +394,9 @@ tests[#tests + 1] = { name = "a newly unlocked discipline is pending at its pare
     -- the ladder is measured off rather than ticking a quest ledger nothing consults.
     local warlordGate = Class.defs.warlord.requires.fighter
     p.roster[1].technique = { fighter = Class.classLevelCost(warlordGate) }
+    -- The rung is the gate; the unlock is the act (Class.unlock), and it is the act that announces.
+    assert(#Class.pendingAnnouncements(p, "fighter") == 0, "meeting the gate announces nothing yet")
+    p.roster[1].unlocked = { warlord = true }
     local pend = Class.pendingAnnouncements(p, "fighter")
     local found = false
     for _, id in ipairs(pend) do if id == "warlord" then found = true end end
@@ -422,7 +439,12 @@ tests[#tests + 1] = { name = "a multiclass announces at exactly one of its two p
             end
         end
     end
-    assert(Class.isUnlocked(p, "champion"), "champion should be unlocked by the three quests")
+    -- The levels meet the gate once a subclass of each parent is UNLOCKED, and the crossing is then
+    -- unlocked by the act (Class.unlock).
+    body.unlocked = { warlord = true, bulwark = true }
+    assert(Class.levelGateMet(body, "champion"), "both levels and a subclass of each parent meet it")
+    body.unlocked.champion = true
+    assert(Class.isUnlocked(p, "champion"), "champion should be unlocked by the ledger")
 
     -- Pending at BOTH parent shelves before it is announced.
     local function pends(class, id)
@@ -504,6 +526,8 @@ tests[#tests + 1] = { name = "missingParents names the crossing's unmet half, an
             for class, level in pairs(def.requires or {}) do
                 for _, c in ipairs(p.roster) do c.technique = c.technique or {}; c.technique[class] = Class.classLevelCost(level) end
             end
+            -- ...and unlocked, which is the act the levels only make available (Class.unlock).
+            for _, c in ipairs(p.roster) do c.unlocked = c.unlocked or {}; c.unlocked[id] = true end
         end
     end
     missing = Class.missingParents(p, "ninja")

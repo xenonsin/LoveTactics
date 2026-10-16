@@ -939,6 +939,10 @@ function Balance.refChar(prestige, growthClass)
     if refCache[key] then return refCache[key] end
 
     local char = Character.instantiate(Balance.REFERENCE.charId)
+    -- NO UNLOCK LEDGER ON THE YARDSTICK. A body carrying `unlocked` wears its selected class's stat boost
+    -- in combat (Combat.applyUnitPassives, 2026-10-15), and the reference measures the unboosted
+    -- swordsman every band was cut against -- a boost here would move every grade and every band.
+    char.unlocked = nil
     if growthClass and Growth.defs[growthClass] then
         -- THE FIELD GROWTH ACTUALLY STEERS ON. `Growth.resolve` asks `Growth.classOf`, and that reads
         -- `declaredClass`, then the blueprint's innate `class`, then the neutral fallback. It does not
@@ -982,8 +986,11 @@ end
 -- the neutral table (fighter) has no magic side AT ALL, so magicDamage would sit at its level-1 value
 -- forever while every enemy's magicDefense climbed, and the report would claim the Arcanum's own
 -- Fireball could not hurt a mage. A caster reference has to have cast something.
+-- "fighter" BY NAME rather than nil since the avatar started as a Novice (2026-10-15): nil now resolves
+-- to Growth.NEUTRAL_CLASS, which is the Novice's flat +1 table, and the yardstick would quietly stop
+-- describing the swordsman every band was cut against.
 function Balance.growthClassFor(probe)
-    return (probe and probe.magical) and "mage" or nil
+    return (probe and probe.magical) and "mage" or "fighter"
 end
 
 -- (Balance.reset lives at the FOOT of this file, not here. Every cache it drops is declared further
@@ -1330,7 +1337,7 @@ function Balance.wielderStatFor(idOrItem)
         if t == "magical" then magical = true end
     end
     local prestige = Balance.prestigeForSlot(Balance.slotOf(def)) -- the standing its rung is bought at, not the rung
-    local ref = Balance.refChar(prestige, magical and "mage" or nil)
+    local ref = Balance.refChar(prestige, magical and "mage" or "fighter")
     return (magical and ref.stats.magicDamage or ref.stats.damage) or 0
 end
 

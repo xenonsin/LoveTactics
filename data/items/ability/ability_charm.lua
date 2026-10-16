@@ -33,7 +33,7 @@ return {
     tags = { "guile", "utility" },
     class = "thief", -- the SHELF it is graded against and never a counter that deals it: see above
     unstocked = true, -- rift-only, and unsellable with it (tests/discovery_spec.lua names it)
-    unlockLevel = 13,
+    unlockLevel = 3, -- moved down to Lust's first floor (2026-10-15): the Beastmaster deed is \"charm 10 beasts\"
     activeAbility = {
         target = "enemy",
         range = 3,

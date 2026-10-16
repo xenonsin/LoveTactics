@@ -352,9 +352,9 @@ local function buildMenu()
             -- INTO THE FIRST FREE SLOT, erasing nothing. Slots are unbounded, so a new campaign never
             -- has to displace an old one and this row lost the warning it used to carry.
             Player.newSlot()
-            -- Character creation (pick the avatar's body, then name it) opens a New Game; it hands off to the
-            -- prologue -- for now, straight to the hub. See states/character_creation.lua.
-            State.switch(require("states.character_creation"))
+            -- Straight into the prologue's first fight. Character creation comes after it, on the
+            -- Charter's roll (states/prologue.lua's beat list, states/character_creation.lua).
+            State.switch(require("states.prologue"))
         end,
     }
 

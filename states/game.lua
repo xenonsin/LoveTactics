@@ -2448,6 +2448,13 @@ function game:openEncounter(cell, opts)
                 -- ...on the one curve there is. It used to branch on `game.descent` for a steeper
                 -- descent-only ladder, which meant every seam standing outside a run -- Act 0's whole
                 -- tutorial included -- quietly cashed out on the cheap one (models/experience.lua).
+                --
+                -- WHO IS LEFT TO RESOLVE HERE IS THE BENCH. A body that stood on the board took its
+                -- level the moment it crossed, on the Fire Emblem card (states/battle.lua's
+                -- releaseLevelUps -> Experience.resolveOnBoard), so resolveParty returns no row for it
+                -- and it is not toasted a second time. What remains is the benched share paid at
+                -- finishBattle -- bodies the player never watched swing, which get the plain line --
+                -- plus the rare board body whose fight was decided before the board settled.
                 for _, up in ipairs(Experience.resolveParty(game.player.roster)) do
                     game:pushToast((up.char.name or up.char.id) .. " reaches level " .. up.toLevel)
                 end

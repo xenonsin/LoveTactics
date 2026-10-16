@@ -378,7 +378,10 @@ function Injury.roll(player, charId, carried)
     local even = total <= 0
 
     local base = (player and player.seed) or 0
-    local run = player and Seed.run and Seed.run(player) or base
+    -- Seed.lap, NOT Seed.run: Seed.run counts a descent begun (runsStarted + 1) on every call, so rolling
+    -- an injury used to tick the trip count -- and the city opens its rooms by that count
+    -- (models/offer.lua's schedule). Both return the same lap seed; only Seed.run has the side effect.
+    local run = player and Seed.lap and Seed.lap(player) or base
     local depth = (player and player.descentRun and player.descentRun.floor) or 0
     local roll = Seed.mix(run, depth * 7919 + 1, fold(charId or ""), (carried or 0) + 1)
     local pick = roll % (even and #order or total)

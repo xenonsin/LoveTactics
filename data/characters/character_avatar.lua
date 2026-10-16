@@ -75,6 +75,11 @@
 return {
     name = "Stranger",
     race = "human",
+    -- THE NOVICE (Growth.NEUTRAL_CLASS, data/classes/novice.lua): the blank slate is now a class of its
+    -- own rather than the absence of one, and every root is unlocked from it with a deed and a Charter
+    -- Seal (Class.canUnlock). The paragraphs above that speak of "no class of its own" describe the
+    -- body before the Novice existed; the symmetry they argue for is what the Novice's even table keeps.
+    class = "novice",
     tier = 2,
     sprite = "assets/chars/avatar_1.png", -- default; overridden by the chosen body at creation
     portrait = "assets/portraits/avatar_1.png",

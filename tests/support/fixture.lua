@@ -189,6 +189,9 @@ function Fixture.trainedIn(class)
     for parent, need in pairs((Class.defs[class] or {}).requires or {}) do
         body.technique[parent] = Class.classLevelCost(need)
     end
+    -- ...and the unlock itself, which is an act now rather than a reading of the levels (Class.unlock):
+    -- the levels are the gate, the ledger is the class.
+    body.unlocked = { [class] = true }
     return body
 end
 

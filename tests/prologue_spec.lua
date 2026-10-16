@@ -24,7 +24,8 @@ local Conversation = require("models.conversation")
 -- not played as a scene -- it is the village fight's speech-bubble text (models/tutorial.lua) -- but
 -- it lives in the same folder and must resolve like any other. See states/hub.lua for the arrival.
 local PROLOGUE_SCENES = {
-    "conversation_prologue_village", "conversation_prologue_ruins", "conversation_prologue_arrival",
+    "conversation_prologue_village", "conversation_prologue_roll", "conversation_prologue_ruins",
+    "conversation_prologue_arrival",
     "conversation_colosseum_slot_01_outro", "conversation_tutorial_village",
 }
 -- `conversation_prologue_flier` was the sixth and is DELETED. `. content-report` reported it as an
@@ -47,7 +48,8 @@ return {
         fn = function()
             local avatar = Character.instantiate("character_avatar")
             assert(avatar.name == "Stranger", "the unnamed avatar is 'Stranger', got " .. tostring(avatar.name))
-            assert(avatar.class == nil, "the avatar has no class (grows neutral)")
+            -- The blank slate is a class of its own now: the Novice, Growth.NEUTRAL_CLASS.
+            assert(avatar.class == "novice", "the avatar starts as a Novice (grows neutral)")
             -- It opens with a sword and the coat off its own back, and nothing else (the tutorial drips
             -- the rest in). The leather is there so the armour slot is not empty on the first Loadout
             -- screen, and because the movement economy is tuned against a party wearing something --
@@ -174,6 +176,60 @@ return {
                 local id = type(raw) == "table" and raw.id or raw
                 assert(id ~= "sibling", "the sibling is cut, and nothing may cast one again")
             end
+        end,
+    },
+    {
+        name = "nothing spoken before the Charter's roll uses the avatar's name",
+        fn = function()
+            -- The name is typed AFTER the first fight now (states/character_creation.lua), so the first
+            -- fight's opening would read "Stranger" for every {name} in it.
+            local def = Conversation.defs["conversation_prologue_village"]
+            for _, node in ipairs(def.script) do
+                local text = node.text or node[2]
+                assert(not (type(text) == "string" and text:find("{name}", 1, true)),
+                    "the first fight's opening uses {name} before the player has typed one: " .. tostring(text))
+            end
+        end,
+    },
+    {
+        name = "a people put on a living body swaps its stat line, resist and grid grant",
+        fn = function()
+            local avatar = Character.instantiate("character_avatar")
+            local base = { movement = avatar.stats.movement, speed = avatar.stats.speed, skill = avatar.stats.skill }
+            local function holds(char, id)
+                for _, item in ipairs(Character.eachItem(char)) do if item.id == id then return true end end
+                return false
+            end
+            assert(Character.setRace(avatar, "naga"), "naga is a race the avatar can take")
+            assert(avatar.race == "naga", "the body reads as a naga")
+            assert(avatar.stats.movement == base.movement - 1, "the naga's line slows it")
+            assert(avatar.stats.speed == base.speed + 1, "and quickens its strike")
+            assert(avatar.resist and avatar.resist.lightning == -4, "the naga's resist floor is on the body")
+            assert(holds(avatar, "utility_naga_coils"), "the naga's coils are in the grid")
+
+            assert(Character.setRace(avatar, "elf"), "a second change is allowed before the roll is signed")
+            assert(avatar.stats.movement == base.movement and avatar.stats.speed == base.speed,
+                "the naga's line came back off")
+            assert(avatar.stats.skill == base.skill + 2, "the elf's line went on")
+            assert(not holds(avatar, "utility_naga_coils"), "the coils were lifted off the grid")
+            assert(holds(avatar, "utility_elf_blood"), "the elf's grant took a free cell")
+            assert(holds(avatar, "weapon_iron_sword"), "the sword kept its seat")
+        end,
+    },
+    {
+        name = "the avatar's people survive a save and come back rebuilt",
+        fn = function()
+            local Save = require("models.save")
+            local avatar = Character.instantiate("character_avatar")
+            Character.setRace(avatar, "naga")
+            avatar.declaredClass = "rogue"
+            local back = Save.restoreCharacter(Save.snapshotCharacter(avatar))
+            assert(back.race == "naga", "the race was not saved")
+            assert(back.stats.movement == avatar.stats.movement, "the race's stat line was not rebuilt on load")
+            assert(back.declaredClass == "rogue", "the body's declared class was not saved beside its people")
+            local coils = false
+            for _, item in ipairs(Character.eachItem(back)) do if item.id == "utility_naga_coils" then coils = true end end
+            assert(coils, "the race grant did not come back in the grid")
         end,
     },
 }

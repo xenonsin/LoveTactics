@@ -845,6 +845,12 @@ local function finishBattle(result)
         return
     end
 
+    -- CLASS DEEDS (models/class.lua): a won fight's tallies that some class unlock asks for are copied
+    -- onto the company's bodies. A win only -- a wipe does not teach a class.
+    if result == "win" and battle.player then
+        require("models.class").bankDeeds(battle.combat, battle.player)
+    end
+
     -- What the win pays: rolled by models/encounter_battle.lua, so a fight walked off without the
     -- board loading pays exactly what fighting it would have. Only on a win -- which is also the whole
     -- economy of a bounty (the promise is banked on the combat, and a battle that is lost pays
@@ -5604,6 +5610,8 @@ function battle.enter(self, opts)
     -- (finishBattle -> Experience.payBench). Nil for a mock battle, a draft and a netplay duel, all of
     -- which have no roster behind the four on the board and nobody to pay.
     battle.player = opts.player
+    -- A fresh fight has no level-up card pending and has checked nobody's experience yet.
+    battle.levelCards, battle.levelCheckedAt = nil, nil
     -- Which house's stock this run's fights salvage in: the quest's SPONSOR, the same resolution the
     -- map's caches use (states/game.lua). Nil on an unsponsored leg -- the prologue -- where a fight
     -- pays craft stock and nothing else.
@@ -6121,6 +6129,45 @@ local function releaseGrowthAward()
     Sound.play("quest.levelup")
 end
 
+-- THE LEVEL-UP, PLAYED MID-FIGHT (Fire Emblem Heroes' screen -- ui/levelup_card.lua). Hung on the same
+-- settle seam as the rung floater above and AFTER it: the blow lands, the numbers float off, the rung
+-- (if any) floats and fades, and only then does a body whose experience crossed a level take the level
+-- and the screen. Experience.resolveOnBoard applies it to the live character -- every pool's ceiling and
+-- its current rise by the gain -- so the post-fight seam (states/game.lua) finds nobody on the board left
+-- to resolve, only the bench.
+--
+-- AUTO-BATTLE SKIPS THE CARD, never the level: a fight the player handed to the AI is one they chose not
+-- to watch, so stopping it for a screen per body would be asking them to watch after all.
+--
+-- A battle.* function rather than a local: this chunk is at Lua 5.1's 200-local ceiling.
+function battle.levelUpAuto(unit)
+    return autoAllowed() and (battle.autoAll or (unit and unit.char and unit.char.autoBattle)) and true or false
+end
+
+function battle.releaseLevelUps()
+    if not (battle.player and battle.combat and battle.combat.xpByChar) then return end
+    if battle.over or battle.summary or battle.script or battle.pendingAward then return end
+    if battle.levelCards and battle.levelCards:active() then return end
+    -- Nothing banked since the last look, nothing to resolve -- a cheap stamp before walking the board.
+    local banked = 0
+    for _, amount in pairs(battle.combat.xpByChar) do banked = banked + amount end
+    if banked == battle.levelCheckedAt then return end
+    if walking() then return end
+    if battle.pendingAdvance and battle.pendingAdvance.hold > 0 then return end
+    if battle.fx:busy() or not battle.fx:hpSettled() or not battle.fx:floatersDone() then return end
+    battle.levelCheckedAt = banked
+    local ups = Experience.resolveOnBoard(battle.combat.units, battle.player.roster)
+    if #ups == 0 then return end
+    local LevelupCard = require("ui.levelup_card")
+    battle.levelCards = battle.levelCards or LevelupCard.queue()
+    for _, card in ipairs(LevelupCard.cardsFor(ups, battle.levelUpAuto)) do battle.levelCards:push(card) end
+end
+
+-- Whether a level-up card owns the frame (and so every input verb).
+function battle.levelCardUp()
+    return battle.levelCards ~= nil and battle.levelCards:active()
+end
+
 function battle.update(dt)
     -- The settings overlay freezes the fight: only the menu ticks, the board holds exactly where it
     -- was, and closing the overlay resumes from there. Nothing below runs while it is up.
@@ -6168,6 +6215,9 @@ function battle.update(dt)
 
     bankGrowthAward()
     releaseGrowthAward()
+    -- A level-up card freezes the fight the way the settings overlay does: only the card ticks.
+    battle.releaseLevelUps()
+    if battle.levelCardUp() then battle.levelCards:update(dt); return end
     -- NOTE the wind-up chooser is deliberately NOT a freeze: it is a small slider over the aimed tile,
     -- and the board + turn-order strip behind it are its preview. The view has to keep refreshing so
     -- that sliding the depth (which writes battle.windup) slides the channel's resolve slot along the
@@ -6775,6 +6825,8 @@ function battle.draw()
     -- The bench chooser, while a rotation or a reinforcement is picking who comes on.
     -- The right-click debug menu (debug builds only) sits on top of every board overlay.
     if battle.debugMenu then battle.debugMenu:draw() end
+    -- A level-up card (battle.releaseLevelUps) over the whole frame: the field dims behind it.
+    if battle.levelCardUp() then battle.levelCards:draw() end
     -- The overruled ending's fade, over absolutely everything -- board, HUD, tooltips, panels -- and it
     -- STAYS at full black once it gets there. The scenes that follow (states/game.lua plays them over
     -- the frozen final frame of the fight) are meant to land on nothing at all, which is what the frozen
@@ -7491,6 +7543,8 @@ function battle.keypressed(key)
     -- is no panel underneath waiting to be dismissed -- the fight hands itself on when the frame is
     -- dark. Stated on each input verb rather than once, because there is no single funnel they share.
     if battle.fadeOut then return end
+    -- A level-up card eats every input while it is up: the first press reveals, the second dismisses.
+    if battle.levelCardUp() then battle.levelCards:keypressed(key); return end
     -- The settings overlay is the top-most modal: it eats every key while it is up. Esc closes it
     -- (never forfeits the fight underneath), the rest work the list. Above the deployment phase too,
     -- since the phase's own Settings plate opens it -- a modal a screen raised is a modal over that screen.
@@ -7610,6 +7664,7 @@ end
 
 function battle.gamepadpressed(joystick, button)
     if battle.fadeOut then return end -- see keypressed: the ending takes no input
+    if battle.levelCardUp() then battle.levelCards:gamepadpressed(joystick, button); return end
     -- The settings overlay first, on the deployment phase as in the fight (see keypressed).
     if battle.settingsMenu then
         if button == "b" then closeSettings() else battle.settingsMenu:gamepadpressed(joystick, button) end
@@ -7683,6 +7738,7 @@ end
 
 function battle.mousemoved(x, y, dx, dy)
     battle.mouseX, battle.mouseY = x, y -- drives the status tooltip (board + panel hit-tests)
+    if battle.levelCardUp() then return end -- nothing under a level-up card is being pointed at
     -- A finger that slides is dragging, not holding. 12px of slop, because a finger never rests
     -- perfectly still and a reading that refuses to open for a steady hand is worse than none.
     if battle.hold and (math.abs(x - battle.hold.x) > 12 or math.abs(y - battle.hold.y) > 12) then
@@ -7738,6 +7794,7 @@ end
 -- first when the cursor is inside it, so its own history still scrolls; contains() is false while
 -- the log is closed, so a wheel over the board falls through to the strip.
 function battle.wheelmoved(dx, dy)
+    if battle.levelCardUp() then return end
     if battle.settingsMenu then return end -- the short list needs no scroll; swallow it
     if battle.deployModal() then battle.deployModal():wheelmoved(dx, dy); return end
     -- SWALLOWED, not routed. The deployment strip used to own the wheel and page the company sideways
@@ -7847,6 +7904,8 @@ end
 
 function battle.mousepressed(x, y, button)
     if battle.fadeOut then return end -- see keypressed: the ending takes no input
+    -- A tap is a click here: the level-up card takes it whole (see keypressed).
+    if battle.levelCardUp() then battle.levelCards:mousepressed(x, y, button); return end
     -- A FINGER HAS NO HOVER, so anything that follows the pointer has nothing to follow: pin the
     -- press as one. This is what lets a finger raise an assayed foe's kit card (battle.peekTarget)
     -- from the tile or the turn strip it last touched.
@@ -8055,6 +8114,7 @@ end
 -- Only the wind-up slider cares about a mouse release (to end a rung drag); everything else on the
 -- board is press-driven.
 function battle.mousereleased(x, y, button)
+    if battle.levelCardUp() then return end
     -- THE DROP. The finger carried the acting character to a tile and let go, so commit there --
     -- through the same seam the mouse, the keyboard and the pad confirm through, which is what makes
     -- the drop mean whatever the tile means: a step onto open ground, or a swing with the armed item
@@ -8111,6 +8171,7 @@ end
 function battle.cursorKind()
     local mx, my = battle.mouseX, battle.mouseY
     if not mx then return "arrow" end
+    if battle.levelCardUp() then return "hand" end -- the whole frame is the card's one button
     if battle.settingsMenu then
         if battle.settingsClose:contains(mx, my) then return "hand" end
         return battle.settingsMenu:mouseOverItem(mx, my) and "hand" or "arrow"

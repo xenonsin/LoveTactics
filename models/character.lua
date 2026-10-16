@@ -557,6 +557,10 @@ end
 function Character.instantiate(id, progress)
     local def = Character.defs[id]
     assert(def, "unknown character id: " .. tostring(id))
+    -- The race this body is built as. The blueprint's, unless the progress names another -- which only
+    -- the created avatar does: its people are chosen on the Charter's roll after the first fight
+    -- (states/character_creation.lua), so a save hands its race back through here (models/save.lua).
+    local race = (progress and progress.race) or def.race
 
     local stats = {}
     for key, value in pairs(def.stats) do
@@ -609,7 +613,7 @@ function Character.instantiate(id, progress)
         -- naga mage are both nagas, and neither fact tells you the other. A race carries RULES and a
         -- FIXED stat line and may never carry a growth table; see models/race.lua for the whole of
         -- that discipline.
-        race = def.race,
+        race = race,
         -- ...and what KIND of body that makes it: "humanoid" | "beast" | "demon" | "undead" |
         -- "construct" | "elemental" | "object". DERIVED FROM THE RACE and no longer authored anywhere.
         --
@@ -627,14 +631,14 @@ function Character.instantiate(id, progress)
         --
         -- Nil for a blueprint whose `race` is missing or misspelled, which is what makes that a loud
         -- failure at tests/race_spec.lua rather than a quiet one at a shelf.
-        kind = Race.kindOf(def.race),
+        kind = Race.kindOf(race),
         -- ...AND WHETHER IT HAS DIED. A TAG BESIDE THE RACE, NEVER A REPLACEMENT FOR IT (settled on review
         -- 2026-09-25, "The Dead Hand": "Skeletons do have classes and keep the original race's bonus on
         -- top of being tagged undead"). A dwarf skeleton is still a dwarf -- Stout, Inheritance, the
         -- dwarf's resist line, a fighter's growth and shelf -- and it is ALSO dead. So `race = "undead"`
         -- stays for the bodies that were never anything else (a wight, a ghoul, the Skeleton King), and
         -- `undead = true` on a blueprint marks a living race that died. Character.isUndead asks both.
-        undead = def.undead == true or def.vampire == true or Race.kindOf(def.race) == "undead" or nil,
+        undead = def.undead == true or def.vampire == true or Race.kindOf(race) == "undead" or nil,
         -- ...AND WHETHER IT DRINKS (the vampire tag, Character.isVampire). Implies the line above.
         vampire = def.vampire == true or nil,
         -- Which RUNG of the ladder this body sits on (docs/bestiary.md): 1 chaff · 2 line · 3 elite ·
@@ -719,7 +723,7 @@ function Character.instantiate(id, progress)
         -- top of it.
         resist = (function()
             local out, any = {}, false
-            for tag, amount in pairs(Race.get(def.race) and Race.get(def.race).resist or {}) do
+            for tag, amount in pairs(Race.get(race) and Race.get(race).resist or {}) do
                 out[tag] = amount; any = true
             end
             for tag, amount in pairs(def.resist or {}) do out[tag] = amount; any = true end
@@ -794,7 +798,7 @@ function Character.instantiate(id, progress)
     -- moves the ceiling and tops the pool up to it -- a race that granted health would grant it whole
     -- rather than leaving a body spawning wounded. Nothing ships one; the path exists so the first race
     -- that does is not a special case somebody has to notice.
-    for stat, amount in pairs(Race.statBonus(def.race)) do
+    for stat, amount in pairs(Race.statBonus(race)) do
         local cur = char.stats[stat]
         if type(cur) == "table" then
             cur.max = (cur.max or 0) + amount
@@ -835,7 +839,7 @@ function Character.instantiate(id, progress)
     -- shape, so he reads as a dwarf -- the race, its line, its short legs -- and carries none of what a
     -- dwarf is inside. No Stout means no pull toward loose gold, no Dragon-Sickness and no Share to take
     -- up. A flag on the body rather than a second dwarf race, so the race stays one table.
-    for _, itemId in ipairs(def.raceGrants == false and {} or Race.grantsOf(def.race)) do
+    for _, itemId in ipairs(def.raceGrants == false and {} or Race.grantsOf(race)) do
         for cell = 1, Character.MAX_INVENTORY do
             if not char.inventory[cell] then
                 char.inventory[cell] = Item.instantiate(itemId)
@@ -879,6 +883,60 @@ function Character.instantiate(id, progress)
     end
 
     return char
+end
+
+-- PUT A DIFFERENT PEOPLE ON A BODY THAT ALREADY EXISTS, and take the old one's off.
+--
+-- The created avatar fights its first street before the player has said who they are -- the Charter's
+-- roll is filled in after it (states/character_creation.lua) -- so its race is the one thing about a body
+-- that has to change after instantiate. Everything a race lands at instantiate is undone and redone
+-- here, in the same three places: the fixed stat line folded into the base stats, the resist floor the
+-- blueprint layers over, and what the race puts in the grid. A body's level-up growth is untouched,
+-- because a race never carries any (models/race.lua).
+--
+-- An old grant is lifted only off the cell it sits in, so the gifts a fight handed over keep their seats;
+-- a new grant takes the first free cell, as instantiate's does, and a full grid simply goes without it.
+function Character.setRace(char, race)
+    if not (char and race and Race.get(race)) then return false end
+    local old = char.race
+    if old == race then return true end
+    local def = Character.defs[char.id] or {}
+
+    local function fold(r, sign)
+        for stat, amount in pairs(Race.statBonus(r)) do
+            local cur = char.stats[stat]
+            if type(cur) == "table" then
+                cur.max = (cur.max or 0) + sign * amount
+                cur.current = math.min(cur.max, (cur.current or 0) + sign * amount)
+            elseif type(cur) == "number" then
+                char.stats[stat] = cur + sign * amount
+            end
+        end
+    end
+    fold(old, -1)
+    fold(race, 1)
+
+    local resist, any = {}, false
+    for tag, amount in pairs(Race.get(race).resist or {}) do resist[tag] = amount; any = true end
+    for tag, amount in pairs(def.resist or {}) do resist[tag] = amount; any = true end
+    char.resist = any and resist or nil
+
+    if def.raceGrants ~= false then
+        local lifted = {}
+        for _, id in ipairs(old and Race.grantsOf(old) or {}) do lifted[id] = true end
+        for cell = 1, Character.MAX_INVENTORY do
+            local item = char.inventory[cell]
+            if item and lifted[item.id] then char.inventory[cell] = nil end
+        end
+        for _, id in ipairs(Race.grantsOf(race)) do
+            local slot = Character.firstEmptySlot(char)
+            if slot then char.inventory[slot] = Item.instantiate(id) end
+        end
+    end
+
+    char.race = race
+    char.kind = Race.kindOf(race)
+    return true
 end
 
 return Character

@@ -271,6 +271,7 @@ return {
             end
 
             player.hubIntro = nil
+            player.runsStarted = 1 -- the priest shelf is trip 1 on the city schedule (Offer.SCHEDULE)
             ctx = Counter.context(player, cathedral)
             assert(ctx.offers.mend and ctx.offers.shelf,
                 "once the morning is spent the desk offers its shelf again")

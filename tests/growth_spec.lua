@@ -80,6 +80,9 @@ return {
         fn = function()
             local floor = Growth.ENEMY_DAMAGE_GROWTH
             for class, def in pairs(Growth.defs) do
+                -- THE NOVICE IS EXEMPT BY NAME (data/growth/novice.lua): a starting class you are meant to
+                -- leave is allowed an expiry date, and its even +1 table is what the blank slate is.
+                if class == Growth.NEUTRAL_CLASS then def = { health = floor } end
                 for _, channel in ipairs({ { false, "physical", "defense" }, { true, "magical", "magicDefense" } }) do
                     local magical, name, stat = channel[1], channel[2], channel[3]
                     assert(Growth.meetsSurvivabilityFloor(def, magical),
@@ -226,8 +229,10 @@ return {
         fn = function()
             local zombie = Character.instantiate("character_zombie") -- no innate class
             assert(zombie.class == nil, "the zombie declares no class")
-            assert(Growth.classOf(zombie) == Growth.NEUTRAL_CLASS,
-                "no declaration and no innate class falls back to the neutral default")
+            -- CREATURE_CLASS, not NEUTRAL_CLASS: the Novice is the player's starting class now, and the
+            -- creature fallback stayed fighter so the bestiary did not re-balance (models/growth.lua).
+            assert(Growth.classOf(zombie) == Growth.CREATURE_CLASS,
+                "no declaration and no innate class falls back to the creature default")
         end,
     },
 

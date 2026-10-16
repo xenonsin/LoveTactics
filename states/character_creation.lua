@@ -1,73 +1,125 @@
--- Character creation: the first screen of a New Game, before the prologue. Two steps, in order:
--- the avatar's BODY (`body` 1 or 2 -- which sprite set you wear, deliberately not a gender label),
--- then the NAME. The name is asked here rather than on the Colosseum's sand because Rowan has known
--- you since before the first scene -- same company, and she taught you the sword -- so she has to be
--- able to address you by it (see docs/story.md).
+-- Character creation: THE CHARTER'S ROLL, filled in after the first fight. Two steps, in order:
 --
--- THE BODY STEP SHOWS THE BODIES. It used to be ui/menu.lua carrying two rows that read "Body 1" and
--- "Body 2", under the heading "Who will you be?" -- a question about a face, answered by an index,
--- with the faces themselves nowhere on the screen. It is now a pair of portrait cards
--- (ui/portrait_choice.lua) and the pictures are the choice.
+--   name    what Rowan writes down (ui/name_entry.lua)
+--   people  the avatar's race, one of the eight playable peoples (models/adventurers.lua's RACES)
 --
--- IT IS ALSO THE ONLY PLACE THE CHOICE IS EVER PAID OFF. The unchosen body used to go on Bryn, a
--- sibling standing in the house the prologue burned, so the menu meant something one scene later and
--- off screen; that scene is cut (data/conversations/prologue/conversation_prologue_village.lua). So
--- the picture is not decoration on the step, it is the whole of what makes the step a decision.
+-- IT USED TO BE THE FIRST SCREEN OF A NEW GAME, asking for a body and a name before the player had seen
+-- a board. It is now reached from the prologue (states/prologue.lua) the beat after the first street is
+-- held, behind Rowan's scene putting the newest hand on the Charter's books
+-- (data/conversations/prologue/conversation_prologue_roll.lua) -- so a New Game reaches a fight on its
+-- first click, and the questions are asked of somebody who has just fought as the avatar.
 --
--- Reached from states/menu.lua's New Game after Player.newSlot has built the fresh player in the
--- first free save slot (models/save.lua), so both choices write straight onto Player.active;
--- states/prologue.lua reads them in `begin`.
+-- IT ASKS NO CLASS AND NO LOOK, and both were asked here once. The avatar starts as a Novice and earns
+-- every class afterwards, one at a time, as an achievement (a deed + a Charter Seal) -- so a trade picked
+-- on the first page would hand over what the rest of the game is built to make you earn. The look went
+-- with it: the default body is worn (Player.applyAvatarBody still runs).
 --
--- Reuses ui/portrait_choice.lua and ui/name_entry.lua, which each carry mouse + keyboard + gamepad
--- (the project's three-input standard). Both draw on Theme.drawMount, so the two steps of one flow
--- stand on the same ground.
+-- A people is the first choice in the game with consequences. It is put on the body that already exists
+-- (Character.setRace): its stat line, its resist and anything it puts in the grid -- and it is the one
+-- equip gate in the game, so it decides which race pieces the avatar can ever carry (Character.canCarry).
+-- Saved per body (models/save.lua).
+--
+-- The people step can step back to the name: Esc, the pad's B, or the Back button in the corner for a
+-- mouse. The name step cannot, because behind it is the fight that has already been won.
+--
+-- Widgets: ui/name_entry.lua and ui/menu.lua (card rows with a `sub` line), each carrying mouse +
+-- keyboard + gamepad (the project's three-input standard), all on Theme.drawMount.
 
 local State = require("states")
-local PortraitChoice = require("ui.portrait_choice")
 local NameEntry = require("ui.name_entry")
+local Menu = require("ui.menu")
 local Player = require("models.player")
+local Character = require("models.character")
+local Race = require("models.race")
 local Scale = require("scale")
+local Theme = require("ui.theme")
 
 local creation = {}
 
-local Theme = require("ui.theme")
 local titleFont = Theme.display(40)
 local promptFont = Theme.display(20)
+local subFont = Theme.body(15)
+local backFont = Theme.body(18)
 
--- `mode` is "body" (the menu) or "name" (the entry widget); `widget` is whichever owns input now.
 local widget
+local choice = {}
 
--- Step 2: ask the name, then begin the prologue with both choices banked on the player.
-local function askName()
+local BACK = { x = 40, y = 40, w = 120, h = 40 }
+local backHot = false
+
+local function avatarOf(player)
+    for _, char in ipairs((player and player.roster) or {}) do
+        if char.id == "character_avatar" then return char end
+    end
+    return nil
+end
+
+local askName, askPeople
+
+-- The roll is written: everything lands on the live avatar, and the prologue picks up where it left off.
+local function finish()
+    local p = Player.active
+    local avatar = avatarOf(p)
+    if p then
+        p.name = choice.name or p.name
+    end
+    if avatar then
+        if choice.name then avatar.name = choice.name end
+        if choice.race then Character.setRace(avatar, choice.race) end
+    end
+    Player.applyAvatarBody(p)
+    require("states.prologue").resume()
+end
+
+function askName()
     creation.mode = "name"
     widget = NameEntry.new({
-        -- "And what do they call you?" stood here, and the "And" was continuing a conversation the
-        -- step before it never started: the body step asks a question with a picture, not a sentence.
-        -- "What do they call you?" then asked about a reputation when the field wants a name.
         prompt = "What's your name?",
+        text = choice.name,
         onSubmit = function(name)
-            if Player.active then Player.active.name = name end
-            State.switch(require("states.prologue"))
+            choice.name = name
+            askPeople()
         end,
     })
 end
 
--- Step 1: record the chosen body on the live player, then move to the name.
-local function chooseBody(body)
-    if Player.active then Player.active.body = body end
-    askName()
+local function cardMenu(items)
+    return Menu.new(items, {
+        buttonWidth = 640, buttonHeight = 64, spacing = 8, startY = 280,
+        subFont = subFont, maxVisible = 5,
+    })
+end
+
+function askPeople()
+    creation.mode = "people"
+    creation.prompt = "Your people"
+    local items = {}
+    for _, id in ipairs(require("models.adventurers").RACES) do
+        local def = Race.get(id)
+        if def then
+            items[#items + 1] = {
+                label = def.name or id,
+                sub = def.description,
+                action = function() choice.race = id; finish() end,
+            }
+        end
+    end
+    widget = cardMenu(items)
+end
+
+local function canGoBack() return creation.mode ~= "name" end
+
+local function goBack()
+    if creation.mode == "people" then askName() end
+end
+
+local function overBack(x, y)
+    return canGoBack() and x >= BACK.x and x <= BACK.x + BACK.w and y >= BACK.y and y <= BACK.y + BACK.h
 end
 
 function creation.enter()
-    creation.mode = "body"
-    -- The portrait paths the avatar blueprint and models/conversation.lua's `speaker` already resolve
-    -- to off `player.body`, so the card shows the face the game will actually draw for this save
-    -- rather than a picture chosen for the menu. Both are uncommissioned today and the card says so;
-    -- see the header of ui/portrait_choice.lua on why the composed board token is not borrowed here.
-    widget = PortraitChoice.new({
-        { label = "Body 1", portrait = "assets/portraits/avatar_1.png", action = function() chooseBody(1) end },
-        { label = "Body 2", portrait = "assets/portraits/avatar_2.png", action = function() chooseBody(2) end },
-    }, { centerY = 486 }) -- centred in the band under the prompt at 230; see ui/portrait_choice.lua
+    choice = { name = Player.active and Player.active.name or nil }
+    askName()
 end
 
 function creation.update(dt)
@@ -75,45 +127,55 @@ function creation.update(dt)
 end
 
 function creation.draw()
-    -- The name step draws its own full screen (field + on-screen keyboard); the body step is this
-    -- state's own backdrop plus the menu.
+    -- The name step draws its own full screen (field + on-screen keyboard).
     if creation.mode == "name" then
         widget:draw()
         return
     end
 
-    -- Fill the logical area explicitly (letterbox bars are cleared to black), matching states/menu.lua.
     Theme.drawMount(Scale.WIDTH, Scale.HEIGHT)
 
     love.graphics.setFont(titleFont)
     Theme.set(Theme.accentAmber)
-    love.graphics.printf("A New Journey", 0, 150, Scale.WIDTH, "center")
+    love.graphics.printf("The Charter's Roll", 0, 150, Scale.WIDTH, "center")
 
     love.graphics.setFont(promptFont)
     Theme.set(Theme.muted)
-    love.graphics.printf("Who will you be?", 0, 230, Scale.WIDTH, "center")
+    love.graphics.printf(creation.prompt or "", 0, 210, Scale.WIDTH, "center")
 
     widget:draw()
+
+    -- The mouse's way back a step; Esc and B are the other two.
+    love.graphics.setFont(backFont)
+    Theme.set(backHot and Theme.accentAmber or Theme.muted)
+    love.graphics.rectangle("line", BACK.x, BACK.y, BACK.w, BACK.h, 4, 4)
+    love.graphics.printf("Back", BACK.x, BACK.y + (BACK.h - backFont:getHeight()) / 2, BACK.w, "center")
 
     love.graphics.setColor(1, 1, 1)
 end
 
 function creation.mousemoved(x, y)
+    backHot = overBack(x, y)
     widget:mousemoved(x, y)
 end
 
--- Hand over anything clickable (a choice button, a key), arrow elsewhere -- see ui/cursor.lua. The
--- name widget answers this itself; the menu is asked whether the point is over an item.
 function creation:cursorKind(x, y)
     if creation.mode == "name" then return widget:cursorKind(x, y) end
+    if overBack(x, y) then return "hand" end
     return widget:mouseOverItem(x, y) and "hand" or "arrow"
 end
 
 function creation.mousepressed(x, y, button)
+    if button == 1 and overBack(x, y) then goBack(); return end
     widget:mousepressed(x, y, button)
 end
 
+function creation.wheelmoved(dx, dy)
+    if widget.wheelmoved then widget:wheelmoved(dx, dy) end
+end
+
 function creation.keypressed(key)
+    if key == "escape" and canGoBack() then goBack(); return end
     widget:keypressed(key)
 end
 
@@ -123,6 +185,7 @@ function creation.textinput(t)
 end
 
 function creation.gamepadpressed(joystick, button)
+    if button == "b" and canGoBack() then goBack(); return end
     widget:gamepadpressed(joystick, button)
 end
 

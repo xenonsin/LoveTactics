@@ -15,7 +15,8 @@ local Player = require("models.player")
 local function classes()
     local out = {}
     for id in pairs(Class.defs) do
-        if id ~= "creature" then out[#out + 1] = id end
+        -- Not the creature bucket, and not the starter: nobody walks the rift as a Novice.
+        if id ~= "creature" and not Class.isStarter(id) then out[#out + 1] = id end
     end
     table.sort(out)
     return out

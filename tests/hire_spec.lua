@@ -27,7 +27,10 @@ end
 
 local function playableClasses()
     local out = {}
-    for id in pairs(Class.defs) do if Class.isPlayable(id) then out[#out + 1] = id end end
+    -- Not the starter: a stranger is hired into a trade, and nobody is hired as a Novice.
+    for id in pairs(Class.defs) do
+        if Class.isPlayable(id) and not Class.isStarter(id) then out[#out + 1] = id end
+    end
     table.sort(out)
     return out
 end

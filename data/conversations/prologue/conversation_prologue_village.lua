@@ -57,7 +57,7 @@ return {
     cast  = { "character_rowan", "character_avatar" },
 
     script = {
-        { "character_rowan", "The demons that breached through the rift are up ahead, {name}.", tag = 1 },
+        { "character_rowan", "The demons that breached through the rift are up ahead.", tag = 1 },
         { "character_rowan", "They look like simple imps, so the guild report seems accurate.", tag = 2 },
         { "character_rowan", "Strike before they start to notice us. Watch this!", tag = 3 },
     },

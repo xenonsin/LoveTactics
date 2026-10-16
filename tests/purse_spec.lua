@@ -492,8 +492,13 @@ return {
 
             -- One body standing at that rung opens it, which is the per-body rule: a crossing is
             -- somebody who went that way, not a company that between them did.
+            -- The level is the GATE; the class is unlocked by the act (Class.unlock), so the level alone
+            -- leaves it shut and the ledger opens it.
             p.roster[1].technique = { rogue = Class.classLevelCost(rung) }
-            assert(Class.isUnlocked(p, "mammonite"), "rogue " .. rung .. " is the gate")
+            assert(Class.levelGateMet(p.roster[1], "mammonite"), "rogue " .. rung .. " is the gate")
+            assert(not Class.isUnlocked(p, "mammonite"), "meeting the gate is not the unlock")
+            p.roster[1].unlocked = { mammonite = true }
+            assert(Class.isUnlocked(p, "mammonite"), "the unlocked body opens it for the company")
 
             local function gate(id) return Item.defs[id].unlockLevel or 0 end
             for _, id in ipairs({ "ability_ledgers_due", "ability_price_on_the_head" }) do

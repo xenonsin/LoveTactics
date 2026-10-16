@@ -20,8 +20,8 @@
 --   blueprint argues that what a member carries and what a member IS are one question asked twice, kept
 --   deliberately in one room. Splitting that needs the panel to learn a mode list, not a new door.
 --
--- THE BOOK WAITS FOR THE FOURTH TRIP HOME. A catalogue with nothing in it is a room opened before there
--- is anything to read in it; by the fourth trip something down there has killed the company or nearly
+-- THE BOOK WAITS FOR THE FIFTH TRIP HOME (Offer.SCHEDULE). A catalogue with nothing in it is a room opened before there
+-- is anything to read in it; by the fifth trip something down there has killed the company or nearly
 -- done it, and "what WAS that" is a question the player actually has.
 --
 -- IT IS DELIBERATELY THE LIGHT ONE, and it sits where it does for that: a read-only room, no currency
@@ -33,7 +33,7 @@
 -- (models/forge.lua's Forge.WORK); the split is about who you walk to, which is the only thing a room
 -- has ever been. A player hunting for where a spell gets better had no reason to try the armoury.
 --
--- IT LANDS ON THE FIFTH TRIP, a clear trip after the bestiary and two after the forge, and the order is
+-- IT LANDS ON THE SEVENTH TRIP, the last room on the schedule, well after the forge, and the order is
 -- the argument: the bench teaches what a rung IS on the gear the player has been swinging since the
 -- first morning, and this room then says the same thing about the half of the kit that is read rather
 -- than swung. Teaching both in one homecoming is two currencies, a ladder, ceilings and materials twice
@@ -53,25 +53,14 @@ return {
     -- The desk: what this house says on the way in, and the rooms it offers (models/counter.lua).
     counter = "conversation_arcanum_counter",
     offers = {
-        -- THE SHELF IS NEVER GATED, because the shelf IS the house. Under the card era a shut shelf
-        -- hid the whole shopfront, so the gate and the door were one fact; the fold put these doors on
-        -- the plaza for OTHER rooms' sake, and the gate started meaning "walk through a shopfront and
-        -- be offered no shop" -- which is what every desk in the city shipped reading.
-        --
-        -- A CLASS LEVEL BUYS DEPTH NOW and nothing else, which is the job Quest.shelfRung already
-        -- describes itself doing: level 0 IS rung 0, the class's bottom band, and the ladder unlocks
-        -- upward from there. Under the level-1 gate nobody could ever see rung 0 at all.
-        --
-        -- QUIET all the same: a shelf never puts a card on the plaza. A class rung is a reward the
-        -- player cannot see, and hanging a door on it put shopfronts in the city that nobody chose to
-        -- earn (models/offer.lua's Offer.any).
-        { answer = "shelf", panel = "shop", quiet = true,
-          -- ...except to the company training for it (models/offer.lua's `declared` gate).
-          -- A shelf is not a deed the player can feel, so it stays quiet; taking up the class
-          -- it sells IS one, and it is the only thing that puts this card on the plaza early.
-          announce = { declared = true } },
-        { answer = "bestiary", panel = "bestiary", gate = { trips = 4 } },
-        { answer = "study", panel = "study", gate = { trips = 5 } }, -- see the header
+        -- THE SHELF OPENS ON THE CITY SCHEDULE (models/offer.lua's Offer.SCHEDULE): one house's shelf per
+        -- trip home, in a fixed order, unless a body unlocks this house's class first -- that pulls
+        -- the shelf into the next trip's slot. Once open it stays open, and it announces its house:
+        -- the plaza grows by one shopfront a homecoming. A class level still buys DEPTH and nothing
+        -- else (Quest.shelfRung): level 0 is rung 0, the bottom band.
+        { answer = "shelf", panel = "shop", gate = { city = "arcanum.shelf" } },
+        { answer = "bestiary", panel = "bestiary", gate = { city = "arcanum.bestiary" } },
+        { answer = "study", panel = "study", gate = { city = "arcanum.study" } }, -- see the header
     },
     description = "Staves, foci, the honing of a spell, and a catalogue of what is down there.",
 }

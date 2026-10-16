@@ -316,7 +316,9 @@ return {
             for _, class in ipairs({ "mage", "rogue", "priest", "hunter", "alchemist" }) do
                 elsewhere = math.max(elsewhere, Class.rosterLevel(player, class))
             end
-            for _, class in ipairs({ "knight", "fighter" }) do
+            -- Rowan fights as a knight; the avatar fights as a Novice (data/classes/novice.lua, 2026-10-15),
+            -- which has no house, so only the Bastion is a house Act 0 is fought in.
+            for _, class in ipairs({ "knight", "novice" }) do
                 local banked = 0
                 for _, char in ipairs(player.roster) do
                     banked = math.max(banked, (char.technique or {})[class] or 0)
@@ -344,8 +346,10 @@ return {
             for _, def in pairs(Building.defs) do
                 if def.counter then
                     total = total + 1
-                    assert(Offer.openSet(player, def).shelf,
-                        (def.vendor or "?") .. "'s shop is not behind its door")
+                    -- The skip lands on trip 0, and trip 0's shelf on the city schedule is the Bastion's
+                    -- (Offer.SCHEDULE): every other shelf waits for its trip.
+                    assert((Offer.openSet(player, def).shelf == true) == (def.vendor == "bastion"),
+                        (def.vendor or "?") .. "'s shelf is on the wrong side of trip 0")
                     local class = (Vendor.defs[def.vendor] or {}).class
                     local best = 0
                     for _, char in ipairs(player.roster) do
@@ -371,13 +375,11 @@ return {
                 if a[2] ~= b[2] then return a[2] > b[2] end
                 return a[1] < b[1]
             end)
-            local top = { [ranked[1][1]] = true, [ranked[2][1]] = true }
-            assert(top.bastion and top.colosseum, string.format(
-                "Act 0 is fought in the Bastion and the Colosseum; the roster leans on %s and %s",
-                ranked[1][1], ranked[2][1]))
-            assert(ranked[2][2] >= ranked[3][2] * 2, string.format(
-                "the two houses Act 0 is fought in must stand clear: %s banked %d against %s at %d",
-                ranked[2][1], ranked[2][2], ranked[3][1], ranked[3][2]))
+            assert(ranked[1][1] == "bastion", string.format(
+                "Act 0 is fought in the Bastion; the roster leans on %s", ranked[1][1]))
+            assert(ranked[1][2] >= ranked[2][2] * 2, string.format(
+                "the house Act 0 is fought in must stand clear: %s banked %d against %s at %d",
+                ranked[1][1], ranked[1][2], ranked[2][1], ranked[2][2]))
 
             -- Nothing is banked above what the fights could physically have paid: the per-fight ceiling
             -- a real fight enforces, over the four fights the road holds.

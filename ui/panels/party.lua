@@ -318,6 +318,29 @@ function Party.techniqueRows(char)
     return rows
 end
 
+-- IS THIS ARMORY TAB OPEN FOR THE CAMPAIGN YET? The Armory grows with the city (models/offer.lua's
+-- Offer.SCHEDULE): on the first morning it is the Loadout alone.
+--   tactics  from the first trip home (Player.tripsHome >= 1)
+--   classes  once any body has reached class level 1 in the NOVICE class -- the tab's own lesson is the
+--            first unlock. A company with nobody standing in Novice (a save from before the class
+--            existed), or a build without data/classes/novice.lua, is not held back by it.
+-- ANDed with the host's own flag, never instead of it (Descent.tacticsUnlocked / classesUnlocked).
+function Party.tabOpen(player, mode)
+    if type(player) ~= "table" then return true end
+    if mode == "tactics" then
+        return Player.tripsHome(player) >= 1
+    elseif mode == "classes" then
+        if not Class.defs.novice then return true end
+        local anyNovice = false
+        for _, char in ipairs(player.roster or {}) do
+            if Class.classLevel(char, "novice") >= 1 then return true end
+            if Class.declaredOf(char) == "novice" then anyNovice = true end
+        end
+        return not anyNovice
+    end
+    return true
+end
+
 function Party.new(opts)
     opts = opts or {}
     local self = setmetatable({}, Party)
@@ -356,9 +379,15 @@ function Party.new(opts)
     --   pool     which container the pool column shows: "stash" (default, the town shelf), "pack" (the
     --            bag the company is carrying -- the only one reachable underground), or "both", which
     --            adds the Stash/Pack switch to the pool header and is what provisioning is done on
+    -- ...and the CAMPAIGN's own gate on top of the host's (Party.tabOpen), for the save file's company
+    -- only -- `persist` is this panel's word for that, so the draft and the debug editor are untouched.
+    local campaign = opts.persist ~= false and type(opts.player) == "table"
+    local function allowed(mode)
+        return not campaign or Party.tabOpen(opts.player, mode)
+    end
     self.modes = { "loadout" }
-    if opts.tactics ~= false then self.modes[#self.modes + 1] = "tactics" end
-    if opts.classes ~= false then self.modes[#self.modes + 1] = "classes" end
+    if opts.tactics ~= false and allowed("tactics") then self.modes[#self.modes + 1] = "tactics" end
+    if opts.classes ~= false and allowed("classes") then self.modes[#self.modes + 1] = "classes" end
     if opts.stats then self.modes[#self.modes + 1] = "stats" end
     self.persist = opts.persist ~= false
     self.fielded = opts.fielded

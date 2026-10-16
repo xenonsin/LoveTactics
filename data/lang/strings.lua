@@ -29,6 +29,7 @@ return {
     ["desc.monk"] = { en = "Fights unarmed and banks the hits. Every strike stores chi, and the whole bank is spent at once on a single heavy blow.", ja = "" },  -- TODO
     ["desc.necromancer"] = { en = "Raises the dead. A foe that falls on the board gets back up fighting on your side, and a corpse you do not raise can be burst where it lies.", ja = "" },  -- TODO
     ["desc.ninja"] = { en = "Avoids the blow and answers it. Blinks out of reach, leaves a clone standing to take the hit, and stays unseen until the strike that kills.", ja = "" },  -- TODO
+    ["desc.novice"] = { en = "Trained in nothing in particular, and so ready for anything. Grows a little in every stat, and is where every one of the seven trades is first unlocked.", ja = "" },  -- TODO
     ["desc.paladin"] = { en = "Stands as a ward for the party. A standing aura cuts the damage every ally beside you takes, and banners hold that ground while they stand.", ja = "" },  -- TODO
     ["desc.plague_knight"] = { en = "Carries the plague into melee. Blows inflict Poison, and standing next to you poisons whoever is standing there.", ja = "" },  -- TODO
     ["desc.poacher"] = { en = "Traps first, kills second. A snare leaves the quarry Rooted, and your strikes hit a Rooted foe far harder.", ja = "" },  -- TODO
@@ -387,9 +388,12 @@ return {
     ["line.conversation_prologue_arrival.5"] = { en = "Let's collect our pay and see what work The Rift is offering, {name}.", ja = "" },  -- TODO
     ["line.conversation_prologue_arrival.6"] = { en = "PLACEHOLDER -- she says the Champion's blow is still on her, and she is hurt.", ja = "" },  -- TODO
     ["line.conversation_prologue_arrival.7"] = { en = "PLACEHOLDER -- and that she needs a priest at the Cathedral before anything else.", ja = "" },  -- TODO
+    ["line.conversation_prologue_roll.1"] = { en = "That's the street held. Not bad for a first job.", ja = "" },  -- TODO
+    ["line.conversation_prologue_roll.2"] = { en = "The Charter will want you on its roll properly now. Name and people.", ja = "" },  -- TODO
+    ["line.conversation_prologue_roll.3"] = { en = "Write it the way you want it read.", ja = "" },  -- TODO
     ["line.conversation_prologue_ruins.1"] = { en = "Not too bad for your first job, but there's no time to rest.", ja = "" },  -- TODO
     ["line.conversation_prologue_ruins.2"] = { en = "Let's move to clear out the remaining demons and find survivors.", ja = "" },  -- TODO
-    ["line.conversation_prologue_village.1"] = { en = "The demons that breached through the rift are up ahead, {name}.", ja = "" },  -- TODO
+    ["line.conversation_prologue_village.1"] = { en = "The demons that breached through the rift are up ahead.", ja = "" },  -- TODO
     ["line.conversation_prologue_village.2"] = { en = "They look like simple imps, so the guild report seems accurate.", ja = "" },  -- TODO
     ["line.conversation_prologue_village.3"] = { en = "Strike before they start to notice us. Watch this!", ja = "" },  -- TODO
     ["line.conversation_touchstone_vendor_intro.1"] = { en = "Four houses dig that hole and not one of them trusts the other three to say what came out of it. So they pay me to say it. Everything that comes up unnamed comes up here.", ja = "" },  -- TODO
@@ -572,6 +576,7 @@ return {
     ["title.conversation_hunters_lodge_slot_01_outro"] = { en = "The Antlers", ja = "" },  -- TODO
     ["title.conversation_hunters_lodge_vendor_intro"] = { en = "The Hunter's Lodge", ja = "" },  -- TODO
     ["title.conversation_prologue_arrival"] = { en = "After the Breach", ja = "" },  -- TODO
+    ["title.conversation_prologue_roll"] = { en = "The Charter's Roll", ja = "" },  -- TODO
     ["title.conversation_prologue_ruins"] = { en = "First Job", ja = "" },  -- TODO
     ["title.conversation_prologue_village"] = { en = "The Breach", ja = "" },  -- TODO
     ["title.conversation_touchstone_vendor_intro"] = { en = "Touchstone", ja = "" },  -- TODO

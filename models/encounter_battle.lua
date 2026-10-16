@@ -467,6 +467,22 @@ function EncounterBattle.spoils(opts)
         require("models.bestiary").recordMet(opts.player, opts.enemyUnits)
     end
 
+    -- THE CHARTER SEAL, on the same seam: the FIRST win over each elite encounter pays one (what a class
+    -- unlock spends -- models/class.lua). Stamped per encounter id on player.elitesBeaten, so a re-armed
+    -- elite met again pays its spoils and never a second seal. Walk-off and fought paths both land here.
+    local player = opts.player
+    if player and kind == "elite" and encounter.id then
+        player.elitesBeaten = player.elitesBeaten or {}
+        if not player.elitesBeaten[encounter.id] then
+            player.elitesBeaten[encounter.id] = true
+            local seal = require("models.class").SEAL_ID
+            spoils = spoils or { gold = 0, scrip = 0, loot = {} }
+            spoils.materials = spoils.materials or {}
+            spoils.materials[seal] = (spoils.materials[seal] or 0) + 1
+            spoils.seal = true -- the first-win flag, for a summary that wants to say so
+        end
+    end
+
     return spoils
 end
 

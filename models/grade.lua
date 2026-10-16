@@ -1826,7 +1826,8 @@ end
 local function caster(magical)
     local key = magical and "casterMagic" or "casterPhys"
     if cache[key] then return cache[key] end
-    local char = Balance.refChar(Grade.PRESTIGE, magical and "mage" or nil)
+    -- "fighter" by name, matching Balance.growthClassFor: nil resolves to the Novice now (2026-10-15).
+    local char = Balance.refChar(Grade.PRESTIGE, magical and "mage" or "fighter")
     cache[key] = { char = char, x = 0, y = 0, alive = true, side = "party",
         initiative = 0, statuses = {}, bonus = {}, resist = {} }
     return cache[key]
@@ -2225,6 +2226,14 @@ end
 --   min  the earliest it may unlock from
 --   max  the latest
 Grade.SLOT_PINS = {
+    -- THE CLASS-UNLOCK DESIGN'S PLACEMENTS (2026-10-15). Each sits where a class's unlock deed needs it, so
+    -- a re-grade must not move it (docs: the class-unlock review, round 13 to 22).
+    ability_charm = { at = 3, why = "Lust's first floor: the Beastmaster deed is charm 10 beasts" },
+    consumable_reviving_salts = { at = 0, why = "a standing item: the Necromancer deed is revive allies 15 times" },
+    ability_summon_fire_elemental = { at = 6, why = "a mage's first summon, one rung before the Summoner gate" },
+    ability_brace = { at = 1, why = "the knight's root-unlock gift" },
+    ability_quick_brew = { at = 1, why = "the alchemist's root-unlock gift" },
+
     -- ---------------------------------------------------------------------------
     -- RE-PINNED AFTER THE RULER MOVED (2026-09-22)
     -- ---------------------------------------------------------------------------

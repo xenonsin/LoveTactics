@@ -15,9 +15,10 @@
 -- Nothing is sworn to anybody in Act 0. The third companion, Saber, is NOT recruited
 -- here: the Colosseum debut that bests her is now the hub's own first-visit beat, taken from the Quest
 -- Board like any other quest (data/quests/arena_debut.lua carries the recruit and the victory scene as
--- its reward and `outro`). See states/hub.lua, which owns the arrival. The avatar's body and NAME are
--- both chosen before this state runs (states/character_creation.lua); `begin` reads them off
--- Player.active, and sets the flag the hub reads to know this is the first time through its gate.
+-- its reward and `outro`). See states/hub.lua, which owns the arrival. The avatar's name, people, class
+-- and look are chosen AFTER the first fight, on the Charter's roll (states/character_creation.lua,
+-- reached from the beat list below), so `begin` builds a nameless human "Stranger" for that fight and
+-- sets the flag the hub reads to know this is the first time through its gate.
 --
 -- Structure: `beats` is an ordered list of thunks. `next` runs the next one; each beat eventually
 -- calls `next` again (a scene on its onDone, an `action` immediately). The two beats that leave this
@@ -400,6 +401,16 @@ local function buildBeats()
         -- So a New Game reaches a tactics board on the click after the name is typed.
         action(function() Player.recruit(Player.active, "character_rowan") end), -- Rowan joins for the fight
         battle(VILLAGE_MAP),
+        -- THE CHARTER'S ROLL: who the player is, asked once they have fought as somebody. Rowan puts the
+        -- newest hand on the books -- name, people, trade -- and character creation takes those three
+        -- (and the look) before the map. It was the first screen of a New Game; it moved here so the
+        -- first click reaches a board. Played with `deferJoins` so Rowan's join banner still folds onto
+        -- the map's opening, where conversation_prologue_ruins' header says it lands.
+        function()
+            require("models.conversation").play("conversation_prologue_roll", function()
+                State.switch(require("states.character_creation"))
+            end, nil, { deferJoins = true })
+        end,
         -- THERE IS NO SCENE BEAT BETWEEN THE FIGHT AND THE MAP. One stood here --
         -- `conversation_prologue_flee`, played over a plain backdrop -- and it is deleted; its lines
         -- moved into the sweep's own opening (conversation_prologue_ruins), which plays over the map
@@ -460,13 +471,14 @@ function prologue.next()
     end
 end
 
--- First entry of a New Game: build the avatar from the body and name chosen at character creation,
--- reset the roster to just the avatar (the company is earned through play), and start the beats.
+-- First entry of a New Game: build the avatar, reset the roster to just the avatar (the company is
+-- earned through play), and start the beats. The avatar fights the first street as the blueprint's
+-- nameless human; the Charter's roll after it names them and puts on their people and class.
 function prologue.begin()
     local p = Player.active
     local avatar = Character.instantiate("character_avatar")
-    -- The name is typed at creation, so the avatar is named before the first line is spoken --
-    -- Rowan is sworn to you and has to be able to say it. Falls back to the blueprint's "Stranger".
+    -- Nothing has been typed yet on a New Game, so this falls back to the blueprint's "Stranger" -- which
+    -- is why no line spoken before the roll may use {name} (tests/prologue_spec.lua holds that).
     if p and p.name then avatar.name = p.name end
     prologue.avatar = avatar
     p.roster = { avatar }

@@ -15,7 +15,7 @@
 -- pouring the counter into this vendor would have quietly deleted the rogue shelf rather than merged
 -- with it. The market keeps its own vendor blueprint and its own panel; what it lost was its card.
 --
--- THE COUNTER IS THE FIRST DOOR THE CITY GROWS, on the first trip home. The first morning
+-- THE COUNTER ARRIVES ON THE SECOND TRIP HOME (Offer.SCHEDULE). The first morning
 -- has exactly ONE thing to teach and it is the stair -- doubly so when almost nothing is on the shelf
 -- yet, since a counter stocks a ware only once the company has carried one out (models/vendor.lua's
 -- `lockReason`). So the city opens on the Armory and the Rift, the player goes down, and this door is
@@ -33,24 +33,13 @@ return {
     offers = {
         -- The town's own counter: plain kit and three rolled rows a day, any class, no class level in
         -- the way (models/market.lua). Its own vendor, so its racks are its racks -- see the header.
-        { answer = "counter", panel = "shop", vendor = "market", gate = { trips = 1 } },
-        -- THE SHELF IS NEVER GATED, because the shelf IS the house. Under the card era a shut shelf
-        -- hid the whole shopfront, so the gate and the door were one fact; the fold put these doors on
-        -- the plaza for OTHER rooms' sake, and the gate started meaning "walk through a shopfront and
-        -- be offered no shop" -- which is what every desk in the city shipped reading.
-        --
-        -- A CLASS LEVEL BUYS DEPTH NOW and nothing else, which is the job Quest.shelfRung already
-        -- describes itself doing: level 0 IS rung 0, the class's bottom band, and the ladder unlocks
-        -- upward from there. Under the level-1 gate nobody could ever see rung 0 at all.
-        --
-        -- QUIET all the same: a shelf never puts a card on the plaza. A class rung is a reward the
-        -- player cannot see, and hanging a door on it put shopfronts in the city that nobody chose to
-        -- earn (models/offer.lua's Offer.any).
-        { answer = "shelf", panel = "shop", quiet = true,
-          -- ...except to the company training for it (models/offer.lua's `declared` gate).
-          -- A shelf is not a deed the player can feel, so it stays quiet; taking up the class
-          -- it sells IS one, and it is the only thing that puts this card on the plaza early.
-          announce = { declared = true } },
+        { answer = "counter", panel = "shop", vendor = "market", gate = { city = "undercroft.counter" } },
+        -- THE SHELF OPENS ON THE CITY SCHEDULE (models/offer.lua's Offer.SCHEDULE): one house's shelf per
+        -- trip home, in a fixed order, unless a body unlocks this house's class first -- that pulls
+        -- the shelf into the next trip's slot. Once open it stays open, and it announces its house:
+        -- the plaza grows by one shopfront a homecoming. A class level still buys DEPTH and nothing
+        -- else (Quest.shelfRung): level 0 is rung 0, the bottom band.
+        { answer = "shelf", panel = "shop", gate = { city = "undercroft.shelf" } },
     },
     description = "No sign, no door you'd notice. Everything here belonged to someone else.",
 }

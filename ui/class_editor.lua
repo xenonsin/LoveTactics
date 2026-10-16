@@ -70,7 +70,14 @@ local Building = require("models.building")
 local Class = require("models.class")
 local Growth = require("models.growth")
 local Item = require("models.item")
+local Player = require("models.player") -- packOpen (town only), the seal count, the first free seal
+local Locale = require("models.locale") -- the coach line's catalog seam
 local InputMode = require("input_mode")
+
+-- THE UNLOCK CEREMONY (agent C's card, ui/levelup_card.lua). Required softly: the tab works without it,
+-- the unlock simply plays no card.
+local okCard, LevelupCard = pcall(require, "ui.levelup_card")
+if not okCard then LevelupCard = nil end
 
 local ClassEditor = {}
 ClassEditor.__index = ClassEditor
@@ -114,10 +121,15 @@ end
 -- The seven root classes, in a fixed order. Class.roots() is keyed by id and `pairs` over it is
 -- unspecified, so a list that reordered itself between two openings of the same panel would read as a
 -- bug -- and this is a screen the player learns the shape of.
+-- THE NOVICE STANDS FIRST, above the seven: it is where every body starts and every root is unlocked
+-- from (Class.canUnlock), so it heads the rail as the trunk the houses branch off.
 local function classOrder()
     local out = {}
     for id in pairs(Class.roots()) do out[#out + 1] = id end
     table.sort(out)
+    for id in pairs(Class.defs) do
+        if Class.isStarter(id) then table.insert(out, 1, id) end
+    end
     return out
 end
 
@@ -276,8 +288,12 @@ function ClassEditor:buildRows()
 
         self.rows[#self.rows + 1] = {
             id = id, kind = kind, parent = parent, cross = cross, gate = gate,
-            name = kind == "class" and Item.classDisplayName(id) or Class.displayName(id),
+            name = kind == "class" and (Item.classDisplayName(id) or Class.displayName(id))
+                or Class.displayName(id),
             level = level, held = held, needed = needed,
+            -- A base class is no longer held from the first morning: it is unlocked per body like
+            -- everything else (Class.isUnlocked), so its row can stand shut under its own name.
+            unlocked = (char and Class.isUnlocked(char, id)) or false,
         }
     end
 
@@ -287,10 +303,12 @@ function ClassEditor:buildRows()
     -- press), and every one of those is a question this row has no answer to.
     local function shutEntry(id, parent)
         local gate, tail = lockParts(id, parent)
+        local held, needed, level = 0, 0, 0
+        if char then held, needed, level = Class.classProgress(char, id) end
         self.rows[#self.rows + 1] = {
-            kind = "shut", parent = parent, gate = gate, locked = tail,
+            id = id, kind = "shut", parent = parent, gate = gate, locked = tail,
             name = Class.displayName(id) or id,
-            level = 0, held = 0, needed = 0,
+            level = level, held = held, needed = needed, unlocked = false,
         }
     end
 
@@ -319,9 +337,12 @@ end
 -- (see the header): picking a row opens the detail column on it, and there is nothing to open. Kept as
 -- one reader because the cursor, the mouse and `step` all ask this, and the mouse asks it about an
 -- index that may not exist.
+-- A SHUT ROW IS PICKABLE NOW, which reverses the header's rule on purpose: a class is unlocked per body
+-- with a deed and a Charter Seal, so the detail column has something true to say about a shut class --
+-- what it asks, how far this body is toward it, and the Unlock press once it is met.
 function ClassEditor:isSelectable(i)
     local row = i and self.rows[i]
-    return row ~= nil and row.kind ~= "shut"
+    return row ~= nil and row.id ~= nil
 end
 
 function ClassEditor:currentRow()
@@ -444,6 +465,8 @@ end
 
 function ClassEditor:setChar(char)
     self.char = char
+    self.card = nil
+    if char then Class.grandfather(char) end
     self.cursor = 1
     self.scroll = 0
     self.hoverRow, self.hoverHouse, self.hoverChange = nil, nil, nil
@@ -476,16 +499,72 @@ end
 
 -- Can this body take the highlighted class as its own? Only an opened class can be highlighted at all
 -- (a shut row is named but unpickable), so the only refusal left is the one it is already standing in.
+-- UNDERGROUND THE TAB IS READ-ONLY: class changes and unlocks happen in town (Player.packOpen, the flag
+-- the Loadout reads for the bag). Everything still draws; nothing presses.
+function ClassEditor:readOnly()
+    return self.player ~= nil and Player.packOpen(self.player)
+end
+
 function ClassEditor:canChange()
     local row = self:currentRow()
-    if not (row and self.char) then return false end
+    if not (row and row.id and self.char) or self:readOnly() then return false end
+    if not Class.isUnlocked(self.char, row.id) then return false end
     return row.id ~= Growth.classOf(self.char)
 end
 
 function ClassEditor:changeClass()
     if not self:canChange() then return false end
+    Class.grandfather(self.char) -- the class being left stays this body's
     self.char.declaredClass = self:currentRow().id
     return true
+end
+
+-- May the highlighted class be unlocked right now: met (Class.canUnlock), a seal in hand, in town.
+function ClassEditor:canUnlock()
+    local row = self:currentRow()
+    if not (row and row.id and self.char and self.player) then return false end
+    return Class.unlockBlock(self.player, self.char, row.id) == nil
+end
+
+-- Spend a seal, make the class this body's, and play the ceremony. Returns true on an unlock.
+-- `ClassEditor.onUnlocked(char, classId, giftId)`, when a host sets it, hears every unlock.
+function ClassEditor:unlockClass()
+    if not self:canUnlock() then return false end
+    local id = self:currentRow().id
+    local ok, gift = Class.unlock(self.player, self.char, id)
+    if not ok then return false end
+    self.lastGift = gift
+    if LevelupCard and LevelupCard.showUnlock then
+        local okShow, card = pcall(LevelupCard.showUnlock, self.char, id, Class.boostFor(id) or {})
+        if okShow then self.card = card end
+    end
+    if ClassEditor.onUnlocked then ClassEditor.onUnlocked(self.char, id, gift) end
+    local keepHouse, keepCursor = self.house, self.cursor
+    self:buildHouses()
+    self.house = keepHouse
+    self:buildRows()
+    for i, row in ipairs(self.rows) do
+        if row.id == id then self.cursor = i break end
+    end
+    if not self:isSelectable(self.cursor) then self.cursor = keepCursor end
+    self:scrollToCursor()
+    return true
+end
+
+-- THE FREE FIRST SEAL: the first time this tab opens on a Novice who has reached Novice 1, Rowan hands
+-- one over (player.flags.firstSealGiven) and says so in a coach line. Once per save.
+function ClassEditor:offerFirstSeal()
+    local p, char = self.player, self.char
+    if not (p and char) then return end
+    p.flags = p.flags or {}
+    if p.flags.firstSealGiven then return end
+    if Growth.classOf(char) ~= Growth.NEUTRAL_CLASS then return end
+    if Class.classLevel(char, Growth.NEUTRAL_CLASS) < 1 then return end
+    p.flags.firstSealGiven = true
+    Player.addMaterial(p, Class.SEAL_ID, 1)
+    -- PLACEHOLDER COPY for the author: Rowan's line is a stand-in until the scene is written.
+    self.coach = Locale.get("ui.class_editor.first_seal",
+        "Rowan: Take this seal. Spend it to make a class yours.")
 end
 
 -- ---------------------------------------------------------------------------
@@ -548,10 +627,12 @@ function ClassEditor:cycleRegion()
 end
 
 function ClassEditor:isFirstRegion()
+    if self.card then return false end -- the ceremony holds the tab: no walking off it to the rail
     return self.region == "houses"
 end
 
 function ClassEditor:navigate(dc, dr)
+    if self.card then return end
     -- Left/right crosses between the two columns. Pushing left off the houses is the host's business:
     -- that is the edge of the editor, and it leads back to the portrait rail (Party:navigate reads
     -- isFirstRegion), which is why this only handles the crossing it owns.
@@ -563,11 +644,15 @@ end
 
 -- Confirm means "the thing this column is for". On the houses that is opening the shelf, which is what
 -- a press on a row of doors should do; on the shelf it is the one act on the tab.
+-- On a shut class that is met, confirm is the Unlock; on an unlocked one it is the Change. The two are
+-- never offered on the same row, so one button carries both.
 function ClassEditor:confirm()
+    if self.card then self.card:press() return end
     if self.region == "houses" then
         self.region = "classes"
         return
     end
+    if self:canUnlock() then self:unlockClass() return end
     self:changeClass()
 end
 
@@ -575,11 +660,33 @@ end
 -- by Party:keypressed). A second verb needs a second button on every device, and this one is free on
 -- both: the roll has no rule to enable, which is what F does on the other column editor.
 function ClassEditor:altConfirm()
+    if self.card then self.card:press() return end
     self:visitTrainer()
 end
 
+-- Esc / B: the ceremony eats it (a press reveals, the next dismisses); otherwise nothing here is held
+-- open, so it belongs to the panel.
 function ClassEditor:cancel()
-    return false -- nothing here is held open, so Esc belongs to the panel
+    if self.card then self.card:press() return true end
+    return false
+end
+
+-- Raw input, for a host that forwards it (the card swallows everything while it is up).
+function ClassEditor:keypressed(key)
+    if self.card then return self.card:keypressed(key) end
+    return false
+end
+
+function ClassEditor:gamepadpressed(joystick, button)
+    if self.card then return self.card:gamepadpressed(joystick, button) end
+    return false
+end
+
+function ClassEditor:update(dt)
+    if self.card then
+        self.card:update(dt)
+        if self.card.done then self.card = nil end
+    end
 end
 
 function ClassEditor:contains(x, y)
@@ -587,6 +694,8 @@ function ClassEditor:contains(x, y)
 end
 
 function ClassEditor:mousemoved(x, y)
+    if self.card then return true end
+    self.hoverUnlock = hit(self.unlockRect, x, y)
     self.hoverRow, self.hoverHouse = nil, nil
     for i, r in pairs(self.rowRects) do
         if hit(r, x, y) then self.hoverRow = i break end
@@ -599,11 +708,20 @@ function ClassEditor:mousemoved(x, y)
 end
 
 function ClassEditor:wheelmoved(dy)
+    if self.card then return true end
     local span = self:visibleRows()
     self.scroll = math.max(0, math.min(self.scroll - dy, math.max(0, #self.rows - span)))
 end
 
-function ClassEditor:mousepressed(x, y)
+function ClassEditor:mousepressed(x, y, button)
+    if self.card then
+        self.card:mousepressed(x, y, button or 1)
+        return true
+    end
+    if hit(self.unlockRect, x, y) then
+        self:unlockClass()
+        return true
+    end
     -- A house opens on the press that picks it: there is no second click for "open", because the shelf
     -- beside it is already the thing a player clicked the house to see.
     for i, r in pairs(self.houseRects) do
@@ -635,7 +753,8 @@ function ClassEditor:mousepressed(x, y)
 end
 
 function ClassEditor:cursorKind(x, y)
-    if hit(self.changeRect, x, y) then return "hand" end
+    if self.card then return "arrow" end
+    if hit(self.changeRect, x, y) or hit(self.unlockRect, x, y) then return "hand" end
     -- The hand appears over an OPEN door only. A shut trainer's plate is a notice, and a pointer that
     -- turned into a hand over it would promise a press that does nothing.
     if hit(self.trainerRect, x, y) then
@@ -655,6 +774,10 @@ function ClassEditor:prompts()
     local pad = InputMode.isGamepad()
     local out = {}
     local function add(glyph, label) out[#out + 1] = { glyph = glyph, label = label } end
+    if self.card then
+        add(pad and "A" or "Enter", "Continue")
+        return out
+    end
     if self.region == "houses" then
         add(pad and "D-pad" or "Up/Down", "Pick house")
         add(pad and "A" or "Enter", "Open house")
@@ -664,7 +787,8 @@ function ClassEditor:prompts()
     add("Left", "Houses")
     -- The one verb, offered only where it is legal: a body already standing in the highlighted class
     -- has nothing to press, and a prompt for it would read as the press having failed.
-    if self:canChange() then add(pad and "A" or "Enter", "Change class") end
+    if self:canUnlock() then add(pad and "A" or "Enter", "Unlock class")
+    elseif self:canChange() then add(pad and "A" or "Enter", "Change class") end
     -- Same rule for the walk: the prompt stands while the door does. A shut house keeps its plate on
     -- the column, because the plate is what says how to open it -- but there is nothing to press.
     local house = self:trainer()
@@ -763,6 +887,17 @@ function ClassEditor:drawList(focused)
         if row.kind == "shut" then
             Theme.set(Theme.frame, 0.35)
             love.graphics.rectangle("line", x + GUTTER_W, ry, w - GUTTER_W, ROW_H - 2, 3, 3)
+            -- Picked, it wears the cursor's edge like any row: a shut class is a destination the
+            -- detail column can now say how to reach (and unlock, once met).
+            if i == self.cursor then
+                Theme.set(focused and Theme.cursor or Theme.frame)
+                love.graphics.rectangle("line", x + GUTTER_W, ry, w - GUTTER_W, ROW_H - 2, 3, 3)
+            end
+            -- Met and waiting on a seal: an amber dot in the gutter, so the rows worth a seal stand out.
+            if self.char and Class.canUnlock(self.char, row.id) then
+                Theme.set(Theme.accentAmber)
+                love.graphics.circle("fill", x + 6, ry + (ROW_H - 2) / 2, 3)
+            end
             love.graphics.setFont(small)
             -- The gate, in the gutter every row on the shelf shares. It is the house's own level, and
             -- it is amber once this body has passed it -- which happens on a row that is still shut,
@@ -1125,6 +1260,50 @@ function ClassEditor:drawTechniqueRule(row, x, y, w)
     return y + h + 10
 end
 
+-- WHAT A SHUT CLASS ASKS OF THIS BODY, three lines: the level gate (met or not), the deed with its
+-- counter and bar, and the seal. Each line is amber once met, so the row reads as a checklist.
+function ClassEditor:drawRequirement(row, x, y, w)
+    local small, char = self.fonts.small, self.char
+    love.graphics.setFont(small)
+    Theme.set(Theme.muted)
+    Theme.printTracked("TO UNLOCK", x, y, w, 1)
+    y = y + 18
+
+    local function line(text, met)
+        Theme.set(met and Theme.accentAmber or Theme.ink)
+        love.graphics.print((met and "+ " or "- ") .. text, x, y)
+        y = y + small:getHeight() + 4
+    end
+
+    -- The level half: Novice 1 for a root, the parents' levels for an earned class.
+    local gate
+    if Class.isRoot(row.id) then
+        gate = (Class.displayName(Growth.NEUTRAL_CLASS) or "Novice") .. " 1"
+    else
+        local parts = {}
+        for _, parent in ipairs(Class.parents(row.id)) do
+            parts[#parts + 1] = (Item.classDisplayName(parent) or parent) .. " "
+                .. tostring(((Class.defs[row.id] or {}).requires or {})[parent] or 0)
+        end
+        gate = table.concat(parts, " + ")
+        if Class.arity(row.id) >= 2 then gate = gate .. ", and a subclass of each" end
+    end
+    line(gate, Class.levelGateMet(char, row.id))
+
+    -- The deed, with its counter. A crossing has none.
+    local held, needed, label = Class.deedProgress(char, row.id)
+    if label then
+        line(string.format("%s (%d / %d)", label, math.min(held, needed), needed), held >= needed)
+        ProgressBar.draw(x + 12, y - 2, w - 12, 4, needed > 0 and math.min(1, held / needed) or 1, 1,
+            { color = held >= needed and Theme.accentAmber or Theme.cursor })
+        y = y + 6
+    end
+
+    local seals = self.player and Player.materialCount(self.player, Class.SEAL_ID) or 0
+    line(string.format("1 Charter Seal (%d held)", seals), seals > 0)
+    return y + 8
+end
+
 function ClassEditor:drawDetail()
     local x, y, w = self.detailX, self.y, self.detailW
     local row, char = self:currentRow(), self.char
@@ -1139,7 +1318,10 @@ function ClassEditor:drawDetail()
 
     love.graphics.setFont(small)
     Theme.set(Theme.muted)
-    local kindLabel = row.kind == "class" and "Base class"
+    local kindLabel = Class.isStarter(row.id) and "Starting class"
+        or row.kind == "class" and "Base class"
+        or row.kind == "shut" and (Class.arity(row.id) >= 2 and "Crossing"
+            or ("Subclass of " .. Item.classDisplayName(row.parent)))
         or row.kind == "subclass" and ("Subclass of " .. Item.classDisplayName(row.parent))
         or "Crossing"
     love.graphics.print(kindLabel, x, y + 26)
@@ -1174,6 +1356,12 @@ function ClassEditor:drawDetail()
     Theme.set(Theme.frame)
     love.graphics.line(x, ty, x + w, ty)
     ty = ty + 12
+
+    -- WHAT UNLOCKS IT, for a class this body does not hold yet: the level gate, the deed with its
+    -- counter, and the seal. Ahead of the lineage, because on a shut row it is the question.
+    if char and row.id and not Class.isUnlocked(char, row.id) then
+        ty = self:drawRequirement(row, x, ty, w)
+    end
 
     -- Where it sits on the ladder, before anything about this particular body: the shape is a fact
     -- about the class, and the numbers under it are facts about the member standing in front of it.
@@ -1234,10 +1422,28 @@ function ClassEditor:drawDetail()
             Theme.set(Theme.ink)
             love.graphics.printf("Go to Class Trainer", x, by + 9, w, "center")
         else
+            -- The house's shelf opens on the city's schedule; unlocking its root class pulls it a trip
+            -- sooner (models/offer.lua). Flat copy: what opens it, nothing more.
             Theme.set(Theme.muted, 0.55)
-            love.graphics.printf("Take up the class to open " .. (house.name or "its house"),
+            love.graphics.printf((house.name or "This house") .. " opens on a later trip",
                 x, by + 9, w, "center")
         end
+    end
+
+    -- THE UNLOCK, in the Change button's place: the two are never both legal on one row.
+    self.unlockRect = nil
+    if self:canUnlock() then
+        local by = self:changeY()
+        self.unlockRect = { x = x, y = by, w = w, h = BUTTON_H }
+        Theme.plate(x, by, w, BUTTON_H, 4, self.hoverUnlock and Theme.panel or Theme.panel2)
+        Theme.set(Theme.accentAmber)
+        love.graphics.rectangle("line", x, by, w, BUTTON_H, 4, 4)
+        love.graphics.setFont(body)
+        love.graphics.printf("Unlock " .. row.name .. " (1 seal)", x, by + 9, w, "center")
+    elseif self:readOnly() and row.id then
+        love.graphics.setFont(small)
+        Theme.set(Theme.muted)
+        love.graphics.printf("Classes change in town.", x, self:changeY() + 9, w, "center")
     end
 
     -- THE ONE ACT ON THIS TAB, and it draws only where it is legal: a body already standing in this
@@ -1259,10 +1465,30 @@ function ClassEditor:draw(focused)
     -- selection drawn -- a house stays picked while the cursor is off reading its shelf -- so the ring
     -- is the one thing on the tab that says where the next press lands.
     local on = focused ~= false
+    -- The free first seal is asked here, on the frame the tab is actually SEEN, rather than at
+    -- construction (the Armory builds every editor when it opens, whichever tab is up).
+    self:offerFirstSeal()
     self:drawHouses(on and self.region == "houses")
     self:drawList(on and self.region == "classes")
     self:drawDetail()
+    -- Rowan's coach line, over the foot of the houses column until the seal is spent.
+    if self.coach then
+        if self.player and Player.materialCount(self.player, Class.SEAL_ID) < 1 then
+            self.coach = nil
+        else
+            love.graphics.setFont(self.fonts.small)
+            Theme.set(Theme.accentAmber)
+            love.graphics.printf(self.coach, self.houseX, self.y + self.h - 60, self.houseW, "left")
+        end
+    end
     love.graphics.setColor(1, 1, 1)
+    -- THE CEREMONY, LAST, over the whole frame. The Armory forwards no update to a column editor, so the
+    -- card is ticked here off the frame's own delta.
+    if self.card then
+        self:update(love.timer and love.timer.getDelta and love.timer.getDelta() or 0)
+        if self.card then self.card:draw() end
+        love.graphics.setColor(1, 1, 1)
+    end
 end
 
 return ClassEditor

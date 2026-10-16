@@ -17,7 +17,8 @@
 -- THE READING ARRIVES ON THE FIRST THING NOBODY CAN READ, which is the most literal gate in the game:
 -- the player finds the thing, cannot use it, and THEN the line is on the desk. Nothing has to explain it.
 --
--- ...OR BY THE FIFTH TRIP, WHICHEVER COMES FIRST, and the backstop is not a hedge. An event gate that
+-- ...OR ON ITS TRIP IN THE CITY SCHEDULE (models/offer.lua's Offer.SCHEDULE -- trip 1), whichever comes
+-- first, and the backstop is not a hedge. An event gate that
 -- may never fire is a room a player can be locked out of for a whole playthrough -- the drops decide,
 -- and the drops do not know this door exists. The event is the moment worth having; the count is there
 -- so nobody loses the room waiting for it.
@@ -32,32 +33,19 @@ return {
     -- The desk: what this house says on the way in, and the rooms it offers (models/counter.lua).
     counter = "conversation_alchemist_counter",
     offers = {
-        -- THE SHELF IS NEVER GATED, because the shelf IS the house. Under the card era a shut shelf
-        -- hid the whole shopfront, so the gate and the door were one fact; the fold put these doors on
-        -- the plaza for OTHER rooms' sake, and the gate started meaning "walk through a shopfront and
-        -- be offered no shop" -- which is what every desk in the city shipped reading.
-        --
-        -- A CLASS LEVEL BUYS DEPTH NOW and nothing else, which is the job Quest.shelfRung already
-        -- describes itself doing: level 0 IS rung 0, the class's bottom band, and the ladder unlocks
-        -- upward from there. Under the level-1 gate nobody could ever see rung 0 at all.
-        --
-        -- QUIET all the same: a shelf never puts a card on the plaza. A class rung is a reward the
-        -- player cannot see, and hanging a door on it put shopfronts in the city that nobody chose to
-        -- earn (models/offer.lua's Offer.any).
-        { answer = "shelf", panel = "shop", quiet = true,
-          -- ...except to the company training for it (models/offer.lua's `declared` gate).
-          -- A shelf is not a deed the player can feel, so it stays quiet; taking up the class
-          -- it sells IS one, and it is the only thing that puts this card on the plaza early.
-          announce = { declared = true } },
+        -- THE SHELF OPENS ON THE CITY SCHEDULE (models/offer.lua's Offer.SCHEDULE): one house's shelf per
+        -- trip home, in a fixed order, unless a body unlocks this house's class first -- that pulls
+        -- the shelf into the next trip's slot. Once open it stays open, and it announces its house:
+        -- the plaza grows by one shopfront a homecoming. A class level still buys DEPTH and nothing
+        -- else (Quest.shelfRung): level 0 is rung 0, the bottom band.
+        { answer = "shelf", panel = "shop", gate = { city = "alchemist.shelf" } },
         -- Keeps its own vendor without keeping a shelf, exactly as the kitchen does: the portrait, the
         -- name, the one-time greeting -- and its record in `visitedVendors`, which is also what keeps
         -- the line standing once it has been used (models/identify.lua's Identify.everFound).
-        -- The backstop moved 5 -> 6 when the Arcanum's study took the fifth trip, and 6 -> 7 when the
-        -- Lodge's hiring board took the sixth: two rooms landing on one homecoming is the one thing the
-        -- trip clock exists to prevent, and this is the half that is only a guarantee -- a company
-        -- carrying a find it cannot read has the room already.
+        -- A find nobody can read is a PROBLEM IN HAND and takes the trip's feature slot ahead of the
+        -- schedule; trip 1 is only the guarantee (models/offer.lua's Offer.SCHEDULE).
         { answer = "read", panel = "touchstone", vendor = "touchstone",
-          gate = { any = { { unidentified = true }, { trips = 7 } } } },
+          gate = { city = "alchemist.read" } },
     },
     description = "Draughts, coatings, and a stone that will say what a thing is.",
 }

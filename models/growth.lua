@@ -23,12 +23,24 @@ local Growth = {}
 
 Growth.defs = Registry.load("data/growth", "data.growth")
 
--- The growth class used when a character has never cast a class-tagged item and declares no innate
--- `class` (a class-less summon, say). Must name a real data/growth/<id>.lua file.
-Growth.NEUTRAL_CLASS = "fighter"
+-- THE CLASS A NEW BODY STARTS IN: the Novice (data/classes/novice.lua), FFT's Squire. The avatar
+-- declares it on its blueprint (data/characters/character_avatar.lua) and every root is unlocked from
+-- it (Class.canUnlock). Must name a real data/growth/<id>.lua file.
+--
+-- IT USED TO DOUBLE AS THE FALLBACK FOR A CLASS-LESS CREATURE, and that half did NOT move with it. A
+-- hundred-odd blueprints in data/characters/ declare no class and were authored, balanced and rescaled
+-- against fighter growth (character_bandit.lua says so in as many words); pointing them at a table of
+-- +1 everything, speed included, would re-balance the whole bestiary as a side effect of giving the
+-- player a starting job. So the fallback is its own constant, below, and it stays fighter.
+Growth.NEUTRAL_CLASS = "novice"
+
+-- The growth class used when a body declares nothing and its blueprint names no innate `class` (a
+-- class-less creature or summon). Growth.classOf's last resort. See NEUTRAL_CLASS above for why the two
+-- are no longer one constant.
+Growth.CREATURE_CLASS = "fighter"
 
 -- How fast an ENEMY's output climbs per level. Both of the tables the common enemy stock grows on --
--- fighter (the NEUTRAL_CLASS default) and champion -- carry `damage = 3`, so this is the rate every
+-- fighter (the CREATURE_CLASS default) and champion -- carry `damage = 3`, so this is the rate every
 -- scaled attacker's swing gains on you.
 --
 -- It matters because mitigation is SUBTRACTIVE with a floor of 1 (Combat.mitigatedDamage): incoming
@@ -489,7 +501,7 @@ end
 -- (Class.techniqueFor). A body declared knight
 -- while casting mage gear takes knight growth AND knight levels; to learn mage it has to stand in mage.
 --
--- Falls back to the innate class, then to NEUTRAL_CLASS, so an enemy minted by Growth.spawn with no
+-- Falls back to the innate class, then to CREATURE_CLASS, so an enemy minted by Growth.spawn with no
 -- declaration at all grows exactly as it did before.
 -- Each candidate is tried in turn rather than being coalesced into one lookup: a declared class whose
 -- id has gone stale under a rename must fall through to the innate class, not past it to the neutral
@@ -500,7 +512,7 @@ function Growth.classOf(char)
         if char.declaredClass and Growth.defs[char.declaredClass] then return char.declaredClass end
         if char.class and Growth.defs[char.class] then return char.class end
     end
-    return Growth.NEUTRAL_CLASS
+    return Growth.CREATURE_CLASS
 end
 
 -- Bake `gains` (whole points, per stat) into `char`: add to the running total (char.growth) and to the

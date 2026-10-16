@@ -157,37 +157,33 @@ return {
             for _, offer in ipairs(crucible.offers) do
                 if offer.answer == "read" then read = offer end
             end
-            assert(read.gate and read.gate.any and #read.gate.any == 2,
-                "the reading should keep its event AND a backstop")
+            -- The reading's event and backstop moved onto the city schedule (Offer.SCHEDULE, 2026-10-15):
+            -- its gate names its slot there, and the schedule holds both arms.
+            assert(read.gate and read.gate.city, "the reading should open on the city schedule")
         end,
     },
     {
-        -- A QUIET ROOM DOES NOT ANNOUNCE ITS HOUSE. Every shelf is quiet, and it is the only thing
-        -- holding the seven shopfronts off the first morning now that the shelves are ungated: browsing
-        -- is not a deed, and a plate arriving for one is the city reacting to nothing the player did.
-        --
-        -- ...UNLESS THE COMPANY IS TRAINING FOR IT (`announce = { declared = true }`), which is the one
-        -- exception and is why this case cannot use the Bastion any more: the starting company is a
-        -- knight, so the Bastion's card is now on the plaza on the first morning and is SUPPOSED to be
-        -- (tests/class_house_spec.lua holds that half). The Colosseum is the house nobody starts in.
-        name = "a quiet room opens without putting its card on the plaza",
+        -- EVERY SHELF OPENS ON THE CITY SCHEDULE NOW (models/offer.lua's Offer.SCHEDULE, 2026-10-15), and
+        -- an open shelf puts its house on the plaza. `quiet`/`announce` held the houses off the first
+        -- morning while shelves were ungated; the schedule does that job now, one shelf a trip home.
+        -- tests/city_schedule_spec.lua holds the table itself.
+        name = "a shelf opens on the city schedule, and its house arrives with it",
         fn = function()
-            local quiet = 0
+            local shelves = 0
             for id, def in pairs(Building.defs) do
                 for _, offer in ipairs(def.offers or {}) do
                     if offer.answer == "shelf" then
-                        assert(offer.quiet, id .. "'s shelf must be quiet, or every house opens at once")
-                        quiet = quiet + 1
+                        assert(offer.gate and offer.gate.city, id .. "'s shelf must open on the city schedule")
+                        shelves = shelves + 1
                     end
                 end
             end
-            assert(quiet == 7, "all seven shelves are quiet, got " .. quiet)
+            assert(shelves == 7, "all seven shelves are scheduled, got " .. shelves)
 
-            -- A fresh company: the Colosseum's SHELF is behind its door and nothing is on the board.
+            -- A fresh company: the Colosseum's shelf is the last on the schedule, so nothing of it shows.
             local p = Player.new()
             p.roster = { Character.instantiate("character_rowan") }
-            assert(Offer.openSet(p, Building.defs.colosseum).shelf, "the shelf is the house, and is open")
-            assert(not Offer.any(p, Building.defs.colosseum), "...and leaves the card off the plaza")
+            assert(not Offer.openSet(p, Building.defs.colosseum).shelf, "the fighter shelf waits for its trip")
             for _, b in ipairs(Building.list(p)) do
                 if b.id == "colosseum" then assert(b.locked, "the Colosseum is still shut") end
             end
@@ -214,14 +210,16 @@ return {
             local hurt = Player.new()
             Injury.inflict(hurt, { { id = "character_rowan" } })
             assert(not locked(hurt, cathedralId), "an injury stands the door open")
-            assert(Offer.openSet(hurt, cathedral).shelf, "...and the shop is behind it, as it always is")
+            assert(not Offer.openSet(hurt, cathedral).shelf, "...while the priest shelf waits for trip 1")
 
             -- ...and NOT the other way round, which is the half the quiet flag buys. Nobody hurt: the
             -- shelf is open behind a card that is not on the board, and there is nothing to mend.
             local well = Player.new()
             well.roster = { Character.instantiate("character_rowan") }
-            assert(Offer.openSet(well, cathedral).shelf, "the shop is open for anyone who reaches it")
-            assert(locked(well, cathedralId), "...and leaves the door shut, because a shelf is quiet")
+            assert(locked(well, cathedralId), "nobody hurt on trip 0: no shelf yet and nothing to mend")
+            well.runsStarted = 1
+            assert(Offer.openSet(well, cathedral).shelf, "trip 1 opens the priest shelf (Offer.SCHEDULE)")
+            assert(not locked(well, cathedralId), "...and the shelf brings its door with it")
             assert(not Offer.openSet(well, cathedral).mend, "and there is still nothing to mend")
         end,
     },
@@ -235,10 +233,10 @@ return {
             assert(house, "no house holds the town counter")
 
             local p = Player.new()
-            p.runsStarted = 1
+            p.runsStarted = 2 -- the market counter is trip 2 on the city schedule
 
             local town = Offer.roomFor(p, house, "counter")
-            assert(town, "the town counter should be open one floor in")
+            assert(town, "the town counter should be open by trip 2")
             assert(town.vendor ~= house.vendor,
                 id .. "'s town counter must keep its own vendor, or it overwrites the house's shelf")
 

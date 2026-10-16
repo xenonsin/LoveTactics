@@ -16,11 +16,20 @@ return {
     magnitude = 8,          -- default +defense when the granting shield sets no waitBehavior.defense
     magnitudeStat = "defense", -- the flat stat this status's magnitude raises (via Status.statBonus)
     onTurnStart = function(ctx)
+        -- BRACE (data/items/ability/ability_brace.lua, 2026-10-15): a brace this bearer LENT comes down as its
+        -- own turn opens, whatever became of the bearer's own -- first, so a body that was lent a brace and
+        -- lent one on in turn still takes its own loan down on time. Idempotent beside the Barrier's release.
+        if ctx.combat then
+            require("models.status").removePointingAt(ctx.combat, "status_defending", "heldBy", ctx.unit)
+        end
         -- SLOTH'S TOLLKEEPERS, SLICE F (2026-10-04): a brace LENT by a barrier (the Bailiff, the Bailiff's Bar)
         -- holds until the lender's next turn, not the bearer's -- stamped `heldBy`, taken down by the lender's
-        -- own turn opening (models/toll.lua). A lender gone from the field holds nothing up.
+        -- own turn opening (models/toll.lua). A lender gone from the field holds nothing up -- and neither does
+        -- one whose own brace is gone, since the release above rides that brace's turn start.
         local by = ctx.status.heldBy
-        if by and by ~= ctx.unit and by.alive then return end
+        if by and by ~= ctx.unit and by.alive and require("models.status").has(by, "status_defending") then
+            return
+        end
         ctx.expire()
     end,
 }

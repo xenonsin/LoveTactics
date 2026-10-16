@@ -54,7 +54,17 @@ end
 -- False for an unknown id, so a stale tag is never mistaken for the top of the ladder.
 function Class.isRoot(id)
     local def = id and Class.defs[id]
-    return def ~= nil and not next(def.requires or {})
+    return def ~= nil and not def.starter and not next(def.requires or {})
+end
+
+-- Is `id` the STARTING class -- the Novice (data/classes/novice.lua), which stands below the roots
+-- rather than beside them? Every body holds it, no house shelves it, nothing gates it and it buys no
+-- boost. NOT a root, though it has nothing above it either: a root is a trade with a house and a
+-- shelf, and every reader of Class.isRoot / Class.roots() means that ("the seven"). Asking this first
+-- is how a caller tells the blank slate from a stale tag.
+function Class.isStarter(id)
+    local def = id and Class.defs[id]
+    return def ~= nil and def.starter == true
 end
 
 -- Is `id` an EARNED class -- a real class with something standing above it, which is to say anything
@@ -139,7 +149,7 @@ end
 function Class.roots()
     local out = {}
     for id, def in pairs(Class.defs) do
-        if not next(def.requires or {}) and def.playable ~= false then out[id] = true end
+        if Class.isRoot(id) and def.playable ~= false then out[id] = true end
     end
     return out
 end
@@ -398,56 +408,240 @@ function Class.rosterLevel(player, key)
     return best
 end
 
--- Is class `id` unlocked for `char`? Every class named in `requires` is held at that level or above BY
--- THIS BODY, AND -- if it is a crossing -- this body already holds a subclass of EACH parent.
+-- ---------------------------------------------------------------------------
+-- Unlocking: every class is earned per body, like an achievement
+-- ---------------------------------------------------------------------------
 --
--- A ROOT PASSES BOTH TESTS TRIVIALLY, which is not an accident and is not a special case: it has no
--- `requires`, so the first loop runs zero times, and no parents, so the second does not run at all. A
--- root being held from the first morning falls out of the same two rules that gate everything else,
--- which is exactly what folding the seven into this table was for (docs/class-fold.md).
+-- A CLASS IS USABLE BY A BODY WHEN THAT BODY HAS UNLOCKED IT -- `char.unlocked[id] = true` -- and the
+-- unlock is an ACT, not a reading. It used to be a reading: every class whose `requires` this body met
+-- was simply open, so a level-up handed over a class with no moment attached and a player who never
+-- looked at the Classes tab never noticed. Now meeting the gate (Class.canUnlock: the level, plus the
+-- class's own deed) makes the class AVAILABLE, and a Charter Seal spent in town makes it yours
+-- (Class.unlock), which is the beat the ceremony plays on.
 --
--- THE SECOND RULE IS THE STRICTER HALF AND IT SURVIVED THE COLLAPSE DELIBERATELY. `requires` now names
--- both roots of a crossing at a level apiece, and stopping there would have made all twenty-one
--- easier: two class levels is a thing you can drift into, where "hold a subclass of each parent" is a
--- commitment you had to choose twice. See tests/class_ladder_spec's crossing case.
+-- TWO THINGS COUNT AS UNLOCKED WITHOUT THE LEDGER:
+--   * the STARTER (the Novice) -- every body holds it;
+--   * the class this body is STANDING IN right now (Class.declaredOf) -- the grandfather rule: a
+--     companion authored as a knight, a hire born a thief, and every body in an older save keep the
+--     class they are already in. Class.grandfather writes that into the ledger so it survives a switch.
 --
--- PER BODY, WHICH IS THE WHOLE OF THE CHANGE. This used to read `player.completedQuests` against a
--- discipline's `requiredQuests`, so a discipline unlocked for the company the moment anyone anywhere
--- had run the quest behind it, and every body in the roster was interchangeable at a given moment. The
--- FFT rule is per unit -- Knight 3 and Monk 3 open Ninja for THAT unit -- and it is what makes the
--- roster diverge instead of levelling in lockstep.
---
--- Recursion is shallow and terminating: a subclass has no discipline prerequisites of its own.
---
--- Tolerates being handed a PLAYER for the transition, since several company-facing callers still ask
--- this question of the whole roster (Class.unlockedSet). A player answers yes when any one of its
--- bodies does, which is the same reading those callers had before.
+-- Tolerates being handed a PLAYER, since several company-facing callers ask this of the whole roster
+-- (Class.unlockedSet -> the shelf, the forge's "untrained", the hiring board). A player answers yes
+-- when any one of its bodies does -- EXCEPT for the starter, which a company question answers no to:
+-- every company question is a shelf question, and the Novice has no shelf to open.
 function Class.isUnlocked(who, id)
     local def = id and Class.defs[id]
-    if not def then return false end
+    if not (def and who) then return false end
 
-    if who and who.roster then
+    if who.roster then
+        if def.starter then return false end
         for _, char in ipairs(who.roster) do
             if Class.isUnlocked(char, id) then return true end
         end
         return false
     end
 
-    for key, need in pairs(def.requires or {}) do
-        if Class.classLevel(who, key) < need then return false end
-    end
+    if def.starter then return true end
+    if who.unlocked and who.unlocked[id] then return true end
+    return Class.declaredOf(who) == id
+end
 
+-- MAY THIS BODY STAND IN `id`? The per-body reading of isUnlocked, named for the readers that ask it of
+-- one body only (models/offer.lua's shelf pull, the Classes tab): unlocked by a seal, held by the
+-- grandfather rule, or the starter.
+function Class.canUse(char, id)
+    if not char or char.roster then return false end
+    return Class.isUnlocked(char, id)
+end
+
+-- Write the grandfather rule into the ledger: the class `char` stands in right now counts as unlocked
+-- for good, so switching away and back never needs a seal. Called wherever a body is loaded or about to
+-- change class (models/save.lua, ui/class_editor.lua, Class.unlock). Idempotent; never writes the
+-- starter.
+function Class.grandfather(char)
+    if not char then return end
+    local id = Class.declaredOf(char)
+    if id and not Class.isStarter(id) and Class.isPlayable(id) then
+        char.unlocked = char.unlocked or {}
+        char.unlocked[id] = true
+    end
+end
+
+-- The requirement table (data/class_requirements.lua): class id -> { deed, count, label }.
+Class.requirements = require("data.class_requirements")
+
+-- THE ITEM A SEAL IS (data/materials/material_charter_seal.lua, held in player.materials). One drops
+-- the first time the company beats each elite (models/encounter_battle.lua), one comes free from Rowan
+-- at Novice 1 (ui/class_editor.lua), and an unlock spends one.
+Class.SEAL_ID = "material_charter_seal"
+
+-- WHAT A ROOT HANDS OVER WHEN A BODY UNLOCKS IT: one ability off that root's OWN shelf (an author rule
+-- -- never another class's), dropped into the stash. A missing blueprint is skipped rather than
+-- granted, so a gift whose file has not landed yet is silent instead of a crash.
+Class.ROOT_GIFTS = {
+    fighter = "ability_charge",
+    knight = "ability_brace",
+    priest = "ability_heal",
+    rogue = "ability_exploit",
+    mage = "ability_fire_bolt",
+    hunter = "ability_called_shot",
+    alchemist = "ability_quick_brew",
+}
+
+-- `id`'s requirement row, or nil (a crossing, the starter, the creature bucket, an unknown id).
+function Class.requirementOf(id)
+    return id and Class.requirements[id] or nil
+end
+
+-- How far `char` is toward `id`'s deed: `held, needed, label`. Held is the raw counter (it may pass
+-- `needed`; a caller drawing a bar clamps it). `0, 0, nil` for a class with no deed.
+function Class.deedProgress(char, id)
+    local req = Class.requirementOf(id)
+    if not req then return 0, 0, nil end
+    local held = (char and char.deeds and char.deeds[req.deed]) or 0
+    return held, req.count, req.label
+end
+
+-- Has `char` met `id`'s deed? True for a class with none.
+function Class.deedMet(char, id)
+    local held, needed = Class.deedProgress(char, id)
+    return held >= needed
+end
+
+-- THE LEVEL HALF OF THE GATE. A root asks Novice 1. A subclass asks its `requires` (its parent's level).
+-- A crossing asks both parents' levels AND a subclass UNLOCKED from each parent -- the old stricter half
+-- of isUnlocked, kept deliberately: two class levels is a thing a body drifts into, a subclass twice over
+-- is a thing it chose (tests/class_ladder_spec's crossing case).
+function Class.levelGateMet(char, id)
+    local def = id and Class.defs[id]
+    if not (def and char) then return false end
+    if def.starter then return true end
+    if Class.isRoot(id) then
+        return Class.classLevel(char, require("models.growth").NEUTRAL_CLASS) >= 1
+    end
+    for key, need in pairs(def.requires or {}) do
+        if Class.classLevel(char, key) < need then return false end
+    end
     if Class.arity(id) >= 2 then
         for _, parent in ipairs(Class.parents(id)) do
             local held = false
             for _, subId in ipairs(Class.subclassesOf(parent)) do
-                if Class.isUnlocked(who, subId) then held = true; break end
+                if Class.isUnlocked(char, subId) then held = true; break end
             end
             if not held then return false end
         end
     end
-
     return true
+end
+
+-- MAY `char` UNLOCK `id` (seal and town aside)? A real, playable, non-starter class this body does not
+-- already hold, whose level gate and deed are both met.
+function Class.canUnlock(char, id)
+    if not (char and id and Class.defs[id]) then return false end
+    if not Class.isPlayable(id) or Class.isStarter(id) then return false end
+    if Class.isUnlocked(char, id) then return false end
+    return Class.levelGateMet(char, id) and Class.deedMet(char, id)
+end
+
+-- Why `char` cannot unlock `id` yet, as the first missing piece: "unlocked" | "level" | "deed" |
+-- "town" | "seal" | nil (nothing missing). `player` is optional; without it town and seal go unasked.
+function Class.unlockBlock(player, char, id)
+    if Class.isUnlocked(char, id) then return "unlocked" end
+    if not Class.levelGateMet(char, id) then return "level" end
+    if not Class.deedMet(char, id) then return "deed" end
+    if player then
+        local Player = require("models.player")
+        if Player.packOpen(player) then return "town" end
+        if Player.materialCount(player, Class.SEAL_ID) < 1 then return "seal" end
+    end
+    return nil
+end
+
+-- SPEND A SEAL AND MAKE `id` THIS BODY'S. Town only (Player.packOpen refuses underground -- the flag the
+-- Loadout reads for the bag). Returns `true, giftId` -- the root's gift ability id when one was handed
+-- over, else nil -- or `false, reason` (Class.unlockBlock's words).
+--
+-- The gift goes to the STASH (Player.addToStash), once per body per root (`char.giftsTaken`): unlocking
+-- is itself once per body, and a grandfathered body never unlocked anything, so it never collects one.
+function Class.unlock(player, char, id)
+    if not (player and char) then return false, "level" end
+    local block = Class.unlockBlock(player, char, id)
+    if block then return false, block end
+    if not Class.canUnlock(char, id) then return false, "level" end
+    local Player = require("models.player")
+    if not Player.spendMaterials(player, { [Class.SEAL_ID] = 1 }) then return false, "seal" end
+    Class.grandfather(char) -- the class it is standing in stays its own
+    char.unlocked = char.unlocked or {}
+    char.unlocked[id] = true
+
+    local gift
+    if Class.isRoot(id) then
+        local giftId = Class.ROOT_GIFTS[id]
+        local Item = require("models.item")
+        char.giftsTaken = char.giftsTaken or {}
+        if giftId and not char.giftsTaken[id] and Item.defs[giftId] then
+            char.giftsTaken[id] = true
+            Player.addToStash(player, Item.instantiate(giftId))
+            gift = giftId
+        end
+    end
+    return true, gift
+end
+
+-- COPY A WON FIGHT'S DEEDS ONTO THE BODIES THAT DID THEM. Only the counters some class asks for are kept
+-- (the requirement table's `deed` keys), so a save does not fill with every tally the fight keeps for
+-- its charge pools. Only the company's own bodies -- `player.roster` membership, read off the unit's
+-- char -- so an escort, a summon or a charmed foe banks nothing. Called from states/battle.lua's
+-- finishBattle on a win. Returns the deeds banked, { [char] = { [key] = n } }, for a caller that wants
+-- to say so.
+local deedKeys
+function Class.deedKeys()
+    if not deedKeys then
+        deedKeys = {}
+        for _, req in pairs(Class.requirements) do deedKeys[req.deed] = true end
+    end
+    return deedKeys
+end
+
+function Class.bankDeeds(combat, player)
+    local banked = {}
+    if not (combat and player and player.roster) then return banked end
+    local onRoster = {}
+    for _, char in ipairs(player.roster) do onRoster[char] = true end
+    for _, unit in ipairs(combat.units or {}) do
+        local char = unit.char
+        if char and onRoster[char] and not unit.summoned and unit.tally then
+            for key in pairs(Class.deedKeys()) do
+                local n = unit.tally[key]
+                if n and n > 0 then
+                    char.deeds = char.deeds or {}
+                    char.deeds[key] = (char.deeds[key] or 0) + n
+                    banked[char] = banked[char] or {}
+                    banked[char][key] = n
+                end
+            end
+        end
+    end
+    return banked
+end
+
+-- WHAT STANDING IN A CLASS BUYS ON TOP OF ITS GROWTH, while it is the declared class and only then: a
+-- root pays one level of its growth table, an earned class (subclass or crossing) two, the Novice
+-- nothing. Nil for no boost. Folded at the stat seam (Combat's applyUnitPassives, for the company's own
+-- side), never baked into char.stats -- change class and the boost changes with it.
+function Class.boostOf(char)
+    return Class.boostFor(Class.declaredOf(char))
+end
+
+-- The boost class `id` would pay while selected, whoever stands in it (the unlock ceremony's chips).
+function Class.boostFor(id)
+    if not id or Class.isStarter(id) or not Class.isPlayable(id) then return nil end
+    local growth = require("models.growth").defs[id]
+    if not growth then return nil end
+    local mult = Class.isRoot(id) and 1 or 2
+    local out = {}
+    for stat, amount in pairs(growth) do out[stat] = amount * mult end
+    return out
 end
 
 -- Which of `id`'s parent classes the player does NOT yet hold a subclass in -- the list of things

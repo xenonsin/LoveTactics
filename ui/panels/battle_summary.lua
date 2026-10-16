@@ -29,9 +29,11 @@
 -- Between the gold and the loot stands what the fight built rather than what it paid: a block per body,
 -- headed by the experience bar that body just filled (models/experience.lua) and followed by the
 -- technique its actions banked. One block rather than two sections, because both are answers about the
--- same body and two sections would print every name on the panel twice. This is where a level-up is
--- SEEN -- the bar rolls over and the level turns gold as it goes; the overworld's toast, a beat later,
--- only confirms what the panel already showed.
+-- same body and two sections would print every name on the panel twice. The bar rolls over and the level
+-- turns gold as it goes -- but the level-up itself was PLAYED mid-fight, on the Fire Emblem card
+-- (ui/levelup_card.lua, hosted by states/battle.lua on the settle seam), so this panel recaps it and
+-- never raises a card of its own: not after a hand-played fight, whose cards have all been dismissed by
+-- the time the board can be won, and not after an auto-played one, which skips the card on purpose.
 --
 -- Loot and salvage share one card grid, items first, because they are one answer to one question --
 -- what came off this fight. They differ in where they go afterwards (a grid slot vs the Forge's stock),

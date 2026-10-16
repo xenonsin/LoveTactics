@@ -215,18 +215,15 @@ return {
             -- Why it went is in docs/bounties.md: its seven postings are the seven quests
             -- models/errand.lua already seats on floors of the rift. models/bounty.lua stays on disk,
             -- and one file undoes it.
-            -- ...AND THE HOUSE THE COMPANY IS ALREADY STANDING IN. The starting roster is Rowan, who
-            -- is a knight, and a house announces to a company training for what it sells
-            -- (models/offer.lua's `declared` gate) -- so the Bastion is on the first morning's plaza on
-            -- purpose. It is the shop for the gear the player is already carrying; making them wait
-            -- three trips for it was the room queue pacing a CLASS, which is not a thing rooms know how
-            -- to do. tests/class_house_spec.lua is that rule in full.
+            -- ...AND THE KNIGHT'S HOUSE, which is trip 0's shelf on the city schedule (models/offer.lua's
+            -- Offer.SCHEDULE): one shelf and one feature per homecoming, and the first shelf is the one
+            -- for the gear the company is already carrying. tests/city_schedule_spec.lua is the table.
             assert(table.concat(open, ",") == "armory,bastion,the_gate",
-                "a fresh city opens on the armory, the stair and the starting class's house; got " ..
+                "a fresh city opens on the armory, the stair and the knight's shelf; got " ..
                 table.concat(open, ", "))
 
-            -- ...and take the knight away and it is the two again, which is what says the third card is
-            -- the gate above doing its job rather than the Bastion having quietly come ungated.
+            -- ...and it is the SCHEDULE, not the roster: a company in no class at all opens the same
+            -- three. (Under the old `declared` gate the Bastion stood on Rowan being a knight.)
             local classless = Player.new()
             classless.roster = {}
             local bare = {}
@@ -234,8 +231,8 @@ return {
                 if not b.locked then bare[#bare + 1] = b.id end
             end
             table.sort(bare)
-            assert(table.concat(bare, ",") == "armory,the_gate",
-                "a company in no class at all opens on the two ways out; got " ..
+            assert(table.concat(bare, ",") == "armory,bastion,the_gate",
+                "trip 0's shelf is the schedule's, whoever is on the roster; got " ..
                 table.concat(bare, ", "))
 
             -- NONE OF THESE IS A CARD ANY MORE, and their absence is asserted rather than assumed --
@@ -247,20 +244,27 @@ return {
                 assert(not pcall(shut, Player.new(), id), id .. " is still a card in the city")
             end
 
-            -- ONE ROOM PER TRIP HOME, and the clock is trips rather than depth (models/offer.lua's
-            -- `trips` gate). Depth is bursty: a company that pushed to floor four on its first
+            -- ONE FEATURE PER TRIP HOME, and the clock is trips rather than depth (models/offer.lua's
+            -- Offer.SCHEDULE). Depth is bursty: a company that pushed to floor four on its first
             -- descent used to come home to four doors at once, and one that farmed floor one froze
             -- its city forever. Asked of the ROOM rather than of the door it is behind, because a
-            -- house's door is the OR of everything it holds.
+            -- house's door is the OR of everything it holds. (The mending and the rite are not here:
+            -- they open on their problem alone, and a fresh save has neither.)
             local Offer = require("models.offer")
             local rooms = {
-                { house = "undercroft",    room = "counter",  need = 1 },
-                { house = "hunters_lodge", room = "supper",   need = 2 },
+                { house = "alchemist",     room = "read",     need = 1 },
+                { house = "undercroft",    room = "counter",  need = 2 },
                 { house = "bastion",       room = "forge",    need = 3 },
-                { house = "arcanum",       room = "bestiary", need = 4 },
-                { house = "arcanum",       room = "study",    need = 5 },
-                { house = "hunters_lodge", room = "hire",     need = 6 },
+                { house = "hunters_lodge", room = "supper",   need = 4 },
+                { house = "arcanum",       room = "bestiary", need = 5 },
+                { house = "colosseum",     room = "duel",     need = 6 },
+                { house = "arcanum",       room = "study",    need = 7 },
             }
+            -- The hiring board is PARKED (data/buildings/hunters_lodge.lua): no trip count opens it.
+            local late = Player.new()
+            late.runsStarted = 99
+            assert(not Offer.openSet(late, Building.defs.hunters_lodge).hire,
+                "the hiring board is parked and must not open on any trip")
             for _, r in ipairs(rooms) do
                 for trip = 0, r.need do
                     local p2 = Player.new()
@@ -306,7 +310,7 @@ return {
             for _, r in ipairs(rooms) do
                 if Offer.openSet(diver, Building.defs[r.house])[r.room] then got[#got + 1] = r.room end
             end
-            assert(#got == 1 and got[1] == "counter",
+            assert(#got == 1 and got[1] == "read",
                 "one trip home is one room, however deep it went; got " .. table.concat(got, ", "))
 
             -- THE MENDING ON THE FIRST BODY CARRIED UP BROKEN, which is the one gate that is not a floor
@@ -320,20 +324,14 @@ return {
         end,
     },
     {
-        -- THE SEVEN SHELVES, AND THE CARD/ROOM SPLIT THAT REPLACED THEIR GATE.
+        -- THE SEVEN SHELVES, AND THE SCHEDULE THAT REPLACED THEIR GATE.
         --
-        -- Each shelf used to carry `classLevel = 1` -- level 1 of the house's own class, in any body on
-        -- the roster -- and that gate decided TWO things while the shelf was the only room behind its
-        -- door: whether you could shop, and whether the shopfront existed. The fold gave every house a
-        -- second room and the plaza started drawing doors for THOSE, so the two came apart and the gate
-        -- was left answering only the first: the Undercroft stood open on the market from the first trip
-        -- home with no shop behind it, for any company without a rogue -- which is every company, since
-        -- the roster starts as one knight.
-        --
-        -- So the shelf is ungated and the CARD is held back by `quiet` instead, and this case pins both
-        -- halves. It is asserted in both directions because the failure was silent either way: a gated
-        -- shelf is a shopfront with no shop, and an unquiet one is seven plates on the first morning.
-        name = "a house's SHELF is always behind its door, and its CARD waits on a deed",
+        -- Each shelf used to carry `classLevel = 1`, then nothing at all (`quiet`, opened on the class
+        -- being DECLARED). Both read the roster, so the houses arrived in whatever order the company
+        -- happened to be standing in -- "random and delayed". The shelf is now one line on the city
+        -- schedule (models/offer.lua's Offer.SCHEDULE): one house's shelf per trip home, pulled forward a
+        -- trip by a root class UNLOCKED, and announcing its house when it opens.
+        name = "a house's SHELF opens on the city schedule, and a class level buys only its depth",
         fn = function()
             local Character = require("models.character")
             local Class = require("models.class")
@@ -350,10 +348,14 @@ return {
             local function shelfOpen(who, id)
                 return Offer.openSet(who, Building.defs[id]).shelf == true
             end
+            local firstShelf = {}
+            for _, e in ipairs(Offer.SCHEDULE.shelves) do
+                if e.trip == 0 then firstShelf[e.room:match("^(.-)%.")] = true end
+            end
 
             -- Every house names a vendor, that vendor names a class, and the house carries a desk with
-            -- rooms behind it. The class is still load-bearing with the gate gone -- Quest.shelfRung
-            -- reads it for the RUNG -- so a vendor without one is a shelf frozen at its bottom band.
+            -- rooms behind it. The class is still load-bearing -- Quest.shelfRung reads it for the RUNG,
+            -- and the schedule's pull reads it -- so a vendor without one is a shelf frozen at its bottom band.
             local Vendor = require("models.vendor")
             local houses = 0
             for id, def in pairs(Building.defs) do
@@ -368,45 +370,30 @@ return {
                         if offer.answer == "shelf" then shelf = offer end
                     end
                     assert(shelf, id .. " keeps no shelf")
-                    assert(shelf.gate == nil,
-                        id .. "'s shelf is gated; a shopfront that offers no shop is not a shopfront")
-                    assert(shelf.quiet == true,
-                        id .. "'s shelf is not quiet, so browsing alone would put its card on the plaza")
+                    assert(shelf.gate and shelf.gate.city == id .. ".shelf",
+                        id .. "'s shelf is not on the city schedule")
+                    assert(not shelf.quiet, id .. "'s shelf is quiet, so opening it would not announce its house")
                 end
             end
             assert(houses == 7, "the city is supposed to hold seven houses; it holds " .. houses)
 
-            -- ON A FRESH SAVE: every shelf OPEN, every card SHUT. The two questions, at the one moment
-            -- they most obviously differ -- nothing has been climbed, nobody is hurt, nothing has been
-            -- carried up unread and the stair has not been walked.
-            --
-            -- ONE CARD IS EXEMPT AND IT IS DERIVED, NEVER NAMED: the house that shelves a class the
-            -- company is standing in announces itself (models/offer.lua's `declared` gate), and the
-            -- starting roster is a knight. Naming "bastion" here would pin the starting company rather
-            -- than the rule, and would go quietly false the day somebody else is handed to the player
-            -- first -- so this asks Vendor.shelves the same question the gate does.
+            -- ON A FRESH SAVE: trip 0's shelf is open and its card is up; every other house is shut,
+            -- shelf and card alike -- nobody is hurt, nothing is carried up unread, no stair walked.
             local fresh = Player.new()
-            local taken = Class.takenSet(fresh)
             for id, def in pairs(Building.defs) do
                 if def.counter then
-                    assert(shelfOpen(fresh, id), id .. "'s shelf is shut on a fresh save")
-                    local training = false
-                    for class in pairs(taken) do
-                        if Vendor.shelves(Vendor.defs[def.vendor], class) then training = true end
-                    end
-                    if training then
-                        assert(not shut(fresh, id),
-                            id .. " shelves what the company is standing in and must be on the plaza")
+                    if firstShelf[id] then
+                        assert(shelfOpen(fresh, id), id .. "'s shelf is trip 0's and is shut on a fresh save")
+                        assert(not shut(fresh, id), id .. "'s card should be on the first morning's plaza")
                     else
+                        assert(not shelfOpen(fresh, id), id .. "'s shelf is open before its trip")
                         assert(shut(fresh, id), id .. "'s card is on the plaza on a fresh save")
                     end
                 end
             end
 
-            -- AND THE OPEN SHELF IS NOT AN EMPTY ROOM. Ungating it is only an improvement if rung 0
-            -- stocks something -- Quest.shelfRung's own header says level 0 IS rung 0, "the class's
-            -- bottom band", which under the level-1 gate no player could ever reach. Asserted of every
-            -- house, because a house whose bottom band is all locked rows is the old bug wearing a shop.
+            -- AND AN OPEN SHELF IS NOT AN EMPTY ROOM: rung 0 -- Quest.shelfRung's "class's bottom band" --
+            -- stocks something in every house, for whichever trip it opens on.
             for id, def in pairs(Building.defs) do
                 if def.counter then
                     local gates = Quest.shelfGates(fresh, def.vendor)
@@ -419,33 +406,15 @@ return {
                 end
             end
 
-            -- A CLASS LEVEL BUYS DEPTH NOW, not the door. One body, one class, one level: the rung the
+            -- A CLASS LEVEL BUYS DEPTH, not the door. One body, one class, one level: the rung the
             -- Bastion's shelf reads climbs, and the plaza does not move.
-            --
-            -- THE AVATAR RATHER THAN ROWAN, and the swap is the whole point of the case rather than a
-            -- convenience. What opens a house is the company STANDING IN a class it shelves -- an
-            -- identity (models/offer.lua's `declared`) -- and Rowan is a knight before a single point is
-            -- banked, so running this on her would prove nothing about the level. The avatar was trained
-            -- in nothing in particular and stands in no class at all, so what moves here is the ledger
-            -- and only the ledger.
             local knight = Player.new()
             knight.roster = { Character.instantiate("character_avatar") }
-            assert(Class.declaredOf(knight.roster[1]) == nil,
-                "the avatar stands in no class; a body that does would open its house and hide the claim")
             Character.recordTechnique(knight.roster[1], "knight", Class.classLevelCost(1))
             assert(Quest.shelfRung(knight, "bastion") == 1, "knight 1 did not raise the Bastion's rung")
             assert(Quest.shelfRung(knight, "arcanum") == 0, "knight 1 raised the mages' rung as well")
-            assert(shut(knight, "bastion"), "a class level must not put a card on the plaza")
-            assert(shut(knight, "arcanum"), "and its neighbour's with it")
-
-            -- ...AND THE OTHER HALF, on the same body, so the two mechanisms are told apart here rather
-            -- than only in tests/class_house_spec.lua: TAKING UP the class does open the card, and the
-            -- rung it was standing at is untouched by that.
-            knight.roster[1].declaredClass = "knight"
-            assert(not shut(knight, "bastion"),
-                "declaring the class must put the house that teaches it on the plaza")
-            assert(Quest.shelfRung(knight, "bastion") == 1,
-                "...and declaring is not a rung: what you buy is the door, not the depth")
+            Character.recordTechnique(knight.roster[1], "mage", Class.classLevelCost(1))
+            assert(shut(knight, "arcanum"), "a class level must not put a card on the plaza")
 
             -- ANY body on the roster, not the one standing in front of you: a shelf is bought from with
             -- one purse into one stash, so the company's deepest holder is what the rung asks about.
@@ -461,9 +430,9 @@ return {
             Character.recordTechnique(nearly.roster[1], "rogue", Class.classLevelCost(1) - 1)
             assert(Quest.shelfRung(nearly, "undercroft") == 0, "a rung short of rogue 1 counted anyway")
 
-            -- WHAT PUTS A CARD ON THE PLAZA is the deed a player can feel. A company walks out of Act 0
-            -- with Rowan hurt and no priest in the world: the mending opens, and the Cathedral's door
-            -- with it -- or the only bone-setting in the game is behind a class nobody has.
+            -- WHAT PUTS A FEATURE'S CARD ON THE PLAZA is the deed a player can feel. A company walks out
+            -- of Act 0 with Rowan hurt and no priest shelf yet: the mending opens, and the Cathedral's
+            -- door with it -- or the only bone-setting in the game is behind a trip nobody has taken.
             local hurt = Player.new()
             Injury.inflict(hurt, { { id = "character_rowan" } })
             assert(not shut(hurt, "cathedral"), "an injury must stand the Cathedral's door open")

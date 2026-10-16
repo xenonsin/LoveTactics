@@ -8,9 +8,9 @@
 -- reason to have meat in it: they ask what you killed before they ask your name, and then they cook it.
 -- The kitchen keeps its own keeper and its own greeting; only its card went (models/offer.lua).
 --
--- THE SUPPER ARRIVES ON THE SECOND TRIP HOME. A meal is a decision made against a road you already
+-- THE SUPPER ARRIVES ON THE FOURTH TRIP HOME (Offer.SCHEDULE). A meal is a decision made against a road you already
 -- know the shape of -- which floor, how deep, how long the company will be down there before it eats
--- again -- and on the morning of the first descent the player knows none of that. Two trips is the whole
+-- again -- and on the morning of the first descent the player knows none of that. A few trips is the whole
 -- of the teaching: the company has been under, come up hungry, and the supper is now an answer to a
 -- question they have.
 return {
@@ -24,33 +24,22 @@ return {
     -- The desk: what this house says on the way in, and the rooms it offers (models/counter.lua).
     counter = "conversation_hunters_lodge_counter",
     offers = {
-        -- THE SHELF IS NEVER GATED, because the shelf IS the house. Under the card era a shut shelf
-        -- hid the whole shopfront, so the gate and the door were one fact; the fold put these doors on
-        -- the plaza for OTHER rooms' sake, and the gate started meaning "walk through a shopfront and
-        -- be offered no shop" -- which is what every desk in the city shipped reading.
-        --
-        -- A CLASS LEVEL BUYS DEPTH NOW and nothing else, which is the job Quest.shelfRung already
-        -- describes itself doing: level 0 IS rung 0, the class's bottom band, and the ladder unlocks
-        -- upward from there. Under the level-1 gate nobody could ever see rung 0 at all.
-        --
-        -- QUIET all the same: a shelf never puts a card on the plaza. A class rung is a reward the
-        -- player cannot see, and hanging a door on it put shopfronts in the city that nobody chose to
-        -- earn (models/offer.lua's Offer.any).
-        { answer = "shelf", panel = "shop", quiet = true,
-          -- ...except to the company training for it (models/offer.lua's `declared` gate).
-          -- A shelf is not a deed the player can feel, so it stays quiet; taking up the class
-          -- it sells IS one, and it is the only thing that puts this card on the plaza early.
-          announce = { declared = true } },
+        -- THE SHELF OPENS ON THE CITY SCHEDULE (models/offer.lua's Offer.SCHEDULE): one house's shelf per
+        -- trip home, in a fixed order, unless a body unlocks this house's class first -- that pulls
+        -- the shelf into the next trip's slot. Once open it stays open, and it announces its house:
+        -- the plaza grows by one shopfront a homecoming. A class level still buys DEPTH and nothing
+        -- else (Quest.shelfRung): level 0 is rung 0, the bottom band.
+        { answer = "shelf", panel = "shop", gate = { city = "hunters_lodge.shelf" } },
         -- The kitchen keeps its own vendor: its portrait, its name and its one-time greeting all hang
         -- off `cafe`, and it sells no items at all (data/vendors/cafe.lua).
-        { answer = "supper", panel = "cafe", vendor = "cafe", gate = { trips = 2 } },
-        -- THE HIRING BOARD (models/hire.lua, ui/panels/hire.lua): strangers who come to the Lodge looking
-        -- for a company. The Lodge feeds travellers, which makes it the city's tavern -- Wizardry forms its
-        -- party in one. Sixth homecoming, inserted ahead of the two backstops (the touchstone's reading
-        -- and the duel), which the schedule keeps last so that an insertion pushes them rather than
-        -- landing two rooms on one trip. The Lodge's door is already up from supper, so this arrives
-        -- as a new line on a desk the player already knows rather than as a card.
-        { answer = "hire", panel = "hire", gate = { trips = 6 } },
+        { answer = "supper", panel = "cafe", vendor = "cafe", gate = { city = "hunters_lodge.supper" } },
+        -- THE HIRING BOARD IS PARKED (2026-10-15). It sold blank strangers the player builds, and the
+        -- avatar became that same thing once its people and class were chosen on the Charter's roll
+        -- (states/character_creation.lua): two kinds of voiceless custom body in one roster. The company
+        -- grows through its written companions instead. models/hire.lua and ui/panels/hire.lua stay on
+        -- disk and still load, and the desk line still names `hire`, so lifting the park is deleting the
+        -- `parked` key below (models/offer.lua) and leaving the sixth-trip gate it sat beside.
+        { answer = "hire", panel = "hire", gate = { parked = true, trips = 6 } },
     },
     description = "Bows, traps, and one hot supper before the road.",
 }
