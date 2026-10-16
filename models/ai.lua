@@ -424,9 +424,22 @@ AI.POSTURES = {
     -- Holds until the fight comes to it, then commits. This is Fire Emblem's activation rule, and it
     -- is what lets a map be authored with quiet corners: a room full of `defensive` guards is a room
     -- the player can choose when to open, rather than a timer.
+    --
+    -- WHAT "COMES TO IT" MEANS, and each of these was once read narrower and left a knight standing
+    -- in its corner for the whole fight (2026-10-13):
+    --   * STRUCK is `lastAttacker`, which only a landed blow stamps and nothing clears. It was
+    --     `health < max`, so one heal -- its own potion, its side's priest -- put it back to sleep.
+    --   * REACH is reach from any tile it could walk to this turn, Fire Emblem's red zone. It was reach
+    --     from the tile it stood on, so an archer three squares out shot it to death unanswered.
+    -- (Its own side being cut down needs no rule of its own: a defender with allies is posted to them
+    -- -- AI.squadPost -- so it is already standing where that fight is.)
+    -- A post still leashes all of it: `ctx.tiles` is already the leashed list, so a defender on a node
+    -- engages on what it can reach without leaving the node, and "defend" movement keeps it there.
     defensive = {
-        desc = "Waits. It holds where it stands until the fight comes to it -- struck, or with someone"
-            .. " on the ground it was posted to hold -- and then commits without abandoning that post.",
+        desc = "Waits. It holds where it stands until the fight comes to it -- struck, a foe it could"
+            .. " walk to and hit, or someone on the ground it was posted to"
+            .. " hold -- and then commits without abandoning that post. With no objective it stands"
+            .. " by its allies.",
         rules = { SUPPORT_RULE, ATTACK_RULE },
         -- `defend`, not `approach`: a defender walks to its POST and stops there. The old `approach`
         -- was written for a posture that had nothing to defend -- once provoked it committed like an
@@ -436,7 +449,10 @@ AI.POSTURES = {
         move = "defend",
         defends = true, -- AI.plan reads a post for this posture, and leashes its stand tiles to it
         engage = function(ctx)
-            if hpFraction(ctx.unit) < 1 then return true end -- someone already shot at me
+            local Combat = require("models.combat")
+            local unit = ctx.unit
+            -- Someone already shot at me. Wounded at the start line counts too (a body carried in hurt).
+            if unit.lastAttacker or hpFraction(unit) < 1 then return true end
             -- Somebody is on the ground I am here to hold. A post being contested IS the fight
             -- starting, whether or not the contester has come within my own reach yet.
             if ctx.post then
@@ -445,7 +461,7 @@ AI.POSTURES = {
                         and AI.atPost(other.x, other.y, ctx.post) then return true end
                 end
             end
-            local Combat = require("models.combat")
+            local hostile = {}
             for _, item in ipairs(ctx.items) do
                 -- HOSTILE reach only. Counting a support item here meant a unit engaged because it
                 -- could drink its own potion (an `ally` ability's target list includes the caster),
@@ -460,10 +476,13 @@ AI.POSTURES = {
                 -- ring it could spin in an empty field has not been engaged by anybody. Whatever it
                 -- could actually reach a foe with answers this question on its own.
                 local ab = item.activeAbility
-                if ab and ab.target ~= "self" and not Combat.isSupportAbility(ab)
-                    and #Combat.abilityTargets(ctx.combat, ctx.unit, item) > 0 then return true end
+                if ab and ab.target ~= "self" and not Combat.isSupportAbility(ab) then
+                    hostile[#hostile + 1] = item
+                end
             end
-            return false
+            -- ...from every tile it could stand on this turn, which is the same enumeration the attack
+            -- rules are about to score, so "would engage" and "has a blow to throw" cannot disagree.
+            return #hostile > 0 and #AI.candidates(ctx.combat, unit, hostile, ctx.tiles, false) > 0
         end,
     },
 
@@ -811,8 +830,9 @@ end
 --
 -- ...and when the objective names nothing at all -- a killAll, which is most maps -- the side itself
 -- is asked instead (AI.charge): there is still obviously somebody a squad cannot afford to lose, and
--- a wall that plants itself in front of its own healer is playing the same game either way. Only when
--- nobody qualifies is there no post, and then this is the hold-until-provoked posture it always was.
+-- a wall that plants itself in front of its own healer is playing the same game either way. When
+-- nobody qualifies it falls in beside its allies (AI.squadPost); only a body with no allies at all has
+-- no post, and then this is the hold-until-provoked posture it always was.
 --
 -- A post is `{ tiles, radius, what }`: the ground being held and how far off it the holder may stand.
 
@@ -1020,9 +1040,9 @@ end
 --      banks the node has lost the battle it was winning.
 --   3. the charge RANKING -- whoever the side cannot afford to lose (AI.charge). The fallback for
 --      every map that names neither, which is most of them: a killAll used to leave a `defensive`
---      unit with no post at all, standing wherever it spawned until something walked into reach. It
---      still ends up with no post when nobody on its side qualifies -- a squad of pure hitters is
---      exactly the "quiet corner" case, and it plays as it always did.
+--      unit with no post at all, standing wherever it spawned until something walked into reach.
+--   4. the SQUAD -- beside any ally, when nobody qualifies as a charge (AI.squadPost). Only a body
+--      with no allies left has no post, and plays the old hold-until-provoked guard.
 --
 -- A BODY outranks GROUND: a guard follows what it guards, and a `defend` objective resolves to its
 -- protectee's tile anyway, so reading the body first is also what keeps a walking charge's picket
@@ -1053,7 +1073,27 @@ function AI.post(combat, unit)
     end
     local charge = AI.charge(combat, unit)
     if charge then return bodyPost(charge) end
-    return nil
+    return AI.squadPost(combat, unit)
+end
+
+-- 4. THE SQUAD, when nobody on the side qualifies as a charge: a defender falls in beside its allies
+-- (2026-10-13). "A squad of pure hitters is the quiet corner" left an adventurer knight standing where
+-- it spawned while its hunter and rogue walked off to fight without it -- a wall that is not between
+-- anybody and anything. Every ally's tile is the post, at the body picket's radius, so the post moves
+-- with the group and there is no single body to re-pick as the fight moves (the oscillation the charge
+-- ranking's stable terms exist to prevent). Summons are left out because they are not the squad, and
+-- a body with no allies at all still has no post: alone, it is the old hold-until-provoked guard.
+function AI.squadPost(combat, unit)
+    local Combat = require("models.combat")
+    local tiles = {}
+    for _, u in ipairs(combat.units) do
+        if u.alive and u ~= unit and u.side == unit.side and not u.summoned
+            and not Combat.isOffTile(u) then
+            tiles[#tiles + 1] = { x = u.x, y = u.y }
+        end
+    end
+    if #tiles == 0 then return nil end
+    return { tiles = tiles, radius = AI.POST_RADIUS, what = "its side" }
 end
 
 -- Is (x, y) close enough to `post` to count as manning it?

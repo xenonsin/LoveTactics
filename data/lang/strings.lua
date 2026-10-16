@@ -426,7 +426,7 @@ return {
     ["line.conversation_tutorial_flight.6"] = { en = "You've leveled up! See how your stats have risen.", ja = "" },  -- TODO
     ["line.conversation_tutorial_flight.7"] = { en = "Your class decides which stats rise. Open Classes to change it.", ja = "" },  -- TODO
     ["line.conversation_tutorial_injury.1"] = { en = "They were carried out of that fight. The dark band on their bar is health that will not come back - not from a potion, not from the stair. A camp can bind it instead of resting, or the Ward will set it when we are home.", ja = "" },  -- TODO
-    ["line.conversation_tutorial_injury.2"] = { en = "That one did not take blood, it took something else. It is on them until the Ward sees to it, and they will carry it into every fight - hold the pointer over them to read what it costs.", ja = "" },  -- TODO
+    ["line.conversation_tutorial_injury.2"] = { en = "Characters suffer injuries when they are incapacitated in battle and not revived.", ja = "" },  -- TODO
     ["line.conversation_tutorial_notes.1"] = { en = "The Tally", ja = "" },  -- TODO
     ["line.conversation_tutorial_notes.10"] = { en = "Relics", ja = "" },  -- TODO
     ["line.conversation_tutorial_notes.11"] = { en = "Relics are bonuses that affect the whole party that only last until you leave the rift.", ja = "" },  -- TODO

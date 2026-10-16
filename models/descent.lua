@@ -2496,6 +2496,9 @@ function Descent.new(player, seed, startFloor)
     -- Folded with `runsStarted`, which Seed.run still advances for exactly this kind of use. An explicit
     -- `seed` still pins the whole thing, so a spec that fixes a run fixes its companion too.
     local dealSeed = require("models.seed").mix(runSeed, (player and player.runsStarted) or 0)
+    -- Lifted out for the same reason: the companion is seated in her house's circle, and which floors
+    -- that circle holds turns on this flag (Descent.companionFloor).
+    local shuffled = (player and require("models.player").hasFinishedCampaign(player)) or nil
     return {
         floor = startFloor and math.max(1, math.min(Descent.entryFloor(player), startFloor)) or 1,
         -- OFF THE SAVE'S OWN SEED, not off the clock (models/seed.lua). It was `os.time()`, which is a
@@ -2522,11 +2525,11 @@ function Descent.new(player, seed, startFloor)
         -- Player.active and then to the save on disk when given nil, which is right for the main menu
         -- and wrong here twice over: a run's layout would depend on ambient state, and a headless
         -- caller passing no player would go and read the player's real save file to lay out its floors.
-        shuffled = (player and require("models.player").hasFinishedCampaign(player)) or nil,
+        shuffled = shuffled,
         -- WHO IS STANDING DOWN THERE, AND ON WHICH FLOOR, or nil for a descent that offers nobody. One
         -- per run, dealt here for the reason `shuffled` is dealt here: the seed cannot know which
         -- counters this company has walked into. See Descent.dealCompanion.
-        companion = Descent.dealCompanion(dealSeed, player),
+        companion = Descent.dealCompanion(dealSeed, player, { seed = runSeed, shuffled = shuffled }),
         -- Taken at the first floor and then carried by reference for the rest of the descent. See above.
         entry = nil,
         -- Quest ids banked but not yet paid out. Nothing writes this until authored floors land; it is
@@ -3739,10 +3742,13 @@ end
 -- WHICH COMPANION IS STANDING ON THIS FLOOR, as a vendor id -- the one body waiting at a dead end with
 -- one piece of work to ask for (models/errand.lua).
 --
--- A SECOND PERMUTATION, DELIBERATELY UNCORRELATED WITH THE SINS. Both are dealt off the run's seed, but
--- with different salts, so the companion standing on floor three has nothing to do with the sin who
--- holds it. Correlating them -- seating each body on its own house's circle -- would make the recruit
--- order and the biome order the same list, and the run would have one permutation where it has two.
+-- EACH BODY STANDS IN HER OWN HOUSE'S CIRCLE (Descent.companionFloor), and that is a reversal. This was a
+-- second permutation, deliberately uncorrelated with the sins, so the companion on floor three had
+-- nothing to do with the sin who held it -- and her posting had to be a fight that made sense on any
+-- ground at all, which in practice meant a wood with boars in it standing on the tundra. Settled
+-- 2026-10-14 by the author: Kaya is met in Gluttony, Clem in Greed, Ren in Envy, Saber in Wrath, each
+-- against her circle's own stock (data/quests/<house>/..._slot_01). WHICH house is still a roll and still
+-- gated on the visit below, so the recruit order is not the circle order; only WHERE she stands is.
 --
 -- ONE PER FLOOR, WHICH IS THE WHOLE OF THE PACING. It dealt all of them across the first two floors
 -- before this, and the compression was defended as a price: every door offered early, climb back for the
@@ -3777,8 +3783,9 @@ end
 -- survives the reversal because its real job was never the introduction -- it is what stops the one
 -- deal a descent gets being spent on a house the player has no reason to care about yet.)
 --
--- SIX, NOT SEVEN. The Bastion's companion is Rowan, who is sworn in the prologue, so its opener grants
--- nobody and Errand.houses leaves it out -- the deck is what actually recruits, not what names a body.
+-- FIVE, NOT SEVEN. Rowan is sworn in the prologue and Xin walks out of its Inn with the company, so the
+-- Bastion and the Cathedral post nothing and Errand.houses leaves them out -- the deck is what actually
+-- recruits, not what names a body.
 --
 -- STAMPED AT THE MOUTH OF THE RUN rather than re-derived per floor, and it is the same call `shuffled`
 -- makes directly above (Descent.new). The floor is a pure function of the seed, but WHO is standing on
@@ -3857,8 +3864,9 @@ Descent.SCRIPTED_COMPANION_FLOOR = 1           -- the first board a new company 
 -- Deal this run's single companion, as { house, floor }, or nil for a descent that meets nobody.
 -- `player` may be nil (a fixture with no company behind it), and then nothing is scripted -- there is no
 -- roster to be missing her from -- and every recruiting house is eligible, because there is nobody whose
--- visits could narrow it.
-function Descent.dealCompanion(seed, player)
+-- visits could narrow it. `layout` is the run's { seed, shuffled }, so the floor can be found in the
+-- dealt house's own circle (Descent.companionFloor).
+function Descent.dealCompanion(seed, player, layout)
     local Errand = require("models.errand")
     local Player = require("models.player")
 
@@ -3886,7 +3894,6 @@ function Descent.dealCompanion(seed, player)
     -- control and is immune to the stride: measured at 87.00% met over 20000 seeds, with the floor flat
     -- across the stratum to within 5%.
     if (hash(seed, 977, 0) % 100) >= Descent.COMPANION_CHANCE then return nil end
-    local floor = (hash(seed, 978, 0) % Descent.CIRCLE_FLOORS) + 1
 
     local deck = {}
     for vendorId in pairs(Errand.houses()) do
@@ -3903,7 +3910,32 @@ function Descent.dealCompanion(seed, player)
         local j = (hash(seed, 991, i) % i) + 1
         deck[i], deck[j] = deck[j], deck[i]
     end
-    return { house = deck[1], floor = floor }
+    return { house = deck[1], floor = Descent.companionFloor(seed, deck[1], layout) }
+end
+
+-- WHERE A DEALT COMPANION STANDS: one of the two floors of her own house's circle (Descent.SINS'
+-- `vendor`), picked by the run's `where` draw. `layout` is the run's { seed, shuffled } -- the two
+-- things Descent.sinAt reads -- because the circles move once the Crown has fallen and the floor has
+-- to follow the circle, not the number it held on the first lap. A house with no circle, or a caller
+-- with no layout, falls back to anywhere in the stratum, which is what every deal used to be.
+--
+-- ...UNLESS THE HOUSE IS SEATED ELSEWHERE (Descent.COMPANION_CIRCLE). Gyeom is scripted onto floor one, which
+-- is Gluttony's on the authored order -- the Lodge's own circle -- so Kaya was met in the same wood as her.
+-- Settled 2026-10-14: no two companions share a circle, and Kaya hunts in Sloth's.
+Descent.COMPANION_CIRCLE = { hunters_lodge = "sloth" }
+
+function Descent.companionFloor(seed, house, layout)
+    local where = hash(seed, 978, 0)
+    if layout and house then
+        local order = Descent.sinOrder(layout.seed, layout.shuffled)
+        local circleOf = Descent.COMPANION_CIRCLE[house]
+        for circle, sin in ipairs(order) do
+            if (circleOf and sin.id == circleOf) or (not circleOf and sin.vendor == house) then
+                return (circle - 1) * Descent.FLOORS_PER_CIRCLE + (where % Descent.FLOORS_PER_CIRCLE) + 1
+            end
+        end
+    end
+    return (where % Descent.CIRCLE_FLOORS) + 1
 end
 
 -- Still a LIST rather than one id, and the callers are why: Descent.floorObjectives loops it and the

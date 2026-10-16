@@ -729,4 +729,18 @@ return {
             assert(far.char.stats.health.current < f0, "and the second tile behind it too")
         end,
     },
+    {
+        -- The one dagger that does not bleed, and the omission is the weapon (its blueprint argues it).
+        name = "the Apothecary's Lancet leaves Poison behind and opens no Bleed",
+        fn = function()
+            local c = Combat.new(arena(6, 6),
+                { mkunit(2, 2, { items = { "weapon_apothecarys_lancet" } }) },
+                { mkunit(2, 3, { stats = { health = 100 } }) })
+            local hero, foe = c.units[1], c.units[2]
+            local ok = Fixture.strike(c, hero, foe, "weapon_apothecarys_lancet")
+            assert(ok, "the Lancet strikes an adjacent foe")
+            assert(Status.has(foe, "status_poison"), "the strike leaves Poison")
+            assert(not Status.has(foe, "status_bleed"), "and opens no Bleed")
+        end,
+    },
 }

@@ -75,8 +75,10 @@ return {
             -- you, it decides where you stand"), so two defensive lines across open ground genuinely
             -- never engage. The loop must report that as UNDECIDED and stop, rather than spinning --
             -- and the walk-off must never take an undecided fight for a victory it watched.
-            local map = Fixture.new(10, 10)
-            local party = { Fixture.unit("character_knight", 5, 8) }
+            -- Fourteen rows apart, well past either body's walk-and-strike zone: a defender now engages
+            -- on what it could WALK to and hit (models/ai.lua's `defensive`), and six rows was inside it.
+            local map = Fixture.new(10, 18)
+            local party = { Fixture.unit("character_knight", 5, 16) }
             local foes = { Fixture.unit("character_champion", 5, 2) }
             local combat = Fixture.combat(map, { party[1] }, foes)
 

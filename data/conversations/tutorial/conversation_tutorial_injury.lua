@@ -43,6 +43,6 @@ return {
 
     script = {
         { "character_rowan", "They were carried out of that fight. The dark band on their bar is health that will not come back - not from a potion, not from the stair. A camp can bind it instead of resting, or the Ward will set it when we are home.", tag = 1, id = "injury_hint" },
-        { "character_rowan", "That one did not take blood, it took something else. It is on them until the Ward sees to it, and they will carry it into every fight - hold the pointer over them to read what it costs.", tag = 2, id = "badge_hint" },
+        { "character_rowan", "Characters suffer injuries when they are incapacitated in battle and not revived.", tag = 2, id = "badge_hint" },
     },
 }

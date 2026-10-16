@@ -282,6 +282,35 @@ return {
         end,
     },
     {
+        name = "defensive reach is what it could walk to and hit, not only what stands beside it",
+        fn = function()
+            -- Reach read from the tile it stood on let an archer three squares out shoot a knight
+            -- to death unanswered. A bandit walks 4 and swings at 1, so five is the edge of its zone.
+            local function guarded(foeY)
+                local g = Character.instantiate("character_bandit")
+                g.archetype = "defensive"
+                local c = Combat.new(arena(12, 12), { unit(swordsman(), 2, foeY) }, { unit(g, 2, 2) })
+                return AI.plan(c, c.units[2])
+            end
+            local near = guarded(6)
+            assert(near.item and near.move, "a foe it can walk to and strike: it does, " .. AI.explain(near))
+            assert(guarded(9).wait, "a foe past its walk and its blow still leaves it holding")
+        end,
+    },
+    {
+        name = "a defender once struck stays in the fight after it is healed",
+        fn = function()
+            -- `health < max` was the only memory of being struck, so one potion put a knight back to
+            -- sleep with its attacker still in the room. lastAttacker is what a landed blow leaves.
+            local g = Character.instantiate("character_bandit")
+            g.archetype = "defensive"
+            local c = Combat.new(arena(12, 12), { unit(swordsman(), 9, 9) }, { unit(g, 2, 2) })
+            c.units[2].lastAttacker = c.units[1]
+            assert(hpOf(c.units[2]) == c.units[2].char.stats.health.max, "the fixture is at full health")
+            assert(AI.plan(c, c.units[2]).move, "and still commits")
+        end,
+    },
+    {
         name = "a defensive unit engages on hostile reach, not on its own potion",
         fn = function()
             -- `defensive` asks whether anything it carries has a target from where it stands. An
@@ -532,7 +561,10 @@ return {
                 { rowan(1, 1), unit(swordsman(), 3, 3) },
                 { unit("character_bandit", 14, 14) })
             assert(AI.charge(hitters, hitters.units[1]) == nil, "a swordsman guards itself")
-            assert(AI.plan(hitters, hitters.units[1]).wait, "so she is a plain defender, holding")
+            -- ...so she falls in beside the squad instead (AI.squadPost), rather than holding apart.
+            local plan = AI.plan(hitters, hitters.units[1])
+            assert(plan.move and plan.reason == "defend: closing on its side",
+                "so she is a plain defender, joining her side: " .. AI.explain(plan))
         end,
     },
     {
@@ -600,6 +632,31 @@ return {
             local plan = AI.plan(c, wall)
             assert(plan.move and Combat.cellGap(plan.move.x, plan.move.y, medic) < Combat.cellGap(2, 2, medic),
                 "and the wall walks to it, rather than waiting to be found")
+        end,
+    },
+    {
+        name = "with no objective and no charge, a defender falls in beside its allies",
+        fn = function()
+            -- A squad of plain hitters ranks nobody as a charge. It used to leave the defender with no
+            -- post at all, standing where it spawned while the rest of its side walked off to fight.
+            local g = Character.instantiate("character_bandit")
+            g.archetype = "defensive"
+            local c = Combat.new(arena(20, 20),
+                { unit(swordsman(), 20, 20) },
+                { unit(g, 2, 2), unit("character_bandit", 9, 9) })
+            local wall, mate = c.units[2], c.units[3]
+            assert(AI.charge(c, wall) == nil, "a hitter is nobody's charge")
+            local post = AI.post(c, wall)
+            assert(post and post.what == "its side", "so the post is the squad")
+            local plan = AI.plan(c, wall)
+            assert(plan.move and Combat.cellGap(plan.move.x, plan.move.y, mate) < Combat.cellGap(2, 2, mate),
+                "and it walks toward them")
+
+            -- Beside them already: holding IS the move.
+            local c2 = Combat.new(arena(20, 20),
+                { unit(swordsman(), 20, 20) },
+                { unit(g, 8, 9), unit("character_bandit", 9, 9) })
+            assert(AI.plan(c2, c2.units[2]).wait, "a defender already with its squad stays put")
         end,
     },
     {

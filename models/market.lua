@@ -2,9 +2,8 @@
 --
 -- Two racks, and the split is the whole design:
 --
---   THE COUNTER    the plain kit, standing. Every opening-rung consumable, and every class's plain
---                  opening-rung weapon -- that class's blade once its companion has actually joined.
---                  Never rolled, never absent. Twenty-two rows when the whole company is recruited.
+--   THE COUNTER    the plain kit, standing. Every opening-rung consumable, and no weapon at all (see
+--                  STAPLE_TYPES). Never rolled, never absent. Ten rows.
 --   TODAY          three deeper wares dealt against how far this company has got, changing once a day.
 --
 -- WHY BOTH. A shop that rolled its entire stock would make a trip into town a slot machine, and the one
@@ -65,11 +64,13 @@ Market.TODAY = "today"
 
 -- What the standing rack holds, and it is a TYPE question rather than a price one.
 --
--- Consumables and weapons. Not armor and not utility, and that is a reading of the data rather than a
--- taste: there is no plain armor at the opening rung. The only two pieces down there are the Muster
--- Cuirass and Rimeguard, both named knight gear, both things you are meant to find. A body walks in
--- wearing what it came with and buys the blade and the draught.
-Market.STAPLE_TYPES = { consumable = true, weapon = true }
+-- Consumables, and only consumables. The standing rack answers a NEED, and a need is a draught: a body
+-- walks in wearing what it came with, and a blade is not something a company runs out of between trips.
+-- It held the thirteen plain opening weapons too until 2026-10-13, and that was a second answer to a
+-- question the class shelves already answer -- the houses next door sell a class's opening weapon, and
+-- the rift deals the rest. The plain blades are not gone from this counter: with no standing rack to
+-- claim them they are ordinary wares, and the rotation can deal one like anything else on its rung.
+Market.STAPLE_TYPES = { consumable = true }
 
 -- The rung at or below which a ware of a staple type is standing stock.
 --

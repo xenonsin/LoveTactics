@@ -43,18 +43,14 @@ local Market = require("models.market")
 local Player = require("models.player")
 local Vendor = require("models.vendor")
 
--- THE STANDING RACK, DECLARED. Nine draughts, and one plain weapon per class -- the nine named for the
--- ore plus the four that are not (a mage's Staff and Wand, a priest's Censer, an alchemist's Lancet),
--- all thirteen at 80 gold on the opening rung, which is what makes them the same rack.
+-- THE STANDING RACK, DECLARED. Ten draughts and nothing else. It held the thirteen plain opening
+-- weapons as well until 2026-10-13; a blade is not a need, and the class shelves sell it. Reviving
+-- Salts joined the nine on 2026-10-15 (models/grade.lua pins it at rung 0): the one revive a company
+-- can carry is a need, and a gate on it would price one.
 local DRAUGHTS = {
     "consumable_ball_bearings", "consumable_clearwater_vial", "consumable_healing_potion",
-    "consumable_mana_potion", "consumable_net", "consumable_panacea",
+    "consumable_mana_potion", "consumable_net", "consumable_panacea", "consumable_reviving_salts",
     "consumable_stamina_potion", "consumable_throwing_stone", "consumable_witchlight_flare",
-}
-local BLADES = {
-    "weapon_apothecarys_lancet", "weapon_censer", "weapon_iron_axe", "weapon_iron_bow",
-    "weapon_iron_dagger", "weapon_iron_greatsword", "weapon_iron_hammer", "weapon_iron_longbow",
-    "weapon_iron_mace", "weapon_iron_spear", "weapon_iron_sword", "weapon_staff", "weapon_wand",
 }
 
 local function set(list)
@@ -118,6 +114,22 @@ return {
                 if moved then break end
             end
             assert(moved, "the rotation must turn over inside a fortnight")
+        end,
+    },
+    {
+        -- Both directions: every draught is out, and no weapon is -- not even the plain opening blades,
+        -- which is the half a derived "everything at rung 0" would quietly put back.
+        name = "the standing rack is the ten draughts, and sells no weapon",
+        fn = function()
+            local p = Player.new()
+            local got = ids(rack(p, 1, Market.COUNTER))
+            local want = set(DRAUGHTS)
+            for _, id in ipairs(got) do
+                local def = Item.defs[id]
+                assert(not (def and def.type == "weapon"), id .. " is a weapon on the standing rack")
+                assert(want[id], id .. " is on the standing rack but not declared")
+            end
+            assert(#got == #DRAUGHTS, "every declared draught is standing stock")
         end,
     },
     {
