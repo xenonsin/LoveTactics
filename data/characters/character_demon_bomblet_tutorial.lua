@@ -1,6 +1,12 @@
--- The Bomblet: a demon bred hollow and filled with fire, and the first self-destruct unit the game
--- fields. It is fast, fragile, and single-minded -- it rushes the nearest body and, when it dies, it
--- BURSTS (data/traits/trait_volatile.lua, carried on the bound data/items/utility/utility_volatile_core.lua).
+-- The Puffcap: a spore pod of floor one's wood, swollen hollow and full to the skin, and the first
+-- self-destruct unit the game fields. It is fast, fragile, and single-minded -- it rushes the nearest
+-- body and, when it dies, it BURSTS (data/traits/trait_volatile.lua, carried on the bound
+-- data/items/utility/utility_volatile_core.lua).
+--
+-- (THE ID STILL SAYS `demon_bomblet`, and the body is not one. Act 0 moved onto floor one, whose
+-- bodies are beasts, and the Demon Champion is meant to be the ONE demon met there. Renamed in place:
+-- the id, file and sprite path stay, because the prologue, the encounters and the specs name it by
+-- them. "Bomblet" below is the old name for the same body.)
 --
 -- IT HAS NO STRIKE. Its only attack is to explode: no bite, no fists (`unarmed = false` leaves it a
 -- body that can be moved around the board but can never hit anything -- see models/character.lua). The
@@ -26,7 +32,7 @@
 -- away or into its own kind and the blast is someone else's problem. Kept fragile (one solid hit or any
 -- AoE ends it) and low-count so the board reads as a puzzle, not chaos.
 --
--- Tuned tight, like the Imp (data/characters/character_demon_imp_tutorial.lua): ~10 health dies to one
+-- Tuned tight, like the Ember Newt (data/characters/character_demon_imp_tutorial.lua): ~10 health dies to one
 -- iron-bow shot or one Clear Out, so the "kill it at range" answer is always available.
 --
 -- ACT 0 OWNS THIS BODY, which is what the `_tutorial` says. Two things field it and both are Act 0's:
@@ -35,13 +41,13 @@
 -- bomblet. See the imp's header for the full argument the suffix is making and the day it became
 -- necessary.
 return {
-    name = "Bomblet",
-    race = "demon",
+    name = "Puffcap",
+    race = "beast",
     tier = 1,
     sprite = "assets/chars/demon_bomblet.png",
-    revivable = false, -- a demon does not come back (and it bursts on death regardless)
+    revivable = false, -- a burst pod does not come back (and it bursts on death regardless)
     unarmed = false, -- no natural weapon at all: it cannot strike, only detonate
-    -- Blueprint-exact, like the imp and the grunt. The burst is a fixed 12 the survivor stop is
+    -- Blueprint-exact, like the newt and the boar. The burst is a fixed 12 the survivor stop is
     -- counted against, and "one bow shot or one Clear Out ends it" is a promise about THIS pool -- a
     -- body that grew with the company would keep the promise on the page and break it on the board.
     -- A no-op in the game today (Act 0 fields it at party level 1) and stated anyway, because what
@@ -61,16 +67,15 @@ return {
     -- table is written in and summed into the same total. This body wears nothing, so this is
     -- what it has instead of a coat -- and the negative line is not an oversight, it is the
     -- price. See docs/bestiary.md, "What a creature wears instead of armour".
-    --   Bred hollow. A point goes into the cavity and finds the cavity.
+    --   Grown hollow. A point goes into the cavity and finds the cavity.
     --   A blow does not need to find anything. It just has to set the thing off, which is the joke.
     --
-    -- THE ONE DEMON ON THE ROSTER THAT DOES NOT SHRUG OFF FIRE, and the only one that must not. Every
-    -- other body in the Host reads `fire = +`; a bomblet is filled with the stuff rather than made of
-    -- it, and trait_volatile's whole design is that one going off finishes the next one along
-    -- (tests/demon_champion_spec.lua). A fire line on this body is a body that survives its own
-    -- neighbour, which is the chain not happening. Written the other way it is the same joke as the
-    -- line above: the way to set one off is to set it on fire.
-    resist = { pierce = 2, impact = -2, fire = -4, holy = -4 },
+    -- IT MUST NOT SHRUG OFF FIRE. A puffcap is dry spore and tinder to the skin, and trait_volatile's
+    -- whole design is that one going off finishes the next one along (tests/demon_champion_spec.lua).
+    -- A fire line on this body is a body that survives its own neighbour, which is the chain not
+    -- happening. Written the other way it is the same joke as the line above: the way to set one off
+    -- is to set it on fire.
+    resist = { pierce = 2, impact = -2, fire = -4 },
     -- Two items and one idea. The Volatile Core (bound, center) is not a weapon it swings -- it is the
     -- self-destruct rule (trait_volatile) it goes off with -- and Self-Destruct sits on top of it, the
     -- fuse over the charge. No default action: there is no strike to make one from.

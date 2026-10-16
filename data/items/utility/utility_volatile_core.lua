@@ -7,7 +7,7 @@
 return {
     name = "Volatile Core",
     description = "On death: bursts.",
-    flavor = "A demon bred hollow and filled with fire. It was never meant to come home.",
+    flavor = "A pod grown hollow and packed with spores. It was never meant to last the season.",
     sprite = "assets/items/sig_unappeased_heart.png", -- placeholder until its own art exists
     type = "utility",
     class = "creature",

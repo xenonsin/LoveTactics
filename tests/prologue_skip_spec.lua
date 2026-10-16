@@ -238,9 +238,12 @@ return {
 
             -- Every stop's authored loot is in the stash.
             local counts = stashCounts(player)
-            for _, stop in ipairs(prologue.FLIGHT_QUEST.map.encounters.always) do
-                for _, id in ipairs(stop.loot or {}) do
-                    assert((counts[id] or 0) > 0, "the road's " .. id .. " is missing from the stash")
+            for _, list in ipairs({ prologue.FLIGHT_QUEST.map.encounters.always,
+                                    prologue.FLIGHT_QUEST.map.encounters.prowl or {} }) do
+                for _, stop in ipairs(list) do
+                    for _, id in ipairs(stop.loot or {}) do
+                        assert((counts[id] or 0) > 0, "the road's " .. id .. " is missing from the stash")
+                    end
                 end
             end
             -- ...and so are the two scene gifts.

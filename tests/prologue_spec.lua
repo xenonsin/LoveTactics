@@ -24,7 +24,8 @@ local Conversation = require("models.conversation")
 -- not played as a scene -- it is the village fight's speech-bubble text (models/tutorial.lua) -- but
 -- it lives in the same folder and must resolve like any other. See states/hub.lua for the arrival.
 local PROLOGUE_SCENES = {
-    "conversation_prologue_village", "conversation_prologue_roll", "conversation_prologue_ruins",
+    "conversation_prologue_opening", "conversation_prologue_village", "conversation_prologue_classes",
+    "conversation_prologue_ruins", "conversation_flight_turn_back",
     "conversation_prologue_arrival",
     "conversation_colosseum_slot_01_outro", "conversation_tutorial_village",
 }
@@ -162,8 +163,10 @@ return {
             end
             local all = table.concat(said, " ")
             assert(all:find("rift", 1, true), "the opening names the rift")
-            assert(all:find("demon", 1, true) or all:find("imp", 1, true),
-                   "the opening says what came out of it")
+            -- ...AND NOT A DEMON (2026-10-16). The first fight is on floor one, among its beasts, and the
+            -- Demon Champion at the end of the floor is meant to be a surprise -- the one demon where none
+            -- belongs. A first line that promised demons would spend it before the board was read.
+            assert(not all:find("demon", 1, true), "the opening does not promise demons")
             -- Whose voice it is in is pinned next door, by tests/tutorial_spec.lua: a lesson's opening
             -- is the mentor's alone, because it is the voice that teaches the seven steps after it.
             -- What THIS asserts is the other half -- that the scene carrying the premise is still the
@@ -179,15 +182,22 @@ return {
         end,
     },
     {
-        name = "nothing spoken before the Charter's roll uses the avatar's name",
+        name = "nothing spoken before character creation uses the avatar's name",
         fn = function()
-            -- The name is typed AFTER the first fight now (states/character_creation.lua), so the first
-            -- fight's opening would read "Stranger" for every {name} in it.
-            local def = Conversation.defs["conversation_prologue_village"]
+            -- The name is typed the beat AFTER the opening narration (states/prologue.lua's beat list), so
+            -- the narration would read "Stranger" for every {name} in it.
+            local def = Conversation.defs["conversation_prologue_opening"]
+            assert(def, "the opening narration exists")
             for _, node in ipairs(def.script) do
                 local text = node.text or node[2]
                 assert(not (type(text) == "string" and text:find("{name}", 1, true)),
-                    "the first fight's opening uses {name} before the player has typed one: " .. tostring(text))
+                    "the opening narration uses {name} before the player has typed one: " .. tostring(text))
+            end
+            -- ...and it says nothing of the friends: it is the city's, and yours (the author's call).
+            for _, node in ipairs(def.script) do
+                local text = ((node.text or node[2]) or ""):lower()
+                assert(not text:find("rowan", 1, true) and not text:find("xin", 1, true),
+                    "the narration names a companion: " .. text)
             end
         end,
     },

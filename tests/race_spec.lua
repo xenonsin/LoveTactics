@@ -219,7 +219,9 @@ tests[#tests + 1] = { name = "the demon's holy line lives on the race and still 
     local demon = Race.get("demon")
     assert(demon and demon.resist and demon.resist.holy < 0,
         "a demon takes holy the harder because of what it is")
-    local c = Character.instantiate("character_demon_imp_tutorial")
+    -- (It read Act 0's imp here until that body became floor one's Ember Newt, a beast. The rift's own
+    -- pit imp authors no holy line either, so it asks the same question.)
+    local c = Character.instantiate("character_pit_imp")
     assert(c.race == "demon" and c.kind == "demon", "an imp is one")
     assert(c.resist and c.resist.holy and c.resist.holy < 0, "and carries the line without authoring it")
 end }

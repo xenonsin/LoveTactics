@@ -429,6 +429,17 @@ local function fireItems(event, extra)
     return ItemHook.dispatch(event, ctx)
 end
 
+-- WHAT FOLLOWS THE EQUIP LESSON ON ACT 0's FLOOR (2026-10-16): the class tab, when the Roll is already
+-- open and its lesson is still owed. Act 0 opens the Roll after its first fight -- the trip down is for the
+-- class requirements -- so the first time the panel is open is the first time the tab can be pointed at.
+-- `open` says whether the panel is up (point at the tab) or not (point at the button).
+local function classLessonNext(open)
+    if game.tutorial == "flight" and not game.classTaught and Descent.classesUnlocked(game.player) then
+        return open and "classtab" or "class"
+    end
+    return nil
+end
+
 -- Open the Party screen over the overworld (same modal slot as the encounter panel).
 local function openLoadout()
     -- During the flight tutorial, opening the loadout is the step that unlocks the equip lesson: the
@@ -464,17 +475,20 @@ local function openLoadout()
         pool = game.descent and "pack" or nil,
         -- Clear the equip coach the instant the player equips something, not on panel close.
         onEquip = function()
-            if game.coach == "equip" then game.coach = nil end
+            if game.coach == "equip" then game.coach = classLessonNext(true) end
         end,
         -- Spent by GOING THERE. Taking the tab is the whole of what the lesson asked for; what the
         -- Roll then is gets explained by the tab's own window (Party:openNote), which fires on the
         -- same press.
         onMode = function(mode)
-            if mode == "classes" and game.coach == "classtab" then game.coach = nil end
+            if mode == "classes" then
+                game.classTaught = true
+                if game.coach == "classtab" then game.coach = nil end
+            end
         end,
         onClose = function()
             game.activePanel = nil
-            if game.coach == "equip" then game.coach = nil end -- lesson done (closed without equipping)
+            if game.coach == "equip" then game.coach = classLessonNext(false) end -- lesson done (closed without equipping)
             -- ...and the same for the class tab: a player who shut the panel without taking it has
             -- declined the lesson, and a bubble that outlived its own screen would point at nothing.
             if game.coach == "classtab" then game.coach = nil end
@@ -1412,6 +1426,23 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
     -- Descent.FLOOR_FEATURE_KEYS exists to prevent, one layer up.
     game.floorPool = game.descent and Descent.floorPool(ctx) or nil
 
+    -- ACT 0's FLOOR ONE DEALS ITS FIGHTS THE SAME WAY, OUT OF A SCRIPT (states/prologue.lua's FLIGHT_QUEST
+    -- `prowl`). The tutorial floor has no run and no pool -- its fights are lessons, in an order -- but a
+    -- fight on floor one finds you as you walk, so these do too: a queue, each arriving `after` steps of
+    -- walking, or at the chokepoint it is owed `by` (game:onArrive). Nil on every other leg.
+    game.tutorialProwl = nil
+    if encSpec.prowl then
+        local queue = {}
+        for _, e in ipairs(encSpec.prowl) do
+            local def = EncounterModel.get(e.id)
+            if def then
+                queue[#queue + 1] = { id = e.id, kind = def.kind, name = def.name, loot = e.loot,
+                                      after = e.after or 0, by = e.by }
+            end
+        end
+        game.tutorialProwl = { queue = queue, steps = 0 }
+    end
+
     -- A resumed run brings its own board (the exact map, with fog and cleared stops) rather than rolling
     -- or laying out a fresh one -- see Save.restoreRun. Its token position and keys are seated onto the map
     -- widget below; the encounter pool / always list above is built but unused (harmless).
@@ -1635,6 +1666,31 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
                     end
                 end
             end
+            -- ...AND ACT 0's FLOOR ONE, off its script (game.tutorialProwl, set in game.enter). The next
+            -- fight in the queue arrives once enough ground is covered, or on a chokepoint that is still
+            -- owed one -- so it can never be walked past into the part of the floor that needs its gift.
+            -- Seated the same way, onto the tile, and tagged `wandering` so the win retires it off the
+            -- map rather than leaving crossed swords on a corridor.
+            local tp = game.tutorialProwl
+            if tp and tp.queue[1] then
+                tp.steps = tp.steps + 1
+                local head = tp.queue[1]
+                local owed = false
+                if cell.choke then
+                    for _, e in ipairs(tp.queue) do
+                        if e.by == cell.choke then owed = true break end
+                    end
+                end
+                local free = not (cell.encounter or cell.cache or cell.key or cell.gate)
+                if free and (owed or tp.steps >= head.after) then
+                    table.remove(tp.queue, 1)
+                    tp.steps = 0
+                    cell.encounter = { kind = head.kind, id = head.id, name = head.name,
+                                       loot = head.loot, wandering = true }
+                    cell.cleared = nil
+                    game:pushToast("Something has found you.")
+                end
+            end
             -- The Dark burns down in STEPS, here, because this is the one callback that fires on a
             -- landed tile and on nothing else. It is what the hazard is measured in: ground covered
             -- blind, rather than seconds a player might have spent reading a tooltip.
@@ -1714,6 +1770,7 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
     -- useVisible and the combat onWin below). True from the start everywhere else.
     game.useUnlocked = (mp.tutorial ~= "flight")
     game.coach = nil
+    game.classTaught = nil -- Act 0's class-tab lesson, spent by taking the tab (classLessonNext)
     game.coachChar = nil
 
     -- Autosave the run so quitting mid-quest resumes onto the map (states/menu.lua's Continue). Only a
@@ -1870,9 +1927,18 @@ end
 -- uncleared stop, so the road answers every time it is walked onto rather than once.
 local function openExitRoad(cell, spec)
     if not (cell and spec and spec.opensExit) then return false end
-    cell.cleared = nil
-    cell.encounter = { kind = spec.opensExit.kind or "road",
-                       name = spec.opensExit.name or "The Way Out" }
+    local exit = spec.opensExit
+    -- THE WAY OUT MAY BE SOMEWHERE ELSE (`at = "start"`, Act 0's floor one): the guardian's tile becomes
+    -- the stair it was standing on (`stair`, a name only -- nothing here takes it), and the road is laid on
+    -- the door the company came in by, so leaving is the walk back up the floor it crossed.
+    local road = cell
+    if exit.at == "start" and game.grid and game.grid.start then
+        road = game.grid.cells[game.grid.start.y][game.grid.start.x]
+        cell.encounter = { kind = "stair", name = exit.stair or "The Stair Down" }
+        cell.cleared = true
+    end
+    road.cleared = nil
+    road.encounter = { kind = exit.kind or "road", name = exit.name or "The Way Out" }
     -- BACK ONTO THE BOARD, BY HAND, and it is not optional: the battle state is still current and
     -- frozen on its last frame when this runs, and returning to the map skips game.enter. The descent's
     -- stair-guardian arm three hundred lines down says the same thing in the same words and does the
@@ -1912,8 +1978,15 @@ local function openExitRoad(cell, spec)
     -- here instead put a modal in front of a player who had not asked for one, on the same frame the
     -- battle was handing the board back, and taught the feature before they had seen the tab it lives
     -- on. Prompt, press, tab, window: the same four beats the items lesson runs.
-    game.coach = "class"
-    game:pushToast("The way to the city is open")
+    --
+    -- ONLY IF IT IS STILL OWED (2026-10-16). Act 0 opens the Roll after its FIRST fight now -- the trip
+    -- down is for the class requirements, and Rowan says so there -- and the prompt follows the first
+    -- loadout lesson (game.classTaught). This is the backstop for a company that never opened the panel.
+    if not game.classTaught then game.coach = "class" end
+    game:pushToast(exit.at == "start" and "The way up is open. Walk back out the way you came."
+        or "The way to the city is open")
+    -- ...and the scene that turns the company round, over the board it is about to walk back across.
+    if exit.scene then require("models.conversation").play(exit.scene, function() end) end
     return true
 end
 

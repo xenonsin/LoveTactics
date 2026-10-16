@@ -25,7 +25,7 @@
 --   * HIGH GROUND (y7): two `hill` tiles (+1 range, sight-screening) -- the bow perches that
 --     overlook the lane while the Champion approaches.
 --   * BURNABLE TREELINE (y2 / y5): `forest` clumps -- the Fire Bolt ignition target and the soft cover
---     the Bomblets use. The Roar's Bomblets arrive beside the Champion around y5, into AoE range.
+--     the Puffcaps use. The Roar's Puffcaps arrive beside the Champion around y5, into AoE range.
 --   * WATER POOL (y6, x4-5): `conductable` -- the natural melee tile just south of the gap (a Jolt
 --     rewards it), and, with the neck, a firebreak that keeps the treeline fire off the party's side.
 --

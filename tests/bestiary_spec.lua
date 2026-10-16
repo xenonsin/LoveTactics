@@ -253,15 +253,16 @@ end
 
 -- WAIVED, NOT EXEMPT -- the entry is the argument, exactly as Balance.FROZEN's is.
 --
--- CURRENTLY EMPTY, and the one entry it used to hold is worth keeping written down. The Demon Grunt was
--- waived because data/tutorials/village.lua quotes its arithmetic line by line and an innate resist is
--- that arithmetic changing. Half of that was right and stays right: the prologue's blows are a sword and
--- a mace, so a slash/pierce/impact redistribution really would move a number the lesson counted, and the
--- grunt still carries none. But the lesson contains no holy damage at all, so the holy line the demon
--- rule below requires costs the prologue nothing -- and the body is the first demon anybody meets, which
--- is the worst possible place for the bestiary's one exception to live. It now declares `holy = -6` and
--- nothing else, which is a legal table (the physical sum is trivially zero) and needs no waiver.
-local NO_INNATE = {}
+-- The Cinder Boar (character_demon_grunt_tutorial) is waived because data/tutorials/village.lua quotes
+-- its arithmetic line by line and an innate resist is that arithmetic changing: the prologue's blows are
+-- a sword and a mace, so a slash/pierce/impact redistribution really would move a number the lesson
+-- counted. For a while it carried `holy = -6` and no waiver -- the lesson deals no holy, and it was the
+-- first demon anybody met, so the demon rule's holy line cost nothing and had to be written. Act 0 then
+-- moved onto floor one and the body became a beast (2026-10-16), the Champion being the one demon met
+-- there, so the holy line went with the race and the waiver came back.
+local NO_INNATE = {
+    character_demon_grunt_tutorial = "prologue: five authored blows are counted against this exact block",
+}
 
 tests[#tests + 1] = { name = "every armourless body declares what it has instead", fn = function()
     local missing = {}

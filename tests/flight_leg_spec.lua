@@ -370,21 +370,27 @@ return {
             assert(map.tutorial == "flight", "the flight leg drives the overworld coach flow")
             assert(map.layout == "tutorial_flight", "it walks a hand-authored trail, not a rolled maze")
 
-            -- The authored route, in order: the ids the sequencer walks the player through.
+            -- The places on the map, in order, and the fights the walk deals (`prowl`).
             local ids = {}
             for _, e in ipairs(map.encounters.always) do ids[#ids + 1] = type(e) == "table" and e.id or e end
             assert(ids[1] == "encounter_treasure", "the route opens on the teaching chest")
-            local sawDefend, sawExtract, sawEvent, sawRest = false, false, false, false
+            local sawEvent = false
             for _, id in ipairs(ids) do
-                sawDefend = sawDefend or id == "encounter_survivors_defend"
-                sawExtract = sawExtract or id == "encounter_survivors_extract"
                 sawEvent = sawEvent or id == "encounter_event"
-                sawRest = sawRest or id == "encounter_rest"
                 assert(Encounter.get(id), "route stop resolves: " .. id)
+                assert(id ~= "encounter_survivors_defend" and id ~= "encounter_survivors_extract",
+                    "a rescue fight is not on the map: floor one deals its fights off the walk")
             end
-            assert(sawDefend and sawExtract, "both combat-objective lessons are on the route")
             assert(sawEvent, "at least one narrative event is on the route")
-            assert(ids[#ids] == "encounter_rest", "a rest is the last stop before the mini-boss")
+            assert(ids[#ids] == "encounter_rest", "a rest is the last stop before the Champion")
+            local prowl = map.encounters.prowl
+            assert(prowl and #prowl == 2, "two fights find the company as it walks")
+            assert(prowl[1].id == "encounter_survivors_defend" and prowl[2].id == "encounter_survivors_extract",
+                "the defend, then the extract")
+            for _, e in ipairs(prowl) do
+                assert(Encounter.get(e.id), "prowl fight resolves: " .. e.id)
+                assert((e.after or 0) > 0 and type(e.by) == "string", e.id .. " has a step count and a chokepoint")
+            end
 
             -- The first chest hands over the teaching kit; the mini-boss is the champion, won by assassinate.
             assert(map.encounters.always[1].loot[1] == "weapon_iron_bow", "the first chest gives the bow kit")
@@ -396,11 +402,10 @@ return {
 
     -- ----- the authored trail itself (models/overworld.lua's fromLayout + data/overworld/tutorial_flight) -----
     {
-        name = "the authored flight trail is a single road: chest first, every stop in order, boss last",
+        name = "the tutorial floor is shaped like a real floor, and its chokepoints keep the order",
         fn = function()
             local map = require("states.prologue").FLIGHT_QUEST.map
 
-            -- Resolve the always-list the way states/game.lua does, then build the grid off the layout.
             local always = {}
             for _, e in ipairs(map.encounters.always) do
                 local id = type(e) == "table" and e.id or e
@@ -413,65 +418,84 @@ return {
                 layout = map.layout, biome = map.biome,
                 objective = map.objective, alwaysEncounters = always,
             })
-
-            -- The start carries no encounter; the objective cell is the champion.
             assert(grid:startCell().encounter == nil, "the player does not spawn on an encounter tile")
             assert(grid:objectiveCell().encounter.kind == "objective", "X is the objective")
 
-            -- Every route stop was placed, in the authored id order, keyed by distance from the start.
-            local dist = grid:bfsDistances(grid:startCell())
+            -- A REAL FLOOR'S SIZE: floor one's own frame (Descent.floorDims).
+            local Descent = require("models.descent")
+            local cols, rows = Descent.floorDims(1)
+            assert(grid.cols == cols and grid.rows == rows,
+                "the tutorial floor is a real floor's size, got " .. grid.cols .. "x" .. grid.rows)
             local function keyOf(c) return c.y * 100000 + c.x end
-            local placed = {}
-            for y = 1, grid.rows do
-                for x = 1, grid.cols do
-                    local c = grid:get(x, y)
-                    if c.encounter and c.encounter.kind ~= "objective" then placed[#placed + 1] = c end
-                end
-            end
-            assert(#placed == #always, "every route stop sits on the trail, got " .. #placed)
-            table.sort(placed, function(a, b) return (dist[keyOf(a)] or 0) < (dist[keyOf(b)] or 0) end)
-            for i, c in ipairs(placed) do
-                assert(dist[keyOf(c)], "route stop " .. i .. " is reachable from the start")
-                assert(c.encounter.id == always[i].id,
-                    "stop " .. i .. " is " .. tostring(always[i].id) .. ", got " .. tostring(c.encounter.id))
-            end
-            assert(placed[1].encounter.id == "encounter_treasure", "the chest is the nearest stop")
-            assert(placed[1].encounter.loot[1] == "weapon_iron_bow", "and it carries the bow kit")
-
-            -- The boss sits beyond every stop, and the whole map is one reachable trail (no islands).
-            local objDist = dist[keyOf(grid:objectiveCell())] or 0
-            for _, c in ipairs(placed) do
-                assert(objDist > (dist[keyOf(c)] or 0), "the champion is farther than every route stop")
-            end
             local reachable = grid:reachable()
+            local places, deadEnds, junctions = 0, 0, 0
+            local chokes, stops = {}, {}
             for y = 1, grid.rows do
                 for x = 1, grid.cols do
                     local c = grid:get(x, y)
                     if grid:typeWalkable(c.tile) then
-                        assert(reachable[keyOf(c)], "trail tile " .. x .. "," .. y .. " is connected")
+                        places = places + 1
+                        assert(reachable[keyOf(c)], "place " .. x .. "," .. y .. " is connected")
+                        local ways = #grid:pathNeighbors(x, y)
+                        if ways == 1 then deadEnds = deadEnds + 1 end
+                        if ways >= 3 then junctions = junctions + 1 end
+                        if c.choke then chokes[c.choke] = c end
+                        if c.encounter and c.encounter.kind ~= "objective" then stops[#stops + 1] = c end
                     end
                 end
+            end
+            assert(places >= 80 and places <= 150, "about a real floor's worth of places, got " .. places)
+            assert(deadEnds >= 6, "a real floor has dead ends to explore, got " .. deadEnds)
+            assert(junctions >= 4, "and somewhere to choose a way, got " .. junctions)
+            assert(#stops == #always, "every place-stop sits on the floor, got " .. #stops)
+
+            -- EVERY PROWL FIGHT IS OWED BY A CHOKEPOINT THE FLOOR HAS, and blocking a chokepoint cuts the
+            -- floor: what lies past it cannot be reached without stepping on it. That is what keeps the
+            -- order while the player wanders.
+            local function reachWithout(cell)
+                local start = grid:startCell()
+                local seen, queue = { [keyOf(start)] = true }, { start }
+                while #queue > 0 do
+                    local c = table.remove(queue, 1)
+                    for _, n in ipairs(grid:pathNeighbors(c.x, c.y)) do
+                        local nc = grid:get(n.x or n[1], n.y or n[2])
+                        if nc ~= cell and not seen[keyOf(nc)] then
+                            seen[keyOf(nc)] = true
+                            queue[#queue + 1] = nc
+                        end
+                    end
+                end
+                return seen
+            end
+            for _, e in ipairs(map.encounters.prowl) do
+                local choke = chokes[e.by]
+                assert(choke, e.id .. " is owed by chokepoint " .. e.by .. ", which is not on the floor")
+                assert(not reachWithout(choke)[keyOf(grid:objectiveCell())],
+                    "chokepoint " .. e.by .. " does not cut the Champion off")
             end
 
-            -- ...AND IT IS ONE CHAIN, which is the claim the ordering above actually rests on. Every
-            -- place has exactly two walkable neighbours bar the two ends, so BFS distance rises by one a
-            -- step and no two stops can tie. The layout's header has always said so and nothing but the
-            -- header did: a junction opened anywhere on that road passes every assertion above this one
-            -- -- the stops stay reachable and stay sorted -- while quietly ending the walking order as a
-            -- fact about data/overworld/tutorial_flight.lua. It matters more now that the road is twenty
-            -- steps of a 9x7 board rather than eight of a 4x3 one, since there is room to open one.
-            local ends = 0
-            for y = 1, grid.rows do
-                for x = 1, grid.cols do
-                    local c = grid:get(x, y)
-                    if grid:typeWalkable(c.tile) then
-                        local ways = #grid:pathNeighbors(x, y)
-                        assert(ways <= 2, "place " .. x .. "," .. y .. " is a junction (" .. ways .. " ways out)")
-                        if ways == 1 then ends = ends + 1 end
-                    end
-                end
+            -- What each part holds: the bow and the shrine before `a`; the delver and the last chest
+            -- between `a` and `b`; the rest and the Champion past `b`.
+            local beforeA, beforeB = reachWithout(chokes.a), reachWithout(chokes.b)
+            local function partOf(c)
+                if beforeA[keyOf(c)] then return 1 elseif beforeB[keyOf(c)] then return 2 end
+                return 3
             end
-            assert(ends == 2, "the road has exactly two ends (the start and the champion), got " .. ends)
+            local where, bow = {}, nil
+            for _, c in ipairs(stops) do
+                local e = c.encounter
+                where[e.conversation or (e.loot and e.loot[1]) or e.id] = partOf(c)
+                if e.loot and e.loot[1] == "weapon_iron_bow" then bow = c end
+            end
+            assert(where.weapon_iron_bow == 1, "the bow is in the first part")
+            assert(where.conversation_flight_event_shrine == 1, "the shrine is in the first part")
+            assert(where.conversation_flight_event_survivor == 2, "the delver is past the first chokepoint")
+            assert(where.ability_renewal == 2, "the last chest is past the first chokepoint")
+            assert(where.encounter_rest == 3, "the rest is past the second")
+            assert(partOf(grid:objectiveCell()) == 3, "and so is the Champion")
+            -- The bow is beside the door: the coach says "walk to the chest ahead".
+            local dist = grid:bfsDistances(grid:startCell())
+            assert(dist[keyOf(bow)] == 1, "the bow chest is one step from the door")
         end,
     },
 
@@ -584,32 +608,29 @@ return {
         fn = function()
             local prologue = require("states.prologue")
             local stops = prologue.FLIGHT_QUEST.map.encounters.always
-            assert(#stops == 7, "seven stops, got " .. #stops)
+            local prowl = prologue.FLIGHT_QUEST.map.encounters.prowl
+            assert(#stops == 5, "five places on the floor, got " .. #stops)
+            assert(#prowl == 2, "two fights off the walk, got " .. #prowl)
 
             -- Stop 1: the range band, plus the stacks that ride with it.
             assert(stops[1].loot[1] == "weapon_iron_bow", "stop 1 opens on the bow")
-            -- Stop 3: forced targeting. Stop 5: typed mitigation. Stop 6: a status you want.
-            assert(stops[3].loot[1] == "ability_shout", "stop 3 pays the taunt")
-            assert(stops[5].loot[1] == "armor_salamander_hide", "stop 5 pays the typed coat")
-            assert(stops[6].loot[1] == "ability_renewal", "stop 6 carries the only heal in Act 0")
-            -- ...and NOTHING ELSE. The chest used to pay a second gift for "an item with no button"
-            -- (utility_second_wind), cut for two reasons: the worn armor on both bodies has been
-            -- teaching that since the first fight, and one refusal to fall does not belong one stop
-            -- ahead of a scripted felling it cannot answer (Combat.spendScriptedFell
-            -- -- Combat.fell zeroes the body outside the damage pipeline and never reaches
-            -- Trait.trySurvive, so the charm stays silent through the exact blow it is sold against).
-            -- Pinned as a COUNT so the cut gift cannot drift back in as a second entry.
-            assert(#stops[6].loot == 1, "the last chest pays one gift, got " .. #stops[6].loot)
-            -- Stop 7 grants nothing: it exists so the champion is fought fresh.
-            assert(stops[7].loot == nil, "the rest hands over nothing")
+            -- The walk's two fights: forced targeting, then typed mitigation. Stop 4: a status you want.
+            assert(prowl[1].loot[1] == "ability_shout", "the first fight pays the taunt")
+            assert(prowl[2].loot[1] == "armor_salamander_hide", "the second pays the typed coat")
+            assert(stops[4].loot[1] == "ability_renewal", "stop 4 carries the only heal in Act 0")
+            -- ...and NOTHING ELSE (utility_second_wind was cut; see states/prologue.lua). Pinned as a
+            -- COUNT so the cut gift cannot drift back in as a second entry.
+            assert(#stops[4].loot == 1, "the last chest pays one gift, got " .. #stops[4].loot)
+            -- Stop 5 grants nothing: it exists so the champion is fought fresh.
+            assert(stops[5].loot == nil, "the rest hands over nothing")
 
             -- The two grid rules are the two SCENE stops, and both are handed over by a conversation
             -- rather than by loot -- which is why they are absent from the lists above and named here.
             assert(stops[2].conversation == "conversation_flight_event_shrine", "stop 2 is the aura")
-            assert(stops[4].conversation == "conversation_flight_event_survivor", "stop 4 is the gate")
+            assert(stops[3].conversation == "conversation_flight_event_survivor", "stop 3 is the gate")
             local gifts = {}
             for _, g in ipairs(prologue.SCENE_GIFTS) do gifts[g.from] = g.item end
-            assert(gifts.conversation_flight_event_shrine == "utility_dawn_chrism",
+            assert(gifts.conversation_flight_event_shrine == "utility_wolfsbane_oil",
                 "the shrine's mechanic is the adjacency aura")
             assert(gifts.conversation_flight_event_survivor == "ability_mark_target",
                 "the survivor's mechanic is the adjacency gate")
@@ -659,8 +680,11 @@ return {
             -- Every teaching gift on the route: the loot each stop pays, plus the two handed over by a
             -- conversation rather than a chest.
             local gifts = {}
-            for _, stop in ipairs(prologue.FLIGHT_QUEST.map.encounters.always) do
-                for _, id in ipairs(stop.loot or {}) do gifts[#gifts + 1] = id end
+            for _, list in ipairs({ prologue.FLIGHT_QUEST.map.encounters.always,
+                                    prologue.FLIGHT_QUEST.map.encounters.prowl or {} }) do
+                for _, stop in ipairs(list) do
+                    for _, id in ipairs(stop.loot or {}) do gifts[#gifts + 1] = id end
+                end
             end
             for _, g in ipairs(prologue.SCENE_GIFTS) do gifts[#gifts + 1] = g.item end
             assert(#gifts > 0, "the sweep hands over nothing at all")

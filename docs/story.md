@@ -108,111 +108,112 @@ fragment you have earned. Watching that count climb is the last stretch of the g
 
 The seven-general arc above is the middle of a three-act shape, not the whole of it.
 
-- **Act 0 — the prologue.** **The capital itself**, and a breach that opens inside its walls. It is
-  the tutorial and the reason to care at once: the antagonist named, the first companion earned, the
-  city fought through street by street. It ends when the hub opens and the Adventurers' Guild sets the
-  board in front of you. Linear by design — the overworld's locked doors and dead-end ambushes stay
-  holstered until Act 1.
+- **Act 0 — the prologue.** **One trip down, and one morning home.** A company of childhood friends
+  goes into floor one of the rift, meets something on the stair that has no business being that
+  shallow, and walks back out carrying Rowan. It is the tutorial and the reason to care at once: the
+  class ladder opened, the first sign that something is wrong deeper down, the company made whole at
+  the Ward. Linear by design underneath, though it is not drawn that way (below).
 
-  **ONE CITY, NO JOURNEY.** Act 0 and Act 1 stand on the same ground: the prologue's fight, its
-  overworld leg and the hub are all the capital. The first fight is a lane a street from the breach,
-  the overworld is the breached quarter block by block — clear what is still loose, pull out who is
-  left — and past the Champion at the end of it the hub simply opens, in the town the party has been
-  fighting in the whole time.
+  **THE CITY IS BUILT AROUND THE RIFT, AND LIVES OFF IT.** The rift is the permanent fifteen-floor
+  place under the city (`models/descent.lua`), and the city's economy is the trade of the people who
+  come to go down it for what lies there — Etrian Odyssey's shape, a town built on its labyrinth. Every
+  counter in the hub is a business that exists because adventurers come here; nobody needs a disaster
+  to explain why the city is full of them. **The rift is not a wound in Act 0. It is the mine.**
 
-  > This replaces a journey. Act 0 used to open in **Bellmere**, a walled market town on the eastern
-  > frontier that burned in the first fifteen minutes, and spend its overworld on the king's road to
-  > the capital. Both are gone, and so is the destination: there is nowhere to arrive from.
-  > `states/prologue.lua` and `data/overworld/tutorial_flight.lua` carry the re-skin (`biome =
-  > "castle"`); the ids still say `flight` and `village`.
+  **The player is an adventurer who wants to make a name for themselves**, going down with two
+  childhood friends. **Rowan** is a knight — protective, and still **not sworn** to the player: a
+  friend who steps in front, which is her flaw doing what it always does (see *Rowan, the same wound
+  answered the other way*). **Xin** is an acolyte at the Cathedral, and is not on the first trip
+  because the Cathedral had her busy. Nobody in Act 0 is anybody's ward, heir, employee or sworn body.
+  The ties are older than the trade, which is why none of them has to be explained by it.
 
-  **The player is a new hand on a hired party.** The avatar is on a first job; Rowan is the senior
-  hand who trained them. They are **friends on the same payroll**, and that is the whole of the
-  relationship — nobody in Act 0 is anybody's ward, heir, or sworn body.
+  **Why they are down there on the first trip is the class ladder.** The avatar starts as a **Novice**
+  (`Growth.NEUTRAL_CLASS`) and earns every class by meeting its requirements
+  (`data/class_requirements.lua`, `Class.canUnlock`). The first trip is going down to start meeting
+  them; Rowan remarks on it after the first fight, and that is where the class tutorial opens. The blank
+  slate is no longer argued from a job — it is simply where every adventurer starts.
 
-  > **UNSETTLED, and the scenes no longer answer it:** whether that party is still the *Ninth
-  > Charter*. The company, the licensed trade it belonged to, and its death on the job were the spine
-  > of the old Act 0 and every line carrying them has been cut. What the rewritten lines name instead
-  > is a **guild**: the job comes off *"the guild report"* (the opening), and the breach happens because
-  > *"the guild fails to clear enough of The Rift"* (the seam). So the employer and the trade are the
-  > guild's now — but nothing yet says whether that is the Adventurers' Guild the hub's board belongs
-  > to, and the word *charter* still stands in the Bastion and the Rift's own fiction.
+  **The order:**
 
-  > This replaces a noble origin. The avatar used to be the baron of Bellmere's child, orphaned in
-  > the first fifteen minutes by a household that burned with the town, and Rowan used to be a knight
-  > the Order had *posted* to that child. Both are gone. What the job buys that the rank did not: a
-  > reason the avatar is standing on a battlefield at all, a mentor who is a colleague rather than a
-  > bodyguard, and a trade the rest of the game is already inside.
+  1. **An opening narration card** — the city, the rift it is built around, and that you want to make
+     a name for yourself. It does **not** introduce the three friends; the people arrive with the fight.
+  2. **Name your character** — character creation, before the first fight, where it used to be
+     (`states/character_creation.lua`).
+  3. **The first fight, on floor one** — Gluttony's forest, not a city street. The bodies are
+     **beasts**: Ember Newts, a Cinder Boar, Puffcaps. Rowan's remark on the class ladder follows it.
+  4. **A hand-built floor one, modelled like a real floor** — 11x11, fogged, with branches and dead
+     ends. The two rescue fights **find you through the step counter** the way encounters do on a real
+     floor; chests and two scenes sit in side branches. The order the stops come in is kept by
+     chokepoints and **hidden from the player** — the ground looks free and is not. The people rescued
+     are **another adventuring party**, hurt on floor one: the trade is shown working, and failing,
+     from the first board.
+  5. **The Demon Champion on the stair down.** The surprise is that a demon is there **at all** —
+     Rowan says nothing like that should be this shallow, the first plant of something wrong deeper
+     down. It fells Rowan by script; she says they are not strong enough to go further, and the company
+     **walks back out the way it came**.
+  6. **Home: the forced first morning at the Cathedral's Ward is Xin's reunion.** She could not come
+     because the Cathedral kept her; she mends Rowan, **reprimands them for being so careless**, and
+     joins.
 
-  **The rank is not replaced by another one — the avatar has none.** A hired hand was trained in
-  nothing in particular, which is what earns the blank slate (`Growth.NEUTRAL_CLASS`), and the only
-  reason they can hold a sword at all is that Rowan taught them. It also means they hold nothing
-  anyone in this city is obliged to honour. *The only credential in this party is Rowan's plate* —
-  **which nothing now says out loud.** The beat lived in the old gate scene, where a guard clocked the
-  Bastion steel and took the party seriously on it; that scene is gone and the note has nowhere to
-  land until somebody writes it one.
+  The shrine's gift is **Wolfsbane Oil** (adjacent weapons deal +3 to beasts) — a gift that answers
+  the floor it is found on — replacing the Dawn Chrism. **The tutorial floor is thrown away**: the
+  first real trip deals the save's own floor one fresh, so nothing learned about its map carries over.
 
-  **The seam between the acts is `conversation_prologue_arrival.lua`** — five of Rowan's lines in the
-  street after the breach is cleared, played over the hub city on the first visit. It carries the
-  cause and nothing else: *the guild does not clear the Rift deep enough, the deep floors get left,
-  and what gathers down there comes up here.* That is the only statement in the game of why any of
-  this is happening, and it is what ties Act 0 to the loop.
+  **Every line in these scenes is the author's to write.** The build ships labelled placeholders so the
+  order, the triggers and the grants play end to end; the words are not drafted, and are not to be
+  drafted for the author.
 
-  > **Cut with the guard, and said nowhere now:** that the work *pays by the trip* and **no charter
-  > covers it** — the escalation from licensed field work to a permanent hole nobody is obliged to go
-  > down — and *"not many can, and fewer will"*, which is the half of the cause the guild line does not
-  > state. Only the coin in Rowan's last line survives of it.
+  > This replaces **the breach.** The rift used to tear open *inside the walls*, and Act 0 was the
+  > capital fought street by street — a first fight in a lane a street from the breach, an overworld
+  > leg of the breached quarter block by block, the Champion at the end of it, and the hub opening in
+  > the town the party had been fighting in (*ONE CITY, NO JOURNEY*). The cause was *"the guild fails to
+  > clear enough of The Rift"*, said in the seam scene (`conversation_prologue_arrival.lua`) as the only
+  > statement in the game of why any of it was happening. All of it is dropped: the rift is the city's
+  > living, not its wound, and the first fight is on its first floor. That breach had itself replaced
+  > a journey out of **Bellmere**, a frontier town that burned in the first fifteen minutes.
+  >
+  > **`conversation_prologue_arrival` still names the guild-failure premise.** The author has left it
+  > as-is for now; it is stale against everything above.
 
-  **What the sweep sizes, nothing now sizes.** The old road scene said it once — *nine charters work
-  these shires, and that is more smoke than nine* — and it was the only place in Act 0 that said how
-  big the trade is against how big the problem is. Act 0 no longer leaves the city, so that view no
-  longer exists; the same gap has to be argued from inside the walls or it is not argued at all.
+  > This replaces **the hired hand.** The avatar used to be a new hand on a hired party, on a first
+  > job, with Rowan the senior hand who trained them — *friends on the same payroll* and nothing
+  > outside it — and before that the baron of Bellmere's child with Rowan *posted* to them. The payroll
+  > is gone and so is the training: Rowan is a friend from childhood, not a colleague and not a teacher.
+  > **The Charter's roll as the post-fight naming beat is gone** — naming is back at creation, before
+  > the first fight. **Xin meeting the company as a stranger is gone**: she is the third friend, and
+  > her first scene is a reunion.
 
   **Bryn is cut, and so is the household.** Character creation still offers two bodies, but the
   unchosen one is no longer spent on a sibling standing in a burning house — it is answered where it
-  is asked, by the portrait cards themselves (`states/character_creation.lua`). Nobody the avatar is
-  related to appears in the prologue, and the father is alive and off-stage. There is no name to win
-  back and no house to restore; **the avatar's arc is not an inheritance plot** and never becomes one.
-  `arena_debut` still promises *"win it, and they will remember your name"* — a crowd learning a name
-  you already had, which is the same promise it always was and is now the only one.
+  is asked, by the portrait cards themselves. Nobody the avatar is related to appears in the prologue.
+  There is no name to win back and no house to restore; **the avatar's arc is not an inheritance plot**
+  and never becomes one — it is the plainer thing the narration card says, a name not yet made.
+  `arena_debut` still promises *"win it, and they will remember your name"*, which is now the premise's
+  own sentence said back.
 
-  **The opening scene is three lines, over the board**
-  (`conversation_prologue_village.lua`), and Rowan speaks all of it — a lesson's opening establishes
-  whose voice teaches the seven steps after it, and `tests/tutorial_spec.lua` enforces exactly that.
-  It names the rift the things came out of, says they are the small kind, and hands the board to her
-  opening kill. It does **not** gloss the rift: that they open anywhere, that no one has ever shut
-  one, and that things climb out while one stands used to be said here and is now said nowhere in the
-  game.
-
-  **What breaks the city is a rift, not an army.** It tears open inside the walls and what walks out
-  of it comes up the streets. This is why the prologue turns on a *lane* and never a wall: a wall is
-  on the wrong side of the thing from the first line, and the lane is the board the first fight is
-  played on. The scene shows the player *that* a rift opened; Iselle supplies *why* one did — an
-  unpruned deep floor, which is her own trade's failure — and the Rift tally scene later tells them
-  straight out that they watched it happen.
+  **What breaks is not the city but the floor's promise.** Floor one is meant to be the safe floor —
+  the one every new company starts on, and the one this company is on to begin a class. A demon on its
+  stair says depth has stopped meaning what the trade assumes it means. The prologue shows *that*; the
+  descent is spent finding out *why*.
 - **Act 1 — the seven.** This document. Open-ended: seven vendor lines, seven companions, seven
   generals, in whatever order standing allows.
 - **Act 2 — the Gate Below.** `quest_the_gate_below` and the Hollow Crown.
 
 The Crown re-summons the generals you have killed as its health falls (see *The Demon Lord*) —
 which is the whole reason the middle act is a general hunt and not a fetch list. **That logic has
-to be spoken, or it isn't there.** Plant the Demon Lord as a named threat in the breached city;
-let the Guild say the rest aloud when it opens the board — the Crown is only ever as strong as its
+to be spoken, or it isn't there.** Plant the Demon Lord as a named threat behind the demon on
+floor one's stair; let the Guild say the rest aloud when it opens the board — the Crown is only ever as strong as its
 seven, and unmade one at a time it is hollow.
 
-You do not play one of the seven. The protagonist is a made character — a new hand on a hired party,
-no class of their own, growing into whatever they are cast as
-(`Growth.NEUTRAL_CLASS`). The blank slate is *earned* by the job rather than argued around it: a
-hand on a first job was trained in nothing in particular, and the only
-reason they can hold a sword at all is that Rowan taught them. The player
-picks their **body** (1 or 2 — a sprite set, never a gender label) and types their **name** at
-character creation, before the first line is spoken (`states/character_creation.lua`).
+You do not play one of the seven. The protagonist is a made character — an adventurer out to make a
+name, starting as a **Novice** with no class of their own and earning each one off the ladder
+(`Growth.NEUTRAL_CLASS`, `data/class_requirements.lua`). The player picks their **body** (1 or 2 — a
+sprite set, never a gender label) and types their **name** at character creation, after the opening
+narration card and before the first fight (`states/character_creation.lua`).
 
-The name is asked there rather than on the sand because **Rowan has known you since before the
-prologue opens** — same company, and she is the one who put the sword in your hand. She is the
-player's mentor and, in practice, their bodyguard, and she has to be able to say your name in the
-burning town. A companion who knows you cannot call
-you "stranger." The arena
+The name is asked there rather than on the sand because **Rowan and Xin have known you since you
+were children**, and Rowan has to be able to say your name on floor one. A friend who knows you
+cannot call you "stranger." The arena
 therefore names nobody; `arena_debut` still promises *"win it, and they will remember your name"* —
 the crowd learning a name you already had is the promise, not the naming itself.
 
@@ -265,16 +266,19 @@ so no ordering can strand the endgame. **One companion is deliberately exempt**:
 in the *Colosseum's* second slot rather than her own house's, because her house is shut until that
 quest ends and the player is carried into it (see *Raised, then kept*, below). That is behind another
 companion's quest, and it strands nothing — the two quests it sits behind are the campaign's first
-two, the ones every route runs through. Two are earned in the prologue and the third on the beat
-straight after it, one per pattern:
+two, the ones every route runs through. Two are earned in the prologue — Rowan on the first trip, Xin
+on the first morning home — and the third on the beat straight after it, one per pattern:
 
-- **Sworn beside you.** The knight fights at your shoulder in the burning town and stays when it
-  is ash. An oath abandoned is sloth's general; **an oath kept after the thing that issued it is gone**
-  is the knight — the baron is dead, the house that paid the Order is ash, the posting is formally
-  void, and she holds it anyway. What
-  the oath makes her is the player's **bodyguard and mentor** — she guards the body she swore to and
-  teaches the trade she already knows, so hers is the voice that warns, explains, and steps in front.
-  That is a role, not a label: it shows in where she stands and what she says, never in a title.
+- **Beside you from the start.** The knight is a childhood friend who goes down with you on the first
+  trip, and is felled stepping in front of you on floor one's stair. She is **not sworn** to the
+  player — nothing was ever issued to her about you — so what makes her the voice that warns,
+  explains, and steps in front is the friendship and her flaw, not a posting. That is a role, not a
+  label: it shows in where she stands and what she says, never in a title.
+
+  > This replaces *Sworn beside you* — the knight at your shoulder in the burning town, holding a
+  > posting to the baron's child after the baron was dead. The town, the baron and the posting are all
+  > gone (*The three acts*, above); *an oath kept after the thing that issued it is gone* now has to be
+  > found in her own line, not her arrival.
 - **Bested, then kept.** The first bout on the Colosseum's sand is against the house's own
   gatekeeper — a gladiator who has watched the arena and its patron, *Ira*, eat fighter after
   fighter, and who will not be eaten. She fights every newcomer looking for the pair who can beat
@@ -292,6 +296,13 @@ straight after it, one per pattern:
   where the truth can still be carried. She does **not** tell them about the blooding; that is her own
   line's to give, three slots later, standing over it. The first time the player ever sees the
   Cathedral is from a slab, and its door does not exist in the hub before that scene.
+
+  > **Superseded at the front, 2026-10-16, and not yet reconciled behind it.** Xin is now the third
+  > childhood friend, an acolyte the Cathedral kept busy on the first trip, and she **joins at the
+  > Ward on the first morning home** — a reunion, not a stranger walking out of a rite (*The three
+  > acts*, above). The intake register, the cart and the pit are still her line's material; *where she
+  > is recruited* is no longer the Colosseum's second card, and the exemption paragraph above it is
+  > stale with this bullet.
 
 All seven companions now have blueprints on disk — Rowan (knight), Saber (gladiator), Xin (priest),
 Gyeom (mage), Kaya (hunter), Ren (alchemist) and Clem (rogue) — each with its signature relic and its
@@ -372,12 +383,12 @@ walks into at slot 8.
 
 She was a squire on the relief column sent to Acedia's post, and it was ordered to turn back. She has
 spent her life since being the relief that comes — which is why she is fifteen years into the Order
-and still working the jobs nobody at the Bastion wanted, and why she holds the lane in Act 0 until the
-street behind it is empty. She is compulsively the arrival that failed to happen.
+and still working the jobs nobody at the Bastion wanted, and why she steps in front of the Demon
+Champion on floor one's stair in Act 0 and is felled there. She is compulsively the arrival that failed to happen.
 
 **The flaw is that she cannot tell a duty from a bond — and nothing was ever issued to her about
 you.** She used to be *assigned* the baron's child, and the flaw read as a duty roster mistaken for
-love. There is no roster now: she is a colleague who happened to be paid onto the same road. The
+love. There is no roster now: she is a childhood friend who goes down the same stair. The
 confusion sharpens rather than dissolves. She steps in front of whoever is standing beside her because
 that is what she is, with nothing behind it and nobody having asked her to. That is the order's own
 named sin answered the other way round: Acedia cannot tell a regulation from a vow, so she sets the
@@ -408,7 +419,10 @@ something you were handed.
 Her own is three. **The first one is currently NOT IN THE GAME.** It was said in the ash of Bellmere,
 in `conversation_prologue_flee.lua` — a scene that is deleted with the town it stood in. Everything
 from here to the end of this subsection is design intent with nothing implementing it: the line has to
-be re-placed somewhere in the city before *hold until relieved* has anything to sit against.
+be re-placed before *hold until relieved* has anything to sit against. Under the 2026-10-16 Act 0 the
+nearest ground for it is the walk back out after the Champion fells her — beaten, on her own say-so
+turning the company round — though the ash, the void charter and the dead company below are all gone
+with the town and the payroll, and the scene would have to be found again rather than moved.
 
 > **We go on. If you'll have me on the road.**
 
@@ -420,8 +434,8 @@ she has ever said uncommanded, which is the entire reason it is hers and *hold u
 
 > **It is not a vow, and it used to be one.** She used to swear herself to the player here — *"So I'm
 > giving myself one. We go on"* — an order issued to herself, aimed at a person who was never
-> consulted. That is cut with the rest of the noble premise. The two of them are friends on the same
-> payroll, so what the scene can carry is a *choice*: she says where she is going and asks whether she
+> consulted. That is cut with the rest of the noble premise. The two of them are friends — childhood
+> friends now, no longer friends on a payroll — so what the scene can carry is a *choice*: she says where she is going and asks whether she
 > is wanted, and the avatar's last line is the yes. Everything downstream of it survives — see below.
 >
 > It used to be **We shall hold**, and the rift premise killed that. You cannot hold ground against a

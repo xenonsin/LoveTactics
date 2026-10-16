@@ -1,11 +1,15 @@
--- A lesser demon: the antagonist the prologue introduces, and the step UP from the imps that open
--- the village attack (states/prologue.lua). Where an imp dies to one blow, this takes five between
--- two people -- it is the first thing in the game that has to be fought rather than swatted.
--- The Demon Lord it serves is named in the scene, not met (see docs/story.md).
+-- The Cinder Boar: a soot-bristled boar of floor one's wood, and the step UP from the ember newts
+-- that open Act 0 (states/prologue.lua). Where a newt dies to one blow, this takes five between two
+-- people -- it is the first thing in the game that has to be fought rather than swatted.
 --
--- ACT 0 OWNS THIS BODY, which is what the `_tutorial` on the filename says. The village street, the
--- two survivor stops on the city sweep and one body standing beside the Champion: that is every place a
--- grunt is fielded, and the rift fields none. The imp's header
+-- (THE ID STILL SAYS `demon_grunt`, and the body is not one. Act 0 moved onto floor one, whose bodies
+-- are beasts, and the Demon Champion is meant to be the ONE demon met there. Renamed in place: the id,
+-- file and sprite path stay, because the prologue, the encounters and the specs name it by them. The
+-- "demon contract" prose below is the mana/stamina split it was built on, and it still holds.)
+--
+-- ACT 0 OWNS THIS BODY, which is what the `_tutorial` on the filename says. The opening fight, the
+-- two survivor stops and one body standing beside the Champion: that is every place a boar of this
+-- blueprint is fielded, and the rift fields none. The newt's header
 -- (data/characters/character_demon_imp_tutorial.lua) carries the full argument for the suffix and the
 -- day it became necessary -- the short version is that an unsuffixed body reads as general-purpose
 -- stock, and the numbers in this file are not stock, they are a script.
@@ -40,10 +44,10 @@
 -- working, not an exception to it: this number is downstream of the blows, and it is the only number
 -- here that is allowed to be. The residual it leaves for the player's finishing swing is still 6.
 --
--- THE DEMON CONTRACT, stated on the body it is easiest to read off: a demon's BODY costs stamina and
--- its WILL costs mana. The claws are the body, so they stay on stamina exactly as they were; the mana
--- below buys Brimstone (data/items/ability/ability_demon_brimstone.lua), the gout of hellfire it
--- spits at the ground to close a lane. An imp is all will and pays for everything in mana
+-- THE BODY/WILL SPLIT (built as the demon contract, and kept): a BODY costs stamina and a WILL costs
+-- mana. The claws are the body, so they stay on stamina exactly as they were; the mana below buys
+-- Brimstone (data/items/ability/ability_demon_brimstone.lua), the gout of cinders it snorts at the
+-- ground to close a lane. The newt is all will and pays for everything in mana
 -- (character_demon_imp_tutorial.lua); the Champion pays for its claws, its riposte and its throw out of
 -- stamina, and for the Roar and the Cleave out of mana (character_demon_champion_tutorial.lua). This body is
 -- the middle of that and carries both.
@@ -58,13 +62,13 @@
 -- the reason that card is worth pushing down the timeline at all. The player reads its number off the
 -- intent telegraph and the stun then deletes the turn, so this stat is a THREAT here rather than a
 -- blow. It was 0 once, and a gout thrown by a body with no magic behind it would land for nothing and
--- never be worth the mana -- which, on the card, would have read as a demon promising nothing.
+-- never be worth the mana -- which, on the card, would have read as a threat promising nothing.
 return {
-    name = "Demon Grunt",
-    race = "demon",
+    name = "Cinder Boar",
+    race = "beast",
     tier = 2,
     sprite = "assets/chars/demon_grunt.png",
-    revivable = false, -- a demon does not come back: no downed window, and no revive takes it
+    revivable = false, -- a lesson's beast, not a body to nurse: no downed window, and no revive takes it
     -- Blueprint-exact forever: every other enemy grows with the company (models/growth.lua,
     -- Growth.combatantLevel), but this one's numbers are a LESSON, not a tuning. The prologue's parry
     -- beat needs the claw to land for the avatar's sword to answer, and its stamina is cut to the exact
@@ -76,7 +80,7 @@ return {
         -- Claws cost 12 to swing (below), so a 10-stamina grunt could never attack at all -- it would be
         -- the one common enemy that stands there inert, and the prologue's parry beat (which depends on
         -- the grunt actually landing a blow for the avatar's sword to answer) would silently break. 15 is
-        -- one clean swing with a sliver to spare, matching its bigger sibling the Demon Champion; keep it
+        -- one clean swing with a sliver to spare, matching the Demon Champion; keep it
         -- at least the claw's cost. See data/tutorials/village.lua's closing arithmetic.
         --
         -- But 15 buys only the FIRST swing, and that is not enough on its own. The claw costs 12, and at
@@ -85,7 +89,7 @@ return {
         -- opening blow it can no longer afford its own weapon and the enemy AI drops it to the free
         -- unarmed punch (models/ai.lua's itemsFor fallback) for roughly every OTHER turn. In the prologue
         -- it dies before that shows; in the siege/survivor packs that field it for a long fight it read as
-        -- "the demon that keeps swatting with its fists." staminaRegen = 2 refills the full 12 across a
+        -- "the one that keeps swatting with its fists." staminaRegen = 2 refills the full 12 across a
         -- claw's own 6-tick cycle, so it swings claws every turn and the fists never come out. Starting
         -- stamina stays 15, so nothing about the prologue's opening arithmetic moves.
         --
@@ -126,30 +130,18 @@ return {
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 6, luck = 5,
     },
-    -- INNATE MITIGATION (models/character.lua `resist`), in the same unit an armour's resist table is
-    -- written in and summed into the same total. One line, where every other creature carries four --
-    -- and the missing three are the point.
+    -- INNATE MITIGATION (models/character.lua `resist`): NONE, where every other creature carries four
+    -- lines -- and the missing lines are the point. tests/bestiary_spec.lua's NO_INNATE waives it by name.
     --
-    -- THIS IS THE BODY THE INNATE PASS WAIVED, and the waiver was right about the half it was about.
-    -- The prologue quotes this stat block line by line (data/tutorials/village.lua, and see the header
-    -- above): five authored blows and the sliver the last one leaves. A slash/pierce/impact
-    -- redistribution IS that arithmetic changing -- the parry beat is a sword, Rowan's answer is a
-    -- mace, and either line moves a number the lesson counted.
+    -- THIS IS THE BODY THE INNATE PASS WAIVED, and the waiver was right. The prologue quotes this stat
+    -- block line by line (data/tutorials/village.lua, and see the header above): five authored blows
+    -- and the sliver the last one leaves. A slash/pierce/impact redistribution IS that arithmetic
+    -- changing -- the parry beat is a sword, Rowan's answer is a mace, and either line moves a number
+    -- the lesson counted.
     --
-    -- Holy is not in the lesson. The five blows are the iron sword (slash), the iron mace (impact) and
-    -- Minor Shock (lightning); nothing in the village deals holy damage, and nothing the player carries
-    -- there can. So this is the one line that can be written on this body without touching a single
-    -- number the prologue counted -- and it has to be written, because a demon takes holy the harder
-    -- and this is the first demon anyone meets. It would be a strange bestiary whose one exception to
-    -- that was the creature the whole game names as the example.
-    --
-    -- -6 is the tier-2 weakness, the same depth the Assayer and the Chorister
-    -- carry (Balance.INNATE_BUDGET x Balance.INNATE_WEAKNESS_FACTOR). It buys nothing
-    -- back: a creature's hide is a redistribution across the three physical types, and this body is
-    -- forbidden the physical half, so it pays the price and takes no resist for it. That is the
-    -- correct shape here -- it is the sturdiest common enemy in the game for reasons that have
-    -- nothing to do with what it deserves, and Smite is the answer that was always meant to work.
-    resist = { holy = -6 },
+    -- (It carried `holy = -6` while it was a demon -- the one line that touched nothing the lesson
+    -- counted, written because a demon takes holy the harder. A boar does not, so it went with the race,
+    -- and the waiver is back.)
     -- Its body IS its weapon, and that weapon is the point of the thing (see the file). It used to
     -- carry a borrowed iron sword, which cost the prologue twice over: a 6-damage swing at a 62-health
     -- avatar is not a reason to spend a whole mana pool delaying its turn, and the sword's Parry came

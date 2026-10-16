@@ -38,7 +38,7 @@ return {
     cast  = { "character_rowan", "character_avatar" },
 
     script = {
-        { "character_rowan", "Not too bad for your first job, but there's no time to rest.", tag = 1 },
-        { "character_rowan", "Let's move to clear out the remaining demons and find survivors.", tag = 2 },
+        { "character_rowan", "PLACEHOLDER -- floor one, laid out ahead of us in the dark.", tag = 1 },
+        { "character_rowan", "PLACEHOLDER -- keep moving; there are other parties down here, and some of them will need us.", tag = 2 },
     },
 }

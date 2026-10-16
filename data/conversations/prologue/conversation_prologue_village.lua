@@ -57,8 +57,8 @@ return {
     cast  = { "character_rowan", "character_avatar" },
 
     script = {
-        { "character_rowan", "The demons that breached through the rift are up ahead.", tag = 1 },
-        { "character_rowan", "They look like simple imps, so the guild report seems accurate.", tag = 2 },
-        { "character_rowan", "Strike before they start to notice us. Watch this!", tag = 3 },
+        { "character_rowan", "PLACEHOLDER -- floor one: those things up ahead are what the rift keeps at its mouth.", tag = 1 },
+        { "character_rowan", "PLACEHOLDER -- the small kind; nothing a first trip should not handle.", tag = 2 },
+        { "character_rowan", "PLACEHOLDER -- strike before they notice us. Watch this!", tag = 3 },
     },
 }

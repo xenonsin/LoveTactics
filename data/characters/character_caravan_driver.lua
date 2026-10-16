@@ -1,4 +1,7 @@
--- The column itself, on the road legs of the relief of Highwatch (data/quests/relief_column.lua).
+-- A Wounded Delver: one of another adventuring company, hurt on floor one and walking for the stair
+-- -- the body Act 0's extraction is fought over (data/encounters/encounter_survivors_extract.lua). The
+-- id, sprite and the "column"/"caravan" prose below are from when it drove the relief of Highwatch's
+-- column (data/quests/relief_column.lua, retired); the escort posture they argue is unchanged.
 -- Spawned party-side under AI control through an ENCOUNTER's `allies` (states/battle.lua's specFor
 -- reads `def.allies`, the same seam a quest objective uses), and named by both the `who` and the
 -- `protect` of each road fight's objective.
@@ -22,7 +25,7 @@
 -- Fragile and slow, and it carries nothing, so it swings the default unarmed weapon. It is a clock,
 -- not a combatant: every turn it advances is a turn the party has to have cleared the road ahead.
 return {
-    name = "Caravan Driver",
+    name = "Wounded Delver",
     archetype = "escort",
     sprite = "assets/chars/caravan_driver.png",
     -- The board token is the wagon it drives, not the driver -- what the escort objective points at is

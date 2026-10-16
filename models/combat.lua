@@ -7690,6 +7690,31 @@ local function damageFloor(base)
     return math.max(1, math.floor((base or 0) * Combat.MIN_DAMAGE_SHARE))
 end
 
+-- A BANE: a damage tag that only one race answers. A blow carrying `beastbane` lands this much harder on
+-- a body of that race and exactly as hard as before on anything else -- a resist of -amount, read off the
+-- race rather than off the body's own hide, so no beast blueprint has to carry it. Granted by an aura
+-- (data/items/utility/utility_wolfsbane_oil.lua), which is how it rides the same tag channel the preview,
+-- the swing and a cast already share. Keyed by tag so a second bane is one row.
+Combat.BANE = {
+    beastbane = { race = "beast", amount = 3, label = "Beastbane" },
+}
+
+-- The bonus `tags` earn against `target`, and the bane rows that earned it (for the breakdown).
+local function baneBonus(target, tags)
+    local race = target and target.char and target.char.race
+    if not race then return 0, nil end
+    local total, parts = 0, nil
+    for _, t in ipairs(tags or {}) do
+        local b = Combat.BANE[t]
+        if b and b.race == race then
+            total = total + b.amount
+            parts = parts or {}
+            parts[#parts + 1] = b
+        end
+    end
+    return total, parts
+end
+
 -- Apply `base` pre-mitigation damage to `target`: subtract the matching defense stat (magical
 -- tags route to magicDefense) and any tag `resist`, floor at a share of the blow
 -- (Combat.MIN_DAMAGE_SHARE), and drop the target to dead at 0 HP. Returns the amount dealt. The
@@ -7719,7 +7744,7 @@ function Combat.mitigatedDamage(target, base, tags, opts, attacker)
     -- that lands its full Power on the flesh. Barriers and vulnerabilities still apply (a ward is
     -- not armor). Floors at 1 like any hit.
     if opts and opts.raw then
-        local vuln = Status.vulnerability(target, tags)
+        local vuln = Status.vulnerability(target, tags) + baneBonus(target, tags)
         return math.max(damageFloor(base), math.floor(base + vuln + 0.5))
     end
     local defStat = magical and "magicDefense" or "defense"
@@ -7732,7 +7757,7 @@ function Combat.mitigatedDamage(target, base, tags, opts, attacker)
     end
     -- Status-driven vulnerabilities ADD damage for matching tags (e.g. Wet -> +lightning). Folded in
     -- here, the shared damage core, so both real hits and the damage preview see the amplification.
-    local vuln = Status.vulnerability(target, tags)
+    local vuln = Status.vulnerability(target, tags) + baneBonus(target, tags) -- a bane is a weakness the race carries
     local dmg = math.max(damageFloor(base), math.floor(base - defense - resist + vuln + 0.5))
     -- A body the blow only half reaches (On the Wing) takes a share of what armour left, never less
     -- than the floor: Status.damageTakenScale, last, so armour keeps its meaning under it.
@@ -7779,6 +7804,12 @@ function Combat.damageBreakdown(target, base, tags, opts, baseParts, dmg, attack
     end
     local magical = hasTag(tags, "magical")
     local vuln = Status.vulnerability(target, tags)
+    -- A bane is its own named row (Beastbane +3) rather than folded into "Vulnerability", and is added to
+    -- `mitigated` alongside it, so the receipt sums to mitigatedDamage's number.
+    local bane, baneParts = baneBonus(target, tags)
+    local function addBane()
+        for _, b in ipairs(baneParts or {}) do add(b.label, b.amount, false, true) end
+    end
     local mitigated -- the pre-floor result, to spot a hit that floored up to the minimum of 1
     if opts and opts.raw then
         -- Armor-piercing: defense and tag resists are skipped entirely (a ward is not armor).
@@ -7786,7 +7817,8 @@ function Combat.damageBreakdown(target, base, tags, opts, baseParts, dmg, attack
         -- One number, two names: a positive is a weakness (Wet under lightning), a negative is a
         -- resistance (Wet under fire). Same signed row either way -- the label just stops lying.
         if vuln ~= 0 then add(vuln > 0 and "Vulnerability" or "Resistance", vuln, false, true) end
-        mitigated = base + vuln
+        addBane()
+        mitigated = base + vuln + bane
     else
         local defStat = magical and "magicDefense" or "defense"
         -- THE CROWN'S BESTIARY, SLICE A: the same Mana Edge swap mitigatedDamage made, so the rows sum.
@@ -7821,7 +7853,8 @@ function Combat.damageBreakdown(target, base, tags, opts, baseParts, dmg, attack
         -- One number, two names: a positive is a weakness (Wet under lightning), a negative is a
         -- resistance (Wet under fire). Same signed row either way -- the label just stops lying.
         if vuln ~= 0 then add(vuln > 0 and "Vulnerability" or "Resistance", vuln, false, true) end
-        mitigated = base - defense - resist + vuln
+        addBane()
+        mitigated = base - defense - resist + vuln + bane
     end
     -- The wing's share (Combat.mitigatedDamage), named so the rows above do not appear to sum wrong.
     local takenScale = Status.damageTakenScale(target, attacker)

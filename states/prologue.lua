@@ -1,24 +1,24 @@
 -- The prologue: Act 0, the first-time experience (see docs/story.md, "The three acts"). A linear
 -- sequence of beats -- scenes, tutorial battles, an overworld leg -- that ends by opening the hub
 -- (Act 1). It builds the party through play: the created avatar starts alone, and Rowan (the knight)
--- fights beside them from the first street.
+-- fights beside them from the first fight.
 --
--- IT ALL HAPPENS IN ONE CITY, and that city is the capital -- the same one the hub is. A breach opens
--- inside the walls, the avatar is a new hand on a party hired to deal with the fallout, and the
--- overworld leg is the city itself: block by block, clearing what is still loose and pulling out who
--- is left. THERE IS NO JOURNEY. Act 0 does not travel to Act 1; it ends standing in the town the hub
--- opens on. (The earlier premise put the first fight in a frontier market town called Bellmere and
--- spent the overworld on the king's road to the capital. Both are gone. Ids kept the old words --
--- `tutorial_village`, `tutorial_flight`, FLIGHT_QUEST -- because renaming them is a sweep across the
--- specs and the lang file, not a story change.)
+-- IT IS THE COMPANY'S FIRST TRIP DOWN (2026-10-16). The city is built around the rift and lives on what
+-- adventurers carry up; the avatar means to make a name, and goes down with Rowan to meet a class's
+-- requirements. Opening narration, then the name, then the first fight ON FLOOR ONE (Gluttony's wood),
+-- then a hand-built floor one modelled like a real one, the Demon Champion on its stair -- a demon where
+-- none belongs -- and the walk back out. Xin, who could not come, is met at the Ward the first morning
+-- home. (It used to be a breach inside the city walls, fought street by street; ids kept the old words --
+-- `tutorial_village`, `tutorial_flight`, FLIGHT_QUEST -- because renaming them is a sweep across the specs
+-- and the lang file, not a story change.)
 --
 -- Nothing is sworn to anybody in Act 0. The third companion, Saber, is NOT recruited
 -- here: the Colosseum debut that bests her is now the hub's own first-visit beat, taken from the Quest
 -- Board like any other quest (data/quests/arena_debut.lua carries the recruit and the victory scene as
--- its reward and `outro`). See states/hub.lua, which owns the arrival. The avatar's name, people, class
--- and look are chosen AFTER the first fight, on the Charter's roll (states/character_creation.lua,
--- reached from the beat list below), so `begin` builds a nameless human "Stranger" for that fight and
--- sets the flag the hub reads to know this is the first time through its gate.
+-- its reward and `outro`). See states/hub.lua, which owns the arrival. The avatar's name and people are
+-- chosen at character creation, the beat after the opening narration (states/character_creation.lua);
+-- `begin` builds a nameless human "Stranger" for it to name and sets the flag the hub reads to know this
+-- is the first time through its gate.
 --
 -- Structure: `beats` is an ordered list of thunks. `next` runs the next one; each beat eventually
 -- calls `next` again (a scene on its onDone, an `action` immediately). The two beats that leave this
@@ -35,6 +35,7 @@ local Scale = require("scale")
 local Player = require("models.player")
 local Save = require("models.save")
 local Character = require("models.character")
+local Descent = require("models.descent")
 
 local prologue = {}
 
@@ -59,11 +60,11 @@ local VILLAGE_MAP = {
     -- Paved, not wooded: this is one of the capital's own lanes, a street away from the breach. Art only on a
     -- curated board -- see the header of data/arenas/tutorial_village.lua, which carries the same
     -- biome and the reason the authored cells are untouched by it.
-    biome = "castle",
+    biome = "forest",
     layout = "tutorial_village",
     tutorial = "village",
     objective = {
-        name = "Hold the Street",
+        name = "The Mouth of the Wood",
         composition = function()
             return { "character_demon_imp_tutorial", "character_demon_imp_tutorial", "character_demon_imp_tutorial",
                      "character_demon_imp_tutorial", "character_demon_imp_tutorial" }
@@ -93,7 +94,7 @@ prologue.VILLAGE_MAP = VILLAGE_MAP
 -- rest on the doorstep of the mini-boss, and the boss itself at the end of the trail. The `always` list
 -- is still the single source of each stop's content; the layout only fixes where each one sits.
 local FLIGHT_QUEST = {
-    name = "Clear the Streets",
+    name = "Floor One",
     -- A scene played over the map the instant it appears (states/game.lua fields it on enter). The
     -- overworld is the one screen the prologue hands over with no explanation at all -- markers, fog,
     -- a route -- so Rowan names the aftermath and the errand while the player is looking straight at
@@ -101,7 +102,7 @@ local FLIGHT_QUEST = {
     -- and the map, and the join banner with them -- see that file's header.
     opening = "conversation_prologue_ruins",
     map = {
-        biome = "castle",
+        biome = "forest",
         tutorial = "flight",
         layout = "tutorial_flight", -- authored, not generated (see data/overworld/tutorial_flight.lua)
         encounters = {
@@ -178,15 +179,49 @@ local FLIGHT_QUEST = {
                     "consumable_mana_potion", "consumable_mana_potion",
                     "consumable_healing_potion", "consumable_healing_potion", "consumable_healing_potion",
                 } },
-                -- Stop 2: THE ADJACENCY AURA -- the Dawn Chrism, granted by the shrine scene's
+                -- Stop 2: THE ADJACENCY AURA -- Wolfsbane Oil, granted by the shrine scene's
                 -- choices. The first time the 3x3 is ever anything but storage: put it beside a
-                -- weapon and the weapon changes (Combat.auraApplies). It was chosen over the charms
-                -- that sharpen a number because it pays out on the very next block rather than in
-                -- theory -- it makes adjacent kit strike as HOLY, and every demon on this route runs
-                -- holy -8 to -4 (character_demon_imp_tutorial.lua, character_demon_champion_tutorial.lua). The lesson
-                -- and its proof are one step apart.
+                -- weapon and the weapon changes (Combat.auraApplies). It pays out on the very next
+                -- block rather than in theory -- adjacent weapons carry the `beastbane` tag
+                -- (Combat.BANE), and every body on floor one but the Champion is a beast. The lesson
+                -- and its proof are one step apart. It replaced the Dawn Chrism (2026-10-16), whose
+                -- holy only paid against demons, once the route moved to floor one and the Champion
+                -- became the one demon on it.
                 { id = "encounter_event", conversation = "conversation_flight_event_shrine" },
-                -- Stop 3: FORCED TARGETING -- the Shout, won on the one stop whose objective is other
+                -- Stop 3: THE ADJACENCY GATE -- Mark Target, off the survivor scene, and it is handed
+                -- over on BOTH branches of that choice on purpose. This is the hard half of the grid:
+                -- `requiresAdjacent` leaves the item dead unless a ranged weapon touches it, the
+                -- combat panel names what is missing in a red broken-link badge, and the loadout
+                -- lights the cells that would fix it green (Combat.adjacencyCandidateCells). The bow
+                -- from stop 1 is the only answer in the bag, which is why this stop comes after it.
+                -- It used to sit on one branch, so half of all players met the rule and half never
+                -- did; a lesson decided by a coin flip is not a lesson.
+                { id = "encounter_event", conversation = "conversation_flight_event_survivor" },
+                -- Stop 4: the last chest before the stair, and ONE lesson -- RENEWAL, a status you
+                -- WANT. Everything Act 0 has taught about statuses so far is an injury (Burn, Stun,
+                -- Bleed, Mark); this is the first one that helps, it lands on somebody else, and it
+                -- keeps working on its own without being cast again. It is also the only healing
+                -- ABILITY in Act 0 -- it used to be the shrine's gift, and it moved here when the
+                -- shrine took the censer.
+                --
+                -- It used to be two gifts. The second (utility_second_wind, "an item with no button")
+                -- is cut for the two reasons the ladder's header states in full: the worn armor on
+                -- both bodies has been teaching that since the first fight, and a charm sold as one
+                -- refusal to fall does not belong one stop ahead of a scripted felling it cannot
+                -- answer.
+                { id = "encounter_treasure", loot = { "ability_renewal" } },
+                -- Stop 5: a plain rest so the champion is fought fresh -- no loot, just a full refill.
+                { id = "encounter_rest" },
+            },
+            -- THE TWO RESCUE FIGHTS ARE NOT ON THE MAP (2026-10-16). Floor one fields its ordinary fighting
+            -- the way every floor does -- off the walk, a step count at a time (Descent.PROWL_STEPS) -- so
+            -- these find the company as it walks rather than standing on a marker it can read and plan
+            -- around. In order: `after` is the steps since the last fight that one arrives on, and `by` is
+            -- the chokepoint (data/overworld/tutorial_flight.lua's letters) where a fight still owed finds
+            -- you if the steps have not, so each gift is in hand before the part of the floor that wants
+            -- it. Read by states/game.lua's tutorial prowl. Both fights' own arguments follow.
+            prowl = {
+                -- FIRST: FORCED TARGETING -- the Shout, won on the one stop whose objective is other
                 -- people's lives. Every rule the route has taught so far is about what the PLAYER may
                 -- do; this is the first item that reaches across the board and decides what the ENEMY
                 -- does. Taunt (data/status/status_taunt.lua) makes every foe in the diamond come for
@@ -207,17 +242,8 @@ local FLIGHT_QUEST = {
                 -- Deeper on the shelf than the rest (bulwark, 660g): a gift waives price, not
                 -- standing, and the censer and Mark Target are already crossings the player could not
                 -- buy here either.
-                { id = "encounter_survivors_defend", loot = { "ability_shout" } },
-                -- Stop 4: THE ADJACENCY GATE -- Mark Target, off the survivor scene, and it is handed
-                -- over on BOTH branches of that choice on purpose. This is the hard half of the grid:
-                -- `requiresAdjacent` leaves the item dead unless a ranged weapon touches it, the
-                -- combat panel names what is missing in a red broken-link badge, and the loadout
-                -- lights the cells that would fix it green (Combat.adjacencyCandidateCells). The bow
-                -- from stop 1 is the only answer in the bag, which is why this stop comes after it.
-                -- It used to sit on one branch, so half of all players met the rule and half never
-                -- did; a lesson decided by a coin flip is not a lesson.
-                { id = "encounter_event", conversation = "conversation_flight_event_survivor" },
-                -- Stop 5: TYPED MITIGATION -- a Salamander Hide off the demons blocking the way out.
+                { id = "encounter_survivors_defend", loot = { "ability_shout" }, after = 6, by = "a" },
+                -- SECOND: TYPED MITIGATION -- a Salamander Hide off the demons blocking the way out.
                 -- The party has worn leather and chainmail since the first fight and nothing has ever
                 -- said that a coat answers a KIND of blow; this one is blunt enough to be unmissable
                 -- ("Does nothing whatever about anything else") and it is not a guess about what the
@@ -226,22 +252,7 @@ local FLIGHT_QUEST = {
                 -- with an imp and a grunt beside her. Combat.mitigatedDamage sums the resist of every matching
                 -- tag, so the coat blunts all of it. The spoils land after the win, so the body it is
                 -- actually FOR is the Champion at the end of the trail.
-                { id = "encounter_survivors_extract", loot = { "armor_salamander_hide" } },
-                -- Stop 6: the last chest before the gate, and ONE lesson -- RENEWAL, a status you
-                -- WANT. Everything Act 0 has taught about statuses so far is an injury (Burn, Stun,
-                -- Bleed, Mark); this is the first one that helps, it lands on somebody else, and it
-                -- keeps working on its own without being cast again. It is also the only healing
-                -- ABILITY in Act 0 -- it used to be the shrine's gift, and it moved here when the
-                -- shrine took the censer.
-                --
-                -- It used to be two gifts. The second (utility_second_wind, "an item with no button")
-                -- is cut for the two reasons the ladder's header states in full: the worn armor on
-                -- both bodies has been teaching that since the first fight, and a charm sold as one
-                -- refusal to fall does not belong one stop ahead of a scripted felling it cannot
-                -- answer.
-                { id = "encounter_treasure", loot = { "ability_renewal" } },
-                -- Stop 7: a plain rest so the champion is fought fresh -- no loot, just a full refill.
-                { id = "encounter_rest" },
+                { id = "encounter_survivors_extract", loot = { "armor_salamander_hide" }, after = 8, by = "b" },
             },
         },
         objective = {
@@ -281,7 +292,13 @@ local FLIGHT_QUEST = {
             -- map there is a board to stand on, a party strip showing the new level, and a class
             -- screen that has just opened (Descent.markClassesOpen). The road is then the player's own
             -- step, taken when they are finished reading.
-            opensExit = { kind = "road", name = "The Road to the City" },
+            -- THE STAIR OPENS AND THE COMPANY TURNS BACK (2026-10-16). The tile the Champion held becomes
+            -- the stair down, which a real floor one's guardian opens -- and nobody takes it: Rowan is down
+            -- and nothing like that should be this shallow. The way out is the door the company came in by
+            -- (`at = "start"`), so the trip ends the way any trip does, walking back up what it crossed.
+            -- Rowan says so the moment the board comes back (`scene`).
+            opensExit = { kind = "road", name = "The Way Up", at = "start",
+                          stair = "The Stair Down", scene = "conversation_flight_turn_back" },
         },
         keyCount = 0,
     },
@@ -394,22 +411,27 @@ end
 -- Build the ordered beat list. Held as a builder so a fresh New Game always starts clean.
 local function buildBeats()
     return {
-        -- THE FIRST BEAT IS THE FIGHT, and there is deliberately no scene in front of it. A five-line
-        -- visual-novel opening (`conversation_prologue_intro`) stood here and is deleted; everything it
-        -- said is said over the board instead, by the fight's own opening scene. See
-        -- data/conversations/prologue/conversation_prologue_village.lua for what moved and what went.
-        -- So a New Game reaches a tactics board on the click after the name is typed.
+        -- THE SETTING, THEN THE NAME, THEN THE FLOOR (2026-10-16). Etrian Odyssey's order: a city built
+        -- around its labyrinth is narrated first, over nothing, because the player has to know why anyone
+        -- goes down before the first board is worth reading -- the old opening dropped them onto a lane
+        -- with no reason to care. Then the avatar is named (character creation, back at the front where
+        -- it used to be), and then the first fight, on floor one of the rift. The narration says nothing
+        -- of Rowan or Xin: only the city, the rift, and that you mean to make a name.
+        scene("conversation_prologue_opening"),
+        function() State.switch(require("states.character_creation")) end,
         action(function() Player.recruit(Player.active, "character_rowan") end), -- Rowan joins for the fight
         battle(VILLAGE_MAP),
-        -- THE CHARTER'S ROLL: who the player is, asked once they have fought as somebody. Rowan puts the
-        -- newest hand on the books -- name, people, trade -- and character creation takes those three
-        -- (and the look) before the map. It was the first screen of a New Game; it moved here so the
-        -- first click reaches a board. Played with `deferJoins` so Rowan's join banner still folds onto
-        -- the map's opening, where conversation_prologue_ruins' header says it lands.
+        -- WHY THEY ARE DOWN HERE: the class requirements. The avatar is a Novice and earns a class by deeds
+        -- (data/class_requirements.lua), and Rowan says so the moment the first fight is won -- which is
+        -- also when the Roll opens (Descent.markClassesOpen), so the overworld's loadout lesson can hand
+        -- straight on to the class tab (states/game.lua's classLessonNext). Played with `deferJoins` so
+        -- Rowan's join banner still folds onto the map's opening, where conversation_prologue_ruins'
+        -- header says it lands. (This slot was the Charter's roll, which named the avatar; naming moved
+        -- back in front of the fight.)
         function()
-            require("models.conversation").play("conversation_prologue_roll", function()
-                State.switch(require("states.character_creation"))
-            end, nil, { deferJoins = true })
+            Descent.markClassesOpen(Player.active)
+            require("models.conversation").play("conversation_prologue_classes", prologue.next,
+                nil, { deferJoins = true })
         end,
         -- THERE IS NO SCENE BEAT BETWEEN THE FIGHT AND THE MAP. One stood here --
         -- `conversation_prologue_flee`, played over a plain backdrop -- and it is deleted; its lines
@@ -560,7 +582,7 @@ end
 -- hands over the taught branch, so the company that never played Act 0 stands level with the one that
 -- heard her out rather than with the one that took the coin.
 prologue.SCENE_GIFTS = {
-    { item = "utility_dawn_chrism",  from = "conversation_flight_event_shrine" },
+    { item = "utility_wolfsbane_oil", from = "conversation_flight_event_shrine" },
     { item = "ability_mark_target",  from = "conversation_flight_event_survivor" },
 }
 
@@ -742,7 +764,10 @@ function prologue.skip(player)
 
     -- Every stop's authored loot: the two teaching chests, and the kit the two objective lessons are
     -- won with. Read off the route rather than re-listed here, so a re-cut ladder moves both at once.
-    local stops = FLIGHT_QUEST.map.encounters.always
+    -- The places on the map AND the fights the walk deals (the `prowl` queue): both are the route.
+    local stops = {}
+    for _, stop in ipairs(FLIGHT_QUEST.map.encounters.always) do stops[#stops + 1] = stop end
+    for _, stop in ipairs(FLIGHT_QUEST.map.encounters.prowl or {}) do stops[#stops + 1] = stop end
     for _, stop in ipairs(stops) do
         for _, id in ipairs(stop.loot or {}) do Player.grantItem(player, id) end
     end

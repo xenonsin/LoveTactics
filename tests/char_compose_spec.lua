@@ -165,9 +165,17 @@ return {
     {
         name = "a demon/undead resolves by kind",
         fn = function()
-            local dl, dlid = resolve("character_demon_grunt_tutorial")
-            assert(Char.kindOf(dl, dlid) == "demon", "demon_grunt is a demon")
+            -- Every authored demon is named in CHARACTER_SILHOUETTE now (the grunt that used to be the
+            -- bucket's generic head is Act 0's Cinder Boar), so the bucket is read off a bare body.
+            local dl, dlid = { race = "demon" }, "demon_stray"
+            assert(Char.kindOf(dl, dlid) == "demon", "a bare demon is a demon")
             assert(Char.slugFor(dl, dlid) == "lorc/daemon-skull", "demon -> daemon skull")
+            -- ...and Act 0's three lesser bodies, whose ids still say `demon`, read as the beasts they are.
+            assert(slug("character_demon_imp_tutorial") == "lorc/salamander", "the Ember Newt is a salamander")
+            assert(slug("character_demon_grunt_tutorial") == "cathelineau/boar-ensign", "the Cinder Boar is a boar")
+            assert(slug("character_demon_bomblet_tutorial") == "lorc/super-mushroom", "the Puffcap is a mushroom")
+            local ng, ngid = resolve("character_demon_imp_tutorial")
+            assert(Char.tintFor(ng, ngid) ~= "#c07fd0", "and none of them wears demon violet")
             local mg, mgid = resolve("character_miller_ghost")
             assert(Char.kindOf(mg, mgid) == "undead", "miller_ghost is undead")
             assert(Char.slugFor(mg, mgid) == "lorc/ghost", "ghost -> ghost")

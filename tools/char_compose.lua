@@ -183,7 +183,7 @@ local DISCIPLINE_SILHOUETTE = {
 -- must not converge (character_greywatch_captain: "the silhouettes must not converge").
 --
 -- So: a bucket's silhouette stays the property of the GENERIC body at its head (character_knight keeps
--- knight-banner, character_bandit the rank swordman, character_demon_grunt_tutorial the daemon skull), and every
+-- knight-banner, character_bandit the rank swordman, a bare demon the daemon skull), and every
 -- other occupant is lifted out by name here. Keyed by tokenId, exact match -- never a substring -- so it
 -- behaves like the discipline tier and cannot fire on a lookalike id.
 --
@@ -345,14 +345,21 @@ local CHARACTER_SILHOUETTE = {
     gyeom = "lorc/wizard-staff",
     ren = "lorc/standing-potion",
 
-    -- Off the daemon skull, which the rank Demon Grunt keeps. The horde is a ladder -- bomblet, champion,
-    -- lord -- and the ladder should be visible on the board.
+    -- Off the daemon skull. The horde is a ladder -- champion, lord -- and the ladder should be visible
+    -- on the board.
     --
     -- THE `_tutorial` IS PART OF THE KEY, because these keys are tokenId(blueprint id) and Act 0's four
-    -- demons carry the suffix now (data/characters/character_demon_imp_tutorial.lua says why). Drop it
+    -- bodies carry the suffix now (data/characters/character_demon_imp_tutorial.lua says why). Drop it
     -- and the entry stops matching -- silently, since an unmatched body just composes off its race base.
     -- The Demon Lord is the rift's and keeps its bare id.
-    demon_bomblet_tutorial = "delapouite/inferno-bomb", -- a demon bred hollow and filled with fire
+    --
+    -- ACT 0'S THREE LESSER BODIES ARE FLOOR ONE'S BEASTS NOW (2026-10-16), renamed in place, so their
+    -- ids still say `demon` and the "imp"/"demon" rows below would hand them an imp and a daemon skull.
+    -- Named here, and tinted in CHARACTER_TINT for the same reason (kindOf reads the id, not the race).
+    -- The Champion is the one demon the player meets on floor one, and the board should say so.
+    demon_imp_tutorial = "lorc/salamander",          -- the Ember Newt: a salamander in its own flame
+    demon_grunt_tutorial = "cathelineau/boar-ensign", -- the Cinder Boar (the plain boar keeps `boar`)
+    demon_bomblet_tutorial = "lorc/super-mushroom",  -- the Puffcap: a spotted pod that bursts
     demon_champion_tutorial = "delapouite/devil-mask",
     demon_lord = "caro-asercion/tarot-15-the-devil",
 
@@ -984,6 +991,11 @@ local CHARACTER_TINT = {
     blaze = "#ef7d4a",       -- ELEMENT_TINT.fire
     arc = "#f3d24a",         -- ELEMENT_TINT.lightning
     thunderhead = "#f3d24a", -- ELEMENT_TINT.lightning
+    -- Act 0's three lesser bodies (2026-10-16): beasts whose ids still say `demon`, so kindOf reads them
+    -- as demons and would wash them demon violet. The newt is its embers; the boar and the pod are beasts.
+    demon_imp_tutorial = "#ef7d4a",     -- ELEMENT_TINT.fire
+    demon_grunt_tutorial = "#c9a06a",   -- KIND_TINT.beast
+    demon_bomblet_tutorial = "#c9a06a", -- KIND_TINT.beast
 }
 
 local function tintFor(def, id)

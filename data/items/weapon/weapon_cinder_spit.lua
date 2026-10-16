@@ -22,8 +22,8 @@ local Curve = require("models.curve")
 
 return {
     name = "Cinder Spit",
-    description = "Spits hellfire at a foe.",
-    flavor = "A lesser demon's whole argument, and it makes it from as far back as it can.",
+    description = "Spits embers at a foe.",
+    flavor = "A newt's whole argument, and it makes it from as far back as it can.",
     sprite = "assets/items/cinder_spit.png",
     type = "weapon",
     class = "creature",

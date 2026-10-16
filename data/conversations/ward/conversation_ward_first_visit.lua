@@ -66,9 +66,9 @@ return {
         -- 2. THE WORK, not a word about the price of it: the bone goes back, and it is her hands.
         -- 3. Rowan, who minds being carried more than she minds the injury.
         -- 4. THE JOIN -- she asks to come, and says what she is for. The banner folds onto this line.
-        { "character_xin", "PLACEHOLDER -- she takes Rowan's weight without being asked.", tag = 1 },
-        { "character_xin", "PLACEHOLDER -- the bone goes back, under her hands, now.", tag = 2 },
-        { "character_rowan", "PLACEHOLDER -- she minds being carried more than she minds the injury.", tag = 3 },
-        { "character_xin", "PLACEHOLDER -- she asks to come, and says what she is for.", tag = 4 },
+        { "character_xin", "PLACEHOLDER -- Xin, who could not come down because the Cathedral kept her busy, takes Rowan's weight without being asked.", tag = 1 },
+        { "character_xin", "PLACEHOLDER -- the bone goes back under her hands, and she tells them both how careless they were.", tag = 2 },
+        { "character_rowan", "PLACEHOLDER -- Rowan takes the scolding, and minds being carried more than the injury.", tag = 3 },
+        { "character_xin", "PLACEHOLDER -- next time she is coming with them; somebody has to.", tag = 4 },
     },
 }

@@ -1,5 +1,7 @@
--- A villager who got out of the valley alive but not far -- the person the flight leg's rescue
--- fights are fought over (data/encounters/encounter_survivors_defend.lua). It is not a combatant: it
+-- A Delver: one of another adventuring company, hurt on floor one and not getting further -- the
+-- person Act 0's rescue fight is fought over (data/encounters/encounter_survivors_defend.lua). (It was
+-- a villager fleeing the valley while Act 0 stood in the city; the id and sprite path kept the old
+-- `survivor`, since the encounters and specs name it by them.) It is not a combatant: it
 -- has no weapon, so it swings the default unarmed fist only at whatever is already on top of it, and
 -- `archetype = "holdGround"` roots it where it stands (models/ai.lua) -- a cornered survivor cowering
 -- in the middle of the road, not a unit that fights its way out.
@@ -12,7 +14,7 @@
 -- Fragile on purpose: a few blows end it, so the clock the fight runs on is real. Modeled on
 -- character_caravan_driver (a clock, not a combatant) but rooted where the driver walks.
 return {
-    name = "Survivor",
+    name = "Delver",
     race = "human",
     tier = 0,
     archetype = "holdGround",

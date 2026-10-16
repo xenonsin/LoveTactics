@@ -331,7 +331,7 @@ return {
     ["line.conversation_flight_champion.1"] = { en = "Stop here, {name}. That's a demon champion.", ja = "" },  -- TODO
     ["line.conversation_flight_champion.2"] = { en = "It won't go down the way the others did, and the small ones will throw themselves at us to keep us off it.", ja = "" },  -- TODO
     ["line.conversation_flight_champion.3"] = { en = "Cut it down and the rest stop mattering. Stay out of its reach and let it come to us.", ja = "" },  -- TODO
-    ["line.conversation_flight_champion.5"] = { en = "The report said imps. That thing came up out of the breach with the rest of them trailing after it.", ja = "" },  -- TODO
+    ["line.conversation_flight_champion.5"] = { en = "PLACEHOLDER -- nothing like that should be this shallow. Something is wrong deeper down.", ja = "" },  -- TODO
     ["line.conversation_flight_champion_fall.1"] = { en = "PLACEHOLDER -- she says what she misread, with the blow already on her.", ja = "" },  -- TODO
     ["line.conversation_flight_champion_fall.2"] = { en = "PLACEHOLDER -- and that the fight is still there to be finished.", ja = "" },  -- TODO
     ["line.conversation_flight_champion_turn.1"] = { en = "PLACEHOLDER -- it has stopped swinging at whoever is nearest.", ja = "" },  -- TODO
@@ -352,6 +352,9 @@ return {
     ["line.conversation_flight_event_survivor.7"] = { en = "An apothecary, before all this. She can make the square on her own now. Let's keep clearing, {name}.", ja = "" },  -- TODO
     ["line.conversation_flight_event_survivor.8"] = { en = "Mark one before you strike and you'll see where its guard runs thin. Keep that beside the bow and it'll work.", ja = "" },  -- TODO
     ["line.conversation_flight_event_survivor.9"] = { en = "She's an apothecary. She's got a purse she can't spend down here, and she's got the trick of these things in her head. She'll give us the one or the other. Choose...", ja = "" },  -- TODO
+    ["line.conversation_flight_turn_back.1"] = { en = "PLACEHOLDER -- that is the stair down, and we are not going down it.", ja = "" },  -- TODO
+    ["line.conversation_flight_turn_back.2"] = { en = "PLACEHOLDER -- we are not strong enough to go further. Not yet.", ja = "" },  -- TODO
+    ["line.conversation_flight_turn_back.3"] = { en = "PLACEHOLDER -- back the way we came, and up.", ja = "" },  -- TODO
     ["line.conversation_hunters_lodge_counter.1"] = { en = "Antlers on every beam and a pot on every fire. We ask what you killed before we ask your name.", ja = "" },  -- TODO
     ["line.conversation_hunters_lodge_counter.2"] = { en = "So. What is it.", ja = "" },  -- TODO
     ["line.conversation_hunters_lodge_counter.3"] = { en = "Visit hunter class trainer", ja = "" },  -- TODO
@@ -388,14 +391,17 @@ return {
     ["line.conversation_prologue_arrival.5"] = { en = "Let's collect our pay and see what work The Rift is offering, {name}.", ja = "" },  -- TODO
     ["line.conversation_prologue_arrival.6"] = { en = "PLACEHOLDER -- she says the Champion's blow is still on her, and she is hurt.", ja = "" },  -- TODO
     ["line.conversation_prologue_arrival.7"] = { en = "PLACEHOLDER -- and that she needs a priest at the Cathedral before anything else.", ja = "" },  -- TODO
-    ["line.conversation_prologue_roll.1"] = { en = "That's the street held. Not bad for a first job.", ja = "" },  -- TODO
-    ["line.conversation_prologue_roll.2"] = { en = "The Charter will want you on its roll properly now. Name and people.", ja = "" },  -- TODO
-    ["line.conversation_prologue_roll.3"] = { en = "Write it the way you want it read.", ja = "" },  -- TODO
-    ["line.conversation_prologue_ruins.1"] = { en = "Not too bad for your first job, but there's no time to rest.", ja = "" },  -- TODO
-    ["line.conversation_prologue_ruins.2"] = { en = "Let's move to clear out the remaining demons and find survivors.", ja = "" },  -- TODO
-    ["line.conversation_prologue_village.1"] = { en = "The demons that breached through the rift are up ahead.", ja = "" },  -- TODO
-    ["line.conversation_prologue_village.2"] = { en = "They look like simple imps, so the guild report seems accurate.", ja = "" },  -- TODO
-    ["line.conversation_prologue_village.3"] = { en = "Strike before they start to notice us. Watch this!", ja = "" },  -- TODO
+    ["line.conversation_prologue_classes.1"] = { en = "PLACEHOLDER -- the fight is won, and that is the first of what we came down here to do.", ja = "" },  -- TODO
+    ["line.conversation_prologue_classes.2"] = { en = "PLACEHOLDER -- a class is earned down here: the requirements are deeds, and this trip is for meeting them.", ja = "" },  -- TODO
+    ["line.conversation_prologue_classes.3"] = { en = "PLACEHOLDER -- check where you stand on the Roll when we have a moment.", ja = "" },  -- TODO
+    ["line.conversation_prologue_opening.1"] = { en = "PLACEHOLDER -- a city built around a rift, a hole in the world that goes down and does not close.", ja = "" },  -- TODO
+    ["line.conversation_prologue_opening.2"] = { en = "PLACEHOLDER -- the whole city lives on what adventurers carry up out of it.", ja = "" },  -- TODO
+    ["line.conversation_prologue_opening.3"] = { en = "PLACEHOLDER -- and you have come to go down, and make a name for yourself.", ja = "" },  -- TODO
+    ["line.conversation_prologue_ruins.1"] = { en = "PLACEHOLDER -- floor one, laid out ahead of us in the dark.", ja = "" },  -- TODO
+    ["line.conversation_prologue_ruins.2"] = { en = "PLACEHOLDER -- keep moving; there are other parties down here, and some of them will need us.", ja = "" },  -- TODO
+    ["line.conversation_prologue_village.1"] = { en = "PLACEHOLDER -- floor one: those things up ahead are what the rift keeps at its mouth.", ja = "" },  -- TODO
+    ["line.conversation_prologue_village.2"] = { en = "PLACEHOLDER -- the small kind; nothing a first trip should not handle.", ja = "" },  -- TODO
+    ["line.conversation_prologue_village.3"] = { en = "PLACEHOLDER -- strike before they notice us. Watch this!", ja = "" },  -- TODO
     ["line.conversation_touchstone_vendor_intro.1"] = { en = "Four houses dig that hole and not one of them trusts the other three to say what came out of it. So they pay me to say it. Everything that comes up unnamed comes up here.", ja = "" },  -- TODO
     ["line.conversation_touchstone_vendor_intro.10"] = { en = "Not on this counter.", ja = "" },  -- TODO
     ["line.conversation_touchstone_vendor_intro.11"] = { en = "No. I checked.", ja = "" },  -- TODO
@@ -484,10 +490,10 @@ return {
     ["line.conversation_undercroft_vendor_intro.4"] = { en = "Owed. Everyone is owed, up above. We only hold the note. That is not cruelty, that is the world.", ja = "" },  -- TODO
     ["line.conversation_undercroft_vendor_intro.5"] = { en = "Buy from him and pay him in coin, {name}. Owe this house nothing.", ja = "" },  -- TODO
     ["line.conversation_undercroft_vendor_intro.6"] = { en = "The floor is open. Everything is for sale, and everything is owed.", ja = "" },  -- TODO
-    ["line.conversation_ward_first_visit.1"] = { en = "PLACEHOLDER -- she takes Rowan's weight without being asked.", ja = "" },  -- TODO
-    ["line.conversation_ward_first_visit.2"] = { en = "PLACEHOLDER -- the bone goes back, under her hands, now.", ja = "" },  -- TODO
-    ["line.conversation_ward_first_visit.3"] = { en = "PLACEHOLDER -- she minds being carried more than she minds the injury.", ja = "" },  -- TODO
-    ["line.conversation_ward_first_visit.4"] = { en = "PLACEHOLDER -- she asks to come, and says what she is for.", ja = "" },  -- TODO
+    ["line.conversation_ward_first_visit.1"] = { en = "PLACEHOLDER -- Xin, who could not come down because the Cathedral kept her busy, takes Rowan's weight without being asked.", ja = "" },  -- TODO
+    ["line.conversation_ward_first_visit.2"] = { en = "PLACEHOLDER -- the bone goes back under her hands, and she tells them both how careless they were.", ja = "" },  -- TODO
+    ["line.conversation_ward_first_visit.3"] = { en = "PLACEHOLDER -- Rowan takes the scolding, and minds being carried more than the injury.", ja = "" },  -- TODO
+    ["line.conversation_ward_first_visit.4"] = { en = "PLACEHOLDER -- next time she is coming with them; somebody has to.", ja = "" },  -- TODO
     ["name.alchemist"] = { en = "The Crucible", ja = "" },  -- TODO
     ["name.arcanum"] = { en = "The Arcanum", ja = "" },  -- TODO
     ["name.bastion"] = { en = "The Bastion", ja = "" },  -- TODO
@@ -569,6 +575,7 @@ return {
     ["title.conversation_flight_champion_turn"] = { en = "It Has Stopped Fighting", ja = "" },  -- TODO
     ["title.conversation_flight_event_shrine"] = { en = "The Street Shrine", ja = "" },  -- TODO
     ["title.conversation_flight_event_survivor"] = { en = "A Voice in the Rubble", ja = "" },  -- TODO
+    ["title.conversation_flight_turn_back"] = { en = "Not This Time", ja = "" },  -- TODO
     ["title.conversation_hunters_lodge_counter"] = { en = "Hunter's Lodge", ja = "" },  -- TODO
     ["title.conversation_hunters_lodge_discipline_unlocked"] = { en = "The Deeper Wood", ja = "" },  -- TODO
     ["title.conversation_hunters_lodge_errand_asked"] = { en = "The White Stag", ja = "" },  -- TODO
@@ -576,7 +583,8 @@ return {
     ["title.conversation_hunters_lodge_slot_01_outro"] = { en = "The Antlers", ja = "" },  -- TODO
     ["title.conversation_hunters_lodge_vendor_intro"] = { en = "The Hunter's Lodge", ja = "" },  -- TODO
     ["title.conversation_prologue_arrival"] = { en = "After the Breach", ja = "" },  -- TODO
-    ["title.conversation_prologue_roll"] = { en = "The Charter's Roll", ja = "" },  -- TODO
+    ["title.conversation_prologue_classes"] = { en = "What We Came Down For", ja = "" },  -- TODO
+    ["title.conversation_prologue_opening"] = { en = "The Rift", ja = "" },  -- TODO
     ["title.conversation_prologue_ruins"] = { en = "First Job", ja = "" },  -- TODO
     ["title.conversation_prologue_village"] = { en = "The Breach", ja = "" },  -- TODO
     ["title.conversation_touchstone_vendor_intro"] = { en = "Touchstone", ja = "" },  -- TODO

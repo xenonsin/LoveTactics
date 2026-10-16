@@ -40,6 +40,10 @@
 -- on. Keep that shape -- an id is only reachable by a goto or by falling into it.
 --
 -- ROWAN SPEAKS IT ALL. The avatar is silent for the whole of Act 0 as it currently stands.
+--
+-- STALE WORDS, LIVE GRANT (2026-10-16): the gift is Wolfsbane Oil now (states/prologue.lua's stop 2), and
+-- every line below still talks about chrism, a burned block and the dawn. They are the author's to rewrite
+-- for floor one; only the grant changed.
 return {
     title = "The Street Shrine",
     cast  = { "character_rowan", "character_avatar" },
@@ -47,7 +51,7 @@ return {
     script = {
         { "character_rowan", "A shrine, still standing with the whole block burned around it.", tag = 1 },
         { "character_rowan", "There's a flask of chrism on the stone, {name}. The priests blessed it at dawn. We can carry it, or pour it out on our wounds. Choose...", tag = 2, choices = {
-            { "Take the chrism.", tag = 3, goto = "pray", effect = { grant = "utility_dawn_chrism" } },
+            { "Take the chrism.", tag = 3, goto = "pray", effect = { grant = "utility_wolfsbane_oil" } },
             { "Tend our wounds and move on.", tag = 4, goto = "take", effect = { heal = 12 } },
         } },
         { "character_rowan", "Keep it next to whatever you mean to swing. The oil goes onto the steel. These things do not like being touched by the dawn.", tag = 5, id = "pray", goto = "leave" },

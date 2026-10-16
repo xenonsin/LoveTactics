@@ -23,8 +23,8 @@ local Curve = require("models.curve")
 
 return {
     name = "Rending Claws",
-    description = "Rends an adjacent foe with a demon's whole weight behind it.",
-    flavor = "An imp spits at you from across the lane. This one comes and takes hold.",
+    description = "Rends an adjacent foe with a boar's whole weight behind it.",
+    flavor = "A newt spits at you from across the clearing. This one comes and takes hold.",
     sprite = "assets/items/rending_claws.png",
     type = "weapon",
     class = "creature",

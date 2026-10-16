@@ -2237,6 +2237,11 @@ function Overworld.fromLayout(params)
                 self.objective = { x = x, y = y }
             elseif ch:match("%d") then
                 stops[tonumber(ch)] = cell
+            elseif ch:match("%l") then
+                -- A CHOKEPOINT, named by its letter: an ordinary place that a scripted walk may ask
+                -- about (states/game.lua's tutorial prowl forces a fight still owed "by" this letter
+                -- when the company steps onto it). Nothing else reads it.
+                cell.choke = ch
             end
         end
     end

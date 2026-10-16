@@ -28,7 +28,7 @@ return {
 
     script = {
         { "character_rowan", "Stop here, {name}. That's a demon champion.", tag = 1 },
-        { "character_rowan", "The report said imps. That thing came up out of the breach with the rest of them trailing after it.", tag = 5 },
+        { "character_rowan", "PLACEHOLDER -- nothing like that should be this shallow. Something is wrong deeper down.", tag = 5 },
         { "character_rowan", "It won't go down the way the others did, and the small ones will throw themselves at us to keep us off it.", tag = 2 },
         { "character_rowan", "Cut it down and the rest stop mattering. Stay out of its reach and let it come to us.", tag = 3 },
     },

@@ -15,7 +15,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Demon's Roar",
-    description = "Channeled: summons Bomblets and quickens the champion.",
+    description = "Channeled: summons Puffcaps and quickens the champion.",
     flavor = "The horde answers the loudest throat.",
     sprite = "assets/items/ability_meteor_storm.png", -- placeholder until its own art exists
     type = "ability",

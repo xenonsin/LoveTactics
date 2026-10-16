@@ -1,5 +1,6 @@
--- The village lane: the board the prologue's first fight is fought on (states/prologue.lua,
--- data/tutorials/village.lua). A curated layout like data/arenas/forest_01.lua, with one
+-- The first clearing: the board the prologue's first fight is fought on (states/prologue.lua,
+-- data/tutorials/village.lua) -- a glade in floor one's wood, under the rift's mouth. The file keeps
+-- its old `village` name because the tutorial and the specs address the board by it. A curated layout like data/arenas/forest_01.lua, with one
 -- difference that matters -- `fixed = true`.
 --
 -- Every other curated arena joins a uniform random pool in Arena.pickLayout, so a forest quest may
@@ -34,29 +35,26 @@
 --     is her whole turn's worth, and the avatar's is one tile short of his.
 --   * W (5,4) is the one tile adjacent to both a and b, so the Clear Out thrown from it takes them
 --     together. It sits 3 steps from x, where the opening kill leaves the avatar standing.
---   * c (7,6) is adjacent to r and NOT inside a Clear Out thrown from W, so the third imp is Rowan's
+--   * c (7,6) is adjacent to r and NOT inside a Clear Out thrown from W, so the third newt is Rowan's
 --     to cut down and never steals one of the player's. The Clear Out sweeps the whole BOX around W
 --     -- corners included -- so the margin here is measured diagonally: c sits two steps out either
 --     way, one clear of the ring. Moving it to (6,5) would put it in the corner of the sweep and hand
 --     the player a kill the lesson has promised to Rowan.
 --
 -- The party stands two apart rather than shoulder to shoulder for a reason of its own: it splits the
--- imps' approach down two lanes instead of bunching them, and leaves the middle tile free.
+-- newts' approach down two lanes instead of bunching them, and leaves the middle tile free.
 -- The biome is ART ONLY on a curated board -- Arena.BIOME_TERRAIN is consulted by generateLayout and
 -- nothing else, so every cell above keeps the exact walkability, move cost and sight cost it was
--- authored with. `castle` is here because the fight stands in the CAPITAL'S OWN STREETS and this lane is paved:
--- flagstone and cold stone rather than the forest's greens (data/tilesets/castle.lua). A `town` biome
--- would be the honest name, but tests/biome_spec.lua requires every biome to be used by a QUEST and
--- the prologue's map is inline in states/prologue.lua, so a new one would be dead weight on arrival.
+-- authored with. `forest` is here because the fight stands on FLOOR ONE, Gluttony's wood
+-- (data/tilesets/forest.lua). It was `castle` while Act 0 was fought in the capital's paved streets;
+-- the move onto the rift's first floor changed the art and not one cell.
 --
--- The single `forest` tile at (2,3) is deliberately NOT retyped, and it still reads GREEN on the
--- flagstone. That is not the tileset leaking: ui/battle_map.lua washes BattleMap.TERRAIN_TINT over
--- any costly floor and that table is keyed by MOVE COST rather than by biome, on purpose -- the wash
--- is how a player sees at a glance that a tile charges 2 and gives cover. So a forest tile is green
--- on every board there is. Read it as the one tree in the market square, which is what a town square
--- has; retyping the cell to chase the colour would move a load-bearing cell for a purely visual reason.
+-- The single `forest` tile at (2,3) is deliberately NOT multiplied to make the clearing read wooded.
+-- ui/battle_map.lua washes BattleMap.TERRAIN_TINT over any costly floor, keyed by MOVE COST rather
+-- than by biome, so every extra tree would be a tile that charges 2 and gives cover -- a load-bearing
+-- change made for a purely visual reason. The glade is open ground with one tree in it.
 return {
-    biome = "castle",
+    biome = "forest",
     fixed = true, -- addressable by name, never randomly rolled (see Arena.pickLayout)
     tiles = {
         { "ground", "ground",   "ground", "ground", "ground", "ground", "ground", "ground"   },

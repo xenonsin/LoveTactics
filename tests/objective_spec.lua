@@ -501,14 +501,14 @@ return {
             -- The rescue: clear the board WITHOUT losing the body you came for. Both halves are on the
             -- line, because either one alone is a different fight.
             local rescue = Combat.objectiveGoal({ type = "killAll", protect = "character_survivor" })
-            assert(rescue == "Defeat every enemy, keep Survivor alive", "got " .. rescue)
+            assert(rescue == "Defeat every enemy, keep Delver alive", "got " .. rescue)
 
             -- ...and when the body that must cross is the body that must live, the clause folds instead
             -- of naming it twice.
             local escort = Combat.objectiveGoal({
                 type = "reach", who = "character_survivor", protect = "character_survivor",
             })
-            assert(escort == "Get Survivor to the far side, alive", "got " .. escort)
+            assert(escort == "Get Delver to the far side, alive", "got " .. escort)
 
             -- An objective that states its own line keeps it (the overruled fight's second act).
             assert(Combat.objectiveGoal({ type = "killAll", text = "The house has sent its patron" })

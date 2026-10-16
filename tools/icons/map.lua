@@ -1431,6 +1431,7 @@ return {
     ["items/utility_what_the_wood_owes_it.png"] = { icon = "delapouite/wood-canoe", by = "auto" },
     ["items/utility_what_was_sleeping.png"] = { icon = "lorc/monster-grasp", by = "hand" },
     ["items/utility_wood_walker.png"] = { icon = "lorc/flat-paw-print", by = "hand" },
+    ["items/utility_wolfsbane_oil.png"] = { icon = "lorc/flowers", by = "hand" },
     ["items/utility_wyrm_dread.png"] = { icon = "cathelineau/dread", by = "hand" },
     ["items/vampiric_strike.png"] = { icon = "lorc/dripping-knife", by = "hand" },
     ["items/vanishing_act.png"] = { icon = "lorc/magic-lamp", by = "hand" },

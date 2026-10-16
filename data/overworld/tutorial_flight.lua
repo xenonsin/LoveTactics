@@ -1,4 +1,30 @@
--- The city sweep, HAND-AUTHORED (models/overworld.lua's Overworld.fromLayout). The prologue leg that
+-- FLOOR ONE, FAKED (2026-10-16). Act 0 no longer walks the capital's streets: the company is on floor one
+-- of the rift -- Gluttony's wood -- and this is a HAND-BUILT floor MODELLED LIKE A REAL ONE. The order of the
+-- stops is still fixed, because the lessons lean on each other (the bow before Mark Target, the rest before
+-- the Champion); what changed is that the floor HIDES it. Everything below the next rule describes the
+-- city-sweep map this file used to hold and is kept as the record of why it was shaped the way it was.
+--
+--   * A REAL FLOOR'S SIZE: 16x11 (Descent.floorDims(1)), 112 places, 12 dead ends.
+--   * THREE PARTS JOINED BY TWO CHOKEPOINTS (`a`, `b`). Inside a part the company wanders freely; the parts
+--     come in order because the only way on is through the one cell between them. A real floor blocks its
+--     routes the same way (docs/overworld.md, "The fights that block the way").
+--   * THE TWO RESCUE FIGHTS ARE NOT ON THE MAP. They find the company as it walks, off a step count, the way
+--     ordinary fighting is dealt underground (states/prologue.lua's FLIGHT_QUEST `prowl`, states/game.lua).
+--     A chokepoint letter is where a fight that is still owed finds you if the steps have not -- so the
+--     Shout and the fire coat are always in hand before the part that needs them.
+--   * EVERY STOP BUT TWO IS IN A DEAD END, found by exploring: the shrine, the wounded delver and the last
+--     chest. The bow chest sits beside the door (the coach says "walk to the chest ahead"), and the rest is
+--     on the Champion's doorstep, which is the only way to the stair.
+--   * THE CHAMPION STANDS ON THE STAIR DOWN (X), and the way out is the door (S): the company walks back up
+--     the floor it crossed, as it would from any floor one.
+--
+--   1 chest (bow kit)   2 shrine   3 the wounded delver   4 chest (Renewal)   5 rest   X the Champion
+--   a / b  chokepoints, in walking order
+--
+-- =====================================================================================================
+-- THE CITY-SWEEP MAP'S OWN RECORD (superseded):
+--
+-- (Was: the city sweep, HAND-AUTHORED (models/overworld.lua's Overworld.fromLayout). The prologue leg that
 -- teaches the overworld cannot be a roll: the coach says "walk to the chest ahead," and the chest has
 -- to actually BE ahead -- the first place on the route, with nothing else beside the start.
 --
@@ -60,16 +86,20 @@
 -- relationship the old radius-2 fog had against a road that never ran straight. The one after it is
 -- still dark.
 return {
-    biome = "castle",
-    -- 9 wide x 7 tall, read as the map: S bottom-left, X top-left, the route running east along the
-    -- bottom, up the far side of the quarter and back west across the top to the Champion.
+    biome = "forest",
+    -- 16 x 11, read as the map: the door bottom-left, the stair top-middle. Part one is the bottom three
+    -- rows, part two the middle three, part three the top three; `a` and `b` are the only ways between.
     map = {
-        "X7#######", -- y1  the Champion, and the rest on her doorstep
-        "#.6######", -- y2  the last chest
-        "##..5####", -- y3  the extraction
-        "####..4.#", -- y4  the survivors, on the long turn west
-        "#######.#", -- y5  the climb
-        "####2..3#", -- y6  the shrine, and the defence at the top of the eastern leg
-        "S1...####", -- y7  the start and the teaching chest, with the street east ahead of it
+        "#..#.5X##..#....", -- y1  the rest, and the Champion on the stair beside it
+        "..#...#...#..#..", -- y2
+        "....#...#.....#.", -- y3
+        "#b##############", -- y4  the second chokepoint
+        "..#3#4..#..#..#.", -- y5  the wounded delver and the last chest, each down a spur
+        ".#...##.#.....#.", -- y6
+        "...#........#...", -- y7
+        "########a#######", -- y8  the first chokepoint
+        "...#.#2#...#....", -- y9  the shrine, at the end of a spur
+        ".#........#..#..", -- y10
+        "S1..#...#...#...", -- y11  the door, and the bow chest beside it
     },
 }

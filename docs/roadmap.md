@@ -39,32 +39,32 @@ Regenerate with `& "E:\LOVE\lovec.exe" . test`, `. art-report` and `. audio-repo
 > `data/quests/` held seven, and that wrong number was used to price a design decision before anybody
 > counted the directory. Every figure above is a command away; re-run it rather than editing it.
 
-## Phase 0 — the prologue no longer describes the game
+## Phase 0 — the prologue, re-premised and rebuilt; its words are owed
 
-**The whole of Act 0 is premised on the rift, and the rift has left the city**
-([docs/bounties.md](bounties.md)). This is ahead of the phases below because it is the first thing a
-new player sees and it now points at a door that is not there.
+**Act 0 was re-premised and rebuilt on 2026-10-16** ([docs/story.md](story.md), *The three acts*). The
+city is built around the rift and lives off it; the avatar is an adventurer out to make a name, going
+down with childhood friends Rowan and Xin to start meeting a class's requirements as a Novice. The order
+is a narration card, naming at creation, a first fight among beasts on floor one, a hand-built 11x11
+floor one played like a real one (fog, branches, step-counter rescues of a hurt adventuring party,
+chests, side scenes, chokepoints keeping the order), the Demon Champion as a surprise on the stair down,
+Rowan felled and the company walking back out, and Xin's reunion at the Ward on the first morning home.
+The shrine gives Wolfsbane Oil; the tutorial floor is thrown away for the save's own floor one. The
+breach inside the walls, the street fight, the hired-hand payroll, the Charter's roll as the naming beat
+and Xin-as-a-stranger are gone.
 
-What is specifically stale, rather than a general unease:
+This retires what this phase used to list — a handoff pointing at a deleted Rift card, a premise of
+pruning the parked tally measured, and a first exposition spent on *what a rift is* — because the
+premise those lines served is gone.
 
-- **`conversation_prologue_arrival`** is Rowan's handoff and it names the building by name: *"Let's
-  collect our pay and see what work The Rift is offering."* `data/buildings/the_gate.lua` is deleted,
-  so she is pointing at nothing. Her scene's own header says *"`the_gate.lua`'s `name` must keep
-  agreeing with what she calls it"* — that agreement is now broken in the only direction it can be.
-- **The world premise she states is the count's**: *"This is what happens when the guild fails to clear
-  enough of The Rift. The deep floors get left alone, and whatever gathers down there comes up here."*
-  That is pruning — the fiction `models/descent.lua`'s tally measures — and the tally is parked. The
-  campaign's premise is now posted work: seven houses, a named body, a named piece.
-- **`conversation_prologue_village`** spends the first exposition in the game on *what a rift is*.
-  A rift breach is still a perfectly good inciting incident; what it can no longer do is set up the
-  loop the player is about to be handed.
-- **The hub's coaching bubble already moved** and says *"the Bounty Board. The houses post their work
-  there."* So the last line of Act 0 points at a stair and the first bubble of Act 1 points at a board.
+What is still open:
 
-**This is the third time this seam has gone stale** — it was the Quest Board, then the Rift, now the
-Bounty Board — and each time the failure was the same: a scene naming a card the city no longer has.
-Worth writing the handoff so it names the ROLE (where the work is posted) rather than the building, so
-the next move costs a data edit instead of a rewrite.
+- **The author's lines for every placeholder scene.** The build ships each Act 0 scene as a labelled
+  placeholder so the order, triggers and grants play end to end; the words are the author's, not to
+  be drafted for them.
+- **`conversation_prologue_arrival` still names the guild-failure premise** (*"the guild fails to clear
+  enough of The Rift"*). The author has deliberately left it as-is for now; it is stale against the new
+  Act 0 and is the seam to rewrite next. When it is, name the ROLE rather than a building — this seam
+  has gone stale three times (Quest Board, Rift, Bounty Board) by naming a card the city lost.
 
 ## Phase 1 — close the spine
 

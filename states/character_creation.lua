@@ -1,13 +1,12 @@
--- Character creation: THE CHARTER'S ROLL, filled in after the first fight. Two steps, in order:
+-- Character creation: who the avatar is, asked at the front of a New Game. Two steps, in order:
 --
---   name    what Rowan writes down (ui/name_entry.lua)
+--   name    what the avatar is called (ui/name_entry.lua)
 --   people  the avatar's race, one of the eight playable peoples (models/adventurers.lua's RACES)
 --
--- IT USED TO BE THE FIRST SCREEN OF A NEW GAME, asking for a body and a name before the player had seen
--- a board. It is now reached from the prologue (states/prologue.lua) the beat after the first street is
--- held, behind Rowan's scene putting the newest hand on the Charter's books
--- (data/conversations/prologue/conversation_prologue_roll.lua) -- so a New Game reaches a fight on its
--- first click, and the questions are asked of somebody who has just fought as the avatar.
+-- IT IS BACK AT THE FRONT (2026-10-16). For a stretch it was the Charter's roll, filled in after the first
+-- fight; the author moved it back to where it used to be, after the opening narration and before the first
+-- fight on floor one (states/prologue.lua's beat list), so the name exists before anybody says it. It
+-- returns to the prologue through prologue.resume either way.
 --
 -- IT ASKS NO CLASS AND NO LOOK, and both were asked here once. The avatar starts as a Novice and earns
 -- every class afterwards, one at a time, as an achievement (a deed + a Charter Seal) -- so a trade picked
@@ -20,7 +19,7 @@
 -- Saved per body (models/save.lua).
 --
 -- The people step can step back to the name: Esc, the pad's B, or the Back button in the corner for a
--- mouse. The name step cannot, because behind it is the fight that has already been won.
+-- mouse. The name step cannot: behind it is only the opening narration.
 --
 -- Widgets: ui/name_entry.lua and ui/menu.lua (card rows with a `sub` line), each carrying mouse +
 -- keyboard + gamepad (the project's three-input standard), all on Theme.drawMount.
