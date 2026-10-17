@@ -90,18 +90,29 @@ return {
         assert(ok2, "the unlock lands in town")
         assert(Player.materialCount(p, SEAL) == 0, "it spent the seal")
         assert(Class.isUnlocked(a, "fighter") and a.unlocked.fighter, "the ledger holds it")
-        assert(gift == "ability_charge" and stashHas(p, "ability_charge"), "the fighter's gift is Charge")
+        assert(gift == "ability_charge" and stashHas(p, "ability_charge"), "the avatar's fighter gift is Charge")
         assert(not Class.canUnlock(a, "fighter"), "a held class cannot be unlocked twice")
     end },
 
     { name = "every root's gift is an ability off its own shelf", fn = function()
-        for root, id in pairs(Class.ROOT_GIFTS) do
-            assert(Class.roots()[root], root .. " is not a root")
-            local def = Item.defs[id]
-            if def then -- a gift whose file has not landed yet is skipped by Class.unlock
-                assert(def.class == root, id .. " is " .. tostring(def.class) .. "'s, not " .. root .. "'s")
+        for _, gifts in ipairs({ Class.ROOT_GIFTS, Class.AVATAR_GIFTS }) do
+            for root, id in pairs(gifts) do
+                assert(Class.roots()[root], root .. " is not a root")
+                local def = Item.defs[id]
+                if def then -- a gift whose file has not landed yet is skipped by Class.unlock
+                    assert(def.class == root, id .. " is " .. tostring(def.class) .. "'s, not " .. root .. "'s")
+                end
             end
         end
+    end },
+
+    { name = "the avatar's fighter and hunter gifts differ from every other body's", fn = function()
+        local a, other = avatar(), { id = "character_kaya" }
+        assert(Class.giftFor(a, "fighter") == "ability_charge", "the avatar opens fighter on Charge")
+        assert(Class.giftFor(a, "hunter") == "ability_called_shot", "and hunter on Called Shot")
+        assert(Class.giftFor(other, "fighter") == "ability_clear_out", "anyone else opens fighter on Clear Out")
+        assert(Class.giftFor(other, "hunter") == "ability_mark_target", "and hunter on Mark Target")
+        assert(Class.giftFor(a, "mage") == Class.ROOT_GIFTS.mage, "a root the avatar list skips falls back")
     end },
 
     { name = "a subclass asks its parent's level and its deed; a crossing asks a subclass of each parent", fn = function()

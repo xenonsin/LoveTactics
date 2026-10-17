@@ -477,16 +477,33 @@ Class.SEAL_ID = "material_charter_seal"
 
 -- WHAT A ROOT HANDS OVER WHEN A BODY UNLOCKS IT: one ability off that root's OWN shelf (an author rule
 -- -- never another class's), dropped into the stash. A missing blueprint is skipped rather than
--- granted, so a gift whose file has not landed yet is silent instead of a crash.
+-- granted, so a gift whose file has not landed yet is silent instead of a crash. The avatar reads
+-- AVATAR_GIFTS first (Class.giftFor): the player's own hand opens on the strike, everyone else on the
+-- setup.
 Class.ROOT_GIFTS = {
-    fighter = "ability_charge",
+    fighter = "ability_clear_out",
     knight = "ability_brace",
     priest = "ability_heal",
     rogue = "ability_exploit",
     mage = "ability_fire_bolt",
-    hunter = "ability_called_shot",
+    hunter = "ability_mark_target",
     alchemist = "ability_quick_brew",
 }
+
+-- The avatar's own gifts, where they differ from every other body's. A root missing here falls back to
+-- ROOT_GIFTS.
+Class.AVATAR_GIFTS = {
+    fighter = "ability_charge",
+    hunter = "ability_called_shot",
+}
+
+-- The gift `char` collects for unlocking root `id`, or nil.
+function Class.giftFor(char, id)
+    if char and char.id == "character_avatar" and Class.AVATAR_GIFTS[id] then
+        return Class.AVATAR_GIFTS[id]
+    end
+    return Class.ROOT_GIFTS[id]
+end
 
 -- `id`'s requirement row, or nil (a crossing, the starter, the creature bucket, an unknown id).
 function Class.requirementOf(id)
@@ -576,7 +593,7 @@ function Class.unlock(player, char, id)
 
     local gift
     if Class.isRoot(id) then
-        local giftId = Class.ROOT_GIFTS[id]
+        local giftId = Class.giftFor(char, id)
         local Item = require("models.item")
         char.giftsTaken = char.giftsTaken or {}
         if giftId and not char.giftsTaken[id] and Item.defs[giftId] then
