@@ -15,8 +15,8 @@
 -- Nothing is sworn to anybody in Act 0. The third companion, Saber, is NOT recruited
 -- here: the Colosseum debut that bests her is now the hub's own first-visit beat, taken from the Quest
 -- Board like any other quest (data/quests/arena_debut.lua carries the recruit and the victory scene as
--- its reward and `outro`). See states/hub.lua, which owns the arrival. The avatar's name and people are
--- chosen at character creation, the beat after the opening narration (states/character_creation.lua);
+-- its reward and `outro`). See states/hub.lua, which owns the arrival. The avatar's name is chosen at
+-- character creation (and nothing else -- it stays the blueprint's human), the beat after the opening narration (states/character_creation.lua);
 -- `begin` builds a nameless human "Stranger" for it to name and sets the flag the hub reads to know this
 -- is the first time through its gate.
 --
@@ -494,8 +494,8 @@ function prologue.next()
 end
 
 -- First entry of a New Game: build the avatar, reset the roster to just the avatar (the company is
--- earned through play), and start the beats. The avatar fights the first street as the blueprint's
--- nameless human; the Charter's roll after it names them and puts on their people and class.
+-- earned through play), and start the beats. The avatar is the blueprint's human; character creation,
+-- the beat before the first fight, gives it a name and nothing else.
 function prologue.begin()
     local p = Player.active
     local avatar = Character.instantiate("character_avatar")

@@ -180,8 +180,8 @@ local function snapshotCharacter(char)
     -- when it differs, so an ordinary recruit diffs clean.
     local bp = Character.defs[char.id]
     if char.name and char.name ~= (bp and bp.name) then snap.name = char.name end
-    -- ...and a people that differs from the blueprint's, which is the avatar's once the Charter's roll
-    -- is filled in (Character.setRace). Handed back through instantiate on load, so the race's stat line,
+    -- ...and a people that differs from the blueprint's, set by Character.setRace (no game path calls it
+    -- since creation stopped asking a people, 2026-10-16; kept so the seam and its save survive). Handed back through instantiate on load, so the race's stat line,
     -- resist and grid grant are rebuilt rather than restored. Additive: no field changed shape.
     if char.race and char.race ~= (bp and bp.race) then snap.race = char.race end
 

@@ -558,8 +558,9 @@ function Character.instantiate(id, progress)
     local def = Character.defs[id]
     assert(def, "unknown character id: " .. tostring(id))
     -- The race this body is built as. The blueprint's, unless the progress names another -- which only
-    -- the created avatar does: its people are chosen on the Charter's roll after the first fight
-    -- (states/character_creation.lua), so a save hands its race back through here (models/save.lua).
+    -- a body re-raced with Character.setRace does (nothing in play does today; creation stopped asking a
+    -- people on 2026-10-16), so a save
+    -- hands its race back through here (models/save.lua).
     local race = (progress and progress.race) or def.race
 
     local stats = {}
