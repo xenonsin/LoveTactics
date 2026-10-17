@@ -190,18 +190,19 @@ The codebase is organized into layers loaded via `require()`. See
   Sixteen race items are the game's ONE equip gate (`Character.canCarry`; docs/classes.md says why). The
   wiki prints them on their own Adventurers page, apart from the bestiary.
 
-  **THE HIRING BOARD IS PARKED** (2026-10-15): its room in
-  `data/buildings/hunters_lodge.lua` carries `gate = { parked = true }` (models/offer.lua), because once the avatar's people and class are chosen on the
-  Charter's roll it is the same blank custom body a hire is. Everything below still loads; lifting the park
-  is deleting that key. **The roll** is character creation, moved to after the first fight: New Game goes
-  straight to the village street, then Rowan's `conversation_prologue_roll` hands to
-  `states/character_creation.lua` (name and people; the avatar starts as a Novice and EARNS its first
-  class -- `data/class_requirements.lua`, `Class.canUnlock`, a Charter Seal per unlock; the city opens one
-  shelf and one feature per trip home, `Offer.SCHEDULE`). The race is put on the living avatar with
-  `Character.setRace` and saved per body (`snap.race`).
+  **THE HIRING BOARD OPENS WHEN THE DEMON LORD FALLS** (2026-10-16; parked the day before): its room in
+  `data/buildings/hunters_lodge.lua` carries `gate = { crowned = true }` (models/offer.lua), which reads
+  `Player.hasFinishedCampaign` -- the first time the Crown is broken. Until then the company grows only
+  through its written companions. **Character creation** (`states/character_creation.lua`) sits between the opening
+  narration and the first fight, and asks **the name only** -- no people, no class, no look. The avatar is
+  the blueprint's human and starts as a Novice that EARNS its first class (`data/class_requirements.lua`,
+  `Class.canUnlock`, a Charter Seal per unlock; the city opens one shelf and one feature per trip home,
+  `Offer.SCHEDULE`). The people step was cut (2026-10-16) because a race on the avatar broke the first
+  fight's lesson, which is counted against the bare blueprint body. `Character.setRace` and the per-body
+  `snap.race` stay on disk with no caller in play.
 
   **AND THE COMPANY CAN HIRE STRANGERS** (`models/hire.lua`, `ui/panels/hire.lua`, 2026-10-12). Three
-  per homecoming on the Hunter's Lodge desk (trip 6 on the room schedule), 40g each, in the seven roots
+  per homecoming on the Hunter's Lodge desk (once the Demon Lord has fallen), 40g each, in the seven roots
   plus any class the company has opened, of any of the eight playable peoples (`Adventurers.LEAN` at
   50%). **A hire is a function of its id** -- `character_hire@<class>.<race>.<roll>` re-derives the name,
   the zero-sum stat spread, the one-stat aptitude (`personalGrowth`), the tint and the rung-0 kit -- so
@@ -361,7 +362,7 @@ is `max(bounties, deepest)`, and depth is bursty: measured, a company that dived
 first trip came home to four doors at once and then three empty homecomings, while a floor-one farmer's
 city froze forever. Trips climb one at a time, so **one room per homecoming** falls out of the unit.
 Trips pace the city; depth paces the shelves. The schedule: counter 1, supper 2, forge 3, book 4,
-study 5, hiring board 6 (parked), reading (first unread find, or 7), duel (Saber's posting, or 8) — plus the mending, which is
+study 5, reading (first unread find, or 7), duel (Saber's posting, or 8) — plus the mending, which is
 Act 0's. The two backstops sit last on purpose, so inserting a room pushes them rather than colliding.
 `quiet = true` lets a room open without announcing its house (every shelf is quiet — a class rung is a
 reward the player cannot see), and `announce = {...}` is the one condition under which a quiet room

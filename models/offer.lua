@@ -105,9 +105,18 @@ end
 
 -- A ROOM THAT IS SHUT ON PURPOSE. `gate = { parked = true }` keeps the offer declared -- so the desk line
 -- that names it still has a room to point at (tests/conversation_spec.lua) -- and opens it for nobody.
--- Lifting a park is deleting the key. The hiring board is the one parked room (data/buildings/hunters_lodge.lua).
+-- Lifting a park is deleting the key. No room is parked today; the hiring board was
+-- (2026-10-15) and opens on `crowned` now (data/buildings/hunters_lodge.lua).
 GATES.parked = function()
     return false
+end
+
+-- THE DEMON LORD HAS FALLEN: the Crown at the bottom of floor fifteen has been broken at least once
+-- (Player.hasFinishedCampaign, banked by Player.finishCampaign in states/game.lua). One-way, and asked
+-- of THIS company only -- a nil player is shut rather than handed to hasFinishedCampaign, which would
+-- ask every save on the disk. The hiring board opens on it (data/buildings/hunters_lodge.lua).
+GATES.crowned = function(player, want)
+    return is(player ~= nil and require("models.player").hasFinishedCampaign(player), want)
 end
 
 GATES.quest = function(player, questId)

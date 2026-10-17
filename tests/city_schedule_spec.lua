@@ -255,10 +255,14 @@ return {
                 assert(vdef and vdef.class == e.class, e.room .. " pulls on " .. e.class .. ", its vendor shelves "
                     .. tostring(vdef and vdef.class))
             end
-            -- The hiring board stays parked.
+            -- The hiring board waits for the Demon Lord: no count of trips opens it, the Crown falling does.
             local late = Player.new()
             late.runsStarted = 99
-            assert(not Offer.openSet(late, Building.defs.hunters_lodge).hire, "the hiring board is parked")
+            assert(not Offer.openSet(late, Building.defs.hunters_lodge).hire,
+                "the hiring board opened before the Demon Lord fell")
+            late.campaignsFinished = 1
+            assert(Offer.openSet(late, Building.defs.hunters_lodge).hire,
+                "the Demon Lord fell and the hiring board stayed shut")
         end,
     },
     {

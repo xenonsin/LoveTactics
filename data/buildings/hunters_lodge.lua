@@ -33,13 +33,12 @@ return {
         -- The kitchen keeps its own vendor: its portrait, its name and its one-time greeting all hang
         -- off `cafe`, and it sells no items at all (data/vendors/cafe.lua).
         { answer = "supper", panel = "cafe", vendor = "cafe", gate = { city = "hunters_lodge.supper" } },
-        -- THE HIRING BOARD IS PARKED (2026-10-15). It sold blank strangers the player builds, and the
-        -- avatar became that same thing once its people and class were chosen on the Charter's roll
-        -- (states/character_creation.lua): two kinds of voiceless custom body in one roster. The company
-        -- grows through its written companions instead. models/hire.lua and ui/panels/hire.lua stay on
-        -- disk and still load, and the desk line still names `hire`, so lifting the park is deleting the
-        -- `parked` key below (models/offer.lua) and leaving the sixth-trip gate it sat beside.
-        { answer = "hire", panel = "hire", gate = { parked = true, trips = 6 } },
+        -- THE HIRING BOARD OPENS WHEN THE DEMON LORD FALLS (2026-10-16). It was parked a day earlier: the
+        -- company grows through its written companions, and a board of blank strangers beside them was
+        -- two kinds of body in one roster. So the board waits for the post-game -- the first time the
+        -- Crown is broken (`crowned`, models/offer.lua), when the companions' stories are told and the
+        -- shuffled descents (Descent.sinOrder) want bodies -- rather than standing on the sixth trip.
+        { answer = "hire", panel = "hire", gate = { crowned = true } },
     },
     description = "Bows, traps, and one hot supper before the road.",
 }
