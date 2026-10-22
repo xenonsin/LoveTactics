@@ -14,7 +14,11 @@ return {
     weight = 1,
     condition = function(ctx) return ctx.biome == "tundra" end,
     rung = 1,
-    objective = { type = "killAll" },
+    -- A STRAY DELVER WALKS WITH YOU (the objective pass, 2026-10-21), and the Dread hunts the lone one: keep the
+    -- stranger alive through the clear. This REVERSES the explicit `killAll` the line shipped with; the clear is
+    -- still the win, and the charge is what a company standing apart now costs.
+    allies = { "character_stray_delver" },
+    objective = { type = "killAll", enemy = "the yeti", protect = "character_stray_delver" },
     composition = function(ctx)
         return Band.fill({ "character_dread_of_the_whiteout" }, ctx, "character_yeti", { base = 2, min = 2, max = 3 })
     end,

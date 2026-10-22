@@ -13,6 +13,9 @@
 -- tests/greed_lust_circle_spec.lua sweeps every Lust roster for the mix).
 --
 -- Locked to Lust's stratum by ctx.biome (the fen since the 2026-09-25 swap). NO DEPTH GATE: ITS CIRCLE IS ITS PLACEMENT.
+--
+-- THE OBJECTIVE (the objective pass, 2026-10-21): get through before the hedges grow shut. The Dryad's walls are
+-- the clock, and the Nymphs that keep stepping out of the timber are what makes standing still cost.
 local Band = require("models.band")
 
 return {
@@ -25,4 +28,12 @@ return {
         local list = { "character_dryad", "character_nymph", "character_harpy" }
         return Band.fill(list, ctx, "character_nymph", { base = 0, per = 6, max = 2 })
     end,
+    objective = {
+        type = "reach", region = "far", place = "across the loft", enemy = "the grove",
+        -- More Nymphs out of the timber, from the far side: the grove growing in front of the company. Authored
+        -- so the default tide does not deal a second Dryad.
+        waves = {
+            { at = 10, every = 15, from = "back", maxAlive = 4, composition = { "character_nymph" } },
+        },
+    },
 }

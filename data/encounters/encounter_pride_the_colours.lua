@@ -4,6 +4,9 @@
 -- because the rank rule is measured live off adjacency, the shape collapses and the survivors become
 -- ordinary. It is where the game teaches killing the body that is not hitting you -- a job the Long
 -- Note held until the human companies were deleted, and this fight now holds alone.
+--
+-- AN ASSASSINATION, on the objective pass (2026-10-21): the lesson made the win. The Standard-Bearer falls
+-- and the rank breaks and leaves.
 local Band = require("models.band")
 
 return {
@@ -24,4 +27,5 @@ return {
         local list = { "character_standard_bearer", "character_gilded_sworn" }
         return Band.fill(list, ctx, "character_gilded_page", { base = 1, per = 6 })
     end,
+    objective = { type = "assassinate", target = "character_standard_bearer", enemy = "the Standard-Bearer" },
 }

@@ -42,6 +42,9 @@
 -- cleared of them, and what the distinction is.
 --
 -- Locked to Lust's stratum by ctx.biome (the fen since the 2026-09-25 swap), the same gate every circle uses.
+--
+-- THE OBJECTIVE (the objective pass, 2026-10-21): kill the Abbess. The payoff above made into the win: when
+-- she falls the room is over, and the congregation goes back to itself instead of being cut down.
 local Band = require("models.band")
 
 return {
@@ -60,4 +63,7 @@ return {
         Band.fill(list, ctx, "character_knight", { base = 1, per = 7, max = 2 })
         return Band.fill(list, ctx, "character_priest", { base = 1, per = 7, max = 2 })
     end,
+    -- `markStays`: she is meant to be in reach -- the congregation shields her by taking her wounds, not by standing
+    -- in front of her -- so she keeps the place she was dealt rather than going behind the line (Arena.seatMarksBehind).
+    objective = { type = "assassinate", target = "character_succubus_abbess", enemy = "the Abbess", markStays = true },
 }

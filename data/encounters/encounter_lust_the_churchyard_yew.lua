@@ -10,6 +10,10 @@
 -- Move elite (the Eyrie) stands. One elite, one floor: see models/encounter.lua's eligibility note.
 --
 -- MOVE ONLY (tests/greed_lust_circle_spec.lua sweeps every Lust roster for the mix).
+--
+-- THE OBJECTIVE (the objective pass, 2026-10-21): break the Heartwood Tree. It was always the real target; now the
+-- fight ends when it falls. The tree is planted as a real body for this (data/traits/trait_heartwood.lua passes
+-- `summoned = false`), since a conjured one never counts as standing.
 local Band = require("models.band")
 
 return {
@@ -22,4 +26,6 @@ return {
         local list = { "character_hamadryad", "character_nymph" }
         return Band.fill(list, ctx, "character_nymph", { base = 1, per = 6, max = 2 })
     end,
+    objective = { type = "assassinate", targets = { "character_heartwood_tree" }, verb = "Break",
+        enemy = "the Heartwood Tree" },
 }

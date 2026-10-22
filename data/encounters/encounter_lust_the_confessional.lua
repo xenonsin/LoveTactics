@@ -8,6 +8,9 @@
 -- The congregation is one priest or two; a priest is not plate, so the Long Gallery's cap of two holds.
 --
 -- Approved on review 2026-09-25 (variety round 1, `l3_confessional`).
+--
+-- THE OBJECTIVE (the objective pass, 2026-10-21): kill the succubus. The priest is only here because she is,
+-- so when she falls he walks off and the fight is over -- what it always said it was, now said by the win.
 local Band = require("models.band")
 
 return {
@@ -20,4 +23,5 @@ return {
         local list = { "character_lesser_succubus" }
         return Band.fill(list, ctx, "character_priest", { base = 1, per = 8, max = 2 })
     end,
+    objective = { type = "assassinate", target = "character_lesser_succubus", enemy = "the succubus" },
 }

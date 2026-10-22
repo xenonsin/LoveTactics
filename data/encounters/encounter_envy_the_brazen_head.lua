@@ -7,6 +7,9 @@
 -- aimed past it comes back -- which is what makes the shove that breaks each word worth planning.
 --
 -- Seat-locked, `rung = 2`.
+--
+-- THE OBJECTIVE (the objective pass, 2026-10-21): destroy the head. This was an explicit killAll and the pass
+-- reverses it: the fight is the head's three utterances, so it ends when the head does and the guard leaves.
 return {
     name = "The Brazen Head",
     kind = "elite",
@@ -17,5 +20,5 @@ return {
         return { "character_brazen_head", "character_mirror_knight", "character_red_homunculus",
             "character_red_homunculus" }
     end,
-    objective = { type = "killAll" },
+    objective = { type = "assassinate", target = "character_brazen_head", verb = "Destroy", enemy = "the Brazen Head" },
 }

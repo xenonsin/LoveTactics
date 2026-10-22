@@ -7,6 +7,9 @@
 --
 -- How you beat it: Keep your wounded topped up or out of reach. The assassin only acts on a wounded
 -- body, so nobody under half means he stands idle.
+--
+-- THE CONTRACT IS ON A STRANGER (the objective pass, 2026-10-21): a Stray Delver walks with you, and it is
+-- the body they were paid for. Clear them with the stranger still standing.
 local Adventurers = require("models.adventurers")
 
 return Adventurers.party({
@@ -19,4 +22,6 @@ return Adventurers.party({
         .. " Rogue and a Thief add bleeding and theft, and an Inquisitor names the target.",
     counter = "Keep your wounded topped up or out of reach. The assassin only acts on a wounded body, so"
         .. " nobody under half means he stands idle.",
+    allies = { "character_stray_delver" },
+    objective = { type = "killAll", enemy = "the contract killers", protect = "character_stray_delver" },
 })

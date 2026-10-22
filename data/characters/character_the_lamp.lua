@@ -6,6 +6,9 @@
 -- While it stands her wishes are granted, and after her third it is the only thing keeping her up
 -- (utility_the_lamp -> trait_the_lamp). Sturdier than an egg: it is meant to cost a turn or two of somebody's
 -- blows, which is the price of taking her wishes off the table.
+--
+-- 40 HEALTH WAS ONE ACTION once breaking it ENDED the fight (the objective pass, 2026-10-21): the Wishmaker went in
+-- a single unit-turn and no wish was ever weighed. 300, the Blood Basin's measure, is the turn or two above.
 return {
     name = "The Lamp",
     race = "object",
@@ -15,7 +18,7 @@ return {
     unarmed = false,
     sprite = "assets/chars/the_lamp.png",
     stats = {
-        health = 40, mana = 0, stamina = 0,
+        health = 300, mana = 0, stamina = 0,
         damage = 0, magicDamage = 0,
         defense = 4, magicDefense = 6,
         movement = 0, -- it does not move

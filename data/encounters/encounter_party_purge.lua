@@ -7,6 +7,9 @@
 --
 -- How you beat it: When one of yours is marked, pull them back. Kill the inquisitor and there's
 -- nothing to pile onto.
+--
+-- THEY HUNT A HERETIC YOU SHELTER (the objective pass, 2026-10-21): a Stray Delver walks with you, and the
+-- purge came for it. Clear them with the stranger still standing.
 local Adventurers = require("models.adventurers")
 
 return Adventurers.party({
@@ -20,4 +23,6 @@ return Adventurers.party({
         .. " shields the line.",
     counter = "When one of yours is marked, pull them back. Kill the inquisitor and there's nothing to pile"
         .. " onto.",
+    allies = { "character_stray_delver" },
+    objective = { type = "killAll", enemy = "the purge", protect = "character_stray_delver" },
 })

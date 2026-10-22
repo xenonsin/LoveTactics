@@ -11,6 +11,10 @@ return {
     weight = 3,
     condition = function(ctx) return ctx.biome == "tundra" end,
     rung = 2,
+    -- GO AROUND THE GATE, OR BREAK IT (the objective pass, 2026-10-21): anyone at the far edge wins, and so does an
+    -- empty field. No tide (`waves = {}`): the gate is the line that is standing there, not one that refills.
+    objective = { type = "reach", region = "far", place = "past the gate", orKillAll = true, waves = {},
+                  enemy = "the toll line" },
     composition = function(ctx)
         return Band.fill({ "character_bailiff" }, ctx, "character_toll_collector", { base = 3, min = 2, max = 3 })
     end,

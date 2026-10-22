@@ -3,6 +3,10 @@
 -- It does not get stronger as it is cut; it sheds more drift-things, and a drift-thing takes turns. So
 -- the escalation is a tempo escalation and the longer the fight runs the less of it is yours -- which is
 -- the honest apex reading for a stratum that charges the clock rather than the body.
+--
+-- SURVIVE IT (the objective pass, 2026-10-21). A winter is outlasted, not cut down: the drift-things keep walking
+-- in for as long as it stands, and the fight ends when the clock runs out -- or when it falls and the last of them
+-- with it, since the drift stops with the thing that sheds it (`unless`).
 local Band = require("models.band")
 
 return {
@@ -28,6 +32,14 @@ return {
     -- arriving on a circle the 2026-09-22 cut left with a single body; see Descent.SINS' entry for
     -- what a replacement owes.
     rung = 2,
+    objective = {
+        type = "survive", duration = 40,
+        enemy = "the Long Winter",
+        waves = {
+            { every = 15, from = "surround", maxAlive = 3, unless = "character_the_long_winter",
+              composition = { "character_ice_elemental", "character_ice_elemental" } },
+        },
+    },
     composition = function(ctx)
         local list = { "character_the_long_winter" }
         -- THE SLEEPERS ARE DELETED (2026-09-22). The ice elemental is the tundra's own surviving

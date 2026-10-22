@@ -2,6 +2,9 @@
 -- guards the dome's edge, and the Greatblade cannot be moved out of the way. Every clan death sends the rest Horn
 -- Out.
 -- Approved 2026-09-27 ("The Oni of Wrath", round 2).
+--
+-- KILL THE GENERAL (the objective pass, 2026-10-21): the clan breaks when it falls. Every clan death before
+-- then still sends the rest Horn Out, so cutting a way to it is not free.
 local Band = require("models.band")
 
 return {
@@ -14,4 +17,5 @@ return {
         return Band.fill({ "character_oni_general", "character_oni_swordmaster", "character_oni_greatblade" }, ctx,
             "character_oni_student", { base = 1, min = 1, per = 6, max = 2 })
     end,
+    objective = { type = "assassinate", target = "character_oni_general", enemy = "the Oni General" },
 }

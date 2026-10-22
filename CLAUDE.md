@@ -213,6 +213,15 @@ The codebase is organized into layers loaded via `require()`. See
   companions; the Armory's Manage handle renames or dismisses them. They are why 14 of the 16 race
   items can be worn at all -- every authored body is human. `tests/hire_spec.lua` holds it.
 
+  **ABOUT A THIRD OF THE RIFT'S FIGHTS WIN ON SOMETHING BESIDES KILL-ALL** (the objective pass, 2026-10-21):
+  assassinate, break (`targets`), reach, hold, survive, heaps, rescue (`captive`), an enemy runner
+  (`escape`), and `orKillAll`. The charge every protect/defend/rescue is fought over is the **Stray Delver**,
+  rolled per fight off the seed (`models/delver.lua`). An objective win ROUTS the survivors and pays like a
+  kill-all; an objective fight is rated (`EncounterBattle.cellRated`) but never walked off. Waves live in
+  `models/waves.lua` so `tests/objective_fight_spec.lua` can play every objective fight headless, inside its
+  own turn budget, and hold every floor to two shapes. **Stairs stay eliminations** -- every general and mini
+  boss is won by killing (the author's rule). The table is in docs/adding-content.md.
+
   See [docs/overworld.md](docs/overworld.md) for the floor it is walked on and
   [docs/identification.md](docs/identification.md) for what a floor pays.
 

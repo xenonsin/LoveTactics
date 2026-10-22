@@ -8,6 +8,10 @@
 -- lionesses and a lion) and "The Lion's Court" (three, at a lower weight) as two stops; tests/encounter_spec.lua
 -- holds one cast to one stop ("a different COUNT is not a different fight"), so the Court is the band's top:
 -- two or three lionesses, rolled off the fight's own seed.
+--
+-- A CHARGE, on the objective pass (2026-10-21): a Stray Delver the lionesses already brought down stands with
+-- the company, Rooted at 1 health -- exactly the body the Lion goes for first. Keep it alive while the pride
+-- is put down.
 local Band = require("models.band")
 
 return {
@@ -19,4 +23,10 @@ return {
     composition = function(ctx)
         return Band.fill({ "character_lion" }, ctx, "character_lioness", { base = 2, min = 2, max = 3 })
     end,
+    allies = { "character_stray_delver" },
+    objective = {
+        type = "killAll", enemy = "the pride",
+        protect = "character_stray_delver",
+        chargeOpens = { health = 0.01, statuses = { "status_root" } },
+    },
 }

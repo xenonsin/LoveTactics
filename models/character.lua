@@ -165,6 +165,9 @@ setmetatable(Character.defs, {
         local def
         if id:find("^character_hire@") then
             def = require("models.hire").variant(defs, id)
+        elseif id:find("^character_stray_delver@") then
+            -- THE STRAY DELVER (models/delver.lua): a hire's body, rolled per fight, posted where it stands.
+            def = require("models.delver").variant(defs, id)
         else
             def = require("models.adventurers").variant(defs, id)
         end

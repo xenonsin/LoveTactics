@@ -403,20 +403,26 @@ return {
         end,
     },
     {
-        name = "the Seam's waves come up through the floor, and its kill-all waits for them",
+        -- The objective pass (2026-10-21): the drums are the Hornblower's. The fight is won on him, and the
+        -- Delvers keep surfacing until he falls (`unless`).
+        name = "the Seam's waves come up through the floor, and stop with the Hornblower",
         fn = function()
             local seam = Encounter.get("encounter_greed_the_seam")
             local obj = seam.objective
-            assert(obj and obj.type == "killAll" and #obj.waves == 2, "two waves on a kill-all")
-            local c = Fixture.combat(board(), walker(6, 6), { unit("character_dwarf_delver", 1, 1) })
+            assert(obj and obj.type == "assassinate" and obj.target == "character_dwarf_hornblower",
+                "the Seam is won on the Hornblower")
+            assert(#obj.waves >= 1, "the drums still call the Delvers")
+            for _, w in ipairs(obj.waves) do
+                assert(w.from == "below" and w.unless == "character_dwarf_hornblower", "up through the floor, until he falls")
+            end
+            local c = Fixture.combat(board(), walker(6, 6),
+                { unit("character_dwarf_delver", 1, 1), unit("character_dwarf_hornblower", 2, 1) })
             c.objective = obj
             local x, y = Combat.waveArrivalTile(c, "below", "top", 1, 1)
             assert(x and math.max(math.abs(x - 6), math.abs(y - 6)) == 2, "a wave surfaces two tiles from the company")
-            Combat.fell(c, units(c, "character_dwarf_delver")[1])
-            c.clock = 0
-            assert(Combat.outcomeFor(c, "party") == nil, "an empty board before the drums is not a win")
-            c.clock = 1e9
-            assert(Combat.outcomeFor(c, "party") == "win", "once both waves have come and fallen, it is")
+            assert(Combat.outcomeFor(c, "party") == nil, "the horn still sounds")
+            Combat.fell(c, units(c, "character_dwarf_hornblower")[1])
+            assert(Combat.outcomeFor(c, "party") == "win", "the horn falls and the fight is over")
         end,
     },
     -- ------------------------------------------------------------------------------ the Gilt Wyrm

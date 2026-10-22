@@ -3,6 +3,9 @@
 -- falls the other takes all of its chi (trait_the_nio), and bursts at once if that fills it -- so the kill order
 -- is the puzzle: kill the Closed Mouth first and the Open Mouth spends what it inherits; kill the Open Mouth
 -- first and the Closed Mouth bursts with both gauges. Approved on review 2026-09-27/28.
+--
+-- THROUGH THE GATE, OR THROUGH THEM (the objective pass, 2026-10-21): anyone across the far edge ends it, and so
+-- does solving the kill order. `waves = {}` because a gate has two guardians, not a tide of them.
 return {
     name = "The Nio",
     kind = "elite",
@@ -12,4 +15,6 @@ return {
     composition = function()
         return { "character_asura_agyo", "character_asura_ungyo" }
     end,
+    objective = { type = "reach", region = "far", place = "through the gate", orKillAll = true, waves = {},
+                  enemy = "the Nio" },
 }

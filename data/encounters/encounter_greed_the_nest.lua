@@ -9,9 +9,11 @@
 -- the company stops is Defense the Godling does not get, and a critical on the bare patch takes all of it
 -- back at once. Kill the Godling and every kobold that sees it is Forsaken.
 --
--- A KILL-ALL THAT WAITS FOR ITS WAVES (Combat.outcomeFor): three of them, counted (`count`), so the fight
--- ends when the last has come and fallen. Sometimes a Wyrmling is already up beside the Godling ("Can have
--- already hatched in the encounter") -- a seeded draw that lands on no Wyrmling with no seed.
+-- AN ASSASSINATION, on the objective pass (2026-10-21): the Godling falls and the fight is over. It was a
+-- kill-all that waited for its three waves; the waves stay, because they are the clock -- every Devotee that
+-- reaches it is Defense the company has to cut through -- and they stop with it (`unless`). Sometimes a
+-- Wyrmling is already up beside the Godling ("Can have already hatched in the encounter") -- a seeded draw
+-- that lands on no Wyrmling with no seed.
 --
 -- An objective-bearing encounter is always played out, never auto-resolved (EncounterBattle.eligible).
 local Band = require("models.band")
@@ -33,9 +35,10 @@ return {
         return Band.fill(list, ctx, "character_kobold_skulker", { base = 1, per = 6, max = 2 })
     end,
     objective = {
-        type = "killAll",
+        type = "assassinate", target = "character_the_godling", enemy = "the Godling",
         waves = {
             { at = 2 * TURN, every = 3 * TURN, count = 3, from = "surround", maxAlive = 8,
+              unless = "character_the_godling",
               composition = function() return { "character_kobold_devotee", "character_kobold_devotee" } end },
         },
     },

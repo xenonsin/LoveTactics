@@ -3,6 +3,9 @@
 -- fills the basin; full, she bathes on her next turn (models/basin.lua). She shoves, the bats and ghouls keep the
 -- wounds open, and the company chooses between breaking the basin and holding still.
 --
+-- BREAK THE BASIN (the objective pass, 2026-10-21): the basin is her fight, so breaking it ends it and the rest
+-- rout. The choice above stays a choice: break it, or stand still while she bathes.
+--
 -- ITS OWN CEILING OF SEVEN (agent invention, 2026-09-27): the basin is a body on the roll, so the elite tier's six
 -- would cut the bats to one. `enemyCap = 7` seats two or three.
 local Band = require("models.band")
@@ -19,4 +22,5 @@ return {
             "character_blood_ghoul", "character_blood_ghoul" },
             ctx, "character_familiar", { base = 2, min = 2, per = 8, max = 3 })
     end,
+    objective = { type = "assassinate", targets = { "character_blood_basin" }, verb = "Break", enemy = "the Blood Basin" },
 }

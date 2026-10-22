@@ -4,6 +4,10 @@
 -- where reaching it means crossing one -- or waiting out the turn the rocks take to fall.
 --
 -- HOMED ON THE SEAT (rung 2).
+--
+-- A BREAK, on the objective pass (2026-10-21): the egg behind the rig is the fight, and the Trapwrights are
+-- what stands between. A Wyrmling is a mark beside the egg because a hatching takes the egg off the board --
+-- an egg brooded through has to be killed as what it became, not counted as broken.
 local Band = require("models.band")
 
 return {
@@ -17,4 +21,8 @@ return {
                            "character_kobold_scale_priest", "character_dragon_egg" },
             ctx, "character_kobold_skulker", { base = 1, per = 6, max = 2 })
     end,
+    objective = {
+        type = "assassinate", verb = "Break", enemy = "the egg",
+        targets = { "character_dragon_egg", "character_wyrmling" },
+    },
 }

@@ -34,6 +34,10 @@
 -- IS ITS PLACEMENT. A circle owns a fixed stratum, so a depth on top of that is a second opinion about
 -- where this goes, and it disagrees the moment the shuffle deals Lust at another depth
 -- (Descent.sinOrder).
+--
+-- THE OBJECTIVE (the objective pass, 2026-10-21): get across the room. The elementals hold where they are lit,
+-- so the company chooses which of them it pays for on the way through, and a crossing that hits none of them
+-- is a fair answer to a room that bills every blow.
 local Band = require("models.band")
 
 return {
@@ -58,4 +62,5 @@ return {
         local list = { "character_fire_elemental" }
         return Band.fill(list, ctx, "character_fire_elemental", { base = 3, per = 5 })
     end,
+    objective = { type = "reach", region = "far", place = "across the room", enemy = "the fire elementals" },
 }

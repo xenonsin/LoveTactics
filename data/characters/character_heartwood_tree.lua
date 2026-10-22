@@ -5,6 +5,9 @@
 -- SO IT IS THE REAL TARGET OF THE CHURCHYARD YEW, and it is built to be one: a big bar for an object and
 -- a heavy defense against magic, but no coat against an edge -- a yew is felled with an axe, not argued
 -- with. It takes no turns and it is a PLANT (models/grove.lua), so the Nymphs step out beside it.
+--
+-- 60 HEALTH WAS ONE VOLLEY once felling it ENDED the fight (the objective pass, 2026-10-21): the Churchyard
+-- Yew went in two unit-turns, the company's opening shots. 200 is a round or two of blows from four bodies.
 return {
     name = "Heartwood Tree",
     race = "object",
@@ -12,7 +15,7 @@ return {
     plant = true,
     sprite = "assets/chars/heartwood_tree.png",
     stats = {
-        health = 60, mana = 0, stamina = 0,
+        health = 200, mana = 0, stamina = 0,
         damage = 0, magicDamage = 0,
         defense = 4, magicDefense = 12, -- warded against spells; open to a blade
         movement = 0,

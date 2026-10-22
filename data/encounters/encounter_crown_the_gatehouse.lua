@@ -2,6 +2,10 @@
 -- floor ("The Crown's Bestiary", slice A, 2026-10-09). The lesson: close in, or shove the Warden off its post. From
 -- range the court behind the Warden takes half; in melee it takes everything.
 --
+-- HOLD THE GATE (the objective pass, 2026-10-21): shove the Warden off its post and hold the ground it kept.
+-- Nothing marks a post that walks, so the post is the board's centre, the ground the Warden comes in to keep,
+-- and the court has to stand on it to stop the count.
+--
 -- NO `rung`: the underworld is one floor, and the ground is its pin.
 local Band = require("models.band")
 
@@ -14,4 +18,5 @@ return {
         return Band.fill({ "character_archon_warden", "character_greater_archon" }, ctx, "character_lesser_archon",
             { base = 1, min = 1, max = 2 })
     end,
+    objective = { type = "hold", region = "center", duration = 20, enemy = "the court" },
 }

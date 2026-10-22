@@ -4,6 +4,9 @@
 -- rest stop getting faster; leave her and every heap a dwarf pockets buys another haste.
 --
 -- HOMED ON THE SEAT (rung 2).
+--
+-- AN ASSASSINATION, on the objective pass (2026-10-21): the Goldsmith is the fight, so her fall ends it and
+-- the rest leave.
 local Band = require("models.band")
 
 return {
@@ -16,4 +19,5 @@ return {
         return Band.fill({ "character_dwarf_goldsmith", "character_dwarf_hearthguard" }, ctx,
             "character_dwarf_delver", { base = 1, per = 6, max = 2 })
     end,
+    objective = { type = "assassinate", target = "character_dwarf_goldsmith", enemy = "the Goldsmith" },
 }

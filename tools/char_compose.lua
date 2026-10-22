@@ -97,6 +97,10 @@ local CREATURE_MATCH = {
     -- keeps the default body: he holds at the gate as one more figure in the line, not the rolling column.
     { "caravan_driver", "delapouite/caravan" },
     { "survivor", "sbed/help" },
+    -- The Stray Delver (models/delver.lua): somebody else's adventurer, hurt and in the way -- the charge
+    -- of every protect, defend and rescue in the rift. A walker with a pack rather than a raised-hands plea,
+    -- so it does not read as the prologue's survivor.
+    { "stray_delver", "delapouite/walking-scout" },
 }
 
 -- 1b. Humanoid silhouette by class -- the fallback when nothing in CREATURE_MATCH fires and the body is

@@ -857,9 +857,19 @@ local function finishBattle(result)
     -- nothing, however many marks were collected on the way down).
     local spoils
     if result == "win" then
+        -- A RUNNER THAT GOT CLEAR took its drop with it (an `escape` clause); everyone else pays, routed
+        -- or felled -- an objective win pays like a kill-all.
+        local paying = battle.enemyUnits
+        local gone = battle.combat and battle.combat.escaped
+        if gone then
+            paying = {}
+            for _, spec in ipairs(battle.enemyUnits or {}) do
+                if spec.char ~= gone.char then paying[#paying + 1] = spec end
+            end
+        end
         spoils = EncounterBattle.spoils({
             encounter = battle.encounter,
-            enemyUnits = battle.enemyUnits,
+            enemyUnits = paying,
             depth = battle.depth,
             floorLevel = battle.floorLevel, -- a descent floor pays by depth (models/spoils.lua)
             houseMaterial = battle.houseMaterial,
@@ -990,6 +1000,10 @@ local function win()
     -- existing table and NOT a new file-scope local -- this chunk sits within a couple of declarations
     -- of Lua 5.1's 200-local ceiling, and crossing it is a compile error naming an unrelated line.
     battle.fallen = Combat.reviveFallenParty(battle.combat)
+    -- An objective that ended the fight with bodies still standing -- the mark down, the line crossed,
+    -- the runner clear -- sends the rest running rather than leaving them stood on a won board.
+    local obj = battle.combat.objective
+    if obj and (obj.type ~= "killAll" or battle.combat.escaped) then Combat.rout(battle.combat) end
     releaseParty()
     Sound.play("battle.win")
     Sound.music("music.victory") -- the tactical bed gives way to the exhale under the spoils panel
@@ -1884,113 +1898,17 @@ end
 -- back, so holding the marked ground denies the muster outright. The chars were instantiated when the
 -- plan was committed, so nothing is rolled twice between the promise and the arrival.
 local function fireWave(plan)
-    if not plan then return end
-    for i, t in ipairs(plan.tiles) do
-        local char = plan.chars[i]
-        if Combat.footprintFree(battle.combat, t.w, t.h, t.x, t.y) then
-            local unit = Combat.addUnit(battle.combat, char, "enemy", t.x, t.y)
-            Combat.logEvent(battle.combat, "action",
-                string.format("%s joins the fight!", unit.char.name or "A demon"), unit)
-        else
-            Combat.logEvent(battle.combat, "action",
-                string.format("%s is turned back -- the ground is held.", (char and char.name) or "A reinforcement"))
-        end
-    end
+    require("models.waves").fire(battle.combat, plan)
 end
 
--- Walk on any reinforcement WAVES whose tick has come (objective.waves = { { at = <ticks>,
--- composition = ids|fn, from = <edge descriptor> }, ... }). `at` is a mark on the SAME clock the win
--- conditions read, so a wave and a "survive" duration are quoted in one unit -- ticks -- the player
--- already sees everywhere. `from` says which SIDE the wave walks on from (default: behind the enemy
--- line; see Combat.resolveWaveEdge for the top/bottom/left/right/random/flank/open/surround forms),
--- resolved against the live board so the dynamic modes react to how the fight has developed.
---
--- A wave with `every = N` instead RECURS: it fires every N ticks for as long as the fight lasts, the
--- endless-reinforcement shape a `reach`/escort fight wears so the road can never be won by attrition
--- (Arena.normalizeObjective synthesizes one for every reach objective). `maxAlive` caps it: while the
--- board already holds that many living enemies the recurrence holds its breath, so it TOPS UP toward
--- a strength rather than piling on without limit. `count` caps the number of firings.
---
--- Each one-shot wave fires once; both kinds arrive through Combat.addUnit, so a newcomer joins the
--- turn order, the board and every query with no further wiring. Generic cousin of spawnReinforcements.
---
--- A wave does not simply appear. LEAD_TICKS before it is due it COMMITS -- Combat.previewWaveArrival
--- resolves its edge, its landing tiles and its roster once, off the live board, and that plan is held.
--- refreshView telegraphs the committed plan (overlays.reinforcements) and fireWave spawns FROM it, so
--- the marker the player sees and the bodies that land are the same thing, and a dynamic edge cannot
--- drift between the promise and the arrival. A crowded (`maxAlive`) or retired (`count`) wave drops its
--- commit and shows nothing until it can fire again.
-local LEAD_TICKS = 2 * Status.TICKS_PER_TURN -- how far ahead a wave commits and starts telegraphing
-
--- Nothing left to outlast: with the board cleared during a `survive`, the next muster is pulled forward
--- rather than letting the clock run down over an empty field. Without it, killing the wood's last wolf
--- early leaves the player pressing Wait at nobody for the rest of the duration.
---
--- Only the EARLIEST pending wave moves, so the tide keeps its authored shape -- it just stops making the
--- player wait for it -- and it is pulled to ONE TURN out rather than to now, so the muster still
--- telegraphs and can still be turned back by marching onto the ground it lands on. A wave already due
--- sooner than that is left alone.
---
--- `survive` only. A `defend` fight's waves are its pacing (the flight leg's lesson beats are written
--- against those ticks) and a `reach` fight's trickle is pressure on a road the player advances by
--- walking -- neither is standing still waiting for a clock.
-local function pullMusterForward(waves, clock)
-    local soonest
-    for i, wave in ipairs(waves) do
-        local st = battle.combat.waveState[i]
-        -- A retired wave has nothing left to send, so it is not what the empty board is waiting for.
-        if not (wave.count and st.fires >= wave.count) and st.nextAt < math.huge then
-            if not soonest or st.nextAt < soonest.nextAt then soonest = st end
-        end
-    end
-    local due = clock + Status.TICKS_PER_TURN
-    if soonest and soonest.nextAt > due then soonest.nextAt = due end
-end
-
+-- Walk on any reinforcement WAVES whose tick has come. The schedule lives in models/waves.lua so a fight
+-- with waves can be run headless (tests/objective_fight_spec.lua); this is the watched fight's call into
+-- it, at the fight's own level. See that file for the wave fields and the lead-window commit the
+-- telegraph (refreshView's overlays.reinforcements) reads.
 local function spawnWaves()
-    local obj = battle.combat and battle.combat.objective
-    local waves = obj and obj.waves
-    if not waves then return end
-    local state = battle.combat.waveState
-    local clock = battle.combat.clock or 0
-    local ctx = battle.encounterCtx or {}
-    -- REINFORCEMENTS ARE THE FIGHT'S OWN LEVEL. A wave used to land as its bare blueprint while the line it
-    -- was reinforcing had been minted through Growth.spawn, so the same wolf was two different wolves
-    -- depending on whether it opened the fight or walked into it -- and on Gula's stair, where the wood
-    -- keeps arriving for the whole fight, that was most of the board. (The overrule below stays exact.)
-    local grow = { level = battle.enemyLevel, floor = battle.floorLevel }
-    for i, wave in ipairs(waves) do
-        -- First fire lands at `at` for a one-shot, at `every` for a recurring wave that gives no
-        -- explicit start (so an endless wave holds off one period before its first reinforcement).
-        state[i] = state[i] or { fires = 0, nextAt = wave.at or wave.every or 0 }
-    end
-    if obj.type == "survive" and Combat.aliveCount(battle.combat, "enemy") == 0 then
-        pullMusterForward(waves, clock)
-    end
-    for i, wave in ipairs(waves) do
-        local st = state[i]
-        local capped = wave.count and st.fires >= wave.count
-        local crowded = wave.maxAlive and Combat.aliveCount(battle.combat, "enemy") >= wave.maxAlive
-        if capped or crowded then
-            -- Retired, or a top-up wave holding its breath while the board is full: no commit, so no
-            -- telegraph and nothing to fire until the board makes room (or, for `count`, ever again).
-            st.committed = nil
-        elseif clock >= st.nextAt then
-            -- Due. Fire from the plan committed in the lead window; if that window was skipped in one
-            -- clock jump (a very slow unit's turn elapsing many ticks at once), resolve it in place so
-            -- the wave still lands -- just without the early warning.
-            fireWave(st.committed or Combat.previewWaveArrival(battle.combat, wave, ctx, grow))
-            st.fires = st.fires + 1
-            st.committed = nil
-            -- Recurring waves rearm relative to the fire that just happened (so a `maxAlive` stall
-            -- doesn't bank up owed waves); a one-shot wave is retired.
-            st.nextAt = wave.every and (clock + wave.every) or math.huge
-        elseif clock >= st.nextAt - LEAD_TICKS and not st.committed then
-            -- Entering the lead window: resolve the arrival once and HOLD it, so the telegraph is stable
-            -- (a random edge is fixed here, not re-rolled every frame) and the spawn reads the same plan.
-            st.committed = Combat.previewWaveArrival(battle.combat, wave, ctx, grow)
-        end
-    end
+    if not battle.combat then return end
+    require("models.waves").tick(battle.combat, battle.encounterCtx or {},
+        { level = battle.enemyLevel, floor = battle.floorLevel }, fireWave)
 end
 
 -- ---------------------------------------------------------------------------
@@ -2169,6 +2087,9 @@ local function resolveAdvance()
     -- with the very check it exists to forestall.
     spawnReinforcements()
     spawnWaves() -- timed enemy reinforcements (objective.waves), before the objective is judged
+    -- ...and what the board does to the objective on its own: a captive a body now stands beside is cut
+    -- free, a runner standing on its way out is gone (models/combat.lua's settleObjective).
+    Combat.settleObjective(battle.combat)
     -- TWO CALLS THAT USED TO STAND HERE ARE GONE WITH THE MOVES THEY OFFERED, and both outlived their
     -- definitions for a while: `offerLastStand()` raised the bench chooser when the player's last body
     -- fell, and `battle.offerOpenSlot()` offered the free reinforcement the moment a slot opened. The
@@ -4762,10 +4683,10 @@ refreshView = function()
     end
     overlays.unitFields = unitFields
 
-    -- Imminent reinforcements: the committed-but-not-yet-landed waves (spawnWaves holds a plan from
-    -- LEAD_TICKS before a wave is due). The board marks WHERE the muster walks on and counts down to
+    -- Imminent reinforcements: the committed-but-not-yet-landed waves (models/waves.lua holds a plan from
+    -- Waves.LEAD_TICKS before a wave is due). The board marks WHERE the muster walks on and counts down to
     -- WHEN, so the player can read it -- and march a body onto a marked tile to turn that arrival back.
-    -- A wave commits early (LEAD_TICKS) so its plan is stable, but the telegraph is HELD BACK until the
+    -- A wave commits early (Waves.LEAD_TICKS) so its plan is stable, but the telegraph is HELD BACK until the
     -- muster is one turn out (TICKS_PER_TURN ticks): the warning surfaces inside the last turn only, so
     -- the board is never carrying a long, distant clock. (The deny-by-standing mechanic reads the live
     -- board at fireWave, so a wave can still be turned back whether or not it is currently telegraphed.)

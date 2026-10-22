@@ -21,6 +21,10 @@
 -- CIRCLE IS ITS PLACEMENT. A circle owns a fixed stratum, so a depth on top of that is a second opinion
 -- about where this goes, and it disagrees the moment the shuffle deals Lust at another depth
 -- (Descent.sinOrder).
+--
+-- THE OBJECTIVE (the objective pass, 2026-10-21): hold the open floor in the middle of the room. The choice above
+-- -- fight in the open or in a doorway -- made into the job: the flock spends its turns shoving the company off
+-- the one ground where a shove costs nothing.
 local Band = require("models.band")
 
 return {
@@ -37,4 +41,5 @@ return {
         local list = { "character_harpy" }
         return Band.fill(list, ctx, "character_harpy", { base = 2, per = 5 })
     end,
+    objective = { type = "hold", region = "center", duration = 30, orKillAll = true, enemy = "the flock" },
 }

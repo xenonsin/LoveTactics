@@ -3,6 +3,8 @@
 -- (Lead the Wind), so the fight has a kill order: Mark it, Root it, bring it down first.
 --
 -- Rung 2, forest-locked, a little rarer than the plain flight.
+--
+-- THE ALPHA IS THE WIN (the objective pass, 2026-10-21): bring it down and the flight scatters.
 local Band = require("models.band")
 
 return {
@@ -15,4 +17,5 @@ return {
         local list = { "character_wyvern_alpha" }
         return Band.fill(list, ctx, "character_wyvern", { base = 2, per = 8 })
     end,
+    objective = { type = "assassinate", target = "character_wyvern_alpha", enemy = "the Alpha Wyvern" },
 }

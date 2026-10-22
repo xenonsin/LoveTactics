@@ -9,6 +9,10 @@
 -- surface. The fight is not won until both waves have come and fallen: a kill-all holding waves waits for
 -- them, the rule `defend` has always kept (Combat.outcomeFor).
 --
+-- AN ASSASSINATION, on the objective pass (2026-10-21): the horn is the drum, so the Hornblower falling ends
+-- it. The two counted waves became one that keeps coming up through the floor every three turns until he
+-- does (`unless`) -- a crew that is fought instead of the horn is a crew that never runs out.
+--
 -- An objective-bearing encounter is not one the model can finish headless (EncounterBattle.eligible), so
 -- The Seam is always played out, never auto-resolved. That is the price of a clock.
 --
@@ -29,11 +33,9 @@ return {
             "character_dwarf_delver", { base = 1, per = 6, max = 2 })
     end,
     objective = {
-        type = "killAll",
+        type = "assassinate", target = "character_dwarf_hornblower", enemy = "the Hornblower",
         waves = {
-            { at = 3 * TURN, from = "below",
-              composition = function() return { "character_dwarf_delver", "character_dwarf_delver" } end },
-            { at = 5 * TURN, from = "below",
+            { at = 3 * TURN, every = 3 * TURN, from = "below", maxAlive = 7, unless = "character_dwarf_hornblower",
               composition = function() return { "character_dwarf_delver", "character_dwarf_delver" } end },
         },
     },

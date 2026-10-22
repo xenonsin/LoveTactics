@@ -5,6 +5,9 @@
 --
 -- RUNG 2 -- the seat, which stood no elite of its own since the Gallery moved to the approach. Which floor BILLS
 -- it (Descent.SINS' `elites`) is the coordinator's to wire, not this file's.
+--
+-- A BREAK, on the objective pass (2026-10-21): the Lamp breaks and the fight ends there, the Wishmaker and
+-- whatever she wished up leaving with it.
 local Band = require("models.band")
 
 return {
@@ -17,4 +20,5 @@ return {
         return Band.fill({ "character_the_wishmaker", "character_the_lamp" }, ctx,
             "character_gilded_page", { base = 0, min = 0, per = 6, max = 1 })
     end,
+    objective = { type = "assassinate", verb = "Break", targets = { "character_the_lamp" }, enemy = "the Lamp" },
 }

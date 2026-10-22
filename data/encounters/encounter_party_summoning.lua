@@ -7,6 +7,9 @@
 --
 -- How you beat it: Kill the summoner and the elementals stop coming. Fight off the banner, and
 -- bring an exorcist to Banish them.
+--
+-- THE SUMMONER IS THE FIGHT (the objective pass, 2026-10-21): the counter above, made the win. She falls and
+-- the rest of the party leaves.
 local Adventurers = require("models.adventurers")
 
 return Adventurers.party({
@@ -19,4 +22,5 @@ return Adventurers.party({
         .. " beside the elementals and on floor 13 a Totemist's field cancels your spells.",
     counter = "Kill the summoner and the elementals stop coming. Fight off the banner, and bring an"
         .. " exorcist to Banish them.",
+    objective = { type = "assassinate", target = "character_adv_summoner", enemy = "the summoner" },
 })

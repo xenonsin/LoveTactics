@@ -2,6 +2,11 @@
 -- fight opens; every point of Bleed damage taken anywhere fills it, and its badge prints the count. Full, it draws
 -- the Countess's bath. It takes no turns (`timeless`) and does not grow with the fight (`scaling = false`), so
 -- "break the basin" is the same answer on every floor: sturdy enough to cost a turn or two of blows, never more.
+--
+-- 70 HEALTH WAS ONE VOLLEY (the objective pass, 2026-10-21). Breaking it now ENDS the fight, and at 70 an archer's
+-- Rain of Arrows broke it on the company's first action -- an elite won in one unit-turn. Measured against the four
+-- that meet it on the seat: 210 still went in three unit-turns; 320 takes two rounds of the company's blows, which is
+-- the "turn or two" the line above promises.
 -- With nobody left on its side to bathe in it, it goes with them (trait_blood_basin).
 return {
     name = "Blood Basin",
@@ -12,7 +17,7 @@ return {
     sprite = "assets/chars/blood_basin.png",
     footprint = { w = 2, h = 2 },
     stats = {
-        health = 70, mana = 0, stamina = 0,
+        health = 320, mana = 0, stamina = 0,
         damage = 0, magicDamage = 0,
         defense = 6, magicDefense = 6,
         movement = 0, -- stone: it does not move

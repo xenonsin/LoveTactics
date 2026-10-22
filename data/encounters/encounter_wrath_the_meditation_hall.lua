@@ -8,6 +8,10 @@
 -- Gathers, its Gather heats it (Tapas), and on a shrine nothing cools it again.
 --
 -- `scatter` is the fight's own ground (Arena.build's bodyGround), the same seam Avaritia's treasury uses.
+--
+-- HOLD THE SHRINE STONES (the objective pass, 2026-10-21): the stones are the objective as well as the asuras'
+-- rest. The count runs while somebody of the company stands on a stone and no asura stands on any of them, so
+-- the fight is the one it always was -- get them off the stones -- with a clock on it.
 local Band = require("models.band")
 
 return {
@@ -21,4 +25,5 @@ return {
         return Band.fill({ "character_asura_three_faced", "character_asura_acolyte", "character_asura_acolyte" }, ctx,
             "character_asura_acolyte", { base = 0, min = 0, per = 6, max = 1 })
     end,
+    objective = { type = "hold", ground = "hazard_shrine", duration = 20, enemy = "the asuras" },
 }

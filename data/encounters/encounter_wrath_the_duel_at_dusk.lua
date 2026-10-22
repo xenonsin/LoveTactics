@@ -1,6 +1,9 @@
 -- THE DUEL AT DUSK: a Vampire Duelist, a Blood-Ghoul and bats, on Wrath's approach (Wrath's vampires,
 -- 2026-09-26). The Duelist's Mist Step eats the first blow each round and bleeds whoever threw it; the bats keep
 -- the wounds open and carry the drink home. Spend a cheap blow on it before the real one.
+--
+-- KILL THE DUELIST (the objective pass, 2026-10-21): it is a duel, so the fight is the Duelist. The ghoul and the
+-- bats rout when it falls.
 local Band = require("models.band")
 
 return {
@@ -13,4 +16,5 @@ return {
         return Band.fill({ "character_vampire_duelist", "character_blood_ghoul" }, ctx,
             "character_familiar", { base = 2, min = 1, max = 2 })
     end,
+    objective = { type = "assassinate", target = "character_vampire_duelist", enemy = "the Duelist" },
 }

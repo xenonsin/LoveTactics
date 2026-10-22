@@ -11,6 +11,10 @@
 --
 -- The Tidecaller is named ONCE. Two of them would make a soaked front lethal before anybody had a turn
 -- to dry off, which is the same argument encounter_gluttony_fen_mouth makes about its one maw.
+--
+-- THE OBJECTIVE (the objective pass, 2026-10-21): a Stray Delver holds the bank, and has to live. The Undertow drags
+-- bodies into the channel, and the delver is one more body for it to drag -- so the company is answering the drag
+-- for someone it does not control.
 local Band = require("models.band")
 
 return {
@@ -42,4 +46,6 @@ return {
         local list = { "character_undertow", "character_tidecaller", "character_siren", "character_fen_lancer" }
         return Band.fill(list, ctx, "character_fen_lancer", { base = 1, per = 6 })
     end,
+    allies = { "character_stray_delver" },
+    objective = { type = "killAll", protect = "character_stray_delver", enemy = "the Mere" },
 }

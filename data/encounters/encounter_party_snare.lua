@@ -7,6 +7,10 @@
 --
 -- How you beat it: Walk the board slowly and read the traps, or kill the bulwark first so nothing
 -- pushes you into them.
+--
+-- CROSS THE SNARE LINE (the objective pass, 2026-10-21): anyone at the far edge wins, through the traps they
+-- laid for exactly that walk. No tide (`waves = {}`): the default would re-field the party's own members off
+-- the top of its roster, and a party is the people standing there.
 local Adventurers = require("models.adventurers")
 
 return Adventurers.party({
@@ -19,4 +23,6 @@ return Adventurers.party({
         .. " and from floor 10 an Artificer's turrets cover the trapped lane.",
     counter = "Walk the board slowly and read the traps, or kill the bulwark first so nothing pushes you"
         .. " into them.",
+    objective = { type = "reach", region = "far", place = "across the snare line", enemy = "the trappers",
+                  waves = {} },
 })

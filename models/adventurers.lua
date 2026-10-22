@@ -198,6 +198,12 @@ function Adventurers.party(spec)
         weight = 1,
         enemyCap = Adventurers.MAX,
         composition = Adventurers.compose(spec.id, spec.core, spec.grow),
+        -- What the party is doing besides fighting, when it is doing something (the objective pass,
+        -- 2026-10-21): a contract on a stranger walking with you, a channel to break. A mark is named by
+        -- its CLASS body (`character_adv_summoner`), which matches whatever people it was fielded as
+        -- (Combat.idMatches).
+        objective = spec.objective,
+        allies = spec.allies,
     }
 end
 

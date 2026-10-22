@@ -8,6 +8,12 @@
 --
 -- How you beat it: Kill the elementalist, or step onto a sigil yourself so they can't use it.
 -- Without the sigils they are ordinary casters.
+--
+-- HOLD THE CENTRE (the objective pass, 2026-10-21). The approved row was "hold the sigils", but the sigils are
+-- grid items, not ground, and the one ground the elementalist does lay -- the Graven Circle
+-- (hazard_graven_circle) -- is cut under her own feet and goes when she does, so a hold on it is contested
+-- from the first tile and empty the moment it could be taken. The centre stands in until the sigils are
+-- something a body can stand on.
 local Adventurers = require("models.adventurers")
 
 return Adventurers.party({
@@ -21,4 +27,5 @@ return Adventurers.party({
         .. " floor 15 a Theurge grows her spell on one.",
     counter = "Kill the elementalist, or step onto a sigil yourself so they can't use it. Without the"
         .. " sigils they are ordinary casters.",
+    objective = { type = "hold", region = "center", duration = 25, enemy = "the choir" },
 })

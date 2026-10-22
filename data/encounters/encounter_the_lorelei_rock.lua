@@ -9,6 +9,9 @@
 --
 -- A spare rather than a billing (Descent.SINS' Lust entry): the Drowned Stair is what floor three is
 -- about, and this is the worst thing standing on it. Nobody here roots or shoves.
+--
+-- THE OBJECTIVE (the objective pass, 2026-10-21): kill the Lorelei. Her song is the fight, so ending her ends
+-- it; the Sirens and the Lancer leave when she does.
 local Band = require("models.band")
 
 return {
@@ -21,4 +24,5 @@ return {
         local list = { "character_lorelei", "character_siren", "character_siren", "character_fen_lancer" }
         return Band.fill(list, ctx, "character_shoalkin", { base = 0, per = 6, max = 2 })
     end,
+    objective = { type = "assassinate", target = "character_lorelei", enemy = "the Lorelei" },
 }

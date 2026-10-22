@@ -445,6 +445,19 @@ Arena.OBJECTIVE_REGIONS = {
     -- lands. A protected unit anchored here stands close enough for the party to interpose on turn 1
     -- (unlike `center`, which the enemy reaches first). Measured off the party's spawns like `far`, so
     -- it still points inward if a curated map seats the party at the top instead of the bottom.
+    -- The edge the party LANDED on -- the way back out. A rescue walks its charge home across it, and a
+    -- runner that has to get past the company to leave (an `escape` clause) is making for it.
+    near = function(layout)
+        local sum, n = 0, 0
+        for _, s in ipairs(layout.partySpawns or {}) do sum, n = sum + s.y, n + 1 end
+        local avg = (n > 0) and (sum / n) or layout.rows
+        local goalY = (avg > layout.rows / 2) and layout.rows or 1
+        local tiles = {}
+        for x = 1, layout.cols do
+            if walkableAt(layout, x, goalY) then tiles[#tiles + 1] = { x = x, y = goalY } end
+        end
+        return tiles
+    end,
     rally = function(layout)
         local sum, n = 0, 0
         for _, s in ipairs(layout.partySpawns or {}) do sum, n = sum + s.y, n + 1 end
@@ -506,7 +519,13 @@ local function normalizeObjective(obj, layout, enemyIds)
     local out = {}
     for k, v in pairs(obj) do out[k] = v end
     if (out.type == "reach" or out.type == "hold") and not out.tiles then
-        out.tiles = Arena.resolveRegion(out.region or (out.type == "reach" and "far" or "center"), layout)
+        -- A rescue's crossing runs home: the charge is seated at the far end (`anchor`) and walked back.
+        local default = out.type == "hold" and "center" or (out.captive and "near" or "far")
+        out.tiles = Arena.resolveRegion(out.region or default, layout)
+    end
+    -- A runner's way out (`escape = { who, region }`): the edge it is making for, resolved once.
+    if out.escape and not out.escapeTiles then
+        out.escapeTiles = Arena.resolveRegion(out.escape.region or "near", layout)
     end
     -- A `defend` objective is anchored to a region too (where the protected unit stands), so the HUD
     -- can mark that ground and an enemy's `objectiveTile` has a handle to path toward.
@@ -1365,6 +1384,44 @@ local function bindUnits(ids, spawns, offset, layout, taken)
     return units
 end
 
+-- THE MARK STANDS BEHIND ITS LINE. An assassination or a break is a fight about REACHING one body past
+-- the ones guarding it -- "reach past the teeth", "the Thurifer first if you can reach it" -- and the
+-- spawn order seats bodies in the order they were listed, which put the mark (always listed first) in
+-- the front rank. Measured in the objective pass (2026-10-21): a dozen such fights ended in one to four
+-- unit-turns, the mark taken off the board by the company's opening volley before a guard had moved. So
+-- each 1x1 mark trades places with the 1x1 guard standing farthest from the company, when that guard is
+-- farther than it is. Swapped rather than re-rolled, so the board and the seed still agree tile for tile.
+function Arena.seatMarksBehind(enemies, layout, objective)
+    -- `markStays`: a fight whose mark is MEANT to be in reach (the Abbess's congregation shields her by
+    -- splitting wounds, not by standing in front of her) keeps the spawn order it was dealt.
+    if not (objective and objective.type == "assassinate") or objective.markStays then return end
+    local marks = objective.targets or { objective.target }
+    local function isMark(id)
+        for _, m in ipairs(marks) do
+            if id == m or (type(id) == "string" and id:sub(1, #m + 1) == m .. "@") then return true end
+        end
+        return false
+    end
+    local sx, sy, n = 0, 0, 0
+    for _, s in ipairs(layout.partySpawns or {}) do sx, sy, n = sx + s.x, sy + s.y, n + 1 end
+    if n == 0 then return end
+    local cx, cy = sx / n, sy / n
+    local function dist(u) return math.abs(u.x - cx) + math.abs(u.y - cy) end
+    local function single(u) local w, h = footprintOf(u.id) return w == 1 and h == 1 end
+    for _, m in ipairs(enemies) do
+        if isMark(m.id) and single(m) then
+            local best
+            for _, g in ipairs(enemies) do
+                if g ~= m and not isMark(g.id) and single(g) and dist(g) > dist(m)
+                    and (not best or dist(g) > dist(best)) then
+                    best = g
+                end
+            end
+            if best then m.x, m.y, best.x, best.y = best.x, best.y, m.x, m.y end
+        end
+    end
+end
+
 -- Seat the party's escort/allies. Normally they claim party spawn points after the party itself.
 -- But an objective may ANCHOR the thing it protects to a region of the board -- "defend the
 -- survivors in the middle" -- in which case every ally matching `objective.protect` is placed on the
@@ -1456,6 +1513,20 @@ function Arena.build(ctx, spec)
     local partyIds = spec.party or {}
     local allyIds = Arena.resolveComposition(spec.allies, ctx)
     if not spec.allies then allyIds = {} end -- resolveComposition defaults to a bandit; allies default to none
+    -- THE STRAY DELVER IS ROLLED HERE, off the fight's own seed, before anything is seated: every bare
+    -- `character_stray_delver` becomes a rolled body and the objective is rewritten to name it, so the
+    -- protect clause, the seating and the HUD all point at the body actually standing there
+    -- (models/delver.lua). A copy of the spec, which belongs to the caller.
+    do
+        local rolled, obj = require("models.delver").roll(allyIds, spec.objective, spec.seed or 0)
+        if obj ~= spec.objective then
+            local copy = {}
+            for k, v in pairs(spec) do copy[k] = v end
+            copy.objective = obj
+            spec = copy
+        end
+        allyIds = rolled
+    end
     -- The ceiling is applied HERE rather than inside resolveComposition, because that resolver also
     -- serves `allies` one line up -- and an escort is a hand-authored cast (usually one body a
     -- `protect` objective is pointed at), never a prestige formula, so it has nothing to be saved from.
@@ -1498,6 +1569,7 @@ function Arena.build(ctx, spec)
     local party = bindUnits(partyIds, layout.partySpawns, 0, layout, seated)
     local allies = bindAllies(allyIds, spec, layout, seated)
     local enemies = bindUnits(enemyIds, layout.enemySpawns, 0, layout, seated)
+    Arena.seatMarksBehind(enemies, layout, spec.objective)
 
     -- The ground the deployment phase offers. Every body the BOARD itself seats is excluded -- an
     -- escorted survivor, an enemy authored deep in the party's half -- so the phase never offers a tile

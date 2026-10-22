@@ -8,6 +8,9 @@
 -- of them fast fliers, is a long fight by construction. The brief said to make it an elite rather than shrink it,
 -- so the swarm is kept whole and the label moved -- the elite tier's own ceiling is the six it asked for. A spare
 -- on Wrath's approach, the Redcaps' precedent.
+--
+-- KILL THE FLEDGLING (the objective pass, 2026-10-21): the bats are what it eats, not what has to die. Chasing five
+-- fliers down was the 27 unit-turns; the swarm now scatters when the Fledgling falls.
 local Band = require("models.band")
 
 return {
@@ -20,4 +23,5 @@ return {
         return Band.fill({ "character_fledgling" }, ctx,
             "character_familiar", { base = 4, min = 3, per = 12, max = 5 })
     end,
+    objective = { type = "assassinate", target = "character_fledgling", enemy = "the Fledgling" },
 }

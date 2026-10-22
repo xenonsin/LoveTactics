@@ -272,10 +272,7 @@
 -- Measured at DEPTH 11, each fight on its own ground, four bodies, RNG pinned per fight.
 
 return {
-    encounter_greed_the_strongroom = 45,
-    encounter_greed_the_assay_office = 32,
     -- THE CROWN'S BESTIARY, SLICE A
-    encounter_crown_the_gatehouse = 50,
     -- The fifth roll: an ordinary undead stop the Fireball's miss carries over the budget.
     encounter_the_bone_orchard = 25,
 }

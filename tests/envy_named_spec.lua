@@ -16,6 +16,7 @@ local AI = require("models.ai")
 local Character = require("models.character")
 local Combat = require("models.combat")
 local Encounter = require("models.encounter")
+local EncounterBattle = require("models.encounter_battle")
 local Hazard = require("models.hazard")
 local Item = require("models.item")
 local Spoils = require("models.spoils")
@@ -121,7 +122,9 @@ return {
                 assert(e and e.kind == "elite", id .. " is an elite")
                 assert(e.rung == want.rung, id .. " stands on rung " .. want.rung)
                 assert(e.condition({ biome = "desert" }) and not e.condition({ biome = "spire" }), id .. " is the waste's")
-                assert(e.objective and e.objective.type == "killAll", id .. " is played out, never walked off")
+                -- Any objective keeps it off the walk-off (EncounterBattle.eligible); since the objective pass
+                -- (2026-10-21) the Kinslayer's is his own death rather than a kill-all.
+                assert(e.objective and not EncounterBattle.eligible(e), id .. " is played out, never walked off")
             end
             local garden = Encounter.get("encounter_envy_medusa").composition({ depth = 11, seed = 1 })
             local statues = 0

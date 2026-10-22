@@ -15,6 +15,9 @@
 -- Locked to Lust's stratum by ctx.biome (the fen since the 2026-09-25 swap), the same gate every circle uses; billed on the circle's
 -- own floors through Descent.SINS' `elites`, which is where a circle says WHICH of its two stairs a
 -- threat stands on.
+--
+-- THE OBJECTIVE (the objective pass, 2026-10-21): hold the ledge. Her cry and her Downdraft both move bodies, so
+-- standing anywhere for six turns is the thing she is built to stop.
 local Band = require("models.band")
 
 return {
@@ -30,4 +33,5 @@ return {
         local list = { "character_harpy_matriarch" }
         return Band.fill(list, ctx, "character_harpy", { base = 2, per = 5 })
     end,
+    objective = { type = "hold", region = "center", duration = 30, orKillAll = true, enemy = "the Matriarch's flock" },
 }

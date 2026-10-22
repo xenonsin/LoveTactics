@@ -4,6 +4,10 @@
 --
 -- One soldier and a second on some rolls: with three it measured 24 unit-turns on the skirmish harness's seed
 -- (budget 22). As built it measures 14 there, and 23-25 on three other seeds.
+--
+-- THE OBJECTIVE (the objective pass, 2026-10-21): keep the Stray Delver alive. It stands among the company, and
+-- it is the body the assassin is waiting for -- so watching for the one that has not acted is now a
+-- matter of someone else's life.
 local Band = require("models.band")
 
 return {
@@ -16,4 +20,6 @@ return {
         return Band.fill({ "character_faceless_assassin", "character_faceless" }, ctx,
             "character_faceless", { base = 0, min = 0, per = 6, max = 1 })
     end,
+    allies = { "character_stray_delver" },
+    objective = { type = "killAll", protect = "character_stray_delver", enemy = "the Faceless" },
 }

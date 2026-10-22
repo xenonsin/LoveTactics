@@ -15,9 +15,12 @@
 -- variant still rates ~940). A set-piece authored to stand alone is judged by what it does, so it says so.
 -- Only an elite may claim it.
 --
--- PLAYED OUT, NEVER WALKED OFF: the kill-all is stated as an objective so EncounterBattle.eligible keeps
--- it off auto-resolve. A rating that low would otherwise offer a floor-six company the walk-over, and the
--- floor falling away is not something the model should get to skip.
+-- PLAYED OUT, NEVER WALKED OFF: the fight carries an objective so EncounterBattle.eligible keeps it off
+-- auto-resolve. A rating that low would otherwise offer a floor-six company the walk-over, and the floor
+-- falling away is not something the model should get to skip. That was an explicit kill-all once; on the
+-- objective pass (2026-10-21) it became a CROSSING -- get anyone out the far side while the floor falls
+-- away -- with killing the Thing as the other road (`orKillAll`). No pressure waves (`waves = {}`): the
+-- default tide would refill the board with a second Thing, and it is meant to be alone.
 --
 -- Cave-locked with no depth gate, as every encounter_greed_the_* is; `rung = 2` stands it on the seat.
 return {
@@ -30,5 +33,8 @@ return {
     composition = function()
         return { "character_deep_bane" }
     end,
-    objective = { type = "killAll" },
+    objective = {
+        type = "reach", region = "far", orKillAll = true, waves = {},
+        enemy = "the Thing Under the Seam",
+    },
 }

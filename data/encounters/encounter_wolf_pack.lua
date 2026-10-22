@@ -7,6 +7,9 @@
 --
 -- Which is a lesson the human companies used to teach four ways over; they are deleted, so the animals
 -- teach it now, on every floor.
+--
+-- KILL THE ALPHA AND THE GRUNTS SCATTER (the objective pass, 2026-10-21): the kill order is the win now, not
+-- only the better play. The alpha down ends it, the pack routs, and the spoils pay as if every wolf fell.
 local Band = require("models.band")
 
 return {
@@ -30,4 +33,5 @@ return {
         local list = { "character_wolf_alpha" }
         return Band.fill(list, ctx, "character_wolf_grunt", { base = 3, per = 5 })
     end,
+    objective = { type = "assassinate", target = "character_wolf_alpha", enemy = "the Alpha Wolf" },
 }

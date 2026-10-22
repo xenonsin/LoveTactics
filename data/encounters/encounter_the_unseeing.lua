@@ -22,6 +22,9 @@
 -- a company that meets him having never seen a Gore telegraph has been asked a question nobody set up.
 -- encounter_boar (weight 6, depth 1) is what teaches it -- the wood's one boar stop, since the second
 -- one fielded the same cast at a different count and was deleted.
+--
+-- THE BLIND LORD FALLS AND HIS BOARS SCATTER (the objective pass, 2026-10-21). A lord whose turn is making
+-- more boars is a fight that never empties on its own, so the lord is the win and the clan routs with him.
 local Band = require("models.band")
 
 return {
@@ -61,4 +64,5 @@ return {
         local list = { "character_the_unseeing" }
         return Band.fill(list, ctx, "character_boar", { base = 3, min = 3, per = 8 })
     end,
+    objective = { type = "assassinate", target = "character_the_unseeing", enemy = "the Unseeing" },
 }

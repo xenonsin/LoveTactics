@@ -7,6 +7,9 @@
 -- The reason that is not merely annoying is what stands behind it on the deeper stops: Lesser Reflection
 -- copies the WEAKEST body it can see, and stripping is how a body becomes weakest. This fight decides
 -- who Second Water takes.
+--
+-- THE OBJECTIVE (the objective pass, 2026-10-21): survive. The motes keep drifting in, so nothing here is cleared;
+-- the fight is how much the company still has when the glass stops.
 local Band = require("models.band")
 
 return {
@@ -26,4 +29,11 @@ return {
         local list = { "character_glass_eater" }
         return Band.fill(list, ctx, "character_glass_mote", { base = 3, per = 5 })
     end,
+    objective = {
+        type = "survive", duration = 35, enemy = "the drifting glass",
+        -- Motes only. Authored so the default tide does not deal a second Glass-Eater.
+        waves = {
+            { every = 10, from = "surround", maxAlive = 6, composition = { "character_glass_mote", "character_glass_mote" } },
+        },
+    },
 }

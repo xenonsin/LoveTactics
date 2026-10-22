@@ -11,6 +11,9 @@
 -- shield's face under it stands a long time. Rolled, the fight is that one only sometimes.
 --
 -- HOMED ON THE SEAT (rung 2).
+--
+-- THE OBJECTIVE (the objective pass, 2026-10-21): kill the Mask-Maker. The squad is a company only while it stands,
+-- so the fight ends with it and the rest leave.
 local Band = require("models.band")
 
 return {
@@ -23,4 +26,5 @@ return {
         return Band.fill({ "character_mask_maker", "character_doppelganger" }, ctx,
             "character_mirror_knight", { base = 0, min = 0, per = 13, max = 1 })
     end,
+    objective = { type = "assassinate", target = "character_mask_maker", enemy = "the Mask-Maker" },
 }

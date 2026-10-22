@@ -663,16 +663,51 @@ function AI.posture(unit)
     return AI.POSTURES[name] or AI.POSTURES[AI.DEFAULT_POSTURE], name or AI.DEFAULT_POSTURE
 end
 
+-- The posture a unit plays THIS fight, which the objective can overrule for the bodies it is about:
+--   * the RUNNER an `escape` clause names walks for its way out (`escort`) whatever its blueprint says;
+--   * a CAPTIVE, once cut free, walks home (`escort`) -- bound, it does not plan at all (AI.plan);
+--   * `unit.postureOverride` is a fight-scoped pick laid on by whoever is driving (the headless objective
+--     harness plays the company as `objective`, so a crossing is walked and not just fought).
+-- Everything else is AI.posture unchanged.
+function AI.postureIn(combat, unit)
+    local Combat = require("models.combat")
+    local name
+    if Combat.isRunner(combat, unit) then
+        name = "escort"
+    elseif combat and combat.objective and combat.objective.captive and unit.side == "party"
+        and unit.char and unit.char.id == combat.objective.captive and Combat.captiveFree(combat) then
+        name = "escort"
+    elseif unit.postureOverride and AI.POSTURES[unit.postureOverride] then
+        name = unit.postureOverride
+    end
+    if name then return AI.POSTURES[name], name end
+    return AI.posture(unit)
+end
+
 -- The unit the arena's objective points at, from `unit`'s point of view: the mark it must kill, or
 -- the charge it must cut down (an escort objective names a party-side protectee, which to an enemy
 -- is precisely the thing worth killing). Nil on an objective with no positional handle.
 function AI.objectiveUnit(combat, unit)
+    local Combat = require("models.combat")
     local obj = combat.objective
     if not obj then return nil end
+    -- A break names several marks: whichever of them is still standing, nearest first.
+    if obj.targets then
+        local best, bestD
+        for _, id in ipairs(obj.targets) do
+            for _, u in ipairs(combat.units) do
+                if u.alive and Combat.idMatches(u.char.id, id) and not u.summoned and u.side ~= unit.side then
+                    local d = manhattan(unit.x, unit.y, u.x, u.y)
+                    if not bestD or d < bestD then best, bestD = u, d end
+                end
+            end
+        end
+        if best then return best end
+    end
     local id = obj.target or obj.protect
     if not id then return nil end
     for _, u in ipairs(combat.units) do
-        if u.alive and u.char.id == id and not u.summoned and u.side ~= unit.side then return u end
+        if u.alive and Combat.idMatches(u.char.id, id) and not u.summoned and u.side ~= unit.side then return u end
     end
     return nil
 end
@@ -803,7 +838,14 @@ end
 -- Nil when the objective names no ground (killAll, assassinate, survive), which is what makes the
 -- `advance` mode fall back to ordinary approach instead of freezing.
 function AI.objectiveTile(combat, unit)
-    return AI.nearestTile(unit, require("models.combat").objectiveGround(combat))
+    local Combat = require("models.combat")
+    -- The runner's ground is its way out, not the company's objective.
+    if Combat.isRunner(combat, unit) then
+        return AI.nearestTile(unit, combat.objective.escapeTiles)
+    end
+    -- Ground nobody on this side wants: a bound captive's tile is the COMPANY'S goal. An enemy walking
+    -- onto it would only be standing guard over a body it is already beside.
+    return AI.nearestTile(unit, Combat.objectiveGround(combat))
 end
 
 -- The nearest of `tiles` to `unit`, or nil for an empty list. Board order decides a tie, so two
@@ -1723,7 +1765,9 @@ local function fallbackMove(ctx, mode)
             goal = AI.nearestTile(unit, ctx.post.tiles)
         end
     elseif mode == "objective" then
-        goal = AI.objectiveUnit(combat, unit) or nearest(ctx, foes(ctx))
+        -- The mark first; then the ground the objective is decided on (a crossing, a post, a heap, a
+        -- captive to reach); then plain approach on a map that names neither.
+        goal = AI.objectiveUnit(combat, unit) or AI.objectiveTile(combat, unit) or nearest(ctx, foes(ctx))
     elseif mode == "advance" then
         -- Toward the exit, not toward the fight. An escorted column is trying to LEAVE, and every
         -- turn it spends walking is a turn the party has to keep the road ahead of it clear. Falls
@@ -2447,10 +2491,13 @@ end
 function AI.plan(combat, unit)
     local Combat = require("models.combat")
 
+    -- A BOUND CAPTIVE waits to be cut free (Combat.settleObjective): no walk, no blow, no taunt answered.
+    if Combat.isBoundCaptive(combat, unit) then return nil end
+
     local pre = AI.preempt(combat, unit)
     if pre then return pre end
 
-    local posture, postureName = AI.posture(unit)
+    local posture, postureName = AI.postureIn(combat, unit)
     local items = itemsFor(combat, unit)
     -- What this unit is standing there FOR, for a posture that stands there for something. Read once
     -- and carried on the ctx, because the engage test, the stand-tile leash and the movement fallback
@@ -2493,7 +2540,10 @@ function AI.plan(combat, unit)
     local threat -- built lazily: a unit that never reaches the risk pass never pays for it
     local engaged = posture.engage(ctx)
 
-    for index, entry in ipairs(AI.rulesFor(unit)) do
+    -- A RUNNER IS A CLOCK, not a combatant: it spends every turn on its way out and none of them on a
+    -- blow, so how long it takes is a number the company can read off the board and race.
+    local rules = Combat.isRunner(combat, unit) and {} or AI.rulesFor(unit)
+    for index, entry in ipairs(rules) do
         local rule = entry.rule
         local act = rule.act or "attack"
         local isAction = act == "attack" or act == "support" or act == "cast"

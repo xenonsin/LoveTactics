@@ -35,6 +35,15 @@
 -- also exactly the ground a running animal needs to be uncatchable on, and exactly the ground a
 -- company needs if it means to corner one.
 --
+-- IT RUNS FOR AN EDGE (the objective pass, 2026-10-21). Until it turns Vengeful the stag is a clock: it makes
+-- for its way out every turn, and if it gets off the board the fight ends with it gone and its drop gone with
+-- it. Once it turns it stops running, and the fight is the kill-all it always was.
+--
+-- THE COMPANY'S EDGE, NOT THE FAR ONE the review named. The far edge is where the enemy is seated, so at
+-- movement 7 the stag stood on it or one stride off it at the bell: measured over four seeds it was gone in 0,
+-- 0, 0 and 12 unit-turns, before most of the company had moved. Making for the edge the company landed on, it
+-- has to get past them, and that is a race: four seeds, four catches, 20-51 turns.
+--
 -- depth 8, behind the White Wolf's 5 and the Sow's 6, because it is the last thing the wood has and
 -- because a company that has never had to corner anything has been asked a question nobody set up.
 local Band = require("models.band")
@@ -74,4 +83,8 @@ return {
         Band.fill(list, ctx, "character_wolf_grunt", { base = 2, min = 2, per = 14 })
         return Band.fill(list, ctx, "character_boar", { base = 1, min = 1, per = 20 })
     end,
+    objective = {
+        type = "killAll", enemy = "the stag and the wood",
+        escape = { who = "character_meandering_stag", region = "near" },
+    },
 }

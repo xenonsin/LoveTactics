@@ -2027,7 +2027,31 @@ function Combat.openBattle(combat)
     -- every unit, passive, trap and hazard already in place. Its lines follow the "battle begins".
     Trait.setup(combat)
 
+    Combat.openCharge(combat)
+
     return combat
+end
+
+-- THE CHARGE OPENS HURT, when the objective says so: `chargeOpens = { health = 0.3, statuses = { ... } }`
+-- lays a fraction of the protected body's pool (never below 1) and any opening statuses on it at the
+-- bell. The stranger the lionesses already have Rooted at 1 HP, the one the Reaper is circling --
+-- "a wounded Delver" is the fight, and a full bar would have been a different one. After Trait.setup so
+-- nothing the opening does refills it.
+function Combat.openCharge(combat)
+    local obj = combat.objective
+    local open = obj and obj.chargeOpens
+    local id = obj and (obj.protect or obj.captive)
+    if not (open and id) then return end
+    for _, u in ipairs(combat.units) do
+        if u.alive and u.side == "party" and u.char and u.char.id == id and not u.summoned then
+            local hp = u.char.stats.health
+            if open.health and type(hp) == "table" then
+                local max = hp.max or hp.current or 1
+                hp.current = math.max(1, math.floor(max * open.health))
+            end
+            for _, sid in ipairs(open.statuses or {}) do Status.apply(combat, u, sid, { magnitude = 1 }) end
+        end
+    end
 end
 
 -- Subtract the lowest living initiative from every living unit so the next actor sits at 0,
@@ -15229,7 +15253,7 @@ end
 function Combat.accrueHold(combat, elapsed)
     local obj = combat.objective
     if not obj or obj.type ~= "hold" then return end
-    if Combat.holdsGround(combat, obj.tiles) then
+    if Combat.holdsGround(combat, Combat.objectiveGround(combat)) then
         combat.heldTicks = (combat.heldTicks or 0) + (elapsed or 0)
     end
 end
@@ -15377,8 +15401,16 @@ function Combat.objectiveGoal(obj)
         elseif obj.type == "reach" then
             -- `who` names the ONE body that has to cross (an escort/extraction), so the line has to say
             -- which body -- "get anyone" is only true for the open footrace with no `who`.
-            text = obj.who and ("Get " .. Combat.charName(obj.who) .. " to the far side")
-                or "Get anyone to the far side"
+            if obj.captive then
+                -- A RESCUE: the charge is waiting at the far end, and the crossing runs the other way.
+                text = "Free " .. Combat.charName(obj.captive) .. " and get them out"
+            elseif obj.who then
+                text = "Get " .. Combat.charName(obj.who) .. " to the far side"
+            else
+                text = obj.place and ("Get anyone " .. obj.place) or "Get anyone to the far side"
+            end
+        elseif obj.type == "heaps" then
+            text = string.format("Carry out %d heap%s", obj.count or 1, (obj.count or 1) == 1 and "" or "s")
         elseif obj.type == "hold" then
             text = "Hold the marked ground"
         elseif obj.type == "control" then
@@ -15388,15 +15420,33 @@ function Combat.objectiveGoal(obj)
             -- not: four quests in the Arcanum's line all field a `character_mage` as their mark, and all
             -- four read "Defeat Mage", which is neither a person nor a promise. Those author an epithet
             -- and it wins here, the same field and for the same reason as killAll's collective.
-            text = "Defeat " .. (obj.enemy or Combat.charName(obj.target))
+            if obj.targets then
+                -- A BREAK names the things, not a roster: "Break the eggs", "Break the Lamp".
+                local names = {}
+                for i, id in ipairs(obj.targets) do names[i] = Combat.charName(id) end
+                text = (obj.verb or "Break") .. " " .. (obj.enemy or table.concat(names, " and "))
+            else
+                text = (obj.verb or "Defeat") .. " " .. (obj.enemy or Combat.charName(obj.target))
+            end
         else
             text = "Defeat " .. (obj.enemy or "every enemy")
         end
     end
+    -- The fallback win, said as a second road rather than buried: "Get anyone through the gate, or defeat
+    -- the gate guardians".
+    if obj.orKillAll and obj.type ~= "killAll" then
+        text = text .. ", or defeat " .. (obj.enemy or "them all")
+    end
+    -- And the clock a runner is: "..., before the Meandering Stag gets away".
+    if obj.escape and obj.escape.who then
+        text = text .. ", before " .. Combat.charName(obj.escape.who) .. " gets away"
+    end
     -- `protect` is a loss condition layered over whatever the win type is, so it reads as a second clause
     -- rather than replacing the first. When the body that must cross is also the one that must live (the
     -- usual escort), fold the two so it doesn't read "Get the Driver across, keep the Driver alive".
-    if obj.protect and obj.protect ~= obj.who then
+    if obj.protect and (obj.protect == obj.captive) then
+        text = text .. " alive"
+    elseif obj.protect and obj.protect ~= obj.who then
         text = text .. ", keep " .. Combat.charName(obj.protect) .. " alive"
     elseif obj.protect then
         text = text .. ", alive"
@@ -15446,7 +15496,7 @@ function Combat.isBoss(combat, unit)
     if unit.char.tier == Combat.BOSS_TIER then return true end
     local obj = combat and combat.objective
     return obj ~= nil and obj.type == "assassinate" and obj.target ~= nil
-        and unit.char.id == obj.target and not unit.summoned
+        and Combat.idMatches(unit.char.id, obj.target) and not unit.summoned
 end
 
 -- The health fractions this body's fight turns on, DESCENDING -- every `at` in the phase script carried
@@ -15488,7 +15538,169 @@ function Combat.objectiveGround(combat)
     if not obj then return {} end
     if obj.type == "control" then return Combat.controlTiles(combat) end
     if obj.type == "defend" and obj.protect then return Combat.protectedTiles(combat, obj.protect) end
+    -- A RESCUE marks the captive while it is still bound -- the ground the company has to reach first is
+    -- wherever the charge is held -- and the way out once it is free.
+    if obj.captive and not Combat.captiveFree(combat) then return Combat.protectedTiles(combat, obj.captive) end
+    -- Ground that is a KIND of tile rather than a region: the heaps still lying on the board, the shrine
+    -- stones the fight scattered. Read live, because a heap is taken and a stone is a hazard placed after
+    -- the objective was normalized (Arena.build's bodyGround runs on the built board).
+    local ground = obj.ground or (obj.type == "heaps" and "hazard_coin_heap") or nil
+    if ground then return Combat.hazardTiles(combat, ground) end
+    -- A fight whose only ground is a RUNNER'S way out washes that edge: where the stag is going is the
+    -- one thing on the board the company has to read to stop it.
+    if (not obj.tiles or #obj.tiles == 0) and obj.escape and not combat.escaped
+        and Combat.runnerStanding(combat) then
+        return obj.escapeTiles or {}
+    end
     return obj.tiles or {}
+end
+
+-- Every tile carrying a live hazard of blueprint `id`, in board order.
+function Combat.hazardTiles(combat, id)
+    local tiles = {}
+    for _, h in ipairs(combat.hazards or {}) do
+        if h.id == id and h.x and h.y and h.alive ~= false then tiles[#tiles + 1] = { x = h.x, y = h.y } end
+    end
+    return tiles
+end
+
+-- ---------------------------------------------------------------------------
+-- The objective's moving parts: marks to break, a captive to cut free, a runner to stop
+-- ---------------------------------------------------------------------------
+
+-- The marks a kill objective names: `targets` (a BREAK -- every egg, the Lamp, the Basin) or the single
+-- `target` of an assassination. One list, so every reader asks the same question of both.
+function Combat.marksOf(obj)
+    if not obj then return {} end
+    if obj.targets then return obj.targets end
+    if obj.target then return { obj.target } end
+    return {}
+end
+
+-- Does a body's id answer to the id an objective NAMED? Exactly, or as a fielded variant of it: an
+-- adventurer is authored as its class body (`character_adv_summoner`) and fielded wearing a people
+-- (`character_adv_summoner@elf`), so a mark written once has to find it whichever people it rolled.
+function Combat.idMatches(charId, wanted)
+    if charId == nil or wanted == nil then return false end
+    if charId == wanted then return true end
+    return charId:sub(1, #wanted + 1) == wanted .. "@"
+end
+
+-- Is a body of blueprint `id` still standing on the enemy side? Matched THROUGH a transform -- a general
+-- who sheds its human body for its demon one is the same unit in a new shape (Transform.originalChar) --
+-- and never by a summoned duplicate, which shares its origin's id and must not stand in for it.
+function Combat.enemyStanding(combat, id)
+    for _, u in ipairs(combat.units) do
+        if u.alive and u.side == "enemy" and not u.summoned then
+            local original = Transform.originalChar(u)
+            if Combat.idMatches(u.char.id, id) or (original and Combat.idMatches(original.id, id)) then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+-- Has the objective's captive been cut free? True for an objective with no captive at all.
+function Combat.captiveFree(combat)
+    local obj = combat and combat.objective
+    if not (obj and obj.captive) then return true end
+    return combat.captiveFreed == true
+end
+
+-- Is `unit` the bound captive, still waiting for somebody to reach it?
+function Combat.isBoundCaptive(combat, unit)
+    local obj = combat and combat.objective
+    return obj ~= nil and obj.captive ~= nil and not combat.captiveFreed
+        and unit.side == "party" and unit.char ~= nil and unit.char.id == obj.captive and not unit.summoned
+end
+
+-- Is `unit` the objective's RUNNER -- the enemy body an `escape` clause names, still in the shape it
+-- was named in? Matched on the live id only, not through a transform: the Meandering Stag stops running
+-- the moment it turns Vengeful, and that turn is a new id.
+--
+-- Named by its blueprint or its fielded variant (an adventurer is `character_adv_thief@goblin`). And a
+-- runner may wait for a reason to leave: `escape.after = "stolen"` makes it a runner only once it has
+-- lifted something (Combat.steal's tally) -- the Collectors' thief fights until his hand is full, then
+-- bolts with it.
+function Combat.isRunner(combat, unit)
+    local obj = combat and combat.objective
+    local esc = obj and obj.escape
+    if not (esc ~= nil and unit.alive and unit.side == "enemy" and not unit.summoned
+        and unit.char ~= nil and Combat.idMatches(unit.char.id, esc.who)) then
+        return false
+    end
+    if esc.after == "stolen" and Combat.tallyCount(unit, "stolen") == 0 then return false end
+    return true
+end
+
+-- Is the objective's runner still on the board and running? The way-out edge is washed only while it is.
+function Combat.runnerStanding(combat)
+    for _, u in ipairs(combat.units) do
+        if Combat.isRunner(combat, u) then return true end
+    end
+    return false
+end
+
+-- THE TWO THINGS THE BOARD DOES TO THE OBJECTIVE ON ITS OWN, asked after every action and before the
+-- fight is judged (states/battle.lua's checkOutcome, tests/support/objective_run.lua). Kept out of
+-- Combat.evaluate, which is a question and has to stay one -- the HUD asks it every frame.
+--   * A captive is CUT FREE the moment a party body stands beside it.
+--   * A runner on its way-out tile GETS AWAY: it leaves the board, the fight ends (Combat.outcomeFor),
+--     and what it was carrying goes with it (the spoils skip a body marked `escaped`).
+function Combat.settleObjective(combat)
+    local obj = combat and combat.objective
+    if not obj then return end
+    if obj.captive and not combat.captiveFreed then
+        for _, c in ipairs(combat.units) do
+            if c.alive and Combat.isBoundCaptive(combat, c) then
+                for _, u in ipairs(combat.units) do
+                    if u ~= c and u.alive and u.side == "party" and not u.summoned
+                        and math.abs(u.x - c.x) + math.abs(u.y - c.y) == 1 then
+                        combat.captiveFreed = true
+                        Combat.logEvent(combat, "action",
+                            string.format("%s is cut free.", c.char.name or "The captive"), c)
+                        break
+                    end
+                end
+            end
+        end
+    end
+    if obj.escape and not combat.escaped then
+        for _, u in ipairs(combat.units) do
+            if Combat.isRunner(combat, u) then
+                for _, t in ipairs(obj.escapeTiles or {}) do
+                    if u.x == t.x and u.y == t.y then
+                        u.alive, u.escaped = false, true
+                        combat.escaped = u
+                        Combat.logEvent(combat, "action",
+                            string.format("%s gets away.", u.char.name or "It"), u)
+                        break
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- THE ROUT. When an objective ends a fight with bodies still standing -- the mark is down, the line is
+-- crossed, the runner got clear -- the rest are not killed and do not simply vanish: they break and run.
+-- They leave the board without a corpse (no `corpse` flag, so nothing draws), fire no death hook, and
+-- still pay: the spoils roll reads the fight's whole enemy list, alive or not, so an objective win pays
+-- like a kill-all. Only the runner that got clear is held back from it. Returns how many ran.
+function Combat.rout(combat)
+    local n = 0
+    for _, u in ipairs(combat.units) do
+        if u.alive and u.side == "enemy" then
+            u.alive, u.routed = false, true
+            n = n + 1
+        end
+    end
+    if n > 0 then
+        Combat.logEvent(combat, "system", n == 1 and "The last of them breaks and runs."
+            or "The rest of them break and run.")
+    end
+    return n
 end
 
 -- The time still owed on a timed objective, in TICKS, or nil for one that has no clock. `survive`
@@ -15546,6 +15758,12 @@ function Combat.objectiveTileInfo(combat, x, y)
         remaining = Combat.objectiveRemaining(combat),
         who = obj.who,
         protect = obj.protect,
+        -- The objective pass's shapes, so the tooltip can say which ground this is.
+        captive = obj.captive,
+        bound = obj.captive ~= nil and not Combat.captiveFree(combat),
+        runner = (obj.escape and (not obj.tiles or #obj.tiles == 0)) and obj.escape.who or nil,
+        looted = obj.type == "heaps" and (combat.heapsLooted or 0) or nil,
+        count = obj.count,
     }
     -- Sole occupancy is the whole rule both tile objectives turn on (holdsGround / controlledBy):
     -- one boot from the other side and nobody is holding anything.
@@ -15563,6 +15781,8 @@ end
 -- because an endless tide is exactly what it was authored to be and a fight carrying one has to be won
 -- some other way (a reach objective's synthesized trickle is the live example).
 function Combat.waveSpent(wave, st)
+    -- A wave silenced with the body that sent it (Waves.tick's `unless`) owes nothing more.
+    if st and st.silenced then return true end
     if not (wave and st) or (st.fires or 0) == 0 then return false end
     if not wave.every then return true end
     return wave.count ~= nil and st.fires >= wave.count
@@ -15670,6 +15890,16 @@ function Combat.outcomeFor(combat, side)
         return "loss"
     end
 
+    -- A RUNNER THAT GOT CLEAR ends it (Combat.settleObjective). Not a loss -- nobody fell -- but the body
+    -- that left takes its drop with it, and the rest of them rout.
+    if combat.escaped then return "win" end
+
+    -- OR CLEAR THEM: a reach or a hold that also ends when the field is empty and nothing more is owed. A
+    -- gate guardian can be slipped past or put down, and both are the fight.
+    if obj.orKillAll and Combat.allWavesArrived(combat, obj) and Combat.eliminated(combat, foe) then
+        return "win"
+    end
+
     if obj.type == "reach" then
         -- `who` names the ONE body that has to make it -- an escorted column, whose arrival is the
         -- whole job. Without it, an escort degenerates into a footrace the player wins by sprinting
@@ -15695,23 +15925,29 @@ function Combat.outcomeFor(combat, side)
     elseif obj.type == "hold" then
         if (combat.heldTicks or 0) >= (obj.duration or math.huge) then return "win" end
         return nil
-    elseif obj.type == "assassinate" then
-        for _, u in ipairs(combat.units) do
-            -- A summoned duplicate shares its origin's `char.id`, so it would otherwise read as the
-            -- mark still standing. Only the real thing counts.
-            --
-            -- The mark is matched THROUGH a transform. A general who sheds its human body for its demon
-            -- one (trait_boss_phases' `transform` response) is the SAME unit in a new shape, so its
-            -- current `char.id` no longer matches the id the quest named. Reading the shape's stashed
-            -- original (Transform.originalChar) keeps the mark stable across the swap -- without it the
-            -- fight would end the instant a general phased, and its second form would never be fought.
-            if u.alive and u.side == "enemy" and not u.summoned then
-                local original = Transform.originalChar(u)
-                if u.char.id == obj.target or (original and original.id == obj.target) then
-                    return nil -- target still standing, in whichever body it is wearing
-                end
-            end
+    elseif obj.type == "heaps" then
+        -- CARRY OUT THE HEAPS: a race for the coin, won on the count. A dwarf that pockets a heap takes it
+        -- off the board for good, so the race can be lost -- and then a field cleared of every body still
+        -- ends it, the way a kill-all would.
+        if (combat.heapsLooted or 0) >= (obj.count or 1) then return "win" end
+        if Combat.allWavesArrived(combat, obj) and Combat.eliminated(combat, foe) then return "win" end
+        return nil
+    elseif obj.type == "assassinate" and obj.targets then
+        -- A BREAK: every named body down. Eggs, the Lamp, the Basin, the Heartwood Tree -- the same win as
+        -- an assassination, against something that does not fight back.
+        for _, id in ipairs(obj.targets) do
+            if Combat.enemyStanding(combat, id) then return nil end
         end
+        return "win"
+    elseif obj.type == "assassinate" then
+        -- A summoned duplicate shares its origin's `char.id`, so it would otherwise read as the mark still
+        -- standing; only the real thing counts. And the mark is matched THROUGH a transform: a general
+        -- who sheds its human body for its demon one (trait_boss_phases' `transform` response) is the SAME
+        -- unit in a new shape, so reading the shape's stashed original (Transform.originalChar) keeps the
+        -- mark stable across the swap -- without it the fight would end the instant a general phased, and
+        -- its second form would never be fought. Both rules live in Combat.enemyStanding, which a break's
+        -- list of marks asks too.
+        if Combat.enemyStanding(combat, obj.target) then return nil end
         return "win"
     elseif obj.type == "survive" then
         -- Outlast a clock: win once the elapsed ticks pass the authored `duration`. The consecrated

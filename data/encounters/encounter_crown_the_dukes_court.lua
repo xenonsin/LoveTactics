@@ -3,6 +3,8 @@
 -- the Duke is a wisp the Duke may take, and at the third it Ascends -- so fight the court away from it, and kill the
 -- wisps before they get there.
 --
+-- THE DUKE IS THE WIN (the objective pass, 2026-10-21): kill it before it Ascends and the court routs.
+--
 -- `elite`, so Arena.ELITE_CAP (6) seats the whole court. NO `rung`: the underworld is one floor, and the ground is
 -- its pin. It is the floor's standing elite, billed at Descent.CROWN_ELITES.
 local Band = require("models.band")
@@ -16,4 +18,5 @@ return {
         return Band.fill({ "character_archon_duke", "character_greater_archon" }, ctx, "character_lesser_archon",
             { base = 2, min = 2, max = 3 })
     end,
+    objective = { type = "assassinate", target = "character_archon_duke", enemy = "the Archon Duke" },
 }

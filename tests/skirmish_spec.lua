@@ -293,8 +293,11 @@ return {
         -- budget: it is a company of up to six people with its own cap, approved as such, and holding it
         -- to a four-body skirmish's length would be asking it to be a different fight.
         local natives = {}
+        -- ...and neither is a fight with a win clock (an objective, waves, a charge to keep alive): this
+        -- loop cannot walk its waves or settle its runner, so it would time a fight the game never plays.
+        -- Those are run by tests/objective_fight_spec.lua, which can.
         for _, e in ipairs(weightedByKind("combat")) do
-            if not e.def.party then natives[#natives + 1] = e end
+            if not e.def.party and EncounterBattle.eligible(e.def) then natives[#natives + 1] = e end
         end
         for _, e in ipairs(natives) do
             local player = companyAtDepth(DEPTH)

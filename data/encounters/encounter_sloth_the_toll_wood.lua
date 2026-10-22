@@ -11,6 +11,10 @@ return {
     weight = 3,
     condition = function(ctx) return ctx.biome == "tundra" end,
     rung = 2,
+    -- HOLD YOUR GROUND (the objective pass, 2026-10-21): the centre, for six turns, while the roots close the lanes
+    -- around it. It is the lesson made the win -- fight in the space you chose, because walking out of it is what
+    -- the Exit Fee charges for.
+    objective = { type = "hold", region = "center", duration = 30, enemy = "the toll wood" },
     composition = function(ctx)
         return Band.fill({ "character_old_spruce", "character_bailiff" }, ctx, "character_toll_collector",
             { base = 1, min = 1, max = 2 })

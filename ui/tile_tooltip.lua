@@ -594,13 +594,25 @@ end
 -- ("hold the moving node"), and what a player hovering the tile is asking is why the ground matters
 -- and what standing here would do.
 local function objectiveHeading(o)
-    if o.type == "control" then
+    if o.bound then
+        return "Your Charge", charName(o.captive)
+            .. " is held here. Stand beside them to cut them free, then get them out."
+    elseif o.runner then
+        return "Its Way Out", charName(o.runner)
+            .. " is making for this edge. If it gets here it is gone, and so is what it carries."
+    elseif o.type == "heaps" then
+        return "Loose Gold", string.format("Step on a heap to carry it out. %d of %d carried.",
+            o.looted or 0, o.count or 1)
+    elseif o.type == "control" then
         return "Control Node",
             "Hold this node alone to bank time toward the round. An enemy boot on it stops the count for both sides."
     elseif o.type == "hold" then
         return "Objective Ground",
             "Hold this ground to bank the time the win is owed. An enemy standing on it stalls the count."
     elseif o.type == "reach" then
+        if o.captive then
+            return "The Way Out", "Get " .. charName(o.captive) .. " onto this ground to win the fight."
+        end
         if o.who then
             return "Crossing Ground", "Get " .. charName(o.who) .. " onto this ground to win the fight."
         end

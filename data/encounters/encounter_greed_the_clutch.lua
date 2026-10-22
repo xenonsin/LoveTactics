@@ -10,6 +10,12 @@
 -- centre, which is the two eggs.
 --
 -- HOMED ON THE APPROACH (rung 1).
+--
+-- A BREAK, on the objective pass (2026-10-21): smash the clutch and the fight is over, and the kobolds are the
+-- screen in the way. The marks are every egg AND every Wyrmling, because a hatching takes the egg off the
+-- board and stands a Wyrmling where it was -- a break that named only the eggs would be won by the kobolds
+-- brooding one through. So the slot that is already a Wyrmling has to be killed too, and so does anything
+-- that hatches before the company gets there.
 local Band = require("models.band")
 
 return {
@@ -24,4 +30,8 @@ return {
                        hatched and "character_wyrmling" or "character_dragon_egg" }
         return Band.fill(list, ctx, "character_kobold_skulker", { base = 1, per = 6, max = 2 })
     end,
+    objective = {
+        type = "assassinate", verb = "Break", enemy = "the clutch",
+        targets = { "character_dragon_egg", "character_wyrmling" },
+    },
 }

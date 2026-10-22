@@ -19,6 +19,9 @@
 --
 -- Locked to Lust's stratum by ctx.biome (the fen since the 2026-09-25 swap); billed on the circle's own floors through Descent.SINS'
 -- `elites`, which is where a circle says WHICH of its two stairs a threat stands on.
+--
+-- THE OBJECTIVE (the objective pass, 2026-10-21): get down the stair. The coil prices every tile, so a crossing
+-- is the fight that bill is about -- the company pays for distance, with nowhere to stand that does not cost.
 local Band = require("models.band")
 
 return {
@@ -34,4 +37,12 @@ return {
         local list = { "character_elder_lamia" }
         return Band.fill(list, ctx, "character_lamia", { base = 2, per = 5 })
     end,
+    objective = {
+        type = "reach", region = "far", place = "down the stair", enemy = "the lamiae",
+        -- Lamiae up out of the water below: the stair keeps filling. Authored so the default tide does not deal a
+        -- second Elder.
+        waves = {
+            { at = 10, every = 15, from = "back", maxAlive = 4, composition = { "character_lamia" } },
+        },
+    },
 }

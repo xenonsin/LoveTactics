@@ -5,6 +5,9 @@
 --
 -- The lever that is not a trade is the floor: loot a heap and every dwarf on the board comes for the looter
 -- with Gold Fever -- open-guarded, and pulled off the Thane.
+--
+-- AN ASSASSINATION, on the objective pass (2026-10-21): the Thane falls and the hall empties. Which makes the
+-- fight a race against his hiring -- every turn spent on a Delver is a turn he buys another.
 local Band = require("models.band")
 
 return {
@@ -17,4 +20,5 @@ return {
         return Band.fill({ "character_the_hoard_thane", "character_dwarf_hearthguard", "character_dwarf_hornblower" },
             ctx, "character_dwarf_delver", { base = 1, per = 6, max = 2 })
     end,
+    objective = { type = "assassinate", target = "character_the_hoard_thane", enemy = "the Hoard-Thane" },
 }

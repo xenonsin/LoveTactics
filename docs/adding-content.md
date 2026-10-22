@@ -752,7 +752,7 @@ archetype = "skirmish",   -- one of AI.POSTURES; omit for `aggressive`
 | `guard` | Pursues within `leash` tiles of where it started, then walks home. A patrol the player can bait. |
 | `skirmish` | Prices being reachable dearly — the archer/mage posture. Will not close to take a shot it could take from range. |
 | `support` | Reads allies before enemies. |
-| `objective` | Goes for whoever the objective names (`protect` charge, `assassinate` mark); falls back to `aggressive` when it names nobody. |
+| `objective` | Goes for whoever the objective names (`protect` charge, `assassinate` mark), then for the ground it is decided on (a crossing, a post, a heap, a captive to reach); falls back to `aggressive` when it names neither. |
 
 ### Who a defender guards
 
@@ -1057,7 +1057,42 @@ it walks with the charge — is no post for the far side. A `defensive` enemy on
 through to guarding its own side's charge, exactly as it would on a `killAll`. A `hold` region or a
 `control` node is ground either side can occupy, and stays a post for both.
 
-True "escort to an exit tile" is not implemented; it would need exit tiles in `models/arena.lua`.
+An escort to an exit is `type = "reach"` with `who` (the caravan driver in
+`data/encounters/encounter_survivors_extract.lua`): the region resolves to real tiles on the built board.
+
+## Rift encounters with an objective
+
+Since the objective pass (2026-10-21) about a third of the rift's ordinary and elite fights win on
+something other than kill-all. A blueprint in `data/encounters/` carries `objective = { ... }` directly
+(the quest form above wraps it in `win`). Every shape below is enforced by `tests/objective_fight_spec.lua`,
+whose last case plays every objective fight in the tree with a real company and holds it to finishing
+inside its own turn budget.
+
+| Shape | Authored as | Ends when |
+|---|---|---|
+| Assassinate | `type = "assassinate", target = id` | the mark is down (matched through a transform and through an adventurer's `@race`) |
+| Break | `type = "assassinate", targets = { ids }, verb = "Break"` | every named body is down -- eggs, the Lamp, the Basin |
+| Reach | `type = "reach", region = "far"` (`who`, `place`) | anyone (or `who`) stands on the region |
+| Hold | `type = "hold", duration = ticks`, `region` or `ground = hazard id` | the company has held it, uncontested, that long |
+| Survive | `type = "survive", duration = ticks` | the clock runs out (an endless tide is dealt by default) |
+| Heaps | `type = "heaps", count = n` | n gold heaps are carried out -- or the field is cleared |
+| Rescue | `type = "reach", captive = id, who = id, protect = id, anchor = "far"` | the captive, cut free by a body beside it, reaches the near edge |
+| Escape | `escape = { who = id, region = "far" }` on any type | (a layer) the runner reaches its edge: the fight ends, it keeps its drop |
+| Or clear them | `orKillAll = true` on a reach or hold | also when the field is empty and nothing is owed |
+
+Every one of them also takes `enemy` (the collective the banner names), `waves` (a wave may name the
+body sending it with `unless = id`, and stops when that body does), `protect` and `chargeOpens =
+{ health = fraction, statuses = { ids } }` for a charge that opens hurt.
+
+**The charge is the Stray Delver.** Write `allies = { "character_stray_delver" }` and point `protect`,
+`who` or `captive` at the same id; `Arena.build` rolls a stranger off the fight's seed (class and people,
+the hire roller -- `models/delver.lua`) and rewrites the objective to name the body actually seated.
+
+**What a win does.** When an objective ends a fight with bodies standing they ROUT (`Combat.rout`): they
+leave the board with no corpse and no death hook, and the spoils still pay as if all fell -- only an
+escaped runner's drop is withheld. An objective fight keeps its muster band and its Run Away odds
+(`EncounterBattle.cellRated`) but is never walked off (`cellEligible`), because no model can run its clock
+to a decision unwatched. Waves live in `models/waves.lua` for the same reason: the harness walks them.
 
 ## Add a curated battle arena
 

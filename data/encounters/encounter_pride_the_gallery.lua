@@ -3,6 +3,9 @@
 -- Every threshold it is cut past adds a Gilded Sworn, which in a circle where power IS adjacency means
 -- the formation is being repaired while you dismantle it. Killing the Gallery is the only way to stop
 -- the hall refilling.
+--
+-- AN ASSASSINATION, on the objective pass (2026-10-21): the Gallery falls and the fight ends, so cutting it
+-- past a threshold is still a Sworn the company has to get through, but never one it has to finish.
 local Band = require("models.band")
 
 return {
@@ -32,4 +35,5 @@ return {
         local list = { "character_the_gallery", "character_standard_bearer" }
         return Band.fill(list, ctx, "character_gilded_page", { base = 2, per = 6 })
     end,
+    objective = { type = "assassinate", target = "character_the_gallery", enemy = "the Gallery" },
 }

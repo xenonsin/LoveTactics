@@ -2028,7 +2028,9 @@ end
 -- How this fight stands to the company, as a margin in percent -- nil for a cell there is no
 -- comparison to make about.
 function game:musterMargin(cell)
-    if not EncounterBattle.cellEligible(cell) then return nil end
+    -- RATED, not walk-off-able: an objective fight keeps its band and its Run Away odds
+    -- (EncounterBattle.cellRated). The walk-off asks cellEligible itself, below.
+    if not EncounterBattle.cellRated(cell) then return nil end
     if not game.partyMuster then game:refreshMuster() end
     return Muster.margin(game.partyMuster, game:cellMuster(cell))
 end
@@ -3654,7 +3656,7 @@ function game:openEncounter(cell, opts)
             fireAbility("objectiveReached", { cell = cell })
             fireRelics("objectiveReached", { cell = cell })
         end
-        if Muster.canWalkOver(game:musterMargin(cell)) then
+        if EncounterBattle.cellEligible(cell) and Muster.canWalkOver(game:musterMargin(cell)) then
             game.activePanel = Choice.new({
                 title = cell.encounter.name or "A Fight Beneath You",
                 prompt = "Your company outmatches what is waiting here.",

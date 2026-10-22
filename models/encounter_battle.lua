@@ -146,6 +146,19 @@ function EncounterBattle.cellEligible(cell)
     return EncounterBattle.eligible(enc.id and EncounterModel.get(enc.id))
 end
 
+-- Is this cell a fight the company can be RATED against -- a band on its marker, a Run Away percent on
+-- its deploy screen? A wider question than cellEligible, and deliberately split from it (the objective
+-- pass, 2026-10-21): a fight with a win clock cannot be walked off, because no model can run its clock
+-- to a decision with nobody watching -- but it can still be READ, and the judgement the flee system
+-- exists for (docs/deployment.md) must not vanish from a fight just because it has something to do
+-- besides kill. Every seated combat or elite qualifies; a guarded pack on the cellEligible terms.
+function EncounterBattle.cellRated(cell)
+    local enc = cell and cell.encounter
+    if not enc then return false end
+    if enc.kind == "pack" then return enc.composition ~= nil end
+    return enc.kind == "combat" or enc.kind == "elite"
+end
+
 -- ---------------------------------------------------------------------------
 -- The board, for a caller with no battle state
 -- ---------------------------------------------------------------------------

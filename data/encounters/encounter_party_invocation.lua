@@ -7,6 +7,9 @@
 --
 -- How you beat it: Cross the line once and accept the Root, or break the totem first so your spells
 -- reach her. Every turn you wait, her spell is bigger.
+--
+-- BREAK THE INVOCATION (the objective pass, 2026-10-21): the theurge falls and the party leaves. Her spell
+-- growing every turn she holds it is the clock; there is no other.
 local Adventurers = require("models.adventurers")
 
 return Adventurers.party({
@@ -20,4 +23,6 @@ return Adventurers.party({
         .. " Barbarian.",
     counter = "Cross the line once and accept the Root, or break the totem first so your spells reach her."
         .. " Every turn you wait, her spell is bigger.",
+    -- `markStays`: the warden's root line is already what stands between you and the channel.
+    objective = { type = "assassinate", target = "character_adv_theurge", enemy = "the theurge", markStays = true },
 })

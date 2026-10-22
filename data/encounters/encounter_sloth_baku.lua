@@ -13,7 +13,14 @@ return {
     condition = function(ctx) return ctx.biome == "tundra" end,
     -- RUNG 2: the seat, floor 10 (an elite's rung is an exact lock: models/encounter.lua).
     rung = 2,
-    objective = { type = "killAll" },
+    -- BAKU IS THE FIGHT (the objective pass, 2026-10-21): it falls and the cloud disperses. The moths keep drifting
+    -- in while it stands, so the cloud cannot be cleared and starving it means reaching it. This REVERSES the
+    -- explicit `killAll` the line shipped with.
+    objective = {
+        type = "assassinate", target = "character_baku", enemy = "Baku",
+        waves = { { every = 12, from = "surround", maxAlive = 5, unless = "character_baku",
+                    composition = { "character_poppy_moth", "character_poppy_moth" } } },
+    },
     composition = function(ctx)
         return Band.fill({ "character_baku" }, ctx, "character_poppy_moth", { base = 4, min = 4, max = 5 })
     end,

@@ -104,6 +104,12 @@ function Autobattle.run(combat, opts)
     local maxTurns = opts.maxTurns or Autobattle.MAX_TURNS
 
     local turns = 0
+    -- `between(combat)` runs before every judgement: what a watched fight's checkOutcome does besides
+    -- asking -- walking the waves on, settling a captive or a runner (tests/support/objective_run.lua).
+    -- Without it this loop can only finish a fight the model decides alone, which is why the walk-off
+    -- still refuses every fight with a win clock (EncounterBattle.eligible).
+    local between = opts.between
+    if between then between(combat) end
     local result = Combat.evaluate(combat)
     while result == nil do
         if turns >= maxTurns then return nil, turns end
@@ -123,6 +129,7 @@ function Autobattle.run(combat, opts)
         -- watched battle does at the end of every turn.
         Combat.drainFx(combat)
 
+        if between then between(combat) end
         result = Combat.evaluate(combat)
     end
 

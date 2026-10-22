@@ -13,6 +13,9 @@ return {
     weight = 3,
     condition = function(ctx) return ctx.biome == "tundra" end,
     rung = 1,
+    -- THE KEEPER IS THE FIGHT (the objective pass, 2026-10-21): put it down and the bog bodies it holds up lie
+    -- back down. Reaching it through the line was always the question; now it is the whole answer.
+    objective = { type = "assassinate", target = "character_cairn_keeper", enemy = "the Cairn-Keeper" },
     composition = function(ctx)
         return Band.fill({ "character_cairn_keeper" }, ctx, "character_bog_body", { base = 3, min = 3, max = 4 })
     end,

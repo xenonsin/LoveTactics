@@ -5,6 +5,8 @@
 --
 -- HOMED ON THE SEAT (rung 2), beside the Tangle and the Manticores and at their weight. It strays nowhere:
 -- a seat's fight is never dealt above its home, and this circle has no floor under the seat.
+-- A STRAY DELVER STANDS ALONE IN THE MIDDLE (the objective pass, 2026-10-21), and wyverns dive on whoever
+-- stands alone. The loop the fight teaches is the loss condition now: keep the stranger company or lose them.
 -- Forest-locked with no depth gate, like the rest of the wood's stock (encounter_wolf_pack.lua argues it).
 local Band = require("models.band")
 
@@ -17,4 +19,9 @@ return {
     composition = function(ctx)
         return Band.fill({}, ctx, "character_wyvern", { base = 2, per = 6, max = 3 })
     end,
+    allies = { "character_stray_delver" },
+    objective = {
+        type = "killAll", enemy = "the wyverns",
+        protect = "character_stray_delver", anchor = "center",
+    },
 }
