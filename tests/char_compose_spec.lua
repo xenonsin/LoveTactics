@@ -64,6 +64,12 @@ local ALIAS = {
     -- ...and a dead Gilt Wyrm, stood up by the Paymaster's reveal (2026-09-26): the wyrm's token in bone.
     character_bone_wyrm = "character_gilt_wyrm",
 
+    -- FLOOR ONE'S COPIES OF ACT 0'S BEASTS (2026-10-21): the same newt, boar and pod, unpinned so they
+    -- grow, extending the tutorial blueprints and riding their sprite file. One body, two blueprints.
+    character_ember_newt = "character_demon_imp_tutorial",
+    character_cinder_boar = "character_demon_grunt_tutorial",
+    character_puffcap = "character_demon_bomblet_tutorial",
+
     -- THE RIFT'S ADVENTURERS, SLICE B (2026-10-09): a race-free adventurer body is its discipline's
     -- exemplar met as traffic, and wears the exemplar's token (tools/char_compose.lua says the same).
     character_adv_barbarian = "character_barbarian",

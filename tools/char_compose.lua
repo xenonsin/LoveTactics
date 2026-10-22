@@ -364,6 +364,12 @@ local CHARACTER_SILHOUETTE = {
     demon_imp_tutorial = "lorc/salamander",          -- the Ember Newt: a salamander in its own flame
     demon_grunt_tutorial = "cathelineau/boar-ensign", -- the Cinder Boar (the plain boar keeps `boar`)
     demon_bomblet_tutorial = "lorc/super-mushroom",  -- the Puffcap: a spotted pod that bursts
+    -- ...and the same three as floor one's own traffic (2026-10-21): unpinned copies that EXTEND the
+    -- bodies above and ride their sprite file, so they must resolve to the picture that file is
+    -- composed from (tests/char_compose_spec.lua's ALIAS).
+    ember_newt = "lorc/salamander",
+    cinder_boar = "cathelineau/boar-ensign",
+    puffcap = "lorc/super-mushroom",
     demon_champion_tutorial = "delapouite/devil-mask",
     demon_lord = "caro-asercion/tarot-15-the-devil",
 
@@ -1000,6 +1006,10 @@ local CHARACTER_TINT = {
     demon_imp_tutorial = "#ef7d4a",     -- ELEMENT_TINT.fire
     demon_grunt_tutorial = "#c9a06a",   -- KIND_TINT.beast
     demon_bomblet_tutorial = "#c9a06a", -- KIND_TINT.beast
+    -- Their floor-one copies, which share the sprite file and so must share the tint.
+    ember_newt = "#ef7d4a",             -- ELEMENT_TINT.fire
+    cinder_boar = "#c9a06a",            -- KIND_TINT.beast
+    puffcap = "#c9a06a",                -- KIND_TINT.beast
 }
 
 local function tintFor(def, id)
