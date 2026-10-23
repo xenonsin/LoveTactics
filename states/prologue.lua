@@ -372,10 +372,12 @@ function prologue.runBattle(map, onWinExtra)
 end
 
 -- Launch the overworld flight leg, handing control back here (not to the hub) when its objective clears.
-function prologue.runOverworld(quest)
+-- `resume` (optional) is the saved board from models/save.lua's Save.restoreRun, which puts the company
+-- back where it quit with its wounds -- so the refill is skipped for it, as it is for any resumed run.
+function prologue.runOverworld(quest, resume)
     local p = Player.active
-    Player.restore(p)
-    State.switch(require("states.game"), quest, nil, p, prologue.resume)
+    if not resume then Player.restore(p) end
+    State.switch(require("states.game"), quest, nil, p, prologue.resume, resume)
     -- ...and what Act 0 owes itself the moment the Champion falls, which is BEFORE the leg ends.
     -- The capstone opens the road rather than the city (the objective's `opensExit`), so the company
     -- is put back on the map with a class screen to read -- and it has to be holding the level that
@@ -400,8 +402,10 @@ local function battle(map, onWinExtra)
     return function() prologue.runBattle(map, onWinExtra) end
 end
 
+-- The one beat that can take a saved board (prologue.continue passes it); every other thunk ignores
+-- its argument.
 local function overworld(quest)
-    return function() prologue.runOverworld(quest) end
+    return function(resume) prologue.runOverworld(quest, resume) end
 end
 
 -- ---------------------------------------------------------------------------
@@ -481,6 +485,8 @@ function prologue.next()
     prologue.cursor = prologue.cursor + 1
     local beat = prologue.beats[prologue.cursor]
     if beat then
+        -- Stamped, not saved: the next save the beat writes carries it (see prologue.continue).
+        if Player.active then Player.active.prologueBeat = prologue.cursor end
         beat()
     else
         -- THE BACKSTOP, not the payment. The Champion pays the exit level where it falls
@@ -489,6 +495,12 @@ function prologue.next()
         -- payExit is idempotent: a route that ever reaches the city without passing the capstone --
         -- a beat reordered, a leg cut short in testing -- still arrives on the level Act 0 promises.
         prologue.payExit(Player.active)
+        if Player.active then
+            Player.active.prologueBeat = nil
+            Player.active.activeRun = nil -- the floor-one leg's parked board (states/game.lua)
+            -- Written now, or a quit on the city's first frame would load back onto a finished leg.
+            Player.save()
+        end
         State.switch(require("states.hub"))
     end
 end
@@ -517,8 +529,29 @@ function prologue.begin()
     prologue.next()
 end
 
--- Reached from character creation (a fresh New Game -> begin) or from resume() after a battle/overworld
--- leg (pendingAdvance -> advance). Those are the only two callers, so a plain flag check suffices.
+-- PICKING ACT 0 BACK UP FROM A SAVE (states/saves.lua's load, which Continue shares). `beat` is the
+-- `prologueBeat` the save carried. The beat is played again from its top -- a fight restarts, a scene
+-- replays -- except the floor-one leg, which takes `run` (the board Save.restoreRun rebuilt) and puts
+-- the company back on the tile it quit on. Every beat before it already left its mark in the save (Rowan
+-- on the roster, the Roll open), so nothing earlier is replayed.
+function prologue.continue(beat, run)
+    local p = Player.active
+    prologue.beats = buildBeats()
+    -- Not saved (see begin): a company loaded mid-prologue has still never walked into the city.
+    if p then p.hubIntro = "arrival" end
+    if run and run.prologue and prologue.beats[beat] then
+        prologue.cursor = beat
+        if p then p.prologueBeat = beat end
+        prologue.beats[beat](run)
+        return
+    end
+    prologue.cursor = math.max(0, (beat or 1) - 1)
+    prologue.pendingAdvance = true
+    State.switch(prologue)
+end
+
+-- Reached from character creation (a fresh New Game -> begin), from resume() after a battle/overworld
+-- leg, or from continue() on a load (both pendingAdvance -> advance). A plain flag check suffices.
 function prologue.enter()
     -- THE BED THE SCENES ARE PLAYED UNDER, and it used to be silence -- a bare stopMusic() here, the
     -- only one in the game. The reasoning was that the prologue owns no screen of its own, and it was
@@ -877,6 +910,7 @@ function prologue.skip(player)
     -- (states/hub.lua). That staging is the tail of the first-time experience this button exists to get
     -- past, so it is not set: the skip lands in the city a played prologue leaves behind.
     player.hubIntro = nil
+    player.prologueBeat = nil
 end
 
 -- ---------------------------------------------------------------------------

@@ -1765,10 +1765,12 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
     -- tutorial does, without turning the coach on -- it is a cutscene the reward rides on, not a
     -- board quest to abandon. See backVisible and arena_debut's followUp.
     game.scripted = mp.scripted
-    game.itemsVisible = (mp.tutorial ~= "flight")
+    -- A RESUMED flight leg opens both. The chest and the fight that reveal them are stops on the board,
+    -- and a company that quit after taking them would come back to buttons nothing could reveal again.
+    game.itemsVisible = (mp.tutorial ~= "flight") or resume ~= nil
     -- The Potions button's own gate, held shut for the flight leg until the first fight is won (see
     -- useVisible and the combat onWin below). True from the start everywhere else.
-    game.useUnlocked = (mp.tutorial ~= "flight")
+    game.useUnlocked = (mp.tutorial ~= "flight") or resume ~= nil
     game.coach = nil
     game.classTaught = nil -- Act 0's class-tab lesson, spent by taking the tab (classLessonNext)
     game.coachChar = nil
@@ -1857,6 +1859,23 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
             entry = entry,
         }
         Player.save() -- the first autosave: entering the overworld (and, on a resume, re-establishing it)
+    elseif game.tutorial == "flight" and game.player then
+        -- ACT 0'S LEG PARKS ITS BOARD TOO, though it is not resumable in the sense above: it has no hub
+        -- to fall back on and hands control back to the prologue rather than to the city. Every fight on
+        -- it still writes a save, and before this a quit there loaded into a city the company had not
+        -- reached yet. So the board rides the save the same way, marked `prologue` so the restore leaves
+        -- the quest to states/prologue.lua (prologue.continue), which re-enters this leg with it. No day
+        -- is spent and no rollback point is taken -- the prologue has no calendar and no walk-out, and
+        -- prologue.next drops this run on the way into the city (the hub's backstop clears it again).
+        game.player.activeRun = {
+            questId = "prologue_floor_one",
+            prologue = true,
+            grid = game.grid,
+            map = game.map,
+            abilityState = game.abilityState,
+            relicState = game.relicState,
+        }
+        Player.save()
     else
         clearRun()
     end

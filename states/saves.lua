@@ -73,8 +73,13 @@ function saves.load(file)
     if not Save.loadable(Save.peek(file)) then return end
     Player.start(false, file)
     local run = Player.active and Player.active.resumeRun
-    if run then
-        Player.active.resumeRun = nil
+    if run then Player.active.resumeRun = nil end
+    -- A save written in Act 0 goes back into Act 0, onto the floor-one board if that is where it was
+    -- written (states/prologue.lua's continue). The city is not there yet for it to open on.
+    local beat = Player.active and Player.active.prologueBeat
+    if beat then
+        require("states.prologue").continue(beat, run)
+    elseif run and not run.prologue then
         State.switch(require("states.game"), run.quest, nil, Player.active, nil, run)
     else
         State.switch(require("states.hub"))

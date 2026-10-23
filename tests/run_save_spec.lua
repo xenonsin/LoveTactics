@@ -111,4 +111,29 @@ return {
             assert(restored.resumeRun == nil, "a player who never entered a run carries no resume descriptor")
         end,
     },
+    {
+        -- Act 0's floor-one leg used to park nothing, so a quit on it loaded into a city the company had
+        -- not reached. Its quest lives in states/prologue.lua, not Quest.defs, so the restore must keep
+        -- the board without looking the quest up -- and the beat has to come back to say where to go.
+        name = "a save written on Act 0's leg comes back as that leg and that beat",
+        fn = function()
+            local player = Player.new()
+            local grid = genGrid()
+            player.prologueBeat = 6
+            player.activeRun = {
+                questId = "prologue_floor_one", prologue = true, grid = grid,
+                map = { px = grid.start.x, py = grid.start.y + 1, keysHeld = {}, cacheHaul = {} },
+            }
+            local restored = Save.restore(reserialize(Save.snapshot(player)))
+            assert(restored.prologueBeat == 6, "the prologue's beat rides the save")
+            local run = restored.resumeRun
+            assert(run and run.prologue, "the leg's board comes back, marked as the prologue's")
+            assert(run.quest == nil, "and leaves the quest for the prologue to hand in")
+            assert(run.px == grid.start.x and run.py == grid.start.y + 1, "with the company where it quit")
+
+            player.prologueBeat, player.activeRun = nil, nil
+            assert(Save.restore(reserialize(Save.snapshot(player))).prologueBeat == nil,
+                "a company past Act 0 carries no beat, so it loads into the city")
+        end,
+    },
 }

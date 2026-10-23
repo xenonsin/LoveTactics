@@ -398,6 +398,10 @@ function Save.snapshotRun(run, player)
 
     return {
         questId = run.questId,
+        -- ACT 0'S FLOOR-ONE LEG. Its quest is a table in states/prologue.lua, never in Quest.defs, so
+        -- the restore below takes this branch before the lookup and leaves the quest for the prologue
+        -- to hand back in (prologue.continue).
+        prologue = run.prologue or nil,
         day = run.day,
         trip = trip,
         tripDone = tripDone,
@@ -431,7 +435,11 @@ function Save.restoreRun(snap)
     -- "quest content removed since the run was saved". A legacy board quest falls through to the
     -- original path untouched, which is what lets a player mid-quest at upgrade time finish it.
     local descent, quest
-    if snap.trip and snap.trip.groundId then
+    if snap.prologue then
+        -- Act 0's leg (see snapshotRun). No quest here: states/prologue.lua owns that table and passes
+        -- it to game.enter itself, so this descriptor carries only the board and the company on it.
+        quest = nil
+    elseif snap.trip and snap.trip.groundId then
         -- A GROUND the company was walking, rather than a single piece of work. Rebuilt from the ids
         -- the run carried, exactly like the descent branch below rebuilds a floor: the synthesized id
         -- (`trip:tundra`) is not in Quest.defs and never will be, so the lookup further down would
@@ -466,6 +474,7 @@ function Save.restoreRun(snap)
     if not ok or not grid then return nil end
     return {
         questId = snap.questId,
+        prologue = snap.prologue or nil,
         quest = quest,
         descent = descent,
         -- The day the run was ENTERED on, carried with it rather than re-read from the clock on
@@ -857,6 +866,12 @@ function Save.snapshot(player)
         -- coach just pointed at is gone on resume. Elided when false: unlike `cityReached` there is no
         -- older save to tell apart from a fresh one, so absent and false mean the same thing.
         classesOpen = player.classesOpen or nil,
+        -- WHERE ACT 0 STANDS, as the index of the prologue beat being played (states/prologue.lua). The
+        -- prologue is a sequence held in memory, and a save written partway through it -- every fight
+        -- on the floor-one leg writes one -- used to load straight into the city, past the beats still
+        -- owed and off the board the company was standing on. Present only while the prologue is under
+        -- way; prologue.next clears it on the way into the hub. Purely additive.
+        prologueBeat = player.prologueBeat,
         -- ...AND THE TALLY ITSELF, which used to ride on the run (models/descent.lua's snapshot) and now
         -- rides here beside the mark that gates its readout. The note above is the reason it had to move:
         -- it said the tally "falls back to nought the moment they descend again", which was survivable
@@ -1464,6 +1479,7 @@ function Save.restore(snap)
         -- genuine pre-city save written since carries an explicit false, which is what this respects.
         cityReached = snap.cityReached ~= false,
         classesOpen = snap.classesOpen == true,
+        prologueBeat = type(snap.prologueBeat) == "number" and snap.prologueBeat or nil,
         -- The tally (Descent.count). READ OFF THE RUN AS A FALLBACK, because that is where every save
         -- written before the move put it -- and it is read from the RAW snapshot rather than from the
         -- restored run, which no longer carries the field at all. A company mid-descent when this landed
