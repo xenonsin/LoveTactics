@@ -2234,6 +2234,14 @@ Grade.SLOT_PINS = {
     ability_brace = { at = 1, why = "the knight's root-unlock gift" },
     ability_quick_brew = { at = 1, why = "the alchemist's root-unlock gift" },
 
+    -- THE RAMP'S BACK END, PAID BACK (2026-10-22). The pins above added three wares to the front quarter
+    -- of the ladder and took Charm out of the back, and the city's shelves read 1.11 against the 1.15
+    -- tests/unlock_ladder_spec.lua cuts the ramp for. A full re-cut was tried on 10-15 and moved ~30 line
+    -- trophies off their floors, so two finds were lifted by hand instead: the grader's two highest
+    -- unpinned stocked finds in the front quarter, both Lodge bows, both described as late pieces.
+    weapon_last_word = { at = 13, why = "the heaviest shot in the game when a fight goes wrong: a deep find" },
+    weapon_windward = { at = 12, why = "'for afterwards', past the bows that teach distance first" },
+
     -- ---------------------------------------------------------------------------
     -- RE-PINNED AFTER THE RULER MOVED (2026-09-22)
     -- ---------------------------------------------------------------------------
