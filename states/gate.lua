@@ -214,6 +214,8 @@ function gate:build()
                 title = "The Company's Pack",
                 party = Descent.party(gate.run, gate.player),
                 pool = "both",
+                -- A piece sent off a body here is being packed, not put away: the shelf is a walk back.
+                gridSendTo = "pack",
                 -- The two teaching tabs answer to the city, not to this screen: a body at the mouth of
                 -- the stair has the same ladder it had in the Armory an hour ago.
                 tactics = Descent.tacticsUnlocked(gate.player),

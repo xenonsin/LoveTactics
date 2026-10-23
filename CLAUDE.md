@@ -151,9 +151,12 @@ The codebase is organized into layers loaded via `require()`. See
   **THE BAG IS THE ONLY CONTAINER UNDERGROUND, AND IT IS WHERE EVERY FIND LANDS.** The law above was
   written before there was one, and it was enforced in exactly one place -- the Use panel -- while the
   Loadout screen went on showing the whole town shelf as a live drag source on floor nine. It is a real
-  container now, packed at the Armory or at the Gate (`ui/panels/party.lua`'s `pool` opt puts a
-  **Stash | Pack** switch over the column; underground the switch is not drawn, because there is
-  nothing to switch to). `Player.stow` is the ONE seam that routes a grant -- a chest, a fight's
+  container now, packed at the Armory or at the Gate (`ui/panels/party.lua`'s `pool = "both"` stacks a
+  28-slot **pack band over the stash** in one column, empty slots drawn; a piece moves across by drag,
+  click-to-place, or the one-press send -- right-click, X -- and the band holds the bag to
+  `Descent.carryMax` exactly as a chest does; underground the column is the bag alone). It replaced a
+  Stash | Pack switch that showed one container at a time and dropped the hand when it flipped, so a
+  draught reached the bag only by way of somebody's grid (`tests/pack_band_spec.lua`). `Player.stow` is the ONE seam that routes a grant -- a chest, a fight's
   spoils, a lift off a pocket, a pile picked back up -- so no other seam on the way in learns a rule;
   `Player.packOpen` is the flag, and it reads `descentRun.entry` rather than `descentRun`, because the
   run is seated the moment you walk onto the Gate screen and a company packing a bag there is still

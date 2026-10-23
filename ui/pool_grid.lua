@@ -32,6 +32,18 @@
 -- ledger nor its persistence -- the host passes closures over the player (models/player.lua's
 -- Player.markNew) -- so this stays a pure view of whatever list it was handed.
 --
+-- A FIXED-SIZE CONTAINER draws its empty slots. The pack holds 28 (Descent.carryMax), and a bag drawn as
+-- a list that only grows says how much is in it but never how much room is left -- which is the question
+-- a player packing it is asking. `slots` (a number, or a function asked at draw since a carried bag can
+-- widen the ceiling) puts a dim empty plate in every cell past the last item up to that count. The empty
+-- plates are not cells: they hold nothing, so the cursor and a click still only land on items, and the
+-- whole widget stays the drop target it always was (:contains).
+--
+-- `cell` and `gap` shrink a pool that has to share its column (the Loadout's pack band sits over the
+-- stash). Below NAME_MIN the name strip is dropped rather than squeezed, and the hover tooltip carries
+-- the name instead. `arrows = false` reclaims the two scroll bands for a pool that is sized to show
+-- everything it holds.
+--
 --   local pool = PoolGrid.new({ x =, y =, w =, h =, isNew = fn, onSeen = fn })
 --   pool:setItems(player.stash)        -- stash source
 --   pool:setStore(Vendor.stock(...))   -- store source
@@ -49,6 +61,10 @@ PoolGrid.__index = PoolGrid
 local CELL = 64
 local GAP = 8
 local ARROW_H = 20 -- clickable scroll arrows above and below the grid
+-- The smallest cell that still has room for a name strip under its icon.
+local NAME_MIN = 56
+
+PoolGrid.CELL, PoolGrid.GAP, PoolGrid.ARROW_H = CELL, GAP, ARROW_H
 
 -- Icon/plate tint per item type, matching ui/item_tooltip.lua and the old stash list.
 local TYPE_COLOR = {
@@ -102,17 +118,25 @@ function PoolGrid.new(opts)
     -- `emptyText() -> string|nil`, optional: what an empty well says when the host, not the counter,
     -- is what emptied it (see the draw). Nil for every pool that cannot narrow itself.
     self.emptyText = opts.emptyText
+    self.cell = opts.cell or CELL
+    self.gap = opts.gap or GAP
+    self.arrows = opts.arrows ~= false
+    self.names = self.cell >= NAME_MIN
+    self.slots = opts.slots
     self.nameFont = Theme.body(11)
     self.smallFont = Theme.body(11)
     self.bigFont = Theme.display(20)
 
     -- Cells tile between the two scroll arrows.
-    self.gridY = self.y + ARROW_H
-    self.gridH = self.h - ARROW_H * 2
-    self.cols = math.max(1, math.floor((self.w + GAP) / (CELL + GAP)))
-    self.visRows = math.max(1, math.floor((self.gridH + GAP) / (CELL + GAP)))
-    self.upArrow = { x = self.x, y = self.y, w = self.w, h = ARROW_H }
-    self.downArrow = { x = self.x, y = self.y + self.h - ARROW_H, w = self.w, h = ARROW_H }
+    local arrowH = self.arrows and ARROW_H or 0
+    self.gridY = self.y + arrowH
+    self.gridH = self.h - arrowH * 2
+    self.cols = math.max(1, math.floor((self.w + self.gap) / (self.cell + self.gap)))
+    self.visRows = math.max(1, math.floor((self.gridH + self.gap) / (self.cell + self.gap)))
+    if self.arrows then
+        self.upArrow = { x = self.x, y = self.y, w = self.w, h = ARROW_H }
+        self.downArrow = { x = self.x, y = self.y + self.h - ARROW_H, w = self.w, h = ARROW_H }
+    end
     return self
 end
 
@@ -165,7 +189,13 @@ function PoolGrid:clampView()
 end
 
 function PoolGrid:count() return #self.cells end
-function PoolGrid:totalRows() return math.ceil(self:count() / self.cols) end
+-- How many plates are drawn: the items, or the container's size when it is bigger.
+function PoolGrid:slotCount()
+    local slots = self.slots
+    if type(slots) == "function" then slots = slots() end
+    return math.max(self:count(), slots or 0)
+end
+function PoolGrid:totalRows() return math.ceil(self:slotCount() / self.cols) end
 function PoolGrid:maxOffset() return math.max(0, self:totalRows() - self.visRows) end
 function PoolGrid:cellAt(i) return self.cells[i] end
 
@@ -194,7 +224,8 @@ function PoolGrid:cellRect(i)
     local col = (i - 1) % self.cols
     local visRow = row - self.offset
     if visRow < 0 or visRow >= self.visRows then return nil end
-    return self.x + col * (CELL + GAP), self.gridY + visRow * (CELL + GAP), CELL, CELL
+    local step = self.cell + self.gap
+    return self.x + col * step, self.gridY + visRow * step, self.cell, self.cell
 end
 
 function PoolGrid:indexAt(px, py)
@@ -261,7 +292,7 @@ function PoolGrid:draw()
     Theme.set(self.focused and Theme.accentAmber or Theme.frame)
     love.graphics.rectangle("line", self.x, self.y, self.w, self.h, 6, 6)
 
-    if self:count() == 0 then
+    if self:count() == 0 and self:slotCount() == 0 then
         love.graphics.setFont(self.nameFont)
         Theme.set(Theme.muted)
         -- WHOSE EMPTINESS IS IT. "Nothing for sale" is the counter's answer; a rack emptied by the
@@ -277,20 +308,33 @@ function PoolGrid:draw()
 
     -- Scroll arrows, dimmed at the ends of the list (still drawn, so the column never reflows).
     love.graphics.setFont(self.smallFont)
-    local canUp, canDown = self.offset > 0, self.offset < self:maxOffset()
-    Theme.set(Theme.muted, canUp and 0.95 or 0.25)
-    love.graphics.printf("^", self.upArrow.x, self.upArrow.y + 4, self.upArrow.w, "center")
-    Theme.set(Theme.muted, canDown and 0.95 or 0.25)
-    love.graphics.printf("v", self.downArrow.x, self.downArrow.y + 4, self.downArrow.w, "center")
+    if self.arrows then
+        local canUp, canDown = self.offset > 0, self.offset < self:maxOffset()
+        Theme.set(Theme.muted, canUp and 0.95 or 0.25)
+        love.graphics.printf("^", self.upArrow.x, self.upArrow.y + 4, self.upArrow.w, "center")
+        Theme.set(Theme.muted, canDown and 0.95 or 0.25)
+        love.graphics.printf("v", self.downArrow.x, self.downArrow.y + 4, self.downArrow.w, "center")
+    end
 
     for i = 1, self:count() do
         local sx, sy = self:cellRect(i)
         if sx then self:drawCell(i, sx, sy) end
     end
+    -- The room left, as empty plates: the same shape as a filled cell with nothing on it.
+    for i = self:count() + 1, self:slotCount() do
+        local sx, sy, sw, sh = self:cellRect(i)
+        if sx then
+            Theme.set(Theme.panel2, 0.45)
+            love.graphics.rectangle("fill", sx, sy, sw, sh, 6, 6)
+            Theme.set(Theme.frame, 0.5)
+            love.graphics.rectangle("line", sx, sy, sw, sh, 6, 6)
+        end
+    end
     love.graphics.setColor(1, 1, 1)
 end
 
 function PoolGrid:drawCell(i, sx, sy)
+    local CELL = self.cell
     local cell = self.cells[i]
     local item = cell.item
     local lifted = (self.picked == i)
@@ -303,29 +347,35 @@ function PoolGrid:drawCell(i, sx, sy)
     -- Icon: the item's art, or its initial on a type-tinted plate.
     local sprite = item.sprite
     local icx, icy = sx + CELL / 2, sy + CELL / 2
+    -- Without a name strip the icon takes the whole plate rather than leaving the strip's room empty.
+    -- The full-size figures are the ones this always drew (icon centred 6 above the middle, plate 38).
+    local band = self.names and 16 or 0
     if type(sprite) == "userdata" then
         love.graphics.setColor(dim, dim, dim)
         local iw, ih = sprite:getDimensions()
-        local scale = math.min((CELL - 12) / iw, (CELL - 22) / ih)
-        love.graphics.draw(sprite, icx, icy - 6, 0, scale, scale, iw / 2, ih / 2)
+        local scale = math.min((CELL - 12) / iw, (CELL - 6 - band) / ih)
+        love.graphics.draw(sprite, icx, icy - (self.names and 6 or 0), 0, scale, scale, iw / 2, ih / 2)
     else
-        local ph = CELL - 26
+        local ph = CELL - 10 - band
         love.graphics.setColor(col[1] * 0.5 * dim, col[2] * 0.5 * dim, col[3] * 0.5 * dim)
         love.graphics.rectangle("fill", icx - ph / 2, sy + 5, ph, ph, 5, 5)
         love.graphics.setFont(self.bigFont)
         love.graphics.setColor(dim, dim, dim)
-        love.graphics.printf((item.name or "?"):sub(1, 1), icx - ph / 2, icy - 18, ph, "center")
+        love.graphics.printf((item.name or "?"):sub(1, 1), icx - ph / 2,
+            self.names and (icy - 18) or (sy + 5 + ph / 2 - 12), ph, "center")
     end
 
     -- Name band along the bottom, scaled to fit one line.
-    love.graphics.setColor(0, 0, 0, 0.55)
-    love.graphics.rectangle("fill", sx + 1, sy + CELL - 15, CELL - 2, 14, 0, 0, 6, 6)
-    -- One size for every cell in the pool (never scaled -- a scaled font blurs); a name too long for
-    -- the band ellipsizes.
-    local font, name = Theme.itemTileName(item.name or "?", CELL - 6)
-    love.graphics.setFont(font)
-    love.graphics.setColor(col[1] * dim, col[2] * dim, col[3] * dim)
-    love.graphics.print(name, sx + CELL / 2 - font:getWidth(name) / 2, sy + CELL - 14)
+    if self.names then
+        love.graphics.setColor(0, 0, 0, 0.55)
+        love.graphics.rectangle("fill", sx + 1, sy + CELL - 15, CELL - 2, 14, 0, 0, 6, 6)
+        -- One size for every cell in the pool (never scaled -- a scaled font blurs); a name too long for
+        -- the band ellipsizes.
+        local font, name = Theme.itemTileName(item.name or "?", CELL - 6)
+        love.graphics.setFont(font)
+        love.graphics.setColor(col[1] * dim, col[2] * dim, col[3] * dim)
+        love.graphics.print(name, sx + CELL / 2 - font:getWidth(name) / 2, sy + CELL - 14)
+    end
 
     -- Corner badge: a store price, or a stack count. The unseen dot claims the same top-right corner
     -- (it is the mark the eye should find first), so the badge steps aside for it rather than printing
@@ -445,8 +495,8 @@ end
 -- it as handled -- and, for a cell, which index, so it knows to run a transfer.
 function PoolGrid:mousepressed(x, y, button)
     if button ~= 1 then return false end
-    if pointIn(self.upArrow, x, y) then self:scroll(-1) return true end
-    if pointIn(self.downArrow, x, y) then self:scroll(1) return true end
+    if self.upArrow and pointIn(self.upArrow, x, y) then self:scroll(-1) return true end
+    if self.downArrow and pointIn(self.downArrow, x, y) then self:scroll(1) return true end
     local i = self:indexAt(x, y)
     if not i then return false end
     self.cursor = i
