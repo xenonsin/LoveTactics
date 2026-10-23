@@ -1,6 +1,6 @@
 -- The victory panel's BOX, against the space it is actually drawn in (ui/panels/battle_summary.lua).
 --
--- This panel grows with the fight: a banner, the purse, an experience bar and a technique block per
+-- This panel grows with the fight: a banner, the purse, a technique block per
 -- body, a grid of loot, the action row, the review button. In the 1280x720 space it was authored in
 -- there is room for all of it and the box simply gets taller. The fight is also played in the short
 -- handheld space (880x450 -- states/battle.lua's handheldSpace), where a rich victory came out some
@@ -48,15 +48,13 @@ local function inSpace(w, h, fn)
     assert(ok, err)
 end
 
--- THE RICHEST ORDINARY VICTORY: coin, six distinct drops, a bar and four technique rows for each of
--- four bodies, the bench's share, and both exits. Anything that fits this fits a quieter fight.
+-- THE RICHEST ORDINARY VICTORY: coin, six distinct drops, four technique rows for each of four
+-- bodies, and both exits. Anything that fits this fits a quieter fight.
 local function richWin()
     local bodies = { "Knight", "Archer", "Mage", "Rogue" }
-    local xp, tech = {}, {}
+    local tech = {}
     for i, name in ipairs(bodies) do
         local char = { id = "char" .. i, name = name }
-        xp[i] = { char = char, name = name, gain = 30 + i, from = 370, to = 400,
-                  fromLevel = 3, toLevel = 4 }
         tech[i] = { char = char, name = name, rungs = {}, houses = {
             { key = "warrior", amount = 14 }, { key = "ranger", amount = 9 },
             { key = "mage", amount = 6 }, { key = "rogue", amount = 4 },
@@ -72,7 +70,7 @@ local function richWin()
             "consumable_acid_bomb", "consumable_ball_bearings", "consumable_battle_tonic",
             "consumable_smoke_bomb", "weapon_iron_dagger", "armor_chainmail",
         } },
-        technique = tech, experience = xp, benchShare = 12,
+        technique = tech,
         encounter = { name = "Rift Mouth" },
         actions = { { label = "Continue", onSelect = function() end } },
         onReviewLog = function() end,
@@ -149,14 +147,12 @@ return {
         end,
     },
     {
-        name = "a handheld victory screen carries no per-body bars at all",
+        name = "a handheld victory screen carries no per-body section at all",
         fn = function()
             withFonts(function()
                 inSpace(880, 450, function()
                     local p = build(richWin())
                     assert(p.blocks == nil, "the per-body section is a desktop reading")
-                    assert(not p.hasXp, "no experience bars on a handheld")
-                    assert(p.benchShare == nil, "the bench line belongs to the section that went")
                 end)
                 -- ...and it is the SPACE that decides, not the haul: a quiet win with nothing in the
                 -- way keeps no bars either, so the screen answers the same way every fight.
@@ -177,10 +173,26 @@ return {
                 inSpace(1280, 720, function()
                     local p = build(richWin())
                     -- The per-body section is the grower that gives way in a short space; in the one
-                    -- the panel was authored for it must still be there, bars and bench line alike.
-                    assert(p.blocks and #p.blocks > 0, "the experience section vanished on a desktop")
-                    assert(p.hasXp, "the bars vanished on a desktop")
-                    assert(p.benchShare, "the bench line vanished on a desktop")
+                    -- the panel was authored for it must still be there.
+                    assert(p.blocks and #p.blocks > 0, "the technique section vanished on a desktop")
+                end)
+            end)
+        end,
+    },
+    {
+        name = "the victory panel reports no experience",
+        fn = function()
+            withFonts(function()
+                inSpace(1280, 720, function()
+                    -- Experience is played mid-fight on the level-up card; the panel is the haul.
+                    local win = richWin()
+                    win.experience = { { name = "Knight", from = 370, to = 400, fromLevel = 3 } }
+                    win.benchShare = 12
+                    local p = build(win)
+                    for _, block in ipairs(p.blocks or {}) do
+                        assert(block.xp == nil, "a body block carried an experience bar")
+                    end
+                    assert(p.benchShare == nil, "the bench line came back")
                 end)
             end)
         end,
