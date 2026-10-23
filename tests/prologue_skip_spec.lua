@@ -106,8 +106,16 @@ return {
             --                topped up rather than earned, because four fights land within a whisker
             --                of the line either side of it and a tutorial that never levels anybody
             --                is a tutorial that never shows the level-up panel.
+            --
+            -- HELD, NOT MEASURED (2026-10-22): every Act 0 fight banks under prologue.xpCap's ceiling,
+            -- and a played road (48 to 84 a head) always reaches it -- so the road's income IS the
+            -- ceiling, one short of the exit, and the Champion's win is the level-up.
             local level = Experience.levelFor(prologue.SKIP_XP)
-            local played = Experience.levelFor(84) -- measured, a real Act 0 (see experience_spec)
+            local cap = prologue.xpCap()
+            local played = Experience.levelFor(math.min(48, cap.ceiling))
+            assert(prologue.SKIP_XP == cap.ceiling and cap.exit == Experience.totalFor(prologue.EXIT_LEVEL),
+                "the skip banks the hold, and the hold sits one short of the exit level")
+            assert(level == prologue.EXIT_LEVEL - 1, "Act 0's fighting stops a level short of its exit")
             assert(level == played, string.format(
                 "the skip lands level %d where a played Act 0 lands %d -- SKIP_XP has drifted off "
                 .. "what the road actually pays", level, played))

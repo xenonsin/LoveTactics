@@ -254,7 +254,14 @@ end
 -- without it -- and it lives on `combat` beside `techniqueByActor`, which is there for the same kind of
 -- reason. Keyed by the CHARACTER rather than the unit: a body that rotates off the board and back on is
 -- one earner, and units are per-battle objects while characters are the thing that persists.
+--
+-- `combat.xpCeiling`, when set, is a total no award may carry a body past (Act 0's hold under its exit
+-- level -- states/prologue.lua's prologue.xpCap). What it trims is not banked and not tallied.
 function Experience.credit(combat, char, amount)
+    local ceiling = combat and combat.xpCeiling
+    if ceiling and char and amount then
+        amount = math.min(amount, math.max(0, ceiling - (char.xp or 0)))
+    end
     Experience.award(char, amount)
     if not (combat and char) or not amount or amount <= 0 then return end
     combat.xpByChar = combat.xpByChar or {}

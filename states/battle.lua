@@ -909,7 +909,6 @@ local function finishBattle(result)
     --
     -- Awarding only; the levels themselves resolve on the overworld side, which is where a level-up has
     -- somewhere to be announced. Experience.resolve is idempotent, so nothing is lost by the gap.
-    local benchShare = 0
     if result == "win" and battle.player and battle.combat and battle.combat.xpByChar then
         local fielded = {}
         for _, u in ipairs(battle.combat.units or {}) do
@@ -917,7 +916,7 @@ local function finishBattle(result)
                 fielded[#fielded + 1] = u.char
             end
         end
-        benchShare = Experience.payBench(battle.player.roster, fielded, battle.combat.xpByChar)
+        Experience.payBench(battle.player.roster, fielded, battle.combat.xpByChar)
     end
 
     -- Wrap each state callback so pressing its button clears the overlay before handing control on.
@@ -954,19 +953,6 @@ local function finishBattle(result)
         -- rolls the party back to its pre-fight snapshot anyway, so naming a number there would be
         -- naming one about to be undone.
         technique = result == "win" and battle.combat and battle.combat.techniqueByActor or nil,
-        -- What each body on the board banked toward its next level, as the bar it fills. Read AFTER the
-        -- bench was paid above, which touches nobody on this list: these rows are the fielded earners
-        -- (`combat.xpByChar`), and the bench's share is reported as its own line rather than as four
-        -- more bars for bodies the player never watched swing.
-        --
-        -- Wins only, for the reason the technique note gives -- "Try Again" restores the party from its
-        -- pre-fight snapshot, so a bar drawn on a defeat would be filling with experience about to be
-        -- taken back. And a campaign player only, the same gate the bench share takes: a draft team is
-        -- drafted at the level it fights at and nothing resolves its experience into anything, so a bar
-        -- there would be filling toward a level that never arrives.
-        experience = result == "win" and battle.player and battle.combat
-            and Experience.report(battle.combat.xpByChar) or nil,
-        benchShare = benchShare,
         encounter = battle.encounter,
         actions = actions,
         -- What the overworld run was carrying used to be named here on a defeat, and is not: a loss takes
@@ -992,6 +978,27 @@ local function win()
     local saved, ofMany = Combat.protectedCount(battle.combat)
     battle.rescue = { saved = saved, of = ofMany }
 
+    -- THE LEVEL BEFORE THE VICTORY. The blow that ends the fight is usually the one that crosses a
+    -- level, and battle.releaseLevelUps stands down once the fight is over -- so that level used to
+    -- surface on the overworld AFTER the summary, the reward announced behind the screen that totals
+    -- it. Resolved here, ahead of the revive below so a body that fell keeps the downed rule
+    -- (Experience.resolveOnBoard), and played by battle.update once the last blow has settled; the
+    -- summary waits for the last card. A field rather than a local, for the ceiling reason below.
+    if battle.player and battle.xpOnWin then
+        battle.combat.xpCeiling = nil -- the fight is decided; the exit is paid past the hold
+        for _, u in ipairs(battle.combat.units or {}) do
+            if u.char and Combat.isPlayerControlled(u) and not u.summoned
+                and (u.char.xp or 0) < battle.xpOnWin then
+                Experience.credit(battle.combat, u.char, battle.xpOnWin - (u.char.xp or 0))
+            end
+        end
+    end
+    if battle.player and battle.combat.xpByChar then
+        local ups = Experience.resolveOnBoard(battle.combat.units, battle.player.roster)
+        local cards = require("ui.levelup_card").cardsFor(ups, battle.levelUpAuto)
+        if #cards > 0 then battle.winCards = cards end
+    end
+
     -- A won fight is not a lost life: any party member who fell is carried out to the overworld at a
     -- sliver of health rather than staying down. Only on a win -- a defeat costs the run outright.
     --
@@ -1007,6 +1014,8 @@ local function win()
     releaseParty()
     Sound.play("battle.win")
     Sound.music("music.victory") -- the tactical bed gives way to the exhale under the spoils panel
+    -- Level-up cards owed: battle.releaseWinCards plays them and then calls this.
+    if battle.winCards then battle.finishWin = function() finishBattle("win") end return end
     finishBattle("win")
 end
 
@@ -5533,6 +5542,7 @@ function battle.enter(self, opts)
     battle.player = opts.player
     -- A fresh fight has no level-up card pending and has checked nobody's experience yet.
     battle.levelCards, battle.levelCheckedAt = nil, nil
+    battle.winCards, battle.finishWin = nil, nil
     -- Which house's stock this run's fights salvage in: the quest's SPONSOR, the same resolution the
     -- map's caches use (states/game.lua). Nil on an unsponsored leg -- the prologue -- where a fight
     -- pays craft stock and nothing else.
@@ -5731,6 +5741,11 @@ function battle.enter(self, opts)
           -- click by click, and a miss there refuses the one move the player was just told to make
           -- (Tutorial.alwaysHits). Nil for every other fight in the game.
           alwaysHits = Tutorial.alwaysHits(battle.tutorial) or nil })
+    -- Act 0 holds the company under its exit level (states/prologue.lua's prologue.xpCap): nothing a
+    -- fight banks carries a body past `xpCeiling`, and the fight that opens the way out pays `xpOnWin`
+    -- on the win, so the level lands on the killing blow. Nil for every fight after the prologue.
+    battle.combat.xpCeiling = opts.xpCeiling
+    battle.xpOnWin = opts.xpOnWin
 
     -- THE FIGHT, RECORDED TO A FILE, in a debug build and nowhere else (models/combat_trace.lua). Opened
     -- here rather than inside Combat.new so the headless suite -- which builds combats by the thousand
@@ -6084,6 +6099,21 @@ function battle.releaseLevelUps()
     for _, card in ipairs(LevelupCard.cardsFor(ups, battle.levelUpAuto)) do battle.levelCards:push(card) end
 end
 
+-- The winning blow's level-ups (stamped by win()): shown once the board has settled, and the summary
+-- built only when the last card is dismissed.
+function battle.releaseWinCards()
+    if battle.winCards then
+        if battle.fx:busy() or not battle.fx:hpSettled() or not battle.fx:floatersDone() then return end
+        battle.levelCards = battle.levelCards or require("ui.levelup_card").queue()
+        for _, card in ipairs(battle.winCards) do battle.levelCards:push(card) end
+        battle.winCards = nil
+    elseif battle.finishWin and not (battle.levelCards and battle.levelCards:active()) then
+        local finish = battle.finishWin
+        battle.finishWin = nil
+        finish()
+    end
+end
+
 -- Whether a level-up card owns the frame (and so every input verb).
 function battle.levelCardUp()
     return battle.levelCards ~= nil and battle.levelCards:active()
@@ -6138,6 +6168,7 @@ function battle.update(dt)
     releaseGrowthAward()
     -- A level-up card freezes the fight the way the settings overlay does: only the card ticks.
     battle.releaseLevelUps()
+    battle.releaseWinCards()
     if battle.levelCardUp() then battle.levelCards:update(dt); return end
     -- NOTE the wind-up chooser is deliberately NOT a freeze: it is a small slider over the aimed tile,
     -- and the board + turn-order strip behind it are its preview. The view has to keep refreshing so

@@ -231,7 +231,11 @@ return {
         -- three floors, which is the thing that made the opening floor a formality in the first place.
         local stock = Growth.combatantLevel({}, Descent.dangerLevel({ floor = 1 }),
             Descent.floorLevel({ floor = 1 }))
-        for _, banked in ipairs({ 48, 84 }) do
+        -- HELD AT THE EXIT NOW (2026-10-22): Act 0 banks under states/prologue.lua's ceiling and the
+        -- Champion pays the rest, so whatever the fights paid the company leaves on exactly
+        -- Descent.OPENING_LEVEL -- checked at that total and at the hold one short of it.
+        local exit = Experience.totalFor(Descent.OPENING_LEVEL)
+        for _, banked in ipairs({ exit - 1, exit }) do
             local level = Experience.levelFor(banked)
             assert(level >= stock - 2 and level <= stock + 1, string.format(
                 "a body leaving Act 0 with %d experience is level %d, and the first stair is held by "

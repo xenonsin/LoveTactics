@@ -349,6 +349,7 @@ function prologue.runBattle(map, onWinExtra)
         stash = p.stash,
         quest = { map = map },
         tutorial = map.tutorial, -- nil for every fight but the village one
+        xpCeiling = prologue.xpCap().ceiling, -- held under the exit level (prologue.xpCap)
         -- A scene played over the board when this fight opens (states/battle.lua). Any map may name
         -- one; the village's comes from its lesson instead, which is why this is usually nil.
         opening = map.opening,
@@ -384,6 +385,8 @@ function prologue.runOverworld(quest, resume)
     -- makes reading it worth anything. Set after the switch because game.enter clears it.
     local game = require("states.game")
     game.onExitOpened = function() prologue.payExit(Player.active) end
+    -- ...and the hold every fight on the leg banks under, the Champion's paying the exit on its win.
+    game.xpCap = prologue.xpCap()
 end
 
 -- ---------------------------------------------------------------------------
@@ -623,12 +626,6 @@ prologue.SCENE_GIFTS = {
 -- says nothing about which was chosen.
 prologue.SCENE_FLAGS = { "met_the_survivor" }
 
--- What Act 0's four fights pay a body, measured rather than chosen: a two-body company takes all four,
--- and simulated through models/autobattle that is about 48 a head with real play landing nearer 84.
--- This is the SKIP's stand-in for that income, so a skipped company arrives having "earned" what a
--- played one earned. It is not what decides the level -- see prologue.EXIT_LEVEL.
-prologue.SKIP_XP = 80
-
 -- THE LEVEL THE COMPANY WALKS OUT OF ACT 0 ON, guaranteed rather than earned.
 --
 -- The Champion is the last thing the prologue fights and the company leaves it a level up. That is a
@@ -654,6 +651,24 @@ prologue.SKIP_XP = 80
 -- here it drifted the moment Experience.STEP was re-cut -- the same experience that bought level two
 -- on the old curve buys four on this one, and nothing would have said so.
 prologue.EXIT_LEVEL = require("models.descent").OPENING_LEVEL
+
+-- THE HOLD UNDER THE EXIT (2026-10-22). Act 0's fights pay 48 to 84 a head and a level costs 24, so
+-- left to the curve the company was level three after two fights and walked out at four -- three
+-- level-ups handed over before the rift. Every prologue fight now banks up to one short of the exit
+-- level and no further (`ceiling`, combat.xpCeiling via Experience.credit), and the fight that opens
+-- the way out pays the rest on its win (`exit`), so the ONE level-up Act 0 owes lands on the
+-- Champion's killing blow, played before the victory panel.
+function prologue.xpCap()
+    local Experience = require("models.experience")
+    local exit = Experience.totalFor(prologue.EXIT_LEVEL)
+    return { ceiling = exit - 1, exit = exit }
+end
+
+-- What Act 0's fights bank a body: every one of them is held at the ceiling above, and a played
+-- prologue reaches it (they pay 48 to 84 a head against a ceiling of 23). The SKIP's stand-in for that
+-- income, so a skipped company arrives having "earned" what a played one earned; payExit then tops
+-- it up to the exit, exactly as the Champion's win does.
+prologue.SKIP_XP = prologue.xpCap().ceiling
 
 -- Bring every body up to the level Act 0 ends on and resolve it, exactly as a won fight resolves
 -- experience (states/game.lua's post-fight seam). Idempotent: a body already there is untouched.

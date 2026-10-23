@@ -1338,6 +1338,7 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
     -- Cleared with the rest of the leg's state: an `opensExit` end sets it and nothing else does, so a
     -- board quest entered after one must not inherit the prologue's hook.
     game.onExitOpened = nil
+    game.xpCap = nil -- Act 0's hold under its exit level (states/prologue.lua's prologue.xpCap), likewise
     -- A DESCENT floor rather than a board quest. The descriptor is synthesized (models/descent.lua) and
     -- carries the run itself, which is what makes one expedition out of a stack of floors: the same table
     -- travels from floor to floor, so the rollback point taken at the top survives all of them.
@@ -2798,6 +2799,10 @@ function game:openEncounter(cell, opts)
             party = (game.descent and Descent.party(game.descent, game.player))
                 or (game.player and game.player.roster) or {},
             player = game.player, -- so the phase can remember who was fielded (Player.noteDeployed)
+            -- Act 0 holds the company under its exit level, and the fight that opens the way out pays
+            -- it on the win (states/prologue.lua's prologue.xpCap). Nil on every leg after the prologue.
+            xpCeiling = game.xpCap and game.xpCap.ceiling or nil,
+            xpOnWin = game.xpCap and objSpec and objSpec.opensExit and game.xpCap.exit or nil,
             -- The supper bought at the Cafe before this quest (models/meal.lua): one platter, worn by
             -- the whole company at every fight of the run, and cleared when the run resolves. Read live
             -- off the player rather than snapshotted at launch, so a resumed run picks it up too.

@@ -2181,7 +2181,12 @@ Descent.BOTTOM_DANGER = 50
 -- states/prologue.lua reads it rather than declaring its own. The prologue tops the company UP to its
 -- exit (prologue.payExit) and the rift opens expecting them there, so the two are one number and the
 -- state is the side that should be asking -- a model must not require a state.
-Descent.OPENING_LEVEL = 4
+-- TWO AGAIN (2026-10-22), AND NOW HELD RATHER THAN MEASURED. Four meant three level-ups inside a
+-- four-fight tutorial -- level three after the second fight -- which read as the ladder racing rather
+-- than as a reward. The prologue now holds its fights one short of this level (states/prologue.lua's
+-- prologue.xpCap) and the Champion's win pays the rest, so Act 0 is one level-up on the killing blow,
+-- the original beat. OPENING_DANGER stays at five; see its note.
+Descent.OPENING_LEVEL = 2
 
 -- WHAT THE WORLD FIGHTS AT ON THE FIRST STAIR, and the number that fixes a floor nobody had to play.
 --
@@ -2212,6 +2217,11 @@ Descent.OPENING_LEVEL = 4
 -- Five puts stock at three, which is where a company leaving Act 0 actually stands -- the prologue's
 -- four fights bank 48 to 84 experience and a level costs 24 (Experience.STEP), so the pair walk in at
 -- three or four. An even opening, which is what this constant has always been for.
+-- STILL FIVE AFTER ACT 0 DROPPED TO TWO (2026-10-22), and it was tried at four. Four puts floor one's
+-- stock level with the pair, but it lowers the whole shallow ramp under a company that also starts two
+-- lower, and the company sits a level behind its ground through floor three: the Lady Chapel ran 56 ->
+-- 78 turns past tests/objective_fight_spec's budget of 70. At five the ramp from floor three down is
+-- the one it was, and floor one opens a level over a level-2 pair that levels on its first fights there.
 Descent.OPENING_DANGER = 5
 
 -- HOW MANY BODIES THE OPENING FLOOR FIELDS, and the number that fixes a floor priced for a company
