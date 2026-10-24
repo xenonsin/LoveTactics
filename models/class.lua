@@ -308,10 +308,13 @@ Class.CLASS_LEVEL_CAP = 15
 --   deals the ordinary fight on the WALK (`wanderingCombat`), so what it SEATS is the elites and the
 --   ends -- 0.97 and 1.00 a floor, `. board-report 40 descent`. Eight, one and one.
 --
--- (2026-10-24, NOT RE-CUT: the rift resets to floor one every run and a floor crossing measures about
--- four fights now -- models/descent.lua's FLOOR_FIGHTS table. The ten below, and the "a floor is
--- repeatable" argument after it, were taken against the persistent rift; a run re-walks the shallow
--- floors instead. Re-measure before trusting this constant.)
+-- (2026-10-24, RE-CUT TO 28 when the rift began resetting to floor one every run. The method below is
+-- unchanged and only its input moved: `. floor-fights` (tools/floor_fights.lua) measures the same greedy
+-- tour at 4.13 fights a floor where the ten below was a 7.3-fight tour plus backtracking, so a floor is
+-- now 10 * 4.13 / 7.3 = 5.7 fights, pays 5.7 * 3.97 = 22.5, and a rung at a floor and a quarter is 28.
+-- The per-fight figure (3.97) is untouched by the fight count. A full fifteen-floor run banks ~340
+-- against 420 for mastery: the same one-and-a-quarter runs the 750 bought. What is history below is
+-- the arithmetic's provenance, not the current figure.)
 --
 -- SO A FLOOR PAYS 39.7 -- ten fights at 3.97 -- AND A RUNG COSTS FIFTY. The gap between those two
 -- numbers is the only part of this constant that is a judgement rather than a reading, and it is the
@@ -369,7 +372,7 @@ Class.CLASS_LEVEL_CAP = 15
 -- decisions there are, and there are fifteen now rather than eight -- the escalation moved out of the
 -- per-rung toll and into the rung count. What a body pays to keep climbing is a floor, every time, and
 -- a floor is the most expensive unit this mode has.
-Class.CLASS_LEVEL_STEP = 50
+Class.CLASS_LEVEL_STEP = 28
 
 -- The career technique needed to reach class level `n`. Zero at nought, which is the floor every body
 -- starts on and the one Balance reads as the item's authored magnitude.

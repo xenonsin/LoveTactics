@@ -436,7 +436,11 @@ return {
             -- route: a greedy nearest-unvisited tour of every content cell measures 6.9 fights on
             -- floor one rising to 8.6 at the Crown, and a real route -- re-trodden for a locked cache,
             -- walked back to the stair, crossed again for a deeper one -- runs nearer ten.
-            local TOURED, WORKED = 8, 10
+            --
+            -- (2026-10-24) RE-MEASURED when the rift began resetting to floor one every run:
+            -- `. floor-fights` reads the same greedy tour at 4.13 a floor where the ten below was a
+            -- 7.3-fight tour, so the worked route scales the same way, to 5.7.
+            local TOURED, WORKED = 4.13, 5.7
             local mastery = Class.classLevelCost(Class.CLASS_LEVEL_CAP)
 
             local worked = PER_FIGHT * WORKED * Descent.FLOORS
@@ -446,7 +450,7 @@ return {
             -- floor walked fifteen times, and the cheapest floor is the one everyone would walk.
             assert(mastery > worked, string.format(
                 "a worked descent must leave mastery short, or the ladder is farmable on one floor: "
-                .. "%d against the %d a worked run banks", mastery, worked))
+                .. "%d against the %d a worked run banks", mastery, math.floor(worked)))
             -- ...AND NOT A SECOND RIFT EITHER. The band's far side, because "more than a descent" is
             -- satisfied by any number at all and the failure on this side is a grind wall rather than
             -- a cheap ladder. A trip is not a run here -- you surface to the Ward and go again -- so

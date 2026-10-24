@@ -264,9 +264,8 @@ The codebase is organized into layers loaded via `require()`. See
 
   **ONE LADDER, ONE FIELD, ONE RUNG PER FLOOR.** `unlockLevel` runs `0..Class.CLASS_LEVEL_CAP`, the cap
   is **15 — the floor count** (`Descent.FLOORS`), and a rung costs a floor and a quarter of
-  committed play (`Class.CLASS_LEVEL_STEP = 50`, linear -- a floor measures 39.7, and the quarter on
-  top is what a floor you can walk AGAIN costs; measured at ten fights a floor, before the
-  2026-10-24 reset cut a floor to about four -- not re-cut yet). So the class level that buys a piece and the floor
+  committed play (`Class.CLASS_LEVEL_STEP = 28`, linear -- a floor measures 22.5 since the 2026-10-24
+  reset cut a floor to about four fights, `. floor-fights`; it was 50 against the persistent rift's ten). So the class level that buys a piece and the floor
   the rift gives it up at are the same number, which is what `tools/drop_tier.lua` always claimed and could not
   deliver while the cap was 8 against fifteen floors. It WAS two fields -- `unlockQuests` (a grade rank
   named for the retired quest board) and `dropTier` (a depth counting from 1) -- with 231 blueprints
