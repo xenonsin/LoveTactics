@@ -197,10 +197,12 @@ The codebase is organized into layers loaded via `require()`. See
   Sixteen race items are the game's ONE equip gate (`Character.canCarry`; docs/classes.md says why). The
   wiki prints them on their own Adventurers page, apart from the bestiary.
 
-  **THE HIRING BOARD OPENS WHEN THE DEMON LORD FALLS** (2026-10-16; parked the day before): its room in
-  `data/buildings/hunters_lodge.lua` carries `gate = { crowned = true }` (models/offer.lua), which reads
-  `Player.hasFinishedCampaign` -- the first time the Crown is broken. Until then the company grows only
-  through its written companions. **Character creation** (`states/character_creation.lua`) sits between the opening
+  **THE HIRING BOARD OPENS ON TRIP 3** (2026-10-24; it waited on the Crown for a week before that): its room
+  in `data/buildings/hunters_lodge.lua` is a scheduled feature (`Offer.SCHEDULE`), and the roster is
+  capped at six (`Hire.ROSTER_CAP`) until `Player.hasFinishedCampaign` -- the first time the Crown is
+  broken. A Stray Delver saved alive in an objective fight may join as a hire too (`game:offerDelver`),
+  and the first companion after Gyeom is dealt onto the second circle, floors 3-4, with no roll
+  (`Descent.secondCompanionOwed`). **Character creation** (`states/character_creation.lua`) sits between the opening
   narration and the first fight, and asks **the name only** -- no people, no class, no look. The avatar is
   the blueprint's human and starts as a Novice that EARNS its first class (`data/class_requirements.lua`,
   `Class.canUnlock`, a Charter Seal per unlock; the city opens one shelf and one feature per trip home,
@@ -209,7 +211,7 @@ The codebase is organized into layers loaded via `require()`. See
   `snap.race` stay on disk with no caller in play.
 
   **AND THE COMPANY CAN HIRE STRANGERS** (`models/hire.lua`, `ui/panels/hire.lua`, 2026-10-12). Three
-  per homecoming on the Hunter's Lodge desk (once the Demon Lord has fallen), 40g each, in the seven roots
+  per homecoming on the Hunter's Lodge desk (from trip 3), 40g each, in the seven roots
   plus any class the company has opened, of any of the eight playable peoples (`Adventurers.LEAN` at
   50%). **A hire is a function of its id** -- `character_hire@<class>.<race>.<roll>` re-derives the name,
   the zero-sum stat spread, the one-stat aptitude (`personalGrowth`), the tint and the rung-0 kit -- so
@@ -303,8 +305,10 @@ The codebase is organized into layers loaded via `require()`. See
   — health pinned at 1, no walking at all, mana paid in blood), open a fight wearing a status
   (`openingBoon`), or act *between* fights on an expedition (`encounterCleared`, `models/item_hook.lua`).
   All three arrived when the **relic shelf was parked** and its 25 surviving effects became items — see
-  [docs/relics.md](docs/relics.md), which also records the 11 pure-stat relics that were cut and how to
-  lift the park. `models/relic.lua` is still on disk and still loads; treat nothing in it as live.
+  [docs/relics.md](docs/relics.md). **Relics came back on 2026-10-24 as a per-trip layer** (`Relic.PARKED =
+  false`): the whole company holds them, a stair beaten for the first time offers a pick of three, an
+  elite drops one (one per floor), the Merchant, Altar and Weeping Stone deal them, and both exits clear
+  them (`Relic.endTrip`). They are the reason to stay down. The 25 items stay items beside their relic twins.
 
   **A PIECE MAY ALSO BE CURSED, and a curse speaks the item's own vocabulary** (`models/curse.lua`,
   `data/curses/`, [docs/curses.md](docs/curses.md)). It is the mirror of *broken*: broken means the piece
@@ -373,13 +377,15 @@ room behind it is** — so the city grows *inside* doors as new lines rather tha
 room keeps its own `vendor`, which is why the Undercroft's desk can open the town counter beside the
 fence's own shelf without the two shops merging.
 
-**THE CITY IS PACED ON `trips` — descents begun (`Player.tripsHome`), never on depth.** `expeditionsOut`
+**THE CITY IS PACED ON `trips` — COUNTED trips (`Player.tripsHome` reads `player.tripsCounted`), never on
+depth.** A trip counts on the homecoming when it won a fight or wiped (`Gate.homecoming`), so an empty dip
+opens nothing, rests nothing and pays no purse; `runsStarted` still seeds the run and nothing else. `expeditionsOut`
 is `max(bounties, deepest)`, and depth is bursty: measured, a company that dived to floor four on its
 first trip came home to four doors at once and then three empty homecomings, while a floor-one farmer's
 city froze forever. Trips climb one at a time, so **one room per homecoming** falls out of the unit.
-Trips pace the city; depth paces the shelves. The schedule: counter 1, supper 2, forge 3, book 4,
-study 5, reading (first unread find, or 7), duel (Saber's posting, or 8) — plus the mending, which is
-Act 0's. The two backstops sit last on purpose, so inserting a room pushes them rather than colliding.
+Trips pace the city; depth paces the shelves. The feature schedule (`Offer.SCHEDULE`): reading 1, market
+counter 2, hiring 3, forge 4, supper 5, bestiary 6, duel 7, study 8 — plus the mending, which is Act 0's,
+and one shelf per trip beside it. The two backstops sit last on purpose, so inserting a room pushes them rather than colliding.
 `quiet = true` lets a room open without announcing its house (every shelf is quiet — a class rung is a
 reward the player cannot see), and `announce = {...}` is the one condition under which a quiet room
 speaks up anyway. `gate = { any = {...} }` is the event-plus-backstop pattern.

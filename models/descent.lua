@@ -2919,10 +2919,34 @@ end
 -- half the point of a rolled fight is that you may decline it (the flee roll on the deploy screen), so
 -- the number DEALT and the number FOUGHT stopped being the same number. Neither the board report nor
 -- any spec can measure this one: it is steps-per-fight over a real walk, so it wants a playtest.
-Descent.PROWL_STEPS = 16
+--
+-- (2026-10-23) TWENTY-FOUR, approved: sixteen dealt too many. Not re-measured against Class's
+-- ten-fights-a-floor figure (models/class.lua's CLASS_LEVEL_STEP note), which this moves -- see there.
+Descent.PROWL_STEPS = 24
+
+-- A FLOOR WHOSE STAIR HAS BEEN BEATEN PROWLS AT HALF RATE (approved 2026-10-23): every interval is
+-- doubled. The guard is dead and the stair stands open (Descent.openStair), so the floor is ground the
+-- company is walking BACK over -- to a dropped pack, a cache, the stair -- and should not cost a full
+-- floor's fighting a second time. `run.stairBeaten` is set by states/game.lua off the board on entering
+-- a floor (Descent.stairBeaten) and the moment the stair opens.
+Descent.PROWL_BEATEN_SCALE = 2
+
+function Descent.prowlScale(run)
+    return (run and run.stairBeaten) and Descent.PROWL_BEATEN_SCALE or 1
+end
+
+-- Is this board's stair down open -- its guard beaten? A grid as Overworld builds it (`cells[y][x]`).
+function Descent.stairBeaten(grid)
+    for _, row in ipairs((grid and grid.cells) or {}) do
+        for _, cell in ipairs(row) do
+            if cell.encounter and cell.encounter.kind == "stair" then return true end
+        end
+    end
+    return false
+end
 
 -- How far either side of PROWL_STEPS a leg may actually run, so the meter is not a metronome the player
--- can count on their fingers. Twelve to twenty.
+-- can count on their fingers. Twenty to twenty-eight (doubled on a beaten floor, Descent.prowlScale).
 Descent.PROWL_JITTER = 4
 
 -- HOW LONG THIS PARTICULAR LEG RUNS, in steps. Dealt off the run's seed and the LEG NUMBER -- how many
@@ -2936,7 +2960,7 @@ function Descent.prowlTarget(run)
     -- window walks the window in a short cycle instead of sampling it, which is a leg length the player
     -- could learn by counting. Folding the first result back through decorrelates the neighbours.
     local n = hash(hash((run and run.seed) or 0, 4093, (run and run.leg) or 0), 7717, 0) % (2 * j + 1)
-    return Descent.PROWL_STEPS - j + n
+    return (Descent.PROWL_STEPS - j + n) * Descent.prowlScale(run)
 end
 
 -- HOW MANY STEPS OF WARNING the gauge owes before a fight could possibly land. Two, so the shortest leg
@@ -2958,7 +2982,9 @@ Descent.PROWL_WARN = 2
 -- an announcement.
 function Descent.prowlBand(run)
     local p = (run and run.prowl) or 0
-    local close = Descent.PROWL_STEPS - Descent.PROWL_JITTER - Descent.PROWL_WARN
+    -- Scaled with the window on a beaten floor (Descent.prowlScale): the earliest a fight can land is
+    -- doubled there, and "close" still turns over PROWL_WARN steps ahead of it.
+    local close = (Descent.PROWL_STEPS - Descent.PROWL_JITTER) * Descent.prowlScale(run) - Descent.PROWL_WARN
     if p >= close then return "close" end
     if p >= close / 2 then return "stirring" end
     return "calm"
@@ -3616,7 +3642,9 @@ function Descent.expireStranded(player)
         local char = byId[id]
         if not char then
             player.stranded[id] = nil
-        elseif now - (s.trip or now) >= Descent.STRAND_TRIPS then
+        -- `>` not `>=`: the wipe that stranded them is itself a counted trip (Gate.homecoming runs
+        -- after the stamp), and it is not one the company could have spent walking back.
+        elseif now - (s.trip or now) > Descent.STRAND_TRIPS then
             gone[#gone + 1] = { name = char.name or id, floor = s.floor }
             Player.release(player, id)
             player.stranded[id] = nil
@@ -4192,7 +4220,9 @@ function Descent.dealCompanion(seed, player, layout)
     -- One draw for whether anybody is met and one for where puts the rate back under the constant's
     -- control and is immune to the stride: measured at 87.00% met over 20000 seeds, with the floor flat
     -- across the stratum to within 5%.
-    if (hash(seed, 977, 0) % 100) >= Descent.COMPANION_CHANCE then return nil end
+    -- (the bench, 2026-10-23) THE FIRST DEAL AFTER GYEOM IS NOT ROLLED: see Descent.SECOND_COMPANION_CIRCLE.
+    local second = player ~= nil and Descent.secondCompanionOwed(player)
+    if not second and (hash(seed, 977, 0) % 100) >= Descent.COMPANION_CHANCE then return nil end
 
     local deck = {}
     for vendorId in pairs(Errand.houses()) do
@@ -4209,7 +4239,41 @@ function Descent.dealCompanion(seed, player, layout)
         local j = (hash(seed, 991, i) % i) + 1
         deck[i], deck[j] = deck[j], deck[i]
     end
+    if second then
+        return { house = deck[1], floor = Descent.secondCompanionFloor(seed) }
+    end
     return { house = deck[1], floor = Descent.companionFloor(seed, deck[1], layout) }
+end
+
+-- THE SECOND COMPANION IS MET IN THE SECOND CIRCLE (approved 2026-10-23). Once Gyeom has joined, the
+-- deal is no longer a roll until somebody else has joined too: every descent stands one body -- drawn
+-- from the visited houses exactly as the roll would -- on floor three or four, the second circle (Lust,
+-- on the authored order; whichever circle comes second once the order shuffles). She leaves her own
+-- circle for this meeting only; once a second companion is walking with the company, deals go back to
+-- the roll and to each body's own circle.
+--
+-- WHY UNTIL SOMEBODY JOINS rather than for one descent: a descent can be dealt and never reach floor
+-- three (a dip, a wipe on floor one), and a guarantee spent on a run that never saw it is no guarantee.
+-- It is Gyeom's own shape one step on -- self-terminating off the roster, no ledger beside it.
+Descent.SECOND_COMPANION_CIRCLE = 2
+
+-- Is the guaranteed second meeting owed? Gyeom has joined and no other recruiting house's body has.
+function Descent.secondCompanionOwed(player)
+    if not player then return false end
+    local Errand = require("models.errand")
+    local scripted = Descent.SCRIPTED_COMPANION
+    if not (Errand.houses()[scripted] and Errand.doorOpen(player, scripted)) then return false end
+    for vendorId in pairs(Errand.houses()) do
+        if vendorId ~= scripted and Errand.doorOpen(player, vendorId) then return false end
+    end
+    return true
+end
+
+-- Floor three or four: the second circle's two floors, picked by the same `where` draw a dealt floor uses.
+function Descent.secondCompanionFloor(seed)
+    local where = hash(seed, 978, 0)
+    return (Descent.SECOND_COMPANION_CIRCLE - 1) * Descent.FLOORS_PER_CIRCLE
+        + (where % Descent.FLOORS_PER_CIRCLE) + 1
 end
 
 -- WHERE A DEALT COMPANION STANDS: one of the two floors of her own house's circle (Descent.SINS'
@@ -5901,6 +5965,8 @@ function Descent.snapshot(run)
         -- what a company that has just walked in should have. Save.VERSION does not move.
         prowl = run.prowl or 0,
         leg = run.leg or 0,
+        -- (counted trips, 2026-10-23) Fights won this run -- what makes a homecoming count (Gate.homecoming).
+        fightsWon = (run.fightsWon or 0) > 0 and run.fightsWon or nil,
         pending = pending,
         -- (Iselle's tally STOOD HERE and has moved to the player -- see Descent.count for why. A run
         -- that resets on extraction cannot carry a number the city has to keep reading. models/save.lua
@@ -5970,6 +6036,7 @@ function Descent.restore(snap)
         -- board (Descent.PROWL_STEPS) and both reading as a company that has just walked in.
         prowl = snap.prowl or 0,
         leg = snap.leg or 0,
+        fightsWon = tonumber(snap.fightsWon) or nil, -- (counted trips) see snapshot
         pending = pending,
         -- (No `count` -- the tally is the player's. models/save.lua carries an old save's forward.)
         tollPaid = (function()                                              -- ...and see snapshot

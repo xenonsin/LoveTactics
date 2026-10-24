@@ -20,7 +20,7 @@ local Save = require("models.save")
 local function freshPlayer(seed)
     local p = Player.new()
     p.seed = seed or 424242
-    p.runsStarted = 6
+    p.tripsCounted = 6
     p.gold = 1000
     return p
 end
@@ -133,9 +133,9 @@ return {
                 assert(o.id == board.offers[i].id, "the same seed and trip dealt a different board")
             end
 
-            p.runsStarted = p.runsStarted + 1
+            p.tripsCounted = p.tripsCounted + 1
             local next = Hire.board(p)
-            assert(next ~= board and next.trip == p.runsStarted, "a new homecoming did not deal a new board")
+            assert(next ~= board and next.trip == p.tripsCounted, "a new homecoming did not deal a new board")
         end,
     },
     {
@@ -230,6 +230,81 @@ return {
             local rowan = Character.instantiate("character_rowan")
             assert(not Character.canCarry(rowan, Item.defs.utility_mountains_root),
                 "a human companion should not be able to carry a dwarf's item -- the gap hiring fills")
+        end,
+    },
+    {
+        -- THE ROSTER CAP (2026-10-23): the board opens on trip 3 now, and what waits on the Demon Lord is
+        -- a ceiling of six bodies. Refused with a reason the panel prints; lifted once the Crown falls.
+        name = "hiring is refused at six bodies until the Demon Lord falls, and uncapped after",
+        fn = function()
+            assert(Hire.ROSTER_CAP == 6, "the approved cap is six")
+            local p = freshPlayer()
+            p.campaignsFinished = 0
+            while #p.roster < Hire.ROSTER_CAP do
+                p.roster[#p.roster + 1] = Character.instantiate(Hire.idOf("knight", "human", 1000 + #p.roster))
+            end
+            assert(Hire.rosterFull(p), "six bodies is a full roster")
+            assert(Hire.blockReason(p, 1) == Hire.FULL_REASON, "the board did not give the cap as its reason")
+            local gold = p.gold
+            local char, why = Hire.hire(p, 1)
+            assert(not char and why == Hire.FULL_REASON, "a seventh body was hired before the Crown fell")
+            assert(p.gold == gold, "a refused hire took the fee")
+            assert(Hire.FULL_REASON:find("6") and Hire.FULL_REASON:find("Demon Lord"),
+                "the reason does not say what the cap is or what lifts it")
+
+            p.roster[#p.roster] = nil
+            assert(not Hire.rosterFull(p) and Hire.hire(p, 1), "five bodies could not hire a sixth")
+
+            p.campaignsFinished = 1
+            assert(not Hire.rosterFull(p), "the cap outlived the Demon Lord")
+            assert(Hire.hire(p, 2), "a seventh body was refused after the Crown fell")
+        end,
+    },
+    {
+        -- A SAVED STRAY DELVER JOINS AS A HIRE (2026-10-23): the same rolled body under the hire prefix,
+        -- no fee, and the cap above holds for her too.
+        name = "a saved delver joins as the same rolled body, free, inside the cap",
+        fn = function()
+            local Delver = require("models.delver")
+            local delverId = Delver.idFor(777, 1)
+            local hireId = Hire.delverId(delverId)
+            assert(hireId and Hire.split(hireId), "a delver id does not map to a hire id")
+            assert(Character.defs[hireId].name == Character.defs[delverId].name,
+                "the hire is not the body that was saved")
+
+            local p = freshPlayer()
+            p.campaignsFinished = 0
+            local gold = p.gold
+            local char = assert(Hire.joinDelver(p, delverId))
+            assert(char.id == hireId and char.hire, "she did not join as a hire")
+            assert(p.gold == gold, "a saved delver charged a fee")
+            assert(not Hire.joinDelver(p, delverId), "the same delver joined twice")
+            assert(not Hire.joinDelver(p, "character_rowan"), "a non-delver id joined through the delver seam")
+
+            while #p.roster < Hire.ROSTER_CAP do
+                p.roster[#p.roster + 1] = Character.instantiate(Hire.idOf("mage", "elf", 2000 + #p.roster))
+            end
+            local none, why = Hire.joinDelver(p, Delver.idFor(778, 1))
+            assert(not none and why == Hire.FULL_REASON, "a delver joined a full roster")
+        end,
+    },
+    {
+        -- WHO WALKED OUT ALIVE is counted off the combat before the mercy revive (states/battle.lua's
+        -- win): a living party-side delver is saved; a fallen one, an enemy, or a bare id is not.
+        name = "the survivors of a fight are the living delvers on the company's side",
+        fn = function()
+            local Delver = require("models.delver")
+            local a, b = Delver.idFor(5, 1), Delver.idFor(5, 2)
+            local combat = { units = {
+                { side = "party", alive = true, char = { id = a } },
+                { side = "party", alive = false, char = { id = b } },
+                { side = "enemy", alive = true, char = { id = Delver.idFor(6, 1) } },
+                { side = "party", alive = true, char = { id = "character_rowan" } },
+                { side = "party", alive = true, char = { id = Delver.ID } },
+            } }
+            local out = Delver.survivors(combat)
+            assert(#out == 1 and out[1] == a, "survivors read " .. table.concat(out, ","))
+            assert(#Delver.survivors(nil) == 0, "no combat, no survivors")
         end,
     },
 }

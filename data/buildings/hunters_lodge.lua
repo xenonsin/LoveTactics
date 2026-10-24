@@ -33,12 +33,11 @@ return {
         -- The kitchen keeps its own vendor: its portrait, its name and its one-time greeting all hang
         -- off `cafe`, and it sells no items at all (data/vendors/cafe.lua).
         { answer = "supper", panel = "cafe", vendor = "cafe", gate = { city = "hunters_lodge.supper" } },
-        -- THE HIRING BOARD OPENS WHEN THE DEMON LORD FALLS (2026-10-16). It was parked a day earlier: the
-        -- company grows through its written companions, and a board of blank strangers beside them was
-        -- two kinds of body in one roster. So the board waits for the post-game -- the first time the
-        -- Crown is broken (`crowned`, models/offer.lua), when the companions' stories are told and the
-        -- shuffled descents (Descent.sinOrder) want bodies -- rather than standing on the sixth trip.
-        { answer = "hire", panel = "hire", gate = { crowned = true } },
+        -- THE HIRING BOARD OPENS ON THE THIRD TRIP HOME (2026-10-23), on the city schedule
+        -- (Offer.SCHEDULE). It waited on the Crown before (2026-10-16): the worry was blank strangers
+        -- crowding out the written companions. What answers that now is a CAP rather than a wait -- the
+        -- roster holds six until the Demon Lord falls (models/hire.lua's Hire.ROSTER_CAP), uncapped after.
+        { answer = "hire", panel = "hire", gate = { city = "hunters_lodge.hire" } },
     },
     description = "Bows, traps, and one hot supper before the road.",
 }

@@ -896,6 +896,10 @@ local function finishBattle(result)
         if spoils and battle.objectiveReward then
             spoils.awarded = battle.objectiveReward()
         end
+        -- (the bench) The delvers saved alive, handed to the overworld's onWin (game:offerDelver).
+        if spoils and battle.rescue and battle.rescue.delvers and #battle.rescue.delvers > 0 then
+            spoils.delvers = battle.rescue.delvers
+        end
     end
 
     -- THE BENCH'S SHARE OF THE FIGHT. Paid here, and here rather than at either of the overworld's
@@ -976,7 +980,10 @@ local function win()
     -- (models/encounter_battle.lua's rescue pay). A field on `battle` rather than a file-scope local,
     -- for the reason the note below gives.
     local saved, ofMany = Combat.protectedCount(battle.combat)
-    battle.rescue = { saved = saved, of = ofMany }
+    battle.rescue = { saved = saved, of = ofMany,
+        -- (the bench, 2026-10-23) and which Stray Delvers walked out alive, counted here for the same
+        -- reason: they ask to join after the win (states/game.lua's offerDelver).
+        delvers = require("models.delver").survivors(battle.combat) }
 
     -- THE LEVEL BEFORE THE VICTORY. The blow that ends the fight is usually the one that crosses a
     -- level, and battle.releaseLevelUps stands down once the fight is over -- so that level used to

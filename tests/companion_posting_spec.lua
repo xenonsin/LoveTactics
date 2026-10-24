@@ -49,6 +49,20 @@ local function scriptedJoined(done)
     return done
 end
 
+-- ...AND THE FIRST DEAL AFTER HER IS NOT A ROLL EITHER (Descent.secondCompanionOwed, 2026-10-23): until a
+-- second companion has joined, every descent stands one on floor three or four. A case about the ROLL --
+-- its chance, its circles -- starts from a company that has a second body as well.
+local function secondJoined(done)
+    done = scriptedJoined(done)
+    for _, vendorId in ipairs(houses()) do
+        if vendorId ~= Descent.SCRIPTED_COMPANION then
+            done[Errand.opener(vendorId)] = true
+            return done, vendorId
+        end
+    end
+    return done
+end
+
 return {
     {
         -- The whole roster arrives this way, so a class that names a companion and cannot post an ask
@@ -315,7 +329,7 @@ return {
                 if seat then return sin.id == seat end
                 return sin.vendor == house
             end
-            local visited = company(scriptedJoined())
+            local visited = company((secondJoined()))
             for _, vendorId in ipairs(houses()) do Player.markVendorVisited(visited, vendorId) end
             local checked = 0
             for seed = 1, 120 do
@@ -495,7 +509,7 @@ return {
         -- body the roll would be a rota with extra steps.
         name = "some descents offer nobody at all",
         fn = function()
-            local visited = company(scriptedJoined())
+            local visited = company((secondJoined()))
             for _, vendorId in ipairs(houses()) do Player.markVendorVisited(visited, vendorId) end
             local empty, dealt = 0, 0
             for seed = 1, 400 do
@@ -610,6 +624,51 @@ return {
             assert(not Errand.unaskedPosting(p, "quest_no_such_thing"),
                 "an id that is nobody's posting is not gated")
             assert(not Errand.unaskedPosting(p, nil), "and neither is nothing at all")
+        end,
+    },
+    {
+        -- THE FIRST DEAL AFTER GYEOM LANDS IN LUST (approved 2026-10-23). Once she has joined, every
+        -- descent until a second companion joins stands one body -- not 87%, every time -- on floor three
+        -- or four, the second circle, drawn from the visited houses as the roll draws them. Then the roll
+        -- takes over again, in each body's own circle.
+        name = "after Gyeom joins, the next companion is guaranteed on floor three or four",
+        fn = function()
+            local p = company(scriptedJoined())
+            for _, vendorId in ipairs(houses()) do Player.markVendorVisited(p, vendorId) end
+            assert(Descent.secondCompanionOwed(p), "the second meeting is not owed after Gyeom joined")
+            local floors = {}
+            for seed = 1, 200 do
+                local run = Descent.new(p, seed)
+                local dealt = run.companion
+                assert(dealt, "seed " .. seed .. " dealt nobody; the second meeting is guaranteed")
+                assert(dealt.house ~= Descent.SCRIPTED_COMPANION, "Gyeom was dealt again")
+                assert(dealt.floor == 3 or dealt.floor == 4,
+                    "seed " .. seed .. " stood " .. dealt.house .. " on floor " .. dealt.floor)
+                assert(Descent.sinAt(run, dealt.floor).id == "lust",
+                    "on the authored order floors three and four are Lust's")
+                floors[dealt.floor] = true
+            end
+            assert(floors[3] and floors[4], "the meeting never used one of the circle's two floors")
+
+            -- A shuffled run (after the Crown) still uses the SECOND circle, whichever sin that is.
+            for seed = 1, 20 do
+                assert(Descent.secondCompanionFloor(seed) == 3 or Descent.secondCompanionFloor(seed) == 4,
+                    "the second circle is floors three and four in any order")
+            end
+
+            -- Nobody visited: nothing to guarantee from, so nobody is dealt -- the visit gate still holds.
+            local stranger = company(scriptedJoined())
+            assert(not Descent.new(stranger, 1).companion, "a company that met no counter was dealt a body")
+
+            -- Gyeom still outstanding: the script answers first, as before.
+            local fresh = company()
+            assert(not Descent.secondCompanionOwed(fresh), "the second meeting is owed before the first")
+
+            -- A second companion has joined: back to the roll.
+            local done, second = secondJoined()
+            local later = company(done)
+            for _, vendorId in ipairs(houses()) do Player.markVendorVisited(later, vendorId) end
+            assert(second and not Descent.secondCompanionOwed(later), "the guarantee outlived the second join")
         end,
     },
 }

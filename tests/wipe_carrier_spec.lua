@@ -184,10 +184,10 @@ return {
         fn = function()
             local player, _, hire = company()
             keptBoard(player, 6, 4, 4)
-            player.runsStarted = 2
+            player.tripsCounted = 2
             Descent.seatCarrier(player, 6, 1, 2, { items = { Item.instantiate("weapon_iron_sword") },
                 composition = { "character_knight" }, hires = { hire.id } })
-            player.runsStarted = 3
+            player.tripsCounted = 3
             local carrier, merged = Descent.seatCarrier(player, 6, 4, 4, {
                 items = { Item.instantiate("weapon_iron_sword"), Item.instantiate("weapon_iron_sword") },
                 composition = { "character_rowan" }, hires = { hire.id } })
@@ -230,18 +230,19 @@ return {
         fn = function()
             local player, rowan, hire = company()
             keptBoard(player, 8, 3, 3)
-            player.runsStarted = 5
+            player.tripsCounted = 5
             local sword = Item.instantiate("weapon_iron_sword")
             Character.addItem(hire, sword)
             local stash = #(player.stash or {})
             Descent.seatCarrier(player, 8, 2, 2, { items = {}, composition = { "character_knight" },
                 hires = { hire.id } })
 
-            player.runsStarted = 7
+            -- The wipe that stranded them is itself a counted trip (5 -> 6); three more follow it.
+            player.tripsCounted = 8
             assert(#Descent.expireStranded(player) == 0, "a hire was given up after two trips")
             assert(#player.roster == 2, "the roster shrank early")
 
-            player.runsStarted = 8
+            player.tripsCounted = 9
             local gone = Descent.expireStranded(player)
             assert(#gone == 1 and gone[1].floor == 8 and gone[1].name == hire.name,
                 "the third trip did not let the hire go, or the notice names the wrong body")
@@ -258,7 +259,7 @@ return {
             local Identify = require("models.identify")
             local player, _, hire = company()
             keptBoard(player, 9, 3, 3)
-            player.runsStarted = 4
+            player.tripsCounted = 4
             local husk = Identify.sealed("weapon_iron_sword", 4)
             Descent.seatCarrier(player, 9, 2, 3, { items = { husk }, composition = { "character_knight" },
                 name = "The Thing", hires = { hire.id } })

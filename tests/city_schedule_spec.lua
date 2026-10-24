@@ -20,7 +20,7 @@ end
 -- Put the company at `trip` and let the city catch up. Returns the rooms admitted ON that trip,
 -- split by slot.
 local function homeOn(p, trip)
-    p.runsStarted = trip
+    p.tripsCounted = trip
     local rooms = Offer.sync(p)
     local got = { shelves = {}, features = {} }
     for _, slot in ipairs({ "shelves", "features" }) do
@@ -57,21 +57,22 @@ end
 
 return {
     {
-        name = "the trip table: one shelf and one feature a homecoming, the whole city by trip 7",
+        name = "the trip table: one shelf and one feature a homecoming, the whole city by trip 8",
         fn = function()
             local expected = {
                 [0] = { "bastion.shelf",       "cathedral.mend" },
                 [1] = { "cathedral.shelf",     "alchemist.read" },
                 [2] = { "arcanum.shelf",       "undercroft.counter" },
-                [3] = { "alchemist.shelf",     "bastion.forge" },
-                [4] = { "hunters_lodge.shelf", "hunters_lodge.supper" },
-                [5] = { "undercroft.shelf",    "arcanum.bestiary" },
-                [6] = { "colosseum.shelf",     "colosseum.duel" },
-                [7] = { nil,                   "arcanum.study" },
+                [3] = { "alchemist.shelf",     "hunters_lodge.hire" },
+                [4] = { "hunters_lodge.shelf", "bastion.forge" },
+                [5] = { "undercroft.shelf",    "hunters_lodge.supper" },
+                [6] = { "colosseum.shelf",     "arcanum.bestiary" },
+                [7] = { nil,                   "colosseum.duel" },
+                [8] = { nil,                   "arcanum.study" },
             }
             local p = bare()
             p.injured = true -- Act 0 carries Rowan up broken; the mending is the first morning's room
-            for trip = 0, 7 do
+            for trip = 0, 8 do
                 local got = homeOn(p, trip)
                 local want = expected[trip]
                 assert(#got.shelves == (want[1] and 1 or 0) and got.shelves[1] == want[1],
@@ -83,7 +84,7 @@ return {
             local rooms = Offer.sync(p)
             for _, slot in ipairs({ "shelves", "features" }) do
                 for _, e in ipairs(Offer.SCHEDULE[slot]) do
-                    if e.trip then assert(rooms[e.room], e.room .. " is still shut on trip 7") end
+                    if e.trip then assert(rooms[e.room], e.room .. " is still shut on trip 8") end
                 end
             end
             assert(not rooms["cathedral.lift"], "the rite opened with nothing hexed")
@@ -191,7 +192,7 @@ return {
 
             -- Mid-visit, with the current trip's slot still free, a problem is admitted on the spot.
             local r = bare()
-            for trip = 0, 8 do homeOn(r, trip) end         -- every scheduled feature open
+            for trip = 0, 9 do homeOn(r, trip) end         -- every scheduled feature open, trip 9's slot free
             r.stash[#r.stash + 1] = hexedSword()
             assert(Offer.admitted(r, "cathedral.lift"), "a free slot takes a hex the moment it arrives")
         end,
@@ -202,7 +203,7 @@ return {
             local p = bare()
             homeOn(p, 0)
             p.descentRun = {}
-            p.runsStarted = 1
+            p.tripsCounted = 1
             assert(not Offer.admitted(p, "cathedral.shelf"), "a homecoming's rooms wait for the homecoming")
             assert(Offer.admitted(p, "bastion.shelf"), "...and what was open stays open underground")
             p.descentRun = nil
@@ -255,14 +256,13 @@ return {
                 assert(vdef and vdef.class == e.class, e.room .. " pulls on " .. e.class .. ", its vendor shelves "
                     .. tostring(vdef and vdef.class))
             end
-            -- The hiring board waits for the Demon Lord: no count of trips opens it, the Crown falling does.
-            local late = Player.new()
-            late.runsStarted = 99
-            assert(not Offer.openSet(late, Building.defs.hunters_lodge).hire,
-                "the hiring board opened before the Demon Lord fell")
-            late.campaignsFinished = 1
-            assert(Offer.openSet(late, Building.defs.hunters_lodge).hire,
-                "the Demon Lord fell and the hiring board stayed shut")
+            -- The hiring board opens on the third trip home (2026-10-23), Crown or no Crown; the roster
+            -- cap is what waits on the Demon Lord (tests/hire_spec.lua).
+            local early = bare()
+            early.tripsCounted = 2
+            assert(not Offer.openSet(early, Building.defs.hunters_lodge).hire, "the hiring board opened before trip 3")
+            early.tripsCounted = 3
+            assert(Offer.openSet(early, Building.defs.hunters_lodge).hire, "the hiring board is shut on trip 3")
         end,
     },
     {
@@ -271,9 +271,9 @@ return {
             local Party = require("ui.panels.party")
             local Class = require("models.class")
             local p = Player.new()
-            p.runsStarted = 0
+            p.tripsCounted = 0
             assert(not Party.tabOpen(p, "tactics"), "no Tactics tab on the first morning")
-            p.runsStarted = 1
+            p.tripsCounted = 1
             assert(Party.tabOpen(p, "tactics"), "the Tactics tab arrives with the first trip home")
 
             if Class.defs.novice then

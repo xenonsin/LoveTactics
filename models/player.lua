@@ -613,6 +613,12 @@ function Player.new()
         -- being one run played twice (Seed.run). Reset by New Game+ along with the lap, never lowered
         -- otherwise -- a run that ended is still a run that was dealt.
         runsStarted = 0,
+        -- HOW MANY TRIPS HAVE COUNTED (models/gate.lua's Gate.homecoming): a homecoming that won a fight
+        -- or ended in a wipe. What the city schedule, the Ward's rest and the opening purse read --
+        -- `runsStarted` above moves on every descent BEGUN, empty dips included, and keeps seeding runs.
+        tripsCounted = 0,
+        -- The trip the opening purse was last topped up on (states/gate.lua). Nil until the first descent.
+        purseTrip = nil,
         -- The roster IS the company: everyone owned marches, and the deployment phase picks
         -- MAX_FIELD of them per battle. Unbounded, and there is no second list beside it.
         roster = roster,
@@ -819,8 +825,12 @@ end
 -- IT IS NOT `expeditionsOut`, and the two must not be confused. That one is `max(bounties, deepest)` --
 -- how far DOWN this company has got -- which jumps several notches in one deep trip and never moves at
 -- all for a company that farms floor one. This one only ever climbs by one, and only by coming home.
+--
+-- (2026-10-23) IT READS `tripsCounted` NOW, NOT `runsStarted`. A descent begun is not a trip taken:
+-- walking onto the Gate screen and climbing straight back out advanced the city a room, ticked the Ward
+-- and refilled the purse. A trip counts when it won a fight or ended in a wipe (Gate.homecoming).
 function Player.tripsHome(player)
-    return (player and player.runsStarted) or 0
+    return (player and player.tripsCounted) or 0
 end
 
 function Player.expeditionsOut(player)
@@ -1758,6 +1768,9 @@ function Player.newGamePlus(player)
     -- ...and the descents counted within the lap start over with it, or the first run of the second lap
     -- would be dealt as though it were the fourth.
     player.runsStarted = 0
+    -- ...and the counted trips with them, which is what the city reads (Player.tripsHome).
+    player.tripsCounted = 0
+    player.purseTrip = nil
     player.completedQuests = {}
     player.flags = {}
     -- The post-quest advancement overlay is owed to the run that just ended, not to the new one.

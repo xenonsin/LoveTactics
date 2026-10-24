@@ -254,21 +254,17 @@ return {
             local rooms = {
                 { house = "alchemist",     room = "read",     need = 1 },
                 { house = "undercroft",    room = "counter",  need = 2 },
-                { house = "bastion",       room = "forge",    need = 3 },
-                { house = "hunters_lodge", room = "supper",   need = 4 },
-                { house = "arcanum",       room = "bestiary", need = 5 },
-                { house = "colosseum",     room = "duel",     need = 6 },
-                { house = "arcanum",       room = "study",    need = 7 },
+                { house = "hunters_lodge", room = "hire",     need = 3 },
+                { house = "bastion",       room = "forge",    need = 4 },
+                { house = "hunters_lodge", room = "supper",   need = 5 },
+                { house = "arcanum",       room = "bestiary", need = 6 },
+                { house = "colosseum",     room = "duel",     need = 7 },
+                { house = "arcanum",       room = "study",    need = 8 },
             }
-            -- The hiring board is PARKED (data/buildings/hunters_lodge.lua): no trip count opens it.
-            local late = Player.new()
-            late.runsStarted = 99
-            assert(not Offer.openSet(late, Building.defs.hunters_lodge).hire,
-                "the hiring board is parked and must not open on any trip")
             for _, r in ipairs(rooms) do
                 for trip = 0, r.need do
                     local p2 = Player.new()
-                    p2.runsStarted = trip
+                    p2.tripsCounted = trip
                     local open = Offer.openSet(p2, Building.defs[r.house])[r.room] == true
                     assert(open == (trip >= r.need),
                         r.room .. " reads the wrong way with the company at trip " .. trip)
@@ -288,7 +284,7 @@ return {
             -- The record is the COMPANY's rather than the run's (models/descent.lua's Descent.reached),
             -- so climbing out and going back down shallow cannot take a room away again.
             local deep = Player.new()
-            deep.runsStarted = 6
+            deep.tripsCounted = 6
             assert(Offer.openSet(deep, Building.defs.bastion).forge,
                 "the trip count only ever climbs, so a room it opened stays open")
 
@@ -305,7 +301,7 @@ return {
             -- floor nine on one trip has seen ONE homecoming and must have exactly one new room.
             local diver = Player.new()
             Descent.reached(diver, 9)
-            diver.runsStarted = 1
+            diver.tripsCounted = 1
             local got = {}
             for _, r in ipairs(rooms) do
                 if Offer.openSet(diver, Building.defs[r.house])[r.room] then got[#got + 1] = r.room end

@@ -84,4 +84,18 @@ function Delver.roll(allyIds, objective, seed)
     return out, obj
 end
 
+-- THE DELVERS STILL STANDING when a fight is decided, as rolled ids, in seat order (2026-10-23). Read
+-- by states/battle.lua's win BEFORE the mercy revive stands the fallen back up, so a delver who died is
+-- not counted as saved. A saved one asks to join (states/game.lua's offerDelver, Hire.joinDelver).
+function Delver.survivors(combat)
+    local out = {}
+    for _, u in ipairs((combat and combat.units) or {}) do
+        if u.side == "party" and u.alive and not u.summoned and u.char and Delver.isDelver(u.char)
+            and u.char.id ~= Delver.ID then
+            out[#out + 1] = u.char.id
+        end
+    end
+    return out
+end
+
 return Delver
