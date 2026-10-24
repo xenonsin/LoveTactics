@@ -1003,6 +1003,15 @@ function Save.snapshot(player)
         -- Nil rather than an empty table for a company that has never gone down, so a town-only save
         -- diffs clean. Purely additive, so Save.VERSION does not move.
         floors = next(player.floors or {}) and player.floors or nil,
+        -- HIRES LEFT DOWN THERE with a carrier (Descent.strand): { [charId] = { floor, trip } }. The
+        -- carrier itself rides in its floor's board above. Nil when nobody is stranded; additive.
+        stranded = (function()
+            local out = {}
+            for id, s in pairs(player.stranded or {}) do
+                if type(s) == "table" then out[id] = { floor = s.floor, trip = s.trip } end
+            end
+            return next(out) and out or nil
+        end)(),
     }
 end
 
@@ -1516,6 +1525,17 @@ function Save.restore(snap)
                 if type(board) == "table" then out[tostring(key)] = board end
             end
             return out
+        end)(),
+        -- Hires stranded with a carrier (see Save.snapshot). Numbers forced, since the encoder may hand
+        -- a number back as a string; a malformed row is dropped rather than stranding somebody forever.
+        stranded = (function()
+            local out = {}
+            for id, s in pairs(type(snap.stranded) == "table" and snap.stranded or {}) do
+                if type(id) == "string" and type(s) == "table" and tonumber(s.floor) then
+                    out[id] = { floor = tonumber(s.floor), trip = tonumber(s.trip) or 0 }
+                end
+            end
+            return next(out) and out or nil
         end)(),
         -- The piles waiting at depth. Absent on a save from before the rift started closing behind the
         -- company, which reads as one that has never lost anything -- the same thing a lucky company

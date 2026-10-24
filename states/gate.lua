@@ -431,14 +431,21 @@ function gate.draw()
     local packs = Descent.lostPacks(p)
     if #packs > 0 then
         local line
-        if #packs == 1 then
-            line = "Your pack lies on floor " .. packs[1].floor ..
-                   " -- " .. packs[1].count .. (packs[1].count == 1 and " piece" or " pieces")
-        else
-            local n, floors = 0, {}
-            for i, pk in ipairs(packs) do n = n + pk.count; floors[i] = pk.floor end
-            line = n .. " pieces lie on floors " .. table.concat(floors, ", ")
+        -- A CARRIER (Descent.seatCarrier) holds it now, and says who is waiting with it -- a stranded
+        -- hire is the other half of what this screen has to tell a company. TWO SHORT LINES rather than
+        -- one long one: right-aligned in this column, a long line runs back into the expedition plates.
+        local n, hires, floors, held = 0, 0, {}, false
+        for i, pk in ipairs(packs) do
+            n, hires, floors[i] = n + pk.count, hires + (pk.hires or 0), pk.floor
+            held = held or pk.carrier == true
         end
+        if #packs == 1 then
+            line = "Your pack " .. (held and "is held" or "lies") .. " on floor " .. floors[1]
+        else
+            line = "Your packs " .. (held and "are held" or "lie") .. " on floors " .. table.concat(floors, ", ")
+        end
+        line = line .. "\n" .. n .. (n == 1 and " piece" or " pieces")
+        if hires > 0 then line = line .. (hires == 1 and ", 1 hire" or (", " .. hires .. " hires")) end
         love.graphics.setFont(Theme.body(13))
         Theme.set(Theme.accentWeapon)
         love.graphics.printf(line, Scale.WIDTH / 2 + 40, 274, 300, "right")

@@ -661,11 +661,38 @@ function hub.enter()
     --
     -- NO SAVE ON THE WAY PAST. The rout branch already wrote one (states/game.lua) and this field is
     -- not in the file at all, so persisting the clear would be rewriting the save to record nothing.
+    --
+    -- WHAT IT SAYS NOW (2026-10-23) is where the haul went, because that changed: what killed the company
+    -- holds the trip's finds on that floor (Descent.seatCarrier), and a hire may be waiting with it
+    -- (Descent.strand). The kit they walked down with did still come home, which is why the sentence
+    -- names only those two. The Gate still carries it standing.
     notice = nil
     if hub.player.pendingRout then
-        notice = "Routed on floor " .. hub.player.pendingRout ..
-            ". The company came home with everything it owned."
+        local floor = hub.player.pendingRout
+        notice = "Routed on floor " .. floor .. ". What killed you holds the haul there."
+        local left = {}
+        for _, row in ipairs(Descent.strandedList(hub.player)) do
+            if row.floor == floor then left[#left + 1] = row.char end
+        end
+        if #left == 1 then
+            notice = notice .. " " .. (left[1].name or "A hire") .. " stays with it."
+        elseif #left > 1 then
+            notice = notice .. " " .. #left .. " hires stay with it."
+        end
         hub.player.pendingRout = nil
+    end
+    -- ...AND THE HIRES NOBODY CAME FOR (Descent.expireStranded): gone after Descent.STRAND_TRIPS trips.
+    -- Only between trips (no expedition open), so a look at the Gate and a walk back is not a trip spent.
+    -- Saved here, because the roster just changed and the release must not be undone by a quit.
+    if not hub.player.descentRun then
+        local gone = Descent.expireStranded(hub.player)
+        if #gone > 0 then
+            local line = (#gone == 1)
+                and (gone[1].name .. " was never fetched from floor " .. gone[1].floor .. ", and is gone.")
+                or (#gone .. " hires were never fetched, and are gone.")
+            notice = notice and (notice .. "\n" .. line) or line
+            Player.save()
+        end
     end
     -- The town is the safe home a battle hands back to, so clear any screen effect the last fight left
     -- standing -- the defeat grey most of all -- rather than let it bleed into the city (ui/screen_fx).

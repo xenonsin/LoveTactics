@@ -621,7 +621,8 @@ function game:stairGate()
             if enc then
                 if enc.wardFor then
                     wardDown = cell.cleared == true
-                elseif enc.kind == "combat" or enc.kind == "elite" then
+                elseif (enc.kind == "combat" or enc.kind == "elite") and not enc.carrier then
+                    -- (A carrier is not the floor's: it is the company's own loss standing there.)
                     total = total + 1
                     if cell.cleared then cleared = cleared + 1 end
                 end
@@ -2036,9 +2037,14 @@ function game:cellMuster(cell)
         if enc and enc.kind == "pack" and enc.composition then
             def = { kind = "pack", composition = enc.composition }
         end
+        -- ...and a CARRIER the same way, for the same reason: its cast is on the cell (Descent.seatCarrier).
+        if Descent.isCarrier(enc) and enc.composition then
+            def = { kind = "elite", composition = enc.composition, enemyCap = enc.enemyCap }
+        end
         cached = def and Muster.encounter(def, {
             depth = game.depth,
-            enemyLevel = game.quest and game.quest.dangerLevel,
+            -- Plus whatever a carrier has grown by (Descent.fightLevel); the floor's own level otherwise.
+            enemyLevel = Descent.fightLevel(game.quest and game.quest.dangerLevel, enc),
             quest = game.quest,
             floorLevel = game.quest and game.quest.floorLevel,
             -- ...and what the fight is HOLDING, for the same reason the pack is rated off the cell: a
@@ -2588,12 +2594,22 @@ function game:openEncounter(cell, opts)
         --
         -- The salvage, the experience and the thin chance of a crossing token are paid by grantSideSpoils
         -- like any other won fight: beating somebody for your own bag back is still beating somebody.
-        -- ...AND THERE IS NO BAG TO HAND BACK ANY MORE. Piles are deleted with the wipe penalty that
-        -- made them (models/descent.lua), so nothing seats a guarded pack and this pays nothing. It is
-        -- kept, empty, only because a run saved before the deletion can still be standing on one: the
-        -- fight resolves and the marker clears through the ordinary win path, which is the right
-        -- outcome for a stop whose reward was the company's own kit that it never actually lost.
+        -- WHAT IT IS NOW: THE CARRIER (models/descent.lua's Descent.seatCarrier). The fight that wiped
+        -- the company stands on the tile holding the trip's haul and any hire left with it; this is where
+        -- killing it hands both back. The haul goes through Player.stow (into the bag underground) and
+        -- the hires come back off the stranded list into the roster's usable pool. The tile itself is
+        -- lifted by retireRolledFight below, after the grant, for the reason that function gives.
         local function takeGuardedPack()
+            if not (game.descent and Descent.isCarrier(cell.encounter)) then return end
+            local items, freed = Descent.takeCarrier(game.player, Descent.depth(game.descent), cell)
+            for _, item in ipairs(items or {}) do Player.stow(game.player, item) end
+            if items and #items > 0 then
+                game:pushToast(#items == 1 and "Your pack: 1 piece recovered"
+                    or ("Your pack: " .. #items .. " pieces recovered"))
+            end
+            for _, char in ipairs(freed or {}) do
+                game:pushToast((char.name or "Someone") .. " is back with the company")
+            end
         end
 
         -- A ROLLED FIGHT IS NOT A PLACE, so once it is over the tile goes back to being bare ground.
@@ -2614,7 +2630,11 @@ function game:openEncounter(cell, opts)
         -- The flee path has always done exactly this, for exactly this reason (see onFlee below). The two
         -- winning paths -- fought and walked off -- simply never learned it.
         local function retireRolledFight()
-            if cell.encounter and cell.encounter.wandering then
+            -- ...and a DEAD carrier (spent by takeGuardedPack), which is not a place either: it stood there
+            -- because the company fell there, and once it has handed the haul back the tile is ground
+            -- again. A live one fled from stays exactly where it is.
+            if cell.encounter and (cell.encounter.wandering
+                    or (Descent.isCarrier(cell.encounter) and cell.encounter.spent)) then
                 cell.encounter, cell.cleared = nil, nil
             end
         end
@@ -2792,7 +2812,8 @@ function game:openEncounter(cell, opts)
             -- ...and the level the world down here fights at, when the mode keeps a clock of its own. A
             -- descent hardens on DEPTH rather than on the calendar (Descent.dangerLevel); absent it,
             -- states/battle.lua falls back to the day, which is the campaign's answer and unchanged.
-            enemyLevel = game.quest and game.quest.dangerLevel or nil,
+            -- A carrier stands a level higher per further wipe on its floor (Descent.fightLevel).
+            enemyLevel = Descent.fightLevel(game.quest and game.quest.dangerLevel, cell.encounter),
             -- WHO WALKED DOWN THE STAIR, which underground is four and not the roster (Descent.party).
             -- The expedition is picked at the Gate and fixed for the run, so the deployment phase has
             -- nothing left to choose: it places the four it is given, and only their ARRANGEMENT is
@@ -3371,149 +3392,90 @@ function game:openEncounter(cell, opts)
 
                 -- A DESCENT WIPE LEAVES THE COMPANY WHERE IT FELL, and does not end the descent.
                 --
-                -- IT USED TO END EVERYTHING -- the company, the floors, the file -- and that was right
-                -- while a run banked nothing and had nowhere to come back to. It has both now (the gate,
-                -- models/gate.lua), and the reference the mode is being built against answers a wipe the
-                -- same way it answers a single death: the bodies stay down there, you form a NEW party,
-                -- and you go and get them. That is the most famous thing about Wizardry and it costs
-                -- nothing to have, because the machinery is already here -- a body left on a floor is
-                -- exactly what game:buryLost writes, and this writes the whole party at once.
+                -- WHAT A WIPE COSTS (the author, 2026-10-23), in the order this branch charges it:
                 --
-                -- The rollback below is skipped: it exists to hand a campaign company back the gear it
-                -- marched in with, and this company is not coming back for its gear -- it is lying on
-                -- floor N wearing it, which is the point.
+                --   1. A FALL IS A FALL. Every body the fight knocked down is injured, exactly as a rout
+                --      injures its spent bodies and through the same seam (game:inflictInjuries reads
+                --      states/battle.lua's `fallen`, which a wipe fills with the whole company). This
+                --      branch used to deal none, on the reading that wounding a beaten company is a price
+                --      on losing; the author reversed that -- a body that went down is hurt however the
+                --      fight came out.
+                --   2. WHAT KILLED YOU CARRIES YOUR HAUL. The trip's finds (Player.takeAtRisk -- nothing
+                --      the company walked in with) go to a CARRIER: the cast that beat them, seated on the
+                --      tile they fell on as an elite, at the floor's own level (Descent.seatCarrier). Kill
+                --      it and the haul comes back with its ordinary spoils. A second wipe on the floor
+                --      merges into it and raises it a level.
+                --   3. HIRED BODIES STAY DOWN. The named cast wakes in the city; a hire is stranded with
+                --      the carrier (Descent.strand) until it dies, or is gone after Descent.STRAND_TRIPS.
+                --
+                -- What it still does NOT take: the kit they marched down with, the gold, the levels and the
+                -- map. Both exits close the run and both come home to the city, so neither is the cheaper
+                -- way out (see the climb-out branch).
                 if game.descent then
-                    -- A WIPE SENDS THE COMPANY HOME WITH EVERYTHING AND CHARGES THE COUNT. The bodies
-                    -- come back, the haul comes back, the grids come back exactly as they were arranged
-                    -- -- and the bill is two marks on the tally (docs/the-count.md). Nothing material
-                    -- is taken by losing, ever.
-                    --
-                    -- THIS IS THE PAGE'S OWN LAW, FINALLY APPLIED. the-count.md prices a need at
-                    -- nothing and a decision at a mark, and then charged the FAILURE the haul, most of
-                    -- the purse and an injury on every head -- the most expensive line in the game, billed
-                    -- to the company that had just lost. It had already caught itself once here (the
-                    -- Inn's mending toll, deleted for the same reason). This is the same deletion one
-                    -- row up.
-                    --
-                    -- TWO MARKS, NOT ONE, AND THAT IS NOT A PUNISHMENT SMUGGLED BACK IN. The stair
-                    -- costs one. If dying cost the same it would be the CHEAPER exit -- a wipe happens
-                    -- where the company stands and the stair has to be walked to -- so the optimal play
-                    -- would be to loot until threatened and then die on purpose. One extra mark is the
-                    -- whole of the fix, and it is paid on a clock rather than out of a pack.
                     local floor = Descent.depth(game.descent)
-                    -- Inert while the tally is parked (Descent.COUNT_PARKED); left standing because it
-                    -- is the intent, and a park you cannot lift from one flag is a deletion.
+                    -- The tally's two marks. Inert while it is parked (Descent.COUNT_PARKED); left
+                    -- standing because a park you cannot lift from one flag is a deletion.
                     Descent.countBy(game.player, Descent.COUNT_WIPE)
 
-                    -- AND WHAT CAME OUT IS DISCOVERED, exactly as it is on the stair. Both exits
-                    -- surface with the haul now, so both open the shelf lines the haul earns
-                    -- (models/player.lua's Player.recordFound). A wipe that did not discover would make
-                    -- the stair the only way to grow a shelf, which is a haul penalty wearing a
-                    -- different hat.
+                    -- What came out is discovered, as on the stair (Player.recordFound), so the stair is
+                    -- not the only way to grow a shelf.
                     Player.recordFound(game.player)
 
-                    -- NOTHING IS DROPPED, so there is no pile, no guard standing over it and no
-                    -- recovery dive. That apparatus is gone in full (Descent.dropPack and its
-                    -- neighbours) rather than left switched off, because a pile system nothing writes
-                    -- to is a save shape and a fight blueprint waiting to be mistaken for live code.
-                    --
-                    -- NO CUT EITHER: Player.loseHaul is deleted with it. It only ever took ore, its
-                    -- `gold` had been zero since the campaign's coin became objects, and the argument
-                    -- for keeping it -- that without a cost which is NOT an item the player would tidy
-                    -- every find into a spare grid cell before a risky fight -- is now answered by the
-                    -- mark instead. The mark is the cost that is not an item.
-                    --
-                    -- AND NO INJURIES, WHICH IS NOW A DECISION RATHER THAN A NO-OP. This read "an injury
-                    -- lasts the expedition and the surface ends it for free, and a wipe IS a return to
-                    -- the surface -- so inflicting them here only ever wrote a state that was cleared
-                    -- in the same breath." That stopped being true when injuries started outliving the
-                    -- trip (models/injury.lua): an injury dealt here would now follow the company into
-                    -- town and have to be rested or bought off.
-                    --
-                    -- It stays at none, and on the law rather than on the old accident: wounding a
-                    -- company for having been beaten is a price on losing, which is the one thing
-                    -- docs/the-count.md forbids. A rout already costs the floor's unfought spoils.
+                    -- (1) A FALL IS A FALL. Before endFight, while the battle's list of who fell is still
+                    -- the last one written -- the same ordering the rout keeps above.
+                    game:inflictInjuries()
 
-                    -- The fight is over -- lost, but over. Every other way out of a battle says this
-                    -- (there are six) and this one did not, which put a wiped company back into the
-                    -- arena they had just been routed in the moment they walked back down the stair.
-                    -- game.enter now clears it at the door as well; both, because a route that leaves
-                    -- this screen holding a dead battle is wrong even if the next entry tidies up.
+                    -- (2, 3) WHO STOOD AGAINST THEM, AND WHICH OF THEM WERE HIRED, read off the fight
+                    -- before it is let go: the arena's opening enemies are the carrier's cast (a rolled
+                    -- wanderer and an objective fight seat the same way -- a plain kill-all of exactly
+                    -- the bodies that were there), and the expedition's hires are who stays down.
+                    local foes, hires = {}, {}
+                    local lostTo = require("states.battle").arena
+                    for i, u in ipairs((lostTo and lostTo.enemies) or {}) do foes[i] = u.id end
+                    for _, char in ipairs(Descent.party(game.descent, game.player)) do
+                        if require("models.hire").isHire(char) then hires[#hires + 1] = char.id end
+                    end
+                    -- The fight's own name when it was a fight; a stair re-written over a lost breach
+                    -- (the top of onLoss) is not what killed them, so it lends none.
+                    local wiper = cell.encounter
+                    local wiperNamed = EncounterModel.opensBattle(wiper)
+
+                    -- The fight is over -- lost, but over. Every way out of a battle says so, or walking
+                    -- back down the stair would drop the company into the arena they were routed in.
                     game.endFight()
 
-                    -- THE MAP SURVIVES THE ROUT, and it has to, on this page's own law: the ground a
-                    -- company drew before it was killed is not a thing it was carrying, and taking it
-                    -- back would be a price on losing. It is also the symmetry below, kept honest --
-                    -- both exits bank the book, so neither way home is the cheaper one.
                     if game.grid and game.descent then
-                        Descent.keepFloor(game.player, Descent.depth(game.descent), game.grid:snapshot())
+                        -- THE MAP SURVIVES: the ground a company drew is not a thing it was carrying.
+                        Descent.keepFloor(game.player, floor, game.grid:snapshot())
 
-                        -- ...AND THE HAUL STAYS ON THE TILE THEY FELL ON (Descent.dropPack).
-                        --
-                        -- WHAT IS TAKEN is exactly what this expedition FOUND -- Player.atRisk's diff
-                        -- against the company as it walked in (`run.entry`) -- and nothing else. The kit
-                        -- they marched down with, their gold, their levels and their map are untouched,
-                        -- which is docs/the-count.md's law held: this is not a price on recovering, it
-                        -- is the trip's unbanked winnings staying where the trip ended.
-                        --
-                        -- AFTER keepFloor, and the order is load-bearing: the pile is written into the
-                        -- kept board's own cell, so the board has to be in the book before there is a
-                        -- cell to write to.
-                        --
-                        -- ON THE PARTY'S TILE, which is where the company was standing when the fight
-                        -- that killed them began -- the same square the board will put them back on when
-                        -- they come for it.
+                        -- (2) ...AND THE CARRIER STANDS ON IT. After keepFloor, because the carrier is
+                        -- written into the kept board's own cell. On the party's tile -- where the fight
+                        -- that killed them began -- or the nearest open place if that tile is a stair.
                         local haul = Player.takeAtRisk(game.player, game.descent.entry)
-                        if haul and #haul > 0 and game.map then
-                            Descent.dropPack(game.player, Descent.depth(game.descent),
-                                game.map.px, game.map.py, haul)
+                        if game.map then
+                            Descent.seatCarrier(game.player, floor, game.map.px, game.map.py, {
+                                items = haul,
+                                composition = foes,
+                                name = wiperNamed and wiper.name or nil,
+                                tier = wiperNamed and wiper.tier or nil,
+                                hires = hires,
+                            })
                         end
                     end
 
-                    -- ...AND WHAT IS LEFT IN THE BAG COMES HOME. takeAtRisk above has already lifted
-                    -- every find onto the pile, so the pack now holds exactly what the company packed
-                    -- at the Gate -- and that is theirs, which is the law this whole branch is careful
-                    -- about ("nothing the company owned when it walked in is ever taken"). Leaving it
-                    -- sealed in a container the town cannot open would be a price on having lost.
+                    -- What is left in the bag is what they packed at the Gate, and that comes home:
+                    -- takeAtRisk above has already lifted every find onto the carrier.
                     Player.unpack(game.player)
 
-                    -- THE RUN CLOSES ON A WIPE TOO, and the symmetry is load-bearing: if dying
-                    -- preserved the floor stack and leaving did not, a company standing deep would be
-                    -- better off letting itself be killed, and the mode would have built an incentive
-                    -- to throw fights. Both exits reset (see the climb-out branch) -- what neither of
-                    -- them resets any more is the map book, which is the player's (Descent.keepFloor).
+                    -- THE RUN CLOSES ON A WIPE TOO, as on the climb-out; the map book is the player's.
                     game.player.descentRun = nil
-
                     game.descent = nil
 
-                    -- WHERE A ROUTED COMPANY WAKES: THE CITY, the same place the stair puts them.
-                    --
-                    -- They woke at the Gate for as long as the Gate was the screen that had something
-                    -- to say to them -- it drew the rout's notice, and the stair was the only thing a
-                    -- beaten company could do next. Both halves stopped being true. What a beaten
-                    -- company actually needs is the town: the Ward that sets the bones, the Touchstone,
-                    -- the shelves. Waking at the mouth of the hole put the one control on the screen
-                    -- pointing straight back down it, which is the last thing to offer somebody who has
-                    -- just lost a company.
-                    --
-                    -- BOTH EXITS NOW LAND IN THE SAME PLACE, which is the symmetry this branch already
-                    -- keeps everywhere else: the run closes the same way, the map is banked the same
-                    -- way, and neither way home is the cheaper one (see the climb-out branch).
-                    --
-                    -- THE ROUT STILL SPEAKS, on the city's own screen and once (`pendingRout`, drawn by
-                    -- states/hub.lua). The sentence is the half a readout cannot say -- that losing
-                    -- took nothing the company owned -- and it is the sentence a player needs in the
-                    -- five seconds after being wiped. The other half, WHERE THE PACK IS, was never this
-                    -- notice's job for long: the Gate carries it standing (Descent.lostPacks, drawn on
-                    -- every visit), because a pack outlives the session that dropped it and the player
-                    -- has to be able to find it tomorrow without dying again to be told.
-                    --
-                    -- ON THE PLAYER rather than in a switch payload, because the city takes none: it is
-                    -- the one screen every route into free play goes through and it reads the company
-                    -- off Player.active (states/hub.lua's enter). Same seam the post-quest report uses
-                    -- (`pendingSummary`), and in-memory for the same reason -- it is written and read in
-                    -- the same breath, with nothing but a state switch in between, so it wants no place
-                    -- in the save file (models/save.lua snapshots a named list of fields).
+                    -- WHERE A ROUTED COMPANY WAKES: THE CITY, the same place the stair puts them --
+                    -- the Ward, the Touchstone and the shelves are what a beaten company needs. The
+                    -- city says the rout once (`pendingRout`, read by states/hub.lua's enter); the Gate
+                    -- carries where the carrier stands, every visit (Descent.lostPacks). In-memory, not
+                    -- saved: written and read with only a state switch between.
                     game.player.pendingRout = floor
 
                     Player.save()
@@ -3563,7 +3525,7 @@ function game:openEncounter(cell, opts)
                 floorLevel = game.quest and game.quest.floorLevel or nil,
                 -- Threaded here as well as onto the played path, for the reason `generalsStanding`
                 -- above is: the walk-off must settle the fight that was standing on the tile.
-                enemyLevel = game.quest and game.quest.dangerLevel or nil,
+                enemyLevel = Descent.fightLevel(game.quest and game.quest.dangerLevel, cell.encounter),
                 party = game.player and game.player.roster or {},
             })
             local combat = built.combat

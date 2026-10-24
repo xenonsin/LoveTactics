@@ -89,11 +89,11 @@ function EncounterBattle.spec(opts, partyIds, seed)
         -- A CAST THE CELL ALREADY KNOWS wins over the blueprint's. Plain id lists only -- everything
         -- that can put one here rides in a save, so a function could never have been stored.
         --
-        -- One caller today: the fight standing over a dropped pack (models/descent.lua's
-        -- Descent.packGuard), whose company is drawn ONCE, when the party falls, and kept. The
-        -- blueprint underneath it carries the name and the fiction and deliberately no composition,
-        -- because a blueprint's would be re-rolled on every re-entry and this fight has to be the same
-        -- fight the second time you walk up to it.
+        -- One caller today: the CARRIER standing on a wiped company's haul (models/descent.lua's
+        -- Descent.seatCarrier), whose cast is the one that beat them, read once at the wipe and kept --
+        -- a blueprint's would be re-rolled on every re-entry, and this fight has to be the same fight
+        -- the second time you walk up to it. It keeps no blueprint id, so `def` above is nil and the
+        -- fight is a plain kill-all with no objective or escort.
         if enc.composition then spec.composition = enc.composition end
     end
     -- A fight against somebody's team rather than a roll of the encounter table: a stored build, or
@@ -143,6 +143,9 @@ function EncounterBattle.cellEligible(cell)
     -- from before the guard existed is a pickup, and there is nothing to rate or to walk off.
     if enc.kind == "pack" then return enc.composition ~= nil end
     if enc.kind ~= "combat" and enc.kind ~= "elite" then return false end
+    -- A CARRIER (models/descent.lua's Descent.seatCarrier) is a plain kill-all whose cast rides on the
+    -- cell and whose blueprint id it deliberately does not keep -- so it qualifies on its cast, like a pack.
+    if enc.carrier then return enc.composition ~= nil end
     return EncounterBattle.eligible(enc.id and EncounterModel.get(enc.id))
 end
 

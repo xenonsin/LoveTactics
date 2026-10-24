@@ -155,7 +155,8 @@ return {
         end
         -- ...and it must NOT do the wipe's work. A rout that dropped the pack or cut the haul would be
         -- charging the failure twice, which is the one thing this exit exists not to do.
-        for _, call in ipairs({ "dropPack", "loseHaul", "wipeRun", "State%.switch" }) do
+        for _, call in ipairs({ "dropPack", "seatCarrier", "takeAtRisk", "loseHaul", "wipeRun",
+                               "State%.switch" }) do
             assert(not fork:find(call), "the rout exit charges the wipe's price: " .. call:gsub("%%", ""))
         end
     end },

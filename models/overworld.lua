@@ -1989,7 +1989,11 @@ function Overworld:reseatElites(pool, seed)
         for x = 1, self.cols do
             local c = self.cells[y][x]
             local e = c.encounter
-            if e and e.kind == "elite" and not e.mimic and not e.wandering then old[#old + 1] = c end
+            -- ...nor a CARRIER (Descent.seatCarrier): it stands where the company fell, holding their
+            -- haul, until it is killed -- re-dealing it would hide the one fight they are coming back for.
+            if e and e.kind == "elite" and not e.mimic and not e.wandering and not e.carrier then
+                old[#old + 1] = c
+            end
         end
     end
     if #old == 0 then return 0 end

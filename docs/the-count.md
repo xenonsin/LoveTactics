@@ -30,32 +30,32 @@
 >
 > ### What a wipe costs instead, since this page says it should cost nothing
 >
-> **The haul, and it is not gone — it is lying on the floor you died on.** `Descent.dropPack` puts this
-> expedition's finds (`Player.atRisk`'s diff against the company as it walked in) on the tile the party
-> fell on, in the kept board for that floor. Walk back down and pick it up.
+> **Rewritten 2026-10-23, by the author's call.** A wipe costs three things, and the code that charges
+> them is the wipe branch of `states/game.lua`'s `onLoss`:
 >
-> **This page's law is intact and the sentence below it is not.** The law is about *recovery* — "a cost
-> on recovery is a tax on needing to recover" — and this takes nothing that helps a company recover:
-> not gold, not gear they owned, not an injury, not a level, not their map. What it takes is the *unbanked
-> winnings of the failed trip*, which is the one thing a company can lose without ever ending up behind
-> where it started.
+> 1. **A fall is a fall.** Every body knocked out takes its injury, win, rout or wipe alike, through the
+>    same seam a rout uses (`game:inflictInjuries`). The wipe used to deal none, on the reading that
+>    wounding a beaten company is a price on losing; that reading is reversed. A body that went down is
+>    hurt however the fight came out.
+> 2. **What killed you carries your haul.** This expedition's finds (`Player.takeAtRisk` — nothing the
+>    company walked in with) go to a **carrier**: the cast that beat them, seated on the tile they fell
+>    on as an elite at the floor's own level (`Descent.seatCarrier`). It stands there, does not re-arm or
+>    move, and is marked on the map and at the Gate (`Descent.lostPacks`). Kill it and the whole haul
+>    comes back, plus the fight's ordinary spoils. A second wipe on that floor merges into it and raises
+>    it one level; there is one per floor.
+> 3. **Hired bodies stay down.** The named cast wakes in the city. A hire is stranded with the carrier
+>    (`Descent.strand`) — out of the Gate's pool, marked *Stranded on floor N* — until it is killed, and
+>    is gone after `Descent.STRAND_TRIPS` (3) trips nobody came for them.
 >
-> **"Losing takes nothing a company can carry" is therefore withdrawn**, and it is withdrawn knowingly.
-> It was written when a wipe was the only failure state in a mode that also confiscated the haul, the
-> purse and three quarters of the forging stock — and against *that*, taking nothing was right. What it
-> could not anticipate is where the pivot left it: after `Descent.entryFloor` a routed company woke at
-> the Gate, whole, holding everything, and walked straight back in on the floor it had just died on.
-> **Dying was free, and the game's central question had one answer.**
+> **What it still does not take:** the kit they marched down with, the gold, the levels, the map.
 >
-> **The retrieval is what keeps it legal.** A confiscation is a price on failing; a pile lying on a
-> floor is a *problem*, and solving it is a trip with stakes of its own down ground whose fights have
-> re-armed (`Descent.rearmFloor`). It is also the first reason this game has ever had to re-enter a
-> floor it already cleared — which the persistent map made possible and nothing had yet used.
->
-> **What is deliberately NOT restored** from the deleted pile system: no guard stands over the pile (the
-> walk back is the cost; a bespoke fight at the player's weakest moment is not), and nothing is stranded
-> on the player to be re-seated later — floor nine still exists, so the pile simply waits in floor
-> nine's own cell.
+> **The old argument for the pile still holds for the haul half.** The law here is about *recovery* —
+> "a cost on recovery is a tax on needing to recover" — and the haul is the *unbanked winnings of the
+> failed trip*, the one thing a company can lose without ending up behind where it started. Before it
+> was taken, `Descent.entryFloor` woke a routed company whole and sent it straight back in: dying was
+> free, and the game's central question had one answer. **"Losing takes nothing a company can carry"
+> stays withdrawn.** What changed on 2026-10-23 is that the pile is guarded by the thing that made it,
+> and that the injury and the hires are charged as well.
 >
 > **Everything below this line describes the tally as it behaves when the flag is down.**
 
@@ -72,7 +72,7 @@ Every other event in the descent's loop is priced, and the table is now the whol
 | Healing | a need | nothing, and it stays that way |
 | Setting a bone | a need | nothing, and it did not always — see below |
 | **Climbing out** | **a decision** | **one mark** (`Descent.COUNT_STAIR`) |
-| **A wipe** | **a failure** | **two marks** (`Descent.COUNT_WIPE`), and nothing else at all |
+| **A wipe** | **a failure** | **two marks** (`Descent.COUNT_WIPE`) — and, since 2026-10-23, the fallen's injuries, the haul to a carrier and any hire stranded with it (see the banner) |
 
 > **The third row used to break the law this page states, and so did the fourth.** Mending an injury was
 > 120 gold at a counter; then a bed at the Inn, 60 an injury plus a day with the body out of the company.
@@ -84,7 +84,7 @@ Every other event in the descent's loop is priced, and the table is now the whol
 > expensive line in the game, charged to the failure, in a document whose argument is that failures are
 > not where you put the price. All of it is deleted: `Player.loseHaul`, `Descent.dropPack` and the pile
 > system it fed, and the injury the rout inflicted (which the surface cleared for free a screen later
-> anyway). ~~**Losing takes nothing a company can carry.**~~ *(Withdrawn 2026-09-17 — see the banner at the top of this page. A wipe leaves the trip's haul on the floor it happened on.)*
+> anyway). ~~**Losing takes nothing a company can carry.**~~ *(Withdrawn 2026-09-17 — see the banner at the top of this page. Since 2026-10-23 a wipe injures the fallen, hands the trip's haul to the fight that won (a carrier) and strands any hire with it.)*
 
 ## Why a wipe still costs two
 

@@ -171,13 +171,17 @@ The codebase is organized into layers loaded via `require()`. See
   finds: *a stair that could reach into somebody's hand for their sword would be a robbery rather than
   a price*. `tests/pack_spec.lua` holds both halves.
 
-  **A wipe costs the HAUL, and the haul is not gone — it is lying where you fell.** `Descent.dropPack`
-  puts the trip's finds (`Player.atRisk`'s diff against the company as it walked in) on the tile the
-  party died on, in that floor's kept board; walking back to it is how you get it, down ground whose
-  fights have re-armed. Nothing the company owned when it walked in is ever taken, which is the law
-  above held — and the retrieval is the first reason the game has to re-enter a floor it already
-  cleared. `Descent.lostPacks` derives the readout by walking the boards, so there is no second ledger
-  to go stale.
+  **A wipe costs three things (2026-10-23).** *A fall is a fall:* every body knocked out is injured,
+  win, rout or wipe, through `game:inflictInjuries`. *What killed you carries your haul:* the trip's
+  finds (`Player.takeAtRisk`'s diff against the company as it walked in) go to a **carrier** —
+  the cast that beat them, seated on the fall tile as an elite at the floor's level
+  (`Descent.seatCarrier`), standing until killed (rearm and the elite reseat skip it); killing it hands
+  the haul back (`Descent.takeCarrier`, sealed stays sealed), and a second wipe on the floor merges into
+  it and raises it a level. *Hires stay down:* a hired body is stranded with it (`player.stranded`,
+  `Descent.strand`), out of the Gate's pool, and gone after `Descent.STRAND_TRIPS` trips
+  (`Descent.expireStranded`, read off the one clock `Descent.strandClock`). Nothing the company owned
+  when it walked in is taken. `Descent.lostPacks` derives the readout by walking the boards, so there is
+  no second ledger to go stale.
 
   **PEOPLE ARE BACK IN TRAFFIC, AS ADVENTURING PARTIES** (`models/adventurers.lua`, 2026-10-09). The
   2026-09-22 deletion of human companies stands for what it named -- a company met by a company stalls --

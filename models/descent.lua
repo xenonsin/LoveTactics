@@ -2693,7 +2693,10 @@ function Descent.party(run, player)
     local Injury = require("models.injury")
     local roster = {}
     for _, char in ipairs((player and player.roster) or {}) do
-        if Injury.resting(player, char.id) <= 0 then roster[#roster + 1] = char end
+        -- ...and nobody stranded with a carrier (Descent.strand): they are still down there.
+        if Injury.resting(player, char.id) <= 0 and not Descent.strandedOf(player, char.id) then
+            roster[#roster + 1] = char
+        end
     end
 
     local picked = run and run.party
@@ -2749,12 +2752,12 @@ end
 -- deployment phase, which counts against Player.MAX_FIELD where it always did.
 
 -- ---------------------------------------------------------------------------
--- What the company dropped where it fell -- DELETED, and what took its place
+-- What the company dropped where it fell -- the FIRST pile system, deleted
 -- ---------------------------------------------------------------------------
 --
--- NOTHING IS DROPPED ANY MORE. A wipe brings the company home with everything it walked in with and
--- everything it found, and charges two marks on the count instead (Descent.COUNT_WIPE, states/game.lua's
--- wipe branch). What stood here was the other half of a bill that no longer exists.
+-- HISTORY, not the live rule. A wipe's haul is held by a CARRIER now (Descent.seatCarrier, below the
+-- prowl): the fight that beat the company, standing on the tile they fell on. What follows is the record
+-- of the first version, which hung piles off the player and guarded them with a rival company.
 --
 -- WHAT WENT, said out loud because it was a whole feature and not a function: Descent.dropPack seated a
 -- guarded pile on the tile the party fell on; Descent.packGuard drew the rival company standing over it,
@@ -3037,6 +3040,15 @@ function Descent.rearmFloor(grid)
                 -- back. The blueprint it overwrote was not kept; the generator only ever seats this one.
                 c.encounter = { kind = "rest", id = "encounter_rest", name = "A Moment's Rest" }
                 c.cleared = nil
+            elseif e and e.carrier then
+                -- A CARRIER (Descent.seatCarrier) stands until it dies, and a dead one that handed the
+                -- haul back (`spent`) is taken off the board rather than re-armed. One beaten but never
+                -- spent -- a quit between the win and its payout -- stands up again still holding it.
+                if e.spent then
+                    c.encounter, c.cleared = nil, nil
+                else
+                    c.cleared = nil
+                end
             elseif e and e.kind == "rest" and c.cleared then
                 -- THE FIRE IS LIT AGAIN, and it is the one place on the list below that comes back. See
                 -- the header: what a camp pays is recovery, and the Ward at the top pays all of it free.
@@ -3110,7 +3122,8 @@ function Descent.pruneStaleFloors(player)
                 for x = 1, (board.cols or 0) do
                     local cell = board.cells and board.cells[y] and board.cells[y][x]
                     local e = cell and cell.encounter
-                    if e and e.kind == "pack" then
+                    -- ...a pile, or a carrier's haul (Descent.seatCarrier): either way the company's.
+                    if e and (e.kind == "pack" or Descent.isCarrier(e)) then
                         for _, snap in ipairs(e.items or {}) do
                             local item = Save.restoreItem(snap)
                             if item then
@@ -3121,6 +3134,9 @@ function Descent.pruneStaleFloors(player)
                     end
                 end
             end
+            -- ...and whoever was stranded with a carrier on it walks home: the floor they were waiting
+            -- on is gone, and a body cannot be left on a floor that no longer exists.
+            Descent.freeStranded(player, tonumber(key))
             floors[key] = nil
             dropped = dropped + 1
         end
@@ -3304,10 +3320,31 @@ function Descent.lightFire(run)
 end
 
 -- ---------------------------------------------------------------------------
--- What the company dropped where it fell
+-- What killed the company carries what it found
 -- ---------------------------------------------------------------------------
 
--- LEAVE THIS EXPEDITION'S HAUL ON THE TILE THE COMPANY DIED ON, as a stop on the floor's kept board.
+-- WHAT KILLED THE COMPANY CARRIES THE HAUL (the author, 2026-10-23). This was a pile lying unguarded on
+-- the tile; it is a CARRIER now -- the fight that wiped them, seated on that tile as an ELITE holding
+-- the trip's finds. Kill it and the whole haul comes back, with the fight's ordinary spoils on top.
+--
+-- IT STANDS: it does not wander, rearmFloor never wakes it (it is lifted off the board when it dies) and
+-- Overworld:reseatElites leaves it where it is. AT THE FLOOR'S OWN LEVEL, plus one for every further
+-- wipe on that floor (`levelBonus`, read by Descent.fightLevel). ONE PER FLOOR: a second wipe here, to the
+-- carrier or to anything else, merges its haul into the one standing -- overwriting would delete the
+-- first haul, and two carriers would be two bills for one floor.
+--
+-- WHAT IT IS MADE OF is the cast that actually stood against the company -- the arena's opening enemies
+-- -- fought as a plain kill-all with no objective, escort or waves. That is the one composition every
+-- kind of fight has, so a rolled wanderer and an objective fight seat the same way as an elite.
+--
+-- WHERE: the fall tile, unless that tile is a PLACE -- a stair, an end, a cache, a spent mimic -- since a
+-- carrier written over the way down would delete the floor's exit. Then the nearest open place to it.
+--
+-- AND THE HIRES STAY DOWN WITH IT (Descent.strand). The named cast wakes in the city; a hired stranger
+-- is left with the carrier, out of the Gate's pool, until it dies -- or for Descent.STRAND_TRIPS trips,
+-- after which they are gone.
+--
+-- (The pile's argument, kept because it still holds for the haul half:)
 --
 -- WHY THERE IS A COST ON DYING AGAIN, stated plainly because docs/the-count.md spent a page arguing
 -- there should not be. That page's law is about RECOVERY -- "a cost on recovery is a tax on needing to
@@ -3333,36 +3370,259 @@ end
 -- board, the board is the player's (Descent.keepFloor), and Overworld:snapshot copies `encounter`
 -- whole -- so there is ONE store and nothing to disagree with anything.
 --
--- NO GUARD STANDS OVER IT. The deleted version rolled a company onto the pile; the walk back down a
--- re-armed floor is already the cost, and a guard would turn a retrieval into a second boss fight at
--- exactly the moment the player is weakest. If this turns out to be too easy the dial is the floor,
--- not a bespoke fight.
---
--- MERGES rather than replaces. Two deaths on one tile leave one pile: overwriting would delete the
--- first haul, which is billing the same failure twice.
-function Descent.dropPack(player, floor, x, y, items)
-    if not (player and items and #items > 0) then return nil end
-    local board = Descent.floorBoard(player, floor)
-    -- No kept board means nothing to lie on. Cannot normally happen -- the wipe path banks the floor
-    -- before it drops -- but a caller that got the order wrong should lose the pile rather than the save.
-    if not (board and board.cells and board.cells[y] and board.cells[y][x]) then return nil end
+-- (NO GUARD STOOD OVER IT, on the argument that a guard turns a retrieval into a second boss fight. The
+-- author reversed that: the carrier is the fight that beat you, at the floor's own level, and that is
+-- the price of getting the haul back.)
 
-    local Save = require("models.save")
-    local cell = board.cells[y][x]
-    local pile = (cell.encounter and cell.encounter.kind == "pack") and cell.encounter or nil
-    if not pile then
-        pile = { kind = "pack", name = "The Company's Pack", items = {} }
-        cell.encounter = pile
-    end
-    for _, item in ipairs(items) do pile.items[#pile.items + 1] = Save.snapshotItem(item) end
-    pile.count = #pile.items
-    -- UNCLEARED, or the stop never answers when the company walks back onto it. rearmFloor leaves it
-    -- alone (it re-arms only what LIVES on a floor), so this is the one thing that has to say so here.
-    cell.cleared = nil
-    return pile
+-- How many trips a stranded hire waits with the carrier before they are gone. Counted off
+-- Descent.strandClock, so "a trip" means whatever that one helper reads.
+Descent.STRAND_TRIPS = 3
+
+-- THE ONE READ OF THE TRIP CLOCK the strand counts on. Trips begun (Player.tripsHome) today; a counted-
+-- trip number (trips that won a fight or wiped) is meant to replace it, and this is the line to repoint.
+function Descent.strandClock(player)
+    return require("models.player").tripsHome(player)
 end
 
--- Pick the pile up: the items, rehydrated, and the marker gone. Nil for a cell holding no pile.
+-- Is this cell encounter a carrier?
+function Descent.isCarrier(enc)
+    return type(enc) == "table" and enc.kind == "elite" and enc.carrier == true
+end
+
+-- The level a fight on this tile is minted at: the floor's own (`base`, the quest's dangerLevel) plus
+-- whatever a carrier has grown by. Nil stays nil, so a caller with no clock of its own falls back as before.
+function Descent.fightLevel(base, enc)
+    if base == nil then return nil end
+    return base + ((type(enc) == "table" and enc.levelBonus) or 0)
+end
+
+-- The carrier standing on `floor`'s kept board, as `enc, cell, x, y`, or nil.
+function Descent.carrierOn(player, floor)
+    local board = Descent.floorBoard(player, floor)
+    for y = 1, ((board and board.rows) or #((board and board.cells) or {})) do
+        local row = board.cells and board.cells[y]
+        for x = 1, ((board.cols) or #(row or {})) do
+            local cell = row and row[x]
+            if cell and Descent.isCarrier(cell.encounter) and not cell.encounter.spent then
+                return cell.encounter, cell, x, y
+            end
+        end
+    end
+    return nil
+end
+
+-- May a carrier be written over what stands on this cell? An inhabitant, yes (it IS the fight that
+-- beat them, or a rolled one, or an old unguarded pile whose items fold in); a place, no.
+local function carrierMayTake(cell)
+    local e = cell.encounter
+    if not e then return true end
+    if e.wandering or e.kind == "pack" then return true end
+    return (e.kind == "combat" or e.kind == "elite") and not e.mimic and not e.questId and not e.wardFor
+end
+
+-- Open ground for a displaced carrier: walkable, empty, nothing put there on purpose, not the door.
+local function carrierOpenGround(board, cell, x, y)
+    if cell.tile == "thicket" then return false end
+    if cell.encounter or cell.cache or cell.gate or cell.key or cell.vault or cell.trap or cell.secret then
+        return false
+    end
+    local s = board.start
+    return not (s and s.x == x and s.y == y)
+end
+
+-- The tile a new carrier stands on: the fall tile if it may, else the nearest open ground to it, walked
+-- outward through anything that is not a wall.
+local function carrierTile(board, x, y)
+    local cells = board.cells
+    local start = cells[y] and cells[y][x]
+    if not start then return nil end
+    if carrierMayTake(start) then return start end
+    local seen, queue, head = { [y * 100000 + x] = true }, { { x, y } }, 1
+    while queue[head] do
+        local cx, cy = queue[head][1], queue[head][2]
+        head = head + 1
+        for _, d in ipairs({ { 0, -1 }, { 1, 0 }, { 0, 1 }, { -1, 0 } }) do
+            local nx, ny = cx + d[1], cy + d[2]
+            local c = cells[ny] and cells[ny][nx]
+            local key = ny * 100000 + nx
+            if c and not seen[key] and c.tile ~= "thicket" then
+                seen[key] = true
+                if carrierOpenGround(board, c, nx, ny) then return c end
+                queue[#queue + 1] = { nx, ny }
+            end
+        end
+    end
+    return nil
+end
+
+-- SEAT (OR GROW) THE CARRIER for a wipe on `floor`, at the tile the company fell on (`x`, `y`).
+--
+-- `opts`: items (live instances: the haul, Player.takeAtRisk's), composition (the ids that stood against
+-- them), name, tier, hires (char ids to strand with it). Returns `carrier, merged`.
+--
+-- On a floor that already has a carrier, the haul is merged into it and it rises one level, wherever it
+-- stands. Otherwise one is seated only if there is something for it to hold -- a haul or a hire -- since
+-- a carrier of nothing is a fight with no reason to walk back to it.
+--
+-- The board must be in the book first (Descent.keepFloor): the carrier is written into the kept board's
+-- own cell, and a caller that got the order wrong loses the carrier rather than the save.
+function Descent.seatCarrier(player, floor, x, y, opts)
+    opts = opts or {}
+    local board = Descent.floorBoard(player, floor)
+    if not (player and board and board.cells) then return nil end
+    local Save = require("models.save")
+    local items, hires = opts.items or {}, opts.hires or {}
+
+    local carrier = Descent.carrierOn(player, floor)
+    local merged = carrier ~= nil
+    if carrier then
+        carrier.levelBonus = (carrier.levelBonus or 0) + 1
+    else
+        if #items == 0 and #hires == 0 then return nil end
+        local cell = carrierTile(board, x, y)
+        if not cell then return nil end
+        local comp = {}
+        for i, id in ipairs(opts.composition or {}) do comp[i] = id end
+        carrier = {
+            kind = "elite", carrier = true,
+            name = opts.name or "What Killed You",
+            -- No blueprint id, on purpose: the cast is on the cell, there is no objective or escort to
+            -- inherit, and an elite's first-win Charter Seal is keyed on the id (a carrier pays none).
+            composition = #comp > 0 and comp or nil,
+            -- The whole cast fits: it already stood on a board against this company once.
+            enemyCap = #comp > 0 and #comp or nil,
+            tier = opts.tier or 2,
+            floor = floor,
+            levelBonus = 0,
+            items = {},
+        }
+        -- An old unguarded pile on the chosen tile folds in rather than being written over.
+        local pile = cell.encounter
+        if pile and pile.kind == "pack" then
+            for _, snap in ipairs(pile.items or {}) do carrier.items[#carrier.items + 1] = snap end
+        end
+        cell.encounter = carrier
+        cell.cleared = nil
+    end
+    carrier.items = carrier.items or {}
+    for _, item in ipairs(items) do carrier.items[#carrier.items + 1] = Save.snapshotItem(item) end
+    carrier.count = #carrier.items
+    Descent.strand(player, floor, hires)
+    return carrier, merged
+end
+
+-- KILL THE CARRIER: the haul, rehydrated, and the hires it held back in the company. Returns
+-- `items, freed` (freed = the roster instances), or nil for a cell holding no carrier.
+--
+-- The tile is marked spent rather than emptied, so whatever runs on the win after this still sees the
+-- fight it was; states/game.lua lifts it off the board beside the rolled fights it retires.
+--
+-- THROUGH Save.restoreItem AND NOT Item.instantiate: a husk rebuilds through Identify.sealed off its
+-- `unidentified` field, and sealed must stay sealed (see Descent.takePack).
+function Descent.takeCarrier(player, floor, cell)
+    local e = cell and cell.encounter
+    -- A SPENT one (already taken, waiting to be lifted off) pays nothing twice. Its own flag rather than
+    -- `cell.cleared`, because the win marks the cell cleared before it hands the haul over.
+    if not Descent.isCarrier(e) or e.spent then return nil end
+    local Save = require("models.save")
+    local out = {}
+    for _, snap in ipairs(e.items or {}) do
+        local item = Save.restoreItem(snap)
+        if item then out[#out + 1] = item end
+    end
+    e.items, e.count, e.spent = {}, 0, true
+    cell.cleared = true
+    return out, Descent.freeStranded(player, e.floor or floor)
+end
+
+-- ---------------------------------------------------------------------------
+-- Stranded hires
+-- ---------------------------------------------------------------------------
+
+-- Leave these hires on `floor` with its carrier: { [charId] = { floor, trip } } on the player. A body
+-- already stranded keeps its first stamp -- a second wipe does not restart anybody's clock. Only hires:
+-- the named cast always comes home, and a non-hire id is ignored here so no caller can strand one.
+function Descent.strand(player, floor, ids)
+    if not (player and ids and #ids > 0) then return end
+    local Hire = require("models.hire")
+    local now = Descent.strandClock(player)
+    player.stranded = player.stranded or {}
+    for _, id in ipairs(ids) do
+        id = type(id) == "table" and id.id or id
+        if Hire.isHire(id) and not player.stranded[id] then
+            player.stranded[id] = { floor = floor, trip = now }
+        end
+    end
+end
+
+-- Where this body is stranded, as { floor, trip }, or nil for one who is not.
+function Descent.strandedOf(player, charId)
+    return player and player.stranded and player.stranded[charId] or nil
+end
+
+-- Bring home everybody stranded on `floor`. Returns the roster instances freed.
+function Descent.freeStranded(player, floor)
+    local out = {}
+    if not (player and player.stranded) then return out end
+    for _, char in ipairs(player.roster or {}) do
+        local s = player.stranded[char.id]
+        if s and s.floor == floor then
+            player.stranded[char.id] = nil
+            out[#out + 1] = char
+        end
+    end
+    -- Entries for bodies no longer on the roster (dismissed) are dropped on the way past.
+    for id, s in pairs(player.stranded) do
+        if s.floor == floor then player.stranded[id] = nil end
+    end
+    if not next(player.stranded) then player.stranded = nil end
+    return out
+end
+
+-- THE ONES NOBODY CAME FOR. Every stranded hire whose wait has run Descent.STRAND_TRIPS trips is let go
+-- (Player.release -- the company's gear on them goes back to the stash, their own organs leave with
+-- them). Returns { { name, floor } }, sorted, for the notice. Called in the city, between trips.
+function Descent.expireStranded(player)
+    local gone = {}
+    if not (player and player.stranded) then return gone end
+    local now = Descent.strandClock(player)
+    local byId = {}
+    for _, char in ipairs(player.roster or {}) do byId[char.id] = char end
+    local ids = {}
+    for id in pairs(player.stranded) do ids[#ids + 1] = id end
+    table.sort(ids)
+    local Player = require("models.player")
+    for _, id in ipairs(ids) do
+        local s = player.stranded[id]
+        local char = byId[id]
+        if not char then
+            player.stranded[id] = nil
+        elseif now - (s.trip or now) >= Descent.STRAND_TRIPS then
+            gone[#gone + 1] = { name = char.name or id, floor = s.floor }
+            Player.release(player, id)
+            player.stranded[id] = nil
+        end
+    end
+    if not next(player.stranded) then player.stranded = nil end
+    return gone
+end
+
+-- Every stranded body still on the roster, as { char, floor }, by floor then name.
+function Descent.strandedList(player)
+    local out = {}
+    for _, char in ipairs((player and player.roster) or {}) do
+        local s = Descent.strandedOf(player, char.id)
+        if s then out[#out + 1] = { char = char, floor = s.floor } end
+    end
+    table.sort(out, function(a, b)
+        if a.floor ~= b.floor then return (a.floor or 0) < (b.floor or 0) end
+        return tostring(a.char.name) < tostring(b.char.name)
+    end)
+    return out
+end
+
+-- Pick an OLD pile up -- one written before the carrier, which a save may still hold: the items,
+-- rehydrated, and the marker gone. Nil for a cell holding no pile.
 --
 -- THROUGH Save.restoreItem AND NOT Item.instantiate. Most of what a floor pays is now a husk
 -- (Spoils.SEALED_CHANCE), and a husk rebuilds through Identify.sealed off its `unidentified` field --
@@ -3382,7 +3642,9 @@ function Descent.takePack(player, floor, cell)
     return out
 end
 
--- EVERY PILE THIS COMPANY HAS LYING UNDERGROUND, as { floor, x, y, count }, shallowest first.
+-- EVERY HAUL THIS COMPANY HAS LEFT UNDERGROUND, as { floor, x, y, count }, shallowest first. A carrier's
+-- row also says `carrier = true`, its `name`, how many levels it has grown (`level`) and how many hires
+-- it is holding (`hires`); an old unguarded pile has none of those.
 --
 -- DERIVED BY WALKING THE KEPT BOARDS rather than kept as an index beside them. A second store is a
 -- second thing to go stale, and this one would go stale in the worst possible way -- telling a player
@@ -3398,6 +3660,14 @@ function Descent.lostPacks(player)
                 local e = cell and cell.encounter
                 if e and e.kind == "pack" then
                     out[#out + 1] = { floor = floor, x = x, y = y, count = e.count or #(e.items or {}) }
+                elseif Descent.isCarrier(e) and not e.spent then
+                    local hires = 0
+                    for _, s in pairs((player and player.stranded) or {}) do
+                        if s.floor == floor then hires = hires + 1 end
+                    end
+                    out[#out + 1] = { floor = floor, x = x, y = y, count = e.count or #(e.items or {}),
+                                      carrier = true, name = e.name, level = e.levelBonus or 0,
+                                      hires = hires }
                 end
             end
         end

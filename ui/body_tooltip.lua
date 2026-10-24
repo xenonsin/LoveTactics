@@ -82,6 +82,12 @@ function BodyTooltip.blocks(player, char)
     blocks[#blocks + 1] = { kind = "title", text = char.name or "Somebody", color = Colors.PARTY }
     local class = classLabel(char)
     if class then blocks[#blocks + 1] = { kind = "stat", label = "Class", value = class } end
+    -- A HIRE LEFT WITH A CARRIER (models/descent.lua's Descent.strand), first after who they are: it is
+    -- the reason they cannot be sent, and the one place on the Gate that says it in words.
+    local stranded = require("models.descent").strandedOf(player, char.id)
+    if stranded then
+        blocks[#blocks + 1] = { kind = "desc", text = "Stranded on floor " .. tostring(stranded.floor) .. "." }
+    end
 
     -- WHAT IS WRONG WITH THEM, ahead of everything they can do -- it is the one fact on this card that
     -- changes who you send.
