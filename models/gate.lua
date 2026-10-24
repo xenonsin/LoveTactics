@@ -53,16 +53,16 @@ local Gate = {}
 --
 -- IT NO LONGER SPENDS A DAY, because there are no days. The calendar is deleted: what a night advanced
 -- was a counter whose only readers were the pool gate (which reads depth now) and the market's rotation
--- (which reads trips). And a trip is ALREADY counted at this exact moment -- Descent.new advances
--- `runsStarted` on the same beat, which is what Player.tripsHome reads -- so spending a second counter
--- here would have been two names for one event, drifting the first time one of them was missed.
+-- (which reads trips). Its one caller is Gate.homecoming, on the same beat that advances the counted
+-- trips Player.tripsHome reads -- one event, one place.
 function Gate.night(player)
     if not player then return end
     -- ...AND THE CATHEDRAL SERVES ITS TERMS, both of them, on this one beat.
     --
     -- A rest is priced in DESCENTS rather than in calendar days (models/injury.lua's ward block argues
-    -- why: the calendar is nearly inert in a mode that reads its danger off the floor ladder), and
-    -- walking into the stair is the one moment a descent begins -- so this is where a stay ticks.
+    -- why: the calendar is nearly inert in a mode that reads its danger off the floor ladder), and a
+    -- counted trip coming home is the one moment a descent is finished with -- so this is where a stay
+    -- ticks (Gate.homecoming).
     --
     -- A RITE TICKS ON THE SAME EVENT, and that is not a convenience, it is the design: the city's two
     -- free paths cost the same span of the same clock, so a player learns the unit once and both prices
@@ -74,6 +74,59 @@ function Gate.night(player)
     -- puts on a line. Returns who walked out of the ward, for a caller that wants to say so.
     require("models.curse").tickRites(player)
     return require("models.injury").tickRest(player)
+end
+
+-- ---------------------------------------------------------------------------
+-- A trip that counts (2026-10-23)
+-- ---------------------------------------------------------------------------
+
+-- A FIGHT WON ON THIS RUN: wandering, seated, an elite, a stair or an errand, played or walked off.
+-- The one thing besides a wipe that makes a homecoming a trip (Gate.homecoming).
+function Gate.markWon(run)
+    if not run then return end
+    run.fightsWon = (run.fightsWon or 0) + 1
+end
+
+-- Does this run count as a trip if it ended now?
+function Gate.tripCounts(run, wiped)
+    if wiped then return true end
+    return run ~= nil and (run.fightsWon or 0) > 0
+end
+
+-- THE COMPANY IS HOME. Called by every way a descent ends (climbing out, a wipe, the Crown). A trip
+-- that won a fight or ended in a wipe COUNTS: `player.tripsCounted` advances -- the clock the city's
+-- schedule reads through Player.tripsHome -- and a night passes (Gate.night: the Ward's rest and the
+-- altar's rite tick). An empty dip -- walk in, climb straight out -- counts for nothing, so it can no
+-- longer be used to grow the city, mend a body or refill the purse.
+--
+-- The night used to pass at the TOP of a descent (states/game.lua's game.enter). It passes here now,
+-- at the bottom of a counted one, so a rest still costs the same number of trips sat out.
+--
+-- Once per run: a second call on the same run is a no-op, so two exits that both reach this cannot
+-- count one trip twice. Returns true when the trip counted.
+function Gate.homecoming(player, run, wiped)
+    if not player then return false end
+    if run and run.homecomingDone then return false end
+    if run then run.homecomingDone = true end
+    if not Gate.tripCounts(run, wiped) then return false end
+    player.tripsCounted = (player.tripsCounted or 0) + 1
+    Gate.night(player)
+    return true
+end
+
+-- THE OPENING PURSE (Descent.OPENING_GOLD) is topped up once per counted trip, and on the very first
+-- descent. True when a fresh descent opened now is owed it. `Gate.payPurse` marks it paid.
+function Gate.purseOwed(player)
+    if not player then return false end
+    return player.purseTrip == nil or (player.tripsCounted or 0) > player.purseTrip
+end
+
+function Gate.payPurse(player, amount)
+    if not player then return end
+    if Gate.purseOwed(player) then
+        player.gold = math.max(player.gold or 0, amount or 0)
+        player.purseTrip = player.tripsCounted or 0
+    end
 end
 
 -- ---------------------------------------------------------------------------

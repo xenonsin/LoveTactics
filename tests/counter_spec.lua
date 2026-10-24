@@ -94,7 +94,7 @@ return {
             assert(Offer.open(p, nil), "no gate is open")
             assert(Offer.open(p, {}), "an empty gate is open")
             -- trips alone holds, injury does not, so the pair must not.
-            p.runsStarted = 4
+            p.tripsCounted = 4
             assert(Offer.open(p, { trips = 1 }), "four trips is past one")
             assert(not Offer.open(p, { trips = 1, injury = true }),
                 "every key in a gate must hold")
@@ -113,7 +113,7 @@ return {
         fn = function()
             local diver = Player.new()
             Descent.reached(diver, 9)
-            diver.runsStarted = 1
+            diver.tripsCounted = 1
             assert(Player.tripsHome(diver) == 1, "nine floors in one dive is still one trip home")
             assert(Player.expeditionsOut(diver) >= 9, "...while the depth record says nine")
             assert(Offer.open(diver, { trips = 1 }), "one trip is one trip")
@@ -121,7 +121,7 @@ return {
 
             local farmer = Player.new()
             Descent.reached(farmer, 1)
-            farmer.runsStarted = 5
+            farmer.tripsCounted = 5
             assert(Offer.open(farmer, { trips = 5 }),
                 "five shallow trips are five trips -- a farmer's city must not freeze")
             assert(not Offer.open(farmer, { expeditions = 2 }),
@@ -144,7 +144,7 @@ return {
             assert(Offer.open(hurt, gate), "the event arm alone opens it")
 
             local patient = Player.new()
-            patient.runsStarted = 5
+            patient.tripsCounted = 5
             assert(Offer.open(patient, gate), "the backstop alone opens it")
 
             -- It still ANDs with its siblings: `any` is one key among however many.
@@ -217,7 +217,7 @@ return {
             local well = Player.new()
             well.roster = { Character.instantiate("character_rowan") }
             assert(locked(well, cathedralId), "nobody hurt on trip 0: no shelf yet and nothing to mend")
-            well.runsStarted = 1
+            well.tripsCounted = 1
             assert(Offer.openSet(well, cathedral).shelf, "trip 1 opens the priest shelf (Offer.SCHEDULE)")
             assert(not locked(well, cathedralId), "...and the shelf brings its door with it")
             assert(not Offer.openSet(well, cathedral).mend, "and there is still nothing to mend")
@@ -233,7 +233,7 @@ return {
             assert(house, "no house holds the town counter")
 
             local p = Player.new()
-            p.runsStarted = 2 -- the market counter is trip 2 on the city schedule
+            p.tripsCounted = 2 -- the market counter is trip 2 on the city schedule
 
             local town = Offer.roomFor(p, house, "counter")
             assert(town, "the town counter should be open by trip 2")

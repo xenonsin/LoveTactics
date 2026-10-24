@@ -732,6 +732,11 @@ function Save.snapshot(player)
         run = run,
         seed = seed,
         runsStarted = runsStarted,
+        -- COUNTED TRIPS (models/gate.lua's Gate.homecoming), and the trip the purse was last topped up on.
+        -- Written whenever `runsStarted` is, even at 0: an absent field reads as an old save and is seeded
+        -- from runsStarted, which would hand a company of empty dips the trips it never earned.
+        tripsCounted = (runsStarted or (player.tripsCounted or 0) > 0) and (player.tripsCounted or 0) or nil,
+        purseTrip = player.purseTrip,
         ngPlus = ngPlus,
         campaignsFinished = campaignsFinished,
         day = day,
@@ -1430,6 +1435,12 @@ function Save.restore(snap)
         -- because zero is a seed and "no seed yet" is not.
         seed = tonumber(snap.seed),
         runsStarted = tonumber(snap.runsStarted) or 0, -- descents begun this lap; absent means none yet
+        -- COUNTED TRIPS (Player.tripsHome). A save from before the split has none and seeds it from
+        -- `runsStarted`, which is what the city read until then -- less the run still open, which counts
+        -- (or not) on its own homecoming. A save written after it carries the field whenever it is above 0.
+        tripsCounted = tonumber(snap.tripsCounted) or math.max(0, (tonumber(snap.runsStarted) or 0)
+            - ((type(snap.descentRun) == "table") and 1 or 0)),
+        purseTrip = tonumber(snap.purseTrip),
         hireBoard = snap.hireBoard and {
             trip = tonumber(snap.hireBoard.trip) or 0,
             offers = snap.hireBoard.offers or {},

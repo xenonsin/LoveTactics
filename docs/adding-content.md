@@ -483,7 +483,7 @@ The gates the play actually feeds are the other four, ANDed, and each names a di
 
 | field | opens when | who uses it |
 | --- | --- | --- |
-| `trips = N` | the company has begun N descents (`Player.tripsHome`) | **the city's clock** -- the counter at 1, the supper at 2, the forge at 3, the book at 4, the study at 5 |
+| `trips = N` | the company has come home from N counted trips -- won a fight or wiped (`Player.tripsHome`) | **the city's clock** -- the counter at 1, the supper at 2, the forge at 3, the book at 4, the study at 5 |
 | `injury` | somebody has been carried up broken, ever (one-way) | the Cathedral's mending |
 | `unidentified` | the company is carrying something it cannot read | the Crucible's reading |
 | `quest = "<id>"` | that quest is finished | the Colosseum's duel, on its own first posting |

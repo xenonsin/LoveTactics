@@ -229,6 +229,13 @@ function HirePanel:drawVendor()
     love.graphics.setFont(self.bodyFont)
     Theme.set(Theme.accentAmber)
     love.graphics.print((self.player and self.player.gold or 0) .. " gold", x + 12, y + 12)
+    -- THE ROSTER CAP, said where the board's rule is (models/hire.lua's Hire.ROSTER_CAP): while the
+    -- company is full nobody here can be hired, and the reason is the board's, not one stranger's.
+    if Hire.rosterFull(self.player) then
+        love.graphics.setColor(DOWN_COLOR)
+        printWrapped(asSentence(Hire.FULL_REASON), self.smallFont, x + 12, y + 38, w - 24)
+        return
+    end
     Theme.set(Theme.muted)
     printWrapped("Hiring costs " .. Hire.FEE .. " gold. Whoever you leave moves on before you're back.",
         self.smallFont, x + 12, y + 38, w - 24)

@@ -42,6 +42,21 @@ Hire.SLATE = 3
 -- and the seven can always walk down, so the stair never depends on a hire (docs/the-count.md).
 Hire.FEE = 40
 
+-- THE ROSTER CAP (2026-10-23). The board opens on the third trip home now (Offer.SCHEDULE) rather than
+-- after the Crown, and what keeps strangers from crowding out the written companions is a ceiling: no
+-- hire -- off the board or a saved delver -- while the roster already holds this many. Lifted for good
+-- once the Demon Lord has fallen (Player.hasFinishedCampaign).
+Hire.ROSTER_CAP = 6
+
+-- Is the roster full for hiring? False once the Crown has fallen.
+function Hire.rosterFull(player)
+    if not player then return false end
+    if require("models.player").hasFinishedCampaign(player) then return false end
+    return #(player.roster or {}) >= Hire.ROSTER_CAP
+end
+
+Hire.FULL_REASON = "the company is full at " .. Hire.ROSTER_CAP .. " until the Demon Lord falls"
+
 -- The id prefix every hire wears. Character.defs' __index dispatches on it.
 Hire.PREFIX = "character_hire@"
 
@@ -400,8 +415,57 @@ function Hire.blockReason(player, slot)
     local offer = board and board.offers[slot]
     if not offer then return "nobody is standing there" end
     if offer.hired then return "already in the company" end
+    if Hire.rosterFull(player) then return Hire.FULL_REASON end
     if (player.gold or 0) < Hire.FEE then return "you cannot cover the fee" end
     return nil
+end
+
+-- What a hire of `class` arrives knowing. See the note on Hire.hire below.
+local function techniqueFor(player, class)
+    local Class = require("models.class")
+    local technique = {}
+    if Class.isRoot(class) then
+        local held = math.min(1, Class.rosterLevel(player, class))
+        if held > 0 then technique[class] = Class.classLevelCost(held) end
+    else
+        for key, need in pairs(Class.defs[class].requires or {}) do
+            technique[key] = Class.classLevelCost(math.min(need, Class.rosterLevel(player, key)))
+        end
+    end
+    return technique
+end
+
+-- Put a hire's body on the roster: recruit, seed its technique, mark its class taken. Nil when the id
+-- is already on the roster.
+local function signOn(player, id, class, technique)
+    local char = require("models.player").recruit(player, id)
+    if not char then return nil end
+    for key, amount in pairs(technique) do
+        if amount > 0 then char.technique[key] = amount end
+    end
+    require("models.class").markTaken(player, class)
+    return char
+end
+
+-- A SAVED STRAY DELVER JOINS (2026-10-23). The delver is already a hire's body rolled per fight
+-- (models/delver.lua) -- `character_stray_delver@<class>.<race>.<roll>` -- so joining is the same id
+-- under the hire prefix: same name, same spread, same rung-0 kit. No fee: she was saved, not bought.
+-- Respects the roster cap. Returns the character, or nil and a reason.
+function Hire.delverId(delverId)
+    local Delver = require("models.delver")
+    if type(delverId) ~= "string" or delverId:sub(1, #Delver.PREFIX) ~= Delver.PREFIX then return nil end
+    return Hire.PREFIX .. delverId:sub(#Delver.PREFIX + 1)
+end
+
+function Hire.joinDelver(player, delverId)
+    if not player then return nil, "nobody to join" end
+    local id = Hire.delverId(delverId)
+    if not id or not require("models.character").defs[id] then return nil, "nobody to join" end
+    if Hire.rosterFull(player) then return nil, Hire.FULL_REASON end
+    local class = Hire.split(id)
+    local char = signOn(player, id, class, techniqueFor(player, class))
+    if not char then return nil, "already in the company" end
+    return char
 end
 
 -- HIRE THE STRANGER IN `slot`. Charges the fee, puts the body on the roster through Player.recruit
@@ -419,36 +483,23 @@ function Hire.hire(player, slot)
     local why = Hire.blockReason(player, slot)
     if why then return nil, why end
     local Player = require("models.player")
-    local Class = require("models.class")
     local Item = require("models.item")
     local Character = require("models.character")
     local offer = Hire.board(player).offers[slot]
     local class = Hire.split(offer.id)
 
-    local technique = {}
-    if Class.isRoot(class) then
-        local held = math.min(1, Class.rosterLevel(player, class))
-        if held > 0 then technique[class] = Class.classLevelCost(held) end
-    else
-        for key, need in pairs(Class.defs[class].requires or {}) do
-            technique[key] = Class.classLevelCost(math.min(need, Class.rosterLevel(player, key)))
-        end
-    end
+    local technique = techniqueFor(player, class)
 
     if not Player.spendGold(player, Hire.FEE) then return nil, "you cannot cover the fee" end
-    local char = Player.recruit(player, offer.id)
+    local char = signOn(player, offer.id, class, technique)
     if not char then
         Player.addGold(player, Hire.FEE)
         return nil, "already in the company"
-    end
-    for key, amount in pairs(technique) do
-        if amount > 0 then char.technique[key] = amount end
     end
     if offer.gift and Item.defs[offer.gift] then
         Character.addItem(char, Item.instantiate(offer.gift))
     end
     offer.hired = true
-    Class.markTaken(player, class)
     return char
 end
 

@@ -1065,6 +1065,8 @@ end
 
 function game:openStairDown(cell)
     if not Descent.openStair(cell) then return end
+    -- (prowl) The stair is beaten: the rest of this floor prowls at half rate (Descent.prowlScale).
+    if game.descent then game.descent.stairBeaten = true end
     if game.map and game.map.retreatFromEncounter then game.map:retreatFromEncounter() end
     game:pushToast("The way down is open")
 end
@@ -1577,6 +1579,9 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
     -- switch and the next enter is still wrong. This is the guarantee: whatever any exit forgets, a
     -- floor opens with no fight on it.
     game.endFight()
+    -- (prowl, 2026-10-23) A FLOOR WHOSE STAIR IS BEATEN PROWLS AT HALF RATE (Descent.prowlScale). Read
+    -- off the board itself -- an open stair down is a beaten guard -- every time a floor is entered.
+    if game.descent then game.descent.stairBeaten = Descent.stairBeaten(game.grid) or nil end
     -- Per-run scratch for companion overworld abilities (banked vigils/doses/steps/forage) and the run's
     -- relic inventory (models/relic.lua). Reset each run, like the fog -- relics are CARRIED, not kept.
     --
@@ -1823,17 +1828,9 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
     --     test the rollback point below is taken on. One walk in, one day.
     --   the PROLOGUE must not charge. It runs before the campaign the calendar measures; `runResumable`
     --     is already false for a scripted leg, which is why the spend sits inside that branch.
-    local freshExpedition = not game.descent or not game.descent.entry
-    if runResumable() and quest and quest.id and not resume and freshExpedition then
-        -- A NIGHT PASSES, which is now the day itself and nothing else. It used to be three things --
-        -- the day, an injury off everybody lodged at the Inn, and whoever that finished walking out of
-        -- their room -- and the Inn is deleted along with the whole toll (models/injury.lua).
-        --
-        -- STILL THROUGH Gate.night rather than reaching for Calendar.spend directly. This is the only
-        -- caller left, and the indirection is deliberately kept: "a night passes" is a fact about the
-        -- loop, and the day is only the part of it the calendar happens to own.
-        require("models.gate").night(game.player)
-    end
+    -- (counted trips, 2026-10-23) THE NIGHT NO LONGER PASSES HERE. Gate.night ran at the top of every
+    -- fresh expedition, so an empty dip ticked the Ward. It runs at the bottom of a COUNTED trip now --
+    -- one that won a fight or wiped (models/gate.lua's Gate.homecoming, called by each exit).
 
     if runResumable() and quest and quest.id then
         -- Take the rollback point with NO run parked on the player. Save.snapshot folds the active run
@@ -1961,6 +1958,50 @@ end
 -- `game.endFight()` and expects the enter reset between them. Defined above that block, this
 -- function's own call silently truncated the span the guard reads, which is a spec broken by
 -- proximity rather than by anything being wrong. Both call sites are further down the file.)
+-- (the bench, 2026-10-23) A SAVED STRAY DELVER ASKS TO JOIN. A rescue, escort or defend won with her
+-- still standing (states/battle.lua's win counts who walked out, `spoils.delvers`) puts one plain card
+-- over the map: join, or not now. She joins as a hire (models/hire.lua's Hire.joinDelver) -- the same
+-- rolled body, rung-0 kit, no fee, no lines. A full roster (Hire.ROSTER_CAP) gets a toast, not a card.
+function game:offerDelver(spoils)
+    local id = spoils and spoils.delvers and spoils.delvers[1]
+    if not (id and game.player and game.descent) then return end
+    local Hire = require("models.hire")
+    local hireId = Hire.delverId(id)
+    local def = hireId and require("models.character").defs[hireId]
+    if not def then return end
+    if Hire.rosterFull(game.player) then
+        game:pushToast(def.name .. " cannot join: " .. Hire.FULL_REASON .. ".")
+        return
+    end
+    local function close() game.activePanel = nil end
+    game.activePanel = Choice.new({
+        title = def.name,
+        prompt = def.name .. " made it out of the fight and asks to join the company.",
+        options = {
+            {
+                label = "Join",
+                desc = "Joins the company. No fee.",
+                cb = function()
+                    close()
+                    local char, why = Hire.joinDelver(game.player, id)
+                    if char then
+                        -- She never speaks, so the join banner a recruit queues for the next scene
+                        -- is taken back and said here instead.
+                        local q = require("models.conversation").pendingJoins
+                        if q[#q] and q[#q].id == char.id then q[#q] = nil end
+                        game:pushToast(char.name .. " joins the company.")
+                        saveRun()
+                    else
+                        game:pushToast(def.name .. " cannot join: " .. tostring(why) .. ".")
+                    end
+                end,
+            },
+            { label = "Not now", desc = "They make their own way out.", cb = close },
+        },
+        onClose = close,
+    })
+end
+
 -- THE OBJECTIVE THAT OPENS A WAY OUT INSTEAD OF ENDING THE LEG, which is the prologue's Champion and
 -- nothing else today (states/prologue.lua's FLIGHT_QUEST declares `opensExit`).
 --
@@ -2833,6 +2874,8 @@ function game:openEncounter(cell, opts)
             onWin = function(spoils)
                 cell.cleared = true
                 game.activePanel = nil
+                -- (counted trips, 2026-10-23) A won fight makes this trip count (Gate.homecoming).
+                if game.descent then require("models.gate").markWon(game.descent) end
                 -- WINNING IS NOT THE SAME AS COMING OUT WHOLE. A member who went down is carried out
                 -- alive (states/battle.lua's win) and keeps the injury anyway -- the free revive stands,
                 -- and the injury is the price rather than the loss of the body. Here at the top of the
@@ -2890,6 +2933,8 @@ function game:openEncounter(cell, opts)
                     cell.encounter = cell.wasAscent or cell.encounter
                     cell.wasAscent = nil
                     cell.cleared = false
+                    -- (counted trips) The Crown down is a trip home like any other (Gate.homecoming).
+                    require("models.gate").homecoming(game.player, game.descent, false)
                     Player.finishCampaign(game.player)
                     clearRun()
                     -- The bag onto the shelf before the run goes: New Game+ carries the stash
@@ -3063,6 +3108,8 @@ function game:openEncounter(cell, opts)
                                 Player.markNew(game.player, Player.NEW_STASH, crownDrop)
                             end
                             -- end THE CROWN'S BESTIARY, SLICE D
+                            -- (counted trips) The Crown down is a trip home (Gate.homecoming).
+                            require("models.gate").homecoming(game.player, game.descent, false)
                             Player.finishCampaign(game.player)
                             clearRun()
                             if game.player then Player.unpack(game.player) end
@@ -3257,6 +3304,8 @@ function game:openEncounter(cell, opts)
                     -- swapped out for its victory sting has to be restored here by hand (idempotent).
                     require("models.sound").music("music.overworld")
                     game.endFight() -- the fight is over; the map has input again (it never stopped being the state)
+                    -- (the bench) A Stray Delver saved alive asks to join (game:offerDelver).
+                    game:offerDelver(spoils)
                 end
             end,
             -- "Try Again": restore the party from the pre-fight snapshot, then hand the player back to
@@ -3477,6 +3526,9 @@ function game:openEncounter(cell, opts)
                     -- sealed in a container the town cannot open would be a price on having lost.
                     Player.unpack(game.player)
 
+                    -- (counted trips, 2026-10-23) A WIPE ALWAYS COUNTS AS A TRIP (Gate.homecoming).
+                    require("models.gate").homecoming(game.player, game.descent, true)
+
                     -- THE RUN CLOSES ON A WIPE TOO, and the symmetry is load-bearing: if dying
                     -- preserved the floor stack and leaving did not, a company standing deep would be
                     -- better off letting itself be killed, and the mode would have built an incentive
@@ -3647,6 +3699,8 @@ function game:openEncounter(cell, opts)
             })
 
             cell.cleared = true
+            -- (counted trips) A walked-off fight is a won fight (Gate.homecoming).
+            if game.descent then require("models.gate").markWon(game.descent) end
             require("models.sound").play("battle.win")
             -- The same victory panel the board shows, opened over the OVERWORLD instead -- it is a
             -- panel and not a state, and this file already hosts panels. Continue pays out through the
@@ -4728,6 +4782,8 @@ function game:openEncounter(cell, opts)
                 if game.grid then
                     Descent.keepFloor(game.player, Descent.depth(run), game.grid:snapshot())
                 end
+                -- (counted trips, 2026-10-23) HOME: the trip counts if it won a fight (Gate.homecoming).
+                require("models.gate").homecoming(game.player, run, false)
                 game.player.descentRun = nil
                 game.descent = nil
                 Player.save() -- the company, banked, with no expedition open

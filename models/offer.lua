@@ -105,8 +105,8 @@ end
 
 -- A ROOM THAT IS SHUT ON PURPOSE. `gate = { parked = true }` keeps the offer declared -- so the desk line
 -- that names it still has a room to point at (tests/conversation_spec.lua) -- and opens it for nobody.
--- Lifting a park is deleting the key. No room is parked today; the hiring board was
--- (2026-10-15) and opens on `crowned` now (data/buildings/hunters_lodge.lua).
+-- Lifting a park is deleting the key. No room is parked today; the hiring board was (2026-10-15), then
+-- opened on `crowned`, and opens on the city schedule at trip 3 now (data/buildings/hunters_lodge.lua).
 GATES.parked = function()
     return false
 end
@@ -114,7 +114,8 @@ end
 -- THE DEMON LORD HAS FALLEN: the Crown at the bottom of floor fifteen has been broken at least once
 -- (Player.hasFinishedCampaign, banked by Player.finishCampaign in states/game.lua). One-way, and asked
 -- of THIS company only -- a nil player is shut rather than handed to hasFinishedCampaign, which would
--- ask every save on the disk. The hiring board opens on it (data/buildings/hunters_lodge.lua).
+-- ask every save on the disk. No room reads it today (the hiring board did until 2026-10-23); kept as
+-- vocabulary, like `expeditions`. The roster cap reads the same fact (models/hire.lua).
 GATES.crowned = function(player, want)
     return is(player ~= nil and require("models.player").hasFinishedCampaign(player), want)
 end
@@ -185,17 +186,21 @@ end
 -- class happened to be in the roster, and the rest waited on the room queue), and nothing stopped two
 -- arrivals landing on one homecoming the moment an event gate and a trip count coincided. So the city
 -- now opens off one table: every trip home admits AT MOST ONE NEW SHELF AND ONE NEW FEATURE, and the
--- whole city is open by trip 7 when nothing intervenes:
+-- whole city is open by trip 8 when nothing intervenes:
 --
 --     trip  shelf        feature
 --      0    knight       mending (on Rowan's injury)
 --      1    priest       reading
 --      2    mage         market counter
---      3    alchemist    forge
---      4    hunter       supper
---      5    rogue        bestiary
---      6    fighter      duel
---      7    --           study
+--      3    alchemist    hiring board
+--      4    hunter       forge
+--      5    rogue        supper
+--      6    fighter      bestiary
+--      7    --           duel
+--      8    --           study
+--
+-- A TRIP is a COUNTED one (Player.tripsHome, models/gate.lua's Gate.homecoming): a homecoming that won
+-- a fight or wiped. An empty dip does not move this table.
 --
 -- (Trip 0's shelf is in practice the avatar's FIRST CLASS -- Rowan's recommendation, picked free on the
 -- first morning -- and whatever that displaces waits its turn; see `pick`.)
@@ -243,12 +248,16 @@ Offer.SCHEDULE = {
         { room = "cathedral.mend",       event = { injury = true } },        -- Act 0 carries Rowan up: trip 0
         { room = "cathedral.lift",       event = { cursed = true } },
         { room = "alchemist.read",       event = { unidentified = true }, trip = 1 },
-        { room = "bastion.forge",        event = { broken = true },       trip = 3 },
-        { room = "colosseum.duel",       event = { quest = "quest_colosseum_slot_01" }, trip = 6 },
+        { room = "bastion.forge",        event = { broken = true },       trip = 4 },
+        { room = "colosseum.duel",       event = { quest = "quest_colosseum_slot_01" }, trip = 7 },
         { room = "undercroft.counter",   trip = 2 },
-        { room = "hunters_lodge.supper", trip = 4 },
-        { room = "arcanum.bestiary",     trip = 5 },
-        { room = "arcanum.study",        trip = 7 },
+        -- THE HIRING BOARD, trip 3 (2026-10-23). It waited on the Crown; it opens on the schedule now,
+        -- and the roster is capped until the Crown falls instead (models/hire.lua's Hire.ROSTER_CAP).
+        -- Inserted rather than squeezed: every scheduled feature after it moved back one trip.
+        { room = "hunters_lodge.hire",   trip = 3 },
+        { room = "hunters_lodge.supper", trip = 5 },
+        { room = "arcanum.bestiary",     trip = 6 },
+        { room = "arcanum.study",        trip = 8 },
     },
 }
 

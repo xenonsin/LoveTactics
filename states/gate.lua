@@ -294,7 +294,10 @@ function gate.enter(self, opts)
     -- or woken here after a wipe with the run intact -- keeps what it has not spent; topping them back
     -- up to the opening would pay a company for having been beaten, and would make the Gate a place to
     -- refill by climbing the stair and turning round.
-    if fresh then gate.player.gold = math.max(gate.player.gold or 0, Descent.OPENING_GOLD) end
+    --
+    -- (counted trips, 2026-10-23) ...AND ONCE PER COUNTED TRIP. A dip that won nothing and climbed
+    -- straight out is not a trip (models/gate.lua's Gate.homecoming), so it does not refill the purse.
+    if fresh then require("models.gate").payPurse(gate.player, Descent.OPENING_GOLD) end
     gate.panel = nil
     -- THE ROUT'S NOTICE IS NOT THIS SCREEN'S ANY MORE, because a routed company does not wake here.
     --
