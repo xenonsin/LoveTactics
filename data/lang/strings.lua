@@ -426,17 +426,18 @@ return {
     ["line.conversation_touchstone_vendor_intro.7"] = { en = "People have. I have named what was left of two of them.", ja = "" },  -- TODO
     ["line.conversation_touchstone_vendor_intro.8"] = { en = "You hold other people's things and you give them back whole. That is a good trade to be in.", ja = "" },  -- TODO
     ["line.conversation_touchstone_vendor_intro.9"] = { en = "I have seen a weigher put a thumb on a scale. Both thumbs, once.", ja = "" },  -- TODO
+    ["line.conversation_tutorial_barks.1"] = { en = "PLACEHOLDER -- not down there, not today; the way up is back at the door.", ja = "" },  -- TODO
     ["line.conversation_tutorial_city.1"] = { en = "{select} to take the stair down.", ja = "" },  -- TODO
     ["line.conversation_tutorial_city.2"] = { en = "{select} the Rift. The stair down is inside.", ja = "" },  -- TODO
     ["line.conversation_tutorial_city.3"] = { en = "{select} {door}", ja = "" },  -- TODO
     ["line.conversation_tutorial_city.5"] = { en = "{select} the Cathedral to mend Rowan's injuries.", ja = "" },  -- TODO
     ["line.conversation_tutorial_city.6"] = { en = "{select} to mend {who}'s injuries.", ja = "" },  -- TODO
     ["line.conversation_tutorial_city.7"] = { en = "{select} to rest {who}. The purse will not cover setting the bone today.", ja = "" },  -- TODO
-    ["line.conversation_tutorial_flight.1"] = { en = "Walk to the chest ahead. Use WASD, the arrow keys, or click a tile.", ja = "" },  -- TODO
+    ["line.conversation_tutorial_flight.1"] = { en = "Explore the floor. Use WASD, the arrow keys, or click a tile.", ja = "" },  -- TODO
     ["line.conversation_tutorial_flight.2"] = { en = "Open your loadout to see what you found.", ja = "" },  -- TODO
     ["line.conversation_tutorial_flight.3"] = { en = "{select} an item in your stash to equip it to a hero.", ja = "" },  -- TODO
-    ["line.conversation_tutorial_flight.4"] = { en = "Walk to the chest ahead. Use the d-pad or the left stick.", ja = "" },  -- TODO
-    ["line.conversation_tutorial_flight.5"] = { en = "Walk to the chest ahead. Tap it, or swipe to take one step.", ja = "" },  -- TODO
+    ["line.conversation_tutorial_flight.4"] = { en = "Explore the floor. Use the d-pad or the left stick.", ja = "" },  -- TODO
+    ["line.conversation_tutorial_flight.5"] = { en = "Explore the floor. Tap a tile, or swipe to take one step.", ja = "" },  -- TODO
     ["line.conversation_tutorial_injury.1"] = { en = "They were carried out of that fight. The dark band on their bar is health that will not come back - not from a potion, not from the stair. A camp can bind it instead of resting, or the Ward will set it when we are home.", ja = "" },  -- TODO
     ["line.conversation_tutorial_injury.2"] = { en = "Characters suffer injuries when they are incapacitated in battle and not revived.", ja = "" },  -- TODO
     ["line.conversation_tutorial_notes.1"] = { en = "The Tally", ja = "" },  -- TODO
@@ -597,6 +598,7 @@ return {
     ["title.conversation_prologue_ruins"] = { en = "First Job", ja = "" },  -- TODO
     ["title.conversation_prologue_village"] = { en = "The Breach", ja = "" },  -- TODO
     ["title.conversation_touchstone_vendor_intro"] = { en = "Touchstone", ja = "" },  -- TODO
+    ["title.conversation_tutorial_barks"] = { en = "Barks", ja = "" },  -- TODO
     ["title.conversation_tutorial_city"] = { en = "The City's Instructions", ja = "" },  -- TODO
     ["title.conversation_tutorial_flight"] = { en = "The Open Road", ja = "" },  -- TODO
     ["title.conversation_tutorial_injury"] = { en = "Carried Out", ja = "" },  -- TODO

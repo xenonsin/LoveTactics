@@ -162,9 +162,34 @@ return {
                 assert(exists(e.opening), e.id .. " must open on a scene of its own")
             end
             -- Where the author placed them on the floor (2026-10-23): the first 12 steps from the door,
-            -- the second 8 past it. Fewer is the "too close to the entrance" that was reported twice.
+            -- the second 16 past it (8, then doubled). Fewer is the "too close to the entrance" that was reported twice.
             assert(prowl[1].after >= 12, "the first fight must not find the company near the door")
-            assert(prowl[2].after >= 8, "and the second must not follow straight on from the first")
+            assert(prowl[2].after >= 16, "and the second must not follow straight on from the first")
+            assert(prowl[1].waitFor == 1, "the first fight waits behind the bow chest, the first stop")
+            -- ...and the coach never names the chest: it is found under the fog (2026-10-23).
+            local bag = require("data.conversations.tutorial.conversation_tutorial_flight").script
+            for _, node in ipairs(bag) do
+                if type(node.id) == "string" and node.id:find("^move_hint") then
+                    assert(not node[2]:lower():find("chest", 1, true), node.id .. " must not mention the chest")
+                end
+            end
+        end,
+    },
+
+    {
+        name = "after the Champion, Rowan barks at the stair down and the way up pulses",
+        fn = function()
+            local Locale = require("models.locale")
+            local node = Locale.node("conversation_tutorial_barks", "stair_down")
+            assert(node and type(node.tag) == "number", "the stair bark exists and is stamped")
+            local function src(path)
+                local f = assert(io.open(path, "r"), "cannot read " .. path)
+                local text = f:read("*a"); f:close(); return text
+            end
+            local game = src("states/game.lua")
+            assert(game:find('game:bark("stair_down")', 1, true), "stepping on the stair barks")
+            assert(src("ui/overworld_map.lua"):find('if kind == "road" and not c.cleared then', 1, true),
+                "the way up is ringed")
         end,
     },
 }

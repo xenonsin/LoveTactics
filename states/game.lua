@@ -1410,8 +1410,12 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
         for _, e in ipairs(encSpec.prowl) do
             local def = EncounterModel.get(e.id)
             if def then
+                -- `waitFor` names a route stop (its index in `always`) this fight will not arrive ahead
+                -- of: the step count still runs, but nothing is seated until that stop is cleared.
+                local wait = e.waitFor and always[e.waitFor]
                 queue[#queue + 1] = { id = e.id, kind = def.kind, name = def.name, loot = e.loot,
-                                      after = e.after or 0, by = e.by, opening = e.opening }
+                                      after = e.after or 0, by = e.by, opening = e.opening,
+                                      waitId = wait and wait.id, waitLoot = wait and wait.loot }
             end
         end
         game.tutorialProwl = { queue = queue, steps = 0 }
@@ -1586,6 +1590,12 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
         -- lifted the fog off for the first time -- 0 when it only re-trod mapped ground -- so a hook that
         -- pays for EXPLORING can tell a discovery from a lap.
         onArrive = function(cell, revealed)
+            -- ACT 0's STAIR DOWN IS NOT TAKEN, and Rowan says so every time the company tries
+            -- (2026-10-23): the tile the Champion held is a stair to a floor two nobody is going to
+            -- tonight, and the way out is the door (states/prologue.lua's opensExit).
+            if game.tutorial == "flight" and cell.encounter and cell.encounter.kind == "stair" then
+                game:bark("stair_down")
+            end
             fireAbility("step", { cell = cell, revealed = revealed })
             fireRelics("step", { cell = cell, revealed = revealed })
             -- THE FIRST-INJURY LESSON IS SPENT BY WALKING ON, and a step is the only honest thing to
@@ -1656,7 +1666,23 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
                     end
                 end
                 local free = not (cell.encounter or cell.cache or cell.key or cell.gate)
-                if free and (owed or tp.steps >= head.after) then
+                -- HELD BEHIND A STOP (`waitFor`): the bow chest comes before the first fight, however
+                -- the company wanders (2026-10-23). A chokepoint still owed overrides it, as it always
+                -- has -- the chest is optional, and the gift is owed before the next part either way.
+                local held = false
+                if head.waitId then
+                    held = true
+                    for y = 1, game.grid.rows do
+                        for x = 1, game.grid.cols do
+                            local c = game.grid.cells[y][x]
+                            local e = c.encounter
+                            if e and e.id == head.waitId and e.loot == head.waitLoot and c.cleared then
+                                held = false
+                            end
+                        end
+                    end
+                end
+                if free and (owed or (not held and tp.steps >= head.after)) then
                     table.remove(tp.queue, 1)
                     tp.steps = 0
                     cell.encounter = { kind = head.kind, id = head.id, name = head.name,
@@ -1746,6 +1772,7 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
     -- useVisible and the combat onWin below). True from the start everywhere else.
     game.useUnlocked = (mp.tutorial ~= "flight") or resume ~= nil
     game.coach = nil
+    game.bark_ = nil -- a bark never outlives the leg it was said on
     game.coachChar = nil
 
     -- Autosave the run so quitting mid-quest resumes onto the map (states/menu.lua's Continue). Only a
@@ -1868,19 +1895,6 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
     if resume then
         if game.descent and game.descent.landing then game:openLanding() end
         return
-    end
-
-    -- THE CHEST THE FIRST COACH LINE NAMES IS SHOWN FROM THE DOOR. "Walk to the chest ahead" was written
-    -- when the bow chest stood one step from the door; it is a walk in now (data/overworld/
-    -- tutorial_flight.lua, moved by the author 2026-10-23), and under the fog the line would point at
-    -- nothing. Only that one cell is lifted -- the rest of the floor is still found by walking it.
-    if mp.tutorial == "flight" and always[1] then
-        for y = 1, game.grid.rows do
-            for x = 1, game.grid.cols do
-                local e = game.grid.cells[y][x].encounter
-                if e and e.id == always[1].id and e.loot == always[1].loot then game.grid:reveal(x, y, 0) end
-            end
-        end
     end
 
     -- Last, once the map exists: a quest may open with a scene played OVER it. A conversation is a
@@ -5301,6 +5315,10 @@ function game.update(dt)
     if battling() then return game.battle.update(dt) end
     -- Ability toasts fade regardless of whether a panel is open (they were pushed as the player
     -- returned from a fight, and should keep counting down while they read the result).
+    if game.bark_ then
+        game.bark_.t = game.bark_.t - dt
+        if game.bark_.t <= 0 then game.bark_ = nil end
+    end
     if game.toasts then
         for i = #game.toasts, 1, -1 do
             local toast = game.toasts[i]
@@ -5383,6 +5401,32 @@ function game.draw()
     -- and all of them point at a control the scene has frozen.
     if sceneCovers then return end
     game.drawCoach()
+    game.drawBark()
+end
+
+-- ---------------------------------------------------------------------------
+-- Barks: a companion's one line, over the token, gone on its own
+-- ---------------------------------------------------------------------------
+--
+-- NOT A SCENE AND NOT A TOAST. A scene stops the walk for a click, which is the wrong weight for a
+-- remark repeated every time a tile is stepped on; a toast is the interface talking, in the corner, with
+-- nobody's name on it. A bark is somebody in the company saying a line where the company is standing.
+-- The words live in a bag (data/conversations/tutorial/conversation_tutorial_barks.lua), by id.
+local BARKS = "conversation_tutorial_barks"
+local BARK_SECONDS = 3.5
+
+function game:bark(id)
+    local node = hintNode(BARKS, id)
+    if not node then return end
+    local who = require("models.conversation").speaker(node[1])
+    game.bark_ = { text = (who and who.name and (who.name .. ": ") or "") .. Locale.text(BARKS, node),
+                   t = BARK_SECONDS }
+end
+
+function game.drawBark()
+    local b = game.bark_
+    if not (b and game.map and not game.activePanel) then return end
+    CoachBubble.draw(b.text, game.map:tokenRect(), { prefer = "above", bounds = coachBounds() })
 end
 
 -- The gold coach bubble, pinned to whatever the current step is about. Three of the four steps are the

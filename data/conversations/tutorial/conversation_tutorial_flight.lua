@@ -44,9 +44,9 @@ return {
     cast  = { "character_rowan" },
 
     script = {
-        { "character_rowan", "Walk to the chest ahead. Use WASD, the arrow keys, or click a tile.", tag = 1, id = "move_hint" },
-        { "character_rowan", "Walk to the chest ahead. Use the d-pad or the left stick.", tag = 4, id = "move_hint_pad" },
-        { "character_rowan", "Walk to the chest ahead. Tap it, or swipe to take one step.", tag = 5, id = "move_hint_touch" },
+        { "character_rowan", "Explore the floor. Use WASD, the arrow keys, or click a tile.", tag = 1, id = "move_hint" },
+        { "character_rowan", "Explore the floor. Use the d-pad or the left stick.", tag = 4, id = "move_hint_pad" },
+        { "character_rowan", "Explore the floor. Tap a tile, or swipe to take one step.", tag = 5, id = "move_hint_touch" },
         { "character_rowan", "Open your loadout to see what you found.", tag = 2, id = "loadout_hint" },
         { "character_rowan", "{select} an item in your stash to equip it to a hero.", tag = 3, id = "equip_hint" },
     },

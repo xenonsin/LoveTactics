@@ -493,9 +493,9 @@ return {
             assert(where.ability_renewal == 2, "the last chest is past the first chokepoint")
             assert(where.encounter_rest == 3, "the rest is past the second")
             assert(partOf(grid:objectiveCell()) == 3, "and so is the Champion")
-            -- The bow is the NEAREST stop to the door: the coach says "walk to the chest ahead". It was
-            -- one step away until the author spread the stops out (2026-10-23); states/game.lua lifts its
-            -- fog at the door so the line still points at something.
+            -- The bow is the NEAREST stop to the door. It was one step away until the author spread the
+            -- stops out (2026-10-23); the coach no longer names it ("Explore the floor"), and it is found
+            -- under the fog like everything else.
             local dist = grid:bfsDistances(grid:startCell())
             for _, c in ipairs(stops) do
                 if c ~= bow then

@@ -225,7 +225,11 @@ local FLIGHT_QUEST = {
             -- -- the east end of part one's bottom row, 12 steps from the door on the shortest walk -- and
             -- the second around (10,6), just into part two, 8 steps on from there (5 back to the `a`
             -- chokepoint and 3 through it). `after` is those two measurements. It was 6 and 8, then 10 and
-            -- 12; both put the first fight too close to the door.
+            -- 12; both put the first fight too close to the door. And the first is held behind the bow
+            -- chest (`waitFor = 1`, the first `always` stop): a company that wanders 12 steps without
+            -- opening it does not meet the fight first. The second was then DOUBLED to 16 at the
+            -- author's word, which puts it deep in part two rather than just through `a`; the `b`
+            -- chokepoint (26 from the door) still owes it if the steps have not.
             --
             -- EACH OPENS ON A SCENE (`opening`, carried onto the cell and handed to the battle -- states/
             -- game.lua), as the village fight and the Champion already do. On the prowl entry rather than
@@ -254,7 +258,7 @@ local FLIGHT_QUEST = {
                 -- standing, and the censer and Mark Target are already crossings the player could not
                 -- buy here either.
                 { id = "encounter_survivors_defend", loot = { "ability_shout" }, after = 12, by = "a",
-                  opening = "conversation_flight_defend" },
+                  waitFor = 1, opening = "conversation_flight_defend" },
                 -- SECOND: TYPED MITIGATION -- a Salamander Hide off the demons blocking the way out.
                 -- The party has worn leather and chainmail since the first fight and nothing has ever
                 -- said that a coat answers a KIND of blow; this one is blunt enough to be unmissable
@@ -264,7 +268,7 @@ local FLIGHT_QUEST = {
                 -- with an imp and a grunt beside her. Combat.mitigatedDamage sums the resist of every matching
                 -- tag, so the coat blunts all of it. The spoils land after the win, so the body it is
                 -- actually FOR is the Champion at the end of the trail.
-                { id = "encounter_survivors_extract", loot = { "armor_salamander_hide" }, after = 8, by = "b",
+                { id = "encounter_survivors_extract", loot = { "armor_salamander_hide" }, after = 16, by = "b",
                   opening = "conversation_flight_extract" },
             },
         },

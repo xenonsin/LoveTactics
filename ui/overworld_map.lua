@@ -1567,6 +1567,18 @@ function OverworldMap:drawMarkers()
                         Encounter.opensBattle(c.encounter) and COMBAT_BORDER or nil)
                     drawMarkerIcon(kind, wx, wy, s, a, c.encounter)
                     drawMarkerPips(wx, wy, s, pipSteps(kind, band), a)
+                    -- THE WAY UP IS WHERE THE LEG IS GOING (2026-10-23). Act 0's road is the only thing left
+                    -- on the board to walk to once the Champion is down, and it sits at the far corner from
+                    -- where the company stands -- so it pulses in the objective's gold, the colour the
+                    -- board keeps for "the thing you came for". Only the road: nothing else ever wears it.
+                    if kind == "road" and not c.cleared then
+                        local t = love.timer and love.timer.getTime and love.timer.getTime() or 0
+                        love.graphics.setColor(0.95, 0.75, 0.20, 0.55 + 0.45 * math.sin(t * 3.2))
+                        love.graphics.setLineWidth(3)
+                        love.graphics.rectangle("line", wx + 1, wy + 1, s - 2, s - 2,
+                            MARKER_RADIUS + 2, MARKER_RADIUS + 2)
+                        love.graphics.setLineWidth(1)
+                    end
                     love.graphics.setColor(1, 1, 1)
                 end
             end
