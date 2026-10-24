@@ -4930,27 +4930,16 @@ end
 -- is 1 in the city and 1 on the street, and `hubIntro` is a staging flag that a loaded save and the
 -- prologue skip both clear. Set the first time states/hub.lua opens the town, so it covers the played
 -- prologue, the skip, and a save loaded straight back onto an overworld leg alike.
--- ...AND ONE MORE THING OPENS IT NOW, WHICH IS THE CHAMPION. Everything above is still true of the
--- SWEEP -- a body picking its way to the ruins has one job and one kit -- and stops being true the
--- moment the capstone falls: Act 0 ends on a level-up (states/prologue.lua's prologue.EXIT_LEVEL) and
--- the company reaches the road having banked technique in two houses. There is a ladder to read by
--- then, and the tab is the only place it can be read.
---
--- SO THE ARGUMENT ABOVE IS NOT REVERSED, IT IS DATED. It was written when four scripted fights left
--- the party exactly as they started, which made the Roll a screen of rungs nobody could reach; the
--- prologue pays a level now, and the thing that changed is the company rather than the tab. What the
--- gate is really asking is "is there anything on this screen yet", and the Champion is the first
--- moment the answer is yes.
---
--- Two marks rather than one predicate over both, for the reason the header gives for `cityReached`
--- being its own flag: neither can be read off any other ledger, and a skipped prologue, a played one
--- and a save loaded straight onto a leg all have to answer the same.
+-- THE CHAMPION OPENED IT TOO, from 2026-10-16 to 2026-10-23, when Act 0 was the trip for the class
+-- requirements. It does not any more: Act 0 banks nothing toward a class, and the avatar's first class
+-- is Rowan's recommendation, picked in the city (states/hub.lua). So the argument above stands again,
+-- undated. `classesOpen` is still read, for a save written on that walk while the Champion opened it;
+-- nothing sets it now.
 function Descent.classesUnlocked(player)
     return (player and (player.cityReached or player.classesOpen)) or false
 end
 
--- Open the Roll early -- what the Champion's fall spends. Idempotent and one-way, like the mark beside
--- it: a company that has seen the tab does not un-see it.
+-- Open the Roll early. Nothing calls it now (see above); kept with its reader for older saves.
 function Descent.markClassesOpen(player)
     if not player then return false end
     player.classesOpen = true

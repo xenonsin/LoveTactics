@@ -551,20 +551,14 @@ function ClassEditor:unlockClass()
     return true
 end
 
--- THE FREE FIRST SEAL: the first time this tab opens on a Novice who has reached Novice 1, Rowan hands
--- one over (player.flags.firstSealGiven) and says so in a coach line. Once per save.
-function ClassEditor:offerFirstSeal()
-    local p, char = self.player, self.char
-    if not (p and char) then return end
-    p.flags = p.flags or {}
-    if p.flags.firstSealGiven then return end
-    if Growth.classOf(char) ~= Growth.NEUTRAL_CLASS then return end
-    if Class.classLevel(char, Growth.NEUTRAL_CLASS) < 1 then return end
-    p.flags.firstSealGiven = true
-    Player.addMaterial(p, Class.SEAL_ID, 1)
-    -- PLACEHOLDER COPY for the author: Rowan's line is a stand-in until the scene is written.
-    self.coach = Locale.get("ui.class_editor.first_seal",
-        "Rowan: Take this seal. Spend it to make a class yours.")
+-- THE FIRST PICK'S COACH LINE, while Rowan's recommendation is still owed to the body on this tab
+-- (Class.pickOwed). It replaced the free first seal Rowan used to hand over at Novice 1 (2026-10-23):
+-- the avatar's first class is chosen, not earned, so there is nothing for a seal to buy.
+-- PLACEHOLDER COPY for the author.
+function ClassEditor:pickCoach()
+    if not Class.pickOwed(self.player, self.char) then return nil end
+    return Locale.get("ui.class_editor.first_pick",
+        "Rowan put your name to the guild. Pick your first class: it costs nothing.")
 end
 
 -- ---------------------------------------------------------------------------
@@ -894,7 +888,8 @@ function ClassEditor:drawList(focused)
                 love.graphics.rectangle("line", x + GUTTER_W, ry, w - GUTTER_W, ROW_H - 2, 3, 3)
             end
             -- Met and waiting on a seal: an amber dot in the gutter, so the rows worth a seal stand out.
-            if self.char and Class.canUnlock(self.char, row.id) then
+            if self.char and (Class.canUnlock(self.char, row.id)
+                or Class.isFreePick(self.player, self.char, row.id)) then
                 Theme.set(Theme.accentAmber)
                 love.graphics.circle("fill", x + 6, ry + (ROW_H - 2) / 2, 3)
             end
@@ -927,8 +922,20 @@ function ClassEditor:drawList(focused)
             end
         else
             local on = i == self.cursor
+            -- A CLASS THIS BODY HOLDS IS A CARD; ONE IT DOES NOT IS AN EMPTY SLOT. The base class always
+            -- takes this branch, held or not, and a held class at level 0 levels its ink to muted --
+            -- so without a surface of its own, "free to change into" and "still shut" read the same.
+            -- The card is the row inset every panel uses; an unheld base class wears the shut row's
+            -- outline, the same empty slot as everything below it that it has not opened either.
+            if row.unlocked then
+                Theme.fill(Theme.panel2, x, ry, w, ROW_H - 2, 3)
+                Theme.set(Theme.hairline)
+                love.graphics.rectangle("line", x, ry, w, ROW_H - 2, 3, 3)
+            else
+                Theme.set(Theme.frame, 0.35)
+                love.graphics.rectangle("line", x, ry, w, ROW_H - 2, 3, 3)
+            end
             if on then
-                Theme.plate(x, ry, w, ROW_H - 2, 3, Theme.panel)
                 Theme.set(focused and Theme.cursor or Theme.frame)
                 love.graphics.rectangle("line", x, ry, w, ROW_H - 2, 3, 3)
             end
@@ -954,7 +961,9 @@ function ClassEditor:drawList(focused)
             local tail = row.cross and ("  x " .. row.cross)
             local tailW = tail and small:getWidth(tail) or 0
 
-            Theme.set(levelColor(row.level))
+            -- A held name is never muted, level 0 or not: muted is the shut rows' ink.
+            Theme.set(row.unlocked and row.level < Class.CLASS_LEVEL_CAP and Theme.ink
+                or row.unlocked and Theme.accentAmber or Theme.muted, row.unlocked and 1 or 0.9)
             -- Set in the display face, which is what is left of the caption: a base class is the head of
             -- its group and reads as one without a row of its own to say so.
             local font, name = Theme.fitText(base and Theme.display or Theme.body, row.name,
@@ -1275,6 +1284,13 @@ function ClassEditor:drawRequirement(row, x, y, w)
         y = y + small:getHeight() + 4
     end
 
+    -- THE FIRST PICK ASKS NOTHING. Rowan's recommendation stands in for the whole checklist, and
+    -- printing the deed under it would read as a requirement the pick then ignores.
+    if Class.isFreePick(self.player, char, row.id) then
+        line("Rowan's recommendation (free)", true)
+        return y + 8
+    end
+
     -- The level half: Novice 1 for a root, the parents' levels for an earned class.
     local gate
     if Class.isRoot(row.id) then
@@ -1439,7 +1455,8 @@ function ClassEditor:drawDetail()
         Theme.set(Theme.accentAmber)
         love.graphics.rectangle("line", x, by, w, BUTTON_H, 4, 4)
         love.graphics.setFont(body)
-        love.graphics.printf("Unlock " .. row.name .. " (1 seal)", x, by + 9, w, "center")
+        love.graphics.printf(Class.isFreePick(self.player, char, row.id) and ("Choose " .. row.name)
+            or ("Unlock " .. row.name .. " (1 seal)"), x, by + 9, w, "center")
     elseif self:readOnly() and row.id then
         love.graphics.setFont(small)
         Theme.set(Theme.muted)
@@ -1465,21 +1482,15 @@ function ClassEditor:draw(focused)
     -- selection drawn -- a house stays picked while the cursor is off reading its shelf -- so the ring
     -- is the one thing on the tab that says where the next press lands.
     local on = focused ~= false
-    -- The free first seal is asked here, on the frame the tab is actually SEEN, rather than at
-    -- construction (the Armory builds every editor when it opens, whichever tab is up).
-    self:offerFirstSeal()
     self:drawHouses(on and self.region == "houses")
     self:drawList(on and self.region == "classes")
     self:drawDetail()
-    -- Rowan's coach line, over the foot of the houses column until the seal is spent.
-    if self.coach then
-        if self.player and Player.materialCount(self.player, Class.SEAL_ID) < 1 then
-            self.coach = nil
-        else
-            love.graphics.setFont(self.fonts.small)
-            Theme.set(Theme.accentAmber)
-            love.graphics.printf(self.coach, self.houseX, self.y + self.h - 60, self.houseW, "left")
-        end
+    -- Rowan's coach line, over the foot of the houses column until the first pick is spent.
+    local coach = self:pickCoach()
+    if coach then
+        love.graphics.setFont(self.fonts.small)
+        Theme.set(Theme.accentAmber)
+        love.graphics.printf(coach, self.houseX, self.y + self.h - 60, self.houseW, "left")
     end
     love.graphics.setColor(1, 1, 1)
     -- THE CEREMONY, LAST, over the whole frame. The Armory forwards no update to a column editor, so the

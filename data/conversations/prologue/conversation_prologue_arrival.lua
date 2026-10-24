@@ -44,17 +44,34 @@
 --
 -- The city's ECONOMIC dependence on the Rift is deliberately not here -- no market stocked out of it,
 -- no treasury. It is a hole that has to be kept clear, and the reason to go down is that it pays.
+-- AND IT IS WHERE THE AVATAR GETS A CLASS (2026-10-23), AT THE GUILD'S COUNTER. Three in the scene: the
+-- guild attendant (data/vendors/guild.lua -- the same face drawn behind the counter at the Gate), the
+-- avatar and Rowan. The avatar lays the Demon Champion's horn on the counter as proof of the kill
+-- (data/materials/material_champion_horn.lua, carried up from floor one and taken here by
+-- states/hub.lua), Rowan stands as the guild's WITNESS that the avatar took it down, and the guild takes
+-- her word for one class: as the scene closes the Armory's Roll opens on the avatar and is HELD OPEN
+-- until a root is picked, free (states/hub.lua's openFirstPick, Class.pickOwed). Nothing in Act 0
+-- counted toward a class, so this is the avatar's first. It ends on the attendant's line because the
+-- pick follows it on the next frame.
+--
+-- Tags 1, 3, 4 and 6-11 are PLACEHOLDERS, and so is the order. 1, 3 and 4 were the author's street
+-- lines (rift raff; the guild failing to clear the Rift), retired when the scene moved to the guild's
+-- own counter; 2 and 5 are the author's and stand.
 return {
     title = "After the Breach",
-    cast  = { "character_rowan", "character_avatar" },
+    cast  = { "guild", "character_rowan", "character_avatar" },
 
     script = {
-        { "character_rowan", "That's the last of rift raff.", tag = 1 },
+        { "character_rowan", "PLACEHOLDER -- Rowan, at the guild's counter: the job on floor one is done.", tag = 1 },
         { "character_rowan", "The champion wasn't in the report but you did well to take it down.", tag = 2 },
-        { "character_rowan", "This is what happens when the guild fails to clear enough of The Rift.", tag = 3 },
-        { "character_rowan", "The deep floors get left alone, and whatever gathers down there comes up here.", tag = 4 },
+        { "character_rowan", "PLACEHOLDER -- why a champion was on floor one at all, said in front of the guild.", tag = 3 },
+        { "character_rowan", "PLACEHOLDER -- what that means for the city above the Rift.", tag = 4 },
         { "character_rowan", "Let's collect our pay and see what work The Rift is offering, {name}.", tag = 5 },
+        { "guild", "PLACEHOLDER -- the attendant asks what the company brings up.", tag = 10 },
+        { "character_avatar", "PLACEHOLDER -- the avatar lays the Demon Champion's horn on the counter.", tag = 11 },
+        { "character_rowan", "PLACEHOLDER -- she stands as the guild's witness: the avatar took it down.", tag = 8 },
         { "character_rowan", "PLACEHOLDER -- she says the Champion's blow is still on her, and she is hurt.", tag = 6 },
         { "character_rowan", "PLACEHOLDER -- and that she needs a priest at the Cathedral before anything else.", tag = 7 },
+        { "guild", "PLACEHOLDER -- the attendant takes the horn and her word, and asks what class the avatar will be entered as.", tag = 9 },
     },
 }

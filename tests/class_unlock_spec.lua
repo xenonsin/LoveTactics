@@ -183,20 +183,16 @@ return {
         assert(hero.char.deeds.killMelee == 1 and hero.char.deeds.killExecute == 1, "the win banks both")
     end },
 
-    { name = "the Classes tab: Rowan's free seal at Novice 1, Unlock on confirm, read-only underground", fn = function()
+    { name = "the Classes tab: Unlock on confirm with a seal, read-only underground", fn = function()
         local ClassEditor = require("ui.class_editor")
         local a = avatar()
         local p = companyWith(a)
         p.flags = {}
         local ed = ClassEditor.new({ x = 0, y = 0, w = 900, h = 500, fonts = {}, player = p, char = a })
         assert(ed.houses[1].id == "novice", "the Novice heads the rail")
-        ed:offerFirstSeal()
-        assert(Player.materialCount(p, SEAL) == 0 and not p.flags.firstSealGiven, "no seal before Novice 1")
+        assert(ed:pickCoach() == nil, "no first-pick coach when no pick is owed")
         a.technique = { novice = Class.classLevelCost(1) }
-        ed:offerFirstSeal()
-        assert(Player.materialCount(p, SEAL) == 1 and p.flags.firstSealGiven and ed.coach, "Rowan's seal")
-        ed:offerFirstSeal()
-        assert(Player.materialCount(p, SEAL) == 1, "once per save")
+        Player.addMaterial(p, SEAL, 1)
 
         a.deeds = { killMelee = 15 }
         local fighter
@@ -218,6 +214,67 @@ return {
         assert(ed:canChange(), "and now it can be changed into")
         ed:confirm()
         assert(a.declaredClass == "fighter", "confirm changed class")
+    end },
+
+    { name = "Rowan's recommendation: the avatar's first root is picked free -- no level, deed or seal", fn = function()
+        local ClassEditor = require("ui.class_editor")
+        local a = avatar()
+        local p = companyWith(a)
+        local rowan = Character.instantiate("character_rowan")
+        p.roster[2] = rowan
+        assert(Class.unlockBlock(p, a, "mage") == "level", "unowed, a root asks Novice 1 as ever")
+
+        p.classPick = true
+        assert(Class.pickOwed(p, a) and not Class.pickOwed(p, rowan), "the pick is the avatar's alone")
+        assert(Class.isFreePick(p, a, "mage") and not Class.isFreePick(p, a, "warlord"),
+            "any root is free, and only a root")
+        assert(Class.unlockBlock(p, a, "mage") == nil, "nothing stands between the avatar and a root")
+        p.descentRun = { entry = {} }
+        assert(Class.unlockBlock(p, a, "mage") == "town", "and it is still made in town")
+        p.descentRun = nil
+
+        local ed = ClassEditor.new({ x = 0, y = 0, w = 900, h = 500, fonts = {}, player = p, char = a })
+        assert(ed:pickCoach(), "Rowan's coach line shows while the pick is owed")
+
+        local ok = Class.unlock(p, a, "mage")
+        assert(ok, "the free pick unlocks")
+        assert(Class.isUnlocked(a, "mage") and a.declaredClass == "mage", "and the avatar stands in it")
+        assert(Player.materialCount(p, SEAL) == 0, "no seal was asked or spent")
+        assert(p.classPick == nil and p.firstClass == "mage", "the pick is spent, and remembered")
+        assert(Class.unlockBlock(p, a, "priest") == "level", "every class after it is earned")
+
+        local back = Save.restore(Save.snapshot(p))
+        assert(back and back.firstClass == "mage" and not back.classPick, "the pick survives a save")
+        p.classPick = true
+        back = Save.restore(Save.snapshot(p))
+        assert(back and back.classPick == true, "and so does an owed one")
+    end },
+
+    { name = "the first class is the city's first shelf; the slot waits while the pick is owed", fn = function()
+        local Offer = require("models.offer")
+        local a = avatar()
+        local p = companyWith(a)
+        p.roster[2] = Character.instantiate("character_rowan") -- a knight: the schedule's own trip-0 pull
+        p.classPick = true
+        assert(not Offer.admitted(p, "bastion.shelf") and not Offer.admitted(p, "arcanum.shelf"),
+            "no shelf takes trip 0 while the pick is owed")
+        assert(Class.unlock(p, a, "mage"))
+        assert(Offer.openedOn(p, "arcanum.shelf") == 0, "the picked class's house takes trip 0")
+        assert(not Offer.admitted(p, "bastion.shelf"), "and Rowan's knight waits its turn")
+    end },
+
+    { name = "Act 0 teaches no class: a fight flagged noClassCredit banks no technique and no deed", fn = function()
+        local Combat = require("models.combat")
+        local a = avatar()
+        local p = companyWith(a)
+        local c = { noClassCredit = true, units = { { char = a, tally = { killMelee = 3 } } } }
+        assert(Combat.awardTechnique(c, c.units[1], { class = "fighter" }) == 0, "no technique")
+        assert(not (a.technique or {}).fighter and not (a.technique or {}).novice, "nothing on the ledger")
+        Class.bankDeeds(c, p)
+        assert(not (a.deeds and a.deeds.killMelee), "and no deed")
+        c.noClassCredit = nil
+        Class.bankDeeds(c, p)
+        assert(a.deeds and a.deeds.killMelee == 3, "the same fight unflagged banks it")
     end },
 
     { name = "the boost applies only while selected: a root 1x its growth, an earned class 2x", fn = function()

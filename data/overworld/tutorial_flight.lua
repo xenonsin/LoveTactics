@@ -21,6 +21,12 @@
 --   1 chest (bow kit)   2 shrine   3 the wounded delver   4 chest (Renewal)   5 rest   X the Champion
 --   a / b  chokepoints, in walking order
 --
+-- THE STOPS WERE SPREAD OUT (2026-10-23, by the author, on a screenshot): the bow chest moved a walk in from
+-- the door, the shrine out east, the last chest to the far end of part two, the rest to a spur of its own
+-- and the Champion to the far end of part three -- so a part is crossed before its stops are, rather than
+-- every stop sitting near where the part is entered. The two notes above about the bow chest "beside the
+-- door" and the rest "on the Champion's doorstep" describe the layout before this.
+--
 -- =====================================================================================================
 -- THE CITY-SWEEP MAP'S OWN RECORD (superseded):
 --
@@ -90,16 +96,16 @@ return {
     -- 16 x 11, read as the map: the door bottom-left, the stair top-middle. Part one is the bottom three
     -- rows, part two the middle three, part three the top three; `a` and `b` are the only ways between.
     map = {
-        "#..#.5X##..#....", -- y1  the rest, and the Champion on the stair beside it
-        "..#...#...#..#..", -- y2
+        "#..#...##.5#....", -- y1  the rest, down its own spur
+        "..#...#...#..#X.", -- y2  the Champion on the stair, at the far end of part three
         "....#...#.....#.", -- y3
         "#b##############", -- y4  the second chokepoint
-        "..#3#4..#..#..#.", -- y5  the wounded delver and the last chest, each down a spur
+        "..#3#...#..#..#4", -- y5  the wounded delver down a spur, the last chest at the far end
         ".#...##.#.....#.", -- y6
         "...#........#...", -- y7
         "########a#######", -- y8  the first chokepoint
-        "...#.#2#...#....", -- y9  the shrine, at the end of a spur
-        ".#........#..#..", -- y10
-        "S1..#...#...#...", -- y11  the door, and the bow chest beside it
+        "...#.#.#...#..2.", -- y9  the shrine, out east
+        ".#.....1..#..#..", -- y10  the bow chest, a walk in from the door
+        "S...#...#...#...", -- y11  the door
     },
 }

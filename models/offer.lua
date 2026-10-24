@@ -197,6 +197,9 @@ end
 --      6    fighter      duel
 --      7    --           study
 --
+-- (Trip 0's shelf is in practice the avatar's FIRST CLASS -- Rowan's recommendation, picked free on the
+-- first morning -- and whatever that displaces waits its turn; see `pick`.)
+
 -- WHAT JUMPS THE QUEUE, in this order, within a slot:
 --   1. A PROBLEM IN HAND. A feature whose `event` holds -- a body to mend, a hex to lift, a find nobody
 --      can read, a piece worn through -- takes the feature slot ahead of the schedule. The rite and the
@@ -294,6 +297,15 @@ local function pick(player, rooms, slot, trip)
             if not rooms[e.room] and e.event and Offer.open(player, e.event) then return e.room end
         end
     else
+        -- THE AVATAR'S FIRST CLASS IS THE CITY'S FIRST SHELF (2026-10-23). While Rowan's recommendation
+        -- is still owed (player.classPick) the slot WAITS rather than falling to the schedule -- the pick
+        -- is forced on the first morning (states/hub.lua), so it waits a frame, not a trip -- and once
+        -- made, the house of the class picked (player.firstClass) takes it ahead of every other pull,
+        -- Rowan's grandfathered knight included.
+        if player.classPick then return nil end
+        for _, e in ipairs(list) do
+            if not rooms[e.room] and e.class == player.firstClass then return e.room end
+        end
         for _, e in ipairs(list) do
             if not rooms[e.room] and (not best or e.trip < best.trip) and rootUnlocked(player, e.class) then
                 best = e

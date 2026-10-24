@@ -300,127 +300,35 @@ return {
         end,
     },
     {
-        name = "the skip's technique raises the two houses Act 0 is fought in, and no others",
+        name = "the skip banks no class, and arrives owing the avatar's first pick",
         fn = function()
+            -- IT USED TO ESTIMATE ACT 0's TECHNIQUE and file it in the two houses the road is fought in.
+            -- Act 0 teaches no class now (2026-10-23: `classCredit = false` on every prologue fight), so
+            -- a skip that banked any would be a company the played road never produces.
             local player = skipped()
             local Class = require("models.class")
-            local Building = require("models.building")
-            local Character = require("models.character")
-
-            -- The company arrives having SWUNG two houses: Rowan is declared knight and the avatar's
-            -- starting sword is the Bastion's shelf, while the avatar's own badge is fighter
-            -- (Growth.NEUTRAL_CLASS -- it declares no class).
-            --
-            -- ASKED AS A COMPARISON, NOT AS A THRESHOLD, and the threshold it replaces is worth
-            -- recording. This used to demand class level 1 in each, because a house's DOOR was gated
-            -- on `unlockClassLevel` and a skipped company would otherwise have reached a city with
-            -- every door shut. Two things have moved since. The door is not class-gated at all any
-            -- more -- models/building.lua's shelfNeed reads a `gate.classLevel` that no offer in the
-            -- game authors, so it answers nil for every card and the plaza opens whole -- and a rung
-            -- is a floor of committed play rather than two fights (Class.CLASS_LEVEL_STEP), which Act
-            -- 0's four scripted fights are not meant to buy outright.
-            --
-            -- What Act 0 owes is the thing it always actually owed: the company arrives POINTED at the
-            -- two houses it fought in. That is a fact about where the technique went, and it survives
-            -- every re-cut of what a rung costs.
-            local elsewhere = 0
-            for _, class in ipairs({ "mage", "rogue", "priest", "hunter", "alchemist" }) do
-                elsewhere = math.max(elsewhere, Class.rosterLevel(player, class))
-            end
-            -- Rowan fights as a knight; the avatar fights as a Novice (data/classes/novice.lua, 2026-10-15),
-            -- which has no house, so only the Bastion is a house Act 0 is fought in.
-            for _, class in ipairs({ "knight", "novice" }) do
-                local banked = 0
-                for _, char in ipairs(player.roster) do
-                    banked = math.max(banked, (char.technique or {})[class] or 0)
-                end
-                -- NOT MEASURED AS A FRACTION OF A RUNG, which is what this asked first and is a
-                -- coupling that keeps breaking: a rung is Class.CLASS_LEVEL_STEP and that number moves
-                -- whenever the descent is re-measured, while what Act 0 pays is a fact about four
-                -- scripted fights and does not move with it. What the road owes is that the fighting
-                -- landed here at all; how far up a ladder that gets you is the ladder's business, and
-                -- the "stands clear" comparison below is where the real claim lives.
-                assert(banked > 0, "Act 0 is fought in " .. class .. " and banked nothing there")
-            end
-
-            -- The road hands over an opener for all seven classes, which is not the same as having cast
-            -- them: the other five houses are still at the BOTTOM of their ladder, exactly as a PLAYED
-            -- Act 0 leaves them.
-            --
-            -- ASKED OF THE RUNG, NOT OF THE DOOR AND NOT OF THE SHELF. All three used to be one gate
-            -- and this case counted the middle one; a shelf is ungated now (models/offer.lua) because a
-            -- shopfront that offers no shop is not a shopfront, so what Act 0 buys is DEPTH -- the two
-            -- houses it was fought in stand a rung up, and the other five stock their bottom band.
-            local Offer = require("models.offer")
-            local Vendor = require("models.vendor")
-            local banked, total = {}, 0
-            for _, def in pairs(Building.defs) do
-                if def.counter then
-                    total = total + 1
-                    -- The skip lands on trip 0, and trip 0's shelf on the city schedule is the Bastion's
-                    -- (Offer.SCHEDULE): every other shelf waits for its trip.
-                    assert((Offer.openSet(player, def).shelf == true) == (def.vendor == "bastion"),
-                        (def.vendor or "?") .. "'s shelf is on the wrong side of trip 0")
-                    local class = (Vendor.defs[def.vendor] or {}).class
-                    local best = 0
-                    for _, char in ipairs(player.roster) do
-                        best = math.max(best, (char.technique or {})[class or ""] or 0)
-                    end
-                    banked[def.vendor] = best
-                end
-            end
-            assert(total == 7, "the city holds seven houses, got " .. total)
-
-            -- ASKED AS A COMPARISON RATHER THAN A RUNG, for the reason the case above records: a rung
-            -- is a floor of committed play now (Class.CLASS_LEVEL_STEP) and Act 0's four scripted
-            -- fights are not meant to buy one outright. Two houses standing CLEAR of the other five is
-            -- the claim that survives the re-cut -- it is about where the technique went.
-            --
-            -- Clear, not alone. Every action banks into the class a body stands in, whatever is in
-            -- hand (Class.techniqueFor), so today only the
-            -- two declared houses see anything -- but "exactly two were touched" would pin that rule's
-            -- current reach rather than the commitment, which is the claim.
-            local ranked = {}
-            for vendor, amount in pairs(banked) do ranked[#ranked + 1] = { vendor, amount } end
-            table.sort(ranked, function(a, b)
-                if a[2] ~= b[2] then return a[2] > b[2] end
-                return a[1] < b[1]
-            end)
-            assert(ranked[1][1] == "bastion", string.format(
-                "Act 0 is fought in the Bastion; the roster leans on %s", ranked[1][1]))
-            assert(ranked[1][2] >= ranked[2][2] * 2, string.format(
-                "the house Act 0 is fought in must stand clear: %s banked %d against %s at %d",
-                ranked[1][1], ranked[1][2], ranked[2][1], ranked[2][2]))
-
-            -- Nothing is banked above what the fights could physically have paid: the per-fight ceiling
-            -- a real fight enforces, over the four fights the road holds.
-            local ceiling = 4 * Class.TECHNIQUE_PER_BATTLE
             for _, char in ipairs(player.roster) do
                 for key, amount in pairs(char.technique or {}) do
-                    assert(amount <= ceiling, char.name .. " banked " .. amount .. " " .. key
-                        .. ", over what four fights can pay (" .. ceiling .. ")")
+                    assert(amount == 0, char.name .. " banked " .. amount .. " " .. key .. " in a skipped Act 0")
                 end
-                -- ONLY IF A LEVEL ACTUALLY LANDED. The snapshot Growth.resolve takes is what makes
-                -- `techniqueSinceLevel` read zero, and it is taken when a body LEVELS -- so a company
-                -- that banked technique without crossing a rung legitimately carries progress since
-                -- its last one, and that is the readout being correct rather than owing.
-                --
-                -- This demanded zero unconditionally, which held only while Act 0's four fights
-                -- crossed a rung -- true when a rung cost 23 and false now that it costs a floor of
-                -- committed play (Class.CLASS_LEVEL_STEP). The claim worth keeping is the narrow one:
-                -- nobody arrives owing a level-up they have already earned.
-                for key, banked in pairs(char.technique or {}) do
-                    -- The snapshot can never claim more progress than the body has ever earned, and
-                    -- it can never go backwards. That is the invariant Growth.resolve's snapshot has
-                    -- to hold whether or not a level landed, and it is the part of the old assertion
-                    -- that was actually about correctness rather than about the prologue's income.
-                    local since = Character.techniqueSinceLevel(char, key)
-                    assert(since >= 0, char.name .. " reads negative progress in " .. key)
-                    assert(since <= banked, string.format(
-                        "%s reads %d progress since its last level in %s, having banked %d in total",
-                        char.name, since, key, banked))
+                for key, n in pairs(char.deeds or {}) do
+                    assert(n == 0, char.name .. " banked the deed " .. key .. " in a skipped Act 0")
                 end
             end
+            -- ...and Rowan's recommendation is owed, exactly as the played road owes it from the arrival
+            -- scene on: the city opens on the forced pick (states/hub.lua's openFirstPick).
+            assert(player.classPick == true, "the skip must owe the first pick")
+            local avatar
+            for _, char in ipairs(player.roster) do
+                if char.id == Class.AVATAR_ID then avatar = char end
+            end
+            assert(avatar and Class.pickOwed(player, avatar), "and owe it to the avatar")
+
+            -- No shelf takes trip 0 until it is made; then the picked class's house does.
+            local Offer = require("models.offer")
+            assert(not Offer.admitted(player, "bastion.shelf"), "trip 0's shelf waits for the pick")
+            assert(Class.unlock(player, avatar, "hunter"))
+            assert(Offer.openedOn(player, "hunters_lodge.shelf") == 0, "the pick's house opens first")
         end,
     },
 }

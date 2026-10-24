@@ -866,6 +866,10 @@ function Save.snapshot(player)
         -- coach just pointed at is gone on resume. Elided when false: unlike `cityReached` there is no
         -- older save to tell apart from a fresh one, so absent and false mean the same thing.
         classesOpen = player.classesOpen or nil,
+        -- ROWAN'S RECOMMENDATION, owed and then spent (Class.pickOwed): the avatar's free first class,
+        -- and which one it was -- the shelf the city schedule opens first (models/offer.lua).
+        classPick = player.classPick or nil,
+        firstClass = player.firstClass,
         -- WHERE ACT 0 STANDS, as the index of the prologue beat being played (states/prologue.lua). The
         -- prologue is a sequence held in memory, and a save written partway through it -- every fight
         -- on the floor-one leg writes one -- used to load straight into the city, past the beats still
@@ -1479,6 +1483,8 @@ function Save.restore(snap)
         -- genuine pre-city save written since carries an explicit false, which is what this respects.
         cityReached = snap.cityReached ~= false,
         classesOpen = snap.classesOpen == true,
+        classPick = snap.classPick == true or nil,
+        firstClass = type(snap.firstClass) == "string" and snap.firstClass or nil,
         prologueBeat = type(snap.prologueBeat) == "number" and snap.prologueBeat or nil,
         -- The tally (Descent.count). READ OFF THE RUN AS A FALLBACK, because that is where every save
         -- written before the move put it -- and it is read from the RAW snapshot rather than from the

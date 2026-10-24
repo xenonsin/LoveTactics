@@ -211,11 +211,11 @@ end
 -- so Items is the single live thing on the screen, which is what makes the hold readable rather than
 -- a game that stopped responding.
 local function mapHeld()
-    -- BOTH DOOR STEPS HOLD IT. `loadout` and `class` are the two coach steps out here that ask for a
-    -- BUTTON rather than for a tile, and a lesson whose control the player can simply walk away from
-    -- is a lesson that does not land. The class prompt is the Champion's whole payoff -- it is the one
-    -- moment Act 0 has to say the ladder exists -- and the road out is standing open two tiles away.
-    return game.coach == "loadout" or game.coach == "class"
+    -- THE DOOR STEP HOLDS IT. `loadout` is the one coach step out here that asks for a BUTTON rather
+    -- than for a tile, and a lesson whose control the player can simply walk away from is a lesson that
+    -- does not land. (The Champion's class prompt was the other, and went with the Roll's move to the
+    -- city, 2026-10-23.)
+    return game.coach == "loadout"
 end
 
 -- Where each button actually sits this frame. One reading of the row, used by the draw, the hit test
@@ -429,26 +429,11 @@ local function fireItems(event, extra)
     return ItemHook.dispatch(event, ctx)
 end
 
--- WHAT FOLLOWS THE EQUIP LESSON ON ACT 0's FLOOR (2026-10-16): the class tab, when the Roll is already
--- open and its lesson is still owed. Act 0 opens the Roll after its first fight -- the trip down is for the
--- class requirements -- so the first time the panel is open is the first time the tab can be pointed at.
--- `open` says whether the panel is up (point at the tab) or not (point at the button).
-local function classLessonNext(open)
-    if game.tutorial == "flight" and not game.classTaught and Descent.classesUnlocked(game.player) then
-        return open and "classtab" or "class"
-    end
-    return nil
-end
-
 -- Open the Party screen over the overworld (same modal slot as the encounter panel).
 local function openLoadout()
     -- During the flight tutorial, opening the loadout is the step that unlocks the equip lesson: the
     -- coach moves from pointing at the button to pointing at the stash.
     if game.coach == "loadout" then game.coach = "equip" end
-    -- ...and the class lesson HANDS OVER to its second half rather than ending: the panel is open
-    -- now, and the tab the whole beat is about is one the player has never had a reason to press. A
-    -- red pip on it is a mark, not an instruction (ui/panels/party.lua's noteUnread).
-    if game.coach == "class" then game.coach = "classtab" end
     game.activePanel = Party.new({
         player = game.player,
         -- The Tactics tab is hidden until the first trip ends -- home to the city, or down onto floor
@@ -475,23 +460,11 @@ local function openLoadout()
         pool = game.descent and "pack" or nil,
         -- Clear the equip coach the instant the player equips something, not on panel close.
         onEquip = function()
-            if game.coach == "equip" then game.coach = classLessonNext(true) end
-        end,
-        -- Spent by GOING THERE. Taking the tab is the whole of what the lesson asked for; what the
-        -- Roll then is gets explained by the tab's own window (Party:openNote), which fires on the
-        -- same press.
-        onMode = function(mode)
-            if mode == "classes" then
-                game.classTaught = true
-                if game.coach == "classtab" then game.coach = nil end
-            end
+            if game.coach == "equip" then game.coach = nil end
         end,
         onClose = function()
             game.activePanel = nil
-            if game.coach == "equip" then game.coach = classLessonNext(false) end -- lesson done (closed without equipping)
-            -- ...and the same for the class tab: a player who shut the panel without taking it has
-            -- declined the lesson, and a bubble that outlived its own screen would point at nothing.
-            if game.coach == "classtab" then game.coach = nil end
+            if game.coach == "equip" then game.coach = nil end -- lesson done (closed without equipping)
         end,
     })
 end
@@ -1438,7 +1411,7 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
             local def = EncounterModel.get(e.id)
             if def then
                 queue[#queue + 1] = { id = e.id, kind = def.kind, name = def.name, loot = e.loot,
-                                      after = e.after or 0, by = e.by }
+                                      after = e.after or 0, by = e.by, opening = e.opening }
             end
         end
         game.tutorialProwl = { queue = queue, steps = 0 }
@@ -1687,7 +1660,7 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
                     table.remove(tp.queue, 1)
                     tp.steps = 0
                     cell.encounter = { kind = head.kind, id = head.id, name = head.name,
-                                       loot = head.loot, wandering = true }
+                                       loot = head.loot, wandering = true, opening = head.opening }
                     cell.cleared = nil
                     game:pushToast("Something has found you.")
                 end
@@ -1773,7 +1746,6 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
     -- useVisible and the combat onWin below). True from the start everywhere else.
     game.useUnlocked = (mp.tutorial ~= "flight") or resume ~= nil
     game.coach = nil
-    game.classTaught = nil -- Act 0's class-tab lesson, spent by taking the tab (classLessonNext)
     game.coachChar = nil
 
     -- Autosave the run so quitting mid-quest resumes onto the map (states/menu.lua's Continue). Only a
@@ -1898,6 +1870,19 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
         return
     end
 
+    -- THE CHEST THE FIRST COACH LINE NAMES IS SHOWN FROM THE DOOR. "Walk to the chest ahead" was written
+    -- when the bow chest stood one step from the door; it is a walk in now (data/overworld/
+    -- tutorial_flight.lua, moved by the author 2026-10-23), and under the fog the line would point at
+    -- nothing. Only that one cell is lifted -- the rest of the floor is still found by walking it.
+    if mp.tutorial == "flight" and always[1] then
+        for y = 1, game.grid.rows do
+            for x = 1, game.grid.cols do
+                local e = game.grid.cells[y][x].encounter
+                if e and e.id == always[1].id and e.loot == always[1].loot then game.grid:reveal(x, y, 0) end
+            end
+        end
+    end
+
     -- Last, once the map exists: a quest may open with a scene played OVER it. A conversation is a
     -- global overlay on a frozen state (main.lua), so the road, the markers and the fog sit there
     -- behind the box and nothing moves until the player dismisses it.
@@ -1975,34 +1960,14 @@ local function openExitRoad(cell, spec)
     -- that has not levelled yet is the empty screen Descent.classesUnlocked spent a paragraph
     -- refusing to show, and it would be this beat that put it there.
     if game.onExitOpened then game.onExitOpened() end
-    -- THE LADDER IS WORTH READING NOW, and this is the moment it becomes so: the company crossed a
-    -- level on the killing blow. See Descent.classesUnlocked for why the Roll waits for this rather
-    -- than for the city.
-    Descent.markClassesOpen(game.player)
-    -- THE BUTTON THE PROMPT POINTS AT HAS TO EXIST, and on this leg it is not there by default:
-    -- `itemsVisible` is held false for the whole flight tutorial and only opened by the first chest
-    -- (game.enter), because the panel is introduced when there is loot to put in it.
+    -- THE ROLL DOES NOT OPEN HERE ANY MORE (2026-10-23). It did, with a coach pointing at the tab: Act 0
+    -- was the trip for the class requirements. Act 0 now banks nothing toward a class (`classCredit`),
+    -- and the avatar's first class is Rowan's recommendation, picked in the city (states/hub.lua), so the
+    -- tab waits for the town (Descent.classesUnlocked) and this beat only hands the board back.
     --
-    -- THE FLIGHT MAP'S CHESTS ARE OPTIONAL. A company that walked past them reaches the Champion with
-    -- the button still hidden -- and this step HOLDS THE MAP (mapHeld), so the road is shut, the
-    -- bubble is never drawn (drawCoach's own `itemsVisible` guard), and the only control that clears
-    -- the coach does not exist. That is a soft lock, and it was reached the first time this beat was
-    -- driven end to end rather than reasoned about.
-    --
-    -- So the beat that needs the panel opens it. By the Champion there is nothing left to introduce
-    -- gently: the company has levelled and there is a class ladder to read.
+    -- The Loadout button is still opened here, so a company that walked past every chest reaches the
+    -- road with it: by the Champion there is nothing left to introduce gently.
     game.itemsVisible = true
-    -- ...and the lesson is a PROMPT, not a pushed window. The Roll already owns a window of its own
-    -- (ui/panels/party.lua's openNote, on the tab's red pip); what this beat owes is the thing the
-    -- loadout step owes two stops earlier -- "there is a screen, go and open it". Pushing the window
-    -- here instead put a modal in front of a player who had not asked for one, on the same frame the
-    -- battle was handing the board back, and taught the feature before they had seen the tab it lives
-    -- on. Prompt, press, tab, window: the same four beats the items lesson runs.
-    --
-    -- ONLY IF IT IS STILL OWED (2026-10-16). Act 0 opens the Roll after its FIRST fight now -- the trip
-    -- down is for the class requirements, and Rowan says so there -- and the prompt follows the first
-    -- loadout lesson (game.classTaught). This is the backstop for a company that never opened the panel.
-    if not game.classTaught then game.coach = "class" end
     game:pushToast(exit.at == "start" and "The way up is open. Walk back out the way you came."
         or "The way to the city is open")
     -- ...and the scene that turns the company round, over the board it is about to walk back across.
@@ -2678,7 +2643,8 @@ function game:openEncounter(cell, opts)
             -- (states/battle.lua's openingConversation). This is the ONLY seam an antagonist can
             -- speak from: `intro` plays over the hub before the party is even picked, and by the
             -- time `outro` runs the target of an `assassinate` is dead.
-            opening = objSpec and objSpec.opening or nil,
+            -- ...or the scene the prologue's prowl put on the cell (states/prologue.lua's FLIGHT_QUEST).
+            opening = (objSpec and objSpec.opening) or cell.encounter.opening or nil,
             -- WHICH end this is, resolved from the tile rather than looked up from the run: the
             -- composition, the escorts, the win condition and the board all come off this one spec
             -- (models/encounter_battle.lua), and a ground carrying three quests has three of them.
@@ -2803,6 +2769,8 @@ function game:openEncounter(cell, opts)
             -- it on the win (states/prologue.lua's prologue.xpCap). Nil on every leg after the prologue.
             xpCeiling = game.xpCap and game.xpCap.ceiling or nil,
             xpOnWin = game.xpCap and objSpec and objSpec.opensExit and game.xpCap.exit or nil,
+            -- ...and banks nothing toward a class there (Combat.awardTechnique): Act 0 teaches none.
+            classCredit = not game.xpCap,
             -- The supper bought at the Cafe before this quest (models/meal.lua): one platter, worn by
             -- the whole company at every fight of the run, and cleared when the run resolves. Read live
             -- off the player rather than snapshotted at launch, so a resumed run picks it up too.
@@ -5439,28 +5407,6 @@ function game.drawCoach()
         end
         return
     end
-    -- THE CLASS SCREEN, pointed at the button that opens the panel it lives on. Spent by opening it
-    -- (openLoadout), not by reading the bubble -- the same rule every other step out here keeps.
-    if step == "class" and not game.activePanel and game.itemsVisible then
-        local node = hintNode("conversation_tutorial_flight", "class_hint")
-        local anchor = itemsRect()
-        local belowBounds = { x = 20, y = anchor.y,
-            w = Scale.WIDTH - 40, h = Scale.HEIGHT - anchor.y - 44 }
-        -- The same strip rect the loadout step hands over, built the same way (PartyStatus exposes a
-        -- height, not a rect) so the two bubbles cannot pick different sides of the same corner.
-        local strip = { x = STRIP_X - 6, y = STRIP_Y - 6, w = 218,
-            h = PartyStatus.stripHeight(#(game.player and game.player.roster or {})) }
-        -- THE SCRIM, FOR THE REASON THE LOADOUT STEP HAS ONE. This step holds the road (mapHeld), and
-        -- a map that has stopped answering while still drawn at full brightness reads as a game that
-        -- hung -- which is exactly how this beat was first reported. Pushing everything but the button
-        -- back says in light what the hold says in input: one live control, and the bubble is on it.
-        CoachBubble.dim(anchor)
-        if node then
-            CoachBubble.draw(Locale.text("conversation_tutorial_flight", node), anchor,
-                { prefer = "below", key = loadoutKey(), bounds = belowBounds, avoid = { strip } })
-        end
-        return
-    end
 
     if step == "move" and not game.activePanel then
         local node = hintNode("conversation_tutorial_flight", moveHintId())
@@ -5490,30 +5436,6 @@ function game.drawCoach()
         CoachBubble.dim(anchor)
         CoachBubble.draw(Locale.text("conversation_tutorial_flight", node), anchor,
             { prefer = "below", key = loadoutKey(), bounds = belowBounds, avoid = { strip } })
-    elseif step == "classtab" and game.activePanel and game.activePanel.tabAnchor then
-        -- THE SECOND HALF OF THE CLASS LESSON, inside the panel the first half opened. Shaped like
-        -- the equip step rather than like the button steps: it points at something on a screen that
-        -- is already up, so it needs no scrim and holds nothing -- the panel is modal already.
-        local anchor = game.activePanel:tabAnchor("classes")
-        if anchor then
-            local node = hintNode("conversation_tutorial_flight", "classtab_hint")
-            -- THE CAP IS THE TAB'S OWN NUMBER, not the confirm key. Locale.coachLine hands back the
-            -- confirm -- which is right for the equip step, where {select} picks an item up, and
-            -- wrong here: Enter is "Pick up" on this panel and pressing it does nothing to the tab
-            -- strip. Tabs are taken by their position (ui/panels/party.lua's keypressed walks
-            -- `modes` against tostring(i)), so the number is the only true key, and it is READ off
-            -- the panel rather than typed -- the strip grows a Tactics tab after the first trip, and
-            -- a hardcoded 2 would point at the wrong one from then on.
-            local cap
-            for i, m in ipairs(game.activePanel.modes or {}) do
-                if m == "classes" then cap = tostring(i) end
-            end
-            -- ...and nothing for a mouse, on loadoutKey's rule: the gold ring on the tab is the
-            -- instruction, and a key cap offered to a hand that is not on a keyboard is noise.
-            if not InputMode.isKeyboard() then cap = nil end
-            CoachBubble.draw(Locale.text("conversation_tutorial_flight", node), anchor,
-                { prefer = "below", key = cap, bounds = coachBounds() })
-        end
     elseif step == "equip" and game.activePanel and game.activePanel.coachAnchor then
         local anchor = game.activePanel:coachAnchor()
         if anchor then

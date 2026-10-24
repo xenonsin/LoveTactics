@@ -215,6 +215,19 @@ function Marks.touchstone(x, y, w, h, r, g, b, a)
     love.graphics.setLineWidth(1)
 end
 
+-- THE GUILD -- a wax seal: the disc, and the notch pressed out of its rim where the stamp came down.
+-- The attendant's whole business is a name pressed onto the roll.
+function Marks.guild(x, y, w, h, r, g, b, a)
+    local cx, cy, rad = x + w / 2, y + h / 2, math.min(w, h) * 0.46
+    love.graphics.setColor(r, g, b, a)
+    love.graphics.circle("fill", cx, cy, rad)
+    love.graphics.setColor(r * 0.16, g * 0.16, b * 0.18, a)
+    love.graphics.circle("fill", cx, cy, rad * 0.52)
+    love.graphics.setColor(r, g, b, a)
+    love.graphics.polygon("fill", cx, cy - rad * 0.34, cx + rad * 0.30, cy + rad * 0.20,
+        cx - rad * 0.30, cy + rad * 0.20)
+end
+
 -- ---------------------------------------------------------------------------
 -- AND ONE COLOUR PER HOUSE
 --
@@ -262,6 +275,7 @@ local Colors = {
     cafe          = { 0.96, 0.56, 0.52 }, -- a hot plate
     crossing      = { 0.30, 0.30, 0.88 }, -- the deep indigo of what comes through the tear
     touchstone    = { 0.58, 0.64, 0.72 }, -- the stone
+    guild         = { 0.82, 0.86, 0.98 }, -- the roll's paper under a cold lamp
 }
 
 -- A house's colour as three components, or nil for a house that has none. Three returns rather than the

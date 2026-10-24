@@ -13408,6 +13408,10 @@ end
 
 function Combat.awardTechnique(combat, unit, item)
     combat.techniqueCrossing = nil
+    -- ACT 0 TEACHES NO CLASS (2026-10-23): the avatar's first class is Rowan's recommendation, picked in
+    -- the city, and every class after it counts from the first descent. Neither technique nor a deed
+    -- (Class.bankDeeds) banks in a prologue fight -- states/battle.lua sets this off `classCredit`.
+    if combat.noClassCredit then return 0 end
     local key = Class.growthClasses(item)[1]
     if not key then return 0 end
 

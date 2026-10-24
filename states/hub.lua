@@ -553,6 +553,22 @@ end
 -- swallowed silently: it rings the cancel cue and walks the cursor back onto the Cathedral, under the
 -- bubble that says why. tests/hub_doors_spec.lua pins that the guard reads that one stage and names
 -- that one door, so it cannot quietly grow into the corridor the 2026-09-21 cut removed.
+-- THE AVATAR'S FIRST CLASS, AND IT IS NOT OPTIONAL. Rowan recommends the avatar to the guild at the
+-- end of the arrival scene, and the guild takes her word for one root, picked free (Class.pickOwed).
+-- The Roll opens on the avatar over the city and is HELD OPEN until the pick is made (Party's
+-- `holdOpen`): a Novice walking into the rift is the state this whole beat exists to end, and a pick
+-- that could be shut away would be one a player could walk past without noticing it was the game's
+-- first real decision.
+local function openFirstPick()
+    activePanel = newPanel("party", nil, nil, dismissPanel)
+    local avatar
+    for i, char in ipairs(activePanel.chars or {}) do
+        if char.id == Class.AVATAR_ID then avatar = char; activePanel:focusChar(i) end
+    end
+    activePanel.holdOpen = function() return Class.pickOwed(hub.player, avatar) end
+    activePanel:setMode("classes")
+end
+
 local function openPanel(building)
     if coachingMend() and building.id ~= MEND_DOOR then
         Sound.play("ui.cancel")
@@ -706,6 +722,13 @@ function hub.enter()
     focusMendCard()
     burger = BurgerButton.new(BURGER_X, BURGER_Y)
 
+    -- A PICK STILL OWED IS MADE BEFORE ANYTHING ELSE: a save quit with the Roll held open, or the
+    -- prologue skip (which owes it too), comes back into the city to the same forced panel.
+    if hub.player.hubIntro ~= "arrival" and hub.player.classPick then
+        openFirstPick()
+        return
+    end
+
     -- The first visit to the hub (New Game only; the prologue set this flag -- states/prologue.lua).
     -- ONE SCENE: Rowan's, played over the city the player is now looking at.
     --
@@ -727,6 +750,12 @@ function hub.enter()
     if hub.player.hubIntro == "arrival" then
         Conversation.play("conversation_prologue_arrival", function()
             hub.player.hubIntro = "ward"
+            -- ROWAN'S RECOMMENDATION (2026-10-23): the scene ends with her putting the avatar's name to
+            -- the guild, and the pick it buys is made on the spot (openFirstPick).
+            -- The horn is the proof the recommendation is made over, and it stays on the counter.
+            Player.spendMaterials(hub.player, { material_champion_horn = 1 })
+            hub.player.classPick = true
+            openFirstPick()
             -- The bubble goes up as this scene clears, so the cursor has to move with it: the flag was
             -- "arrival" when the board was seated a few lines above, and focusMendCard no-ops then.
             focusMendCard()

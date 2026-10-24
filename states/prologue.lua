@@ -220,6 +220,17 @@ local FLIGHT_QUEST = {
             -- the chokepoint (data/overworld/tutorial_flight.lua's letters) where a fight still owed finds
             -- you if the steps have not, so each gift is in hand before the part of the floor that wants
             -- it. Read by states/game.lua's tutorial prowl. Both fights' own arguments follow.
+            --
+            -- PLACED BY THE AUTHOR (2026-10-23), on a screenshot of the floor: the first fight around (10,10)
+            -- -- the east end of part one's bottom row, 12 steps from the door on the shortest walk -- and
+            -- the second around (10,6), just into part two, 8 steps on from there (5 back to the `a`
+            -- chokepoint and 3 through it). `after` is those two measurements. It was 6 and 8, then 10 and
+            -- 12; both put the first fight too close to the door.
+            --
+            -- EACH OPENS ON A SCENE (`opening`, carried onto the cell and handed to the battle -- states/
+            -- game.lua), as the village fight and the Champion already do. On the prowl entry rather than
+            -- on the encounter blueprint because a blueprint's `opening` would play wherever that
+            -- encounter is fielded.
             prowl = {
                 -- FIRST: FORCED TARGETING -- the Shout, won on the one stop whose objective is other
                 -- people's lives. Every rule the route has taught so far is about what the PLAYER may
@@ -242,7 +253,8 @@ local FLIGHT_QUEST = {
                 -- Deeper on the shelf than the rest (bulwark, 660g): a gift waives price, not
                 -- standing, and the censer and Mark Target are already crossings the player could not
                 -- buy here either.
-                { id = "encounter_survivors_defend", loot = { "ability_shout" }, after = 6, by = "a" },
+                { id = "encounter_survivors_defend", loot = { "ability_shout" }, after = 12, by = "a",
+                  opening = "conversation_flight_defend" },
                 -- SECOND: TYPED MITIGATION -- a Salamander Hide off the demons blocking the way out.
                 -- The party has worn leather and chainmail since the first fight and nothing has ever
                 -- said that a coat answers a KIND of blow; this one is blunt enough to be unmissable
@@ -252,7 +264,8 @@ local FLIGHT_QUEST = {
                 -- with an imp and a grunt beside her. Combat.mitigatedDamage sums the resist of every matching
                 -- tag, so the coat blunts all of it. The spoils land after the win, so the body it is
                 -- actually FOR is the Champion at the end of the trail.
-                { id = "encounter_survivors_extract", loot = { "armor_salamander_hide" }, after = 8, by = "b" },
+                { id = "encounter_survivors_extract", loot = { "armor_salamander_hide" }, after = 8, by = "b",
+                  opening = "conversation_flight_extract" },
             },
         },
         objective = {
@@ -289,8 +302,7 @@ local FLIGHT_QUEST = {
             -- WHAT THAT BUYS is the one beat Act 0 had nowhere to put. The kill is where the company
             -- reaches level 2 (prologue.EXIT_LEVEL), and a leg that cut to the city on the same frame
             -- had no moment in which to say so -- the level-up landed in a loading screen. Back on the
-            -- map there is a board to stand on, a party strip showing the new level, and a class
-            -- screen that has just opened (Descent.markClassesOpen). The road is then the player's own
+            -- map there is a board to stand on and a party strip showing the new level. The road is then the player's own
             -- step, taken when they are finished reading.
             -- THE STAIR OPENS AND THE COMPANY TURNS BACK (2026-10-16). The tile the Champion held becomes
             -- the stair down, which a real floor one's guardian opens -- and nobody takes it: Rowan is down
@@ -350,6 +362,7 @@ function prologue.runBattle(map, onWinExtra)
         quest = { map = map },
         tutorial = map.tutorial, -- nil for every fight but the village one
         xpCeiling = prologue.xpCap().ceiling, -- held under the exit level (prologue.xpCap)
+        classCredit = false, -- Act 0 teaches no class (Combat.awardTechnique)
         -- A scene played over the board when this fight opens (states/battle.lua). Any map may name
         -- one; the village's comes from its lesson instead, which is why this is usually nil.
         opening = map.opening,
@@ -375,16 +388,26 @@ end
 -- Launch the overworld flight leg, handing control back here (not to the hub) when its objective clears.
 -- `resume` (optional) is the saved board from models/save.lua's Save.restoreRun, which puts the company
 -- back where it quit with its wounds -- so the refill is skipped for it, as it is for any resumed run.
+-- The Champion's horn, the avatar's proof to the guild (data/materials/material_champion_horn.lua).
+prologue.HORN_ID = "material_champion_horn"
+
 function prologue.runOverworld(quest, resume)
     local p = Player.active
     if not resume then Player.restore(p) end
     State.switch(require("states.game"), quest, nil, p, prologue.resume, resume)
     -- ...and what Act 0 owes itself the moment the Champion falls, which is BEFORE the leg ends.
     -- The capstone opens the road rather than the city (the objective's `opensExit`), so the company
-    -- is put back on the map with a class screen to read -- and it has to be holding the level that
-    -- makes reading it worth anything. Set after the switch because game.enter clears it.
+    -- is put back on the map, and it walks out holding the level the kill pays. Set after the switch
+    -- because game.enter clears it.
     local game = require("states.game")
-    game.onExitOpened = function() prologue.payExit(Player.active) end
+    game.onExitOpened = function()
+        prologue.payExit(Player.active)
+        -- ...and the PROOF: the Champion's horn, carried home and laid on the guild's counter in the
+        -- arrival scene (data/materials/material_champion_horn.lua, states/hub.lua).
+        if Player.materialCount(Player.active, prologue.HORN_ID) < 1 then
+            Player.addMaterial(Player.active, prologue.HORN_ID, 1)
+        end
+    end
     -- ...and the hold every fight on the leg banks under, the Champion's paying the exit on its win.
     game.xpCap = prologue.xpCap()
 end
@@ -428,15 +451,13 @@ local function buildBeats()
         function() State.switch(require("states.character_creation")) end,
         action(function() Player.recruit(Player.active, "character_rowan") end), -- Rowan joins for the fight
         battle(VILLAGE_MAP),
-        -- WHY THEY ARE DOWN HERE: the class requirements. The avatar is a Novice and earns a class by deeds
-        -- (data/class_requirements.lua), and Rowan says so the moment the first fight is won -- which is
-        -- also when the Roll opens (Descent.markClassesOpen), so the overworld's loadout lesson can hand
-        -- straight on to the class tab (states/game.lua's classLessonNext). Played with `deferJoins` so
+        -- THE BEAT AFTER THE FIRST WIN. It used to open the Roll here and say the trip was for the class
+        -- requirements; both are gone (2026-10-23). Act 0 banks nothing toward a class (`classCredit =
+        -- false` on every prologue fight), and the avatar's first class is Rowan's recommendation, picked
+        -- in the city once the Champion is down (states/hub.lua's arrival). Played with `deferJoins` so
         -- Rowan's join banner still folds onto the map's opening, where conversation_prologue_ruins'
-        -- header says it lands. (This slot was the Charter's roll, which named the avatar; naming moved
-        -- back in front of the fight.)
+        -- header says it lands.
         function()
-            Descent.markClassesOpen(Player.active)
             require("models.conversation").play("conversation_prologue_classes", prologue.next,
                 nil, { deferJoins = true })
         end,
@@ -682,76 +703,10 @@ function prologue.payExit(player)
     end
 end
 
--- How many ACTIONS a body takes in one of those fights, which is the other figure the data cannot
--- state: technique is banked per action (Class.TECHNIQUE_PER_ACTION), and nothing in Act 0 records how
--- many were spent. Ten is what a short scripted fight of a two-body company gets through -- twenty
--- technique a fight, two thirds of the ceiling a fight can pay (Class.TECHNIQUE_PER_BATTLE), so the
--- estimate never sits against the cap and reads as a clamp rather than a count.
-prologue.SKIP_ACTIONS_PER_FIGHT = 10
-
--- WHAT THE FIGHTING BANKS IN THE HOUSES: the half of Act 0's pay that decides what the city LOOKS like
--- when the skip lands in it. Each of the seven class shelves opens at class level 1 in its own class,
--- held by any body on the roster (`unlockClassLevel` on data/buildings/bastion.lua and its six
--- siblings, read through Class.rosterLevel), and a class level is nothing but cumulative technique
--- (Class.classLevel). Experience alone left every body at nought in every house, so a skipped company
--- reached a houses board with all seven doors shut and no way to open one short of a descent -- the
--- opposite of what the button is for.
---
--- PAID THE WAY A FIGHT PAYS IT (Combat.awardTechnique): every action banks TECHNIQUE_PER_ACTION into
--- the body's DECLARED house, whatever is in hand (Class.techniqueFor). So a body's technique lands where it is declared, which is why the company reaches the
--- city holding the Bastion (Rowan, declared knight, and the avatar's starting sword is the Bastion's
--- shelf too) and the Colosseum (the avatar's own badge, fighter by Growth.NEUTRAL_CLASS) and not the
--- other five, and it no longer even brushes them: the sweep used to hand over one opener per class and
--- now hands over one item MECHANIC per stop (see FLIGHT_QUEST), so a body reaches the city holding what
--- it actually swung rather than a shelf of borrowed houses. Either way the answer here is unchanged --
--- carrying a class's item is not swinging one, and a played Act 0 does not open those doors either.
---
--- WHAT IS APPROXIMATED is the mix, because nothing recorded it: the actions divide evenly across the
--- castable classes on the body's grid -- `activeAbility`, since an item with no cast is never the thing
--- in the hand. Capped per house at what the fights could physically have paid, the same per-fight
--- ceiling a real fight enforces.
-local function bankTechnique(player, fights)
-    local Class = require("models.class")
-    local Growth = require("models.growth")
-
-    local budget = fights * prologue.SKIP_ACTIONS_PER_FIGHT
-    local ceiling = fights * Class.TECHNIQUE_PER_BATTLE
-
-    for _, char in ipairs(player.roster) do
-        -- The houses this body could have been swinging, in grid order and without repeats.
-        local keys = {}
-        for _, item in ipairs(Character.eachItem(char)) do
-            local key = item.activeAbility and Class.growthClasses(item)[1]
-            if key then
-                local seen = false
-                for _, held in ipairs(keys) do if held == key then seen = true end end
-                if not seen then keys[#keys + 1] = key end
-            end
-        end
-
-        local declared = Growth.classOf(char)
-        local banked = {}
-        local function bank(key, amount)
-            if not key then return end
-            amount = math.min(amount, ceiling - (banked[key] or 0))
-            if amount <= 0 then return end
-            banked[key] = (banked[key] or 0) + amount
-            Character.recordTechnique(char, key, amount)
-        end
-
-        if #keys == 0 then
-            -- A body carrying nothing castable still fought: the whole action goes to the badge, which
-            -- is what Combat.awardTechnique pays when the hands vote for nothing.
-            bank(declared, budget * Class.TECHNIQUE_PER_ACTION)
-        else
-            for i, key in ipairs(keys) do
-                -- The even split, with the remainder on the first houses rather than lost to floor().
-                local actions = math.floor(budget / #keys) + ((i <= budget % #keys) and 1 or 0)
-                bank(Class.techniqueFor(declared, key), actions * Class.TECHNIQUE_PER_ACTION)
-            end
-        end
-    end
-end
+-- NO TECHNIQUE IS BANKED FOR THE SKIPPED FIGHTS (2026-10-23), because none is banked for the played
+-- ones: Act 0's fights teach no class (`classCredit = false`, Combat.awardTechnique). The skip used to
+-- estimate ten actions a fight and file them in each body's houses; that estimate is gone with what
+-- it was estimating.
 
 -- Apply everything Act 0 grants to `player`, in the order the beats grant it, and leave the city in
 -- free play. Called INSTEAD of prologue.begin -- this state never runs.
@@ -832,14 +787,10 @@ function prologue.skip(player)
     local function payFight(count)
         Player.addGold(player, Spoils.roll({ count = count, day = 1 }).gold)
     end
-    -- Counted rather than typed, because the technique below is priced per fight: the first street to
-    -- start with, a stop for every route entry that fields a composition, and the champion at the end.
-    -- A route that gains or loses a fight moves both payouts without either figure being touched.
-    local fights = 1
+    -- Every route entry that fields a composition pays as the fight it is, and the champion at the end.
     for _, stop in ipairs(stops) do
         local def = Encounter.defs[stop.id]
         if def and def.composition then
-            fights = fights + 1
             payFight(#def.composition({ day = 1 }))
             local rescue = def.rescue
             if rescue then
@@ -852,13 +803,7 @@ function prologue.skip(player)
         end
     end
     -- ...and the champion at the end of the trail, whose fight is the map's objective rather than a stop.
-    fights = fights + 1
     payFight(#FLIGHT_QUEST.map.objective.composition({ day = 1 }))
-
-    -- What those same fights bank in the houses -- see bankTechnique. Banked BEFORE the levels below,
-    -- as a fight banks it: Growth.resolve snapshots the ledger when a level lands, and technique added
-    -- after the snapshot would read as a level's worth of progress the company has not made since.
-    bankTechnique(player, fights)
 
     -- The experience those fights pay, resolved into levels through Growth exactly as a won fight
     -- resolves it (states/game.lua's post-fight seam). Awarded after the recruit, so Rowan is not handed
@@ -870,6 +815,10 @@ function prologue.skip(player)
     -- ...and the level Act 0 ends on, which the fighting above may or may not have bought. The played
     -- road pays this at its own exit (prologue.next), so both arrive on the same level.
     prologue.payExit(player)
+
+    -- ...and Rowan's recommendation, which the played road owes from the arrival scene on (states/hub.lua):
+    -- the avatar's first class is still to be picked, free, in the Armory (Class.pickOwed).
+    player.classPick = true
 
     -- Stop 7 is a plain rest, so the company reaches the gate whole.
     Player.restore(player)

@@ -493,9 +493,15 @@ return {
             assert(where.ability_renewal == 2, "the last chest is past the first chokepoint")
             assert(where.encounter_rest == 3, "the rest is past the second")
             assert(partOf(grid:objectiveCell()) == 3, "and so is the Champion")
-            -- The bow is beside the door: the coach says "walk to the chest ahead".
+            -- The bow is the NEAREST stop to the door: the coach says "walk to the chest ahead". It was
+            -- one step away until the author spread the stops out (2026-10-23); states/game.lua lifts its
+            -- fog at the door so the line still points at something.
             local dist = grid:bfsDistances(grid:startCell())
-            assert(dist[keyOf(bow)] == 1, "the bow chest is one step from the door")
+            for _, c in ipairs(stops) do
+                if c ~= bow then
+                    assert(dist[keyOf(bow)] < dist[keyOf(c)], "the bow chest is the first stop from the door")
+                end
+            end
         end,
     },
 
@@ -520,21 +526,14 @@ return {
                 "the mechanic-bubble table is gone; a route that wants one again needs its channel back")
 
             local CONV = "conversation_tutorial_flight"
-            -- The chain is FOUR steps; the first of them is three LINES, one per device (the only
+            -- The chain is THREE steps; the first of them is three LINES, one per device (the only
             -- step that names hardware -- see the file's header and states/game.lua's moveHintId).
             -- Every one of them is checked here, because a variant nobody fields is exactly the
             -- dead line this case exists to catch.
             --
-            -- `class_hint` is the fourth step and the only one that fires after the Champion: the
-            -- capstone opens the Roll (models/descent.lua's Descent.markClassesOpen) and leaves the
-            -- company standing on the map in front of the road out, which is the one moment in Act 0
-            -- when there is a ladder to read. See tests/prologue_road_spec.lua for the beat itself.
-            -- `class_hint` sends the player to the Party panel; `classtab_hint` is the second half,
-            -- pointing at the Classes tab once that panel is up. Two bubbles because they point at
-            -- two different controls on two different screens -- the same split the loadout lesson
-            -- already makes between its button and the stash inside it.
-            local WANT = { "move_hint", "move_hint_pad", "move_hint_touch", "loadout_hint", "equip_hint",
-                           "class_hint", "classtab_hint" }
+            -- The class steps that followed the Champion are gone (2026-10-23): the Roll waits for the
+            -- city, where the avatar's first class is picked (tests/prologue_road_spec.lua).
+            local WANT = { "move_hint", "move_hint_pad", "move_hint_touch", "loadout_hint", "equip_hint" }
             local script = require("data.conversations.tutorial." .. CONV).script
             assert(#script == #WANT, "the flight bag holds " .. #WANT .. " lines, got " .. #script)
             for i, id in ipairs(WANT) do

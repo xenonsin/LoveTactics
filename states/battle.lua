@@ -5746,6 +5746,9 @@ function battle.enter(self, opts)
     -- on the win, so the level lands on the killing blow. Nil for every fight after the prologue.
     battle.combat.xpCeiling = opts.xpCeiling
     battle.xpOnWin = opts.xpOnWin
+    -- ...and banks nothing toward a class: `classCredit = false` (the prologue's fights) stops both
+    -- technique and deeds (Combat.awardTechnique, Class.bankDeeds). Nil, and so counted, everywhere else.
+    battle.combat.noClassCredit = opts.classCredit == false or nil
 
     -- THE FIGHT, RECORDED TO A FILE, in a debug build and nowhere else (models/combat_trace.lua). Opened
     -- here rather than inside Combat.new so the headless suite -- which builds combats by the thousand

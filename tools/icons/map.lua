@@ -1487,6 +1487,7 @@ return {
     ["items/yoked_company.png"] = { icon = "delapouite/heavy-collar", by = "hand" },
     ["items/zephyr_striders.png"] = { icon = "darkzaitzev/tabi-boot", by = "auto" },
     ["materials/banked_cinder.png"] = { icon = "lorc/thrown-charcoal", by = "hand" },
+    ["materials/champion_horn.png"] = { icon = "delapouite/devil-mask", by = "hand" },
     ["materials/charter_seal.png"] = { icon = "delapouite/stamper", by = "hand" },
     ["materials/chrism_wax.png"] = { icon = "delapouite/wax-tablet", by = "auto" },
     ["materials/ember_slag.png"] = { icon = "delapouite/melting-metal", by = "hand" },

@@ -26,6 +26,10 @@
 -- voice, not hers, which is why they can name the grid outright where her spoken lines only ever point
 -- at it sideways ("keep it next to whatever you mean to swing").
 --
+-- THE CLASS STEPS ARE GONE TOO (2026-10-23): `class_hint` and `classtab_hint` pointed the player at the
+-- Roll when the Champion opened it. The Roll waits for the city now, where the avatar's first class is
+-- picked on Rowan's recommendation (states/hub.lua), so neither bubble had a screen to point at.
+--
 -- THE MECHANIC BUBBLES ARE GONE. There used to be three more lines here, one per item that landed with
 -- nobody speaking -- the buckler's stance swap, the fire coat's typed mitigation, the charm with no
 -- button. Each of them explained a rule the item's own tooltip and the grid already state, so what they
@@ -45,7 +49,5 @@ return {
         { "character_rowan", "Walk to the chest ahead. Tap it, or swipe to take one step.", tag = 5, id = "move_hint_touch" },
         { "character_rowan", "Open your loadout to see what you found.", tag = 2, id = "loadout_hint" },
         { "character_rowan", "{select} an item in your stash to equip it to a hero.", tag = 3, id = "equip_hint" },
-        { "character_rowan", "You've leveled up! See how your stats have risen.", tag = 6, id = "class_hint" },
-        { "character_rowan", "Your class decides which stats rise. Open Classes to change it.", tag = 7, id = "classtab_hint" },
     },
 }

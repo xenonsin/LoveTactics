@@ -40,6 +40,7 @@ local Picker = require("ui.expedition_picker") -- four plates over the company; 
 local CoachBubble = require("ui.coach_bubble") -- the first visit's one instruction, pinned to the row
 local TutorialNote = require("ui.panels.tutorial_note") -- ...and the window that explains the tally
 local Locale = require("models.locale")        -- ...and the key cap it wears, or nil on the mouse
+local Keeper = require("ui.keeper")            -- the guild attendant behind the counter
 
 -- The hint bags this screen draws its words from (data/conversations/tutorial/), by id rather than
 -- played as scenes. See models/locale.lua's Locale.node.
@@ -370,6 +371,11 @@ function gate.draw()
     love.graphics.setFont(smallFont)
     Theme.set(Theme.muted)
     love.graphics.printf("A counter, a lamp, and a hole in the ground.", 0, 94, Scale.WIDTH, "center")
+
+    -- WHO IS BEHIND THE COUNTER: the guild attendant who put the avatar's name on the roll
+    -- (data/vendors/guild.lua). The city's keeper pane, at its standard size, in the margin left of the
+    -- ledger -- everything else here is centred in 680 px, so the left 300 are the attendant's.
+    Keeper.draw("guild", 40, 178, Keeper.W, Keeper.H)
 
     if gate.notice then
         love.graphics.setFont(bodyFont)

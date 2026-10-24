@@ -350,13 +350,17 @@ function Party.new(opts)
     opts = opts or {}
     local self = setmetatable({}, Party)
     self.onClose = opts.onClose
+    -- A predicate the host may hand in to HOLD THE PANEL OPEN: while it answers true, every way out
+    -- (the close button, Escape, a click outside) refuses and the close button is not drawn. The
+    -- city's one use is the avatar's first class (states/hub.lua): a pick that has to be made.
+    self.holdOpen = opts.holdOpen
     self.player = opts.player
     self.title = opts.title or "Loadout"
     -- Fired once whenever a stash item is equipped onto a member (a click/confirm or a drag that
     -- lands in the grid). The flight tutorial uses it to clear the "equip an item" coach the moment
     -- the lesson is done, rather than waiting for the panel to close.
     self.onEquip = opts.onEquip
-    -- ...and which TAB was taken, for a host coaching one of them (states/game.lua's `classtab`
+    -- ...and which TAB was taken, for a host coaching one of them (states/game.lua's coach
     -- step). Same shape as onEquip: the lesson is spent by the deed, not by the panel closing.
     self.onMode = opts.onMode
 
@@ -724,6 +728,7 @@ function Party:setMsg(text, ok)
 end
 
 function Party:close()
+    if self.holdOpen and self.holdOpen() then return false end
     self.itemDebug = nil -- a context menu never outlives the panel it was opened over
     -- Put the real stash back before anything can persist it: with the debug catalog still installed,
     -- the save below would write hundreds of catalog items over the player's real inventory.
@@ -1184,7 +1189,7 @@ function Party:coachAnchor()
 end
 
 -- ...and the same for one of the TABS, which is what the overworld's second class-lesson bubble
--- points at (states/game.lua's `classtab` step). The bubble above sends the player to this panel; this
+-- points at (a host's coach step). The bubble above sends the player to this panel; this
 -- one sends them to the one tab on it they have never had a reason to press.
 --
 -- Returns the laid-out segment straight, so a tab that is not on this panel's strip (`classes` before
@@ -2351,7 +2356,7 @@ function Party:draw()
     end
 
     self:drawFooter()
-    self.closeButton:draw()
+    if not (self.holdOpen and self.holdOpen()) then self.closeButton:draw() end
     self:drawDrag()
     if not self.drag and not self.itemDebug then self:drawActiveTooltip() end
     if self.quantityPopup then self.quantityPopup:draw() end

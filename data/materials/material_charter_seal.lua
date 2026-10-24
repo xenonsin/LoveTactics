@@ -3,8 +3,8 @@
 -- exactly the thing this is: a counted resource the company holds rather than a piece in a grid.
 --
 -- WHERE ONE COMES FROM: the FIRST time the company beats each elite (player.elitesBeaten, stamped in
--- EncounterBattle.spoils), and one free from Rowan the first time the Classes tab opens on a Novice who
--- has reached Novice 1 (ui/class_editor.lua). Spent one per unlock, in town.
+-- EncounterBattle.spoils), and nowhere else. Spent one per unlock, in town. (Rowan used to hand one over
+-- at Novice 1; the avatar's first class is her recommendation instead -- Class.pickOwed.)
 return {
     name = "Charter Seal",
     description = "A guild's wax seal, pressed and unclaimed. Spend it to make a class yours.",

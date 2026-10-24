@@ -471,9 +471,32 @@ end
 Class.requirements = require("data.class_requirements")
 
 -- THE ITEM A SEAL IS (data/materials/material_charter_seal.lua, held in player.materials). One drops
--- the first time the company beats each elite (models/encounter_battle.lua), one comes free from Rowan
--- at Novice 1 (ui/class_editor.lua), and an unlock spends one.
+-- the first time the company beats each elite (models/encounter_battle.lua), and an unlock spends one.
+-- There is no free one: the avatar's FIRST class is Rowan's recommendation (Class.pickOwed, below),
+-- which is what the seal Rowan used to hand over at Novice 1 was standing in for.
 Class.SEAL_ID = "material_charter_seal"
+
+-- THE FIRST CLASS IS CHOSEN, NOT EARNED (2026-10-23). Rowan recommends the avatar to the guild for the
+-- Champion's kill (conversation_prologue_arrival), and the guild takes her word for one root: the
+-- player picks it, free -- no Novice level, no deed, no seal. Every class after that is earned the
+-- ordinary way. `player.classPick` is the debt, stamped by states/hub.lua as the arrival scene closes
+-- (and by prologue.skip) and spent by Class.unlock; `player.firstClass` remembers what was picked, which
+-- is the shelf the city opens first (models/offer.lua).
+--
+-- THE AVATAR'S ALONE. Rowan is already ranked, and the recommendation is about the avatar's name.
+Class.AVATAR_ID = "character_avatar"
+
+-- Is the recommendation still owed to `char`?
+function Class.pickOwed(player, char)
+    return type(player) == "table" and player.classPick == true
+        and type(char) == "table" and char.id == Class.AVATAR_ID
+end
+
+-- Would unlocking `id` for `char` be the free first pick? Any playable root this body does not hold.
+function Class.isFreePick(player, char, id)
+    return Class.pickOwed(player, char) and Class.isRoot(id) and Class.isPlayable(id)
+        and not Class.isUnlocked(char, id)
+end
 
 -- WHAT A ROOT HANDS OVER WHEN A BODY UNLOCKS IT: one ability off that root's OWN shelf (an author rule
 -- -- never another class's), dropped into the stash. A missing blueprint is skipped rather than
@@ -564,6 +587,9 @@ end
 -- "town" | "seal" | nil (nothing missing). `player` is optional; without it town and seal go unasked.
 function Class.unlockBlock(player, char, id)
     if Class.isUnlocked(char, id) then return "unlocked" end
+    if Class.isFreePick(player, char, id) then
+        return require("models.player").packOpen(player) and "town" or nil
+    end
     if not Class.levelGateMet(char, id) then return "level" end
     if not Class.deedMet(char, id) then return "deed" end
     if player then
@@ -584,12 +610,23 @@ function Class.unlock(player, char, id)
     if not (player and char) then return false, "level" end
     local block = Class.unlockBlock(player, char, id)
     if block then return false, block end
-    if not Class.canUnlock(char, id) then return false, "level" end
     local Player = require("models.player")
-    if not Player.spendMaterials(player, { [Class.SEAL_ID] = 1 }) then return false, "seal" end
-    Class.grandfather(char) -- the class it is standing in stays its own
-    char.unlocked = char.unlocked or {}
-    char.unlocked[id] = true
+    if Class.isFreePick(player, char, id) then
+        -- The recommendation, spent: no seal, and the body stands in what it picked -- a Novice
+        -- choosing its first class has nothing else it would rather be wearing.
+        player.classPick = nil
+        player.firstClass = id
+        Class.grandfather(char)
+        char.unlocked = char.unlocked or {}
+        char.unlocked[id] = true
+        char.declaredClass = id
+    else
+        if not Class.canUnlock(char, id) then return false, "level" end
+        if not Player.spendMaterials(player, { [Class.SEAL_ID] = 1 }) then return false, "seal" end
+        Class.grandfather(char) -- the class it is standing in stays its own
+        char.unlocked = char.unlocked or {}
+        char.unlocked[id] = true
+    end
 
     local gift
     if Class.isRoot(id) then
@@ -623,6 +660,7 @@ end
 function Class.bankDeeds(combat, player)
     local banked = {}
     if not (combat and player and player.roster) then return banked end
+    if combat.noClassCredit then return banked end -- Act 0: nothing it does counts (Combat.awardTechnique)
     local onRoster = {}
     for _, char in ipairs(player.roster) do onRoster[char] = true end
     for _, unit in ipairs(combat.units or {}) do
