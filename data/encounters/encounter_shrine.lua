@@ -1,7 +1,6 @@
--- PARKED 2026-09-17. The Altar's two verbs both spend and deal run relics, and models/relic.lua is
--- parked (see the dated note at its head), so neither has anything to trade. `parked = true` is read by
--- models/encounter.lua's `eligible`; the blueprint, the gamble/trade handler in states/game.lua and
--- ui/panels/relic_reveal.lua all remain on disk. Lift them together.
+-- BACK 2026-10-24 (parked 2026-09-17 to 2026-10-24). Relics returned as a per-trip layer
+-- (models/relic.lua), so the Altar's two verbs -- the gamble and the two-for-one trade -- have
+-- something to deal again. Eligible in the pool, never guaranteed; relit every trip (Relic.relights).
 --
 -- Encounter blueprint. A SIN'S ALTAR: a shrine that will hand over a powerful VICE relic (models/relic.lua)
 -- for an upfront toll in gold. The greed-vs-safety gamble made into a stop -- spend the coin you foraged
@@ -9,7 +8,6 @@
 return {
     name = "Sin's Altar",
     kind = "shrine",
-    parked = true,
     weight = 1,
     depth = 1,
 }

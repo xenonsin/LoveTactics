@@ -127,15 +127,17 @@ end
 -- PartyStatus.rowRect, which can only find the row if it is handed the origin the strip was drawn at.
 local STRIP_X, STRIP_Y = 16, 60
 
--- WHAT THE WEEPING STONE CHARGES: a tenth of every roster member's maximum health, permanently, for the
--- rest of the descent. A share rather than a flat number so it costs the same on floor one and floor
--- eight and can never scale into the absurd against a company that has grown.
+-- WHAT THE WEEPING STONE CHARGES: a tenth of every roster member's maximum health, for the rest of THIS
+-- TRIP (2026-10-24: the relic it sells is gone at the way out, so the price is given back there too --
+-- models/relic.lua's Relic.payStone and Relic.endTrip). A share rather than a flat number so it costs
+-- the same on floor one and floor eight and can never scale into the absurd against a company that has
+-- grown.
 --
--- A tenth because the run has to be able to pay it more than once and still be a run. A company that
+-- A tenth because the trip has to be able to pay it more than once and still be a trip. A company that
 -- buys three rare relics off this stone has given up nearly a third of its ceiling -- steep, felt on
 -- every remaining floor, and survivable if that is the build it wanted. Half again and it would be a
 -- stop nobody could use twice; a twentieth and it would be free.
-game.STONE_SHARE = 0.10
+game.STONE_SHARE = Relic.STONE_SHARE
 
 -- THE HUD'S BUTTON ROW: Back, then Items, then Use, LAID OUT OVER THE ONES ACTUALLY THERE.
 --
@@ -541,6 +543,9 @@ local function endDescent(outcome, result, keep)
         -- pile and a re-baseline; this is the one that catches everything else, and unpacking twice is
         -- a no-op on an empty bag rather than a thing to guard against.
         Player.unpack(game.player)
+        -- Relics last one trip (models/relic.lua). The screen's run first: after a quit-and-Continue
+        -- it is the copy carrying the relics, and `descentRun` is a sibling restored from the profile.
+        Relic.endTrip(game.descent or game.player.descentRun, game.player)
         game.player.descentRun = nil
     end
     Player.save()
@@ -1047,7 +1052,58 @@ function game:openLanding(cell)
     --
     -- The tokens are still GRANTED here rather than on that screen -- the panel only ever displays, which
     -- is the rule that keeps a preview from becoming a second payout (see game:previewObjectiveReward).
+    --
+    -- ...AND A RELIC SLATE, ON A STAIR BEATEN FOR THE FIRST TIME (2026-10-24, models/relic.lua). Asked
+    -- of the company's map book, which still holds this floor as it was before this fight: a kept board
+    -- already carrying an open stair means this guard was beaten on an earlier trip. Dealt onto the
+    -- trip's state before it is shown, so a quit with the cards up comes back to the same three.
+    if Relic.offerStair(game.relicState, game.player, Descent.depth(run),
+            { depth = game.depth, sin = beaten and beaten.id }) then
+        game:openRelicOffer()
+    end
     saveRun()
+end
+
+-- THE RELIC WAITING TO BE ANSWERED (models/relic.lua's `state.offer`): the first-time stair's pick of
+-- three, or the one an elite dropped. Opened by the source that dealt it and again on a resume, which is
+-- why it reads the offer off the trip's state rather than being handed one. Taking or skipping both
+-- spend it. No-op when nothing is waiting.
+function game:openRelicOffer()
+    local state = game.relicState
+    local offer = state and state.offer
+    if not (offer and offer.ids and #offer.ids > 0) then return end
+    local function answer(id)
+        local _, n = Relic.answerOffer(state, id)
+        if id then
+            local name = (Relic.info(id) or {}).name or id
+            game:pushToast((n and n > 1) and ("Relic deepened: " .. name .. "  x" .. n)
+                or ("Relic taken: " .. name))
+        end
+        game.activePanel = nil
+        saveRun()
+    end
+    local function row(id) return { id = id, info = Relic.info(id), held = Relic.count(state, id) } end
+    if offer.source == "elite" then
+        local id = offer.ids[1]
+        game.activePanel = RelicReveal.new({
+            title = "Relic Found",
+            relic = row(id),
+            onTake = function() answer(id) end,
+            onLeave = function() answer(nil) end,
+        })
+    else
+        local rows = {}
+        for _, id in ipairs(offer.ids) do rows[#rows + 1] = row(id) end
+        game.activePanel = RelicOffer.new({
+            title = "Choose a Relic",
+            prompt = "Take one, or skip. Relics last until you leave the rift.",
+            leaveLabel = "Skip",
+            offer = rows,
+            onTake = function(entry) answer(entry.id) end,
+            onLeave = function() answer(nil) end,
+        })
+    end
+    game:teachRelics()
 end
 
 -- OPENING THE STAIR: the tile the guardian was holding stops being the floor's objective and becomes
@@ -1461,7 +1517,7 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
         -- ...and its inhabitants are back. The maze is permanent and the monsters are not
         -- (Descent.rearmFloor) -- so a floor you finished is not an empty corridor next time, and the
         -- walk back down to a dropped pack costs what walking down cost the first time.
-        Descent.rearmFloor(game.grid)
+        Descent.rearmFloor(game.grid, Relic.tripOf(game.player)) -- ...the trip lights the relic stops
         -- ...and its elites are dealt again, onto new places (Descent.reseatElites). Only here: a resumed
         -- trip brings its own board above, so an elite cleared this trip stays cleared until the next.
         Descent.reseatElites(game.grid, game.floorPool, game.descent, game.player)
@@ -1919,8 +1975,11 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
     -- window (game:openLanding) and cleared the moment the card is answered, so this re-opens the same
     -- panel with the same three. The STAIR needs no such handling any more: it is a tile on the board
     -- now (Descent.openStair), so it comes back in the snapshot with the rest of the ground.
+    -- (The landing's own slate is gone -- openLanding deals no `run.landing` now -- and THE RELIC OFFER
+    -- took its place as the one panel a resume can land behind: a first-time stair's three or an elite's
+    -- one, dealt onto the trip's state before it was shown. Re-opened here on the same cards.)
     if resume then
-        if game.descent and game.descent.landing then game:openLanding() end
+        game:openRelicOffer()
         return
     end
 
@@ -2532,6 +2591,15 @@ function game:openEncounter(cell, opts)
             -- gags recovery is on the unit by then.
             fireItems("encounterCleared", { cell = cell, spoils = spoils })
 
+            -- AN ELITE DROPS A RELIC (2026-10-24, models/relic.lua): one, at most once per floor per
+            -- trip, rolled off this floor's pool. Here because a fought elite and a walked-off one both
+            -- pay through this call, and neither path opens a panel after it.
+            if game.descent and cell.encounter and cell.encounter.kind == "elite"
+                and Relic.eliteDrop(game.relicState, game.depth,
+                    { depth = game.depth, sin = game.quest and game.quest.sin }) then
+                game:openRelicOffer()
+            end
+
             -- LEVEL-UPS, in every mode. This used to be gated on `game.descent`, because a campaign
             -- roster levelled off prestige and the experience combat banked was a counter nobody read.
             -- Prestige no longer sets anybody's level (models/player.lua), so the gate is gone and this
@@ -2896,7 +2964,7 @@ function game:openEncounter(cell, opts)
                     -- (Player.newGamePlus) and a pack left full would be a shelf's worth of gear
                     -- sealed in a container the next campaign never opens.
                     if game.player then Player.unpack(game.player) end
-                    if game.player then game.player.descentRun = nil end
+                    if game.player then Relic.endTrip(game.descent or game.player.descentRun, game.player); game.player.descentRun = nil end
                     Player.save()
                     State.switch(require("states.credits"), { newGamePlus = true })
                     return
@@ -3066,7 +3134,7 @@ function game:openEncounter(cell, opts)
                             Player.finishCampaign(game.player)
                             clearRun()
                             if game.player then Player.unpack(game.player) end
-                            if game.player then game.player.descentRun = nil end
+                            if game.player then Relic.endTrip(game.descent or game.player.descentRun, game.player); game.player.descentRun = nil end
                             Player.save()
 
                             -- AND THIS IS THE END OF THE GAME, not the end of a mode.
@@ -3482,6 +3550,7 @@ function game:openEncounter(cell, opts)
                     -- better off letting itself be killed, and the mode would have built an incentive
                     -- to throw fights. Both exits reset (see the climb-out branch) -- what neither of
                     -- them resets any more is the map book, which is the player's (Descent.keepFloor).
+                    Relic.endTrip(game.descent, game.player) -- relics stay below (models/relic.lua)
                     game.player.descentRun = nil
 
                     game.descent = nil
@@ -3878,10 +3947,9 @@ function game:openEncounter(cell, opts)
     -- AND THE BARE-SHELF BRANCH IS GONE WITH THEM. It paid a gold consolation when the run held
     -- everything eligible, which was reachable only because a relic could be held exactly once; a
     -- thirty-six-deep shelf that stacks has no empty state to answer.
-    -- UNREACHABLE SINCE 2026-09-17 -- kept as the revert path, not as live code. The Reliquary
-    -- blueprint carries `parked = true` (models/encounter.lua's `eligible`) and is struck from
-    -- models/descent.lua's `guaranteeKinds`, so no cell is ever dealt this kind and nothing below runs.
-    -- See models/relic.lua's park note before reading any of it as current behaviour.
+    -- UNREACHABLE SINCE 2026-09-17, AND STILL SO after relics came back (2026-10-24): a stair beaten
+    -- for the first time deals the pick of three now (game:openRelicOffer), so the Reliquary blueprint
+    -- keeps `parked = true` (models/encounter.lua's `eligible`) and no cell is dealt this kind.
     if kind == "relic_cache" then
         local enc = cell.encounter
         local def = enc.id and EncounterModel.get(enc.id)
@@ -3928,13 +3996,14 @@ function game:openEncounter(cell, opts)
     -- preview. It is cheaper than the Merchant's named stock, and that gap IS the wager.
     --
     -- Held relics stay in the pool exactly as at a Reliquary, so a gamble can deepen what you carry.
-    -- UNREACHABLE SINCE 2026-09-17 -- see the Reliquary branch above. The Sin's Altar blueprint
-    -- carries `parked = true`; both of its verbs spend and deal run relics, so neither has a payload.
+    -- Live again since 2026-10-24 (models/relic.lua): un-parked, and dealt afresh every trip.
     if kind == "shrine" then
         local title = cell.encounter.name or "The Altar"
         -- The unseen relic is rolled ONCE and pinned to the cell, so backing out and stepping on again
-        -- cannot reroll the gamble. That is the whole of what makes it a wager.
+        -- cannot reroll the gamble. That is the whole of what makes it a wager. ...Once per TRIP: the
+        -- board is kept between trips, and last trip's card was for relics nobody holds any more.
         local enc = cell.encounter
+        Relic.freshForTrip(enc, Relic.tripOf(game.player))
         enc.gamble = enc.gamble or Relic.roll(Relic.pool({
             depth = game.depth,
             sin = game.quest and game.quest.sin,
@@ -4065,8 +4134,9 @@ function game:openEncounter(cell, opts)
         return
     end
 
-    -- THE WEEPING STONE: a relic a rung above what this floor would deal, sold for a permanent cut to
-    -- the company's MAXIMUM health.
+    -- THE WEEPING STONE: a relic a rung above what this floor would deal, sold for a cut to the
+    -- company's MAXIMUM health that lasts the rest of THIS TRIP (2026-10-24: the relic is gone at the
+    -- way out, so the health comes back there too -- Relic.payStone, Relic.endTrip).
     --
     -- Maximum rather than current, and that is the whole design of the stop. A camp hands back half of
     -- everything missing (Player.CAMP_SHARE), so a current-health price is one the floor's own rest
@@ -4077,35 +4147,24 @@ function game:openEncounter(cell, opts)
     -- Priced as a SHARE rather than a flat number so it costs the same fraction on floor one and floor
     -- eight, and can never scale into the absurd against a company that has grown. Floored so that it
     -- always takes something, and so that it can never reduce a body below a single point.
-    -- UNREACHABLE SINCE 2026-09-17 -- see the Reliquary branch above. The Weeping Stone blueprint
-    -- carries `parked = true` AND its guarantee is struck from models/descent.lua, so lifting it takes
-    -- an edit in both places.
+    -- Live again since 2026-10-24: un-parked, guaranteed from floor two (Descent.relicStops), dealt
+    -- afresh every trip, and its price written on the trip's ledger so the way out gives it back.
     if kind == "weeping_stone" then
         local enc = cell.encounter
+        Relic.freshForTrip(enc, Relic.tripOf(game.player))
         enc.offer = enc.offer or Relic.slate({ depth = game.depth, tier = "rare",
             sin = game.quest and game.quest.sin }, 1)
         local id = enc.offer[1]
         if not id then cell.cleared = true; saveRun(); return end
-        local roster = (game.player and game.player.roster) or {}
-        local toll = {}
-        for _, char in ipairs(roster) do
-            local hp = char.stats and char.stats.health
-            if type(hp) == "table" and (hp.max or 0) > 1 then
-                toll[#toll + 1] = { char = char, amount = math.max(1, math.floor((hp.max or 0) * game.STONE_SHARE)) }
-            end
-        end
+        local toll = Relic.stoneToll((game.player and game.player.roster) or {})
         game.activePanel = RelicReveal.new({
             title = cell.encounter.name or "The Weeping Stone",
             relic = { id = id, info = Relic.info(id), held = Relic.count(game.relicState, id) },
-            priceLabel = "Offering: " .. math.floor(game.STONE_SHARE * 100) .. "% of every maximum, for the run",
+            priceLabel = "Offering: " .. math.floor(game.STONE_SHARE * 100) .. "% of every maximum health, until you leave the rift",
             canPay = #toll > 0,
             onTake = function()
                 cell.cleared = true
-                for _, t in ipairs(toll) do
-                    local hp = t.char.stats.health
-                    hp.max = math.max(1, (hp.max or 0) - t.amount)
-                    hp.current = math.min(hp.current or hp.max, hp.max)
-                end
+                Relic.payStone(game.relicState, toll)
                 local _, n = Relic.grant(game.relicState, id)
                 local name = Relic.info(id).name or id
                 game:pushToast("The stone takes its due: " .. name .. ((n and n > 1) and ("  x" .. n) or ""))
@@ -4198,16 +4257,13 @@ function game:openEncounter(cell, opts)
                 enc.stock[#enc.stock + 1] =
                     { id = id, price = Spoils.askingPrice(Item.defs[id].price), bought = false }
             end
-            -- THE RELIC SHELF IS PARKED (2026-09-17, models/relic.lua). The Merchant used to stock two
-            -- relics beside its gear, priced by rung and depth off Relic.price. The stop itself stays
-            -- live and still sells the road's gear, so the cut is here rather than on the blueprint --
-            -- unlike the Reliquary, the Altar and the Stone, which wear `parked = true` instead.
-            --
-            -- The argument the shelf was added for still holds and is worth keeping for the revert: the
-            -- road is the shop, and a relic that only ever arrived as something that happened TO the
-            -- player was never something they chose to spend on. What answers that now is that the
-            -- shelf's contents became gear, so the gold has somewhere to go on this same stop.
         end
+        -- THE RELIC SHELF, BACK (2026-10-24, models/relic.lua): two relics beside the gear, priced by
+        -- rung and depth (Relic.price) under the rift's asking-price ceiling. The road is the shop, and
+        -- a relic that only ever arrived as something that happened TO the player was never something
+        -- they chose to spend on. Re-dealt per trip, since last trip's relics are held by nobody.
+        Relic.stockMerchant(enc, { depth = game.depth, sin = game.quest and game.quest.sin },
+            Relic.tripOf(game.player), Spoils.askingPrice)
         if #enc.stock == 0 then cell.cleared = true; saveRun(); return end
         local stock = {}
         local sellsRelic = false -- ...and whether any of it is a relic, which is what opens the lesson
@@ -4260,9 +4316,7 @@ function game:openEncounter(cell, opts)
                 if Mimic.springsOn(cell.encounter, "buy") then game:springMimic(cell, opts); return false end
                 if not (game.player and Player.spendGold(game.player, entry.price)) then return false end
                 if entry.relic then
-                    -- UNREACHABLE SINCE 2026-09-17: the shelf-building loop above no longer adds a
-                    -- `relic = true` row, so no entry reaches this branch. Kept as the revert path.
-                    -- Straight onto the run, not into the stash: a relic is carried for this descent and
+                    -- Straight onto the run, not into the stash: a relic is carried for this trip and
                     -- is not a thing the hub ever holds.
                     local _, n = Relic.grant(game.relicState, entry.id)
                     local name = entry.relic.name or entry.id
@@ -4728,6 +4782,7 @@ function game:openEncounter(cell, opts)
                 if game.grid then
                     Descent.keepFloor(game.player, Descent.depth(run), game.grid:snapshot())
                 end
+                Relic.endTrip(run, game.player) -- relics stay below (models/relic.lua)
                 game.player.descentRun = nil
                 game.descent = nil
                 Player.save() -- the company, banked, with no expedition open
@@ -4784,7 +4839,12 @@ function game:openEncounter(cell, opts)
                 and ("The company is on floor " .. depth .. " carrying " .. carried ..
                      ". Climb out and all of it comes with them.")
                 or ("The company is on floor " .. depth .. " and has found nothing yet.")) ..
-                "\nThe stair stays open behind them.",
+                "\nThe stair stays open behind them." ..
+                -- WHAT DOES NOT COME UP. Relics last one trip (models/relic.lua), and this is the
+                -- card the player reads before leaving them. On the prompt, for the reason above.
+                (Relic.total(game.relicState) == 1 and "\nYour relic stays below."
+                    or Relic.total(game.relicState) > 1
+                        and ("\nYour " .. Relic.total(game.relicState) .. " relics stay below.") or ""),
             options = upOptions,
             -- Backing out is staying down, which is a real answer -- unlike the landing, this tile is
             -- one the party can simply walk off again. The cell is left uncleared to come back to.
@@ -5541,7 +5601,10 @@ end
 -- strip is read every time a fight is weighed up and this is read once a spur; the one consulted more
 -- keeps the corner.
 function game:checklistTop()
+    -- ...and under the relic tray, which sits between the two (drawHud). Zero while nothing is held.
+    local tray = RelicStrip.height(#Relic.held(game.relicState))
     return STRIP_Y + PartyStatus.stripHeight(#(game.player and game.player.roster or {})) + 8
+        + (tray > 0 and tray + 6 or 0)
 end
 
 -- A ROW IS A SENTENCE NOW, so it is allowed to wrap. It used to be a title, which always fitted on one
@@ -5664,11 +5727,12 @@ function game.drawHud()
     local mx, my
     if InputMode.isMouse() then mx, my = Scale.toGame(love.mouse.getPosition()) end
     PartyStatus.drawStrip(game.player, STRIP_X, STRIP_Y, mx, my, game.abilityState)
-    -- THE RELIC TRAY IS PARKED (2026-09-17, models/relic.lua). It sat directly under the vitals and
-    -- read the run's pile as chips; nothing grants a relic any more, so it would draw an empty band
-    -- under the company for the whole of every run. The call is cut rather than left to render
-    -- nothing, because an empty readout still reserves its place (ui/relic_strip.lua's own argument
-    -- for sitting here, and the reason the tray is the thing to remove rather than the state).
+    -- THE RELIC TRAY, directly under the vitals rather than in the opposite corner. Both readouts
+    -- answer the same question -- how is this trip doing -- and a pile parked across the screen from
+    -- the company carrying it is a pile the player checks once and then forgets while routing. Back
+    -- with the relics (2026-10-24); it draws nothing, and takes no room, while the company holds none.
+    RelicStrip.draw(game.relicState, STRIP_X,
+        STRIP_Y + PartyStatus.stripHeight(#((game.player and game.player.roster) or {})) + 6, mx, my)
 
     -- "CARRIED THIS RUN" STOOD HERE, and it is deleted. It named the stake in a bet -- what an
     -- expedition had accrued and would hand back by dying -- and the bet is gone: a wipe takes

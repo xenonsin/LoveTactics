@@ -503,12 +503,12 @@ return {
     -- THE WAY TO SPEND ON THE PILE has to actually turn up on a floor, or the road's economy exists only
     -- in the code. The Merchant has been guaranteed since the descent landed and still is.
     --
-    -- THE OTHER TWO ARE PARKED (2026-09-17, models/relic.lua). The Reliquary and the Weeping Stone dealt
-    -- run relics and nothing else; both blueprints carry `parked = true` and both are struck from
-    -- models/descent.lua's `guaranteeKinds`. Their absence is asserted rather than merely unmentioned --
-    -- a guarantee that was dropped and a guarantee that quietly stopped being placed look identical from
-    -- a spec that only checks what IS there, and the park is the thing worth pinning.
-    { name = "every floor carries its way to spend, and the parked stops stand on none of them",
+    -- RELICS CAME BACK AS A PER-TRIP LAYER (2026-10-24, models/relic.lua), and the Weeping Stone with
+    -- them: guaranteed from floor two, as it was before the park, and never on floor one. The Reliquary
+    -- STAYS parked -- a first-time stair deals the pick of three now -- and its absence is asserted
+    -- rather than merely unmentioned, because a park quietly lifted and a stop quietly placed look the
+    -- same from a spec that only checks what IS there.
+    { name = "every floor carries its way to spend, the Stone stands from floor two, the Reliquary nowhere",
       fn = function()
         for _, floor in ipairs({ 1, 2, 4 }) do
             for seed = 1, 12 do
@@ -517,11 +517,28 @@ return {
                     string.format("seed %d: floor %d has no Merchant", seed, floor))
                 assert(countKind(grid, "rest") >= 1,
                     string.format("seed %d: floor %d has no Rest", seed, floor))
-                for _, parked in ipairs({ "relic_cache", "weeping_stone", "shrine" }) do
-                    assert(countKind(grid, parked) == 0, string.format(
-                        "seed %d: floor %d placed %s, which is parked", seed, floor, parked))
+                assert(countKind(grid, "relic_cache") == 0, string.format(
+                    "seed %d: floor %d placed a Reliquary, which is still parked", seed, floor))
+                if floor == 1 then
+                    assert(countKind(grid, "weeping_stone") == 0, string.format(
+                        "seed %d: floor one placed a Weeping Stone", seed))
+                else
+                    assert(countKind(grid, "weeping_stone") >= 1, string.format(
+                        "seed %d: floor %d has no Weeping Stone", seed, floor))
                 end
             end
         end
+    end },
+    -- THE STONE IS PAID FOR WITH A STOP OF ITS OWN. Guaranteeing it out of the old budget would have
+    -- taken a seat the elites and the texture were counting on; Descent.relicStops is read by both the
+    -- guarantee and the budget, so a floor that guarantees it is exactly one stop bigger.
+    { name = "a floor that guarantees the Stone is one stop bigger, and floor one is not",
+      fn = function()
+        local one = Descent.floorBudget(1, 1)
+        assert(one.min == Descent.FLOOR_TEXTURE + select(2, Descent.floorBudget(1, 1)),
+            "floor one's budget moved with the relics")
+        local two, seated = Descent.floorBudget(1, 2)
+        assert(two.min == Descent.FLOOR_TEXTURE + seated + 1,
+            "floor two's budget does not make a place for its Weeping Stone")
     end },
 }

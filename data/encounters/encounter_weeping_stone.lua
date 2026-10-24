@@ -1,8 +1,10 @@
--- PARKED 2026-09-17. The Stone sells a run relic for a permanent cut to the company's maximum health,
--- and models/relic.lua is parked (see the dated note at its head), so the price buys nothing. `parked =
--- true` is read by models/encounter.lua's `eligible`; the blueprint and its handler in states/game.lua
--- remain on disk. It was also GUARANTEED from floor two -- models/descent.lua's `guaranteeKinds` -- and
--- that entry is struck there, so lifting this one takes an edit in both places.
+-- BACK 2026-10-24 (parked 2026-09-17 to 2026-10-24). Relics returned as a per-trip layer
+-- (models/relic.lua), and the Stone with them -- guaranteed from floor two again
+-- (models/descent.lua's Descent.relicStops, which also makes the floor a stop bigger to seat it).
+--
+-- ITS PRICE NOW LASTS THE TRIP, not the descent: the relic it sells is gone when the company climbs
+-- out, so the tenth of every maximum it takes comes back then too (Relic.payStone / Relic.endTrip).
+-- Where the text below says "for the rest of the descent", read "for the rest of this trip".
 --
 -- Encounter blueprint. THE WEEPING STONE: a relic sold for blood rather than coin.
 --
@@ -23,7 +25,6 @@
 return {
     name = "The Weeping Stone",
     kind = "weeping_stone",
-    parked = true,
     weight = 2,
     depth = 1,
 }

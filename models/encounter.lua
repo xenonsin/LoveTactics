@@ -56,9 +56,8 @@ end
 local function eligible(def, ctx)
     -- PARKED (2026-09-17). A blueprint that is still on disk but must never be rolled says so here, and
     -- this is the whole of the parking: no weight to zero, no id struck from a list somewhere else. The
-    -- three relic stops -- the Reliquary, the Sin's Altar and the Weeping Stone -- wear it, because
-    -- models/relic.lua is parked and those are the stops whose only payload was a relic. Read
-    -- `Relic.PARKED`'s note before lifting any of them.
+    -- Reliquary wears it: relics came back on 2026-10-24 (models/relic.lua) and the Altar and the
+    -- Weeping Stone came back with them, but a first-time stair deals the pick of three now.
     --
     -- Checked FIRST and before the day gate so the answer does not depend on the context: a parked
     -- encounter is ineligible everywhere, including in a spec that hands this an empty ctx.
