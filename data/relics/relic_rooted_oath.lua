@@ -12,14 +12,14 @@
 -- an objective fight while the Oath is held (Relic.deployNotice).
 return {
     name = "The Rooted Oath",
-    -- The damage half is stated on the price line rather than crammed in here, because two magnitudes
-    -- in one sentence read as one number the player then has to untangle. `scale` can only resolve one
-    -- `%d`, and the reach is the half that changes where you stand.
+    -- The damage half lives in the blurb, not the price line: the price line is drawn in the cost colour,
+    -- so a gain parked there read as a second price (2026-10-24).
     blurb = "The company cannot walk. Reach, escort and escape fights need abilities that move. "
-        .. "Every ability reaches +%d tiles.",
+        .. "Every ability reaches +%d tiles and deals +%d%% damage.",
     tier = "rare", mark = "Ro",
-    cost = "No walking at all -- in exchange for +50% damage (+25% per extra copy).",
-    scale = { 3, 2 },
+    cost = "No walking at all.",
+    -- Both halves move with the stack (ruleScale below), so the card reads both at the current count.
+    scale = function(n) return 3 + 2 * (n - 1), 50 + 25 * (n - 1) end,
     rules = { noMove = true, abilityRange = true, damageMultiplier = true },
     ruleScale = {
         abilityRange = { 3, 2 },      -- +3 range, +2 per further copy

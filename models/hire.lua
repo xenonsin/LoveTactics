@@ -440,6 +440,10 @@ end
 local function signOn(player, id, class, technique)
     local char = require("models.player").recruit(player, id)
     if not char then return nil end
+    -- A HIRE NEVER SPEAKS, so the "[<name> has joined your Party]" line Player.recruit queues for the
+    -- next scene is taken back: the board and the delver card each say the join themselves.
+    local q = require("models.conversation").pendingJoins
+    if q and q[#q] and q[#q].id == char.id then q[#q] = nil end
     for key, amount in pairs(technique) do
         if amount > 0 then char.technique[key] = amount end
     end

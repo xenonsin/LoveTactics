@@ -880,7 +880,9 @@ function hub.draw()
     end
 
     -- Drawn under any open panel (which dims the city), so the burger does not float over its own menu.
-    if not activePanel then burger:draw() end
+    -- ...nor under a scene: a counter scene prints its place name in the same top-left corner, and the
+    -- burger does nothing while a conversation holds the input anyway.
+    if not activePanel and not Conversation.active then burger:draw() end
 
     -- THE ONE THING THE PLAZA SAYS: where Rowan's injury gets answered, on the morning she is still
     -- carrying it (see the header, and coachingMend for what spends the morning). Same widget the Gate's

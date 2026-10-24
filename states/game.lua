@@ -2018,6 +2018,16 @@ end
 -- over the map: join, or not now. She joins as a hire (models/hire.lua's Hire.joinDelver) -- the same
 -- rolled body, rung-0 kit, no fee, no lines. A full roster (Hire.ROSTER_CAP) gets a toast, not a card.
 function game:offerDelver(spoils)
+    -- "a dwarf knight": the people and class a hire id carries, named the way their blueprints name them.
+    local function delverWhat(hireId)
+        local class, race = require("models.hire").split(hireId)
+        local cdef = class and require("models.class").defs[class]
+        local rdef = race and require("models.race").get(race)
+        local cname = (cdef and cdef.name or class or "stranger"):lower()
+        local rname = (rdef and rdef.name or race or ""):lower()
+        local words = (rname ~= "" and (rname .. " ") or "") .. cname
+        return (words:match("^[aeiou]") and "an " or "a ") .. words
+    end
     local id = spoils and spoils.delvers and spoils.delvers[1]
     if not (id and game.player and game.descent) then return end
     local Hire = require("models.hire")
@@ -2025,13 +2035,15 @@ function game:offerDelver(spoils)
     local def = hireId and require("models.character").defs[hireId]
     if not def then return end
     if Hire.rosterFull(game.player) then
-        game:pushToast(def.name .. " cannot join: " .. Hire.FULL_REASON .. ".")
+        game:pushToast(def.name .. " cannot join. The company is full.")
         return
     end
     local function close() game.activePanel = nil end
     game.activePanel = Choice.new({
         title = def.name,
-        prompt = def.name .. " made it out of the fight and asks to join the company.",
+        -- WHAT SHE IS, or Join is a blind pick: the people and the class are in the hire id itself.
+        prompt = def.name .. ", " .. delverWhat(hireId) .. ", made it out of the fight and asks to join "
+            .. "the company.",
         options = {
             {
                 label = "Join",
@@ -2040,10 +2052,7 @@ function game:offerDelver(spoils)
                     close()
                     local char, why = Hire.joinDelver(game.player, id)
                     if char then
-                        -- She never speaks, so the join banner a recruit queues for the next scene
-                        -- is taken back and said here instead.
-                        local q = require("models.conversation").pendingJoins
-                        if q[#q] and q[#q].id == char.id then q[#q] = nil end
+                        -- She never speaks: the join is said here (Hire's signOn drops the banner).
                         game:pushToast(char.name .. " joins the company.")
                         saveRun()
                     else
@@ -4712,6 +4721,9 @@ function game:openEncounter(cell, opts)
 
         game.activePanel = Choice.new({
             title = "The Way Up",
+            -- Two lines of description (Climb out says where the next descent starts): the room
+            -- ui/panels/choice.lua asks a caller to claim rather than writing a shorter row.
+            optionHeight = 88,
             -- WHAT THE WAY UP COSTS, said where the decision is made, as a TRANSITION rather than an
             -- addition (models/descent.lua's count): this is an always-on forecast of a move the player
             -- has not made yet, and "18 of 25" alone would not say which way it moved. Same grammar and
