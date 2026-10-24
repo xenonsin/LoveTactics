@@ -6,7 +6,11 @@
 > **elite** (one per floor per trip), and from three stops: the **Merchant** (two beside its gear),
 > the **Altar** (gamble, or trade two for one) and the **Weeping Stone** (a rung up, for a tenth of
 > every maximum health — given back when the trip ends). The Stone is guaranteed from floor two on a
-> stop of its own; the Reliquary stays parked. All 36 blueprints are the pool. **The 25 item
+> stop of its own; the Reliquary stays parked. All 46 blueprints are the pool: the original 36, plus
+> ten added the same day -- five uncommon trades (The Heavy Pack, The Bare Feet, The Lit Fuse, Tallow
+> and Wick, The Narrow Road) and five rare inversions (The Dead Man's Hand, The Mirror Tithe, The Iron
+> Stomach, The Long Shadow, The Reversed Hourglass), each inversion a new rule on `Item.RULE_NAMES`
+> (`tests/relic_shelf_spec.lua`). `abilityRange` now SUMS across sources, so a reach can be negative. **The 25 item
 > conversions below stay**, and the relic twins coexist with them; the 11 pure-stat relics are relics
 > again and still absent as items. Floors are never tuned around relics. See the banner at the head
 > of `models/relic.lua` for where each piece lives; the rest of this page is the record of the park.

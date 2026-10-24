@@ -1163,7 +1163,17 @@ Item.RULE_NAMES = {
     "pinHealth", "noMove", "abilityRange", "contactPenalty", "manaSurcharge", "staminaSurcharge",
     "manaToHealth", "noRecovery", "statusesPersist", "burstActions", "initiativeCost",
     "damageMultiplier", "sharedPool", "halveMaxHealth",
+    -- THE 2026-10-24 SHELF (data/relics/): one percentage price on the health ceiling (Tallow and
+    -- Wick), and the five new inversions -- borrowed time at 0 health, heals that cut, draughts that
+    -- are not spent, a three-tile horizon, and statuses that run one way. Each is read in exactly one
+    -- place in models/combat.lua or models/status.lua; see tests/relic_shelf_spec.lua.
+    "maxHealthCut", "deadMansHand", "mirrorTithe", "ironStomach", "longShadow", "reversedHourglass",
 }
+
+-- THE ONE RULE THAT SUMS. `abilityRange` is a REACH, and since The Narrow Road it can be negative: a
+-- company holding the Rooted Oath (+3) and the Narrow Road (-1) reaches +2, and first-wins would let
+-- whichever was picked up first silently swallow the other. Every other name keeps the shelf's policy.
+Item.SUMMED_RULES = { abilityRange = true }
 
 -- Fold one source of rules into another.
 --
@@ -1180,6 +1190,8 @@ function Item.mergeRules(into, from)
             if name == "damageMultiplier" then
                 local n = (type(value) == "number") and value or 1
                 into[name] = (into[name] or 1) * n
+            elseif Item.SUMMED_RULES[name] and type(value) == "number" then
+                into[name] = ((type(into[name]) == "number") and into[name] or 0) + value
             elseif into[name] == nil then
                 into[name] = value
             end

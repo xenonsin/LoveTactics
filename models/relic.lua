@@ -89,6 +89,7 @@
 -- broken if it silently lost. tests/relic_spec.lua pins it.
 
 local Player = require("models.player")
+local Item = require("models.item") -- the rule-merge policy (Item.SUMMED_RULES) is the item shelf's own
 
 local Relic = {}
 
@@ -365,12 +366,26 @@ end
 --
 -- A def declares `bonus = { damage = 1 }` and, when a second copy is worth less (or more) than the
 -- first, `bonusStep = { damage = 1 }`. Step defaults to base, which is plain linear stacking.
+--
+-- `bonusCap = { movement = 3 }` caps one stat's ladder at a figure however deep the stack goes (The Bare
+-- Feet: a fourth copy must not hand a company seven tiles of walk). The cap is on the MAGNITUDE's size,
+-- so it bounds a negative ladder from below the same way.
+local function capped(def, stat, v)
+    local cap = def.bonusCap and def.bonusCap[stat]
+    if not cap then return v end
+    if v > cap then return cap end
+    if v < -cap then return -cap end
+    return v
+end
+
 local function bag(state, field, stepField)
     local out = {}
     for _, entry in ipairs(Relic.held(state)) do
         for stat, base in pairs(entry.def[field] or {}) do
             local step = (entry.def[stepField] or {})[stat]
-            out[stat] = (out[stat] or 0) + Relic.magnitude(entry.count, base, step)
+            local v = Relic.magnitude(entry.count, base, step)
+            if field == "bonus" then v = capped(entry.def, stat, v) end
+            out[stat] = (out[stat] or 0) + v
         end
     end
     return out
@@ -390,7 +405,7 @@ function Relic.bonusBreakdown(state, stat)
         local base = (entry.def.bonus or {})[stat]
         if base then
             local step = (entry.def.bonusStep or {})[stat]
-            local v = Relic.magnitude(entry.count, base, step)
+            local v = capped(entry.def, stat, Relic.magnitude(entry.count, base, step))
             if v ~= 0 then
                 local label = entry.def.name or entry.id
                 if entry.count > 1 then label = label .. "  x" .. entry.count end
@@ -473,9 +488,16 @@ function Relic.resolvedRules(state)
             if value ~= false then
                 out = out or {}
                 local scale = (def.ruleScale or {})[name]
-                local resolved = scale and Relic.magnitude(entry.count, scale[1], scale[2]) or true
+                -- A ladder is `{ base, step }`, or a `function(n)` for one that does not climb in a
+                -- straight line (The Iron Stomach's toll shrinks per copy and stops at a floor) -- the
+                -- same two shapes a card's figures take (figureAt).
+                local resolved = scale and figureAt(scale, entry.count) or true
                 if name == "damageMultiplier" then
                     mult = (mult or 1) * (type(resolved) == "number" and resolved or 1)
+                elseif Item.SUMMED_RULES[name] and type(resolved) == "number" then
+                    -- A REACH SUMS (Item.SUMMED_RULES): the Narrow Road's -1 has to land on top of the
+                    -- Far Mark's or the Rooted Oath's plus, not lose to whichever came first.
+                    out[name] = ((type(out[name]) == "number") and out[name] or 0) + resolved
                 elseif out[name] == nil then
                     out[name] = resolved
                 end
@@ -932,6 +954,32 @@ function Relic.endTrip(run, player)
     state.stoneToll, state.offer, state.eliteFloors = nil, nil, nil
     run.relicState = nil
     return lost
+end
+
+-- ---------------------------------------------------------------------------
+-- The deploy screen's word on the Rooted Oath
+-- ---------------------------------------------------------------------------
+
+-- The objective kinds that are won by GETTING somewhere: a crossing (reach -- the footrace, the escort,
+-- the rescue's walk out), ground to stand on (control, hold), heaps to reach, and a runner to cut off.
+local GROUND_OBJECTIVES = { reach = true, control = true, hold = true, heaps = true }
+
+-- The line the deploy phase prints under its hint while the company holds a rule that stops it walking
+-- (the Rooted Oath's `noMove`) and the fight is won on ground -- or nil, which is every other fight.
+-- Read off the trip's relic state on the player (`player.descentRun.relicState`, the same table
+-- states/game.lua hands the battle), so the battle needs no new argument and a fight with no trip
+-- behind it (a duel, a probe, the arena) says nothing.
+Relic.ROOTED_NOTICE = "The company cannot walk. Reach, escort and escape fights need abilities that move."
+
+function Relic.deployNotice(player, combat)
+    local run = player and player.descentRun
+    local state = run and run.relicState
+    local obj = combat and combat.objective
+    if not (state and obj) then return nil end
+    if not (GROUND_OBJECTIVES[obj.type] or obj.escape) then return nil end
+    local rules = Relic.resolvedRules(state)
+    if rules and rules.noMove then return Relic.ROOTED_NOTICE end
+    return nil
 end
 
 return Relic

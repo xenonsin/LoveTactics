@@ -157,6 +157,10 @@ function DeployPhase.new(opts)
     self.onPotions = opts.onPotions
     self.onFlee = opts.onFlee
     self.fleeChance = opts.fleeChance
+    -- A standing word about THIS fight that the hint line must not crowd out: today only the Rooted
+    -- Oath's on a fight won on ground (models/relic.lua's Relic.deployNotice). Drawn on its own line
+    -- under the hint; nil on nearly every fight.
+    self.notice = opts.notice
     self.gutter = opts.gutter or { x = 0, y = 0, w = 0, h = 0 }
     self.column = opts.column or { x = 16, y = 104, w = 130 }
 
@@ -847,6 +851,16 @@ function DeployPhase:draw(bounds)
     end
     love.graphics.setColor(color[1], color[2], color[3])
     love.graphics.print(Theme.ellipsize(line, self.font, hintW), hintX, r.y + 3)
+    -- The fight's standing notice, on the line below and in the warning tint, so the controls hint and
+    -- the refusal line above keep their row. Only where the gutter has the second row to give (not on
+    -- a handheld's six-pixel strip): a word that cannot be read whole is not drawn at all.
+    if self.notice then
+        local lineH = self.font:getHeight()
+        if r.h >= 2 * lineH + 8 then
+            love.graphics.setColor(0.92, 0.78, 0.45)
+            love.graphics.print(Theme.ellipsize(self.notice, self.font, hintW), hintX, r.y + 3 + lineH + 2)
+        end
+    end
 
     self:drawHover(bounds)
     self:drawHeld()
