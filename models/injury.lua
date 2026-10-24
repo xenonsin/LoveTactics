@@ -428,6 +428,21 @@ function Injury.inflict(player, chars, kind)
                 hurt[#hurt + 1] = id
                 -- ...and the SECOND one-way mark, for the second lesson. See Injury.everBadged.
                 if def.effects and def.effects[1] then player.injuredBadge = true end
+                -- THE DEAD MAN'S HAND (a rare relic): a body that stood on at 0 and then fell pays for
+                -- the fall twice. Combat stamps the debt on the char (Combat.callTheHand); it is spent
+                -- here, on the one ledger every fall is charged to, and cleared whatever happens so a
+                -- debt can never ride into a later fight. Each extra injury is dealt the way the first
+                -- was -- the named kind, or a fresh roll off the seed against the grown list.
+                local extra = char.deadMansDebt
+                char.deadMansDebt = nil
+                for _ = 1, (type(extra) == "number" and extra or 0) do
+                    local more = kind or Injury.roll(player, id, #list)
+                    local mdef = more and Injury.defs[more]
+                    if mdef then
+                        list[#list + 1] = more
+                        if mdef.effects and mdef.effects[1] then player.injuredBadge = true end
+                    end
+                end
             end
         end
     end

@@ -1001,9 +1001,18 @@ function Combat.abilityRange(combat, unit, ab, x, y)
     -- contact, the Rooted Oath buys three and charges the whole movement system. Both land here, on the
     -- one reader every ability's reach resolves through, so a bow, a spell and a bare fist all grow
     -- together -- and nil for every enemy, since only the party carries relics.
+    --
+    -- THE NARROW ROAD made this signed: its -1 rides the same rule (Item.SUMMED_RULES sums the sources),
+    -- so a company holding it and the Far Mark simply nets out. A NEGATIVE reach is held back below:
+    -- never under the ability's own dead zone, and never under 1 -- which is also what leaves a melee
+    -- swing (range 1) exactly where it was.
+    local shrunk = false
     if unit and unit.rules then
         local bonus = unit.rules.abilityRange
-        if type(bonus) == "number" then range = range + bonus end
+        if type(bonus) == "number" then
+            range = range + bonus
+            shrunk = bonus < 0
+        end
     end
     -- A status may LEND reach (`statBonus = { range = n }`): the Highwing's High Wind puts its Wind Shear
     -- a tile further out while it rides high. Read here, the one reader, so the tell, the planner and the
@@ -1022,6 +1031,16 @@ function Combat.abilityRange(combat, unit, ab, x, y)
     -- A range-cutting debuff (Blind) shortens the reach, but never below 1: a blinded unit is groping
     -- in the dark, not disarmed, so it can still strike an adjacent foe.
     if unit then range = range - Status.rangeMalus(unit) end
+    -- The Narrow Road's floor: a shortened reach never cuts into the dead zone (a bow that cannot fire
+    -- point-blank keeps at least the band it can fire in). Only on the relic's path, so Blind -- which
+    -- has always been allowed to strand a bow -- is untouched.
+    if shrunk then range = math.max(range, Combat.abilityMinRange(ab)) end
+    -- THE LONG SHADOW (a rare relic, `longShadow = N`): the company's own reach stops at N tiles, after
+    -- every source above has had its say -- a horizon is a ceiling, not one more term in the sum. Last,
+    -- so nothing (not even the floor above) carries a cast past it; an ability whose dead zone begins
+    -- beyond N simply has no legal target while the relic is held.
+    local horizon = unit and unit.rules and unit.rules.longShadow
+    if type(horizon) == "number" and range > horizon then range = horizon end
     return math.max(1, range)
 end
 
@@ -1409,6 +1428,18 @@ function Combat.applyUnitRules(combat)
     -- gear is not the party's alone: an enemy authored wearing a pinning item is pinned by it, which is
     -- a thing the relic shelf could never express and an item shelf gets for free.
     --
+    -- TALLOW AND WICK's tenth comes off the ceiling (Combat.unreservedMax), and a body that walked in
+    -- fuller than the new ceiling is brought under it here, at the bell, rather than carrying health it
+    -- no longer has room for into the first exchange.
+    for _, unit in ipairs(combat.units) do
+        if unit.rules and unit.rules.maxHealthCut and not unit.sharedPool then
+            local hp = unit.char.stats.health
+            if type(hp) == "table" then
+                hp.current = math.min(hp.current or 0, Combat.unreservedMax(unit.char, "health"))
+            end
+        end
+    end
+
     -- LAST, as it was under Relic.RULE_ORDER, so a body that is both yoked and pinned reads as pinned.
     for _, unit in ipairs(combat.units) do
         if unit.rules and unit.rules.pinHealth then
@@ -1982,6 +2013,12 @@ end
 function Combat.openBattle(combat)
     if combat.opened then return combat end
     combat.opened = true
+    -- A Dead Man's Hand debt belongs to the fight it was run up in (Combat.callTheHand). Injury.inflict
+    -- spends it straight after that fight; this is the backstop for one that never reached the ledger
+    -- (a duel, a probe), so it can never charge a later fight's fall twice.
+    for _, u in ipairs(combat.units) do
+        if u.char then u.char.deadMansDebt, u.char.onBorrowedTime = nil, nil end
+    end
 
     -- Heads grow before the first rebase, so they are seated on the timeline with everybody else.
     Combat.spawnHeads(combat)
@@ -7085,6 +7122,15 @@ function Combat.adjacencyRangeBonus(char, item)
     if borrowed then
         bonus = bonus + (borrowed - ((item.activeAbility and item.activeAbility.range) or 1))
     end
+    -- THE LONG SHADOW's horizon holds against a neighbouring charm too. Every reach in the game is
+    -- Combat.abilityRange PLUS this, and abilityRange has already capped itself; so this may add only
+    -- what is left between the ability's own authored reach and the horizon. (`char.rules` is the
+    -- unit's rule bag, stamped by applyUnitPassives.)
+    local horizon = char.rules and char.rules.longShadow
+    if type(horizon) == "number" and bonus > 0 then
+        local base = (item.activeAbility and item.activeAbility.range) or 1
+        bonus = math.min(bonus, math.max(0, horizon - base))
+    end
     return bonus
 end
 
@@ -8238,6 +8284,97 @@ local function killUnit(combat, target)
     leaveTurn(combat, target)
 end
 
+-- ---------------------------------------------------------------------------
+-- THE DEAD MAN'S HAND (a rare relic, rule `deadMansHand = N`)
+--
+-- A body brought to 0 does not fall. It stays on its feet at 0 health and keeps acting for N more of
+-- ITS OWN turns, then falls where it stands -- and is charged two injuries for the fall rather than
+-- one (models/injury.lua reads `char.deadMansDebt`).
+--
+-- WHAT IT REFUSES, so the hand can only ever be played out and never cheated:
+--   * a blow on a body already on borrowed time lands and does nothing more (it is dead already);
+--   * no heal reaches it (Combat.applyHeal refuses it by name, and status_dead_mans_hand blocks healing
+--     on top), so it cannot be patched back above 0 and walk away from the debt;
+--   * a fight that ENDS while the hand is still being played calls it in on the spot
+--     (Combat.settleBorrowedTime, run by fallenParty and reviveFallenParty) -- winning does not buy the
+--     body out of the fall.
+-- AND WHAT IT NEVER COVERS: a summon, a decoy, a fragile shape, an `unkillable` scripted force, and any
+-- body the objective names as its charge (`objective.protect`, `.captive`, `.who`). A protectee's fall
+-- is what ends an objective fight; a relic that held it up would rewrite the objective, not the body.
+-- ---------------------------------------------------------------------------
+
+-- Does the hand hold `unit` up instead of letting it fall? True for a body already on borrowed time.
+function Combat.borrowsTime(combat, unit)
+    if not (unit and unit.alive and unit.char) then return false end
+    if unit.borrowedTime then return true end
+    local turns = unit.rules and unit.rules.deadMansHand
+    if type(turns) ~= "number" or turns < 1 then return false end
+    if unit.summoned or unit.decoyOf or unit.fragile or unit.unkillable or unit.sank then return false end
+    local obj = combat and combat.objective
+    if obj and (obj.protect == unit.char.id or obj.captive == unit.char.id or obj.who == unit.char.id) then
+        return false
+    end
+    return true
+end
+
+-- Put `unit` on borrowed time: N turns at 0 health, counted down by status_dead_mans_hand's onTurnEnd.
+-- A body knocked out DURING its own turn does not have that turn counted against it -- "two more turns"
+-- means two turns it had not started yet.
+function Combat.borrowTime(combat, unit)
+    local turns = math.max(1, math.floor((unit.rules and unit.rules.deadMansHand) or 1))
+    unit.borrowedTime = turns
+    unit.borrowedSkipEnd = (combat.turn and combat.turn.unit == unit) or nil
+    -- On the CHAR too, for the one heal door that is handed a char rather than a unit
+    -- (Combat.restoreResource). Cleared by endBorrowedTime on every way out.
+    unit.char.onBorrowedTime = true
+    Status.apply(combat, unit, "status_dead_mans_hand", { magnitude = turns })
+    Combat.logEvent(combat, "action",
+        string.format("%s should be dead, and is still standing: %d more turn%s.",
+            unitName(unit), turns, turns == 1 and "" or "s"), unit)
+end
+
+-- One of the borrowing body's own turns has ended. Called from status_dead_mans_hand's onTurnEnd.
+function Combat.spendBorrowedTurn(combat, unit)
+    if not (unit and unit.alive and unit.borrowedTime) then return end
+    if unit.borrowedSkipEnd then unit.borrowedSkipEnd = nil; return end
+    unit.borrowedTime = unit.borrowedTime - 1
+    local s = Status.get(unit, "status_dead_mans_hand")
+    if s then s.magnitude = math.max(0, unit.borrowedTime) end
+    if unit.borrowedTime <= 0 then Combat.callTheHand(combat, unit) end
+end
+
+-- Take the borrowed time off `unit` (state, badge, the char's mark) and book the extra injury.
+local function endBorrowedTime(combat, unit)
+    unit.borrowedTime, unit.borrowedSkipEnd = nil, nil
+    unit.char.onBorrowedTime = nil
+    Status.remove(combat, unit, "status_dead_mans_hand")
+    unit.char.stats.health.current = 0
+    unit.char.deadMansDebt = 1
+end
+
+-- The hand comes due: the body falls where it stands, through killUnit like any other fall (so it is
+-- INCAPACITATED and revivable as usual), and owes the extra injury.
+function Combat.callTheHand(combat, unit)
+    if not (unit and unit.alive) then return end
+    endBorrowedTime(combat, unit)
+    Combat.logEvent(combat, "action", string.format("%s's time is up.", unitName(unit)), unit)
+    killUnit(combat, unit)
+end
+
+-- A fight ending with somebody still on borrowed time calls the hand in -- QUIETLY, without the death
+-- beat: the board is over, so no trait, tally or death rattle is fired for a body the fight has already
+-- let go of. The body is simply down, exactly as one felled on the last blow would be, which is what
+-- Combat.fallenParty and Combat.reviveFallenParty (both of which call this first) then read.
+function Combat.settleBorrowedTime(combat)
+    for _, u in ipairs((combat and combat.units) or {}) do
+        if u.alive and u.borrowedTime then
+            endBorrowedTime(combat, u)
+            u.alive = false
+            if u.char.revivable then u.incapacitated = true else u.corpse = true end
+        end
+    end
+end
+
 -- FELL A BODY BY SCRIPT: put `target` down where it stands, outside the damage pipeline entirely.
 --
 -- THIS IS NOT A BIG BLOW, AND THE DISTINCTION IS THE POINT. Every route through dealFlatDamage can be
@@ -9032,9 +9169,13 @@ end
 local function tollHealth(combat, unit, amount, text, subjects)
     local hp = unit.char.stats.health
     hp.current = math.max(0, hp.current - amount)
-    Combat.pushFx(combat, { type = "damage", unit = unit, amount = amount, lethal = hp.current <= 0 })
+    -- The Dead Man's Hand holds against a toll as it does against a blow (see dealFlatDamage).
+    local borrows = hp.current <= 0 and Combat.borrowsTime(combat, unit)
+    Combat.pushFx(combat, { type = "damage", unit = unit, amount = amount, lethal = hp.current <= 0 and not borrows })
     Combat.logEvent(combat, "action", text, subjects)
-    if hp.current <= 0 then killUnit(combat, unit) end
+    if borrows then
+        if not unit.borrowedTime then Combat.borrowTime(combat, unit) end
+    elseif hp.current <= 0 then killUnit(combat, unit) end
     return amount
 end
 
@@ -9458,7 +9599,9 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     -- event would arrive beside the number it describes and the two would have to be matched up by
     -- guessing.
     Combat.pushFx(combat, { type = "damage", unit = target, amount = dmg,
-        lethal = hp.current <= 0, attacker = attacker, tags = tags, vulnerable = vulnerable,
+        -- (A body the Dead Man's Hand is about to hold up is not felled by this blow: no death cue.)
+        lethal = hp.current <= 0 and not Combat.borrowsTime(combat, target),
+        attacker = attacker, tags = tags, vulnerable = vulnerable,
         critical = crit or nil })
     local entry
     if source then
@@ -9593,6 +9736,18 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
             raiseAnswer(combat, target, { amount = dmg, tags = tags, source = source, attacker = attacker, critical = crit or nil,
             blow = opts and opts.blowItem,
             area = opts and opts.area })
+            applyKnockback()
+            return dmg
+        end
+        -- THE DEAD MAN'S HAND (a rare relic, `deadMansHand = N`): the body does not fall yet. It stands
+        -- at 0 for N more of its own turns and then falls (Combat.borrowTime / Combat.callTheHand). A
+        -- blow on a body ALREADY on borrowed time lands and changes nothing: it is dead, the hand is
+        -- being played out, and nothing on the board can shorten or lengthen it. After Second Wind on
+        -- purpose -- a body that can be stood back up is not yet a dead one.
+        if not target.fragile and Combat.borrowsTime(combat, target) then
+            hp.current = 0
+            if not target.borrowedTime then Combat.borrowTime(combat, target) end
+            inflictCarried()
             applyKnockback()
             return dmg
         end
@@ -10078,6 +10233,59 @@ end
 --
 -- `opts.feeding` marks a heal that is a DRINK (a vampire's, models/thirst.lua): Grave-Cold does not turn it
 -- into a wound. Every other refusal still applies, and every other heal on a dead body still burns it.
+-- ---------------------------------------------------------------------------
+-- THE MIRROR TITHE (a rare relic, rule `mirrorTithe = multiplier`)
+--
+-- Every heal the company CASTS (an ability or a draught, through the live fx.heal -- the one heal path
+-- that knows who is healing) lands at half, rounded up, and what it would have restored AT FULL
+-- STRENGTH strikes the nearest foe for `multiplier` times that. "Would have restored" is measured
+-- against the patient's room to heal, so mending a whole body strikes nothing -- the tithe is paid on
+-- mercy actually needed, never on a heal thrown at a full bar to make a bolt out of it.
+--
+-- A standing Regeneration, a lifesteal and the camp are not CAST, and are left alone. The strike is
+-- unmitigated and answered by nothing (no attacker rides it, so no parry or riposte is owed by a body
+-- that never swung), and it never reaches a body the objective names as its charge.
+-- ---------------------------------------------------------------------------
+
+-- The foe the tithe strikes when `healer` mends: the nearest living, targetable body on the other side,
+-- body to body, first in field order on a tie. Nil when there is none.
+function Combat.titheTarget(combat, healer)
+    local obj = combat.objective or {}
+    local best, bestGap
+    for _, u in ipairs(combat.units) do
+        if u.alive and u.side ~= healer.side and u.char and not Combat.isOffTile(u)
+            and not Status.untargetable(u, combat)
+            and u.char.id ~= obj.protect and u.char.id ~= obj.captive and u.char.id ~= obj.who then
+            local gap = Combat.unitGap(healer, u)
+            if not bestGap or gap < bestGap then best, bestGap = u, gap end
+        end
+    end
+    return best
+end
+
+-- What a heal of `amount` on `patient` would have restored at full strength: the patient's room to
+-- heal, capped by the heal. The figure the tithe is paid on.
+function Combat.titheRoom(patient, amount)
+    if not (patient and patient.char and patient.alive) then return 0 end
+    local hp = patient.char.stats.health
+    if type(hp) ~= "table" then return 0 end
+    local room = math.max(0, Combat.unreservedMax(patient.char, "health") - (hp.current or 0))
+    return math.max(0, math.min(amount or 0, room))
+end
+
+-- The halved heal, and the strike it pays. Returns the amount the heal should now land for.
+function Combat.mirrorTithe(combat, healer, patient, amount, mult)
+    local strike = math.floor(Combat.titheRoom(patient, amount) * (mult or 1))
+    local foe = strike > 0 and Combat.titheTarget(combat, healer) or nil
+    if foe then
+        Combat.logEvent(combat, "action",
+            string.format("%s's mercy is tithed: it strikes %s.", unitName(healer), unitName(foe)),
+            { healer, foe })
+        Combat.dealFlatDamage(combat, foe, strike, { "holy" }, "The Mirror Tithe", nil, { raw = true })
+    end
+    return math.ceil((amount or 0) / 2)
+end
+
 function Combat.applyHeal(combat, target, amount, opts)
     -- A body that is already FULL and wears the Sated charm (`passesHeals`) sends the heal on to the most
     -- hurt ally standing beside it. The ally is below full by construction, so the hand-off cannot loop.
@@ -10107,6 +10315,9 @@ function Combat.applyHeal(combat, target, amount, opts)
     -- A TRAIT that refuses the same way (`refusesHealing`, Gold in the Mouth on Gilded Bread's bearer) is
     -- the standing version of the wound: asked in the same breath, logged in the same line.
     local blocked = Status.blocksHealing(target) or Trait.flag(target, "refusesHealing")
+    -- ...and a body on BORROWED TIME (the Dead Man's Hand) is past mending by any route, badge or no
+    -- badge: a heal that lifted it off 0 would let it walk away from the fall it owes.
+    if not blocked and target and target.borrowedTime then blocked = { name = "on borrowed time" } end
     -- ...and a body that hears only HER is not healed either (the Only Voice, a foe's Deaf Heart).
     local deaf = not blocked and (amount or 0) > 0 and Status.deafToAllies(target)
     if deaf then
@@ -10404,6 +10615,7 @@ end
 -- without the standing-up: a lost fight injures everyone who fell (models/injury.lua) and revives
 -- nobody. Returns an empty list rather than nil -- the question is who, never whether.
 function Combat.fallenParty(combat)
+    Combat.settleBorrowedTime(combat) -- the Dead Man's Hand is called in when the fight ends
     local out = {}
     for _, u in ipairs((combat and combat.units) or {}) do
         -- `sank` rides along for the same reason it does in Combat.reviveFallenParty below: a drowned
@@ -10468,6 +10680,7 @@ end
 -- left on the floor together and a fresh one goes down to fetch them (states/game.lua's onLoss).
 function Combat.reviveFallenParty(combat, fraction)
     fraction = fraction or 0.2
+    Combat.settleBorrowedTime(combat) -- a won fight does not buy a body out of the Dead Man's Hand
     local carried = {}
     for _, u in ipairs(combat.units) do
         -- THREE FALLEN STATES NOW, and the third is why terrain is allowed to kill at all. `sank` is
@@ -10792,6 +11005,17 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
                 entryFor(tgt).damage = entryFor(tgt).damage + amount
                 return 0
             end
+            -- THE MIRROR TITHE, previewed as it lands (Combat.mirrorTithe): the strike on the nearest
+            -- foe, then the mend at half -- so the green number and the AI's scorer both read the heal
+            -- the company will actually get.
+            local tithe = unit and unit.rules and unit.rules.mirrorTithe
+            if type(tithe) == "number" and (amount or 0) > 0 then
+                local strike = math.floor(Combat.titheRoom(tgt, amount) * tithe)
+                local foe = strike > 0 and combat and Combat.titheTarget(combat, unit) or nil
+                if foe then entryFor(foe).damage = entryFor(foe).damage + strike end
+                amount = math.ceil(amount / 2)
+            end
+            if tgt.borrowedTime then return 0 end -- the Dead Man's Hand: past mending
             local hp = tgt.char.stats.health
             -- Clamp at the same ceiling Combat.applyHeal uses (max less any reserved health), so a
             -- previewed heal on a summoner never promises life the reservation has locked away.
@@ -11059,6 +11283,7 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
     for _, e in ipairs(order) do
         local hp = e.unit.char and e.unit.char.stats and e.unit.char.stats.health
         e.lethal = e.damage > 0 and hp ~= nil and e.damage >= (hp.current or 0)
+            and not Combat.borrowsTime(combat, e.unit) -- the Dead Man's Hand holds it up instead
     end
     return { entries = entries, order = order, mutates = mutates,
              userRestsX = userRestsX, userRestsY = userRestsY }
@@ -11998,13 +12223,43 @@ end
 -- Drink `item` on the spot: spend one from the stack and hand its magnitude to `unit`. Returns the
 -- amount actually restored (a heal routes through applyHeal so it is capped and logged like any
 -- other; everything else goes through restoreResource, which respects a reserved ceiling).
+-- IS THIS USE OF `item` FREE? The one question every spend of a consuming item asks before it takes one
+-- off the stack (Combat.quaff, a channel's commit, a resolved cast). Two answers can say yes:
+--   * a Well Stocked bearer's first use of each consumable (models/race_items.lua's spareUse);
+--   * THE IRON STOMACH (a rare relic, rule `ironStomach = percent`): a DRAUGHT -- a consumable, not a
+--     scroll's charge on some other kind of item -- is not spent, and the drinker pays `percent` of its
+--     health ceiling for it instead. ONCE PER BODY PER TURN (Combat.firstThisTurn): a second draught in
+--     the same turn is spent as ever. The toll wounds and never fells -- floored at 1, the shelf's rule
+--     for a standing price (models/relic.lua's ctx.drain) -- so a body on its last point still drinks.
+function Combat.spareDraught(combat, unit, item)
+    if require("models.race_items").spareUse(unit, item) then return true end
+    local pct = unit and unit.rules and unit.rules.ironStomach
+    if type(pct) ~= "number" or pct <= 0 or not (item and item.type == "consumable") then return false end
+    if not Combat.firstThisTurn(unit, "ironStomach") then return false end
+    local hp = unit.char and unit.char.stats.health
+    if type(hp) == "table" then
+        local cost = math.max(1, math.floor(Combat.unreservedMax(unit.char, "health") * pct / 100))
+        local before = hp.current or 0
+        -- Floored at 1, or at what is there if that is less: a body already at 0 (on the Dead Man's
+        -- Hand's borrowed time) is not lifted to 1 by its own toll.
+        hp.current = math.max(math.min(before, 1), before - cost)
+        if combat then
+            if unit.sharedPool then Combat.syncSharedPool(combat) end
+            Combat.logEvent(combat, "action",
+                string.format("%s keeps the %s down, and it costs %d health.", unitName(unit),
+                    item.name or "draught", before - hp.current), unit)
+        end
+    end
+    return true
+end
+
 function Combat.quaff(combat, unit, item)
     local stat = Combat.restorativeStat(item)
     if not stat then return 0 end
     local ab = item.activeAbility
     local amount = ab.healing or ab.restore or 0
     -- THE RIFT'S ADVENTURERS, SLICE D: a Well Stocked bearer's first use of each consumable is free.
-    if not require("models.race_items").spareUse(unit, item) then
+    if not Combat.spareDraught(combat, unit, item) then
         item.quantity = math.max(0, (item.quantity or 1) - 1)
     end
     Combat.logEvent(combat, "action",
@@ -12311,6 +12566,11 @@ function Combat.unreservedMax(char, stat)
     if stat == "health" then
         local div = char.rules and char.rules.halveMaxHealth
         if type(div) == "number" and div > 1 then max = math.max(1, math.floor(max / div)) end
+        -- TALLOW AND WICK (an uncommon relic): a SHARE off the ceiling (`maxHealthCut = 0.10`), for the
+        -- same reasons the divisor above is applied here and not to `max` -- and after it, so a company
+        -- holding both pays the tenth of what the Vow has left rather than of what it took.
+        local cut = char.rules and char.rules.maxHealthCut
+        if type(cut) == "number" and cut > 0 then max = math.max(1, math.floor(max * (1 - cut))) end
     end
     return math.max(0, max - Combat.reservedAmount(char, stat))
 end
@@ -12385,6 +12645,8 @@ end
 -- was already full or `amount` is non-positive). Shared by stamina regen, Focus, and on-hit mana gain.
 function Combat.restoreResource(char, stat, amount)
     if not amount or amount <= 0 then return 0 end
+    -- A body on borrowed time (the Dead Man's Hand) takes no health back by this door either.
+    if stat == "health" and char.onBorrowedTime then return 0 end
     local res = char.stats[stat]
     if type(res) == "table" then
         local before = res.current
@@ -13685,7 +13947,7 @@ function Combat.useItem(combat, unit, item, tx, ty, windup, dest, spend)
         -- Floored at one tick -- a wind-up still has to hang for a beat.
         local timeTicks = math.max(1, math.floor(ticks * Status.costMultiplier(unit) + 0.5))
         -- THE RIFT'S ADVENTURERS, SLICE D: a Well Stocked bearer's first use of each consumable is free.
-        if ab.consumesItem and not require("models.race_items").spareUse(unit, item) then
+        if ab.consumesItem and not Combat.spareDraught(combat, unit, item) then
             item.quantity = math.max(0, (item.quantity or 1) - 1)
         end
         -- `windup` = the commitment the effect scales its payoff on (undiscounted); the TELL it actually
@@ -14151,6 +14413,12 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
                 return 0
             end
             -- end SLOTH'S TROLLS
+            -- THE MIRROR TITHE (a rare relic): the healer's mend lands at half, and what it WOULD have
+            -- restored at full strength strikes the nearest foe instead (Combat.mirrorTithe).
+            local tithe = unit.rules and unit.rules.mirrorTithe
+            if type(tithe) == "number" and (amount or 0) > 0 then
+                amount = Combat.mirrorTithe(combat, unit, tgt, amount, tithe)
+            end
             local h = Combat.applyHeal(combat, tgt, amount)
             result.healed = result.healed + h
             -- THE SHARED LEDGER (the Apothecary's): a heal that landed also lends the patient a share
@@ -14882,7 +15150,7 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
     -- carry quantity 1, so this leaves an empty, greyed-out slot after their single use.
     -- THE RIFT'S ADVENTURERS, SLICE D: a Well Stocked bearer's first use of each consumable is free.
     if ab.consumesItem and not auraMods.preserve and not alreadyConsumed
-        and not require("models.race_items").spareUse(unit, item) then
+        and not Combat.spareDraught(combat, unit, item) then
         item.quantity = math.max(0, (item.quantity or 1) - 1)
     end
 

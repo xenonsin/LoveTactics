@@ -569,6 +569,12 @@ end
 -- measures it from where the striker would stand, which is what walks an archer in to within range.
 function Status.concealedAt(unit, combat, gap)
     if not (unit and gap) then return false end
+    -- THE LONG SHADOW (a rare relic, rule `longShadow = N`): nothing aims at the company from more
+    -- than N tiles off. Asked at every door the Shadow Mantle is (the model's refusal, the target list,
+    -- the planner's stand tiles), so it binds the AI and a driven body alike -- but it is a RULE rather
+    -- than a concealment, so no light overrules it, and it answers ahead of the mantle's light checks.
+    local horizon = unit.rules and unit.rules.longShadow
+    if type(horizon) == "number" and gap > horizon then return true end
     local flag = require("models.trait").flag(unit, "concealedBeyond")
     local beyond = flag and flag.def and flag.def.concealedBeyond
     if not beyond or gap <= beyond then return false end
@@ -1501,6 +1507,39 @@ function Status.apply(combat, unit, id, opts)
     return status
 end
 
+-- THE REVERSED HOURGLASS (a rare relic, rule `reversedHourglass`): time runs one way for the company.
+-- A status a holder of the rule LAID ON A FOE (`opener`, stamped by Status.apply from the applier) does
+-- not run out this fight; a status on a holder runs out twice as fast, whoever laid it -- its own buffs
+-- included, which is the price.
+--
+-- TWO CARVE-OUTS on the frozen side, both for the reason The Open Wound exempts hard control: a status
+-- that never ends must still leave its bearer a character. HARD CONTROL (`disablesReactions`: a Stun, a
+-- Freeze, a Sleep) keeps its clock, or one stun would take a foe out of the fight. And a status whose
+-- ENDING DOES SOMETHING (`onExpire`: Charm handing a body back, a Taunt letting go, a fuse that bursts)
+-- keeps its clock, because freezing it would either keep a stolen body forever or deny the company the
+-- very payoff it set up.
+--
+-- ...AND ONE ON THE HURRIED SIDE: the engine's own bookkeeping is not a status the company is WEARING.
+-- A `hideLog` marker (Channeling, whose clock is the wind-up itself) and the revive window
+-- (status_downed, the three-count to reach a fallen body) keep their clocks, or the relic would cut a
+-- wind-up's badge short and shorten a rescue that is the board's rule rather than the body's condition.
+--
+-- Returns the multiplier on the ticks a status ages by: 1, 0 or 2.
+function Status.ageRate(unit, s)
+    local rules = unit and unit.rules
+    if rules and rules.reversedHourglass then
+        if s and (s.def.hideLog or s.id == "status_downed") then return 1 end
+        return 2
+    end
+    local by = s and s.opener
+    local theirs = by and by.rules and by.rules.reversedHourglass
+    if theirs and Status.ownSide(by) ~= Status.ownSide(unit)
+        and not s.def.disablesReactions and not s.def.onExpire then
+        return 0
+    end
+    return 1
+end
+
 -- Run the clock forward `elapsed` ticks over every status: fire each one's `onTick` for the stretch it
 -- was actually alive, then age it and expire (firing onExpire for) any that run out. Called from
 -- Combat.rebase with the rebase amount (the ticks that just elapsed).
@@ -1532,9 +1571,13 @@ function Status.tick(combat, elapsed)
     local entries = {}
     for _, unit in ipairs(combat.units) do
         for _, s in ipairs(unit.statuses or {}) do
+            -- How fast this status runs out: 1 as ever, 0 for one the Reversed Hourglass holds open,
+            -- 2 for one it hurries (Status.ageRate). The slice it ticks over shrinks to match, so a burn
+            -- that ages twice as fast also burns for half the time rather than for its whole length.
+            local rate = s.source and 1 or Status.ageRate(unit, s)
             local slice = elapsed
-            if not s.source then slice = math.min(elapsed, s.remaining) end
-            entries[#entries + 1] = { unit = unit, status = s, slice = slice }
+            if not s.source and rate > 0 then slice = math.min(elapsed, s.remaining / rate) end
+            entries[#entries + 1] = { unit = unit, status = s, slice = slice, rate = rate }
         end
     end
 
@@ -1567,8 +1610,8 @@ function Status.tick(combat, elapsed)
         -- carve-out and the thing it protects read off one field rather than two lists that can drift.
         local persists = e.unit.rules and e.unit.rules.statusesPersist
             and not s.def.disablesReactions
-        if not s.source and not persists then
-            s.remaining = s.remaining - elapsed
+        if not s.source and not persists and e.rate > 0 then
+            s.remaining = s.remaining - elapsed * e.rate
             if s.remaining <= 0 then
                 -- Through Status.remove, so a status that unwinds unit state on its way out (Charm
                 -- restoring the side it flipped) reverts on a natural expiry exactly as it does on a

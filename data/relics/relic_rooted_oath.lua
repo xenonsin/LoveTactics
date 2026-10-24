@@ -6,17 +6,19 @@
 -- the rooting already taken -- at three copies the company is a stationary artillery line that
 -- out-ranges everything on the board, which is a real answer to a map rather than a bigger number.
 --
--- WORTH CHECKING BEFORE THIS SHIPS: objectives that require a body to CROSS ground (escorts, control
--- points) assume movement exists. A rooted company cannot satisfy them, and the honest answer is
--- probably that the relic is refused on those maps rather than that it quietly loses.
+-- OBJECTIVES THAT CROSS GROUND (reach, escort, escape) are NOT refused: the rule zeroes WALKING only
+-- (Combat.moveBudget), so an ability that moves a body -- a blink, a leap, a swap -- still carries it.
+-- The card says so in plain words (the author's line, 2026-10-24), and the deploy screen repeats it on
+-- an objective fight while the Oath is held (Relic.deployNotice).
 return {
     name = "The Rooted Oath",
     -- The damage half is stated on the price line rather than crammed in here, because two magnitudes
     -- in one sentence read as one number the player then has to untangle. `scale` can only resolve one
     -- `%d`, and the reach is the half that changes where you stand.
-    blurb = "The company cannot move. Every ability reaches +%d tiles.",
+    blurb = "The company cannot walk. Reach, escort and escape fights need abilities that move. "
+        .. "Every ability reaches +%d tiles.",
     tier = "rare", mark = "Ro",
-    cost = "No movement at all -- in exchange for +50% damage (+25% per extra copy).",
+    cost = "No walking at all -- in exchange for +50% damage (+25% per extra copy).",
     scale = { 3, 2 },
     rules = { noMove = true, abilityRange = true, damageMultiplier = true },
     ruleScale = {

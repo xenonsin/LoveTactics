@@ -5495,6 +5495,9 @@ local function openDeployPhase(opts)
         -- (states/game.lua), and a battle reached from a draft, a duel or a debug board has no overworld
         -- behind it to flee back onto. Absent, the plate simply does not draw.
         onFlee = opts.onFlee, fleeChance = opts.fleeChance,
+        -- The Rooted Oath's word on a fight won on ground, under the hint (models/relic.lua). Nil on
+        -- every fight with no trip behind it and on every fight the company can simply walk.
+        notice = require("models.relic").deployNotice(opts.player, battle.combat),
         onCommit = function(deployed, front, placed, auto, speed)
             if autoAllowed() then battle.autoAll = auto and true or false end
             battle.autoSpeed = speed or battle.autoSpeed
