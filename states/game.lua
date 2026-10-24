@@ -1412,13 +1412,24 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
             if def then
                 -- `waitFor` names a route stop (its index in `always`) this fight will not arrive ahead
                 -- of: the step count still runs, but nothing is seated until that stop is cleared.
+                -- Matched by id and FIRST LOOT, never by table identity: a board restored from a save
+                -- carries copies, and an identity test there held the fight -- and every fight queued
+                -- behind it -- forever.
                 local wait = e.waitFor and always[e.waitFor]
                 queue[#queue + 1] = { id = e.id, kind = def.kind, name = def.name, loot = e.loot,
                                       after = e.after or 0, by = e.by, opening = e.opening,
-                                      waitId = wait and wait.id, waitLoot = wait and wait.loot }
+                                      waitId = wait and wait.id, waitLoot = wait and wait.loot and wait.loot[1] }
             end
         end
-        game.tutorialProwl = { queue = queue, steps = 0 }
+        game.tutorialProwl = { queue = queue, steps = 0, total = #queue }
+        -- A RELOAD PICKS UP WHERE THE WALK WAS (Save.snapshotRun's `prowl`). Rebuilding the queue from
+        -- the top on every resume re-dealt fights already won and reset the step count; the save now
+        -- carries how many have been dealt and how far the company has walked since the last.
+        local saved = resume and resume.prowl
+        if saved then
+            for _ = 1, math.min(tonumber(saved.done) or 0, #queue) do table.remove(queue, 1) end
+            game.tutorialProwl.steps = tonumber(saved.steps) or 0
+        end
     end
 
     -- A resumed run brings its own board (the exact map, with fog and cleared stops) rather than rolling
@@ -1426,6 +1437,20 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
     -- widget below; the encounter pool / always list above is built but unused (harmless).
     if resume then
         game.grid = resume.grid
+        -- AN AUTHORED BOARD'S CHOKEPOINTS ARE RE-READ FROM ITS LAYOUT. A save written before `choke`
+        -- rode the snapshot (models/overworld.lua's CELL_FIELDS) came back with none, and Act 0's fights
+        -- are owed by them -- so a reload let the company walk floor one without meeting one. The letters
+        -- are the layout file's, which never changes under a save, so stamping them again is exact.
+        if mp.layout then
+            local ok, layout = pcall(require, "data.overworld." .. mp.layout)
+            for y, row in ipairs(ok and layout and layout.map or {}) do
+                for x = 1, #row do
+                    local ch = row:sub(x, x)
+                    local c = game.grid.cells[y] and game.grid.cells[y][x]
+                    if c and ch:match("%l") then c.choke = ch end
+                end
+            end
+        end
     elseif game.descent and Descent.floorBoard(game.player, Descent.depth(game.descent)) then
         -- A FLOOR THIS COMPANY HAS ALREADY WALKED. Wizardry's levels are the same maze every time, which
         -- is the entire reason mapping one is worth doing -- a secret door found on the third trip is
@@ -1676,7 +1701,8 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
                         for x = 1, game.grid.cols do
                             local c = game.grid.cells[y][x]
                             local e = c.encounter
-                            if e and e.id == head.waitId and e.loot == head.waitLoot and c.cleared then
+                            if e and e.id == head.waitId and (e.loot and e.loot[1]) == head.waitLoot
+                                and c.cleared then
                                 held = false
                             end
                         end
@@ -1870,6 +1896,7 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
         game.player.activeRun = {
             questId = "prologue_floor_one",
             prologue = true,
+            prowl = game.tutorialProwl, -- live; Save.snapshotRun writes how far it has got
             grid = game.grid,
             map = game.map,
             abilityState = game.abilityState,

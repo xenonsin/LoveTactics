@@ -400,6 +400,43 @@ return {
         end,
     },
 
+    -- ----- a reload mid-leg (2026-10-23: quitting after a fight and loading let the company skip them all) -----
+    {
+        name = "a reloaded floor one keeps its chokepoints and how far its scripted fights have got",
+        fn = function()
+            local map = require("states.prologue").FLIGHT_QUEST.map
+            local Save = require("models.save")
+            local always = {}
+            for _, e in ipairs(map.encounters.always) do
+                local def = Encounter.get(e.id)
+                always[#always + 1] = { id = e.id, kind = def.kind, name = def.name, loot = e.loot }
+            end
+            local grid = Overworld.fromLayout({ layout = map.layout, biome = map.biome,
+                objective = map.objective, alwaysEncounters = always })
+            local back = Overworld.fromSnapshot(grid:snapshot())
+            local letters = {}
+            for y = 1, back.rows do
+                for x = 1, back.cols do
+                    local ch = back:get(x, y).choke
+                    if ch then letters[ch] = true end
+                end
+            end
+            assert(letters.a and letters.b, "both chokepoints survive the snapshot -- the fights are owed by them")
+
+            -- One fight dealt, five steps walked since: the save carries it, and a restore hands it back.
+            local prowl = { queue = { {}, }, steps = 5, total = 2 }
+            local snap = Save.snapshotRun({ questId = "prologue_floor_one", prologue = true, prowl = prowl,
+                grid = grid, map = { px = 1, py = 11 } }, nil)
+            assert(snap.prowl and snap.prowl.done == 1 and snap.prowl.steps == 5, "the run save carries the prowl")
+            local run = Save.restoreRun(snap)
+            assert(run and run.prowl and run.prowl.done == 1 and run.prowl.steps == 5, "and the restore keeps it")
+
+            -- The chest hold must not compare loot tables by identity: a restored chest carries a copy.
+            local src = io.open("states/game.lua", "r"); local text = src:read("*a"); src:close()
+            assert(not text:find("e.loot == head.waitLoot", 1, true), "the chest hold matches by identity again")
+        end,
+    },
+
     -- ----- the authored trail itself (models/overworld.lua's fromLayout + data/overworld/tutorial_flight) -----
     {
         name = "the tutorial floor is shaped like a real floor, and its chokepoints keep the order",

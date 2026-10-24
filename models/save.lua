@@ -402,6 +402,10 @@ function Save.snapshotRun(run, player)
         -- the restore below takes this branch before the lookup and leaves the quest for the prologue
         -- to hand back in (prologue.continue).
         prologue = run.prologue or nil,
+        -- ACT 0's SCRIPTED FIGHTS (states/game.lua's tutorialProwl): how many have been dealt and the
+        -- steps walked since the last, so a reload neither re-deals a won fight nor loses the count.
+        prowl = run.prowl and { done = (run.prowl.total or #run.prowl.queue) - #run.prowl.queue,
+                                steps = run.prowl.steps or 0 } or nil,
         day = run.day,
         trip = trip,
         tripDone = tripDone,
@@ -475,6 +479,7 @@ function Save.restoreRun(snap)
     return {
         questId = snap.questId,
         prologue = snap.prologue or nil,
+        prowl = type(snap.prowl) == "table" and snap.prowl or nil,
         quest = quest,
         descent = descent,
         -- The day the run was ENTERED on, carried with it rather than re-read from the clock on

@@ -2294,7 +2294,11 @@ local CELL_FIELDS = { "tile", "seen", "cleared", "picked", "encounter", "gate", 
                       -- a trap the company detected on one trip is still marked on the next and one
                       -- they already ate is still spent -- which is the whole point of keeping a floor
                       -- (models/descent.lua's Descent.keepFloor).
-                      "trap" }
+                      "trap",
+                      -- An authored chokepoint's letter (fromLayout). Act 0's scripted fights are owed
+                      -- "by" one, and a save that dropped it let a reloaded company walk the whole of
+                      -- floor one without meeting a fight (2026-10-23).
+                      "choke" }
 
 -- Snapshot the floor to plain data (no metatable, no love objects, no functions). It cannot be
 -- regenerated from a seed on load -- the encounter pool is drawn in an unspecified (`pairs`) order --
