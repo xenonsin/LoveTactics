@@ -68,7 +68,7 @@ function loadPlaywright() {
 const CHROME = "C:/Program Files (x86)/Google/Chrome/Application/chrome.exe";
 const GL_ARGS = [ "--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader" ];
 
-// THE DEFAULT ROUTE: title -> New Game -> a body -> a typed name -> the prologue -> the tutorial
+// THE DEFAULT ROUTE: title -> New Game -> the opening narration (skipped) -> a typed name -> the prologue -> the tutorial
 // battle. It is the path every web-only bug so far has been caught on, because it is the one that
 // loads a state, a save, a conversation and a board in that order.
 //
@@ -79,7 +79,7 @@ const GL_ARGS = [ "--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-
 const DEFAULT_STEPS = [
   { dom: "#start", wait: null, shot: "01_loaded", note: "the Play gate is DOM; the engine boots behind it" },
   { click: [640, 310], wait: 1500, shot: "02_newgame" },
-  { click: [484, 485], wait: 1500, shot: "03_body" },
+  { key: "Escape", wait: 1500, shot: "03_name", note: "New Game plays the opening narration first and asks the name only (2026-10-16); Esc skips the scene" },
   { click: [640, 334], wait: 400, note: "D -- letters are a 7-wide grid from A at (358, 334), pitch 94 x 66" },
   { click: [452, 334], wait: 400, note: "b" },
   { click: [452, 400], wait: 400, shot: "04_typed", note: "i" },
