@@ -1,6 +1,17 @@
 # Relics — parked, and what became of them
 
-**Status: PARKED 2026-09-17.** Nothing in a run grants a relic. The system is still on disk and still
+> **BACK 2026-10-24, as a per-trip layer.** Relics are found underground, held by the whole
+> company, and kept for **one trip**: climbing out and a wipe both clear them (`Relic.endTrip`).
+> They come from a stair beaten for the **first** time (pick one of three, or skip), from an
+> **elite** (one per floor per trip), and from three stops: the **Merchant** (two beside its gear),
+> the **Altar** (gamble, or trade two for one) and the **Weeping Stone** (a rung up, for a tenth of
+> every maximum health — given back when the trip ends). The Stone is guaranteed from floor two on a
+> stop of its own; the Reliquary stays parked. All 36 blueprints are the pool. **The 25 item
+> conversions below stay**, and the relic twins coexist with them; the 11 pure-stat relics are relics
+> again and still absent as items. Floors are never tuned around relics. See the banner at the head
+> of `models/relic.lua` for where each piece lives; the rest of this page is the record of the park.
+
+**Status: PARKED 2026-09-17 (lifted 2026-10-24, above).** Nothing in a run grants a relic. The system is still on disk and still
 loads; what was cut is every route to one. This document is the record of what was parked, what the
 25 surviving effects became, and what a revert would have to put back.
 

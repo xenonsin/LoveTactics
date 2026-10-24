@@ -1292,8 +1292,19 @@ Descent.FLOOR_TEXTURE = 6
 -- floor, whatever its ends.
 function Descent.floorBudget(ends, floor)
     local seated = math.max(0, Descent.floorSeen(floor) - math.max(1, ends or 1))
-    local stops = Descent.FLOOR_TEXTURE + seated
+    -- ...plus a place for each relic stop the floor guarantees (Descent.relicStops), so the Weeping
+    -- Stone's return seats on a stop of its own rather than on one the elites or the texture had.
+    local stops = Descent.FLOOR_TEXTURE + seated + #Descent.relicStops(floor)
     return { min = stops, max = stops }, seated
+end
+
+-- THE RELIC STOPS A FLOOR GUARANTEES (2026-10-24): the Weeping Stone, from floor two. Its own list,
+-- read by both guaranteeKinds and floorBudget, so the guarantee and the place it is seated on cannot
+-- move apart -- a guarantee with no place made for it would take a seat the elites were counting on.
+function Descent.relicStops(floor)
+    if require("models.relic").PARKED then return {} end
+    if (floor or 1) >= 2 then return { "weeping_stone" } end
+    return {}
 end
 
 -- CACHES ARE PINNED, and this is the thing the density bump above would otherwise have moved in
@@ -3025,8 +3036,14 @@ end
 -- a chest pays once, and a fight that re-dealt those contents every trip down would be a printing
 -- press standing on floor six. What the company walks back to is a spent cache, because that is what
 -- they emptied.
-function Descent.rearmFloor(grid)
+--
+-- ...AND THE RELIC STOPS, on a new TRIP only (2026-10-24). A relic lasts one trip, so the Altar and the
+-- Weeping Stone sell something that is gone by the time the company comes back down; a stop that paid
+-- once per save would be met once and then never again. `trip` is Relic.tripOf(player) -- a nil trip
+-- relights nothing, and walking up and down one stair within a trip relights nothing either.
+function Descent.rearmFloor(grid, trip)
     if not grid then return 0 end
+    local Relic = require("models.relic")
     local n = 0
     for y = 1, grid.rows do
         for x = 1, grid.cols do
@@ -3052,6 +3069,8 @@ function Descent.rearmFloor(grid)
             elseif e and e.kind == "rest" and c.cleared then
                 -- THE FIRE IS LIT AGAIN, and it is the one place on the list below that comes back. See
                 -- the header: what a camp pays is recovery, and the Ward at the top pays all of it free.
+                c.cleared = nil
+            elseif e and c.cleared and Relic.relights(e, trip) then
                 c.cleared = nil
             elseif e and c.cleared and not e.mimic and (e.kind == "combat" or e.kind == "elite") then
                 c.cleared = nil
@@ -4698,20 +4717,17 @@ end
 -- rather than beeline the stair, and a reward the player steers toward rather than one that happens to
 -- them.
 local function guaranteeKinds(player, floor)
-    -- PARKED 2026-09-17 -- `relic_cache` and `weeping_stone` are struck from both rungs. Both stops
-    -- dealt run relics and nothing else, models/relic.lua is parked (see the dated note at its head),
-    -- and their blueprints now carry `parked = true`. A kind guaranteed here but ineligible in
-    -- models/encounter.lua's pool is a floor asking for a stop that can never be placed, so the two
-    -- lists have to move together: lifting the park means restoring the entries below AND clearing the
-    -- flag on each blueprint.
+    -- A Rest and a Merchant on every floor -- and from floor two, THE WEEPING STONE again (relics came
+    -- back as a per-trip layer, 2026-10-24; see models/relic.lua). Its pre-park rung, restored as it
+    -- was: not on the first floor, where a company that has not been hurt has nothing to weigh a cut
+    -- to its maximum against. It is paid for with a stop of its own (Descent.relicStops), so it takes
+    -- no seat from the elites or the texture.
     --
-    -- What the floor still guarantees is the pair whose payload survived the park: a Rest, and a
-    -- Merchant that now sells gear alone. The reasoning the Stone was guaranteed FOR is kept in its own
-    -- blueprint rather than here, since that is the file a revert starts from.
-    --
-    -- `floor` is no longer read -- the two rungs collapsed into one when the depth-gated entry went --
-    -- and the parameter stays only so a restored Weeping Stone has its gate back where it was.
-    return { "rest", "merchant" }
+    -- The Reliquary is NOT restored: the first-time stair deals the pick of three now. The Altar is
+    -- eligible in the pool again (its blueprint is un-parked) and is never guaranteed, as before.
+    local kinds = { "rest", "merchant" }
+    for _, k in ipairs(Descent.relicStops(floor)) do kinds[#kinds + 1] = k end
+    return kinds
 end
 
 -- A circle's own stops on this floor (Descent.SINS' `stops`): the kinds to guarantee, and the per-kind

@@ -549,4 +549,207 @@ return {
             assert(encoded:match("counts"), "the stack counts are in the written form")
         end,
     },
+
+    -- -----------------------------------------------------------------------------------------------
+    -- THE TRIP (2026-10-24): relics are back as a per-trip layer. See models/relic.lua's banner.
+    -- -----------------------------------------------------------------------------------------------
+    {
+        name = "the park is lifted: the Altar and the Stone roll again, the Reliquary does not",
+        fn = function()
+            assert(Relic.PARKED == false, "Relic.PARKED is declared and false")
+            local Encounter = require("models.encounter")
+            assert(not Encounter.get("encounter_shrine").parked, "the Altar is un-parked")
+            assert(not Encounter.get("encounter_weeping_stone").parked, "the Weeping Stone is un-parked")
+            assert(Encounter.get("encounter_relic_cache").parked,
+                "the Reliquary stays parked: a first-time stair deals the pick of three now")
+            local n = 0
+            for _ in pairs(Relic.defs) do n = n + 1 end
+            assert(n >= 36, "all 36 blueprints are the pool; got " .. n)
+        end,
+    },
+    {
+        name = "the trip's end clears every relic, on the run and in place",
+        fn = function()
+            local run = {}
+            local s = Relic.stateOf(run)
+            assert(run.relicState == s, "the state lives on the run")
+            Relic.grant(s, "relic_whetstone_tithe")
+            Relic.grant(s, "relic_whetstone_tithe")
+            Relic.grant(s, "relic_keen_edge")
+            assert(Relic.total(s) == 3, "copies are counted")
+            local lost = Relic.endTrip(run, { roster = {} })
+            assert(lost == 3, "endTrip reports what stayed below; got " .. tostring(lost))
+            assert(run.relicState == nil, "the run no longer carries a relic state")
+            assert(#Relic.held(s) == 0 and Relic.total(s) == 0,
+                "a screen still holding the old table reads an empty tray")
+            assert(Relic.endTrip(run, nil) == 0, "a second call is a no-op")
+        end,
+    },
+    {
+        -- A SOURCE SCAN, because the defect is an exit that forgets: five places in states/game.lua end
+        -- a trip by dropping `descentRun`, and every one of them -- the climb-out and the wipe among them
+        -- -- has to hand the relics (and the Stone's price) back first.
+        name = "every exit that ends a trip calls Relic.endTrip first (climb-out and wipe included)",
+        fn = function()
+            local f = assert(io.open("states/game.lua", "rb"), "states/game.lua is readable")
+            local src = f:read("*a"):gsub("\r", "")
+            f:close()
+            local lines = {}
+            for line in (src .. "\n"):gmatch("([^\n]*)\n") do lines[#lines + 1] = line end
+            local sites = 0
+            for i, line in ipairs(lines) do
+                if line:match("descentRun = nil") and not line:match("^%s*%-%-") then
+                    sites = sites + 1
+                    local ok = line:match("Relic%.endTrip")
+                    for j = math.max(1, i - 3), i - 1 do
+                        if lines[j]:match("Relic%.endTrip") then ok = true end
+                    end
+                    assert(ok, "states/game.lua:" .. i .. " drops the run without Relic.endTrip")
+                end
+            end
+            assert(sites >= 5, "the five trip exits are all still there to check; found " .. sites)
+            assert(src:match("relics stay below"), "the way-up card says the relics stay below")
+        end,
+    },
+    {
+        name = "a stair deals its slate only the first time it is beaten",
+        fn = function()
+            local player = { floors = {} }
+            local s = Relic.newState()
+            local ids = Relic.offerStair(s, player, 3, { depth = 3 })
+            assert(ids and #ids == Relic.STAIR_SLATE, "a first-time stair deals three")
+            assert(s.offer and s.offer.source == "stair" and #s.offer.ids == 3, "the slate waits on the state")
+            local def, n = Relic.answerOffer(s, ids[2])
+            assert(def and n == 1 and Relic.count(s, ids[2]) == 1, "taking one grants it")
+            assert(s.offer == nil, "the offer is spent")
+            assert(Relic.answerOffer(s, ids[1]) == nil, "and cannot be answered twice")
+
+            -- A kept board with the stair standing open is a stair beaten on an earlier trip.
+            player.floors["3"] = { cells = { { { encounter = { kind = "stair" } } } } }
+            assert(Relic.firstStair(player, 3) == false, "an open stair on the map book is not a first time")
+            assert(Relic.offerStair(s, player, 3, { depth = 3 }) == nil, "a re-crossed stair offers nothing")
+            -- ...while a kept board whose guard still stands owes its slate.
+            player.floors["4"] = { cells = { { { encounter = { kind = "objective" } } } } }
+            assert(Relic.firstStair(player, 4), "a floor walked without beating its guard still owes")
+
+            -- Skipping is an answer too.
+            local s2 = Relic.newState()
+            Relic.offerStair(s2, { floors = {} }, 1, { depth = 1 })
+            assert(Relic.answerOffer(s2, nil) == nil and s2.offer == nil and Relic.total(s2) == 0,
+                "skip spends the slate and grants nothing")
+        end,
+    },
+    {
+        name = "an elite drops one relic per floor per trip",
+        fn = function()
+            local s = Relic.newState()
+            local id = Relic.eliteDrop(s, 2, { depth = 2 })
+            assert(id and Relic.defs[id], "the first elite on a floor drops a relic")
+            assert(s.offer and s.offer.source == "elite" and s.offer.ids[1] == id, "and it waits on the state")
+            Relic.answerOffer(s, nil) -- left
+            assert(Relic.eliteDrop(s, 2, { depth = 2 }) == nil,
+                "a second elite on the same floor, the same trip, drops nothing (even after a skip)")
+            assert(Relic.eliteDrop(s, 3, { depth = 3 }), "another floor drops its own")
+            local nextTrip = Relic.newState()
+            assert(Relic.eliteDrop(nextTrip, 2, { depth = 2 }), "a new trip starts the count again")
+        end,
+    },
+    {
+        name = "the Weeping Stone's price lasts the trip and is given back at its end",
+        fn = function()
+            local a = char("a", { 30, 50 })
+            local b = char("b", { 1, 1 })   -- already at one: pays nothing
+            local c = char("c", { 40, 40 })
+            local player = { roster = { a, b, c } }
+            local run = {}
+            local s = Relic.stateOf(run)
+            local toll = Relic.stoneToll(player.roster)
+            assert(#toll == 2, "a body at one maximum is not tolled")
+            Relic.payStone(s, toll)
+            assert(a.stats.health.max == 45 and c.stats.health.max == 36, "a tenth of every maximum is taken")
+            assert(c.stats.health.current == 36, "current health is clamped under the new ceiling")
+            Relic.payStone(s, Relic.stoneToll(player.roster)) -- a second visit stacks
+            assert(a.stats.health.max == 41, "a second toll takes a tenth of what is left")
+            Relic.endTrip(run, player)
+            assert(a.stats.health.max == 50 and c.stats.health.max == 40 and b.stats.health.max == 1,
+                "every point comes back when the trip ends")
+            assert(c.stats.health.current == 33, "the pool is the city's to refill, not the ledger's")
+        end,
+    },
+    {
+        name = "a relic stop met on an earlier trip lights again, and only on a new trip",
+        fn = function()
+            local Descent = require("models.descent")
+            local stone = { encounter = { kind = "weeping_stone", trip = 1, offer = { "x" } }, cleared = true }
+            local altar = { encounter = { kind = "shrine", trip = 2 }, cleared = true }
+            local cache = { encounter = { kind = "treasure", trip = 1 }, cleared = true }
+            local grid = { rows = 1, cols = 3, cells = { { stone, altar, cache } } }
+            Descent.rearmFloor(grid, nil)
+            assert(stone.cleared and altar.cleared, "a caller that names no trip relights nothing")
+            Descent.rearmFloor(grid, 2)
+            assert(not stone.cleared, "last trip's Stone lights again")
+            assert(altar.cleared, "this trip's Altar stays spent -- walking a stair up and down is not a trip")
+            assert(cache.cleared, "a cache is a place, and stays spent")
+            assert(Relic.freshForTrip(stone.encounter, 2) and stone.encounter.offer == nil,
+                "a stale stop's pinned card is dealt again")
+            assert(not Relic.freshForTrip(stone.encounter, 2), "and once per trip")
+        end,
+    },
+    {
+        name = "the cart deals two relics beside its gear, re-dealt per trip",
+        fn = function()
+            local enc = { stock = { { id = "some_item", price = 10, bought = false } } }
+            Relic.stockMerchant(enc, { depth = 4 }, 1, function(p) return p - 1 end)
+            local relics = 0
+            for _, s in ipairs(enc.stock) do
+                if s.relic then
+                    relics = relics + 1
+                    assert(s.price == Relic.price(s.id, 4) - 1, "priced by rung and depth, through the ceiling")
+                end
+            end
+            assert(relics == Relic.MERCHANT_SLATE and #enc.stock == 3, "two relics join the gear")
+            enc.stock[2].bought = true
+            Relic.stockMerchant(enc, { depth = 4 }, 1)
+            assert(#enc.stock == 3 and enc.stock[2].bought, "the same trip keeps the same shelf")
+            Relic.stockMerchant(enc, { depth = 4 }, 2)
+            assert(#enc.stock == 3 and enc.stock[1].id == "some_item", "a new trip keeps the gear")
+            assert(not enc.stock[2].bought and not enc.stock[3].bought, "and re-deals the relics")
+        end,
+    },
+    {
+        name = "a quit mid-trip keeps the relics, the waiting offer and the Stone's ledger",
+        fn = function()
+            local Save = require("models.save")
+            local Descent = require("models.descent")
+            local Overworld = require("models.overworld")
+            local Player = require("models.player")
+            local player = Player.new()
+            local run = Descent.new(player, 404)
+            local mp = Descent.floorQuest(run, player).map
+            local grid = Overworld.generate({
+                biome = mp.biome, cols = mp.cols, rows = mp.rows, seed = 3, ascent = true, keyCount = 0,
+                encounterCount = mp.encounters, cacheCount = mp.cacheCount,
+                encounters = { { kind = "treasure", weight = 1 } },
+                exitAtStart = mp.exitAtStart,
+            })
+            local s = Relic.stateOf(run)
+            Relic.grant(s, "relic_keen_edge")
+            Relic.grant(s, "relic_keen_edge")
+            Relic.eliteDrop(s, 1, { depth = 1 })
+            s.stoneToll = { someone = 4 }
+            local snap = Save.snapshotRun({ questId = Descent.floorId(1), descent = run, grid = grid,
+                map = { px = grid.start.x, py = grid.start.y }, relicState = s, abilityState = {} }, player)
+            assert(snap, "the run snapshots")
+            local encoded = Save.encode(snap, 0)
+            local decoded = assert((loadstring or load)("return " .. encoded))()
+            local back = Save.restoreRun(decoded)
+            assert(back and back.relicState, "the run restores with its relic state")
+            assert(Relic.count(back.relicState, "relic_keen_edge") == 2, "the stack survives the quit")
+            assert(back.relicState.offer and back.relicState.offer.source == "elite",
+                "the waiting offer survives, so the panel re-opens on the same card")
+            assert(back.relicState.eliteFloors and back.relicState.eliteFloors["1"],
+                "the floor's elite drop stays spent")
+            assert(back.relicState.stoneToll.someone == 4, "the Stone's ledger survives, so the way out can pay it back")
+        end,
+    },
 }

@@ -1,29 +1,29 @@
 -- ============================================================================================
--- PARKED 2026-09-17. NOTHING IN A RUN GRANTS A RELIC ANY MORE, and every word below this banner
--- describes the system as it was built rather than as it is reachable. Read this first.
+-- BACK 2026-10-24, AS A PER-TRIP LAYER. Parked 2026-09-17; un-parked on the author's word.
 --
--- WHAT WAS PARKED, and it is a reachability cut rather than a deletion -- this module, all 36
--- blueprints in data/relics/, the four UI modules (ui/relic_card, ui/relic_strip,
--- ui/panels/relic_offer, ui/panels/relic_reveal) and both specs are untouched and still load:
---   * the three stops whose only payload was a relic -- the Reliquary, the Sin's Altar and the
---     Weeping Stone -- carry `parked = true`, read by models/encounter.lua's `eligible`;
---   * `relic_cache` and `weeping_stone` are struck from models/descent.lua's `guaranteeKinds`;
---   * the Merchant's relic shelf, the Crossroads' `grantRelic` stake and the Rest's Sharpen verb
---     are cut in states/game.lua -- those three stops stay live, so each needed its own edit;
---   * ui/relic_strip.lua no longer draws, so the run screen stops reserving a band for it.
--- The combat fold is deliberately LEFT WIRED. `unit.relicBonus` is simply never populated now, so
--- it costs nothing standing and is the half a revert would otherwise have to rebuild.
+-- WHAT A RELIC IS NOW. Found underground, held by the WHOLE COMPANY (the original company-wide
+-- design), and kept for ONE TRIP: climbing out and a wipe both clear them (Relic.endTrip, one call per
+-- exit in states/game.lua). The state rides the descent run (`run.relicState`), so it dies with the
+-- trip, and it rides the run save (models/save.lua's snapshotRun), so a quit mid-trip keeps it.
 --
--- WHY. The shelf's effects were re-premised as ordinary ITEMS, worn by one body rather than felt by
--- the whole company -- see docs/relics.md for the mapping, blueprint by blueprint. The 11 relics
--- that were a flat always-on number with no strings (the pure-stat commons) were CUT rather than
--- converted: a +1 that every body gets for free is the thing an item shelf already sells, and a
--- second copy of it is not a decision. The other 25 became items and are live.
+-- WHERE ONE COMES FROM, and every source is in this file's "The trip" section:
+--   * a stair beaten for the FIRST time deals a slate of three (Relic.firstStair + Relic.offerStair);
+--     a floor whose stair already stood open on the company's kept map offers nothing;
+--   * an elite drops one, at most once per floor per trip (Relic.eliteDrop);
+--   * the Merchant sells two beside its gear, the Altar gambles or trades two-for-one, and the
+--     Weeping Stone sells a rung up for a tenth of every maximum -- for THIS TRIP only (Relic.payStone;
+--     the health comes back in Relic.endTrip). The three re-deal every trip (Relic.freshForTrip).
+-- The Reliquary stays parked: the stair's slate is the pick of three now. The Crossroads' relic stake
+-- and the Rest's Sharpen verb stay cut as well.
 --
--- DO NOT quote this file's design notes as current behaviour. `Relic.PARKED` below is the flag the
--- call sites read; the prose from the next line down is history, kept because a revert needs the
--- reasoning and not just the code.
+-- THE 25 ITEM CONVERSIONS STAY (docs/relics.md). A relic and its item twin coexist; the 11 pure-stat
+-- relics are relics again and are still absent AS ITEMS (tests/item_rules_spec.lua). Floors are never
+-- tuned around relics. `Relic.PARKED` stays declared, and false, so the park can return from one line.
 -- ============================================================================================
+--
+-- (HISTORY, 2026-09-17 to 2026-10-24: the park. The shelf's effects were re-premised as items worn by
+-- one body -- see docs/relics.md for the mapping. The design notes below describe the shelf as built,
+-- and they are live again.)
 --
 -- RELICS: the roguelike inner-loop content. Where a companion's OVERWORLD ABILITY (models/overworld_-
 -- ability.lua) is keyed to WHO is in your party, a relic is FOUND on the expedition -- dropped by a
@@ -94,12 +94,12 @@ local Relic = {}
 
 Relic.defs = require("models.registry").load("data/relics", "data.relics")
 
--- PARKED (see the banner at the head of this file). A DECLARATION THE CALL SITES READ, never a switch
--- inside this module: every function below behaves exactly as it always did, so both specs still
--- exercise the real thing and a revert is proved green before it is reachable. Parking a system by
--- gutting its model instead would have left the tests asserting against the parked behaviour, which is
--- how a parked system quietly becomes unrevertable.
-Relic.PARKED = true
+-- PARKED? No, since 2026-10-24 (see the banner). Still a DECLARATION THE SOURCES READ rather than a
+-- switch inside the machinery: the trip's sources below (the stair slate, the elite drop, the cart's
+-- shelf) deal nothing while it is true, and every other function behaves the same either way, so the
+-- specs exercise the real thing whichever way it is set. Putting the park back is this line plus
+-- `parked = true` on the Altar's and the Stone's blueprints.
+Relic.PARKED = false
 
 -- ---------------------------------------------------------------------------
 -- The ladder
@@ -747,6 +747,191 @@ function Relic.bankedCount(id, bucket)
     if not (def and def.banked and bucket) then return nil end
     local n = def.banked(bucket)
     return (n and n > 0) and n or nil
+end
+
+-- ---------------------------------------------------------------------------
+-- The trip (2026-10-24): where a relic comes from, and where it goes
+-- ---------------------------------------------------------------------------
+--
+-- A RELIC LASTS ONE TRIP. The dungeon is a place that outlives every trip down it (models/descent.lua's
+-- kept floors), so the thing that makes one trip different from the last is what the company finds on
+-- the way and loses on the way out. Everything below is plain data on the run's relic-state, so the
+-- run save carries it, and everything is dropped by one call at either exit (Relic.endTrip).
+--
+-- THE FLOORS ARE NEVER TUNED AROUND RELICS. Nothing here reads or moves an encounter's numbers; a
+-- company with no relics is the company the floors are balanced against.
+
+-- What the Weeping Stone takes: a tenth of every maximum health, FOR THIS TRIP. A share rather than a
+-- flat number so it costs the same on floor one and floor twelve; given back in Relic.endTrip.
+Relic.STONE_SHARE = 0.10
+
+-- How many cards each source deals.
+Relic.STAIR_SLATE = 3
+Relic.MERCHANT_SLATE = 2
+
+-- The two stops whose whole payload is a relic. They re-deal every trip (Relic.freshForTrip, and
+-- models/descent.lua's rearmFloor lights them again): what they sell dies with the trip, so a stop that
+-- paid once per save would be a stop met once and then never again.
+Relic.STOP_KINDS = { shrine = true, weeping_stone = true }
+
+-- Which trip this is, as a stamp a stop can compare. `runsStarted` is advanced once per descent begun
+-- (models/seed.lua), which is exactly a trip.
+function Relic.tripOf(player)
+    return (player and player.runsStarted) or 0
+end
+
+-- The run's relic-state, made on first ask. On the RUN, so it dies with the trip.
+function Relic.stateOf(run)
+    if not run then return nil end
+    run.relicState = run.relicState or Relic.newState()
+    return run.relicState
+end
+
+-- How many relics the company carries, copies counted -- the figure the way-up card quotes.
+function Relic.total(state)
+    local n = 0
+    for _, e in ipairs(Relic.held(state)) do n = n + (e.count or 0) end
+    return n
+end
+
+-- HAS THIS FLOOR'S STAIR EVER STOOD OPEN? Read off the company's own map book (Descent.floorBoard):
+-- a kept board carries the opened stair as a `stair` tile (Descent.openStair), so a floor whose kept
+-- board has one was beaten before and pays nothing the second time. A floor the company has walked
+-- without beating its guard is kept with the guard still on it, and still owes its slate.
+function Relic.firstStair(player, floor)
+    local board = require("models.descent").floorBoard(player, floor)
+    for _, row in pairs((board and board.cells) or {}) do
+        for _, c in pairs(row) do
+            if c.encounter and c.encounter.kind == "stair" then return false end
+        end
+    end
+    return true
+end
+
+-- WHAT IS WAITING TO BE ANSWERED. A source deals into `state.offer` and the screen opens it, so a quit
+-- with the panel up comes back to the same cards rather than to nothing (states/game.lua re-opens it on
+-- a resume). `source` is "stair" (pick one of three, or skip) or "elite" (take it, or leave it).
+function Relic.offerStair(state, player, floor, ctx)
+    if Relic.PARKED or not state then return nil end
+    if not Relic.firstStair(player, floor) then return nil end
+    local ids = Relic.slate(ctx, Relic.STAIR_SLATE)
+    if #ids == 0 then return nil end
+    state.offer = { source = "stair", ids = ids }
+    return ids
+end
+
+-- AN ELITE DROPS ONE, at most once per floor per trip. The elites are dealt again every time a kept
+-- floor is entered (Descent.reseatElites), so without the per-floor mark a company could walk up and
+-- down one stair and farm a relic a fight. The mark is spent when the relic is ROLLED, not when it is
+-- taken: leaving it is an answer.
+function Relic.eliteDrop(state, floor, ctx)
+    if Relic.PARKED or not state then return nil end
+    state.eliteFloors = state.eliteFloors or {}
+    local key = tostring(floor or 1)
+    if state.eliteFloors[key] then return nil end
+    local id = Relic.roll(Relic.pool(ctx))
+    if not id then return nil end
+    state.eliteFloors[key] = true
+    state.offer = { source = "elite", ids = { id } }
+    return id
+end
+
+-- Answer the waiting offer: take `id` (which must be one of its cards), or pass nil to skip. Returns
+-- the def and the new count on a take, or nil.
+function Relic.answerOffer(state, id)
+    local offer = state and state.offer
+    if not offer then return nil end
+    state.offer = nil
+    if not id then return nil end
+    for _, oid in ipairs(offer.ids or {}) do
+        if oid == id then return Relic.grant(state, id) end
+    end
+    return nil
+end
+
+-- A RELIC STOP MET ON AN EARLIER TRIP is a fresh stop: its pinned card (the Stone's offer, the Altar's
+-- unseen gamble) belonged to that trip and is dealt again. Returns true when it was stale.
+function Relic.freshForTrip(enc, trip)
+    if not enc or enc.trip == trip then return false end
+    enc.offer, enc.gamble, enc.trip = nil, nil, trip
+    return true
+end
+
+-- ...and whether a cleared relic stop lights again on this trip (models/descent.lua's rearmFloor).
+-- A nil `trip` is a caller that does not know which trip it is, and it relights nothing.
+function Relic.relights(enc, trip)
+    return enc ~= nil and Relic.STOP_KINDS[enc.kind] == true and trip ~= nil and enc.trip ~= trip
+end
+
+-- THE CART'S RELIC ROWS, beside its gear. Two, dealt off the same pool a slate is (held relics
+-- included, so a second copy can be bought), priced by rung and depth (Relic.price) and passed through
+-- `priceOf` (the rift's asking-price ceiling, models/spoils.lua). Re-dealt per trip: last trip's rows
+-- are relics nobody holds any more. A shelf pinned before the un-park simply gains its rows.
+function Relic.stockMerchant(enc, ctx, trip, priceOf)
+    if not (enc and enc.stock) or enc.relicTrip == trip then return end
+    local kept = {}
+    for _, s in ipairs(enc.stock) do if not s.relic then kept[#kept + 1] = s end end
+    enc.stock = kept
+    enc.relicTrip = trip
+    if Relic.PARKED then return end
+    for _, id in ipairs(Relic.slate(ctx, Relic.MERCHANT_SLATE)) do
+        local p = Relic.price(id, ctx and ctx.depth)
+        enc.stock[#enc.stock + 1] = { id = id, relic = true, price = priceOf and priceOf(p) or p, bought = false }
+    end
+end
+
+-- WHAT THE STONE WOULD TAKE from each body: a tenth of its maximum, at least one point, and never from
+-- a body already at one. The whole roster pays, as the whole roster wears the relic.
+function Relic.stoneToll(roster)
+    local toll = {}
+    for _, char in ipairs(roster or {}) do
+        local hp = char.stats and char.stats.health
+        if type(hp) == "table" and (hp.max or 0) > 1 then
+            toll[#toll + 1] = { char = char,
+                amount = math.max(1, math.floor((hp.max or 0) * Relic.STONE_SHARE)) }
+        end
+    end
+    return toll
+end
+
+-- ...and paying it. The cut is written on the trip's ledger (`stoneToll`, by character id) so
+-- Relic.endTrip can hand every point back. Floored at one, and the ledger records what was really taken.
+function Relic.payStone(state, toll)
+    if not state then return end
+    state.stoneToll = state.stoneToll or {}
+    for _, t in ipairs(toll or {}) do
+        local hp = t.char.stats.health
+        local before = hp.max or 0
+        hp.max = math.max(1, before - t.amount)
+        hp.current = math.min(hp.current or hp.max, hp.max)
+        local id = t.char.id
+        if id then state.stoneToll[id] = (state.stoneToll[id] or 0) + (before - hp.max) end
+    end
+end
+
+-- THE TRIP IS OVER: climbing out, a wipe, or the end of the game. One call per exit.
+--
+-- Gives back what the Weeping Stone took (to the MAXIMUM; the city refills the pools on the way in),
+-- empties the state IN PLACE -- so a screen still holding a reference to it reads an empty tray -- and
+-- takes it off the run. Returns how many relics were left below.
+function Relic.endTrip(run, player)
+    local state = run and run.relicState
+    if not state then return 0 end
+    local lost = Relic.total(state)
+    if state.stoneToll then
+        for _, char in ipairs((player and player.roster) or {}) do
+            local amount = char.id and state.stoneToll[char.id]
+            local hp = char.stats and char.stats.health
+            if amount and type(hp) == "table" then
+                hp.max = (hp.max or 0) + amount
+                state.stoneToll[char.id] = nil
+            end
+        end
+    end
+    state.held, state.counts, state.scratch = {}, {}, {}
+    state.stoneToll, state.offer, state.eliteFloors = nil, nil, nil
+    run.relicState = nil
+    return lost
 end
 
 return Relic
