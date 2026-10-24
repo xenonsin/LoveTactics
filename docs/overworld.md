@@ -222,9 +222,9 @@ paragraph.
 board says treasure, the marker says treasure, the gloss says *"an unguarded cache — nothing stands over
 it"*, and then the company puts a hand in and the cache stands up.
 
-- **It is decided at generation, not at the lid.** A floor is a place the company keeps a map of
-  (`Descent.keepFloor`), so the third chest on floor six is a monster for the life of the playthrough,
-  and the company that left it alone knows exactly where it is.
+- **It is decided at generation, not at the lid.** A run keeps the floors it walks (`Descent.keepFloor`,
+  on the run), so the third chest on floor six is a monster for the rest of that run, and the company
+  that left it alone knows exactly where it is. The next run lays new ground.
 - **It springs on *Open*, never on arrival.** A fight that begins because the token landed somewhere is
   a toll — a bill for having walked, with nothing the player could have done differently. Pressing Open
   is a decision, and it is *already* the decision this stop asks: the panel, the Cancel, and the
@@ -467,13 +467,14 @@ its FOEs, and deleting it with the ordinary fight would leave a floor with nothi
 the map *for*. So the map answers *what is worth going to, and what stands in front of it*; the walk
 answers *what finds you on the way*.
 
-**An elite is met once a trip, and stands somewhere new on the next.** A kept board re-arms its fights,
-but a landmark woken on the tile it fell on is a fixture the company plans every trip around. So when a
-new trip walks back onto a kept floor, `Descent.reseatElites` lifts every elite off it and deals the same
-number again from the floor's own pool — a different set where the circle has spares — onto new places
-under the generator's rules: the deep half only, spaced from every stop, a chokepoint before open ground,
-and the door kept free. It is dealt off the trip (`runsStarted`), not the lap, so a trip reproduces as
-itself; a resumed trip brings its own board, so an elite cleared this trip stays cleared until the next.
+**A floor's elites are its identity, and the ground under them is new every run** (2026-10-24). The rift
+resets to floor 1 every run, so each floor is laid fresh -- but which elites stand on it is dealt off the
+save's lap seed and the depth alone (`Descent.eliteSeed`), not off the run: `Descent.reseatElites` lifts
+the generator's draw and deals the same number again from the floor's own pool, onto new places under the
+generator's rules (the deep half only, spaced from every stop, a chokepoint before open ground, the door
+kept free). So floor N stands the same elites every run -- the billed one, on most floors -- and only
+where they stand moves. Re-entering a floor within the run (up the stair and back) re-arms its fights and
+deals the elites again, by the same seed.
 
 `Descent.FLOOR_SEEN` (2 → 3) is how many of a floor's fights are on it, ends included; the ends come off
 it first, so an errand-heavy floor stands fewer elites rather than more markers. The stop count moves
@@ -806,11 +807,10 @@ whatever ordinary body is standing in for the slot (`Descent.SINS`' `minor.lead`
 table argues the whole cut). The mechanism is untouched — `Descent.guardianName` still reads the
 blueprint — and what the marker says is simply a less interesting name until the replacements land.
 
-**And the stairs run both ways.** `Descent.retreat` takes the company up one floor, to the floor above
-and the stair they came down by. The way up used to offer exactly one thing — end the expedition — so a
-company that wanted to walk back to a pack it dropped two floors above had to climb out of the rift and
-re-descend from the top. The floors are kept precisely so they can be walked again (`Descent.keepFloor`);
-the only thing missing was the door back to them.
+**And the stairs run both ways, within a run.** `Descent.retreat` takes the company up one floor, to the
+floor above and the stair they came down by. The run keeps the floors it has walked (`Descent.keepFloor`,
+`run.floors`), so the floor above is as the company left it; climbing out ends the run, and the next one
+starts at floor 1 on new ground.
 
 Three rules it needs to be honest:
 

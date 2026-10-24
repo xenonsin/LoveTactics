@@ -12,8 +12,7 @@
 > right thing to price when a descent *was* the campaign and climbing out was the one decision with an
 > alternative — the argument below is sound, and it is sound for that game.
 >
-> It is not that game. The maze is a place the company maps and re-enters (`Descent.keepFloor`,
-> `Descent.entryFloor`), a trip ends because somebody needs a bone set at the Inn, and **surfacing is
+> It is not that game. A trip ends because somebody needs a bone set at the Ward, and **surfacing is
 > the rhythm rather than the retreat** — Wizardry's own loop, which `models/descent.lua` has cited by
 > name since it was written. A meter that charges a mark for the thing the design wants you doing
 > constantly teaches against itself, and it cannot be tuned out of that: at any price above zero it is
@@ -30,32 +29,30 @@
 >
 > ### What a wipe costs instead, since this page says it should cost nothing
 >
-> **Rewritten 2026-10-23, by the author's call.** A wipe costs three things, and the code that charges
-> them is the wipe branch of `states/game.lua`'s `onLoss`:
+> **Rewritten 2026-10-24, by the author's call.** The rift resets to floor 1 every run, and a wipe ends
+> the run. It costs three things, charged by the wipe branch of `states/game.lua`'s `onLoss` and
+> `Descent.wipe`:
 >
 > 1. **A fall is a fall.** Every body knocked out takes its injury, win, rout or wipe alike, through the
->    same seam a rout uses (`game:inflictInjuries`). The wipe used to deal none, on the reading that
->    wounding a beaten company is a price on losing; that reading is reversed. A body that went down is
->    hurt however the fight came out.
-> 2. **What killed you carries your haul.** This expedition's finds (`Player.takeAtRisk` — nothing the
->    company walked in with) go to a **carrier**: the cast that beat them, seated on the tile they fell
->    on as an elite at the floor's own level (`Descent.seatCarrier`). It stands there, does not re-arm or
->    move, and is marked on the map and at the Gate (`Descent.lostPacks`). Kill it and the whole haul
->    comes back, plus the fight's ordinary spoils. A second wipe on that floor merges into it and raises
->    it one level; there is one per floor.
-> 3. **Hired bodies stay down.** The named cast wakes in the city. A hire is stranded with the carrier
->    (`Descent.strand`) — out of the Gate's pool, marked *Stranded on floor N* — until it is killed, and
->    is gone after `Descent.STRAND_TRIPS` (3) trips nobody came for them.
+>    same seam a rout uses (`game:inflictInjuries`). The named cast -- the avatar, Rowan, Xin and the
+>    companions -- comes home injured.
+> 2. **The haul is lost.** This expedition's finds (`Player.takeAtRisk` -- nothing the company walked in
+>    with) are gone outright. There is no floor for them to wait on: the next run walks new ground.
+> 3. **Hires who fell die.** Every hire in the expedition leaves the roster for good (`Hire.dismiss`);
+>    the company's gear on the body goes back to the stash. The city's rout notice names them.
 >
-> **What it still does not take:** the kit they marched down with, the gold, the levels, the map.
+> **What it still does not take:** the kit they marched down with, the gold, the levels.
 >
-> **The old argument for the pile still holds for the haul half.** The law here is about *recovery* —
-> "a cost on recovery is a tax on needing to recover" — and the haul is the *unbanked winnings of the
-> failed trip*, the one thing a company can lose without ending up behind where it started. Before it
-> was taken, `Descent.entryFloor` woke a routed company whole and sent it straight back in: dying was
-> free, and the game's central question had one answer. **"Losing takes nothing a company can carry"
-> stays withdrawn.** What changed on 2026-10-23 is that the pile is guarded by the thing that made it,
-> and that the injury and the hires are charged as well.
+> **The old argument for taking the haul still holds.** The law here is about *recovery* -- "a cost on
+> recovery is a tax on needing to recover" -- and the haul is the *unbanked winnings of the failed
+> trip*, the one thing a company can lose without ending up behind where it started. Climbing out banks
+> it; dying does not, which is what keeps the two exits different. **"Losing takes nothing a company can
+> carry" stays withdrawn.** A hire's death is the one charge that is not a haul: it is the price of
+> bringing a stranger down, and the named cast never pays it.
+>
+> (For one day, 2026-10-23, the haul went to a *carrier* -- the fight that beat the company, standing
+> on the fall tile -- and hires were stranded with it. Both needed a floor that outlived the run, and
+> went with the persistent rift.)
 >
 > **Everything below this line describes the tally as it behaves when the flag is down.**
 
@@ -72,7 +69,7 @@ Every other event in the descent's loop is priced, and the table is now the whol
 | Healing | a need | nothing, and it stays that way |
 | Setting a bone | a need | nothing, and it did not always — see below |
 | **Climbing out** | **a decision** | **one mark** (`Descent.COUNT_STAIR`) |
-| **A wipe** | **a failure** | **two marks** (`Descent.COUNT_WIPE`) — and, since 2026-10-23, the fallen's injuries, the haul to a carrier and any hire stranded with it (see the banner) |
+| **A wipe** | **a failure** | **two marks** (`Descent.COUNT_WIPE`) — and, since 2026-10-24, the fallen's injuries, the haul lost and every hire in the expedition dead (see the banner) |
 
 > **The third row used to break the law this page states, and so did the fourth.** Mending an injury was
 > 120 gold at a counter; then a bed at the Inn, 60 an injury plus a day with the body out of the company.
@@ -84,7 +81,7 @@ Every other event in the descent's loop is priced, and the table is now the whol
 > expensive line in the game, charged to the failure, in a document whose argument is that failures are
 > not where you put the price. All of it is deleted: `Player.loseHaul`, `Descent.dropPack` and the pile
 > system it fed, and the injury the rout inflicted (which the surface cleared for free a screen later
-> anyway). ~~**Losing takes nothing a company can carry.**~~ *(Withdrawn 2026-09-17 — see the banner at the top of this page. Since 2026-10-23 a wipe injures the fallen, hands the trip's haul to the fight that won (a carrier) and strands any hire with it.)*
+> anyway). ~~**Losing takes nothing a company can carry.**~~ *(Withdrawn 2026-09-17 — see the banner at the top of this page. Since 2026-10-24 a wipe injures the fallen, loses the trip's haul and kills every hire in the expedition.)*
 
 ## Why a wipe still costs two
 

@@ -308,6 +308,11 @@ Class.CLASS_LEVEL_CAP = 15
 --   deals the ordinary fight on the WALK (`wanderingCombat`), so what it SEATS is the elites and the
 --   ends -- 0.97 and 1.00 a floor, `. board-report 40 descent`. Eight, one and one.
 --
+-- (2026-10-24, NOT RE-CUT: the rift resets to floor one every run and a floor crossing measures about
+-- four fights now -- models/descent.lua's FLOOR_FIGHTS table. The ten below, and the "a floor is
+-- repeatable" argument after it, were taken against the persistent rift; a run re-walks the shallow
+-- floors instead. Re-measure before trusting this constant.)
+--
 -- SO A FLOOR PAYS 39.7 -- ten fights at 3.97 -- AND A RUNG COSTS FIFTY. The gap between those two
 -- numbers is the only part of this constant that is a judgement rather than a reading, and it is the
 -- one worth arguing for.

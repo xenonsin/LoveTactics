@@ -119,16 +119,12 @@ return {
             "the lap's seed is written down somewhere -- a stored copy of a derived value can disagree")
     end },
 
-    { name = "every descent in one playthrough is the SAME rift, and the playthrough replays as itself",
+    { name = "every descent in one playthrough is a NEW rift, and the playthrough replays as itself",
       fn = function()
-        -- THIS CASE USED TO ASSERT THE OPPOSITE and the reversal is the pivot, not a loosened test. It
-        -- read "two descents in one playthrough are two rifts": Seed.run folded `runsStarted` into the
-        -- seed, so walking out and back in laid a different maze. That is the correct shape for a run
-        -- you start over and the wrong one for a place you learn -- and it made the map book a book of
-        -- floors that no longer existed (Descent.keepFloor).
-        --
-        -- What a shared seed promises is unchanged and is the second half below: the same number is the
-        -- same playthrough. What changed is that it is now also the same rift all the way through.
+        -- REVERSED TWICE. It read "two descents are two rifts" until 2026-09-17, then "the SAME rift" while
+        -- the rift was a persistent place, and it reads "two rifts" again since 2026-10-24: the rift resets
+        -- every run, so Seed.run folds `runsStarted` back in. What a shared seed promises is unchanged and
+        -- is the second half below: the same number is the same playthrough, descent by descent.
         local function threeRuns(seed)
             local p = Player.new()
             p.seed = seed
@@ -140,8 +136,8 @@ return {
         end
 
         local a = threeRuns(481920)
-        assert(a[1] == a[2] and a[2] == a[3],
-            "a second descent laid a different rift -- the maze is a place and does not re-roll")
+        assert(a[1] ~= a[2] and a[2] ~= a[3] and a[1] ~= a[3],
+            "two descents in one playthrough laid the same rift -- the rift resets every run")
 
         -- The same save, played again from the same number, is the same three descents in the same
         -- order. This is the sentence a shared seed actually promises.

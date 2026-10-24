@@ -114,17 +114,6 @@ function EncounterTooltip.blocks(cell, ctx)
     end
 
     local rows = {}
-    -- A CARRIER says what it is holding and how far it has grown (models/descent.lua's
-    -- Descent.seatCarrier): the haul is the reason to walk back here, and a second wipe raised it.
-    if enc.carrier then
-        local n = enc.count or #(enc.items or {})
-        rows[#rows + 1] = { kind = "stat", label = "Holding",
-            value = n .. (n == 1 and " piece" or " pieces") }
-        if (enc.levelBonus or 0) > 0 then
-            rows[#rows + 1] = { kind = "stat", label = "Grown",
-                value = "+" .. enc.levelBonus .. (enc.levelBonus == 1 and " level" or " levels") }
-        end
-    end
     if enc.tier then
         rows[#rows + 1] = { kind = "stat", label = "Tier", value = tostring(enc.tier) }
     end

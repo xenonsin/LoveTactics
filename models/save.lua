@@ -1001,22 +1001,9 @@ function Save.snapshot(player)
         -- which is what it is.
         descentRun = player.descentRun
             and require("models.descent").snapshot(player.descentRun) or nil,
-        -- THE MAP BOOK (models/descent.lua's Descent.keepFloor). Every floor this company has walked,
-        -- keyed by depth as a string, written raw because a kept board is already plain Overworld
-        -- snapshot data -- the same shape that rode inside `descentRun` before the store moved up here.
-        --
-        -- Nil rather than an empty table for a company that has never gone down, so a town-only save
-        -- diffs clean. Purely additive, so Save.VERSION does not move.
-        floors = next(player.floors or {}) and player.floors or nil,
-        -- HIRES LEFT DOWN THERE with a carrier (Descent.strand): { [charId] = { floor, trip } }. The
-        -- carrier itself rides in its floor's board above. Nil when nobody is stranded; additive.
-        stranded = (function()
-            local out = {}
-            for id, s in pairs(player.stranded or {}) do
-                if type(s) == "table" then out[id] = { floor = s.floor, trip = s.trip } end
-            end
-            return next(out) and out or nil
-        end)(),
+        -- (No `floors` and no `stranded`: the map book and the hires stranded with a carrier went with
+        -- the persistent rift on 2026-10-24. A run keeps its own boards inside `descentRun` above, and
+        -- an older save's two fields are ignored on load -- see Save.restore.)
     }
 end
 
@@ -1516,38 +1503,10 @@ function Save.restore(snap)
         -- restored run, which no longer carries the field at all. A company mid-descent when this landed
         -- keeps the number it earned instead of walking into the city at nought.
         count = snap.count or (type(snap.descentRun) == "table" and snap.descentRun.count) or 0,
-        -- THE MAP BOOK (Descent.keepFloor), read forward off the run exactly as the tally above is and
-        -- for the same reason: every save written before the store moved up put its floors inside
-        -- `descentRun`, and it is read from the RAW snapshot because the restored run no longer carries
-        -- the field. A company that had drawn nine floors when this landed keeps all nine.
-        --
-        -- Keys are forced to strings on the way in. Descent.floorBoard looks up by `tostring(floor)`,
-        -- and Save.encode round-trips a numeric key as a string on some paths and an integer on others
-        -- -- so a book restored with integer keys would silently re-generate every floor, which is the
-        -- exact bug keeping the boards exists to prevent and is invisible until the map is gone.
-        floors = (function()
-            local raw = snap.floors
-            if type(raw) ~= "table" or not next(raw) then
-                raw = (type(snap.descentRun) == "table" and snap.descentRun.floors) or nil
-            end
-            if type(raw) ~= "table" then return {} end
-            local out = {}
-            for key, board in pairs(raw) do
-                if type(board) == "table" then out[tostring(key)] = board end
-            end
-            return out
-        end)(),
-        -- Hires stranded with a carrier (see Save.snapshot). Numbers forced, since the encoder may hand
-        -- a number back as a string; a malformed row is dropped rather than stranding somebody forever.
-        stranded = (function()
-            local out = {}
-            for id, s in pairs(type(snap.stranded) == "table" and snap.stranded or {}) do
-                if type(id) == "string" and type(s) == "table" and tonumber(s.floor) then
-                    out[id] = { floor = tonumber(s.floor), trip = tonumber(s.trip) or 0 }
-                end
-            end
-            return next(out) and out or nil
-        end)(),
+        -- (THE MAP BOOK (`floors`) and the hires stranded with a carrier (`stranded`) were read here
+        -- while the rift was a persistent place. Both retired on 2026-10-24 -- the rift resets every run
+        -- -- so an older save's fields are simply not read: it loads with neither, and a stranded hire is
+        -- back in the company's pool. A run's own boards ride inside `descentRun` (Descent.restore).)
         -- The piles waiting at depth. Absent on a save from before the rift started closing behind the
         -- company, which reads as one that has never lost anything -- the same thing a lucky company
         -- reads as. See Save.snapshot.

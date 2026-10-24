@@ -204,9 +204,6 @@ end
 -- with a body (Descent.GATES' `ward`) stamps `wardFor` on the lieutenant standing in front of it. The
 -- ward is asked FIRST: it is an `objective` like every other end, so the clause below would swallow it.
 function Encounter.markerKind(enc)
-    -- A CARRIER (models/descent.lua's Descent.seatCarrier) is an elite to every model and wears the
-    -- PACK's plate on the board: what the player is reading for is their own haul, not one more elite.
-    if enc and enc.carrier then return "pack" end
     if enc and enc.wardFor then return "ward" end
     if enc and enc.leadIn then return "leadin" end
     if enc and enc.kind == "objective" and enc.questId then return "quest" end
@@ -246,9 +243,7 @@ Encounter.MARKER_KINDS = {
 Encounter.GLOSS = {
     combat        = "Hostiles hold the trail. Walking here starts the fight.",
     elite         = "A tougher body than the rank and file. Worth more, and it hits back.",
-    -- Read by the CARRIER (Descent.seatCarrier), which wears the pack's plate: the fight that wiped a
-    -- company, standing on the tile with the haul. An old unguarded pile from an earlier save reads it too.
-    pack          = "What killed your company, holding the pack it dropped. Beat it to take the pack back.",
+    pack          = "The pack your company dropped when it fell. Walk here to carry it out.",
     objective     = "The floor's own end. Put it down and the stair opens.",
     quest         = "Work a house posted. Take it and the shelf it belongs to opens wider.",
     ward          = "A lieutenant set in front of the stair. The gate holds until she falls.",

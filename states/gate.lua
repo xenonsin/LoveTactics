@@ -18,11 +18,9 @@
 -- back down it, and the things a beaten company actually needs -- the Ward, the Touchstone, the shelves
 -- -- were all one screen further on.
 --
--- WHAT A WIPE LEAVES BEHIND IS STILL THIS SCREEN'S BUSINESS, and that is the durable half: everything
--- the company FOUND is in a heap on the floor they fell on (models/descent.lua's Descent.dropPack) and
--- the pack line below names it on every visit, because a notice is shown once and a pack keeps costing
--- the player until they go and get it. This is the screen they go and get it from. Dark Souls'
--- bloodstain, and the only thing that stops "climb out" and "die" being the same move.
+-- EVERY DESCENT STARTS AT FLOOR ONE (2026-10-24). The rift resets every run, so this screen offers one
+-- stair: floor one on a fresh expedition, or the floor a resumed one is standing on. A wipe loses the
+-- trip's haul outright (models/descent.lua's Descent.wipe) -- there is nothing left down there to fetch.
 --
 -- Nothing they OWNED is ever taken -- the bodies come back whole, because being above ground is what
 -- sets a bone now (models/injury.lua).
@@ -86,9 +84,7 @@ local countMeter = require("ui.count_meter").new()
 --
 -- Floor to floor is untouched: that is a fresh enter with no Gate in between, `run.entry` is still set,
 -- and re-snapshotting there would bank a run's finds just for walking downstairs.
--- `startFloor` is the stair to walk in by, and it only means anything on a FRESH expedition: a company
--- resuming one is standing where it stopped, and re-seating it would teleport a party mid-descent.
-local function descend(startFloor)
+local function descend()
     gate.panel = nil
     -- The first visit's coach bubble is spent HERE, by the deed, not by the screen having been looked
     -- at -- the same rule the city's door coaching keeps (states/hub.lua). Saved with the descent so a
@@ -98,12 +94,6 @@ local function descend(startFloor)
         Player.save()
     end
     local run = gate.run or Descent.new(gate.player)
-    -- THE STAIR THEY PICKED. Seated onto the run rather than passed to Descent.new, because enter has
-    -- already built it -- the picker above needs a run to read the company off. Guarded on `gate.fresh`
-    -- so the row can never move a company that is already down there (see the header).
-    if startFloor and gate.fresh then
-        run.floor = math.max(1, math.min(Descent.entryFloor(gate.player), startFloor))
-    end
     run.entry = nil
     Player.active = gate.player
     State.switch(require("states.game"), Descent.floorQuest(run, gate.player), nil, gate.player)
@@ -140,34 +130,15 @@ function gate:build()
 
     local items = {}
     if Gate.canDescend(gate.player, gate.run) then
-        -- THE STAIRS YOU HAVE OPENED, and on a fresh expedition there may be two of them.
-        --
-        -- A company that has mapped its way down to floor five walks back in AT floor five -- Wizardry's
-        -- shaft, Wizardry Variants Daphne's elevator (Descent.entryFloor). Re-walking four cleared
-        -- floors to reach the one you stopped on is the map book's cost with none of its benefit, and
-        -- it gets worse every trip.
-        --
-        -- BOTH ROWS ARE NAMED AND BOTH ARE ALWAYS LEGAL when a deeper stair exists -- no fold, no
-        -- default that hides the other (ui/menu.lua's own standard). Going in at the top is a real
-        -- choice rather than a worse one: the floors above re-arm (Descent.rearmFloor), so the shallow
-        -- end is where a thin company goes to come back up heavier.
-        --
-        -- ONE ROW WHEN THERE IS ONE STAIR, which is every company's first trip and every resumed
-        -- expedition -- a control appears only where it can be used.
-        local deep = gate.fresh and Descent.entryFloor(gate.player) or Descent.depth(gate.run)
+        -- ONE STAIR. A fresh expedition starts at floor one (the rift resets every run); a resumed one
+        -- goes back down to the floor it is standing on.
+        local deep = gate.fresh and 1 or Descent.depth(gate.run)
         items[#items + 1] = {
             label = "Down to floor " .. deep,
-            action = function() descend(deep) end,
-            -- THE ONE ROW THE FIRST VISIT COACHES. Marked here rather than found by index, because the
-            -- row above it is conditional and an index would silently move (see gate.draw).
+            action = function() descend() end,
+            -- THE ONE ROW THE FIRST VISIT COACHES. Marked here rather than found by index (see gate.draw).
             coach = true,
         }
-        if gate.fresh and deep > 1 then
-            items[#items + 1] = {
-                label = "Down to floor 1",
-                action = function() descend(1) end,
-            }
-        end
     end
     -- THERE IS NO "WAIT A DAY" ROW, and its deletion is the design rather than a tidy-up.
     --
@@ -262,24 +233,8 @@ function gate.enter(self, opts)
     -- separate game mode that banked nothing. It is the game now: the prologue's avatar and the Rowan
     -- sworn beside her walk into this city and down this stair, so there is ONE company, ONE save, and
     -- the floor stack rides on the player like everything else it owns.
-    -- FLOORS AN OLDER GENERATOR LAID ARE THROWN AWAY HERE (Descent.pruneStaleFloors), which is the one
-    -- moment it is safe: nobody is standing on a floor, and the company is about to be handed a fresh
-    -- one anyway. A board kept from before a pass existed is a photograph of an older dungeon -- the
-    -- newest half of the floor simply never appears on it, with nothing on screen to say why.
-    --
-    -- SAID OUT LOUD when it happens, because it takes maps the player drew. Anything they had left
-    -- lying on one of those floors is in the stash rather than gone.
-    local stale, rescued = Descent.pruneStaleFloors(gate.player)
-    local staleNotice
-    if (stale or 0) > 0 then
-        staleNotice = "The rift has shifted. " .. stale ..
-            (stale == 1 and " floor is" or " floors are") .. " not as you mapped them"
-            .. ((rescued or 0) > 0
-                and (", and what you had left down there is back in the stash.")
-                or ".")
-        Player.save()
-    end
-
+    -- (Descent.pruneStaleFloors ran here, throwing away boards an older generator had laid in the
+    -- company's map book. The map book is retired -- the rift resets every run -- so there is none.)
     local fresh = not (opts.run or gate.player.descentRun)
     -- Kept on the state because gate:build reads it: which stairs the menu may offer depends on whether
     -- this is a new expedition or one already standing on a floor (see the descend rows).
@@ -307,13 +262,7 @@ function gate.enter(self, opts)
     -- onLoss and its climb-out neighbour), so the sentence is said there, in the same shape, under that
     -- screen's own title (states/hub.lua's `notice`).
     --
-    -- WHAT STAYS HERE IS THE HALF THAT OUTLIVES THE MOMENT: the pack, drawn standing in gate.draw off
-    -- Descent.lostPacks. A notice is shown once and a pack keeps costing the player until they go and
-    -- get it, and this is the screen they go and get it FROM.
-    --
-    -- So the band is the stale-floor line's alone now -- which it always shared rather than owned, and
-    -- which is still this screen's business: a rift that re-laid itself is a fact about the stair.
-    gate.notice = staleNotice
+    gate.notice = nil
     require("models.sound").music("music.menu")
     require("ui.screen_fx").reset()
     gate:build()
@@ -410,48 +359,14 @@ function gate.draw()
     Theme.set(Theme.accentAmber)
     love.graphics.printf((p.gold or 0) .. " gold", Scale.WIDTH / 2 + 40, 178, 300, "right")
 
-    -- ...and the other half of the ledger, which is the map rather than the tally.
-    --
-    -- The count meter stood here and is parked with it (Descent.COUNT_PARKED). What belongs at the mouth
-    -- of the stair now is how much of it this company has drawn -- the same figure the city's plate
-    -- carries, said where the decision it informs is actually taken (see the descend rows in build).
-    local mapped = Descent.mapped(p)
-    if mapped > 0 then
+    -- ...and the other half of the ledger: how deep this company has ever been. The rift resets every
+    -- run, so this is a record to beat rather than a stair to walk in by.
+    local deepest = Descent.deepest(p)
+    if deepest > 0 then
         love.graphics.setFont(Theme.body(13))
         Theme.set(Theme.muted)
-        love.graphics.printf("Mapped to floor " .. mapped .. " of " .. Descent.FLOORS,
+        love.graphics.printf("Deepest: floor " .. deepest .. " of " .. Descent.FLOORS,
             Scale.WIDTH / 2 + 40, 250, 300, "right")
-        love.graphics.setColor(1, 1, 1)
-    end
-
-    -- WHAT IS STILL LYING DOWN THERE, and it stands on this screen rather than only in the rout's
-    -- notice, because the notice is shown once and a pack outlives the session that dropped it. A
-    -- player who quits after a bad night and comes back tomorrow has to be able to find out where their
-    -- gear is without dying again to be told.
-    --
-    -- IN THE WARNING COLOUR, not the muted one: this is the only thing on the screen that is costing
-    -- the player something right now (ui/theme.lua's accentWeapon, the hostile/attention family).
-    local packs = Descent.lostPacks(p)
-    if #packs > 0 then
-        local line
-        -- A CARRIER (Descent.seatCarrier) holds it now, and says who is waiting with it -- a stranded
-        -- hire is the other half of what this screen has to tell a company. TWO SHORT LINES rather than
-        -- one long one: right-aligned in this column, a long line runs back into the expedition plates.
-        local n, hires, floors, held = 0, 0, {}, false
-        for i, pk in ipairs(packs) do
-            n, hires, floors[i] = n + pk.count, hires + (pk.hires or 0), pk.floor
-            held = held or pk.carrier == true
-        end
-        if #packs == 1 then
-            line = "Your pack " .. (held and "is held" or "lies") .. " on floor " .. floors[1]
-        else
-            line = "Your packs " .. (held and "are held" or "lie") .. " on floors " .. table.concat(floors, ", ")
-        end
-        line = line .. "\n" .. n .. (n == 1 and " piece" or " pieces")
-        if hires > 0 then line = line .. (hires == 1 and ", 1 hire" or (", " .. hires .. " hires")) end
-        love.graphics.setFont(Theme.body(13))
-        Theme.set(Theme.accentWeapon)
-        love.graphics.printf(line, Scale.WIDTH / 2 + 40, 274, 300, "right")
         love.graphics.setColor(1, 1, 1)
     end
 

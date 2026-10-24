@@ -138,7 +138,7 @@ return {
         -- Anchored between the fork's own condition and the comment that opens the wipe branch below it,
         -- rather than on a closing `end` -- the fork contains nested blocks, so the first `end` after it
         -- belongs to one of them and would cut the capture short of everything worth checking.
-        local fork = src:match("%.routed then(.-)A DESCENT WIPE LEAVES")
+        local fork = src:match("%.routed then(.-)A DESCENT WIPE ENDS THE RUN")
         assert(fork, "the rout fork is gone from onLoss, no longer opens on `battle.routed`, "
             .. "or no longer sits above the wipe branch")
 
@@ -155,7 +155,7 @@ return {
         end
         -- ...and it must NOT do the wipe's work. A rout that dropped the pack or cut the haul would be
         -- charging the failure twice, which is the one thing this exit exists not to do.
-        for _, call in ipairs({ "dropPack", "seatCarrier", "takeAtRisk", "loseHaul", "wipeRun",
+        for _, call in ipairs({ "dropPack", "Descent%.wipe", "takeAtRisk", "loseHaul", "wipeRun",
                                "State%.switch" }) do
             assert(not fork:find(call), "the rout exit charges the wipe's price: " .. call:gsub("%%", ""))
         end

@@ -129,15 +129,21 @@ The codebase is organized into layers loaded via `require()`. See
   `models/descent.lua`): one rift of **15 floors** — seven circles of two, plus the Crown under them —
   fought a floor at a time, with the Gate at the edge of the city as its only door.
 
-  **It is a PLACE, not a roll, and that is the load-bearing fact.** A floor's ground is dealt from the
-  save's own seed and the depth alone, so floor three is the same floor three for the life of a
-  playthrough; the boards a company has walked are kept whole on the player (`Descent.keepFloor` →
-  `player.floors`) with their fog lifted, their caches spent and their found secret doors still found.
-  The monsters re-arm and the places do not (`Descent.rearmFloor`) — Wizardry's own split, which that
-  function's header argues in full. A stair whose guard fell stays open, so a company **re-enters at the
-  deepest floor it has mapped** (`Descent.entryFloor`) rather than re-walking cleared ground.
+  **The rift resets every run (2026-10-24).** Every descent starts at floor 1 on freshly generated
+  ground: `Seed.run` folds `runsStarted` into the lap seed, and a floor's board is (run seed, depth).
+  Within a run a floor the company walked is kept on the run (`Descent.keepFloor` → `run.floors`, saved
+  with `descentRun`), so "Up to floor N-1" finds it as it was left; nothing is kept between runs. A floor
+  keeps its **identity by depth** -- its circle, biome, stair guardian, named elite and companion posting
+  -- and only the layout changes (the elites are re-dealt off the lap seed and the depth,
+  `Descent.eliteSeed`; the circle order still shuffles per run once the Crown has fallen). A floor
+  crossing is **about 4 fights** -- the stair, one or two elites, and what the prowl deals
+  (`Descent.prowlSteps`, 28 steps on floor 1 to 52 at the bottom) -- about 60 a run, measured with
+  `. floor-fights` (`tools/floor_fights.lua`; the table is in `Descent.FLOOR_FIGHTS`'s header). Climbing
+  out from any floor ends the run and banks the haul; relics are lost (`Relic.endTrip`). (The rift was
+  one persistent place with a map book on the player, `player.floors`, from 2026-09-17 to 2026-10-24;
+  an old save's field is ignored on load.)
 
-  So a trip is not a run: you go down, attrit, and come back up to the **Ward** to rest an injury off
+  Between runs you come back up to the **Ward** to rest an injury off
   (in descents, free) or buy it off (40g), and to the **Touchstone** to have what you found named. An
   injury is one of **seven named kinds**, dealt off the save's own seed when a body is carried out -- a
   sealed share of a pool, a broken leg, a torn shoulder, a rattled head -- and they STACK, floored per
@@ -171,17 +177,14 @@ The codebase is organized into layers loaded via `require()`. See
   finds: *a stair that could reach into somebody's hand for their sword would be a robbery rather than
   a price*. `tests/pack_spec.lua` holds both halves.
 
-  **A wipe costs three things (2026-10-23).** *A fall is a fall:* every body knocked out is injured,
-  win, rout or wipe, through `game:inflictInjuries`. *What killed you carries your haul:* the trip's
-  finds (`Player.takeAtRisk`'s diff against the company as it walked in) go to a **carrier** —
-  the cast that beat them, seated on the fall tile as an elite at the floor's level
-  (`Descent.seatCarrier`), standing until killed (rearm and the elite reseat skip it); killing it hands
-  the haul back (`Descent.takeCarrier`, sealed stays sealed), and a second wipe on the floor merges into
-  it and raises it a level. *Hires stay down:* a hired body is stranded with it (`player.stranded`,
-  `Descent.strand`), out of the Gate's pool, and gone after `Descent.STRAND_TRIPS` trips
-  (`Descent.expireStranded`, read off the one clock `Descent.strandClock`). Nothing the company owned
-  when it walked in is taken. `Descent.lostPacks` derives the readout by walking the boards, so there is
-  no second ledger to go stale.
+  **A wipe ends the run and costs three things (2026-10-24, `Descent.wipe`).** *A fall is a fall:* every
+  body knocked out is injured, win, rout or wipe, through `game:inflictInjuries` -- the avatar, Rowan,
+  Xin and the companions come home injured. *The haul is lost:* the trip's finds (`Player.takeAtRisk`'s
+  diff against the company as it walked in) are gone outright; nothing the company owned when it walked
+  in is taken. *Hires who fell die:* every hire in the expedition leaves the roster for good
+  (`Hire.dismiss` -- the company's gear on the body goes back to the stash), and the city's rout notice
+  names them. A wipe still counts as a trip (`Gate.homecoming`). (The carrier that held the haul on the
+  fall tile and the stranded hires lasted one day, 2026-10-23, and went with the persistent rift.)
 
   **PEOPLE ARE BACK IN TRAFFIC, AS ADVENTURING PARTIES** (`models/adventurers.lua`, 2026-10-09). The
   2026-09-22 deletion of human companies stands for what it named -- a company met by a company stalls --
@@ -262,7 +265,8 @@ The codebase is organized into layers loaded via `require()`. See
   **ONE LADDER, ONE FIELD, ONE RUNG PER FLOOR.** `unlockLevel` runs `0..Class.CLASS_LEVEL_CAP`, the cap
   is **15 — the floor count** (`Descent.FLOORS`), and a rung costs a floor and a quarter of
   committed play (`Class.CLASS_LEVEL_STEP = 50`, linear -- a floor measures 39.7, and the quarter on
-  top is what a floor you can walk AGAIN costs). So the class level that buys a piece and the floor
+  top is what a floor you can walk AGAIN costs; measured at ten fights a floor, before the
+  2026-10-24 reset cut a floor to about four -- not re-cut yet). So the class level that buys a piece and the floor
   the rift gives it up at are the same number, which is what `tools/drop_tier.lua` always claimed and could not
   deliver while the cap was 8 against fifteen floors. It WAS two fields -- `unlockQuests` (a grade rank
   named for the retired quest board) and `dropTier` (a depth counting from 1) -- with 231 blueprints

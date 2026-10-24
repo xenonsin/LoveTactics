@@ -183,8 +183,7 @@ end
 --
 -- Nothing is lost by removing it. The stair is always reachable, the board autosaves on every step
 -- (saveRun), so quitting the APP mid-floor resumes where it stood, and a company that cannot win still
--- has the wipe -- which now ends in the city with the levels, the mapped floors and the bound relics
--- intact. There is no way to strand a run in here, only ways to pay for one.
+-- has the wipe -- which ends in the city with the levels and the kit intact and the haul lost. There is no way to strand a run in here, only ways to pay for one.
 local function backVisible()
     return not game.tutorial and not game.scripted and not game.descent
 end
@@ -244,7 +243,7 @@ end
 -- toll spends (game:payToll's Player.takeAtRisk), so the number quoted in the prompt and the number
 -- actually handed over cannot drift apart.
 -- THE CEILING IS BACK TOO (Descent.CARRY_MAX), and for the reason the paragraph above gives in reverse:
--- the wipe takes the haul again (Descent.dropPack), so the stake the mule's ceiling existed to bound
+-- the wipe takes the haul again (Descent.wipe, lost outright), so the stake the mule's ceiling existed to bound
 -- exists once more. Both halves live in models/descent.lua now rather than here -- the count so a spec
 -- can reach it, and the cap beside it so the two cannot drift.
 -- THIS WAS ONE FUNCTION AND IS NOW A NAME FOR ONE OF TWO. It fed the toll, the gate readout, the HUD
@@ -524,7 +523,7 @@ end
 -- `outcome` is how it ended -- passed rather than inferred, because only the caller knows whether the
 -- stair was taken as a victory or a defeat. It was "won", "wiped" or "left"; "left" is gone with the
 -- Back button that produced it (see backVisible), and a wipe does not come through here at all any
--- more -- it wakes the company in the city with the run closed and the map book kept (onLoss). So the
+-- more -- it wakes the company in the city with the run closed (onLoss). So the
 -- one caller left is the
 -- Hollow Crown, and this is the function that closes a FINISHED descent.
 --
@@ -626,8 +625,7 @@ function game:stairGate()
             if enc then
                 if enc.wardFor then
                     wardDown = cell.cleared == true
-                elseif (enc.kind == "combat" or enc.kind == "elite") and not enc.carrier then
-                    -- (A carrier is not the floor's: it is the company's own loss standing there.)
+                elseif enc.kind == "combat" or enc.kind == "elite" then
                     total = total + 1
                     if cell.cleared then cleared = cleared + 1 end
                 end
@@ -869,8 +867,8 @@ function game:applyVision()
     -- prevent.
     --
     -- FOUND IS FOUND, AND IT STAYS FOUND. The mark rides in the cell and therefore in the kept board
-    -- (Descent.keepFloor), so a trap the company mapped on one trip is still marked on the next even if
-    -- the charm has since been sold. That is the same promise a found secret door carries, and it is
+    -- (Descent.keepFloor, on the run), so a trap the company mapped is still marked when it walks back
+    -- over the floor within the run, even if the charm has since been sold. That is the same promise a found secret door carries, and it is
     -- most of what makes the charm worth its grid cell: it is buying MAP, not a permanent sense.
     --
     -- A FOUND TRAP IS NEVER SPRUNG BY WALKING ON IT (ui/overworld_map.lua's arrive), so the reveal is
@@ -1054,10 +1052,9 @@ function game:openLanding(cell)
     -- The tokens are still GRANTED here rather than on that screen -- the panel only ever displays, which
     -- is the rule that keeps a preview from becoming a second payout (see game:previewObjectiveReward).
     --
-    -- ...AND A RELIC SLATE, ON A STAIR BEATEN FOR THE FIRST TIME (2026-10-24, models/relic.lua). Asked
-    -- of the company's map book, which still holds this floor as it was before this fight: a kept board
-    -- already carrying an open stair means this guard was beaten on an earlier trip. Dealt onto the
-    -- trip's state before it is shown, so a quit with the cards up comes back to the same three.
+    -- ...AND A RELIC SLATE, ON A STAIR BEATEN FOR THE FIRST TIME THIS RUN (models/relic.lua, marked on
+    -- the run's relic state). Dealt onto the trip's state before it is shown, so a quit with the cards up
+    -- comes back to the same three.
     if Relic.offerStair(game.relicState, game.player, Descent.depth(run),
             { depth = game.depth, sin = beaten and beaten.id }) then
         game:openRelicOffer()
@@ -1452,8 +1449,8 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
     -- here, not once when the floor is laid.
     --
     -- SET ABOVE THE BRANCH, ON PURPOSE. Only one of the four routes below actually generates a board --
-    -- the other three resume a run, re-enter a floor out of the map book, or lay an authored map -- and
-    -- a floor re-entered from the book is exactly the floor that MOST needs this: its seated fights are
+    -- the other three resume a run, re-enter a floor the run has kept, or lay an authored map -- and
+    -- a floor re-entered from the run's boards is exactly the floor that MOST needs this: its seated fights are
     -- re-armed (Descent.rearmFloor) but its ordinary combat was never seated at all, so a pool hung off
     -- the generate branch would leave every walked-back floor silently quiet. That is the shape of bug
     -- Descent.FLOOR_FEATURE_KEYS exists to prevent, one layer up.
@@ -1510,19 +1507,14 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
                 end
             end
         end
-    elseif game.descent and Descent.floorBoard(game.player, Descent.depth(game.descent)) then
-        -- A FLOOR THIS COMPANY HAS ALREADY WALKED. Wizardry's levels are the same maze every time, which
-        -- is the entire reason mapping one is worth doing -- a secret door found on the third trip is
-        -- something you found rather than something that was rolled. So a descent keeps its boards
-        -- (Descent.keepFloor) and re-enters the one it made, fog and cleared stops and all, rather than
-        -- rolling a new one over the top of the player's own map.
-        game.grid = Overworld.fromSnapshot(Descent.floorBoard(game.player, Descent.depth(game.descent)))
-        -- ...and its inhabitants are back. The maze is permanent and the monsters are not
-        -- (Descent.rearmFloor) -- so a floor you finished is not an empty corridor next time, and the
-        -- walk back down to a dropped pack costs what walking down cost the first time.
-        Descent.rearmFloor(game.grid, Relic.tripOf(game.player)) -- ...the trip lights the relic stops
-        -- ...and its elites are dealt again, onto new places (Descent.reseatElites). Only here: a resumed
-        -- trip brings its own board above, so an elite cleared this trip stays cleared until the next.
+    elseif game.descent and Descent.floorBoard(game.descent, Descent.depth(game.descent)) then
+        -- A FLOOR THIS RUN HAS ALREADY WALKED -- up the stair and back down, inside one run. The run keeps
+        -- its boards (Descent.keepFloor) and re-enters the one it made, fog and cleared stops and all; the
+        -- next run walks fresh ground (the rift resets every run, models/seed.lua's Seed.run).
+        game.grid = Overworld.fromSnapshot(Descent.floorBoard(game.descent, Descent.depth(game.descent)))
+        -- ...and its inhabitants are back (Descent.rearmFloor), its elites dealt again by depth
+        -- (Descent.reseatElites).
+        Descent.rearmFloor(game.grid)
         Descent.reseatElites(game.grid, game.floorPool, game.descent, game.player)
     elseif mp.layout then
         game.grid = Overworld.fromLayout({
@@ -1615,6 +1607,9 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
         -- them. One call, one list, and the same one tools/board_report and tools/board_render use.
         Descent.applyFloorFeatures(params, mp)
         game.grid = Overworld.generate(params)
+        -- A FLOOR'S ELITES ARE ITS IDENTITY, dealt by depth rather than by this run's ground
+        -- (Descent.reseatElites): the same standing threats every run, on new places.
+        if game.descent then Descent.reseatElites(game.grid, game.floorPool, game.descent, game.player) end
     end
     game.activePanel = nil
     game.complete = false
@@ -1626,7 +1621,7 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
     -- mid-fight without clearing it comes back INTO that fight, on whatever floor is entered next.
     --
     -- There were seven ways out of a fight and six of them cleared it. The seventh was the WIPE: the
-    -- party is routed, the haul drops, the floor goes in the map book and the state switches to the town
+    -- party is routed, the haul is lost, the run closes and the state switches to the town
     -- -- with `game.battle` still pointing at the battle just lost. Walking back down the stair then put
     -- the company straight back into the arena they had just been beaten in. That is the shape a
     -- failure route always fails in: the losing path is the one nobody walks while building the winning
@@ -2137,14 +2132,9 @@ function game:cellMuster(cell)
         if enc and enc.kind == "pack" and enc.composition then
             def = { kind = "pack", composition = enc.composition }
         end
-        -- ...and a CARRIER the same way, for the same reason: its cast is on the cell (Descent.seatCarrier).
-        if Descent.isCarrier(enc) and enc.composition then
-            def = { kind = "elite", composition = enc.composition, enemyCap = enc.enemyCap }
-        end
         cached = def and Muster.encounter(def, {
             depth = game.depth,
-            -- Plus whatever a carrier has grown by (Descent.fightLevel); the floor's own level otherwise.
-            enemyLevel = Descent.fightLevel(game.quest and game.quest.dangerLevel, enc),
+            enemyLevel = game.quest and game.quest.dangerLevel,
             quest = game.quest,
             floorLevel = game.quest and game.quest.floorLevel,
             -- ...and what the fight is HOLDING, for the same reason the pack is rated off the cell: a
@@ -2562,7 +2552,7 @@ function game:openEncounter(cell, opts)
                 --
                 -- THE CEILING IS BACK (Descent.CARRY_MAX). It was deleted with the mule on the grounds
                 -- that "the wipe takes nothing now, so the ceiling was guarding a stake that no longer
-                -- exists" -- and the wipe takes the haul again (Descent.dropPack), so the stake is back
+                -- exists" -- and the wipe takes the haul again (Descent.wipe), so the stake is back
                 -- and the bag has a bottom again.
                 --
                 -- ASKED FRESH PER PIECE rather than counted down from one reading. Descent.carryRoom
@@ -2691,36 +2681,6 @@ function game:openEncounter(cell, opts)
             if game.player then Player.save() end
         end
 
-        -- THE PILE, HANDED BACK. Whatever was standing over the company's own dropped kit is down, so
-        -- the kit is theirs again -- into the STASH, where every other find on this floor lands, rather
-        -- than back into the grids it came out of. Which body carries what is a decision, and the
-        -- Loadout is where decisions are taken.
-        --
-        -- ITS OWN SEAM, beside grantSideSpoils and for the same reason that one is one: a pack fight can
-        -- be PLAYED or WALKED OFF (Muster.WALK_OVER), and a walk-off that resolved the guard without
-        -- handing the bag over would leave the player standing on a cleared tile with their kit still
-        -- on it. Both paths call this; there is no second copy to forget.
-        --
-        -- The salvage, the experience and the thin chance of a crossing token are paid by grantSideSpoils
-        -- like any other won fight: beating somebody for your own bag back is still beating somebody.
-        -- WHAT IT IS NOW: THE CARRIER (models/descent.lua's Descent.seatCarrier). The fight that wiped
-        -- the company stands on the tile holding the trip's haul and any hire left with it; this is where
-        -- killing it hands both back. The haul goes through Player.stow (into the bag underground) and
-        -- the hires come back off the stranded list into the roster's usable pool. The tile itself is
-        -- lifted by retireRolledFight below, after the grant, for the reason that function gives.
-        local function takeGuardedPack()
-            if not (game.descent and Descent.isCarrier(cell.encounter)) then return end
-            local items, freed = Descent.takeCarrier(game.player, Descent.depth(game.descent), cell)
-            for _, item in ipairs(items or {}) do Player.stow(game.player, item) end
-            if items and #items > 0 then
-                game:pushToast(#items == 1 and "Your pack: 1 piece recovered"
-                    or ("Your pack: " .. #items .. " pieces recovered"))
-            end
-            for _, char in ipairs(freed or {}) do
-                game:pushToast((char.name or "Someone") .. " is back with the company")
-            end
-        end
-
         -- A ROLLED FIGHT IS NOT A PLACE, so once it is over the tile goes back to being bare ground.
         --
         -- Every SEATED stop resolves by staying put and going dim (`cell.cleared`), because its marker is
@@ -2739,11 +2699,7 @@ function game:openEncounter(cell, opts)
         -- The flee path has always done exactly this, for exactly this reason (see onFlee below). The two
         -- winning paths -- fought and walked off -- simply never learned it.
         local function retireRolledFight()
-            -- ...and a DEAD carrier (spent by takeGuardedPack), which is not a place either: it stood there
-            -- because the company fell there, and once it has handed the haul back the tile is ground
-            -- again. A live one fled from stays exactly where it is.
-            if cell.encounter and (cell.encounter.wandering
-                    or (Descent.isCarrier(cell.encounter) and cell.encounter.spent)) then
+            if cell.encounter and cell.encounter.wandering then
                 cell.encounter, cell.cleared = nil, nil
             end
         end
@@ -2843,10 +2799,7 @@ function game:openEncounter(cell, opts)
             generalsStanding = Descent.generalsStanding(game.player),
             -- What the defeat panel's button is called, and it has to name what the button DOES. It said
             -- "End the Run", which was accurate when a wipe ended everything and is now the one thing a
-            -- wipe does not do: onLoss below drops the pack and wakes the company in the CITY with their
-            -- levels, their mapped floors and the stair to floor N still standing. A player reads this
-            -- line at the worst moment of a run, and it was telling them they had lost fifteen floors
-            -- they had not lost.
+            -- wipe does not do: onLoss below wakes the company in the CITY with their levels and kit.
             --
             -- ...AND IT NAMES THE CITY BECAUSE THAT IS WHERE THEY WAKE. It read "Wake at the Gate" for
             -- as long as a rout put the company at the mouth of the stair; both exits come home to the
@@ -2921,8 +2874,7 @@ function game:openEncounter(cell, opts)
             -- ...and the level the world down here fights at, when the mode keeps a clock of its own. A
             -- descent hardens on DEPTH rather than on the calendar (Descent.dangerLevel); absent it,
             -- states/battle.lua falls back to the day, which is the campaign's answer and unchanged.
-            -- A carrier stands a level higher per further wipe on its floor (Descent.fightLevel).
-            enemyLevel = Descent.fightLevel(game.quest and game.quest.dangerLevel, cell.encounter),
+            enemyLevel = game.quest and game.quest.dangerLevel,
             -- WHO WALKED DOWN THE STAIR, which underground is four and not the roster (Descent.party).
             -- The expedition is picked at the Gate and fixed for the run, so the deployment phase has
             -- nothing left to choose: it places the four it is given, and only their ARRANGEMENT is
@@ -3375,9 +3327,6 @@ function game:openEncounter(cell, opts)
                         playEpilogue()
                     end
                 else
-                    -- Ahead of the salvage below because it is the thing this fight was FOR, and the
-                    -- toasts should say so in that order.
-                    takeGuardedPack()
                     -- A combat/elite win: grant the spoils the battle summary just revealed, then
                     -- resume THIS overworld. See grantSideSpoils -- the walk-off path pays through the
                     -- very same call, so a fight is worth the same whether it was played or skipped.
@@ -3427,10 +3376,8 @@ function game:openEncounter(cell, opts)
             onLoss = (not game.tutorial) and function()
                 -- THE STAIR IS GIVEN BACK BEFORE ANYTHING ELSE HAPPENS, and it has to be here rather
                 -- than only on the winning side. The breach turns the way-up tile into a fight for the
-                -- length of that fight (see the ascent branch); losing it snapshots the floor into the
-                -- company's map book a dozen lines below, and a tile stored as a spent breach would come
-                -- back on the recovery dive as an encounter with no stair behind it -- a floor with no
-                -- way out, written by the one path that was always going to run.
+                -- length of that fight (see the ascent branch); a rout puts the company back on this
+                -- board, and a tile left as a spent breach would be a floor with no way out.
                 --
                 -- The tally is untouched by this. It is still full, so walking back onto the tile asks
                 -- the same question again, which is correct: what changed is not the rift, it is that
@@ -3507,27 +3454,20 @@ function game:openEncounter(cell, opts)
                     return
                 end
 
-                -- A DESCENT WIPE LEAVES THE COMPANY WHERE IT FELL, and does not end the descent.
+                -- A DESCENT WIPE ENDS THE RUN (2026-10-24). What it costs, in the order this branch
+                -- charges it:
                 --
-                -- WHAT A WIPE COSTS (the author, 2026-10-23), in the order this branch charges it:
+                --   1. A FALL IS A FALL. Every body the fight knocked down is injured, through the same
+                --      seam a rout uses (game:inflictInjuries reads states/battle.lua's `fallen`, which a
+                --      wipe fills with the whole company).
+                --   2. THE HAUL IS LOST. The trip's finds (Player.takeAtRisk -- nothing the company
+                --      walked in with) are gone: the rift resets every run, so there is no floor for them
+                --      to wait on (Descent.wipe).
+                --   3. THE HIRES WHO FELL ARE DEAD. Every hired stranger in the expedition leaves the
+                --      roster for good; the company's gear on them goes back to the stash (Descent.wipe).
+                --      The named cast comes home injured.
                 --
-                --   1. A FALL IS A FALL. Every body the fight knocked down is injured, exactly as a rout
-                --      injures its spent bodies and through the same seam (game:inflictInjuries reads
-                --      states/battle.lua's `fallen`, which a wipe fills with the whole company). This
-                --      branch used to deal none, on the reading that wounding a beaten company is a price
-                --      on losing; the author reversed that -- a body that went down is hurt however the
-                --      fight came out.
-                --   2. WHAT KILLED YOU CARRIES YOUR HAUL. The trip's finds (Player.takeAtRisk -- nothing
-                --      the company walked in with) go to a CARRIER: the cast that beat them, seated on the
-                --      tile they fell on as an elite, at the floor's own level (Descent.seatCarrier). Kill
-                --      it and the haul comes back with its ordinary spoils. A second wipe on the floor
-                --      merges into it and raises it a level.
-                --   3. HIRED BODIES STAY DOWN. The named cast wakes in the city; a hire is stranded with
-                --      the carrier (Descent.strand) until it dies, or is gone after Descent.STRAND_TRIPS.
-                --
-                -- What it still does NOT take: the kit they marched down with, the gold, the levels and the
-                -- map. Both exits close the run and both come home to the city, so neither is the cheaper
-                -- way out (see the climb-out branch).
+                -- What it does NOT take: the kit they marched down with, the gold and the levels.
                 if game.descent then
                     local floor = Descent.depth(game.descent)
                     -- The tally's two marks. Inert while it is parked (Descent.COUNT_PARKED); left
@@ -3542,61 +3482,27 @@ function game:openEncounter(cell, opts)
                     -- the last one written -- the same ordering the rout keeps above.
                     game:inflictInjuries()
 
-                    -- (2, 3) WHO STOOD AGAINST THEM, AND WHICH OF THEM WERE HIRED, read off the fight
-                    -- before it is let go: the arena's opening enemies are the carrier's cast (a rolled
-                    -- wanderer and an objective fight seat the same way -- a plain kill-all of exactly
-                    -- the bodies that were there), and the expedition's hires are who stays down.
-                    local foes, hires = {}, {}
-                    local lostTo = require("states.battle").arena
-                    for i, u in ipairs((lostTo and lostTo.enemies) or {}) do foes[i] = u.id end
-                    for _, char in ipairs(Descent.party(game.descent, game.player)) do
-                        if require("models.hire").isHire(char) then hires[#hires + 1] = char.id end
-                    end
-                    -- The fight's own name when it was a fight; a stair re-written over a lost breach
-                    -- (the top of onLoss) is not what killed them, so it lends none.
-                    local wiper = cell.encounter
-                    local wiperNamed = EncounterModel.opensBattle(wiper)
-
                     -- The fight is over -- lost, but over. Every way out of a battle says so, or walking
                     -- back down the stair would drop the company into the arena they were routed in.
                     game.endFight()
 
-                    if game.grid and game.descent then
-                        -- THE MAP SURVIVES: the ground a company drew is not a thing it was carrying.
-                        Descent.keepFloor(game.player, floor, game.grid:snapshot())
+                    -- (2, 3) The haul, and the hires. Read off the run before it is let go.
+                    game.player.pendingDead = Descent.wipe(game.player, game.descent).dead
 
-                        -- (2) ...AND THE CARRIER STANDS ON IT. After keepFloor, because the carrier is
-                        -- written into the kept board's own cell. On the party's tile -- where the fight
-                        -- that killed them began -- or the nearest open place if that tile is a stair.
-                        local haul = Player.takeAtRisk(game.player, game.descent.entry)
-                        if game.map then
-                            Descent.seatCarrier(game.player, floor, game.map.px, game.map.py, {
-                                items = haul,
-                                composition = foes,
-                                name = wiperNamed and wiper.name or nil,
-                                tier = wiperNamed and wiper.tier or nil,
-                                hires = hires,
-                            })
-                        end
-                    end
-
-                    -- What is left in the bag is what they packed at the Gate, and that comes home:
-                    -- takeAtRisk above has already lifted every find onto the carrier.
+                    -- What is left in the bag is what they packed at the Gate, and that comes home.
                     Player.unpack(game.player)
 
                     -- (counted trips, 2026-10-23) A WIPE ALWAYS COUNTS AS A TRIP (Gate.homecoming).
                     require("models.gate").homecoming(game.player, game.descent, true)
 
-                    -- THE RUN CLOSES ON A WIPE TOO, as on the climb-out; the map book is the player's.
+                    -- THE RUN CLOSES ON A WIPE, as on the climb-out; the next descent starts at floor one.
                     Relic.endTrip(game.descent, game.player) -- relics stay below (models/relic.lua)
                     game.player.descentRun = nil
                     game.descent = nil
 
-                    -- WHERE A ROUTED COMPANY WAKES: THE CITY, the same place the stair puts them --
-                    -- the Ward, the Touchstone and the shelves are what a beaten company needs. The
-                    -- city says the rout once (`pendingRout`, read by states/hub.lua's enter); the Gate
-                    -- carries where the carrier stands, every visit (Descent.lostPacks). In-memory, not
-                    -- saved: written and read with only a state switch between.
+                    -- WHERE A ROUTED COMPANY WAKES: THE CITY, the same place the stair puts them. The
+                    -- city says the rout once (`pendingRout` and `pendingDead`, read by states/hub.lua's
+                    -- enter). In-memory, not saved: written and read with only a state switch between.
                     game.player.pendingRout = floor
 
                     Player.save()
@@ -3646,7 +3552,7 @@ function game:openEncounter(cell, opts)
                 floorLevel = game.quest and game.quest.floorLevel or nil,
                 -- Threaded here as well as onto the played path, for the reason `generalsStanding`
                 -- above is: the walk-off must settle the fight that was standing on the tile.
-                enemyLevel = Descent.fightLevel(game.quest and game.quest.dangerLevel, cell.encounter),
+                enemyLevel = game.quest and game.quest.dangerLevel,
                 party = game.player and game.player.roster or {},
             })
             local combat = built.combat
@@ -3744,9 +3650,6 @@ function game:openEncounter(cell, opts)
                 encounter = cell.encounter,
                 actions = { { label = "Continue", onSelect = function()
                     game.activePanel = nil
-                    -- ...and the bag, if what was walked off was standing on one. Same seam the played
-                    -- path takes, so a pack recovered either way is recovered identically.
-                    takeGuardedPack()
                     grantSideSpoils(spoils)
                     -- ...and a wanderer walked off leaves no more of a mark than one fought does.
                     retireRolledFight()
@@ -3868,9 +3771,8 @@ function game:openEncounter(cell, opts)
         -- the other two evaporate -- the game eating a reward in front of the player. Refusing it whole
         -- leaves the lid shut.
         --
-        -- AND THE CELL IS LEFT UNCLEARED, so the chest is still standing there. That is the good half of
-        -- this rule under a dungeon the company keeps: a cache you could not carry is a reason to come
-        -- back down, and the map remembers where it is (Descent.keepFloor).
+        -- AND THE CELL IS LEFT UNCLEARED, so the chest is still standing there -- for the rest of this
+        -- run (Descent.keepFloor keeps the board on the run).
         if #loot + #sealed > carryRoom() then
             game:pushToast("The chest stays shut -- there is no room to carry what is in it")
             return
@@ -4648,7 +4550,7 @@ function game:openEncounter(cell, opts)
         -- `enc.composition` beats a blueprint's, models/encounter_battle.lua) and re-dispatched through
         -- the ordinary fight path, so the deployment, the spoils, the injuries and -- the one that
         -- matters -- the WIPE all behave exactly as they do everywhere else. Losing the breach is a
-        -- wipe: the company wakes in the city with its levels and its map book intact, which is what
+        -- wipe: the company wakes in the city with its levels and kit intact, which is what
         -- makes this a state to fight out of rather than a game over.
         --
         -- THE ONLY THING SPECIAL-CASED IS THE WIN, and it is handled where every other win is
@@ -4702,11 +4604,8 @@ function game:openEncounter(cell, opts)
 
         -- UP ONE FLOOR, and only where there is one to go up to.
         --
-        -- A descent had one direction, and this tile's only offer was to end the expedition -- so a
-        -- company that wanted to walk back to a pack it dropped two floors above had to climb out of the
-        -- rift and re-descend from the top. The floors are kept precisely so they can be walked again
-        -- (Descent.keepFloor): the map is still there, and the only thing missing was the door back to
-        -- it.
+        -- Within the run, the floors above are kept (Descent.keepFloor, on the run), so the company can
+        -- walk back up to one and find it as it was left.
         --
         -- BUILT AS A LIST rather than written inline as `depth > 1 and {...} or nil`, which is a trap
         -- Lua sets in exactly this shape: a nil first element leaves a hole at index 1 and `ipairs` --
@@ -4720,10 +4619,9 @@ function game:openEncounter(cell, opts)
                 accent = { 0.72, 0.78, 0.86 },
                 cb = function()
                     game.activePanel = nil
-                    -- This floor goes in the map book before the company steps off it, exactly as every
-                    -- other way off a floor does -- or the walk back down rolls a new one over the map
-                    -- the player made.
-                    Descent.keepFloor(game.player, depth, game.grid:snapshot())
+                    -- This floor is kept on the run before the company steps off it, or the walk back
+                    -- down rolls a new one over the map the player made.
+                    Descent.keepFloor(run, depth, game.grid:snapshot())
                     Descent.retreat(run, game.player)
                     Player.save()
                     State.switch(require("states.game"),
@@ -4734,15 +4632,10 @@ function game:openEncounter(cell, opts)
 
         upOptions[#upOptions + 1] = {
             label = "Climb out",
-            -- NAMES WHERE THE COMPANY COMES OUT, because that is the whole of what this option is
-            -- for and the player is choosing it to go somewhere. It said "the rift closes behind
-            -- them -- the next way down is a new one, from the top", which was the extraction rule
-            -- of an older mode and is now false twice over: the floor goes in the book on the way
-            -- out (Descent.keepFloor) and the stair the company mapped is the one it walks back in
-            -- by (Descent.entryFloor). The prompt under the two cards has said "the stair stays
-            -- open behind them" the whole time, so the card and the prompt were arguing.
+            -- NAMES WHERE THE COMPANY COMES OUT, and what it costs: the run ends, the haul is banked,
+            -- and the next descent starts at floor one on new ground (the rift resets every run).
             desc = "The expedition ends here. The company walks up into the city, keeping everything " ..
-                "it is carrying -- and the stair stays open behind them.",
+                "it is carrying. The next descent starts at floor 1.",
             accent = { 0.72, 0.78, 0.86 },
             cb = function()
                 game.activePanel = nil
@@ -4762,17 +4655,9 @@ function game:openEncounter(cell, opts)
                 -- whole of the bank: the floors below can no longer reach anything the company
                 -- climbed out with.
                 --
-                -- ...AND THE RIFT DOES NOT CLOSE BEHIND THEM. This paragraph read the other way for
-                -- a long time -- "leaving banks everything and throws the DUNGEON away, next
-                -- descent is a fresh stack from floor one" -- and that extraction rule is gone. The
-                -- rift is a PLACE: the floor goes in the book on the way out (Descent.keepFloor
-                -- below), the boards the company walked are kept with their fog lifted and their
-                -- caches spent, only the monsters re-arm (Descent.rearmFloor), and the company
-                -- walks back in at the deepest stair it has mapped (Descent.entryFloor). Wizardry's
-                -- own answer, and docs/the-count.md holds the argument for it.
-                --
-                -- So what is thrown away here is the EXPEDITION and nothing else: the open run, and
-                -- the rollback point that made this trip's finds provisional.
+                -- ...AND THE RIFT CLOSES BEHIND THEM (2026-10-24, back after five weeks of a
+                -- persistent rift). The run's boards go with the run, and the next descent is a fresh
+                -- stack from floor one -- same circles, guardians and elites by depth, new ground.
                 --
                 -- WHAT SURVIVES is everything the company IS: gold, gear, the stash, levels,
                 -- completed errands and the shelf rungs they opened, the circles it has sealed,
@@ -4787,17 +4672,6 @@ function game:openEncounter(cell, opts)
                 local entry = Save.snapshot(game.player)
                 if game.player.activeRun then game.player.activeRun.entry = entry end
                 run.entry = entry
-                -- NOTHING IS LEFT LYING ON THE FLOORS to carry out. Piles are deleted along with the
-                -- wipe penalty that made them (models/descent.lua), so a closing rift has no debt to
-                -- hand the company -- what they were carrying is simply still theirs.
-                --
-                -- AND THE FLOOR THEY ARE STANDING ON GOES IN THE BOOK FIRST. Every other way off a
-                -- floor banks it; this one did not have to while the book died with the run, and now
-                -- it is the commonest exit in the game -- so without this the one floor a company
-                -- never keeps is the one it climbed out of (Descent.keepFloor).
-                if game.grid then
-                    Descent.keepFloor(game.player, Descent.depth(run), game.grid:snapshot())
-                end
                 -- (counted trips, 2026-10-23) HOME: the trip counts if it won a fight (Gate.homecoming).
                 require("models.gate").homecoming(game.player, run, false)
                 Relic.endTrip(run, game.player) -- relics stay below (models/relic.lua)
@@ -4857,7 +4731,6 @@ function game:openEncounter(cell, opts)
                 and ("The company is on floor " .. depth .. " carrying " .. carried ..
                      ". Climb out and all of it comes with them.")
                 or ("The company is on floor " .. depth .. " and has found nothing yet.")) ..
-                "\nThe stair stays open behind them." ..
                 -- WHAT DOES NOT COME UP. Relics last one trip (models/relic.lua), and this is the
                 -- card the player reads before leaving them. On the prompt, for the reason above.
                 (Relic.total(game.relicState) == 1 and "\nYour relic stays below."
@@ -4879,9 +4752,8 @@ function game:openEncounter(cell, opts)
     -- the reliquary, the caches, the recruit, a house's errand -- is between the player and this tile
     -- for exactly as long as they want it to be. What the stair asks is the only question left: enough.
     --
-    -- ONE-WAY, and the panel says so rather than implying it. The board is kept on the way through
-    -- (Descent.keepFloor), but nothing walks back UP a floor -- the only route to this ground again is
-    -- climbing out to the gate and coming back down -- so what is left here is left.
+    -- The board is kept on the run on the way through (Descent.keepFloor), so the way up from the floor
+    -- below comes back to it as it was left; the next run walks new ground.
     -- ACT 0's WAY OUT. Straight through -- no panel and no scene: the leg is a tutorial and the city
     -- on the other side is the thing it has been pointing at since the first bubble. The decision the
     -- descent's stair asks ("is this floor finished with") has no counterpart here; there is nothing
@@ -4919,9 +4791,9 @@ function game:openEncounter(cell, opts)
                     accent = { 0.83, 0.73, 0.45 },
                     cb = function()
                         game.activePanel = nil
-                        -- Put this floor away before stepping off it, so a company that climbs out and
-                        -- comes back finds the map it made rather than a fresh roll.
-                        Descent.keepFloor(game.player, depth, game.grid:snapshot())
+                        -- Put this floor away before stepping off it, so a company that walks back up
+                        -- within the run finds the map it made rather than a fresh roll.
+                        Descent.keepFloor(run, depth, game.grid:snapshot())
                         Descent.advance(run, game.player)
                         State.switch(require("states.game"), Descent.floorQuest(run, game.player),
                             nil, game.player)
@@ -5059,7 +4931,7 @@ function game:openEncounter(cell, opts)
                   accent = { 0.86, 0.66, 0.30 },
                   cb = function()
                       game.activePanel = nil
-                      Descent.keepFloor(game.player, Descent.depth(game.descent), game.grid:snapshot())
+                      Descent.keepFloor(game.descent, Descent.depth(game.descent), game.grid:snapshot())
                       Descent.fall(game.descent, game.player)
                       Player.save()
                       State.switch(require("states.game"),
@@ -5074,35 +4946,8 @@ function game:openEncounter(cell, opts)
         return
     end
 
-    -- THE COMPANY'S OWN PACK, picked back up (models/descent.lua's Descent.takePack).
-    --
-    -- This is the far end of the only thing a wipe costs: the trip's haul stays on the tile the party
-    -- fell on, and walking back to it is how you get it. Everything goes to the STASH rather than back
-    -- into the grids it came out of -- a body's loadout is an arrangement the player made and a pile
-    -- dumped back into it would rearrange their work; the stash is where found things land everywhere
-    -- else in the game.
-    --
-    -- A PILE FROM AN OLDER SAVE lands here too and is handled by the same code: one written before the
-    -- pile system was deleted carries no items list, so `taken` comes back empty, the marker clears, and
-    -- nothing is claimed to have been handed over.
-    if kind == "pack" then
-        local taken = Descent.takePack(game.player, Descent.depth(game.descent), cell) or {}
-        -- BACK INTO THE BAG THEY DROPPED IT FROM, through Player.stow. The pile is the trip's finds
-        -- lying where the company fell (Descent.dropPack), so walking back to it is picking the bag up
-        -- -- and it lands against the same ceiling as any other find, which is why a company that comes
-        -- back for a big pile with a full pack has a decision to make on the tile.
-        for _, item in ipairs(taken) do Player.stow(game.player, item) end
-        if #taken > 0 then
-            game:pushToast(#taken == 1 and "Your pack: 1 piece recovered"
-                or ("Your pack: " .. #taken .. " pieces recovered"))
-        end
-        cell.cleared = true
-        cell.encounter = nil
-        Player.save()
-        saveRun()
-        return
-    end
-
+    -- (THE COMPANY'S OWN PACK was picked back up here, off a floor kept between trips. The rift resets
+    -- every run now and a wipe loses the haul outright (Descent.wipe), so no pile is ever seated.)
     game.activePanel = EncounterPanel.new({
         encounter = cell.encounter,
         onResolve = function()
@@ -5794,7 +5639,7 @@ function game.drawHud()
     --
     -- THIS READOUT WAS DELETED AND THE NOTE ABOVE SAYS WHY: "a wipe takes nothing material now, so
     -- every find was already the player's the moment it landed", leaving a count that fed no decision.
-    -- Both halves of that have reversed. A wipe leaves the haul on the floor (Descent.dropPack), so the
+    -- Both halves of that have reversed. A wipe loses the haul (Descent.wipe), so the
     -- number is a stake again; and the bag has a bottom, so it is a LIMIT -- and a limit the player
     -- cannot see is one they meet by having a chest refuse to open.
     --

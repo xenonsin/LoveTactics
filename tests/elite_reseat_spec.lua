@@ -1,5 +1,7 @@
--- Tests for Descent.reseatElites / Overworld:reseatElites: an elite is met once a trip, and a new trip
--- walking back onto a kept floor finds its elites dealt again -- a possibly different set, on new places.
+-- Tests for Descent.reseatElites / Overworld:reseatElites: a floor's elites are dealt off the save's lap
+-- seed and the DEPTH (Descent.eliteSeed, 2026-10-24) -- the same set every run on that floor, whatever the
+-- run's own ground -- and re-dealt by the same seed on a re-entry within the run. (They were dealt off the
+-- trip while the rift kept its boards between trips.)
 --
 -- Built on a bare board through Overworld.fromSnapshot rather than the generator, for gate_spec's reason:
 -- what is under test is where an elite lands, and a rolled board would put its own stops in the answer.
@@ -52,8 +54,9 @@ local function standing(grid)
     return table.concat(out, " "), cells
 end
 
+-- A run on `floor` of a save whose seed is `n`. The run's own seed is fixed: it must not matter.
 local function trip(n, floor)
-    return { seed = 4242, floor = floor or 3 }, { runsStarted = n }
+    return { seed = 4242, floor = floor or 3 }, { seed = n }
 end
 
 return {
@@ -90,7 +93,7 @@ return {
             "a place moved or woke up -- the maze is permanent")
     end },
 
-    { name = "one trip reproduces as itself, and the next trip is a different floor", fn = function()
+    { name = "a floor's elites hold across runs, and differ across saves", fn = function()
         local a1 = kept()
         Descent.reseatElites(a1, POOL, trip(5))
         local a2 = kept()
@@ -98,8 +101,14 @@ return {
         assert(standing(a1) == standing(a2), "one seed dealt two different floors: "
             .. standing(a1) .. " vs " .. standing(a2))
 
-        -- Across a handful of trips, both halves of the claim have to show: somewhere new, and
-        -- potentially somebody new.
+        -- THE RUN'S OWN SEED DOES NOT MOVE THEM: a different run on the same save and floor stands the
+        -- same elites.
+        local r1, r2 = kept(), kept()
+        Descent.reseatElites(r1, POOL, { seed = 1, floor = 3 }, { seed = 5 })
+        Descent.reseatElites(r2, POOL, { seed = 999, floor = 3 }, { seed = 5 })
+        assert(standing(r1) == standing(r2), "a new run re-dealt the floor's elites")
+
+        -- ...while across a handful of SAVES both halves show: somewhere new, and potentially somebody new.
         local layouts, sets = {}, {}
         local nLayouts, nSets = 0, 0
         for t = 1, 8 do
@@ -113,8 +122,8 @@ return {
             local k = table.concat(ids, ",")
             if not sets[k] then sets[k] = true; nSets = nSets + 1 end
         end
-        assert(nLayouts > 1, "eight trips stood the elites in the same places every time")
-        assert(nSets > 1, "eight trips drew the same elites every time from a pool of four")
+        assert(nLayouts > 1, "eight saves stood the elites in the same places every time")
+        assert(nSets > 1, "eight saves drew the same elites every time from a pool of four")
     end },
 
     { name = "on all fifteen real floors the reseat keeps the count, the pool and the depth",
@@ -138,7 +147,7 @@ return {
             })
             local back = Overworld.fromSnapshot(grid:snapshot())
             local before = select(2, standing(back))
-            local n = Descent.reseatElites(back, pool, run, { runsStarted = 3 })
+            local n = Descent.reseatElites(back, pool, run, { seed = 3 })
             local _, after = standing(back)
             reseated = reseated + n
             assert(#after == #before or #before == 0,

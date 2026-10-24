@@ -1,8 +1,8 @@
 -- THE SEED: one number that says what a playthrough is made of.
 --
 -- A save carries a seed, and everything that gets ROLLED in that save hangs off it -- the order of the
--- circles once the shuffle is open, the deal of houses across the floors, the guard standing over a
--- dropped pack, and the ground each floor is carved into. Two saves on the same seed walk the same rift.
+-- circles once the shuffle is open, the deal of houses across the floors, the elites a floor stands,
+-- and the ground each floor is carved into. Two saves on the same seed walk the same rift.
 --
 -- WHY IT IS WORTH HAVING, since the mode already reproduced most of a floor from `run.seed`. Because
 -- `run.seed` was a clock read (`os.time()`), and a clock read is a seed nobody can say. A bug report
@@ -19,6 +19,7 @@
 --   a lap           Seed.lap -- the save's seed folded with `ngPlus`, so New Game+ is its own rift
 --   a descent       Seed.run  -- the lap's seed folded with which run this is, counted on the player
 --   a floor's board states/game.lua folds the run's seed with the depth
+--   a floor's elites Descent.eliteSeed -- the lap's seed and the depth, so they hold across runs
 --
 -- WHAT IT DOES NOT DECIDE is the order of the seven circles on a FIRST descent: that is authored
 -- (models/descent.lua's Descent.INFERNO) and no seed moves it. The seed deals the shuffle that the
@@ -104,22 +105,16 @@ function Seed.lap(player)
     return Seed.mix(base, lap)
 end
 
--- THE DESCENT'S SEED, WHICH IS THE LAP'S -- one rift per playthrough, laid out once.
+-- THE DESCENT'S SEED: the lap's, folded with which run this is -- every run is a fresh rift.
 --
--- IT USED TO FOLD IN WHICH DESCENT THIS WAS, and that single fold was the last roguelike thing in this
--- mode. `Seed.mix(Seed.lap(player), player.runsStarted)` gave every trip its own rift: walk out of the
--- stair on floor three, walk back in, and floor three was a different maze. That is the correct shape
--- for a run you are meant to start over and the wrong one for a place you are meant to learn -- and a
--- map book that outlives the trip (Descent.keepFloor) would have been a book of floors that no longer
--- existed.
+-- (2026-10-24) THE FOLD IS BACK. For five weeks the rift was one persistent place (2026-09-17): this
+-- returned the lap's seed alone, so floor three was the same floor three for the life of a save and the
+-- boards were kept on the player. The rift resets to floor one every run now, so the ground has to be new
+-- every run -- and a run still reproduces as itself, because the run's seed rides in the save
+-- (Descent.snapshot) and a floor is (run seed, depth). What a floor IS -- its circle, biome, guardian and
+-- named elite -- is dealt off the depth and the lap seed, not off this (Descent.reseatElites).
 --
--- So a floor's ground now reproduces from (lap seed, depth) alone, which is the rule the generator was
--- always written to (see models/descent.lua's `hash`); what changed is that the first half stopped
--- moving. Two saves on one seed walk the same rift, and now so do two trips on one save.
---
--- STILL ADVANCES `runsStarted`, because it is read elsewhere as "how many descents this company has
--- begun" -- it simply no longer reaches the ground. Keeping the count honest costs nothing and a
--- silently frozen counter is the kind of thing another pass trips over.
+-- ADVANCES `runsStarted` first, so the first run of a save is run one.
 --
 -- Safe to call exactly where it is called. `Descent.new(player)` is only reached when there is no run to
 -- resume (Lua's `or` is lazy, so `run or Descent.new(player)` does not mint one it then discards), so
@@ -127,7 +122,7 @@ end
 function Seed.run(player)
     if not player then return Seed.roll() end
     player.runsStarted = (player.runsStarted or 0) + 1
-    return Seed.lap(player)
+    return Seed.mix(Seed.lap(player), player.runsStarted)
 end
 
 -- ---------------------------------------------------------------------------

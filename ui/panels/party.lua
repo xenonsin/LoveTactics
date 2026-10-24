@@ -2412,14 +2412,6 @@ function Party:drawRailPortrait(char, i, rx, ry, rw, rh)
         Theme.set(Theme.accentAmber)
         love.graphics.circle("fill", rx + rw - 8, ry + 8, 4)
     end
-    -- A HIRE LEFT WITH A CARRIER (Descent.strand): the floor they wait on, top-left in the warning
-    -- colour. The sheet beside the rail says it in full.
-    local stranded = Descent.strandedOf(self.player, char.id)
-    if stranded then
-        love.graphics.setFont(self.tinyFont)
-        Theme.set(Theme.accentWeapon)
-        love.graphics.print("F" .. tostring(stranded.floor), rx + 4, ry + 3)
-    end
 
     -- Warm amber ring marks the EDITED member (whose grid/stats show); the cool cursor ring marks where
     -- rail navigation currently points -- distinct colors so the two never read as one.
@@ -2455,15 +2447,6 @@ function Party:drawFocus()
     love.graphics.setFont(self.headFont)
     Theme.set(Theme.ink)
     love.graphics.printf(char.name or "?", x, y, self.focusW, "center")
-
-    -- STRANDED (Descent.strand), said above the name: the one fact about this body that outranks its
-    -- sheet, since it is why the Gate will not take them.
-    local stranded = Descent.strandedOf(self.player, char.id)
-    if stranded then
-        love.graphics.setFont(self.smallFont)
-        Theme.set(Theme.accentWeapon)
-        love.graphics.printf("Stranded on floor " .. tostring(stranded.floor), x, y - 20, self.focusW, "center")
-    end
 
     -- A HIRE'S HANDLE (models/hire.lua): Rename, and in the city Dismiss. Drawn only on a hire, since
     -- the avatar and the seven can neither be let go nor renamed -- a control that is never legal on

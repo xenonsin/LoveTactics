@@ -69,14 +69,12 @@ return {
     {
         name = "a company can walk back up a floor, and comes out on the stair it came down by",
         fn = function()
-            -- THE MAP BOOK IS THE PLAYER'S, not the run's (Descent.keepFloor), so the company has to
-            -- be held here -- a run alone no longer knows which floors it has walked, which is the
-            -- whole of what makes the maze outlive the trip.
+            -- The run keeps the floors it has walked (Descent.keepFloor, on the run since 2026-10-24).
             local p = Player.new()
             local run = Descent.new(p, 909)
             run.floor = 3
             -- The floor above, as the company left it: a board whose end is the stair they opened.
-            Descent.keepFloor(p, 2, { objective = { x = 7, y = 5 }, cols = 10, rows = 10, cells = {} })
+            Descent.keepFloor(run, 2, { objective = { x = 7, y = 5 }, cols = 10, rows = 10, cells = {} })
 
             local to = Descent.retreat(run, p)
             assert(to == 2, "the way up goes up ONE floor, not to the surface")
@@ -103,7 +101,7 @@ return {
             local p = Player.new()
             local run = Descent.new(p, 909)
             run.floor, p.count = 3, 10
-            Descent.keepFloor(p, 2, { objective = { x = 1, y = 1 } })
+            Descent.keepFloor(run, 2, { objective = { x = 1, y = 1 } })
 
             Descent.retreat(run, p)
             assert(Descent.count(p) == 10, "going up is free")

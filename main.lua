@@ -176,6 +176,15 @@ function love.load(args)
         return
     end
 
+    -- Floor fight ledger: `& "E:\LOVE\lovec.exe" . floor-fights [n] [prowl=N]`
+    -- Rolls every floor and WALKS it with the real prowl meter, so a floor crossing's fight count is
+    -- measured rather than read off a constant (models/descent.lua's FLOOR_FIGHTS). See tools/floor_fights.
+    if args and args[1] == "floor-fights" then
+        require("tools.floor_fights").run({ select(2, unpack(args)) })
+        love.event.quit(0)
+        return
+    end
+
     -- Board ledger: `& "E:\LOVE\lovec.exe" . board-report [n] [all | biome=ID] [tiers]`
     -- Rolls n overworld boards and reports what the generator laid down -- whether a fight can even
     -- happen on the ground it was seated on, boons per fight, how many ended up guarded, rest density,

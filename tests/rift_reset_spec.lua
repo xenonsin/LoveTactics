@@ -10,6 +10,10 @@
 -- killed -- the mode would have built an incentive to throw fights. That claim lives in the source scan
 -- at the bottom, because neither exit can be driven headlessly.
 --
+-- (2026-10-24) THIS IS THE LIVE RULE AGAIN. For five weeks the rift was a persistent place and both
+-- exits banked the floor into a map book on the player; the rift resets every run now, so NEITHER exit
+-- keeps a board -- the run's boards (run.floors) go with the run.
+--
 -- AND THE PILE IS GONE. Five cases here guarded it: a closing rift carried its heaps out onto the
 -- company, idempotently, and a later dive picked them up at the depth they were lost at. That whole
 -- apparatus is deleted with the wipe penalty that made it (models/descent.lua) -- a wipe takes nothing,
@@ -49,11 +53,10 @@ return {
         -- The pile assertion that stood here went with the pile.
         assert(upTail:find("Descent.climbOut(", 1, true),
             "climbing out charges nothing on the tally, so the way up is free and shuttling is untaxed")
-        -- AND THE MAP GOES IN THE BOOK ON THE WAY OUT (Descent.keepFloor). Without this the one floor a
-        -- company never keeps is the one it climbed out of, which is the commonest exit in the game.
-        assert(upTail:find("Descent.keepFloor(", 1, true),
-            "climbing out must bank the floor the company is standing on, or the map book has a hole "
-            .. "exactly where the player stopped")
+        -- AND NOTHING GOES IN A BOOK ON THE WAY OUT: the rift resets, so the floor dies with the run.
+        local upTo = upTail:find("descentRun = nil", 1, true)
+        assert(upTo and not upTail:sub(1, upTo):find("Descent.keepFloor(", 1, true),
+            "climbing out keeps a board, but the rift resets every run -- there is no map book to keep it in")
         assert(upTail:find("descentRun = nil", 1, true),
             "climbing out leaves the expedition open, so the next dive resumes a rift already left")
 
@@ -82,9 +85,8 @@ return {
         assert(downHead:find("Descent.COUNT_WIPE", 1, true),
             "a wipe still names its mark, inert though the tally is (Descent.COUNT_PARKED) -- a park "
             .. "whose call sites were deleted too is one nobody can lift from the flag alone")
-        assert(downHead:find("Descent.keepFloor(", 1, true),
-            "a rout must bank the floor as well: the ground a company drew before it was killed is not "
-            .. "a thing it was carrying, and taking it back is a price on losing")
+        assert(not downHead:find("Descent.keepFloor(", 1, true),
+            "a wipe keeps a board, but the rift resets every run -- the run's boards go with it")
         assert(downHead:find("descentRun = nil", 1, true),
             "a wipe leaves the expedition open, so the next dive resumes a dead one")
     end },

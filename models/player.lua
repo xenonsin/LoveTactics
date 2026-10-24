@@ -182,9 +182,7 @@ end
 -- they chose to bring are sitting in the slots the next chest wanted.
 --
 -- ...AND IT IS NOT THE PILE A WIPE LEAVES BEHIND, which is also called a pack and always has been
--- (Descent.dropPack). In the fiction they are one object -- the company's bag, and the company's bag
--- lying on the floor where they fell -- so the word is not worth splitting, and `kind = "pack"` rides
--- inside every saved board in player.floors where a rename would orphan every pile in every save.
+-- (Descent.dropPack, deleted). Nothing seats a pile any more (a wipe loses the haul, Descent.wipe).
 
 -- IS THE PACK OPEN? True exactly when the company is standing on a floor of a trip that has begun.
 --
@@ -655,16 +653,9 @@ function Player.new()
         -- prologue's avatar and her sworn knight walk into the city and down the stair, so the run is
         -- something this player owns like its gold and its roster.
         descentRun = nil,
-        -- THE MAP BOOK: every floor this company has walked, keyed by depth as a string, holding the
-        -- board whole -- its fog, its spent caches, its found secret doors, its standing stair
-        -- (models/descent.lua's Descent.keepFloor, which carries the full argument).
-        --
-        -- ON THE PLAYER BECAUSE THE MAZE IS A PLACE. It hung on the run until now, which meant the map
-        -- survived every climb-out within a trip and was discarded the instant the trip ended -- so a
-        -- company that had drawn nine floors walked back down into nine floors it had never seen. That
-        -- was the last roguelike thing about this mode. Here it outlives the run exactly as `deepest`
-        -- and the tally do, and for the same reason: it is a fact about the company, not about a trip.
-        floors = {},
+        -- (THE MAP BOOK, `floors`, stood here from 2026-09-17 to 2026-10-24, while the rift was one
+        -- persistent place. The rift resets every run now and a run keeps its own boards (`run.floors`,
+        -- models/descent.lua's Descent.keepFloor); an old save's field is dropped on load.)
         -- ISELLE'S TALLY: how far the rift has gone unpruned (models/descent.lua's Descent.count). It
         -- climbs when the company comes back up early and falls when it goes deeper or seals a circle,
         -- and at Descent.COUNT_MAX the stair stops being an exit.

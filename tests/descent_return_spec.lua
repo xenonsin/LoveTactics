@@ -1,18 +1,12 @@
--- THE RETURN TRIP: what a company comes back to after it is beaten.
+-- THE RETURN TRIP: what a company comes back to, within a run and across runs.
 --
--- A wipe does not end a descent. The bodies wake at the Gate, poorer and hurt, and the stair they walk
--- back down opens on the SAME FLOOR they fell on, laid out the way they left it -- with what they found
--- held by the thing that killed them, standing on the tile where it happened (Descent.seatCarrier).
+-- THE RIFT RESETS EVERY RUN (2026-10-24). Within a run, a floor the company walked is kept on the run
+-- (Descent.keepFloor), so the way up finds it as it was left and a save carries it. Across runs nothing
+-- is kept: the next descent starts at floor one on new ground (Seed.run folds in which run this is). A
+-- wipe ends the run and loses the haul (tests/wipe_spec.lua holds that half).
 --
--- None of that was pinned anywhere, and it is the property the whole mode rests on. Everything the wipe
--- path does is destructive -- drop the pack, take the coin, wound the company, save the board -- so the
--- failure this file exists to catch is a well-meaning tidy-up on that path resetting the one field that
--- must not move. A run reset to floor one after a wipe is a nine-floor walk the player already made,
--- and nothing else in the game would say a word about it.
---
--- The contrast at the bottom is the deliberate half: GIVING UP does end a run, and the next one starts
--- at the top. Two endings, two answers, and this file holds them side by side so neither can be
--- "fixed" into the other by somebody reading only one.
+-- It used to hold the opposite -- that a wipe left the company on the floor it fell on, its haul held
+-- by a carrier there -- and the carrier cases went with the persistent rift.
 
 local Descent = require("models.descent")
 local Player = require("models.player")
@@ -30,21 +24,18 @@ end
 
 return {
     {
-        name = "the floor a company fell on is the floor its stair goes back to",
+        name = "keeping a floor on the run does not move the company off it",
         fn = function()
             local player = Player.new()
             local run = runAt(player, 9)
             assert(Descent.depth(run) == 9, "the fixture stands on floor nine, got " .. Descent.depth(run))
 
-            -- Everything the wipe path does to the run, in the order states/game.lua does it. None of
-            -- it is allowed to move where the company is standing. The pack drop that used to lead
-            -- this list is gone with the pile system (models/descent.lua) -- a wipe takes nothing.
-            Descent.keepFloor(run, 9, { cols = 8, rows = 8, marker = "the board they died on" })
+            Descent.keepFloor(run, 9, { cols = 8, rows = 8, marker = "the board they stand on" })
 
             assert(Descent.depth(run) == 9,
-                "a wipe must not move the company off floor nine, got " .. Descent.depth(run))
+                "keeping a floor must not move the company off floor nine, got " .. Descent.depth(run))
             assert(run.cleared == 8,
-                "and the floor that killed them is not credited as beaten, got " .. tostring(run.cleared))
+                "and the floor they stand on is not credited as beaten, got " .. tostring(run.cleared))
         end,
     },
     {
@@ -63,25 +54,23 @@ return {
         end,
     },
     {
-        -- ...ACROSS A SAVE, because a wipe is exactly when a player quits. Board and depth have to
-        -- survive together: either one coming back without the other is a return trip to the wrong
-        -- place, or to the right place with the wrong ground under it.
-        name = "depth and board survive the quit a wipe invites",
+        -- ...ACROSS A SAVE, mid-run. Board and depth have to survive together: either one coming back
+        -- without the other is the way up to the wrong place, or to the right place on the wrong ground.
+        name = "depth and the run's boards survive a save",
         fn = function()
             local player = Player.new()
             local run = runAt(player, 7)
-            -- The map book is the COMPANY's now (Descent.keepFloor), so the two halves this case is
-            -- about ride in different places: the depth is the run's, the board is the player's. That
-            -- split is the point -- the run is thrown away at every exit and the board must not be.
-            Descent.keepFloor(player, 7, { cols = 8, rows = 8, marker = "seven" })
+            -- Both ride on the run again (2026-10-24): the board lives exactly as long as the run.
+            Descent.keepFloor(run, 6, { cols = 8, rows = 8, marker = "six" })
             player.descentRun = run
 
             local restored = Save.restore(Save.snapshot(player))
             local back = restored.descentRun
             assert(back, "the run comes back at all")
             assert(Descent.depth(back) == 7, "on floor seven, got " .. Descent.depth(back))
-            assert((Descent.floorBoard(restored, 7) or {}).marker == "seven",
-                "with the board they walked")
+            assert((Descent.floorBoard(back, 6) or {}).marker == "six",
+                "with the board of the floor above, as they walked it")
+            assert(restored.floors == nil, "a board was written onto the player -- the map book is retired")
         end,
     },
     {
@@ -101,126 +90,37 @@ return {
         end,
     },
     {
-        -- WHAT A WIPE TAKES OF THE COMPANY'S THINGS: the trip's HAUL and nothing else -- no gold, and the
-        -- map book survives (docs/the-count.md; the injuries and hires are tests/wipe_carrier_spec.lua's).
-        -- The haul goes to the carrier on the tile they fell on, and it stays rather than vanishing,
-        -- which is what keeps a loss a retrieval problem instead of a confiscation.
-        name = "a wipe leaves what the trip FOUND with the carrier, and nothing the company walked in with",
+        -- THE RIFT RESETS: every run is a fresh rift. Seed.run folds in which run this is, so two runs
+        -- on one save lay different ground, and the same run replays as itself (its seed rides the save).
+        name = "every run lays new ground, and every run starts at floor one",
         fn = function()
-            local Item = require("models.item")
-            local Character = require("models.character")
-
             local player = Player.new()
-            player.roster = { Character.instantiate("character_knight") }
-            -- MARCHED IN WITH: one sword, in the stash. This must still be there afterwards.
-            local brought = Item.instantiate("weapon_iron_sword")
-            assert(brought, "fixture blueprint is gone -- retarget this case")
-            Player.addToStash(player, brought)
-
-            -- The company exactly as it walked in. This is the diff Player.atRisk measures against.
-            local entry = Save.snapshot(player)
-
-            -- ...AND FOUND DOWN THERE: a second copy of the same blueprint. Same id on purpose -- it is
-            -- the case the entry allowance exists for, and a naive implementation drops both.
-            local found = Item.instantiate("weapon_iron_sword")
-            Player.addToStash(player, found)
-
-            local board = { cols = 4, rows = 4, cells = {} }
-            for y = 1, 4 do
-                board.cells[y] = {}
-                for x = 1, 4 do board.cells[y][x] = { x = x, y = y } end
+            local first = Descent.new(player)
+            local second = Descent.new(player)
+            assert(first.seed ~= second.seed, "two runs on one save were dealt the same rift")
+            assert(Descent.depth(first) == 1 and Descent.depth(second) == 1, "a run did not start at floor one")
+            assert(next(second.floors or {}) == nil, "a new run carried boards in from the last")
+            -- The first run's boards stay on the first run: nothing hangs them on the player.
+            Descent.keepFloor(first, 1, { cols = 1, rows = 1, marker = "one" })
+            assert(player.floors == nil, "a kept board leaked onto the player")
+            assert(Descent.floorBoard(second, 1) == nil, "a new run found the last run's board")
+        end,
+    },
+    {
+        -- A FLOOR KEEPS ITS IDENTITY BY DEPTH. The circle, its biome and its guardian are dealt by depth on
+        -- the authored order (Descent.sinOrder), and the elites off the lap seed and the depth
+        -- (Descent.eliteSeed) -- none of it moves with the run's seed.
+        name = "a floor's circle and its elite seed hold across runs",
+        fn = function()
+            local player = Player.new()
+            local a, b = Descent.new(player), Descent.new(player)
+            for floor = 1, Descent.FLOORS do
+                local sa, sb = Descent.sinAt(a, floor), Descent.sinAt(b, floor)
+                assert((sa and sa.id) == (sb and sb.id), "floor " .. floor .. " changed circle between runs")
+                assert(Descent.biomeAt(a, floor) == Descent.biomeAt(b, floor), "floor " .. floor .. " changed ground")
             end
-            Descent.keepFloor(player, 3, board)
-
-            local haul = Player.takeAtRisk(player, entry)
-            assert(#haul == 1, "one piece was found this trip, got " .. #haul)
-            Descent.seatCarrier(player, 3, 2, 2, { items = haul, composition = { "character_knight" } })
-
-            -- WHAT THEY KEEP: the sword they brought, still in the stash.
-            assert(#player.stash == 1, "the kit they marched down with was taken too")
-            assert(player.stash[1].id == "weapon_iron_sword", "and it is the one they brought")
-
-            -- WHAT IS STANDING THERE: one carrier, on the floor and tile they fell on, holding the haul.
-            local packs = Descent.lostPacks(player)
-            assert(#packs == 1, "the haul did not land on the floor, got " .. #packs .. " carriers")
-            assert(packs[1].carrier, "the haul is lying unguarded rather than held by what killed them")
-            assert(packs[1].floor == 3 and packs[1].x == 2 and packs[1].y == 2,
-                "the carrier is not on the tile they fell on")
-            assert(packs[1].count == 1, "the carrier holds " .. packs[1].count .. ", not the one piece found")
-
-            -- AND IT SURVIVES THE SAVE, which is the whole point of hanging it on the kept board: the
-            -- run is discarded at every exit and the pile must outlive it. Round-tripped through the
-            -- real serializer, because a cell holding live instances would take the save down.
-            local back = Save.restore(Save.decode("return " .. Save.encode(Save.snapshot(player), 0)))
-            local afterPacks = Descent.lostPacks(back)
-            assert(#afterPacks == 1, "the carrier did not survive the save")
-            assert(afterPacks[1].floor == 3, "and it came back on the wrong floor")
-
-            -- KILLING IT hands the piece over and spends the tile, so it cannot pay twice.
-            local cell = Descent.floorBoard(back, 3).cells[2][2]
-            local taken = Descent.takeCarrier(back, 3, cell)
-            assert(taken and #taken == 1, "killing the carrier handed back nothing")
-            assert(taken[1].id == "weapon_iron_sword", "and it handed back the wrong thing")
-            assert(#Descent.lostPacks(back) == 0, "the carrier still reads as holding the pack after dying")
-            assert(Descent.takeCarrier(back, 3, cell) == nil, "the same tile paid out twice")
-        end,
-    },
-    {
-        -- A HUSK IS THE COMMON CASE now that most of what a floor pays is sealed
-        -- (Spoils.SEALED_CHANCE), and it is the one thing an id and a level cannot rebuild. The deleted
-        -- pile system rehydrated through Item.instantiate and would have flattened every one of them
-        -- into a plain piece -- silently, with no crash and nothing red.
-        name = "a sealed piece comes back off the carrier still sealed",
-        fn = function()
-            local Identify = require("models.identify")
-            local player = Player.new()
-
-            local husk = Identify.sealed("weapon_iron_sword", 4)
-            assert(husk and (husk.unidentified or 0) > 0, "fixture husk is not sealed -- retarget this")
-
-            local board = { cols = 2, rows = 2, cells = { {}, {} } }
-            for y = 1, 2 do for x = 1, 2 do board.cells[y][x] = { x = x, y = y } end end
-            Descent.keepFloor(player, 1, board)
-            Descent.seatCarrier(player, 1, 1, 1, { items = { husk }, composition = { "character_knight" } })
-
-            local back = Save.restore(Save.decode("return " .. Save.encode(Save.snapshot(player), 0)))
-            local taken = Descent.takeCarrier(back, 1, Descent.floorBoard(back, 1).cells[1][1])
-            assert(taken and #taken == 1, "the husk did not come back")
-            assert((taken[1].unidentified or 0) > 0,
-                "the husk came back IDENTIFIED -- the carrier rehydrated it through the wrong path, and "
-                .. "the player has been handed a free naming they did not pay the Touchstone for")
-
-            -- ...and an OLD unguarded pile, from a save written before the carrier, still picks up the
-            -- same way: the same rehydration, through Descent.takePack.
-            local old = Save.snapshotItem(Identify.sealed("weapon_iron_sword", 4))
-            local cell = { encounter = { kind = "pack", items = { old }, count = 1 } }
-            local legacy = Descent.takePack(back, 1, cell)
-            assert(legacy and #legacy == 1 and (legacy[1].unidentified or 0) > 0,
-                "an old pile's husk came back identified, or not at all")
-        end,
-    },
-    {
-        -- Two deaths on one tile must not delete the first haul: that is billing one failure twice, and
-        -- it is the exact shape docs/the-count.md's law exists to refuse.
-        name = "a second wipe on the same floor adds to the carrier rather than replacing it",
-        fn = function()
-            local Item = require("models.item")
-            local player = Player.new()
-            local board = { cols = 2, rows = 2, cells = { {}, {} } }
-            for y = 1, 2 do for x = 1, 2 do board.cells[y][x] = { x = x, y = y } end end
-            Descent.keepFloor(player, 2, board)
-
-            -- Second death on a DIFFERENT tile of the same floor: still one carrier, where it stood.
-            Descent.seatCarrier(player, 2, 1, 1, { items = { Item.instantiate("weapon_iron_sword") },
-                composition = { "character_knight" } })
-            Descent.seatCarrier(player, 2, 2, 2, { items = { Item.instantiate("weapon_iron_sword") },
-                composition = { "character_knight" } })
-
-            local packs = Descent.lostPacks(player)
-            assert(#packs == 1, "two deaths on one floor left " .. #packs .. " carriers, not one")
-            assert(packs[1].x == 1 and packs[1].y == 1, "the carrier moved to the second fall")
-            assert(packs[1].count == 2, "the second wipe overwrote the first haul instead of adding to it")
-            assert(packs[1].level == 1, "the second wipe did not raise the carrier a level")
+            assert(Descent.eliteSeed(player, 3) == Descent.eliteSeed(player, 3), "the elite seed is not stable")
+            assert(Descent.eliteSeed(player, 3) ~= Descent.eliteSeed(player, 4), "two floors share an elite seed")
         end,
     },
     {
@@ -249,10 +149,10 @@ return {
         end,
     },
     {
-        -- THE CAMP IS LIT AGAIN EVERY TRIP, and it is the one place that comes back. A company re-enters
-        -- at its deepest mapped floor (Descent.entryFloor), so a camp spent for good was spent on trip
-        -- one, and every trip after stood on a floor with none.
-        name = "a kept floor's camp is lit again on the next trip, and the ambush's fight goes back to a camp",
+        -- A FLOOR RE-ENTERED WITHIN THE RUN KEEPS ITS CAMP SPENT. The camp was lit again every trip while
+        -- boards outlived trips; a re-entry is always inside one run now, and camps must not compound in
+        -- a run (Descent.FLOOR_RESTS). The old ambush's fight still goes back to being a camp.
+        name = "a floor re-entered within the run keeps its camp spent, and the ambush's fight goes back to a camp",
         fn = function()
             local grid = {
                 cols = 3, rows = 1,
@@ -268,11 +168,11 @@ return {
             }
             local woken = Descent.rearmFloor(grid)
             local cells = grid.cells[1]
-            assert(cells[1].encounter.kind == "rest" and not cells[1].cleared,
-                "the camp is still spent from the last trip")
+            assert(cells[1].encounter.kind == "rest" and cells[1].cleared,
+                "a camp spent earlier this run was lit again by walking back onto the floor")
             assert(cells[2].encounter.kind == "rest" and not cells[2].cleared,
                 "the ambush's fight was woken again instead of handing the camp back")
-            assert(cells[3].cleared, "the re-lit camp took a cache with it -- only the camp comes back")
+            assert(cells[3].cleared, "a spent cache came back")
             assert(woken == 0, "a camp was counted as a monster standing: " .. woken)
         end,
     },

@@ -194,11 +194,10 @@ return {
         assert(stillSpent == places, "and the places are the ones still spent")
     end },
 
-    { name = "a company keeps the floors it has walked", fn = function()
-        -- A Wizardry floor is the SAME maze every time, which is the whole reason mapping one is worth
-        -- doing -- a secret door found on the third trip is something you found rather than something
-        -- that was rolled. A board cannot be rebuilt from its seed here (Overworld:snapshot says why),
-        -- so keeping a floor means literally keeping it.
+    { name = "a run keeps the floors it has walked, and they go with it", fn = function()
+        -- THE RIFT RESETS EVERY RUN (2026-10-24). Within a run a floor is kept (Descent.keepFloor) so the
+        -- way up finds it as it was left -- fog, spent caches, found doors -- and a save carries it. The
+        -- next run walks new ground, so nothing hangs the boards on the company any more.
         local Overworld = require("models.overworld")
         local p = company(1, 0)
         local run = Descent.new(p, 21)
@@ -211,35 +210,27 @@ return {
             encounters = { { kind = "combat", weight = 1 } },
         })
         grid:reveal(grid.start.x, grid.start.y, 3)
-        assert(Descent.floorBoard(p, 1) == nil, "a floor never walked is not kept")
+        assert(Descent.floorBoard(run, 1) == nil, "a floor never walked is not kept")
 
-        -- THE BOOK IS THE COMPANY'S, NOT THE EXPEDITION'S, which is what makes the maze a place rather
-        -- than a roll. It hung on the run until the pivot, so the map survived every climb-out WITHIN a
-        -- trip and was thrown away the moment the trip ended -- a company that had drawn nine floors
-        -- walked back down into nine floors it had never seen.
-        Descent.keepFloor(p, 1, grid:snapshot())
-        assert(Descent.floorBoard(p, 1), "the floor is kept once it is left")
-        assert(Descent.floorBoard(p, 2) == nil, "and only the one that was left")
+        Descent.keepFloor(run, 1, grid:snapshot())
+        assert(Descent.floorBoard(run, 1), "the floor is kept once it is left")
+        assert(Descent.floorBoard(run, 2) == nil, "and only the one that was left")
+        assert(p.floors == nil, "a board was hung on the company -- the map book is retired")
 
-        -- AND IT OUTLIVES THE RUN, which is the claim the whole pivot rests on. Discarding the
-        -- expedition is what every exit does (states/game.lua, five sites); the map must not go with it.
-        p.descentRun = nil
-        assert(Descent.floorBoard(p, 1), "the map survives the expedition that drew it")
-
-        -- KEYED BY STRING, deliberately: a numeric key round-trips through the encoder as a string on
-        -- some paths and an integer on others, so a board stored under 3 and looked up under "3" would
-        -- silently re-roll every floor after a load -- exactly the bug this feature exists to prevent,
-        -- and invisible until somebody notices their map is gone.
+        -- KEYED BY STRING, and carried by the run's own save: a numeric key round-trips through the
+        -- encoder as a string on some paths and an integer on others.
+        p.descentRun = run
         local back = Save.restore(reserialize(Save.snapshot(p)))
-        assert(Descent.floorBoard(back, 1), "and the board survives a save under the same key")
-        local restored = Overworld.fromSnapshot(Descent.floorBoard(back, 1))
+        local backRun = back.descentRun
+        assert(backRun and Descent.floorBoard(backRun, 1), "the board survives a save under the same key")
+        local restored = Overworld.fromSnapshot(Descent.floorBoard(backRun, 1))
         assert(restored.cols == grid.cols and restored.rows == grid.rows, "as the same board")
         assert(restored:startCell().seen, "with the fog the company lifted still lifted")
 
-        -- THE DEEPEST STAIR THE CITY MAY OFFER, read off the book rather than off the depth record
-        -- (Descent.entryFloor, and the Gate's descend rows).
-        assert(Descent.mapped(back) == 1, "one floor drawn reads as one floor mapped")
-        assert(Descent.entryFloor(back) == 1, "and the stair it offers is that one")
+        -- ...AND IT GOES WITH THE RUN: the next descent has none of it, and starts at floor one.
+        local nextRun = Descent.new(p)
+        assert(Descent.floorBoard(nextRun, 1) == nil, "the next run found the last run's board")
+        assert(Descent.depth(nextRun) == 1, "the next run did not start at floor one")
     end },
 
     { name = "a wipe puts the floor away like every other way off it", fn = function()

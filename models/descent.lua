@@ -1011,7 +1011,8 @@ end
 -- and that is now a description of this file: Descent.keepFloor hangs the map book on the player, the
 -- stair you opened is still open when you come back (Descent.entryFloor), and a trip ends at the Ward
 -- rather than at the bottom. So the conditions came back and the number came back with them; nothing
--- new had to be claimed.
+-- new had to be claimed. (2026-10-24: the rift resets every run again and the map book is retired; the
+-- fifteen floors stay, and a run is a sitting of about sixty fights -- see Descent.FLOOR_FIGHTS.)
 --
 -- AND THE LIEUTENANT GETS HER STRATUM BACK, which is what going to one cost and what this restores.
 -- `minor.lead` holds the stairs ABOVE a general again, so the thing that barred your way a floor ago is
@@ -1137,6 +1138,22 @@ Descent.FLOORS_PER_CIRCLE = 2
 -- which is the guard doing its job and saying the mode is four hours of combat. The number to move is
 -- Descent.PROWL_STEPS, which is what actually deals the fights, and that is a decision about how dense
 -- a floor should be rather than a constant to be quietly re-fitted. It is named here and left open.
+--
+-- (2026-10-24) MOVED, AND MEASURED BY WALKING: `. floor-fights 24` (tools/floor_fights.lua). The rift
+-- resets to floor one every run now, so a run is a sitting again and four a floor is the target -- about
+-- sixty for the stack. The tool rolls 24 boards a depth as the game does and walks each with the real
+-- prowl meter: a full tour (every stop and cache, the stair last) and the direct crossing to the stair.
+-- Fights are the stair, the seated elites, the mimics and what the meter deals; a camp's fire is not
+-- counted. Before -> after, tour (direct), fights a floor:
+--
+--   floors  1-5     4.89 (1.94)  ->  4.08 (1.43)
+--   floors  6-10    5.72 (1.99)  ->  4.02 (1.10)
+--   floors 11-15    6.58 (2.02)  ->  4.31 (1.02)
+--   the run         86.0 (29.8)  ->  62.0 (17.8)
+--
+-- The lever was the prowl alone (Descent.PROWL_STEPS 24 flat -> a 28-52 ramp, Descent.prowlSteps): the
+-- stair and every elite still stand. A full tour is the top of what a floor costs; a crossing that skips
+-- a stop or two lands under four. A floor with a companion posting or an errand carries one more.
 Descent.FLOOR_FIGHTS = 4
 
 -- WHAT THE BOTTOM HOLDS, and the whole argument is in how little it is above the top.
@@ -1347,6 +1364,8 @@ Descent.FLOOR_TRAPS = { min = 3, max = 5 }
 -- AND IT IS A REASON TO COME BACK, which is the only thing that makes this legal on a floor at all. A
 -- door you could not open today is a wasted reward on a floor walked once; on a floor the company keeps
 -- a map of (Descent.keepFloor) and re-enters at its own stair (Descent.entryFloor), it is an errand.
+-- (2026-10-24: the rift resets every run now, so a door shut today is only reopenable within the run --
+-- up the stair and back. Left at one; whether a floor walked once still wants it is open.)
 Descent.FLOOR_SIDE_GATES = { min = 1, max = 1 }
 
 -- HOW MANY HOLES A FLOOR HAS IN IT (Overworld:placeDrops, Descent.fall).
@@ -2499,29 +2518,21 @@ end
 -- is a Save.snapshot and this module deliberately knows nothing about the save format. What matters is
 -- that it lives on the RUN rather than on the floor: the whole descent is one expedition, so the
 -- snapshot is taken once at the top and every floor after it shares the same way back.
--- `startFloor` is the stair the company walks in by, and it is optional: nil means the mouth. Only ever
--- a floor Descent.entryFloor has offered -- clamped here as well, because a caller that hands in a floor
--- this company has never mapped would drop them onto ground with no map and no way back up through it.
-function Descent.new(player, seed, startFloor)
+-- EVERY RUN STARTS ON FLOOR ONE (2026-10-24): the rift resets, so there is no deeper stair to walk in
+-- by. (A `startFloor` argument stood here while a company re-entered at the deepest floor it had mapped.)
+function Descent.new(player, seed)
     -- Lifted out of the table below because two fields are dealt FROM it (see `seed` and `companion`),
     -- and a constructor cannot read its own keys while it is being built.
     local runSeed = seed or (player and require("models.seed").run(player)) or (os.time() % 1000000)
-    -- THE MAZE IS THE LAP'S AND DOES NOT MOVE; WHO YOU MEET IN IT STILL TURNS OVER PER TRIP.
-    --
-    -- Seed.run stopped folding in which descent this is, so floor three is the same floor three every
-    -- time (that is the point). Everything dealt off `runSeed` inherits that -- which is right for the
-    -- ground, the circle order and the stair guards, and WRONG for the companion: dealt off a seed that
-    -- no longer moves, the same house's body would be waiting on the same floor of every descent
-    -- forever. Wizardry's own split again -- the maze is permanent, what is standing in it is not.
-    --
-    -- Folded with `runsStarted`, which Seed.run still advances for exactly this kind of use. An explicit
-    -- `seed` still pins the whole thing, so a spec that fixes a run fixes its companion too.
+    -- WHO YOU MEET TURNS OVER PER RUN. Seed.run folds in which run this is again (2026-10-24), so this
+    -- fold is belt and braces now; it is kept so a spec that pins `seed` still deals the companion it
+    -- always dealt. An explicit `seed` pins the whole thing.
     local dealSeed = require("models.seed").mix(runSeed, (player and player.runsStarted) or 0)
     -- Lifted out for the same reason: the companion is seated in her house's circle, and which floors
     -- that circle holds turns on this flag (Descent.companionFloor).
     local shuffled = (player and require("models.player").hasFinishedCampaign(player)) or nil
     return {
-        floor = startFloor and math.max(1, math.min(Descent.entryFloor(player), startFloor)) or 1,
+        floor = 1,
         -- OFF THE SAVE'S OWN SEED, not off the clock (models/seed.lua). It was `os.time()`, which is a
         -- seed nobody can say: a bug report about a floor could not be replayed, a run could not be
         -- handed to somebody else, and the number the whole layout hangs from was different every time
@@ -2577,23 +2588,12 @@ function Descent.new(player, seed, startFloor)
         -- it rides in a save as plain data and a resume re-opens the landing on the same three cards
         -- rather than dealing three new ones. Nil at every other moment of a run.
         landing = nil,
-        -- WHAT THE COMPANY DROPPED WHERE IT FELL. The bodies always come back -- a wipe wakes the
-        -- company at the temple, whole and injured (states/game.lua's onLoss) -- and what stays on the
-        -- floor is everything they were CARRYING.
-        --
-        -- Dark Souls' bloodstain, and it is the only thing standing between "climb out" and "die" being
-        -- the same move. Levels, mapped floors and bound relics survive a wipe; the kit and the haul do
-        -- not, until somebody walks back down to the tile and picks them up. Without that the way up is
-        -- decorative: a company that died on floor nine would wake, walk back, and have lost nothing but
-        -- the walk.
-        --
-        -- Entries are { floor, x, y, items } where `items` is a list of Save.snapshotItem data, NOT live
-        -- instances -- a live one can hold loaded images and Save.encode raises on userdata, so a pack
-        -- kept as instances would take the save down the first time a company wiped.
+        -- (LEGACY: the dropped-pack list of an older wipe rule. Nothing writes it; it is kept so an old
+        -- save round-trips unchanged. A wipe loses the haul outright now -- Descent.wipe.)
         drops = {},
-        -- (THE FLOORS STOOD HERE AND HAVE MOVED TO THE PLAYER -- see `player.floors` in models/player.lua
-        -- and Descent.keepFloor below. A map that died with the run was the last roguelike thing about
-        -- this mode; the maze is a place now and a place outlives the trip that walked it.)
+        -- THE BOARDS THIS RUN HAS WALKED, keyed by depth as a string (Descent.keepFloor). Back on the run
+        -- (2026-10-24): the rift resets every run, so a board lives as long as the run that laid it.
+        floors = {},
         --
         -- Which circles this run has cleared, as { [vendorId] = floors cleared }. It used to be standing
         -- OWED to the houses, banked into the campaign player on the way out; there is no campaign player
@@ -2704,8 +2704,7 @@ function Descent.party(run, player)
     local Injury = require("models.injury")
     local roster = {}
     for _, char in ipairs((player and player.roster) or {}) do
-        -- ...and nobody stranded with a carrier (Descent.strand): they are still down there.
-        if Injury.resting(player, char.id) <= 0 and not Descent.strandedOf(player, char.id) then
+        if Injury.resting(player, char.id) <= 0 then
             roster[#roster + 1] = char
         end
     end
@@ -2766,9 +2765,10 @@ end
 -- What the company dropped where it fell -- the FIRST pile system, deleted
 -- ---------------------------------------------------------------------------
 --
--- HISTORY, not the live rule. A wipe's haul is held by a CARRIER now (Descent.seatCarrier, below the
--- prowl): the fight that beat the company, standing on the tile they fell on. What follows is the record
--- of the first version, which hung piles off the player and guarded them with a rival company.
+-- HISTORY, not the live rule. A wipe loses the haul outright now (Descent.wipe). What follows is the
+-- record of the first version, which hung piles off the player and guarded them with a rival company;
+-- a second, the CARRIER (2026-10-23), held the haul in the fight that beat the company and went with the
+-- persistent rift on 2026-10-24.
 --
 -- WHAT WENT, said out loud because it was a whole feature and not a function: Descent.dropPack seated a
 -- guarded pile on the tile the party fell on; Descent.packGuard drew the rival company standing over it,
@@ -2820,70 +2820,33 @@ end
 -- The floors a company has walked
 -- ---------------------------------------------------------------------------
 
--- Put this floor's board away, exactly as it stands -- fog lifted, stops cleared, secrets found. Called
--- whenever the party leaves a floor by any route (the stair down, the way up), so the next visit gets
--- the map they made rather than a fresh roll.
--- KEEP THE BOARD THIS COMPANY JUST WALKED, keyed by depth, as Overworld:snapshot data.
+-- KEEP THE BOARD THIS COMPANY JUST WALKED, keyed by depth, as Overworld:snapshot data -- ON THE RUN.
 --
--- A Wizardry floor is the SAME maze every time you go down to it -- that is the entire reason mapping
--- one is worth doing, and it is why a secret door found on the third trip is a thing you FOUND rather
--- than a thing that was rolled. A board cannot be rebuilt from its seed here (Overworld:snapshot says
--- why: the stops are drawn in `pairs` order, so the same seed reshuffles them), so keeping a floor
--- means literally keeping it.
+-- THE RIFT RESETS EVERY RUN (2026-10-24). A descent starts at floor one on fresh ground (Seed.run folds
+-- in which run this is), so a floor's board lives exactly as long as the run that laid it: climbing back
+-- up to floor N-1 within the run finds it as it was left -- fog lifted, caches spent, secret doors found
+-- -- and the next run walks new ground. It rode on the player for a while (the "map book", 2026-09-17 to
+-- 2026-10-24), when the rift was one persistent place; that field is ignored on load now.
 --
--- IT IS THE PLAYER'S, NOT THE RUN'S, and that is the whole of what makes this dungeon a place. The
--- store hung on the run until now, so the map book survived every climb-out WITHIN a trip and was
--- thrown away the moment the trip ended -- `game.player.descentRun = nil`, at five sites. A company
--- that had drawn nine floors walked back into nine strangers. Moving the store one level up is the
--- entire edit: everything that reads it -- the kept fog, the spent caches, the found secret doors, the
--- stair left standing open -- already worked, and simply could not reach across a trip.
---
--- Descent.count made exactly this run -> player move before it, for the same reason and with the same
--- save read-forward (models/save.lua), so this is a road that has been walked.
---
--- Costs a save file that grows by a board per floor visited. Accepted: a board is plain data and
--- fifteen of them is a fraction of what a company's own gear costs to store.
-function Descent.keepFloor(player, floor, snapshot)
-    if not (player and snapshot) then return end
-    player.floors = player.floors or {}
-    player.floors[tostring(floor or 1)] = snapshot
+-- Called whenever the party leaves a floor by the stair down or the way up within the run.
+function Descent.keepFloor(run, floor, snapshot)
+    if not (run and snapshot) then return end
+    run.floors = run.floors or {}
+    run.floors[tostring(floor or 1)] = snapshot
 end
 
--- WHAT COMES BACK WHEN YOU COME BACK. Re-arm a restored floor's fights and leave everything else spent.
+-- WHAT COMES BACK WHEN YOU COME BACK UP OR DOWN, within one run. Re-arm a restored floor's fights and
+-- leave everything else spent.
 --
--- THE MAZE IS PERMANENT, THE MONSTERS ARE NOT, which is Wizardry's own split and the reason its floors
--- stay dangerous forever. There, the level is a fixed map you draw once and the fighting is rolled as
--- you walk, so a floor is never "cleared" -- walking back down to level seven is exactly as dangerous as
--- walking down it the first time. Our fights are seated on tiles instead, so without this a floor a
--- company had finished was an empty corridor and the walk back to a dropped pack cost nothing but time.
+-- THE PLACES STAY SPENT, THE MONSTERS DO NOT. A floor re-entered inside the run (the way up, then the
+-- stair back down) keeps its caches, its reliquary, its shrine, its merchant, its hazards and its secret
+-- doors exactly as the company left them; its seated fights -- combat and elites -- stand up again, and
+-- its elites are dealt again (Descent.reseatElites). The stair stays open (Descent.openStair): its guard
+-- is dead and the circle is credited. The camp stays spent too: camps must not compound inside a run
+-- (Descent.FLOOR_RESTS).
 --
--- WHAT RE-ARMS is only what LIVES there: combat, elites, and the fights that walk their beat -- and the
--- elites do not even come back where they stood: Descent.reseatElites deals them again per trip. What
--- stays spent is everything that was a PLACE rather than an inhabitant --
---
---   the stair       its guard is dead and the circle is credited. Waking her would un-earn a boon --
---                   and the stair she was holding is a place now (Descent.openStair), which is why it
---                   is still standing open on a floor the company comes back down to.
---   caches, the reliquary, the recruit, the shrine, the merchant, a crossroads
---   the hazards     a stretch you have already walked blind through is ground, not an ambush
---   secret doors    found is found; that is the whole point of keeping the floor
---   a dropped pack  it is yours, and it is not a monster
---
--- EXCEPT THE CAMP, which is a place and is lit again every trip anyway (2026-10-01). The rule above is
--- about what a place PAYS -- a cache re-dealt every trip down would be a printing press -- and a camp pays
--- recovery, which the Ward at the top of the stair already pays in full and for free. Nothing a re-lit
--- camp gives a company is more than walking out would. Spent for good, it was spent on the first trip:
--- a company re-enters at its deepest mapped floor (Descent.entryFloor), so from the second trip on the
--- floor it actually stood on had no camp at all. It still holds once PER TRIP -- this runs only when a
--- kept board is re-entered, never on a resume -- so camps do not compound inside one (FLOOR_RESTS).
---
--- AND A RE-ARMED FIGHT PAYS IN FULL. It was tempting to suppress its spoils to stop a company farming
--- a shallow floor forever, and it is the wrong trade: a fight that costs health and turns and hands back
--- nothing does not respect the time it took, and the player who grinds anyway is now grinding for
--- nothing. If the curve ever needs defending from grinding, the lever is the curve
--- (Experience.STEP), never the reward for a fight actually fought. The floor's PLACES stay
--- spent, so re-treading pays combat and nothing else -- no second cache, no second relic -- which is
--- most of the answer on its own.
+-- AND A RE-ARMED FIGHT PAYS IN FULL. A fight that costs health and turns and hands back nothing does not
+-- respect the time it took; the floor's PLACES stay spent, so re-treading pays combat and nothing else.
 -- ---------------------------------------------------------------------------
 -- The prowl: where the ordinary fighting lives
 -- ---------------------------------------------------------------------------
@@ -2922,7 +2885,21 @@ end
 --
 -- (2026-10-23) TWENTY-FOUR, approved: sixteen dealt too many. Not re-measured against Class's
 -- ten-fights-a-floor figure (models/class.lua's CLASS_LEVEL_STEP note), which this moves -- see there.
-Descent.PROWL_STEPS = 24
+--
+-- (2026-10-24) TWENTY-EIGHT AT THE TOP, FIFTY-TWO AT THE BOTTOM, measured with `. floor-fights`: the rift
+-- resets every run now, so a run is a sitting of about sixty fights, four a floor (Descent.FLOOR_FIGHTS
+-- carries the before/after table). A deep floor already seats a second elite (Descent.floorSeen), so the
+-- walk deals fewer there and the floor's total stays flat. This is the TOP of the ramp; Descent.prowlSteps
+-- is what the meter reads.
+Descent.PROWL_STEPS = 28
+Descent.PROWL_STEPS_DEEP = 52
+
+-- The prowl interval on floor `f`: linear between the two above, rounded, the same shape as floorSeen.
+function Descent.prowlSteps(f)
+    local span = math.max(1, Descent.FLOORS - 1)
+    local t = math.min(1, math.max(0, ((f or 1) - 1) / span))
+    return math.floor(Descent.PROWL_STEPS + t * (Descent.PROWL_STEPS_DEEP - Descent.PROWL_STEPS) + 0.5)
+end
 
 -- A FLOOR WHOSE STAIR HAS BEEN BEATEN PROWLS AT HALF RATE (approved 2026-10-23): every interval is
 -- doubled. The guard is dead and the stair stands open (Descent.openStair), so the floor is ground the
@@ -2960,7 +2937,7 @@ function Descent.prowlTarget(run)
     -- window walks the window in a short cycle instead of sampling it, which is a leg length the player
     -- could learn by counting. Folding the first result back through decorrelates the neighbours.
     local n = hash(hash((run and run.seed) or 0, 4093, (run and run.leg) or 0), 7717, 0) % (2 * j + 1)
-    return (Descent.PROWL_STEPS - j + n) * Descent.prowlScale(run)
+    return (Descent.prowlSteps(Descent.depth(run)) - j + n) * Descent.prowlScale(run)
 end
 
 -- HOW MANY STEPS OF WARNING the gauge owes before a fight could possibly land. Two, so the shortest leg
@@ -2984,7 +2961,8 @@ function Descent.prowlBand(run)
     local p = (run and run.prowl) or 0
     -- Scaled with the window on a beaten floor (Descent.prowlScale): the earliest a fight can land is
     -- doubled there, and "close" still turns over PROWL_WARN steps ahead of it.
-    local close = (Descent.PROWL_STEPS - Descent.PROWL_JITTER) * Descent.prowlScale(run) - Descent.PROWL_WARN
+    local close = (Descent.prowlSteps(Descent.depth(run)) - Descent.PROWL_JITTER) * Descent.prowlScale(run)
+        - Descent.PROWL_WARN
     if p >= close then return "close" end
     if p >= close / 2 then return "stirring" end
     return "calm"
@@ -3063,13 +3041,11 @@ end
 -- press standing on floor six. What the company walks back to is a spent cache, because that is what
 -- they emptied.
 --
--- ...AND THE RELIC STOPS, on a new TRIP only (2026-10-24). A relic lasts one trip, so the Altar and the
--- Weeping Stone sell something that is gone by the time the company comes back down; a stop that paid
--- once per save would be met once and then never again. `trip` is Relic.tripOf(player) -- a nil trip
--- relights nothing, and walking up and down one stair within a trip relights nothing either.
-function Descent.rearmFloor(grid, trip)
+-- (THE RELIC STOPS relit here on a new trip, and A CAMP was lit again every trip, while the rift kept its
+-- boards between trips. A run's boards die with the run now, so a re-entry is always inside one trip and
+-- both clauses went.)
+function Descent.rearmFloor(grid)
     if not grid then return 0 end
-    local Relic = require("models.relic")
     local n = 0
     for y = 1, grid.rows do
         for x = 1, grid.cols do
@@ -3083,21 +3059,6 @@ function Descent.rearmFloor(grid, trip)
                 -- back. The blueprint it overwrote was not kept; the generator only ever seats this one.
                 c.encounter = { kind = "rest", id = "encounter_rest", name = "A Moment's Rest" }
                 c.cleared = nil
-            elseif e and e.carrier then
-                -- A CARRIER (Descent.seatCarrier) stands until it dies, and a dead one that handed the
-                -- haul back (`spent`) is taken off the board rather than re-armed. One beaten but never
-                -- spent -- a quit between the win and its payout -- stands up again still holding it.
-                if e.spent then
-                    c.encounter, c.cleared = nil, nil
-                else
-                    c.cleared = nil
-                end
-            elseif e and e.kind == "rest" and c.cleared then
-                -- THE FIRE IS LIT AGAIN, and it is the one place on the list below that comes back. See
-                -- the header: what a camp pays is recovery, and the Ward at the top pays all of it free.
-                c.cleared = nil
-            elseif e and c.cleared and Relic.relights(e, trip) then
-                c.cleared = nil
             elseif e and c.cleared and not e.mimic and (e.kind == "combat" or e.kind == "elite") then
                 c.cleared = nil
                 n = n + 1
@@ -3107,101 +3068,32 @@ function Descent.rearmFloor(grid, trip)
     return n
 end
 
--- ...AND THE ELITES COME BACK SOMEWHERE ELSE. Called beside rearmFloor when a trip walks back onto a kept
--- floor: every elite is lifted and a fresh draw seated on new places (Overworld:reseatElites argues it).
+-- WHICH ELITES STAND ON THIS FLOOR, dealt off the DEPTH rather than off the run (2026-10-24).
 --
--- DEALT OFF THE TRIP, not the lap. `run.seed` is the lap's and never moves (models/seed.lua), which is
--- right for the ground and would put the same elites on the same tiles every trip; `runsStarted` is the
--- count Seed.run still advances per descent for exactly this kind of use -- the same fold that deals
--- the companion (Descent.new). One trip reproduces as itself; the next one is a different floor's worth
--- of standing threats.
-function Descent.reseatElites(grid, pool, run, player)
-    if not (grid and run) then return 0 end
+-- The rift resets every run, so the ground is new each time -- but a floor keeps its identity by depth:
+-- its circle, its biome, its stair guardian and its named elite (Descent.SINS' `elites`, weighted by
+-- Descent.floorPool). The generator draws its elites off the layout's seed, which moves per run, so this
+-- re-deals them off the save's lap seed and the depth alone (Overworld:reseatElites): the set is the same
+-- every run on this floor -- the billed one, on most floors, by Descent.ELITE_NAMED_WEIGHT -- and only
+-- where they stand moves with the ground. Called on a freshly laid floor and again on re-entry within
+-- the run, beside rearmFloor.
+function Descent.eliteSeed(player, floor)
     local Seed = require("models.seed")
-    local seed = Seed.mix(run.seed or 0, (player and player.runsStarted) or 0, Descent.depth(run), 5323)
-    return grid:reseatElites(pool, seed)
+    return Seed.mix(Seed.lap(player), floor or 1, 5323)
 end
 
--- The board this company already has for `floor`, or nil for one it has never walked.
+function Descent.reseatElites(grid, pool, run, player)
+    if not (grid and run) then return 0 end
+    return grid:reseatElites(pool, Descent.eliteSeed(player, Descent.depth(run)))
+end
+
+-- The board this run already holds for `floor`, or nil for one it has not walked.
 --
 -- KEYED BY STRING, and that is not a style choice: models/save.lua encodes tables, and a numeric key
 -- round-trips through the encoder as a string on some paths and an integer on others -- so a board
--- stored under 3 and looked up under "3" would silently generate a fresh floor after every load, which
--- is precisely the bug this feature exists to prevent and is invisible until somebody notices their map
--- is gone.
-function Descent.floorBoard(player, floor)
-    return (player and player.floors or {})[tostring(floor or 1)]
-end
-
--- THROW AWAY THE FLOORS AN OLDER GENERATOR LAID, and rescue anything the company left on one.
---
--- WHY THIS HAS TO EXIST. The kept map is the whole pivot: a board is stored whole and re-entered
--- verbatim, which is what makes the maze a place. It also means a floor keeps the generator it was laid
--- by -- so every pass added since (the traps, the side locks, the holes, the set-pieces) is simply
--- absent from the floors a player has already walked, forever, with nothing on screen to say why. That
--- is the symptom "the dungeon still uses the old generation", and it is not a generation bug at all --
--- the generator is fine and the floor is a photograph of an older one.
---
--- WHAT IT COSTS is the map of those floors, once. That is the lesser loss against a save where the
--- newest half of the dungeon never appears, and it is the same trade models/save.lua's VERSION makes.
---
--- NOTHING THE PLAYER OWNS IS DESTROYED BY IT. A stale board may be holding a pack the company dropped
--- when it wiped (Descent.dropPack) -- items they intend to walk back for -- so those are lifted into
--- the stash before the board goes. Silently deleting somebody's gear to fix a generation mismatch
--- would be a far worse bug than the one this repairs.
---
--- CALLED WHEN A COMPANY IS ABOUT TO GO DOWN (states/gate.lua), which is the one moment the answer can
--- change and the one moment nobody is standing on a floor.
-function Descent.pruneStaleFloors(player)
-    local floors = player and player.floors
-    if not floors then return 0 end
-    local Overworld = require("models.overworld")
-    local Save = require("models.save")
-    local Player = require("models.player")
-
-    local dropped, rescued = 0, 0
-    for key, board in pairs(floors) do
-        if type(board) ~= "table" or board.gen ~= Overworld.GEN_VERSION then
-            -- Everything the company was going to come back for.
-            for y = 1, ((board and board.rows) or 0) do
-                for x = 1, (board.cols or 0) do
-                    local cell = board.cells and board.cells[y] and board.cells[y][x]
-                    local e = cell and cell.encounter
-                    -- ...a pile, or a carrier's haul (Descent.seatCarrier): either way the company's.
-                    if e and (e.kind == "pack" or Descent.isCarrier(e)) then
-                        for _, snap in ipairs(e.items or {}) do
-                            local item = Save.restoreItem(snap)
-                            if item then
-                                Player.addToStash(player, item)
-                                rescued = rescued + 1
-                            end
-                        end
-                    end
-                end
-            end
-            -- ...and whoever was stranded with a carrier on it walks home: the floor they were waiting
-            -- on is gone, and a body cannot be left on a floor that no longer exists.
-            Descent.freeStranded(player, tonumber(key))
-            floors[key] = nil
-            dropped = dropped + 1
-        end
-    end
-    return dropped, rescued
-end
-
--- HOW DEEP THE PLACE GOES FOR THIS COMPANY: the deepest floor it holds a map of.
---
--- Distinct from Descent.deepest, which is the deepest floor ever STOOD on. They agree almost always and
--- differ in the one case that matters to Descent.entryFloor: a company wiped on arrival keeps the depth
--- record (it stood there) and may hold no map of it (it never finished drawing one). The stair you may
--- re-enter by is the one you MAPPED, so this is the figure the city offers.
-function Descent.mapped(player)
-    local deepest = 0
-    for key in pairs((player and player.floors) or {}) do
-        local n = tonumber(key)
-        if n and n > deepest then deepest = n end
-    end
-    return deepest
+-- stored under 3 and looked up under "3" would silently generate a fresh floor after every load.
+function Descent.floorBoard(run, floor)
+    return (run and run.floors or {})[tostring(floor or 1)]
 end
 
 -- ---------------------------------------------------------------------------
@@ -3365,385 +3257,40 @@ function Descent.lightFire(run)
 end
 
 -- ---------------------------------------------------------------------------
--- What killed the company carries what it found
+-- A wipe
 -- ---------------------------------------------------------------------------
 
--- WHAT KILLED THE COMPANY CARRIES THE HAUL (the author, 2026-10-23). This was a pile lying unguarded on
--- the tile; it is a CARRIER now -- the fight that wiped them, seated on that tile as an ELITE holding
--- the trip's finds. Kill it and the whole haul comes back, with the fight's ordinary spoils on top.
+-- WHAT A WIPE COSTS (2026-10-24): THE HAUL IS LOST, AND THE HIRES WHO FELL ARE DEAD.
 --
--- IT STANDS: it does not wander, rearmFloor never wakes it (it is lifted off the board when it dies) and
--- Overworld:reseatElites leaves it where it is. AT THE FLOOR'S OWN LEVEL, plus one for every further
--- wipe on that floor (`levelBonus`, read by Descent.fightLevel). ONE PER FLOOR: a second wipe here, to the
--- carrier or to anything else, merges its haul into the one standing -- overwriting would delete the
--- first haul, and two carriers would be two bills for one floor.
+-- The rift resets every run, so there is no floor to walk back to and nothing can wait on one: the trip's
+-- finds (Player.takeAtRisk -- the diff against the company as it walked in, so nothing it OWNED when it
+-- walked in is ever taken) are simply gone. Every hired stranger in the expedition dies and leaves the
+-- roster for good (Hire.dismiss -- the company's gear on the body goes back to the stash, which is the
+-- kit the company bought for them; a found piece on the body was already taken with the haul). The named
+-- cast -- the avatar, Rowan, Xin and the companions -- comes home injured (states/game.lua's
+-- inflictInjuries, called before this).
 --
--- WHAT IT IS MADE OF is the cast that actually stood against the company -- the arena's opening enemies
--- -- fought as a plain kill-all with no objective, escort or waves. That is the one composition every
--- kind of fight has, so a rolled wanderer and an objective fight seat the same way as an elite.
+-- (It was a CARRIER for a day -- what killed the company held the haul on the fall tile and hires were
+-- stranded beside it -- and a heap on the floor before that. Both needed a floor that outlived the run.)
 --
--- WHERE: the fall tile, unless that tile is a PLACE -- a stair, an end, a cache, a spent mimic -- since a
--- carrier written over the way down would delete the floor's exit. Then the nearest open place to it.
---
--- AND THE HIRES STAY DOWN WITH IT (Descent.strand). The named cast wakes in the city; a hired stranger
--- is left with the carrier, out of the Gate's pool, until it dies -- or for Descent.STRAND_TRIPS trips,
--- after which they are gone.
---
--- (The pile's argument, kept because it still holds for the haul half:)
---
--- WHY THERE IS A COST ON DYING AGAIN, stated plainly because docs/the-count.md spent a page arguing
--- there should not be. That page's law is about RECOVERY -- "a cost on recovery is a tax on needing to
--- recover" -- and it is intact: this takes nothing the company owned when it walked in, nothing it can
--- be billed for, and nothing that makes the next trip harder than the last one. What it takes is the
--- unbanked winnings of the trip that just failed, which is the one thing a company can lose without
--- ever going backwards.
---
--- It exists because after the pivot a wipe cost literally nothing: not gear, not gold, not an injury, not
--- a mark (the tally is parked), and Descent.entryFloor put the company back on the floor they died on,
--- whole, the same evening. "How deep do I dare go" had one answer, and it was "all the way, repeatedly".
---
--- AND IT IS NOT GONE, IT IS LYING THERE. Dark Souls' bloodstain, Wizardry's body on the floor: the pile
--- waits on the tile until somebody walks back to it. That is what keeps this on the right side of the
--- law -- the loss is a RETRIEVAL PROBLEM rather than a confiscation -- and it is the first real reason
--- this game has ever had to re-enter a floor it already cleared. The walk back is the price, and the
--- floor's fights have re-armed (Descent.rearmFloor) so the walk is a real one.
---
--- ON THE KEPT BOARD RATHER THAN ON A LEDGER, and that is the whole reason this is simple now. The
--- deleted version had to hang piles off the player (`player.lostPacks`) and re-seat them on a later
--- run, because "a rift closes when the company leaves it -- so a pile dropped on floor nine has no
--- floor nine to wait on". Floor nine is still there. The pile sits in the cell, the cell rides in the
--- board, the board is the player's (Descent.keepFloor), and Overworld:snapshot copies `encounter`
--- whole -- so there is ONE store and nothing to disagree with anything.
---
--- (NO GUARD STOOD OVER IT, on the argument that a guard turns a retrieval into a second boss fight. The
--- author reversed that: the carrier is the fight that beat you, at the floor's own level, and that is
--- the price of getting the haul back.)
-
--- How many trips a stranded hire waits with the carrier before they are gone. Counted off
--- Descent.strandClock, so "a trip" means whatever that one helper reads.
-Descent.STRAND_TRIPS = 3
-
--- THE ONE READ OF THE TRIP CLOCK the strand counts on. Trips begun (Player.tripsHome) today; a counted-
--- trip number (trips that won a fight or wiped) is meant to replace it, and this is the line to repoint.
-function Descent.strandClock(player)
-    return require("models.player").tripsHome(player)
-end
-
--- Is this cell encounter a carrier?
-function Descent.isCarrier(enc)
-    return type(enc) == "table" and enc.kind == "elite" and enc.carrier == true
-end
-
--- The level a fight on this tile is minted at: the floor's own (`base`, the quest's dangerLevel) plus
--- whatever a carrier has grown by. Nil stays nil, so a caller with no clock of its own falls back as before.
-function Descent.fightLevel(base, enc)
-    if base == nil then return nil end
-    return base + ((type(enc) == "table" and enc.levelBonus) or 0)
-end
-
--- The carrier standing on `floor`'s kept board, as `enc, cell, x, y`, or nil.
-function Descent.carrierOn(player, floor)
-    local board = Descent.floorBoard(player, floor)
-    for y = 1, ((board and board.rows) or #((board and board.cells) or {})) do
-        local row = board.cells and board.cells[y]
-        for x = 1, ((board.cols) or #(row or {})) do
-            local cell = row and row[x]
-            if cell and Descent.isCarrier(cell.encounter) and not cell.encounter.spent then
-                return cell.encounter, cell, x, y
-            end
-        end
-    end
-    return nil
-end
-
--- May a carrier be written over what stands on this cell? An inhabitant, yes (it IS the fight that
--- beat them, or a rolled one, or an old unguarded pile whose items fold in); a place, no.
-local function carrierMayTake(cell)
-    local e = cell.encounter
-    if not e then return true end
-    if e.wandering or e.kind == "pack" then return true end
-    return (e.kind == "combat" or e.kind == "elite") and not e.mimic and not e.questId and not e.wardFor
-end
-
--- Open ground for a displaced carrier: walkable, empty, nothing put there on purpose, not the door.
-local function carrierOpenGround(board, cell, x, y)
-    if cell.tile == "thicket" then return false end
-    if cell.encounter or cell.cache or cell.gate or cell.key or cell.vault or cell.trap or cell.secret then
-        return false
-    end
-    local s = board.start
-    return not (s and s.x == x and s.y == y)
-end
-
--- The tile a new carrier stands on: the fall tile if it may, else the nearest open ground to it, walked
--- outward through anything that is not a wall.
-local function carrierTile(board, x, y)
-    local cells = board.cells
-    local start = cells[y] and cells[y][x]
-    if not start then return nil end
-    if carrierMayTake(start) then return start end
-    local seen, queue, head = { [y * 100000 + x] = true }, { { x, y } }, 1
-    while queue[head] do
-        local cx, cy = queue[head][1], queue[head][2]
-        head = head + 1
-        for _, d in ipairs({ { 0, -1 }, { 1, 0 }, { 0, 1 }, { -1, 0 } }) do
-            local nx, ny = cx + d[1], cy + d[2]
-            local c = cells[ny] and cells[ny][nx]
-            local key = ny * 100000 + nx
-            if c and not seen[key] and c.tile ~= "thicket" then
-                seen[key] = true
-                if carrierOpenGround(board, c, nx, ny) then return c end
-                queue[#queue + 1] = { nx, ny }
-            end
-        end
-    end
-    return nil
-end
-
--- SEAT (OR GROW) THE CARRIER for a wipe on `floor`, at the tile the company fell on (`x`, `y`).
---
--- `opts`: items (live instances: the haul, Player.takeAtRisk's), composition (the ids that stood against
--- them), name, tier, hires (char ids to strand with it). Returns `carrier, merged`.
---
--- On a floor that already has a carrier, the haul is merged into it and it rises one level, wherever it
--- stands. Otherwise one is seated only if there is something for it to hold -- a haul or a hire -- since
--- a carrier of nothing is a fight with no reason to walk back to it.
---
--- The board must be in the book first (Descent.keepFloor): the carrier is written into the kept board's
--- own cell, and a caller that got the order wrong loses the carrier rather than the save.
-function Descent.seatCarrier(player, floor, x, y, opts)
-    opts = opts or {}
-    local board = Descent.floorBoard(player, floor)
-    if not (player and board and board.cells) then return nil end
-    local Save = require("models.save")
-    local items, hires = opts.items or {}, opts.hires or {}
-
-    local carrier = Descent.carrierOn(player, floor)
-    local merged = carrier ~= nil
-    if carrier then
-        carrier.levelBonus = (carrier.levelBonus or 0) + 1
-    else
-        if #items == 0 and #hires == 0 then return nil end
-        local cell = carrierTile(board, x, y)
-        if not cell then return nil end
-        local comp = {}
-        for i, id in ipairs(opts.composition or {}) do comp[i] = id end
-        carrier = {
-            kind = "elite", carrier = true,
-            name = opts.name or "What Killed You",
-            -- No blueprint id, on purpose: the cast is on the cell, there is no objective or escort to
-            -- inherit, and an elite's first-win Charter Seal is keyed on the id (a carrier pays none).
-            composition = #comp > 0 and comp or nil,
-            -- The whole cast fits: it already stood on a board against this company once.
-            enemyCap = #comp > 0 and #comp or nil,
-            tier = opts.tier or 2,
-            floor = floor,
-            levelBonus = 0,
-            items = {},
-        }
-        -- An old unguarded pile on the chosen tile folds in rather than being written over.
-        local pile = cell.encounter
-        if pile and pile.kind == "pack" then
-            for _, snap in ipairs(pile.items or {}) do carrier.items[#carrier.items + 1] = snap end
-        end
-        cell.encounter = carrier
-        cell.cleared = nil
-    end
-    carrier.items = carrier.items or {}
-    for _, item in ipairs(items) do carrier.items[#carrier.items + 1] = Save.snapshotItem(item) end
-    carrier.count = #carrier.items
-    Descent.strand(player, floor, hires)
-    return carrier, merged
-end
-
--- KILL THE CARRIER: the haul, rehydrated, and the hires it held back in the company. Returns
--- `items, freed` (freed = the roster instances), or nil for a cell holding no carrier.
---
--- The tile is marked spent rather than emptied, so whatever runs on the win after this still sees the
--- fight it was; states/game.lua lifts it off the board beside the rolled fights it retires.
---
--- THROUGH Save.restoreItem AND NOT Item.instantiate: a husk rebuilds through Identify.sealed off its
--- `unidentified` field, and sealed must stay sealed (see Descent.takePack).
-function Descent.takeCarrier(player, floor, cell)
-    local e = cell and cell.encounter
-    -- A SPENT one (already taken, waiting to be lifted off) pays nothing twice. Its own flag rather than
-    -- `cell.cleared`, because the win marks the cell cleared before it hands the haul over.
-    if not Descent.isCarrier(e) or e.spent then return nil end
-    local Save = require("models.save")
-    local out = {}
-    for _, snap in ipairs(e.items or {}) do
-        local item = Save.restoreItem(snap)
-        if item then out[#out + 1] = item end
-    end
-    e.items, e.count, e.spent = {}, 0, true
-    cell.cleared = true
-    return out, Descent.freeStranded(player, e.floor or floor)
-end
-
--- ---------------------------------------------------------------------------
--- Stranded hires
--- ---------------------------------------------------------------------------
-
--- Leave these hires on `floor` with its carrier: { [charId] = { floor, trip } } on the player. A body
--- already stranded keeps its first stamp -- a second wipe does not restart anybody's clock. Only hires:
--- the named cast always comes home, and a non-hire id is ignored here so no caller can strand one.
-function Descent.strand(player, floor, ids)
-    if not (player and ids and #ids > 0) then return end
-    local Hire = require("models.hire")
-    local now = Descent.strandClock(player)
-    player.stranded = player.stranded or {}
-    for _, id in ipairs(ids) do
-        id = type(id) == "table" and id.id or id
-        if Hire.isHire(id) and not player.stranded[id] then
-            player.stranded[id] = { floor = floor, trip = now }
-        end
-    end
-end
-
--- Where this body is stranded, as { floor, trip }, or nil for one who is not.
-function Descent.strandedOf(player, charId)
-    return player and player.stranded and player.stranded[charId] or nil
-end
-
--- Bring home everybody stranded on `floor`. Returns the roster instances freed.
-function Descent.freeStranded(player, floor)
-    local out = {}
-    if not (player and player.stranded) then return out end
-    for _, char in ipairs(player.roster or {}) do
-        local s = player.stranded[char.id]
-        if s and s.floor == floor then
-            player.stranded[char.id] = nil
-            out[#out + 1] = char
-        end
-    end
-    -- Entries for bodies no longer on the roster (dismissed) are dropped on the way past.
-    for id, s in pairs(player.stranded) do
-        if s.floor == floor then player.stranded[id] = nil end
-    end
-    if not next(player.stranded) then player.stranded = nil end
-    return out
-end
-
--- THE ONES NOBODY CAME FOR. Every stranded hire whose wait has run Descent.STRAND_TRIPS trips is let go
--- (Player.release -- the company's gear on them goes back to the stash, their own organs leave with
--- them). Returns { { name, floor } }, sorted, for the notice. Called in the city, between trips.
-function Descent.expireStranded(player)
-    local gone = {}
-    if not (player and player.stranded) then return gone end
-    local now = Descent.strandClock(player)
-    local byId = {}
-    for _, char in ipairs(player.roster or {}) do byId[char.id] = char end
-    local ids = {}
-    for id in pairs(player.stranded) do ids[#ids + 1] = id end
-    table.sort(ids)
+-- Returns { lost = how many pieces, dead = { names } }. Nothing is saved here; the caller saves.
+function Descent.wipe(player, run)
     local Player = require("models.player")
-    for _, id in ipairs(ids) do
-        local s = player.stranded[id]
-        local char = byId[id]
-        if not char then
-            player.stranded[id] = nil
-        -- `>` not `>=`: the wipe that stranded them is itself a counted trip (Gate.homecoming runs
-        -- after the stamp), and it is not one the company could have spent walking back.
-        elseif now - (s.trip or now) > Descent.STRAND_TRIPS then
-            gone[#gone + 1] = { name = char.name or id, floor = s.floor }
-            Player.release(player, id)
-            player.stranded[id] = nil
-        end
+    local Hire = require("models.hire")
+    local out = { lost = 0, dead = {} }
+    if not player then return out end
+    local haul = Player.takeAtRisk(player, run and run.entry)
+    out.lost = #haul
+    local hires = {}
+    for _, char in ipairs(run and Descent.party(run, player) or {}) do
+        if Hire.isHire(char) then hires[#hires + 1] = char end
     end
-    if not next(player.stranded) then player.stranded = nil end
-    return gone
-end
-
--- Every stranded body still on the roster, as { char, floor }, by floor then name.
-function Descent.strandedList(player)
-    local out = {}
-    for _, char in ipairs((player and player.roster) or {}) do
-        local s = Descent.strandedOf(player, char.id)
-        if s then out[#out + 1] = { char = char, floor = s.floor } end
+    for _, char in ipairs(hires) do
+        if Hire.dismiss(player, char.id) then out.dead[#out.dead + 1] = char.name or char.id end
     end
-    table.sort(out, function(a, b)
-        if a.floor ~= b.floor then return (a.floor or 0) < (b.floor or 0) end
-        return tostring(a.char.name) < tostring(b.char.name)
-    end)
     return out
 end
 
--- Pick an OLD pile up -- one written before the carrier, which a save may still hold: the items,
--- rehydrated, and the marker gone. Nil for a cell holding no pile.
---
--- THROUGH Save.restoreItem AND NOT Item.instantiate. Most of what a floor pays is now a husk
--- (Spoils.SEALED_CHANCE), and a husk rebuilds through Identify.sealed off its `unidentified` field --
--- an id and a level cannot reconstruct one. The deleted version called `Item.instantiate(snap.id,
--- snap.level)`, which both flattened every husk into a plain piece AND passed the level in the
--- QUANTITY argument. Neither failure would have shown up as a crash.
-function Descent.takePack(player, floor, cell)
-    if not (cell and cell.encounter and cell.encounter.kind == "pack") then return nil end
-    local Save = require("models.save")
-    local out = {}
-    for _, snap in ipairs(cell.encounter.items or {}) do
-        local item = Save.restoreItem(snap)
-        if item then out[#out + 1] = item end
-    end
-    cell.encounter = nil
-    cell.cleared = true
-    return out
-end
-
--- EVERY HAUL THIS COMPANY HAS LEFT UNDERGROUND, as { floor, x, y, count }, shallowest first. A carrier's
--- row also says `carrier = true`, its `name`, how many levels it has grown (`level`) and how many hires
--- it is holding (`hires`); an old unguarded pile has none of those.
---
--- DERIVED BY WALKING THE KEPT BOARDS rather than kept as an index beside them. A second store is a
--- second thing to go stale, and this one would go stale in the worst possible way -- telling a player
--- their gear is on floor nine after they have already fetched it. Fifteen boards of a few hundred cells
--- is nothing; the readouts that call this (the Gate, the defeat card) draw once.
-function Descent.lostPacks(player)
-    local out = {}
-    for key, board in pairs((player and player.floors) or {}) do
-        local floor = tonumber(key)
-        for y = 1, ((board and board.rows) or 0) do
-            for x = 1, (board.cols or 0) do
-                local cell = board.cells and board.cells[y] and board.cells[y][x]
-                local e = cell and cell.encounter
-                if e and e.kind == "pack" then
-                    out[#out + 1] = { floor = floor, x = x, y = y, count = e.count or #(e.items or {}) }
-                elseif Descent.isCarrier(e) and not e.spent then
-                    local hires = 0
-                    for _, s in pairs((player and player.stranded) or {}) do
-                        if s.floor == floor then hires = hires + 1 end
-                    end
-                    out[#out + 1] = { floor = floor, x = x, y = y, count = e.count or #(e.items or {}),
-                                      carrier = true, name = e.name, level = e.levelBonus or 0,
-                                      hires = hires }
-                end
-            end
-        end
-    end
-    table.sort(out, function(a, b)
-        if a.floor ~= b.floor then return (a.floor or 0) < (b.floor or 0) end
-        if a.y ~= b.y then return a.y < b.y end
-        return a.x < b.x
-    end)
-    return out
-end
-
--- THE DEEPEST STAIR THIS COMPANY MAY WALK IN BY, which is 1 until it has mapped something below.
---
--- WIZARDRY'S SHAFT AND DAPHNE'S ELEVATOR -- the original and Wizardry Variants Daphne, the same lineage
--- two generations apart -- and it is the payoff for the map book existing at all. Without it a
--- persistent dungeon means only that you re-walk ground you have already cleared to reach the part you
--- have not -- which is the map's cost with none of its benefit, and gets worse every floor.
---
--- READ OFF THE MAP RATHER THAN OFF THE DEPTH RECORD, and the two differ in the case that matters: a
--- company wiped on arrival has STOOD on that floor (Descent.reached writes `deepest`) without having
--- drawn it. The stair you may re-enter by is one you actually mapped, so this reads Descent.mapped --
--- and it can never hand back a floor the player has not seen the inside of.
---
--- CLAMPED TO THE STACK because the book can hold the bottom itself: a company that walked the Crown and
--- came back up would otherwise be offered a re-entry below the last floor there is.
-function Descent.entryFloor(player)
-    return math.max(1, math.min(Descent.FLOORS, Descent.mapped(player)))
-end
 
 --
 -- `chars` is the company the run walks in with -- one body (Descent.startingCompany), already
@@ -4323,8 +3870,7 @@ end
 --
 -- It was the circle's name -- "Below you is Wrath" -- which read as a place and was the one thing the
 -- player could be told about the ground they were about to commit to. The circles are no longer the
--- unit anybody navigates by: a company re-enters at the deepest floor it has mapped (Descent.entryFloor)
--- and the Gate's own rows are numbered, so naming a sin here made the stair speak a vocabulary nothing
+-- unit anybody navigates by: the Gate's own rows are numbered, so naming a sin here made the stair speak a vocabulary nothing
 -- else on the route used. Depth is the figure the player is actually chasing, so the stair states it.
 --
 -- THE BOTTOM KEEPS ITS NAME, because the Hollow Crown is not a circle -- it is the thing under all of
@@ -5540,9 +5086,9 @@ function Descent.retreat(run, player)
     -- `Descent.countBy(player, 1)` stood here so that up-and-down was net zero and the tally could not
     -- be farmed into a purse -- sound reasoning about a mode where climbing was the one decision with
     -- an alternative. In a dungeon you are meant to surface from constantly it prices the loop itself.
-    -- The tally is parked rather than re-tuned; `player` stays in the signature because the kept board
-    -- is the company's now and this function needs it.
-    local board = Descent.floorBoard(player, run.floor)
+    -- The tally is parked rather than re-tuned. `player` is no longer read (the kept board is the run's
+    -- again) and stays in the signature so no caller has to change.
+    local board = Descent.floorBoard(run, run.floor)
     run.arriveAt = board and board.objective and { x = board.objective.x, y = board.objective.y } or nil
     return run.floor
 end
@@ -5998,9 +5544,9 @@ function Descent.snapshot(run)
         -- WHAT A STOP LEFT FOR THE NEXT FIGHT (Descent.queueOpening), or a Carcass eaten, saved and
         -- resumed would open the next fight without the meal. Nil when nothing is queued. Additive.
         opening = run.opening or nil,
-        -- (No `floors` -- the map book is the player's now, exactly as the tally is. models/save.lua
-        -- carries an old save's forward off the raw snapshot, so a run saved while the floors still
-        -- rode here does not lose the map it had drawn.)
+        -- THE RUN'S BOARDS (Descent.keepFloor), written raw: a kept board is already plain Overworld
+        -- snapshot data. Nil when the run has kept none. A resume finds floor N-1 as it was left.
+        floors = next(run.floors or {}) and run.floors or nil,
     }
 end
 
@@ -6064,7 +5610,14 @@ function Descent.restore(snap)
             end
             return { floor = tonumber(snap.opening.floor) or 1, boons = boons }
         end)() or nil,
-        -- (No `floors` -- see snapshot. The map book is the player's.)
+        -- ...and the run's boards, keys forced to strings (Descent.floorBoard looks up by tostring).
+        floors = (function()
+            local out = {}
+            for key, board in pairs(type(snap.floors) == "table" and snap.floors or {}) do
+                if type(board) == "table" then out[tostring(key)] = board end
+            end
+            return out
+        end)(),
         entry = nil, -- re-attached by Save.restoreRun from the run-level copy; see above
     }
 end

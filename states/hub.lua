@@ -97,8 +97,8 @@ local titleFont = Theme.display(28)
 -- already the one card drawn larger, and exactly where the eye is when the player is deciding whether
 -- to press it.
 --
--- WHAT STANDS THERE NOW IS THE MAP, not the tally: how deep the place goes for this company
--- (Descent.mapped, drawn in hub.draw). The swap is the pivot in one line -- the number under the Rift
+-- WHAT STANDS THERE NOW IS THE DEPTH RECORD, not the tally: how deep this company has ever been
+-- (Descent.deepest, drawn in hub.draw). The swap is the pivot in one line -- the number under the Rift
 -- stopped being how badly the company is doing and became how much of the rift it has drawn. The tally
 -- is parked (Descent.COUNT_PARKED, docs/the-count.md) and this widget is kept built and ticked so that
 -- lifting the flag brings it back with its arrival beat intact, which is what separates a park from a
@@ -645,54 +645,22 @@ function hub.enter()
     -- (states/game.lua's onLoss). One visit's worth: consumed here so it cannot greet the player a
     -- second time on the way back from the shops.
     --
-    -- WHAT IT SAYS IS THAT LOSING TOOK NOTHING THEY OWNED, because that is the half no readout on any
-    -- screen can say and the half a player most needs to hear straight after a wipe. The kit, the gold,
-    -- the levels and the map are all still theirs (docs/the-count.md's law -- losing is never billed).
+    -- WHAT IT SAYS NOW (2026-10-24): the haul is lost, and which hires died. The rift resets every run,
+    -- so nothing waits on the floor (models/descent.lua's Descent.wipe); the kit they walked down with
+    -- came home, which is why the sentence names only those two.
     --
-    -- AND IT DOES NOT SAY WHERE THE PACK IS, on purpose. The trip's finds are lying on the floor they
-    -- fell on (Descent.dropPack) and the Gate names them on EVERY visit, standing, in the warning
-    -- colour (Descent.lostPacks, states/gate.lua's draw). A pack outlives the session that dropped it,
-    -- so the one screen it is actionable from is the one that carries it permanently -- and repeating it
-    -- here would put the load-bearing half of the sentence on the surface that forgets it.
-    --
-    -- SHORT ENOUGH FOR THE BAND, which is the constraint the declaration up top states. Sixty-seven
-    -- characters at the widest floor number, drawn across 900px: one line, with the band's second one
-    -- spare. Keeping the pack out of it is what buys that.
-    --
-    -- NO SAVE ON THE WAY PAST. The rout branch already wrote one (states/game.lua) and this field is
-    -- not in the file at all, so persisting the clear would be rewriting the save to record nothing.
-    --
-    -- WHAT IT SAYS NOW (2026-10-23) is where the haul went, because that changed: what killed the company
-    -- holds the trip's finds on that floor (Descent.seatCarrier), and a hire may be waiting with it
-    -- (Descent.strand). The kit they walked down with did still come home, which is why the sentence
-    -- names only those two. The Gate still carries it standing.
+    -- NO SAVE ON THE WAY PAST. The rout branch already wrote one (states/game.lua) and neither field is
+    -- in the file at all.
     notice = nil
     if hub.player.pendingRout then
-        local floor = hub.player.pendingRout
-        notice = "Routed on floor " .. floor .. ". What killed you holds the haul there."
-        local left = {}
-        for _, row in ipairs(Descent.strandedList(hub.player)) do
-            if row.floor == floor then left[#left + 1] = row.char end
+        notice = "Routed on floor " .. hub.player.pendingRout .. ". The haul is lost."
+        local dead = hub.player.pendingDead or {}
+        if #dead == 1 then
+            notice = notice .. " " .. dead[1] .. " died."
+        elseif #dead > 1 then
+            notice = notice .. " " .. #dead .. " hires died."
         end
-        if #left == 1 then
-            notice = notice .. " " .. (left[1].name or "A hire") .. " stays with it."
-        elseif #left > 1 then
-            notice = notice .. " " .. #left .. " hires stay with it."
-        end
-        hub.player.pendingRout = nil
-    end
-    -- ...AND THE HIRES NOBODY CAME FOR (Descent.expireStranded): gone after Descent.STRAND_TRIPS trips.
-    -- Only between trips (no expedition open), so a look at the Gate and a walk back is not a trip spent.
-    -- Saved here, because the roster just changed and the release must not be undone by a quit.
-    if not hub.player.descentRun then
-        local gone = Descent.expireStranded(hub.player)
-        if #gone > 0 then
-            local line = (#gone == 1)
-                and (gone[1].name .. " was never fetched from floor " .. gone[1].floor .. ", and is gone.")
-                or (#gone .. " hires were never fetched, and are gone.")
-            notice = notice and (notice .. "\n" .. line) or line
-            Player.save()
-        end
+        hub.player.pendingRout, hub.player.pendingDead = nil, nil
     end
     -- The town is the safe home a battle hands back to, so clear any screen effect the last fight left
     -- standing -- the defeat grey most of all -- rather than let it bleed into the city (ui/screen_fx).
@@ -895,21 +863,18 @@ function hub.draw()
     -- is the moment it becomes about something they did. Until then this card is exactly what it has
     -- always been (models/descent.lua's Descent.everClimbedOut, and the mark is one-way for the same
     -- reason the Inn's door is).
-    -- THE PLATE SAYS HOW DEEP THE PLACE GOES FOR YOU, and it is the same slot the tally used to stand in
-    -- (Descent.COUNT_PARKED took the meter off it). The swap is the premise in one line: the number
-    -- under the Rift stopped being how badly the company is doing and became how much of the rift it
-    -- has drawn -- the map book, on the door it was drawn behind (models/descent.lua's Descent.mapped).
+    -- THE PLATE SAYS HOW DEEP THIS COMPANY HAS EVER BEEN (Descent.deepest). The rift resets every run
+    -- (2026-10-24), so it is a record to beat; it read "Mapped to floor N" while the rift was a place.
     --
-    -- SILENT UNTIL THERE IS A MAP. A company on its first trip has walked nothing, and "Mapped to floor
-    -- 0" is a readout of an absence -- the first descent writes floor one and the line arrives with it.
-    local mapped = Descent.mapped(hub.player)
-    if mapped > 0 then
+    -- SILENT UNTIL THERE IS ONE. A company on its first trip has been nowhere yet.
+    local deepest = Descent.deepest(hub.player)
+    if deepest > 0 then
         local gate = Building.GRID.city.gate
         -- The meter's own phrase font and slot, so the plate reads at the size it always did
         -- (ui/count_meter.lua drew its band phrase at Theme.body(13) on this line).
         love.graphics.setFont(Theme.body(13))
         Theme.set(Theme.muted)
-        love.graphics.printf("Mapped to floor " .. mapped .. " of " .. Descent.FLOORS,
+        love.graphics.printf("Deepest: floor " .. deepest .. " of " .. Descent.FLOORS,
             gate.x, 384, gate.w, "center")
         love.graphics.setColor(1, 1, 1)
     end

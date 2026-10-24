@@ -612,7 +612,7 @@ return {
         end,
     },
     {
-        name = "a stair deals its slate only the first time it is beaten",
+        name = "a stair deals its slate only the first time it is beaten in this run",
         fn = function()
             local player = { floors = {} }
             local s = Relic.newState()
@@ -624,13 +624,14 @@ return {
             assert(s.offer == nil, "the offer is spent")
             assert(Relic.answerOffer(s, ids[1]) == nil, "and cannot be answered twice")
 
-            -- A kept board with the stair standing open is a stair beaten on an earlier trip.
-            player.floors["3"] = { cells = { { { encounter = { kind = "stair" } } } } }
-            assert(Relic.firstStair(player, 3) == false, "an open stair on the map book is not a first time")
+            -- The same stair again in this run offers nothing; another floor's owes its own.
             assert(Relic.offerStair(s, player, 3, { depth = 3 }) == nil, "a re-crossed stair offers nothing")
-            -- ...while a kept board whose guard still stands owes its slate.
-            player.floors["4"] = { cells = { { { encounter = { kind = "objective" } } } } }
-            assert(Relic.firstStair(player, 4), "a floor walked without beating its guard still owes")
+            assert(Relic.offerStair(s, player, 4, { depth = 4 }), "another floor's stair still owes its slate")
+            Relic.answerOffer(s, nil)
+            -- ...and the NEXT RUN starts the count again: the rift resets, so every stair is new (a
+            -- stair beaten on an earlier run used to pay nothing, read off the retired map book).
+            local nextRun = Relic.newState()
+            assert(Relic.offerStair(nextRun, player, 3, { depth = 3 }), "a new run's first stair dealt nothing")
 
             -- Skipping is an answer too.
             local s2 = Relic.newState()
@@ -677,19 +678,16 @@ return {
         end,
     },
     {
-        name = "a relic stop met on an earlier trip lights again, and only on a new trip",
+        -- (The Stone and the Altar used to light again when a later trip walked back onto a kept floor --
+        -- Relic.relights, retired with the persistent rift. A re-entry is always inside one run now.)
+        name = "a relic stop re-entered within the run stays spent, and its card re-deals once per trip",
         fn = function()
             local Descent = require("models.descent")
             local stone = { encounter = { kind = "weeping_stone", trip = 1, offer = { "x" } }, cleared = true }
             local altar = { encounter = { kind = "shrine", trip = 2 }, cleared = true }
-            local cache = { encounter = { kind = "treasure", trip = 1 }, cleared = true }
-            local grid = { rows = 1, cols = 3, cells = { { stone, altar, cache } } }
-            Descent.rearmFloor(grid, nil)
-            assert(stone.cleared and altar.cleared, "a caller that names no trip relights nothing")
-            Descent.rearmFloor(grid, 2)
-            assert(not stone.cleared, "last trip's Stone lights again")
-            assert(altar.cleared, "this trip's Altar stays spent -- walking a stair up and down is not a trip")
-            assert(cache.cleared, "a cache is a place, and stays spent")
+            local grid = { rows = 1, cols = 2, cells = { { stone, altar } } }
+            Descent.rearmFloor(grid)
+            assert(stone.cleared and altar.cleared, "walking back onto a floor relit a relic stop")
             assert(Relic.freshForTrip(stone.encounter, 2) and stone.encounter.offer == nil,
                 "a stale stop's pinned card is dealt again")
             assert(not Relic.freshForTrip(stone.encounter, 2), "and once per trip")

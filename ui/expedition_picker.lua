@@ -167,14 +167,6 @@ function Picker:isGoing(charId)
     return false
 end
 
--- A HIRE LEFT DOWN THERE with a carrier (Descent.strand) cannot be picked: they are on floor N, not at
--- the stair. Returns the floor, or nil. Descent.party filters them at the source as well; this is what
--- stops a pick from being taken at all, so a press on their tile does nothing rather than nearly works.
-function Picker:stranded(charId)
-    local s = Descent.strandedOf(self.player, charId)
-    return s and s.floor or nil
-end
-
 -- Send a body home. A no-op for one who is not going, so a stray drop cannot shorten the party.
 function Picker:remove(charId)
     local ids = {}
@@ -188,7 +180,6 @@ end
 -- swap is what the gesture looks like: you dropped somebody onto an occupied plate, and the plate holds
 -- one. Dropping onto a plate past the end of a short party appends instead.
 function Picker:place(charId, slot)
-    if self:stranded(charId) then return end
     local ids = {}
     for _, c in ipairs(self:party()) do
         if c.id ~= charId then ids[#ids + 1] = c.id end
@@ -203,7 +194,6 @@ end
 -- The click shorthand: going home if they are going, else onto the first free plate. At four of four
 -- this does nothing, which is what the Gate's count line is there to explain.
 function Picker:toggle(charId)
-    if self:stranded(charId) then return end
     if self:isGoing(charId) then
         self:remove(charId)
     elseif #self:party() < Descent.PARTY_MAX then
@@ -406,20 +396,11 @@ function Picker:draw()
     for i, char in ipairs(self:roster()) do
         local x, y, w, h = self:rosterRect(i)
         local going = self:isGoing(char.id)
-        local strandedOn = self:stranded(char.id)
         Theme.set(Theme.panel)
         love.graphics.rectangle("fill", x, y, w, h, Theme.R or 4, Theme.R or 4)
         Theme.set(going and Theme.hairline or Theme.frame)
         love.graphics.rectangle("line", x, y, w, h, Theme.R or 4, Theme.R or 4)
-        drawBody(char, x, y, w, self.font, going or strandedOn ~= nil)
-
-        -- STRANDED: dimmed, and the floor they are waiting on in the warning colour, top-left -- the
-        -- one corner the injury count does not use. The full sentence is on the Armory's sheet.
-        if strandedOn then
-            love.graphics.setFont(self.smallFont)
-            Theme.set(Theme.accentWeapon)
-            love.graphics.printf("Floor " .. strandedOn, x + 5, y + 3, w - 10, "left")
-        end
+        drawBody(char, x, y, w, self.font, going)
 
         -- GREYED MEANS ONE THING ON THIS ROW: already on a plate. A body used to be dimmed for a second
         -- reason as well -- lying in a bed at the Inn -- and needed a word in the corner to say which of

@@ -7,8 +7,8 @@
 -- trip, and it rides the run save (models/save.lua's snapshotRun), so a quit mid-trip keeps it.
 --
 -- WHERE ONE COMES FROM, and every source is in this file's "The trip" section:
---   * a stair beaten for the FIRST time deals a slate of three (Relic.firstStair + Relic.offerStair);
---     a floor whose stair already stood open on the company's kept map offers nothing;
+--   * a stair beaten for the first time IN THIS RUN deals a slate of three (Relic.offerStair, marked
+--     on the run's relic state -- the rift resets every run, so the map book it read is retired);
 --   * an elite drops one, at most once per floor per trip (Relic.eliteDrop);
 --   * the Merchant sells two beside its gear, the Altar gambles or trades two-for-one, and the
 --     Weeping Stone sells a rung up for a tenth of every maximum -- for THIS TRIP only (Relic.payStone;
@@ -769,9 +769,8 @@ Relic.STONE_SHARE = 0.10
 Relic.STAIR_SLATE = 3
 Relic.MERCHANT_SLATE = 2
 
--- The two stops whose whole payload is a relic. They re-deal every trip (Relic.freshForTrip, and
--- models/descent.lua's rearmFloor lights them again): what they sell dies with the trip, so a stop that
--- paid once per save would be a stop met once and then never again.
+-- The two stops whose whole payload is a relic. They re-deal every trip (Relic.freshForTrip): what they
+-- sell dies with the trip. Every run walks fresh floors now (2026-10-24), so a stop is new every trip.
 Relic.STOP_KINDS = { shrine = true, weeping_stone = true }
 
 -- Which trip this is, as a stamp a stop can compare. `runsStarted` is advanced once per descent begun
@@ -794,28 +793,20 @@ function Relic.total(state)
     return n
 end
 
--- HAS THIS FLOOR'S STAIR EVER STOOD OPEN? Read off the company's own map book (Descent.floorBoard):
--- a kept board carries the opened stair as a `stair` tile (Descent.openStair), so a floor whose kept
--- board has one was beaten before and pays nothing the second time. A floor the company has walked
--- without beating its guard is kept with the guard still on it, and still owes its slate.
-function Relic.firstStair(player, floor)
-    local board = require("models.descent").floorBoard(player, floor)
-    for _, row in pairs((board and board.cells) or {}) do
-        for _, c in pairs(row) do
-            if c.encounter and c.encounter.kind == "stair" then return false end
-        end
-    end
-    return true
-end
-
 -- WHAT IS WAITING TO BE ANSWERED. A source deals into `state.offer` and the screen opens it, so a quit
 -- with the panel up comes back to the same cards rather than to nothing (states/game.lua re-opens it on
 -- a resume). `source` is "stair" (pick one of three, or skip) or "elite" (take it, or leave it).
 function Relic.offerStair(state, player, floor, ctx)
     if Relic.PARKED or not state then return nil end
-    if not Relic.firstStair(player, floor) then return nil end
+    -- (rift reset, 2026-10-24) FIRST TIME IN THIS RUN, marked on the run's own relic state. It read the
+    -- map book, which is retired: every run walks fresh floors, so a stair pays once per run. `player`
+    -- is no longer read and is kept so no caller has to change.
+    state.stairFloors = state.stairFloors or {}
+    local key = tostring(floor or 1)
+    if state.stairFloors[key] then return nil end
     local ids = Relic.slate(ctx, Relic.STAIR_SLATE)
     if #ids == 0 then return nil end
+    state.stairFloors[key] = true
     state.offer = { source = "stair", ids = ids }
     return ids
 end
@@ -857,11 +848,8 @@ function Relic.freshForTrip(enc, trip)
     return true
 end
 
--- ...and whether a cleared relic stop lights again on this trip (models/descent.lua's rearmFloor).
--- A nil `trip` is a caller that does not know which trip it is, and it relights nothing.
-function Relic.relights(enc, trip)
-    return enc ~= nil and Relic.STOP_KINDS[enc.kind] == true and trip ~= nil and enc.trip ~= trip
-end
+-- (Relic.relights stood here: it lit a cleared relic stop again when a later trip walked back onto a kept
+-- floor. The rift resets every run now (2026-10-24), so no board outlives its trip and it had no case.)
 
 -- THE CART'S RELIC ROWS, beside its gear. Two, dealt off the same pool a slate is (held relics
 -- included, so a second copy can be bought), priced by rung and depth (Relic.price) and passed through
@@ -929,7 +917,7 @@ function Relic.endTrip(run, player)
         end
     end
     state.held, state.counts, state.scratch = {}, {}, {}
-    state.stoneToll, state.offer, state.eliteFloors = nil, nil, nil
+    state.stoneToll, state.offer, state.eliteFloors, state.stairFloors = nil, nil, nil, nil
     run.relicState = nil
     return lost
 end
