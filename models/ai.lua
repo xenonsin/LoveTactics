@@ -848,6 +848,30 @@ function AI.objectiveTile(combat, unit)
     return AI.nearestTile(unit, Combat.objectiveGround(combat))
 end
 
+-- THE COMPANY'S WALK ON A `reach` THAT ANOTHER BODY HAS TO MAKE, once nothing is left to fight (see the
+-- objective posture in fallbackMove). Answers `false` when it does not apply -- the ordinary walk then
+-- runs -- else the plan: a step off the line for a body standing on it (the nearest reachable tile that
+-- is not one of the objective's), or nil, hold, for one already off it. Party side only: the enemy's
+-- walk is not this question.
+function AI.clearTheLine(ctx)
+    local Combat = require("models.combat")
+    local unit, combat = ctx.unit, ctx.combat
+    local obj = combat and combat.objective
+    if not (obj and obj.type == "reach" and obj.who and obj.tiles and #obj.tiles > 0) then return false end
+    if unit.side ~= "party" or (unit.char and unit.char.id == obj.who) then return false end
+    if not Combat.captiveFree(combat) then return false end
+    if #foes(ctx) > 0 then return false end
+    local onLine = {}
+    for _, t in ipairs(obj.tiles) do onLine[t.x .. "," .. t.y] = true end
+    if not onLine[unit.x .. "," .. unit.y] then return nil end
+    local best
+    for _, node in ipairs(Combat.reachableList(combat, unit)) do
+        if not onLine[node.x .. "," .. node.y] and (not best or node.steps < best.steps) then best = node end
+    end
+    if not best then return nil end
+    return { move = { x = best.x, y = best.y }, reason = "objective: clearing the line for the charge" }
+end
+
 -- The nearest of `tiles` to `unit`, or nil for an empty list. Board order decides a tie, so two
 -- clients walking the same list pick the same tile.
 function AI.nearestTile(unit, tiles)
@@ -1765,6 +1789,15 @@ local function fallbackMove(ctx, mode)
             goal = AI.nearestTile(unit, ctx.post.tiles)
         end
     elseif mode == "objective" then
+        -- A LINE SOMEBODY ELSE HAS TO CROSS, WITH NOTHING LEFT TO FIGHT. A `reach` whose `who` names
+        -- another body (a cut-free captive, an escorted column) is won by THAT body standing on the line,
+        -- and the walk below sends the company to the same line -- so once the field was empty the four
+        -- of them parked on the exit row, on the very tiles the charge needed, and the fight ran out its
+        -- clock with nobody left to beat (encounter_the_larder stalled 3 of 10 at 400 unit-turns,
+        -- `. early-floors`). With no foe standing, a body on the line steps off it and one off the line
+        -- holds. While anything is still standing this is not consulted: the walk below is unchanged.
+        local cleared = AI.clearTheLine(ctx)
+        if cleared ~= false then return cleared end
         -- The mark first; then the ground the objective is decided on (a crossing, a post, a heap, a
         -- captive to reach); then plain approach on a map that names neither.
         goal = AI.objectiveUnit(combat, unit) or AI.objectiveTile(combat, unit) or nearest(ctx, foes(ctx))

@@ -141,6 +141,18 @@ local function trial(f, seed)
             Combat.settleObjective(c)
         end,
     })
+    if result == nil and M.DEBUG_STALL then
+        local o = combat.objective or {}
+        local tiles = {}
+        for _, t in ipairs(o.tiles or {}) do tiles[#tiles + 1] = t.x .. "," .. t.y end
+        print(string.format("      STALL type=%s who=%s freed=%s tiles=[%s] clock=%s", tostring(o.type),
+            tostring(o.who), tostring(combat.captiveFreed), table.concat(tiles, " "), tostring(combat.clock)))
+        for _, u in ipairs(combat.units) do
+            print(string.format("        %s side=%s ctl=%s alive=%s at %s,%s posture=%s/%s", nameOf(u), tostring(u.side),
+                tostring(u.control), tostring(u.alive), tostring(u.x), tostring(u.y),
+                tostring(u.postureOverride), tostring(u.char and u.char.posture)))
+        end
+    end
     local down, fell, standing, foes = 0, {}, {}, 0
     for _, u in ipairs(combat.units) do
         if u.side == "party" and Combat.isPlayerControlled(u) then
@@ -162,7 +174,7 @@ function M.run(args)
         if tonumber(a) then seeds = tonumber(a) end
         local x, y = a:match("^floors=(%d+)-(%d+)$"); if x then lo, hi = tonumber(x), tonumber(y) end
         local o = a:match("^only=(.+)$"); if o then only = o end
-        if a == "verbose" then verbose = true end
+        if a == "verbose" then verbose = true; M.DEBUG_STALL = true end
     end
     Combat.FORCE_HIT = false
 
