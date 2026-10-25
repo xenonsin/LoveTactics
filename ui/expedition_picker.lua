@@ -167,8 +167,10 @@ function Picker:isGoing(charId)
     return false
 end
 
--- Send a body home. A no-op for one who is not going, so a stray drop cannot shorten the party.
+-- Send a body home. A no-op for one who is not going, so a stray drop cannot shorten the party -- and
+-- for the avatar, whose seat is fixed (Descent.isFixedSeat): it always walks down.
 function Picker:remove(charId)
+    if Descent.isFixedSeat(charId) then return end
     local ids = {}
     for _, c in ipairs(self:party()) do
         if c.id ~= charId then ids[#ids + 1] = c.id end
@@ -213,6 +215,8 @@ function Picker:mousepressed(px, py, button)
     local slot = self:slotAt(px, py)
     if slot then
         local char = self:party()[slot]
+        -- The avatar's plate does not lift: its seat is fixed, so there is nowhere to drag it to.
+        if char and Descent.isFixedSeat(char) then return true end
         if char then
             self.drag = { from = "slot", char = char, x = px, y = py, ox = px, oy = py }
             self.cursor = slot
@@ -318,7 +322,7 @@ end
 -- Lift, for the pick-then-place route: hold a body, move, confirm on a plate to set them there.
 function Picker:lift()
     local char = self:charAtCursor()
-    if char then self.held = char.id end
+    if char and not Descent.isFixedSeat(char) then self.held = char.id end
 end
 
 function Picker:keypressed(key)

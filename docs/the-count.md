@@ -27,6 +27,16 @@
 > the reason the Inn is free: **a cost on recovery is a tax on needing to recover.** That survives the
 > park and is what the pivot was checked against.
 >
+> **ONE EXCEPTION, BY THE AUTHOR'S CALL (2026-10-25): THE AVATAR.** The avatar now walks down on every
+> expedition (`Descent.party` -- Fire Emblem's lord and FFT's Ramza are on every board, and that seat is
+> what sets the player's own body apart from a hire; the bonds in `models/bond.lua` hang on it). A body
+> that can never sit out cannot pay for recovery in time, so the free path -- resting at the Ward -- is
+> closed to it (`Injury.canRest`), and **its bones are set for gold (`Injury.TREAT_COST`) or carried**.
+> That is a price on needing to recover, and it is named here as the one place the law is set aside, so
+> nobody reads it as an oversight and "fixes" it back. Injuries stay floored per stat
+> (`Injury.STAT_FLOOR`), so an avatar who cannot pay is worse, never inert. The resting option was
+> offered and denied in the same review.
+>
 > ### What a wipe costs instead, since this page says it should cost nothing
 >
 > **Rewritten 2026-10-24, by the author's call.** The rift resets to floor 1 every run, and a wipe ends

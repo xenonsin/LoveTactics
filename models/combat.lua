@@ -7504,6 +7504,7 @@ function Combat.avoid(combat, unit)
     return flatStat(unit, "speed") * 2
         + flatStat(unit, "luck")
         + flatStat(unit, "avoid")
+        + Combat.bondBonus(combat, unit) -- a bond with the avatar, standing near it (models/bond.lua)
         + Combat.terrainAvoid(combat, unit.x, unit.y, unit)
 end
 
@@ -7609,6 +7610,7 @@ function Combat.hitChance(combat, user, target, item)
     if Status.has(target, "status_untouchable") then return 0 end
     if Combat.veilReady(target) then return 0 end
     local hit = Item.hit(item) + flatStat(user, "skill") * 2 + flatStat(user, "luck") / 2
+        + Combat.bondBonus(combat, user) -- a bond with the avatar, standing near it (models/bond.lua)
     local avoid = Combat.avoid(combat, target)
     local chance = math.max(0, math.min(100, math.floor(hit - avoid + 0.5)))
     if Combat.halfHere(combat, target, item) then chance = math.floor(chance / 2) end
@@ -9362,6 +9364,8 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     if guardian then
         -- CLASS DEEDS: a blow taken for an ally, banked on the guardian (the Sentinel's deed).
         if guardian ~= target then Combat.tally(guardian, "guarded", 1) end
+        -- ...and a covering deed when the avatar and a partner took one for each other (models/bond.lua).
+        if guardian ~= target then Combat.bondDeed(combat, guardian, target) end
         -- THE RIFT'S ADVENTURERS, SLICE D: a Sworn Shield Blesses the ally it took the blow for.
         require("models.race_items").tookBlow(combat, guardian, target)
         local redirected = opts
@@ -9795,6 +9799,8 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
         -- The felling blow banks a `kill` toward any signature the attacker gates on kills. Only a
         -- real attack passes an attacker; a trap or a burn tick fells with none and tallies nothing.
         if attacker then Combat.tally(attacker, "kill", 1) end
+        -- A covering deed: the avatar or a partner felling the foe that last hit the other (models/bond.lua).
+        if attacker then Combat.bondAvenged(combat, attacker, target) end
         -- A blow that DENIES REVIVAL (opts.denyRevival -- the Necromancer's severing kit) stamps the
         -- body so killUnit routes it straight to a corpse, skipping the incapacitation window. Set only
         -- on the fatal path, so a severing weapon that merely wounds does nothing -- it is the KILL that is
@@ -12537,6 +12543,184 @@ function Combat.blink(combat, unit, x, y)
 end
 
 -- ---------------------------------------------------------------------------
+-- Bonds (models/bond.lua): the avatar is the hub, and these are the board's half of it.
+--
+-- The fight reads ranks off `combat.bonds` -- { [charId] = rank }, stamped by the battle screen right
+-- after Combat.new, because combat has no player. Absent (a duel, a spec that never stamps it), every
+-- function here answers "no bond" and the fight plays as it always did.
+-- ---------------------------------------------------------------------------
+
+-- This body's rank with the avatar in this fight, or nil.
+function Combat.bondRank(combat, unit)
+    local ranks = combat and combat.bonds
+    local char = unit and unit.char
+    return (ranks and char and char.id) and ranks[char.id] or nil
+end
+
+-- The avatar's unit on `side`, alive or not, or nil.
+function Combat.bondAvatar(combat, side)
+    for _, u in ipairs((combat and combat.units) or {}) do
+        if u.side == side and u.char and u.char.id == "character_avatar" and not u.summoned then return u end
+    end
+    return nil
+end
+
+-- THE ACCURACY A BOND LENDS: a ranked partner standing within Bond.RANGE of the living avatar gains
+-- Bond.HIT[rank] on Hit when it swings and on Avoid when it is swung at. Accuracy only -- the avatar is
+-- Balance.REFERENCE, and a damage bonus would move every band measured against it. No row of its own in
+-- the forecast: it is already inside the Hit figure, the way Fire Emblem counts a support in.
+function Combat.bondBonus(combat, unit)
+    local rank = Combat.bondRank(combat, unit)
+    if not rank or unit.summoned then return 0 end
+    local avatar = Combat.bondAvatar(combat, unit.side)
+    if not (avatar and avatar.alive) then return 0 end
+    local Bond = require("models.bond")
+    if Combat.unitGap(avatar, unit) > Bond.RANGE then return 0 end
+    return Bond.HIT[rank] or 0
+end
+
+-- A COVERING DEED between `a` and `b`: one is the avatar and the other a partner on its side. Banked on
+-- `combat.bondDeeds[partnerId]` and settled on a win (Bond.settle caps them). Called from the three seams
+-- the review named: a heal given, a blow taken that was meant for the other, the foe that last hit the
+-- other felled.
+function Combat.bondDeed(combat, a, b)
+    if not (combat and combat.bonds and a and b) or a == b then return end
+    if a.side ~= "party" or b.side ~= "party" or a.summoned or b.summoned then return end
+    local Bond = require("models.bond")
+    local partner
+    if a.char and Bond.isAvatar(a.char) then partner = b
+    elseif b.char and Bond.isAvatar(b.char) then partner = a
+    else return end
+    local id = partner.char and partner.char.id
+    if not id or Bond.isAvatar(id) then return end
+    combat.bondDeeds = combat.bondDeeds or {}
+    combat.bondDeeds[id] = (combat.bondDeeds[id] or 0) + 1
+end
+
+-- `killer` felled `foe`: every body on the killer's side that `foe` last hit is avenged -- a deed for the
+-- pair when one of the two is the avatar (Combat.bondDeed sorts that out).
+function Combat.bondAvenged(combat, killer, foe)
+    if not (combat and combat.bonds and killer and foe) then return end
+    for _, u in ipairs(combat.units) do
+        if u ~= killer and u.side == killer.side and u.lastAttacker == foe then
+            Combat.bondDeed(combat, killer, u)
+        end
+    end
+end
+
+-- THE TWO B-RANK VERBS, once a fight each, the avatar's own:
+--   trade     swap tiles with a B+ partner within 4 -- spends the turn's one move, not its action (the
+--             way a blink does), and owes no move initiative;
+--   teamwork  end the avatar's turn and put a B+ partner within 2 at the front of the order.
+Combat.BOND_VERBS = {
+    trade = { rank = "B", range = 4 },
+    teamwork = { rank = "B", range = 2 },
+}
+
+-- Who `unit` may use `verb` on right now, as a list of units -- empty when the verb is not legal at all,
+-- which is what the action bar asks before it draws the plate.
+function Combat.bondVerbTargets(combat, unit, verb)
+    local out = {}
+    local spec = Combat.BOND_VERBS[verb]
+    if not (spec and combat and combat.bonds and unit and unit.alive and unit.char) then return out end
+    if unit.char.id ~= "character_avatar" or unit.summoned then return out end
+    if not combat.turn or combat.turn.unit ~= unit or unit.actionSpent or unit.channel then return out end
+    if unit.bondUsed and unit.bondUsed[verb] then return out end
+    if verb == "trade" and (combat.turn.moved or Status.blocksMove(unit)) then return out end
+    local Bond = require("models.bond")
+    for _, u in ipairs(combat.units) do
+        if u ~= unit and u.alive and u.side == unit.side and not u.summoned
+            and Bond.atLeast(Combat.bondRank(combat, u), spec.rank)
+            and Combat.unitGap(unit, u) <= spec.range
+            and not (verb == "trade" and ((u.w or 1) ~= (unit.w or 1) or (u.h or 1) ~= (unit.h or 1))) then
+            out[#out + 1] = u
+        end
+    end
+    return out
+end
+
+local function bondLegal(combat, unit, verb, ally)
+    for _, u in ipairs(Combat.bondVerbTargets(combat, unit, verb)) do
+        if u == ally then return true end
+    end
+    return false
+end
+
+-- Trade Places. Returns true, or false + a reason.
+function Combat.bondTrade(combat, unit, ally)
+    if not bondLegal(combat, unit, "trade", ally) then return false, "not a legal trade" end
+    if not Combat.swapUnits(combat, unit, ally) then return false, "blocked" end
+    unit.bondUsed = unit.bondUsed or {}
+    unit.bondUsed.trade = true
+    combat.turn.moved = true
+    combat.turn.moveCost = 0 -- like a blink: the move is spent, and it owes no move initiative
+    Combat.logEvent(combat, "move", string.format("%s trades places with %s.", unitName(unit), unitName(ally)), unit)
+    return true
+end
+
+-- Teamwork. Ends the avatar's turn; the partner acts next. Returns true, or false + a reason.
+function Combat.bondTeamwork(combat, unit, ally)
+    if not bondLegal(combat, unit, "teamwork", ally) then return false, "not a legal teamwork" end
+    unit.bondUsed = unit.bondUsed or {}
+    unit.bondUsed.teamwork = true
+    -- Below everybody, so Combat.wait (which seats the waiter just behind the next unit) puts the partner
+    -- next and the rebase brings the order back to zero.
+    ally.initiative = -1
+    Combat.logEvent(combat, "action", string.format("%s steps back for %s.", unitName(unit), unitName(ally)), unit)
+    return Combat.wait(combat, unit)
+end
+
+-- WHO WILL FOLLOW UP a blow `unit` is lining up at `target` -- the forecast twin of Trait.onAllyStrike,
+-- pure, for the exchange stack (states/battle.lua). Two kinds of follower: an A-rank bond partner when
+-- the striker is the avatar (free, once a round), and any ally carrying a `followUp` trait (the Pincer
+-- Banner's -- priced as an answer). Nothing when the blow would be lethal: a follow-up hangs on a foe
+-- that SURVIVED. Entries: { name, ally, damage, lethal, cost?, bond? }.
+function Combat.previewFollowUps(combat, unit, item, target, opts)
+    opts = opts or {}
+    if not (combat and unit and target and target.alive and item) then return nil end
+    if target.side == unit.side then return nil end
+    local entry = opts.entry
+    if entry and entry.lethal then return nil end
+    local ab = item.activeAbility
+    if ab and not Combat.isSingleTarget(ab) then return nil end
+    -- Measured from where the blow LEAVES the target, as the counters are.
+    local probe = target
+    if entry and entry.restsX then
+        probe = { x = entry.restsX, y = entry.restsY, w = target.w, h = target.h }
+    end
+    local isAvatar = unit.char and unit.char.id == "character_avatar"
+    local left = (target.hp or 0) - ((entry and entry.damage) or 0)
+    local out = {}
+    for _, ally in ipairs(combat.units) do
+        if ally ~= unit and ally.alive and ally.side == unit.side and not Trait.reactionsSuppressed(ally)
+            and Combat.unitGap(ally, probe) == 1 then
+            local bond = isAvatar and Combat.bondRank(combat, ally) == "A"
+                and not (unit.turnFlags and unit.turnFlags["bondFollowUp:" .. tostring(ally.char and ally.char.id)])
+            local follower, cost = nil, nil
+            if bond then
+                follower = true
+            else
+                for _, t in ipairs(ally.traits or {}) do
+                    if t.def and t.def.followUp and not t.def.bondFollowUp then
+                        local price = Trait.answerCost(combat, ally, t, 1)
+                        if Trait.canPay(ally, price) then follower, cost = true, price end
+                        break
+                    end
+                end
+            end
+            local weapon = follower and Combat.answeringWeapon(combat, ally, 1)
+            if weapon then
+                local dmg = Combat.computeDamage(combat, ally, target, weapon) or 0
+                if type(dmg) == "table" then dmg = dmg.damage or 0 end
+                out[#out + 1] = { name = (ally.char and ally.char.name) or "Ally", ally = ally, damage = dmg,
+                                  lethal = dmg >= left, cost = cost, bond = bond or nil }
+            end
+        end
+    end
+    return (#out > 0) and out or nil
+end
+
+-- ---------------------------------------------------------------------------
 -- Resource reservation
 --
 -- An ability may RESERVE part of a resource for as long as it stays active (a summon lives).
@@ -14477,6 +14661,7 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
             -- side (the Druid's). Only someone else's wounds: tending your own is not a deed.
             if h > 0 and tgt ~= unit and tgt.side == unit.side then
                 Combat.tally(unit, "healGiven", h)
+                Combat.bondDeed(combat, unit, tgt) -- a covering deed between the avatar and a partner
                 if tgt.char and tgt.char.kind == "beast" then Combat.tally(unit, "healBeast", 1) end
             end
             -- THE CROWN'S BESTIARY, SLICE B (2026-10-09): a heal is a deed the Erinys answers (models/crown_demons.lua).

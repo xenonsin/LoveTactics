@@ -325,6 +325,12 @@ Grade.TRAIT_COOLDOWN_FLOOR = 0.35
 -- when the pool is dry" is a rule about the whole fight, and nothing in the trait file says so. The
 -- inverse happened too: Demon Ascendant and Contagion seeded reactive and were judged at 0.5.
 Grade.TRAIT_GRADE = {
+    -- THE AVATAR'S BONDS (models/bond.lua). Never on an item -- Bond.traitsFor hands them to an A-rank pair
+    -- for a fight -- so no shelf prices them; weighed for the record against what they mirror. The
+    -- follow-up is Follow-Up's pile-on narrowed to one striker and made free, so the same 3.0; Stand Firm
+    -- fires only on a fall, a rare and late moment, so it sits at Second Wind's 2.0.
+    trait_bond_follow_up =              3.0,  -- Follow-up (bond A)
+    trait_bond_stand_firm =             2.0,  -- Stand Firm (bond A)
     -- THE CURSE-COUNTING SHELF (docs/curses.md). All three are worth what the company has agreed to
     -- carry, which the dry run cannot see: the bench reads a body with no hexes on it, where the whole
     -- point of the piece is a body with several. Weighed by judgement against the items they ride --

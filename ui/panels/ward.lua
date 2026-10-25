@@ -128,7 +128,9 @@ function Ward:rebuild()
                 end,
             }
         end
-        items[#items + 1] = {
+        -- No rest row for a body that cannot be laid up (the avatar always walks down -- Injury.canRest):
+        -- a control appears only where it is legal.
+        if Injury.canRest(char.id) then items[#items + 1] = {
             charId = char.id,
             kind = "rest",
             label = string.format("Rest %s  -  %d descents", name, n * Injury.REST_DESCENTS),
@@ -136,7 +138,7 @@ function Ward:rebuild()
                 if Injury.rest(p, char.id) > 0 then Sound.play("ui.confirm") end
                 self:rebuild()
             end,
-        }
+        } end
     end
     self.items = items
 

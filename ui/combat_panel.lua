@@ -292,6 +292,7 @@ function CombatPanel.new(combat, opts)
     self.onActivateItem = opts.onActivateItem
     self.onHoverItem = opts.onHoverItem
     self.onHoverUnit = opts.onHoverUnit
+    self.onBondVerb = opts.onBondVerb -- a bond plate beside Defend: Trade Places / Teamwork (models/bond.lua)
     self.onWait = opts.onWait -- the long Wait/Focus/Defend button under the item grid
     self.onInspectUnit = opts.onInspectUnit -- a turn-strip card clicked: read that body
 
@@ -898,6 +899,7 @@ function CombatPanel:draw()
     self:drawTurnStrip()
     self:drawItemGrid()
     self:drawWaitButton()
+    self:drawBondPlates()
     love.graphics.setColor(1, 1, 1)
 end
 
@@ -908,8 +910,55 @@ end
 -- is gone (models/combat.lua), and with nothing to share with, the split went too. Kept as a function
 -- rather than folded into `self.waitBtn` at its two call sites, because "how is the lane divided" is a
 -- question this panel should keep answering in one place if anything ever shares it again.
+--
+-- AND IT SPLITS AGAIN FOR THE AVATAR'S BOND VERBS (models/bond.lua): on a turn Trade Places or Teamwork
+-- is legal, Defend gives up the right of the lane and each usable verb takes a plate of equal width
+-- beside it -- one row, never a second one (the author's note: "inline with defend, make the defend
+-- button shorter"). With no verb usable the lane is Defend's alone, exactly as before. Returns the Wait
+-- rect and the list of verb plates.
+CombatPanel.BOND_GAP = 6
 function CombatPanel:bottomBarRects()
-    return self.waitBtn
+    local b = self.waitBtn
+    local verbs = (self.view and self.view.isPartyTurn and self.view.bondVerbs) or {}
+    if #verbs == 0 then return b, {} end
+    local gap = CombatPanel.BOND_GAP
+    local n = #verbs + 1
+    local w = math.floor((b.w - gap * (n - 1)) / n)
+    local plates = {}
+    for i, v in ipairs(verbs) do
+        plates[i] = { x = b.x + i * (w + gap), y = b.y, w = (i == #verbs) and (b.x + b.w - (b.x + i * (w + gap))) or w,
+                      h = b.h, verb = v.verb, label = v.label, focus = (self.view.bondFocus == i) }
+    end
+    return { x = b.x, y = b.y, w = w, h = b.h }, plates
+end
+
+-- The bond plates: our side's blue, lit under the mouse or while a pad's Y cycle rests on one.
+function CombatPanel:drawBondPlates()
+    local _, plates = self:bottomBarRects()
+    local party = require("ui.colors").PARTY
+    local font = Theme.body(13)
+    for _, p in ipairs(plates) do
+        local hot = p.focus or self.bondHover == p.verb
+        Theme.set(hot and Theme.panel or Theme.panel2)
+        love.graphics.rectangle("fill", p.x, p.y, p.w, p.h, 6, 6)
+        love.graphics.setColor(party[1], party[2], party[3], 1)
+        love.graphics.setLineWidth(hot and 2 or 1)
+        love.graphics.rectangle("line", p.x, p.y, p.w, p.h, 6, 6)
+        love.graphics.setLineWidth(1)
+        love.graphics.setFont(font)
+        local label = Theme.ellipsize(string.upper(p.label), font, p.w - 8)
+        love.graphics.printf(label, p.x, p.y + (p.h - font:getHeight()) / 2, p.w, "center")
+    end
+end
+
+-- The bond plate under (px, py), or nil.
+function CombatPanel:bondPlateAt(px, py)
+    if not (self.view and self.view.isPartyTurn) then return nil end
+    local _, plates = self:bottomBarRects()
+    for _, p in ipairs(plates) do
+        if px >= p.x and px <= p.x + p.w and py >= p.y and py <= p.y + p.h then return p end
+    end
+    return nil
 end
 
 -- The word the bottom lane's button wears for `unit`: whichever wait swap its kit grants, else plain
@@ -2529,6 +2578,8 @@ function CombatPanel:mousemoved(x, y)
     local item, i = self:usableItemAt(x, y)
     self:setHover(item, i, self:unitAt(x, y))
     self.waitHover = self.view.isPartyTurn and self:overWait(x, y) or false
+    local plate = self:bondPlateAt(x, y)
+    self.bondHover = plate and plate.verb or nil
     return true
 end
 
@@ -2537,6 +2588,11 @@ function CombatPanel:mousepressed(x, y, button)
     if button ~= 1 or not self:contains(x, y) then return false end
     if self.view.isPartyTurn and self:overWait(x, y) then
         if self.onWait then self.onWait() end
+        return true
+    end
+    local plate = self:bondPlateAt(x, y)
+    if plate then
+        if self.onBondVerb then self.onBondVerb(plate.verb) end
         return true
     end
     -- Route the click on ANY ability slot, usable or not: the state arms it, or refuses it with a

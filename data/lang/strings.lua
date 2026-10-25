@@ -187,6 +187,40 @@ return {
     ["line.conversation_bastion_vendor_intro.4"] = { en = "It will do. We do not arm those who run, and you have not run yet.", ja = "" },  -- TODO
     ["line.conversation_bastion_vendor_intro.5"] = { en = "Take the plate first, {name}! Everything else on that rack only works while you are still on your feet.", ja = "" },  -- TODO
     ["line.conversation_bastion_vendor_intro.6"] = { en = "Hold until relieved, then. The shelf is yours, and the order remembers the ones who stay.", ja = "" },  -- TODO
+    ["line.conversation_bond_clem_a.1"] = { en = "PLACEHOLDER -- Clem's bond with you rises to A.", ja = "" },  -- TODO
+    ["line.conversation_bond_clem_a.2"] = { en = "PLACEHOLDER -- the avatar answers.", ja = "" },  -- TODO
+    ["line.conversation_bond_clem_b.1"] = { en = "PLACEHOLDER -- Clem's bond with you rises to B.", ja = "" },  -- TODO
+    ["line.conversation_bond_clem_b.2"] = { en = "PLACEHOLDER -- the avatar answers.", ja = "" },  -- TODO
+    ["line.conversation_bond_clem_c.1"] = { en = "PLACEHOLDER -- Clem's bond with you rises to C.", ja = "" },  -- TODO
+    ["line.conversation_bond_clem_c.2"] = { en = "PLACEHOLDER -- the avatar answers.", ja = "" },  -- TODO
+    ["line.conversation_bond_gyeom_a.1"] = { en = "PLACEHOLDER -- Gyeom's bond with you rises to A.", ja = "" },  -- TODO
+    ["line.conversation_bond_gyeom_a.2"] = { en = "PLACEHOLDER -- the avatar answers.", ja = "" },  -- TODO
+    ["line.conversation_bond_gyeom_b.1"] = { en = "PLACEHOLDER -- Gyeom's bond with you rises to B.", ja = "" },  -- TODO
+    ["line.conversation_bond_gyeom_b.2"] = { en = "PLACEHOLDER -- the avatar answers.", ja = "" },  -- TODO
+    ["line.conversation_bond_gyeom_c.1"] = { en = "PLACEHOLDER -- Gyeom's bond with you rises to C.", ja = "" },  -- TODO
+    ["line.conversation_bond_gyeom_c.2"] = { en = "PLACEHOLDER -- the avatar answers.", ja = "" },  -- TODO
+    ["line.conversation_bond_kaya_a.1"] = { en = "PLACEHOLDER -- Kaya's bond with you rises to A.", ja = "" },  -- TODO
+    ["line.conversation_bond_kaya_a.2"] = { en = "PLACEHOLDER -- the avatar answers.", ja = "" },  -- TODO
+    ["line.conversation_bond_kaya_b.1"] = { en = "PLACEHOLDER -- Kaya's bond with you rises to B.", ja = "" },  -- TODO
+    ["line.conversation_bond_kaya_b.2"] = { en = "PLACEHOLDER -- the avatar answers.", ja = "" },  -- TODO
+    ["line.conversation_bond_kaya_c.1"] = { en = "PLACEHOLDER -- Kaya's bond with you rises to C.", ja = "" },  -- TODO
+    ["line.conversation_bond_kaya_c.2"] = { en = "PLACEHOLDER -- the avatar answers.", ja = "" },  -- TODO
+    ["line.conversation_bond_ren_a.1"] = { en = "PLACEHOLDER -- Ren's bond with you rises to A.", ja = "" },  -- TODO
+    ["line.conversation_bond_ren_a.2"] = { en = "PLACEHOLDER -- the avatar answers.", ja = "" },  -- TODO
+    ["line.conversation_bond_ren_b.1"] = { en = "PLACEHOLDER -- Ren's bond with you rises to B.", ja = "" },  -- TODO
+    ["line.conversation_bond_ren_b.2"] = { en = "PLACEHOLDER -- the avatar answers.", ja = "" },  -- TODO
+    ["line.conversation_bond_ren_c.1"] = { en = "PLACEHOLDER -- Ren's bond with you rises to C.", ja = "" },  -- TODO
+    ["line.conversation_bond_ren_c.2"] = { en = "PLACEHOLDER -- the avatar answers.", ja = "" },  -- TODO
+    ["line.conversation_bond_rowan_a.1"] = { en = "PLACEHOLDER -- Rowan's bond with you rises to A.", ja = "" },  -- TODO
+    ["line.conversation_bond_rowan_a.2"] = { en = "PLACEHOLDER -- the avatar answers.", ja = "" },  -- TODO
+    ["line.conversation_bond_saber_a.1"] = { en = "PLACEHOLDER -- Saber's bond with you rises to A.", ja = "" },  -- TODO
+    ["line.conversation_bond_saber_a.2"] = { en = "PLACEHOLDER -- the avatar answers.", ja = "" },  -- TODO
+    ["line.conversation_bond_saber_b.1"] = { en = "PLACEHOLDER -- Saber's bond with you rises to B.", ja = "" },  -- TODO
+    ["line.conversation_bond_saber_b.2"] = { en = "PLACEHOLDER -- the avatar answers.", ja = "" },  -- TODO
+    ["line.conversation_bond_saber_c.1"] = { en = "PLACEHOLDER -- Saber's bond with you rises to C.", ja = "" },  -- TODO
+    ["line.conversation_bond_saber_c.2"] = { en = "PLACEHOLDER -- the avatar answers.", ja = "" },  -- TODO
+    ["line.conversation_bond_xin_a.1"] = { en = "PLACEHOLDER -- Xin's bond with you rises to A.", ja = "" },  -- TODO
+    ["line.conversation_bond_xin_a.2"] = { en = "PLACEHOLDER -- the avatar answers.", ja = "" },  -- TODO
     ["line.conversation_cafe_vendor_intro.1"] = { en = "You'll want feeding before you go. One order, {name}, and one is the whole of it. I'll not send a company up the hill on two breakfasts and a stomachache.", ja = "" },  -- TODO
     ["line.conversation_cafe_vendor_intro.2"] = { en = "One meal does that much?", ja = "" },  -- TODO
     ["line.conversation_cafe_vendor_intro.3"] = { en = "Mine does. Every one of yours eats it and every one of them carries it until the work is done. Read the board before you order. What's good for a long walk isn't what's good for a bad afternoon.", ja = "" },  -- TODO
@@ -549,6 +583,23 @@ return {
     ["title.conversation_bastion_slot_05_intro"] = { en = "The Fort It Is Named For", ja = "" },  -- TODO
     ["title.conversation_bastion_slot_05_outro"] = { en = "The Bar", ja = "" },  -- TODO
     ["title.conversation_bastion_vendor_intro"] = { en = "Those Who Hold", ja = "" },  -- TODO
+    ["title.conversation_bond_clem_a"] = { en = "Clem: Bond A", ja = "" },  -- TODO
+    ["title.conversation_bond_clem_b"] = { en = "Clem: Bond B", ja = "" },  -- TODO
+    ["title.conversation_bond_clem_c"] = { en = "Clem: Bond C", ja = "" },  -- TODO
+    ["title.conversation_bond_gyeom_a"] = { en = "Gyeom: Bond A", ja = "" },  -- TODO
+    ["title.conversation_bond_gyeom_b"] = { en = "Gyeom: Bond B", ja = "" },  -- TODO
+    ["title.conversation_bond_gyeom_c"] = { en = "Gyeom: Bond C", ja = "" },  -- TODO
+    ["title.conversation_bond_kaya_a"] = { en = "Kaya: Bond A", ja = "" },  -- TODO
+    ["title.conversation_bond_kaya_b"] = { en = "Kaya: Bond B", ja = "" },  -- TODO
+    ["title.conversation_bond_kaya_c"] = { en = "Kaya: Bond C", ja = "" },  -- TODO
+    ["title.conversation_bond_ren_a"] = { en = "Ren: Bond A", ja = "" },  -- TODO
+    ["title.conversation_bond_ren_b"] = { en = "Ren: Bond B", ja = "" },  -- TODO
+    ["title.conversation_bond_ren_c"] = { en = "Ren: Bond C", ja = "" },  -- TODO
+    ["title.conversation_bond_rowan_a"] = { en = "Rowan: Bond A", ja = "" },  -- TODO
+    ["title.conversation_bond_saber_a"] = { en = "Saber: Bond A", ja = "" },  -- TODO
+    ["title.conversation_bond_saber_b"] = { en = "Saber: Bond B", ja = "" },  -- TODO
+    ["title.conversation_bond_saber_c"] = { en = "Saber: Bond C", ja = "" },  -- TODO
+    ["title.conversation_bond_xin_a"] = { en = "Xin: Bond A", ja = "" },  -- TODO
     ["title.conversation_cafe_vendor_intro"] = { en = "One Before the Road", ja = "" },  -- TODO
     ["title.conversation_cathedral_counter"] = { en = "The Cathedral", ja = "" },  -- TODO
     ["title.conversation_cathedral_discipline_unlocked"] = { en = "What the Faith Keeps", ja = "" },  -- TODO

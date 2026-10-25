@@ -549,6 +549,9 @@ function Player.release(player, charId, opts)
     player.lastDeployed = kept
 
     if player.injuries then player.injuries[charId] = nil end
+    -- ...and the bond with the avatar goes with the body (dismissed, or fallen on a wipe -- Descent.wipe
+    -- releases through here too).
+    require("models.bond").forget(player, charId)
 
     return true
 end

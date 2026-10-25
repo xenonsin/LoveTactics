@@ -20,6 +20,8 @@
 --   { kind = "wait" }
 --   { kind = "blink",   x, y }
 --   { kind = "forfeit" }
+--   { kind = "bond",    verb, target }               -- the avatar's once-a-fight bond verbs (models/bond.lua):
+--                                                        --   verb "trade" | "teamwork", target a unit INDEX
 --
 -- The item is named by grid cell rather than by id on purpose. Ids are ambiguous -- a character can
 -- carry two of the same blueprint at different upgrade levels -- and the cell is what the player
@@ -39,7 +41,7 @@ local Character = require("models.character")
 
 local Command = {}
 
-Command.KINDS = { move = true, use = true, wait = true, blink = true, forfeit = true }
+Command.KINDS = { move = true, use = true, wait = true, blink = true, forfeit = true, bond = true }
 
 -- ---------------------------------------------------------------------------
 -- Shape
@@ -103,6 +105,9 @@ function Command.wellFormed(cmd)
         if cmd.dx ~= nil and not (isCoord(cmd.dx) and isCoord(cmd.dy)) then
             return false, "use needs whole dx,dy"
         end
+    elseif cmd.kind == "bond" then
+        if not Combat.BOND_VERBS[cmd.verb] then return false, "unknown bond verb " .. tostring(cmd.verb) end
+        if not isCoord(cmd.target) then return false, "bond needs a unit index" end
     end
     return true
 end
@@ -150,6 +155,12 @@ function Command.validate(combat, unit, cmd)
         return true
     elseif cmd.kind == "blink" then
         return true -- Combat.blink is its own gate (mana, range, footing) and answers on apply
+    elseif cmd.kind == "bond" then
+        local ally = combat.units[cmd.target]
+        for _, u in ipairs(Combat.bondVerbTargets(combat, unit, cmd.verb)) do
+            if u == ally then return true end
+        end
+        return false, "no legal " .. cmd.verb .. " with that unit"
     elseif cmd.kind == "use" then
         local item, reason = Command.itemFor(unit, cmd)
         if not item then return false, reason end
@@ -190,6 +201,18 @@ function Command.apply(combat, unit, cmd)
             or (kind == "gather" and Combat.gather)
             or Combat.wait
         result.acted = action(combat, unit) and true or false
+        return result
+    end
+
+    if cmd.kind == "bond" then
+        local ally = combat.units[cmd.target]
+        if cmd.verb == "trade" then
+            -- Spends the move, not the action: the turn stays open, as a blink's does.
+            if not Combat.bondTrade(combat, unit, ally) then return nil, "trade refused" end
+        else
+            result.acted = Combat.bondTeamwork(combat, unit, ally) and true or false
+            if not result.acted then return nil, "teamwork refused" end
+        end
         return result
     end
 

@@ -627,8 +627,19 @@ end
 -- always, with no purse test and no gate -- see the header for why that is the whole legality of this.
 --
 -- Returns the number of descents it will be out, or 0 if there was nothing to rest off.
+--
+-- NOT THE AVATAR (2026-10-25). The avatar always walks down (Descent.party), so a stay in the ward is a
+-- seat it cannot leave empty; its bones are set by Injury.treat or not at all. That is the one place a
+-- recovery is priced, and docs/the-count.md says so. Refusing here, at the source, also closes the
+-- all-resting stall: with one body that can never be laid up, a roster can always send somebody down,
+-- and Gate.night -- the only thing that ticks a stay -- always comes.
+function Injury.canRest(charId)
+    return charId ~= "character_avatar"
+end
+
 function Injury.rest(player, charId)
     if not (player and charId) then return 0 end
+    if not Injury.canRest(charId) then return 0 end
     local n = Injury.count(player, charId)
     if n <= 0 then return 0 end
     player.resting = player.resting or {}

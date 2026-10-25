@@ -85,6 +85,10 @@ local function canPay(unit, cost)
     return true
 end
 
+-- Read by Combat.previewFollowUps, which forecasts the same reflexes this file fires.
+Trait.canPay = canPay
+Trait.reactionsSuppressed = reactionsSuppressed
+
 local function payCost(unit, cost)
     if not canPay(unit, cost) then return false end
     local Combat = require("models.combat")
@@ -1386,6 +1390,12 @@ function Trait.attach(unit, combat)
     -- Battle setup stamps `unit.relicTraits` from the run's relic-state before Trait.setup runs, so they
     -- attach and fire onCombatStart exactly like a character's own.
     for _, id in ipairs(unit.relicTraits or {}) do
+        list[#list + 1] = Trait.instantiate(id, nil)
+    end
+    -- A BOND WITH THE AVATAR rides in the same item-less way (models/bond.lua): an A-rank partner's
+    -- Follow-up and Stand Firm, and the avatar's own Stand Firm. Read off the fight's bond snapshot
+    -- (`combat.bonds`, stamped before openBattle), so a fight with no player behind it carries none.
+    for _, id in ipairs(require("models.bond").traitsFor(combat or unit.combat, unit)) do
         list[#list + 1] = Trait.instantiate(id, nil)
     end
     -- The MEAL the company ate before setting out (models/meal.lua) rides in the same way: its kitchen

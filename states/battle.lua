@@ -1007,6 +1007,13 @@ local function win()
         local cards = require("ui.levelup_card").cardsFor(ups, battle.levelUpAuto)
         if #cards > 0 then battle.winCards = cards end
     end
+    -- THE AVATAR'S BONDS (models/bond.lua), settled HERE and not in finishBattle: the revive below
+    -- stands every fallen body back up, and a partner earns the fight's point only for ending it standing
+    -- near the avatar. Each rise plays its scene and then its card (battle.releaseWinCards).
+    if battle.player and battle.combat.bonds then
+        local rises = require("models.bond").settle(battle.player, battle.combat.units, battle.combat.bondDeeds)
+        battle.bondRises = (#rises > 0) and rises or nil
+    end
 
     -- A won fight is not a lost life: any party member who fell is carried out to the overworld at a
     -- sliver of health rather than staying down. Only on a win -- a defeat costs the run outright.
@@ -1024,7 +1031,7 @@ local function win()
     Sound.play("battle.win")
     Sound.music("music.victory") -- the tactical bed gives way to the exhale under the spoils panel
     -- Level-up cards owed: battle.releaseWinCards plays them and then calls this.
-    if battle.winCards then battle.finishWin = function() finishBattle("win") end return end
+    if battle.winCards or battle.bondRises then battle.finishWin = function() finishBattle("win") end return end
     finishBattle("win")
 end
 
@@ -1823,6 +1830,7 @@ local function beginTurn(resume)
     battle.throwCells, battle.throwSet = nil, nil
     battle.hoverItem = nil
     battle.waitPreview = false -- the first-press Wait preview never carries to a new actor's turn
+    battle.bondFocus = nil -- nor does a pad resting on a bond plate
     battle.keySlot = nil -- the keyboard-selected slot (its item's tooltip); a new actor's grid is a new set of slots
     battle.notice = nil -- a refusal belonged to the turn it was refused on
     battle.rangeCells = {}
@@ -2866,6 +2874,7 @@ local function openBag(unit, item)
 end
 
 local function armItem(item)
+    battle.bondFocus = nil -- arming an item takes the pad off a bond plate
     local current = battle.current
     if battle.over or busy() or not current or not Combat.isPlayerControlled(current) then return end
     if tutorialRefuses("arm") then return end
@@ -2943,8 +2952,14 @@ local function cycleAbilityItem()
     local current = battle.current
     if battle.over or busy() or not current or not Combat.isPlayerControlled(current) then return end
     if tutorialRefuses("arm") then return end
+    -- PAST THE LAST ITEM, Y walks onto the avatar's bond plates (battle.bondVerb) one at a time, and A
+    -- presses the one it rests on -- the pad's way to a plate that has no button of its own.
+    if battle.bondFocus then
+        local verbs = battle.bondVerbsFor(current)
+        battle.bondFocus = (battle.bondFocus < #verbs) and (battle.bondFocus + 1) or nil
+        return
+    end
     local items = Combat.abilityItems(current.char)
-    if #items == 0 then return end
     local idx = 0
     for i, it in ipairs(items) do
         if it == battle.armedItem then idx = i break end
@@ -2961,6 +2976,7 @@ local function cycleAbilityItem()
     end
     battle.keySlot = nil -- cycled past the end, back to plain move: nothing selected, no tooltip
     cancelArm()
+    if #battle.bondVerbsFor(current) > 0 then battle.bondFocus = 1 end
 end
 
 -- Use the current unit's default ACTION on cell (tx, ty) -- a strike on a foe, or a heal/buff on an
@@ -3426,6 +3442,9 @@ local function actionPreviewFor(cx, cy)
                 { entry = entry,
                   fromX = lands and lands.x or plan.entry.fromX,
                   fromY = lands and lands.y or plan.entry.fromY }),
+            -- ...and whoever on our side will add a blow if it lands (an A-rank bond partner, a
+            -- Pincer Banner): Combat.previewFollowUps, drawn below the counters in our blue.
+            followUps = Combat.previewFollowUps(battle.combat, current, item, unit, { entry = entry }),
             entries = preview and preview.entries or nil, -- every affected unit (AoE), for banner preview
             order = preview and preview.order or nil, -- ordered affected units, for the AoE summary
         }
@@ -3460,6 +3479,9 @@ local function actionPreviewFor(cx, cy)
                              { entry = entry,
                                fromX = lands and lands.x or inReach.fromX,
                                fromY = lands and lands.y or inReach.fromY }),
+                         -- ...and whoever on our side will add a blow if it lands (an A-rank bond partner, a
+                         -- Pincer Banner): Combat.previewFollowUps, drawn below the counters in our blue.
+                         followUps = Combat.previewFollowUps(battle.combat, current, action, unit, { entry = entry }),
                          spend = Combat.abilitySpend(current, action.activeAbility),
                          entries = preview and preview.entries or nil,
                          order = preview and preview.order or nil }
@@ -3901,6 +3923,66 @@ local function waitTurn()
         netFinishTurn({ kind = "wait" })
         advanceTurn()
     end
+end
+
+-- THE AVATAR'S BOND VERBS (models/bond.lua, Combat.bondVerbTargets): Trade Places and Teamwork, once a
+-- fight each. Pressed from a plate beside Defend (ui/combat_panel.lua), G / H on the keyboard, or Y's
+-- cycle on a pad. One legal partner acts at once; more than one asks which, in the same small chooser a
+-- multi-headed foe opens (battle.headPicker routes it). Fields, not file-scope locals: the ceiling.
+battle.BOND_VERB_LABEL = { trade = "Trade Places", teamwork = "Teamwork" }
+
+function battle.bondVerbsFor(current)
+    local out = {}
+    if not (battle.combat and current and Combat.isPlayerControlled(current)) or battle.over then return out end
+    for _, verb in ipairs({ "trade", "teamwork" }) do
+        if #Combat.bondVerbTargets(battle.combat, current, verb) > 0 then
+            out[#out + 1] = { verb = verb, label = battle.BOND_VERB_LABEL[verb] }
+        end
+    end
+    return out
+end
+
+function battle.bondVerb(verb)
+    local current = battle.current
+    if battle.over or busy() or not current or not Combat.isPlayerControlled(current) then return end
+    local targets = Combat.bondVerbTargets(battle.combat, current, verb)
+    if #targets == 0 then return end
+    local function act(ally)
+        battle.headPicker = nil
+        local index
+        for i, u in ipairs(battle.combat.units) do if u == ally then index = i end end
+        if verb == "trade" then
+            if not Combat.bondTrade(battle.combat, current, ally) then return end
+            if battle.armedItem then cancelArm() end
+            -- The trade spends the turn's one move, so every band built over the old tile is stale --
+            -- the same reset a blink makes.
+            battle.reachable, battle.moveCells = {}, {}
+            battle.threatCells, battle.attackReach = {}, {}
+            battle.rangeCells, battle.rangeReach, battle.rangeFor = {}, {}, nil
+            Sound.play("battle.select")
+            netFinishTurn({ kind = "bond", verb = "trade", target = index })
+            if current.alive then computeThreat(current) computeDanger() else advanceTurn() end
+        else
+            if not Combat.bondTeamwork(battle.combat, current, ally) then return end
+            Sound.play("battle.wait")
+            netFinishTurn({ kind = "bond", verb = "teamwork", target = index })
+            advanceTurn()
+        end
+    end
+    if #targets == 1 then return act(targets[1]) end
+    local options = {}
+    for _, ally in ipairs(targets) do
+        options[#options + 1] = { label = ally.char.name or "Ally",
+            desc = "Bond " .. tostring(Combat.bondRank(battle.combat, ally)),
+            cb = function() act(ally) end }
+    end
+    battle.headPicker = require("ui.panels.choice").new({
+        title = battle.BOND_VERB_LABEL[verb],
+        prompt = verb == "trade" and "Swap places with whom? It spends your move, not your action."
+            or "Who acts next? It ends your turn.",
+        options = options,
+        onClose = function() battle.headPicker = nil end,
+    })
 end
 -- ---------------------------------------------------------------------------
 -- The bench, and why nothing brings it back
@@ -4941,6 +5023,8 @@ refreshView = function()
         itemOwner = Combat.isPlayerControlled(current) and current.char or nil, -- for adjacency link lines
         armedItem = battle.armedItem,
         waitPreview = battle.waitPreview, -- first-press keyboard Wait: lights the Wait button like a hover
+        bondVerbs = isParty and battle.bondVerbsFor(current) or nil, -- plates beside Defend (models/bond.lua)
+        bondFocus = battle.bondFocus, -- the plate a pad's Y cycle is resting on
         -- The chargeable wind-up being tuned on the armed signature (nil unless a CHARGEABLE one is
         -- armed), so the actions header can read out how deep the blow is being held. Two numbers,
         -- not three: since the wind-up fields folded, the depth is the commitment the bonus is scored
@@ -5337,6 +5421,7 @@ local function commitDeploy(opts, deployed, front, placed)
         onHoverItem = function(item) battle.hoverItem = item end,
         onHoverUnit = function(unit) battle.hoverUnit = unit end,
         onWait = function() waitTurn() end, -- the long Wait button under the item grid
+        onBondVerb = function(verb) battle.bondVerb(verb) end, -- a bond plate beside Defend
         -- A click on a turn-strip card asks to INSPECT that body. Only an assayed foe has anything to
         -- answer with (its kit card); everyone else's click is a no-op, which is why the strip has
         -- never done anything with one until now.
@@ -5587,6 +5672,7 @@ function battle.enter(self, opts)
     -- A fresh fight has no level-up card pending and has checked nobody's experience yet.
     battle.levelCards, battle.levelCheckedAt = nil, nil
     battle.winCards, battle.finishWin = nil, nil
+    battle.bondRises, battle.bondScene = nil, nil
     -- Which house's stock this run's fights salvage in: the quest's SPONSOR, the same resolution the
     -- map's caches use (states/game.lua). Nil on an unsponsored leg -- the prologue -- where a fight
     -- pays craft stock and nothing else.
@@ -5796,6 +5882,11 @@ function battle.enter(self, opts)
     -- ...and whether a Smoke may end it: true, or the reason it may not (states/game.lua; nil reads as
     -- "not in this fight"). Read by the item's own `usable` gate through `unit.combat`.
     battle.combat.smoke = opts.smoke
+    -- ...and the avatar's bonds (models/bond.lua): the ranks this fight reads, since combat has no player.
+    -- Not in a duel (no company behind either side) and not in the prologue's scripted lessons, whose
+    -- odds and openings are authored click by click and must not move under a +10 Hit.
+    battle.combat.bonds = (battle.player and not opts.session and opts.classCredit ~= false)
+        and require("models.bond").snapshot(battle.player) or nil
 
     -- THE FIGHT, RECORDED TO A FILE, in a debug build and nowhere else (models/combat_trace.lua). Opened
     -- here rather than inside Combat.new so the headless suite -- which builds combats by the thousand
@@ -6157,7 +6248,29 @@ function battle.releaseWinCards()
         battle.levelCards = battle.levelCards or require("ui.levelup_card").queue()
         for _, card in ipairs(battle.winCards) do battle.levelCards:push(card) end
         battle.winCards = nil
-    elseif battle.finishWin and not (battle.levelCards and battle.levelCards:active()) then
+    elseif battle.bondRises and not (battle.levelCards and battle.levelCards:active()) then
+        -- A BOND ROSE: its scene first, then its card (the author's order -- Fire Emblem's, where the
+        -- conversation IS the rank-up). One rise at a time; `bondScene` holds the next until this one's
+        -- card is up. A hire never speaks, so its rise is the card alone (Bond.sceneFor answers nil).
+        if battle.bondScene then return end
+        if battle.fx:busy() or not battle.fx:hpSettled() or not battle.fx:floatersDone() then return end
+        local Bond = require("models.bond")
+        local rise = table.remove(battle.bondRises, 1)
+        if #battle.bondRises == 0 then battle.bondRises = nil end
+        local function showCard()
+            battle.bondScene = nil
+            local LevelupCard = require("ui.levelup_card")
+            battle.levelCards = battle.levelCards or LevelupCard.queue()
+            battle.levelCards:push(LevelupCard.showBond(Bond.avatarOf(battle.player), rise.char, rise.from, rise.to))
+        end
+        local scene = Bond.sceneFor(rise)
+        if scene then
+            battle.bondScene = true
+            Conversation.play(scene, showCard, nil, { deferJoins = true })
+        else
+            showCard()
+        end
+    elseif battle.finishWin and not battle.bondScene and not (battle.levelCards and battle.levelCards:active()) then
         local finish = battle.finishWin
         battle.finishWin = nil
         finish()
@@ -7104,6 +7217,10 @@ function battle.drawTileTooltipAt(cx, cy)
         for _, c in ipairs(action.counters or {}) do
             if c.first then before[#before + 1] = c else after[#after + 1] = c end
         end
+        -- Follow-ups land LAST (Trait.onAllyStrike fires after the target's own answers), and the stack
+        -- is built bottom-up, so they go in first.
+        local follows = action.followUps or {}
+        for i = #follows, 1, -1 do exchange[#exchange + 1] = ActionPreview.followUpAction(follows[i], action) end
         for i = #after, 1, -1 do exchange[#exchange + 1] = ActionPreview.counterAction(after[i], action) end
         exchange[#exchange + 1] = action
         for i = #before, 1, -1 do exchange[#exchange + 1] = ActionPreview.counterAction(before[i], action) end
@@ -7633,6 +7750,11 @@ function battle.keypressed(key)
     -- mean the player no longer means to wait, so the next Space/0 arms the preview afresh rather than
     -- confirming a stale one. (Page-scroll returns above, so paging the strip leaves the preview intact.)
     if not (key == "space" or key == "0" or key == "kp0") then battle.waitPreview = false end
+    -- The avatar's bond verbs (battle.bondVerb): G trades places, H calls Teamwork. Silent when illegal.
+    if key == "g" or key == "h" then
+        if not battle.headPicker then battle.bondVerb(key == "g" and "trade" or "teamwork") end
+        return
+    end
     if key == "return" or key == "kpenter" then
         confirm()
     elseif key == "space" then
@@ -7717,7 +7839,13 @@ function battle.gamepadpressed(joystick, button)
         return
     end
     if battle.over then return end
-    if button == "a" or button == "start" then
+    if (button == "a" or button == "start") and battle.bondFocus then
+        -- Y's cycle is resting on a bond plate: A presses it.
+        local verbs = battle.bondVerbsFor(battle.current)
+        local pick = verbs[battle.bondFocus]
+        battle.bondFocus = nil
+        if pick then battle.bondVerb(pick.verb) end
+    elseif button == "a" or button == "start" then
         confirm()
     elseif button == "x" then
         waitTurn()

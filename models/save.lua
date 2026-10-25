@@ -552,6 +552,14 @@ function Save.snapshot(player)
     end
     -- WHAT EACH BODY IS CARRYING, as a list of blueprint ids (models/injury.lua). It was a COUNT until
     -- 2026-09-22 and the loader below still reads one -- see the note there.
+    -- THE AVATAR'S BONDS (models/bond.lua): { [charId] = { points, rank, rankRun } }. Its own key, because
+    -- `bonds` is the retired hiring purse's and its loader below keeps reading numbers.
+    local avatarBonds = {}
+    for charId, e in pairs(player.avatarBonds or {}) do
+        if type(e) == "table" and (tonumber(e.points) or 0) > 0 then
+            avatarBonds[charId] = { points = e.points, rank = e.rank, rankRun = e.rankRun }
+        end
+    end
     local injuries = {}
     for charId, list in pairs(player.injuries or {}) do
         if type(list) == "table" and #list > 0 then
@@ -810,6 +818,7 @@ function Save.snapshot(player)
         -- outlives the app being closed on floor nine, and a resume that handed the company back whole
         -- would make quitting the cheapest bandage in the game.
         injuries = injuries,
+        avatarBonds = avatarBonds,
         -- ...and whether anybody ever has been (models/injury.lua's Injury.everInjured), which the ledger
         -- above stops being able to answer the moment the company walks up the stair. What reads it is
         -- the one-time coach that teaches the mark. Purely additive, so Save.VERSION does not move: an
@@ -1279,6 +1288,20 @@ function Save.restore(snap)
     --
     -- An unknown id is dropped the same way an unknown body is -- a blueprint deleted from
     -- data/injuries/ must not leave a row nothing can name, price or mend.
+    -- The avatar's bonds, filtered against blueprints like everything else keyed by a body. A rank that
+    -- is not one of Bond.RANKS is dropped back to the points, which re-earn it.
+    local avatarBonds = {}
+    do
+        local Bond = require("models.bond")
+        for charId, e in pairs(snap.avatarBonds or {}) do
+            local points = type(e) == "table" and math.floor(tonumber(e.points) or 0) or 0
+            if points > 0 and require("models.character").defs[charId] then
+                avatarBonds[charId] = { points = points,
+                    rank = Bond.rankIndex(e.rank) > 0 and e.rank or nil,
+                    rankRun = tonumber(e.rankRun) }
+            end
+        end
+    end
     local injuries = {}
     local Injury = require("models.injury")
     -- `snap.wounds` is the pre-rename key and is read here rather than migrated away: the field was
@@ -1474,6 +1497,7 @@ function Save.restore(snap)
         standing = standing,          -- absent on a save from before the descent; an empty table reads the same
         deepest = snap.deepest or 0,  -- ...and a company that has never been down has no record to beat
         injuries = injuries,              -- ...nor any bones to set
+        avatarBonds = avatarBonds,
         injured = (snap.injured == true) or (snap.wounded == true), -- ...and no history of any, which is what an older save reads as
         -- An older save has never seen a badge, because there were none to see: every injury it wrote
         -- was the band. False is the honest reading, and it means the second lesson is still owed.

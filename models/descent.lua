@@ -2651,11 +2651,16 @@ Descent.OPENING_GOLD = 50
 -- `char.id`, so two bodies with one id is a company where half the ledger points at the wrong person;
 -- protecting it specially makes one member unkillable.
 --
--- What settled it was a third answer nobody had asked for: the avatar is never permanently lost, and it
--- is also never REQUIRED. It can be fielded, benched, or left at home like anybody -- FFT's protagonist
--- without FFT's mandatory slot. Nothing has to be minted, because nothing is gone; and no member is
--- unkillable in a fight, because the recovery happens at the Gate rather than on the floor. The company
--- is still what the player owns; it just has them in it.
+-- What settled it was a third answer nobody had asked for: the avatar is never permanently lost. Nothing
+-- has to be minted, because nothing is gone; and no member is unkillable in a fight, because the
+-- recovery happens at the Gate rather than on the floor.
+--
+-- AND IT ALWAYS GOES (2026-10-25). This said "never REQUIRED -- FFT's protagonist without FFT's mandatory
+-- slot" until the author asked what sets the player's own body apart from a hire, and the answer the model
+-- games give is that seat: Fire Emblem's lord and FFT's Ramza are on every board. So the avatar takes one
+-- of the four seats on every expedition (Descent.party), cannot be rested (Injury.rest refuses it -- its
+-- bones are set for gold or not at all, the one exception docs/the-count.md names), and is the hub of the
+-- bond system (models/bond.lua), which is what the seat is FOR. A fall still only injures it.
 --
 -- The one thing that survives from the tactician argument is the floor it puts under the roster: the
 -- avatar cannot be lost, so the roster can never reach zero -- which is what makes the Gate's forward
@@ -2704,18 +2709,26 @@ Descent.PARTY_MAX = 4
 -- (The Inn did exactly this once and it was deleted with the building. It is back because the thing that
 -- made it punishing is gone: the Inn also charged at the door, so a company that could not pay was
 -- locked out of BOTH paths. Resting costs nothing now, so this filter prices a choice instead of a debt.)
+--
+-- THE AVATAR'S SEAT IS FIXED: it is always first, whatever the pick says and even if an old save has it in
+-- the ward, and the other three are filled from the pick (or the roster) after it. A pick that named four
+-- others loses its last name to the avatar rather than leaving the avatar home.
 function Descent.party(run, player)
     local Injury = require("models.injury")
-    local roster = {}
+    local AVATAR = Descent.AVATAR_ID
+    local roster, avatar = {}, nil
     for _, char in ipairs((player and player.roster) or {}) do
-        if Injury.resting(player, char.id) <= 0 then
+        if char.id == AVATAR then
+            avatar = char
+        elseif Injury.resting(player, char.id) <= 0 then
             roster[#roster + 1] = char
         end
     end
 
+    local out = {}
+    if avatar then out[1] = avatar end
     local picked = run and run.party
     if not picked or #picked == 0 then
-        local out = {}
         for _, char in ipairs(roster) do
             if #out >= Descent.PARTY_MAX then break end
             out[#out + 1] = char
@@ -2725,11 +2738,19 @@ function Descent.party(run, player)
 
     local byId = {}
     for _, char in ipairs(roster) do byId[char.id] = char end
-    local out = {}
     for _, id in ipairs(picked) do
         if byId[id] and #out < Descent.PARTY_MAX then out[#out + 1] = byId[id] end
     end
     return out
+end
+
+Descent.AVATAR_ID = "character_avatar"
+
+-- May this body be taken off the expedition? Everyone but the avatar -- the Gate asks before it draws an
+-- untick control, so the seat that cannot be emptied never offers to be.
+function Descent.isFixedSeat(char)
+    local id = type(char) == "table" and char.id or char
+    return id == Descent.AVATAR_ID
 end
 
 -- Set who goes down, from a list of ids (or characters). Clamped to PARTY_MAX and silently deduped --

@@ -2605,7 +2605,56 @@ function Party:drawFocus()
         sy = sy + 4
     end
 
-    self:drawTechnique(char, x, sy + 12)
+    sy = self:drawBonds(char, x, sy + 12)
+    self:drawTechnique(char, x, sy)
+end
+
+-- BONDS (models/bond.lua) -- the one place a rank is printed, the way Fire Emblem keeps supports on the
+-- unit's own page and off the map. The avatar is the hub, so its sheet lists every bond it holds; a
+-- partner's sheet shows only its bond with the avatar. A body with no points yet shows nothing at all.
+-- Rows read like the technique rows under them: the rank letter in amber, the name, and the points owed
+-- to the next rank (a full A says so). Returns the y the next section starts at.
+function Party:drawBonds(char, x, y)
+    local Bond = require("models.bond")
+    local player = self.player
+    local rows = {}
+    if Bond.isAvatar(char) then
+        for _, b in ipairs(Bond.list(player)) do
+            rows[#rows + 1] = { rank = b.rank, name = b.char.name or b.id, toNext = b.toNext }
+        end
+    elseif Bond.points(player, char.id) > 0 then
+        local avatar = Bond.avatarOf(player)
+        rows[1] = { rank = Bond.rank(player, char.id), name = (avatar and avatar.name) or "You",
+                    toNext = Bond.toNext(player, char.id) }
+    end
+    if #rows == 0 then return y end
+
+    love.graphics.setFont(self.smallFont)
+    Theme.caption("Bonds", x, y, self.focusW)
+    y = y + 20
+    -- At most four rows here: the technique ledger below budgets against the panel floor and must keep
+    -- room, and a long campaign's tail folds into "+N more" exactly as that ledger's does.
+    local shown = math.min(#rows, 4)
+    local rankW, restW = 24, 90
+    love.graphics.setFont(self.bodyFont)
+    for i = 1, shown do
+        local row = rows[i]
+        Theme.set(Theme.accentAmber)
+        love.graphics.print(row.rank or "-", x, y)
+        Theme.set(Theme.ink)
+        love.graphics.print(Theme.ellipsize(row.name, self.bodyFont, self.focusW - rankW - restW), x + rankW, y)
+        Theme.set(Theme.muted)
+        local rest = row.toNext and (row.toNext .. " to " .. (Bond.nextRank(row.rank) or "")) or "full"
+        love.graphics.printf(rest, x + self.focusW - restW, y, restW, "right")
+        y = y + 20
+    end
+    if shown < #rows then
+        love.graphics.setFont(self.smallFont)
+        Theme.set(Theme.muted, 0.8)
+        love.graphics.print("+" .. (#rows - shown) .. " more", x, y)
+        y = y + 18
+    end
+    return y + 10
 end
 
 -- The technique ledger, under the stats: one house per row, one number each.

@@ -67,8 +67,8 @@ local BOX_W, ROW_H, HEAD_H, PAD = 380, 30, 96, 16
 local BOX_H = HEAD_H + #LevelupCard.STAT_ORDER * ROW_H + PAD
 -- The box's corner, read per frame: Scale.WIDTH/HEIGHT is the CURRENT logical space, which the
 -- handheld arrangement shortens (scale.lua), so nothing here may be fixed at require time.
-local function boxOrigin()
-    return Scale.WIDTH - BOX_W - 48, math.max(12, Scale.HEIGHT - BOX_H - 44)
+local function boxOrigin(h)
+    return Scale.WIDTH - BOX_W - 48, math.max(12, Scale.HEIGHT - (h or BOX_H) - 44)
 end
 local PILL_W = 92
 
@@ -172,6 +172,37 @@ function LevelupCard.showUnlock(char, classId, boosts, opts)
     })
 end
 
+-- A BOND ROSE (models/bond.lua): the avatar and a partner, the third use of this layout. Both bodies'
+-- art stands on the left -- the avatar behind, the partner in front -- and the box reads "Bond B -> A"
+-- over the two names. Hit and Avoid carry the stat card's gold chip for what they grew by; each verb the
+-- rank hands over gets a "New" pill, since those are the part a player has to learn. Its own height:
+-- a bond card has two to four rows, not nine.
+LevelupCard.BOND_VERBS = { C = {}, B = { "Trade Places", "Teamwork" }, A = { "Follow-up", "Stand Firm" } }
+
+function LevelupCard.showBond(avatar, partner, fromRank, toRank, opts)
+    opts = opts or {}
+    local Bond = require("models.bond")
+    local had, now = (fromRank and Bond.HIT[fromRank]) or 0, Bond.HIT[toRank] or 0
+    local rows = {
+        { stat = "hit", label = "Hit", value = "+" .. now, gain = now - had },
+        { stat = "avoid", label = "Avoid", value = "+" .. now, gain = now - had },
+    }
+    for _, verb in ipairs(LevelupCard.BOND_VERBS[toRank] or {}) do
+        rows[#rows + 1] = { stat = verb, label = "New", value = verb, gain = 0, isNew = true }
+    end
+    return new({
+        kind = "bond",
+        char = partner,
+        avatar = avatar,
+        name = (partner and (partner.name or partner.id)) or "?",
+        avatarName = (avatar and (avatar.name or avatar.id)) or "You",
+        fromRank = fromRank, toRank = toRank,
+        rows = rows,
+        boxH = HEAD_H + #rows * ROW_H + PAD,
+        playSound = opts.playSound,
+    })
+end
+
 -- The cards a batch of mid-fight level-ups owes: one per `{ unit, summary }` (Experience.resolveOnBoard's
 -- rows), in order, EXCEPT where `isAuto(unit)` says the AI is driving that body -- an auto-played fight
 -- applies its levels silently and shows no card, during the fight or after it.
@@ -242,33 +273,47 @@ local function ease(x)
     return 1 - (1 - x) * (1 - x) * (1 - x)
 end
 
-function LevelupCard:drawArt(a)
-    local img, isToken = artOf(self.char)
-    local slide = ease(self.t / LevelupCard.ART_IN)
-    local boxX = boxOrigin()
-    local areaW, areaH = boxX - 40, Scale.HEIGHT - 20
-    local cx = 40 + areaW / 2 - (1 - slide) * 220
+-- One body's art, centred on `cx`, at `size` of the full frame (a bond card draws two).
+local function drawOneArt(char, name, cx, areaW, size, a)
+    local img, isToken = artOf(char)
+    local areaH = (Scale.HEIGHT - 20) * size
     if img then
         local iw, ih = img:getDimensions()
-        local scale = math.min(areaW / iw, areaH / ih)
-        if isToken then scale = math.min(scale, (Scale.HEIGHT * 0.82) / ih) end
+        local scale = math.min(areaW * size / iw, areaH / ih)
+        if isToken then scale = math.min(scale, (Scale.HEIGHT * 0.82 * size) / ih) end
         local r, g, b = 1, 1, 1
         local okC, Character = pcall(require, "models.character")
         if okC and Character.tintOf then
-            local tint = Character.tintOf(self.char)
+            local tint = Character.tintOf(char)
             if type(tint) == "table" then r, g, b = tint[1] or 1, tint[2] or 1, tint[3] or 1 end
         end
-        love.graphics.setColor(r, g, b, a * slide)
+        love.graphics.setColor(r, g, b, a)
         love.graphics.draw(img, cx, Scale.HEIGHT, 0, scale, scale, iw / 2, ih)
     else
         -- No art at all: a tall plate with the initial, so the frame is still somebody.
-        local w, h = 300, 520
-        Theme.set(Theme.panel2, a * slide)
+        local w, h = 300 * size, 520 * size
+        Theme.set(Theme.panel2, a)
         love.graphics.rectangle("fill", cx - w / 2, Scale.HEIGHT - h - 40, w, h, 8, 8)
-        Theme.set(Theme.accentAmber, a * slide)
+        Theme.set(Theme.accentAmber, a)
         love.graphics.setFont(Theme.display(120))
-        love.graphics.printf(self.name:sub(1, 1), cx - w / 2, Scale.HEIGHT - h / 2 - 110, w, "center")
+        love.graphics.printf((name or "?"):sub(1, 1), cx - w / 2, Scale.HEIGHT - h / 2 - 110, w, "center")
     end
+end
+
+function LevelupCard:drawArt(a)
+    local slide = ease(self.t / LevelupCard.ART_IN)
+    local boxX = boxOrigin(self.boxH)
+    local areaW = boxX - 40
+    local cx = 40 + areaW / 2 - (1 - slide) * 220
+    if self.kind == "bond" then
+        -- The avatar behind and to the left, the partner in front.
+        if self.avatar then
+            drawOneArt(self.avatar, self.avatarName, cx - areaW * 0.2, areaW, 0.8, a * slide * 0.85)
+        end
+        drawOneArt(self.char, self.name, cx + areaW * 0.12, areaW, 0.9, a * slide)
+        return
+    end
+    drawOneArt(self.char, self.name, cx, areaW, 1, a * slide)
 end
 
 function LevelupCard:draw()
@@ -282,7 +327,8 @@ function LevelupCard:draw()
 
     local boxA = ease((t - LevelupCard.BOX_AT) / LevelupCard.BOX_IN)
     if boxA <= 0 then love.graphics.setColor(1, 1, 1); return end
-    local bx, by0 = boxOrigin()
+    local BOX_H = self.boxH or BOX_H
+    local bx, by0 = boxOrigin(BOX_H)
     local by = by0 + (1 - boxA) * 24
 
     -- The glow: soft amber rings behind the plate, breathing once revealed.
@@ -304,7 +350,13 @@ function LevelupCard:draw()
     local sub = Theme.body(16)
     love.graphics.setFont(head)
     Theme.set(Theme.accentAmber, boxA)
-    if self.kind == "unlock" then
+    if self.kind == "bond" then
+        love.graphics.printf("Bond  " .. (self.fromRank or "-") .. "  \226\134\146  " .. tostring(self.toRank),
+            bx + PAD, by + 10, BOX_W - PAD * 2, "left")
+        love.graphics.setFont(sub)
+        Theme.set(Theme.ink, boxA)
+        love.graphics.print(self.avatarName .. "  \194\183  " .. self.name, bx + PAD, by + 10 + head:getHeight() + 4)
+    elseif self.kind == "unlock" then
         love.graphics.printf("Class Unlocked", bx + PAD, by + 10, BOX_W - PAD * 2, "left")
         love.graphics.setFont(sub)
         Theme.set(Theme.ink, boxA)
@@ -327,6 +379,19 @@ function LevelupCard:draw()
     for i, row in ipairs(self.rows) do
         local ry = by + HEAD_H + (i - 1) * ROW_H
         local px, ph = bx + PAD, ROW_H - 8
+        if row.isNew then
+            -- A verb the rank hands over: a "New" pill in our side's blue, and the verb's name beside it.
+            local party = require("ui.colors").PARTY
+            love.graphics.setColor(party[1], party[2], party[3], boxA)
+            love.graphics.setLineWidth(1.5)
+            love.graphics.rectangle("line", px, ry + 4, PILL_W, ph, ph / 2, ph / 2)
+            love.graphics.setLineWidth(1)
+            love.graphics.setFont(labelF)
+            love.graphics.printf(row.label, px, ry + 4 + (ph - labelF:getHeight()) / 2, PILL_W, "center")
+            love.graphics.setFont(valueF)
+            Theme.set(Theme.ink, boxA)
+            love.graphics.print(tostring(row.value), px + PILL_W + 12, ry + (ROW_H - valueF:getHeight()) / 2)
+        else
         Theme.set(Theme.panel2, boxA)
         love.graphics.rectangle("fill", px, ry + 4, PILL_W, ph, ph / 2, ph / 2)
         love.graphics.setFont(labelF)
@@ -354,6 +419,7 @@ function LevelupCard:draw()
             Theme.set(Theme.mount, boxA * popped)
             love.graphics.printf(text, cx, cy + (ph - chipF:getHeight()) / 2, cw, "center")
         end
+        end -- not isNew
     end
 
     if self.revealed then

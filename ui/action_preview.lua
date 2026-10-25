@@ -67,6 +67,8 @@ end
 -- you, red for anything hostile you throw.
 local function accentFor(action)
     if action.kind == "counter" then return WARN end
+    -- A follow-up is thrown by OUR side, so it wears our blue rather than the amber of a cost.
+    if action.kind == "followUp" then return Colors.PARTY end
     if action.kind == "move" then return MOVE end
     if action.support then return SUPPORT end
     return OFFENSE
@@ -166,6 +168,40 @@ local function buildCounterBlocks(action)
     return blocks
 end
 
+-- Build the blocks for a FOLLOW-UP box: an ally who adds a blow when this one lands (Combat.previewFollowUps)
+-- -- an A-rank bond partner when the avatar strikes, or anyone wearing a follow-up trait (the Pincer
+-- Banner). It reads like the counter box it mirrors: who, "vs <target>", the damage, and what it costs.
+local function buildFollowUpBlocks(action)
+    local f = action.followUp
+    local blocks = { { kind = "title", text = "Follow-up", color = Colors.PARTY } }
+    blocks[#blocks + 1] = { kind = "sub", text = (f.name or "Ally") .. " \194\183 vs "
+        .. ((action.target and action.target.char and action.target.char.name) or "target") }
+    blocks[#blocks + 1] = { kind = "stat", label = "Damage",
+        value = (f.damage or 0) > 0 and ("-" .. f.damage) or "none", valueColor = DAMAGE }
+    if f.lethal then
+        blocks[#blocks + 1] = { kind = "note", text = "Defeats target!", color = LETHAL, glyph = Glyphs.skull }
+    end
+    if f.cost then
+        local parts = {}
+        for _, cost in ipairs(require("models.item").costList(f.cost)) do
+            parts[#parts + 1] = cost.amount .. " " .. cost.stat
+        end
+        if #parts > 0 then
+            blocks[#blocks + 1] = { kind = "stat", label = "Costs them", value = table.concat(parts, " + "),
+                valueColor = MUTED }
+        end
+    end
+    if f.bond then
+        blocks[#blocks + 1] = { kind = "note", text = "Bond A with the avatar", color = MUTED }
+    end
+    return blocks
+end
+
+-- Wrap one entry from `action.followUps` as its own box, as counterAction does for a counter.
+function ActionPreview.followUpAction(followUp, action)
+    return { kind = "followUp", followUp = followUp, actor = action.actor, target = action.target }
+end
+
 -- Wrap one entry from `action.counters` as an action descriptor of its own, so the caller can draw it
 -- as a separate box in the resolution stack: ActionPreview.draw(ActionPreview.counterAction(c, action), ...).
 function ActionPreview.counterAction(counter, action)
@@ -181,6 +217,7 @@ end
 --                                        with an optional inline mark drawn before the words
 local function buildRawBlocks(action)
     if action.kind == "counter" then return buildCounterBlocks(action) end
+    if action.kind == "followUp" then return buildFollowUpBlocks(action) end
     local accent = accentFor(action)
     local blocks = { { kind = "title", text = titleFor(action), color = accent } }
 
