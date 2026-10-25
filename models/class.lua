@@ -899,7 +899,13 @@ Class.TECHNIQUE_PER_BATTLE = 30
 
 -- What a rung costs in technique. Climbs with the target level exactly as the gold track it replaces
 -- did (Forge.GOLD_PER_LEVEL), so the shape of the ladder is unchanged and only the currency moved.
-Class.TECHNIQUE_PER_LEVEL = 10
+--
+-- (2026-10-24, SIX, WHERE IT WAS TEN.) Technique arrives a floor at a time, and since the rift began
+-- resetting to floor one a floor is about four fights rather than ten -- CLASS_LEVEL_STEP fell 50 -> 28
+-- on that measurement. The forge is paid out of the same purse, so its per-level price takes the same
+-- ratio: round(10 x 28 / 50) = 6, and a full +0 -> +10 is 330 where it was 550. The ladder's SHAPE (a
+-- rung costs its target level) is untouched; only the unit moved.
+Class.TECHNIQUE_PER_LEVEL = 6
 
 function Class.techniqueCost(target)
     return Class.TECHNIQUE_PER_LEVEL * math.max(1, target or 1)

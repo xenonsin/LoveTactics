@@ -2421,8 +2421,10 @@ end
 -- rung under the world and earns full. A ramp would have been cheaper to read and would have priced
 -- the first circle for a company two levels stronger than the one that walks it.
 --
--- SO IT IS THE SIMULATION, memoized. Eight fights a floor at the units tests/reward_scale_spec uses,
--- which is the measured cost of a floor (Descent.FLOOR_FIGHTS' header carries the tours). Pure: it
+-- SO IT IS THE SIMULATION, memoized. Four fights a floor at the units tests/reward_scale_spec uses,
+-- which is the measured cost of a floor (Descent.FLOOR_FIGHTS' header carries the tours: 4.13 since the
+-- 2026-10-24 reset, where this read eight; Experience.STEP moved 24 -> 13 with it and the ramp it
+-- prints did not move). Pure: it
 -- reads constants and nothing else, so the same stack answers the same way on every machine.
 --
 -- KEYED ON WHAT IT DEPENDS ON rather than cached once, because a spec that retunes STEP or the stack
@@ -2441,7 +2443,7 @@ function Descent.expectedLevel(floor)
         for f = 1, Descent.FLOORS do
             out[f] = Experience.levelFor(xp)
             local stock = Growth.combatantLevel({}, Descent.dangerLevel({ floor = f }))
-            for _ = 1, 8 do
+            for _ = 1, 4 do
                 xp = xp + perFight * Experience.rewardScale(Experience.levelFor(xp), stock)
             end
         end

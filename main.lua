@@ -185,6 +185,17 @@ function love.load(args)
         return
     end
 
+    -- Early floors: `& "E:\LOVE\lovec.exe" . early-floors [seeds] [floors=1-3] [only=ID] [verbose]`
+    -- Fights every fight floors 1-3 can deal against the company a NEW save carries (the avatar on its
+    -- first class, Rowan, Xin, Gyeom), dice live, and prints win rate / turns / bodies down per fight.
+    -- See tools/early_floors.
+    if args and args[1] == "early-floors" then
+        io.stdout:setvbuf("no")
+        require("tools.early_floors").run({ select(2, unpack(args)) })
+        love.event.quit(0)
+        return
+    end
+
     -- Board ledger: `& "E:\LOVE\lovec.exe" . board-report [n] [all | biome=ID] [tiers]`
     -- Rolls n overworld boards and reports what the generator laid down -- whether a fight can even
     -- happen on the ground it was seated on, boons per fight, how many ended up guarded, rest density,

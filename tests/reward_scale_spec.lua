@@ -40,8 +40,13 @@ return {
         -- converged, which is a claim about the loop and can only be made by running it.
         name = "the party's level tracks the ground it is on, and settles there",
         fn = function()
-            for _, perFloor in ipairs({ 8, 10, 12 }) do
-                local banked = 80 -- what Act 0 leaves a body
+            -- (2026-10-24) FOUR, FIVE AND SIX, where this read 8, 10 and 12: the rift resets to floor
+            -- one every run and a floor's tour measures 4.13 fights (`. floor-fights`), a worked floor
+            -- 5.7. The tour, the worked route and one over it -- the same spread, halved.
+            for _, perFloor in ipairs({ 4, 5, 6 }) do
+                -- what Act 0 leaves a body: it exits on exactly Descent.OPENING_LEVEL (states/prologue.lua's
+                -- xpCap). This read a literal 80, which was level 4 at a step of 24 and is level 7 at 13.
+                local banked = Experience.totalFor(Descent.OPENING_LEVEL)
                 local worst = 0
                 for floor = 1, Descent.FLOORS do
                     -- AGAINST WHAT ACTUALLY SPAWNS, not against the danger ladder: ordinary stock is
