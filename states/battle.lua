@@ -607,7 +607,9 @@ end
 -- countdown beside the hourglass glyph (drawObjectiveClock), because "ticks" is the unit the whole game
 -- is quoted in and "turns" is not a thing the player is ever shown.
 local function objectiveText(obj)
-    return "Objective: " .. Combat.objectiveGoal(obj)
+    -- ...and the fight's condition after it, the battle's one standing readout of the weather
+    -- (models/dressing.lua's hudSuffix; "" on a fight fought in none). Required inline: no new local.
+    return "Objective: " .. Combat.objectiveGoal(obj) .. require("models.dressing").hudSuffix(battle.combat)
 end
 
 -- Wave progress for a wave-based `defend`: how many waves have walked on out of the total the fight
@@ -5497,7 +5499,9 @@ local function openDeployPhase(opts)
         onFlee = opts.onFlee, fleeChance = opts.fleeChance,
         -- The Rooted Oath's word on a fight won on ground, under the hint (models/relic.lua). Nil on
         -- every fight with no trip behind it and on every fight the company can simply walk.
-        notice = require("models.relic").deployNotice(opts.player, battle.combat),
+        -- ...led by the fight's condition, when it is fought in one (models/dressing.lua).
+        notice = require("models.dressing").notice(battle.combat,
+            require("models.relic").deployNotice(opts.player, battle.combat)),
         onCommit = function(deployed, front, placed, auto, speed)
             if autoAllowed() then battle.autoAll = auto and true or false end
             battle.autoSpeed = speed or battle.autoSpeed

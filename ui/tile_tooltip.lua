@@ -510,6 +510,15 @@ local function appendUnit(blocks, unit, preview, intent)
     end
     appendPairs(blocks, statRows)
 
+    -- ITS AFFIX (models/affix.lua), named in its own colour -- the colour of the mark on its token -- with
+    -- what it does in one line under it. Above the statuses: it is what the body IS this fight, not
+    -- something that happened to it.
+    local affix = unit.affix and require("models.affix").defs[unit.affix]
+    if affix then
+        blocks[#blocks + 1] = { kind = "status", name = affix.name, color = affix.color }
+        blocks[#blocks + 1] = { kind = "desc", text = affix.description }
+    end
+
     -- A foe whose kit has been laid open (the Assayer's Eye) says so, and says how to read it. The
     -- reveal lasts the whole fight and its card no longer opens on a hover, so without this line the
     -- thing the ability bought would be invisible -- and this tooltip is exactly where the player is

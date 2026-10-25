@@ -3084,7 +3084,14 @@ end
 
 function Descent.reseatElites(grid, pool, run, player)
     if not (grid and run) then return 0 end
-    return grid:reseatElites(pool, Descent.eliteSeed(player, Descent.depth(run)))
+    local n = grid:reseatElites(pool, Descent.eliteSeed(player, Descent.depth(run)))
+    -- THE FIGHT DRESSING (models/dressing.lua), stamped on every seated combat and elite the board now
+    -- holds -- here because this is the one call both a fresh floor and a re-entered one make. Off the
+    -- run's seed, the depth and the cell, so it is the same dressing on every reload. (Wanderers are
+    -- stamped where the prowl seats them, states/game.lua.)
+    local floor = Descent.depth(run)
+    require("models.dressing").floor(grid, { seed = run.seed, floor = floor, biome = Descent.biomeAt(run, floor) })
+    return n
 end
 
 -- The board this run already holds for `floor`, or nil for one it has not walked.

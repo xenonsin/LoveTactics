@@ -1094,6 +1094,24 @@ escaped runner's drop is withheld. An objective fight keeps its muster band and 
 (`EncounterBattle.cellRated`) but is never walked off (`cellEligible`), because no model can run its clock
 to a decision unwatched. Waves live in `models/waves.lua` for the same reason: the harness walks them.
 
+## Dressing an ordinary fight: affixes, rolled objectives, conditions
+
+Since 2026-10-24 an ordinary combat or elite on a descent floor may be **dressed** (`models/dressing.lua`):
+up to two of three things, rolled off the run's seed, the floor and the cell and stamped on the cell's
+encounter as `enc.dressing = { affixes, objective, condition }`, so the map card, the deploy screen and the
+board read one stamp. Never on a stair, a fight whose blueprint authors an `objective` or `allies`, an
+adventuring party, a scripted stop (lead-in, ward, posting, errand, `opening`) or a mimic.
+
+| System | Data | Chance | Made real in |
+|---|---|---|---|
+| Affix | `data/affixes/` (`bonus`, `traits`, `statuses`, or a trait hook on the affix itself) | 25% on floor 1 to 75% by floor 10 (`Affix.chanceAt`); 1 body, 2 from floor 6 | `Affix.assign` in Arena.build, `Affix.stamp` in Combat.new |
+| Objective | a kind from `Dressing.KINDS` (assassinate the leader, break the objects, hold, reach, survive) | 30% (`Dressing.OBJECTIVE_CHANCE`), compatible kinds only | `Dressing.materialize` in Arena.build, against the roster dealt |
+| Condition | `data/conditions/` (`rules`, `soak`, `ignite`, `rubble`, `band`) | 25% (`Condition.CHANCE`) | `Condition.layBand` in Arena.build; `Condition.open`/`tick` in Combat |
+
+A rolled objective is rated but never walked off, like an authored one. `tests/dressing_spec.lua` holds the
+rolls, the cap, the exclusions, every affix and condition, and plays a sample of rolled objectives inside
+the objective pass's turn budget.
+
 ## Add a curated battle arena
 
 Battle arenas are procedurally generated, and any **curated** layouts you add join the same

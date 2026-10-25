@@ -81,7 +81,9 @@ function Run.fight(id, opts)
     else math.randomseed(Run.SEED) end
     local enemyLevel = Descent.dangerLevel({ floor = floor })
     local built = EncounterBattle.build({
-        encounter = { id = id, kind = def.kind },
+        -- `opts.dressing`: a rolled dressing (models/dressing.lua) to play the fight in -- a rolled
+        -- objective kind, affixes, a condition -- exactly as the map would have stamped it.
+        encounter = { id = id, kind = def.kind, dressing = opts.dressing },
         biome = biome, depth = floor, rung = def.rung, enemyLevel = enemyLevel,
         party = player.roster, seed = opts.seed or Run.SEED,
     })

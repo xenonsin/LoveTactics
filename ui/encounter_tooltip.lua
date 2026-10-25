@@ -137,6 +137,9 @@ function EncounterTooltip.blocks(cell, ctx)
         rows[#rows + 1] = { kind = "stat", label = "First clear pays",
             value = ctx.bonus .. " gold", valueColor = Theme.accentAmber }
     end
+    -- WHAT THIS FIGHT IS DRESSED IN (models/dressing.lua): its rolled objective, how many of its bodies
+    -- are affixed, the ground it is fought on. The same stamp the deploy screen and the board read.
+    for _, row in ipairs(require("models.dressing").rows(enc)) do rows[#rows + 1] = row end
 
     if #rows > 0 then
         blocks[#blocks + 1] = { kind = "sep" }
