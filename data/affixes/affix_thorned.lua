@@ -3,7 +3,6 @@
 return {
     name = "Thorned",
     description = "Melee attackers take 40% of the damage they deal back.",
-    mark = "T",
     color = { 0.55, 0.75, 0.35 },
     traits = { "trait_thorns" },
 }

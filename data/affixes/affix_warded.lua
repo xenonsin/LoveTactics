@@ -4,7 +4,6 @@
 return {
     name = "Warded",
     description = "Shrugs off the first harmful status that lands on it.",
-    mark = "W",
     color = { 0.62, 0.52, 0.90 },
     onStatusApplied = function(ctx)
         if ctx.role ~= "recipient" then return end

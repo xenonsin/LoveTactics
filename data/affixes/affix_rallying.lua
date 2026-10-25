@@ -4,7 +4,6 @@
 return {
     name = "Rallying",
     description = "Allies that start a turn beside it are Empowered: +3 damage on their next blow.",
-    mark = "R",
     color = { 0.95, 0.70, 0.30 },
     power = 3,
     onAnyTurnStart = function(ctx)

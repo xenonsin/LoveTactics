@@ -4,7 +4,6 @@
 return {
     name = "Armored",
     description = "Opens behind a barrier that stops the first two physical blows.",
-    mark = "A",
     color = { 0.70, 0.77, 0.88 },
     statuses = { { id = "status_physical_barrier", magnitude = 2, duration = 60 } },
 }

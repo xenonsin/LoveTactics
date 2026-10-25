@@ -193,6 +193,32 @@ return {
         assert(Trait.has(found, "trait_thorns"), "and it wears the thorns")
     end },
 
+    { name = "an affix reads as a buff badge on its body, not a mark of its own", fn = function()
+        local c, _, foe = affixed("affix_thorned")
+        assert(Status.has(foe, "status_affix_thorned"), "the Thorned body opens wearing its badge")
+        local st = Status.get(foe, "status_affix_thorned")
+        assert(st.def.abbr == "Thrn" and st.def.debuff == false, "a buff with a short tag, like Hasted")
+        Status.cleanse(c, foe)
+        assert(Status.has(foe, "status_affix_thorned"), "and a cleanse does not take the badge off")
+    end },
+
+    { name = "the prologue is never dressed, whatever its encounter carries", fn = function()
+        local found
+        for _, id in ipairs(ordinaryIds()) do
+            local def = Encounter.get(id)
+            if def.kind == "combat" then
+                local built = EncounterBattle.build({
+                    encounter = { id = id, kind = "combat", dressing = { affixes = { "affix_thorned" } } },
+                    biome = "forest", depth = 1, party = { Character.instantiate("character_rowan") }, seed = 31,
+                    classCredit = false,
+                })
+                for _, u in ipairs(built.combat.units) do if u.affix then found = u end end
+                assert(not found, id .. " carried an affix into a fight that banks no class credit")
+                break
+            end
+        end
+    end },
+
     { name = "every affix does what its line says", fn = function()
         local c, hero, foe = affixed("affix_swift")
         assert((foe.bonus.movement or 0) == 2, "Swift: +2 Move")
@@ -256,7 +282,11 @@ return {
             local def = Affix.defs[id]
             assert(type(def.name) == "string" and type(def.description) == "string" and #def.description <= 120,
                 id .. " names itself in one line")
-            assert(def.mark and def.color, id .. " has a mark to draw")
+            -- A BADGE, not a letter of its own (2026-10-25): every affix opens the fight wearing a buff
+            -- status that reads in the token's badge row, with its own short tag.
+            local badge = Affix.badgeOf(id)
+            local sdef = badge and require("models.status").defs[badge]
+            assert(sdef and sdef.abbr and sdef.affix == id and sdef.debuff == false, id .. " has a buff badge")
         end
     end },
 

@@ -4,7 +4,6 @@
 return {
     name = "Hexing",
     description = "Its blows leave the target Cursed for a turn: losing health, and no healing.",
-    mark = "H",
     color = { 0.55, 0.38, 0.62 },
     onBlowLanded = function(ctx)
         local target = ctx.target

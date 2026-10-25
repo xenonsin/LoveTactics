@@ -510,7 +510,7 @@ local function appendUnit(blocks, unit, preview, intent)
     end
     appendPairs(blocks, statRows)
 
-    -- ITS AFFIX (models/affix.lua), named in its own colour -- the colour of the mark on its token -- with
+    -- ITS AFFIX (models/affix.lua), named in its own colour -- the colour of its badge on the token -- with
     -- what it does in one line under it. Above the statuses: it is what the body IS this fight, not
     -- something that happened to it.
     local affix = unit.affix and require("models.affix").defs[unit.affix]
@@ -536,24 +536,28 @@ local function appendUnit(blocks, unit, preview, intent)
     -- duration on the right, so a stunned/rooted unit's condition reads in full here.
     local statuses = unit.statuses
     if statuses and #statuses > 0 then
-        blocks[#blocks + 1] = { kind = "sep" }
-        blocks[#blocks + 1] = { kind = "head", text = "Status Effects", color = { 0.85, 0.86, 0.92 } }
         local rows = {}
         for _, st in ipairs(statuses) do
             local def = st.def or {}
-            rows[#rows + 1] = {
+            -- An affix's badge (status_affix_*) is named, with what it does, by the affix block above.
+            if not def.affix then rows[#rows + 1] = {
                 label = def.name or st.name or "Status",
                 labelColor = def.color or { 0.82, 0.82, 0.88 },
                 -- A self-expiring status (Defending, Channeling) carries a meaningless countdown and
                 -- opts out of it, exactly as in ui/status_tooltip.lua -- the same status must not
                 -- quote a duration in one tooltip and withhold it in the other.
                 value = (not def.hideDuration and st.remaining) and fmtDuration(st.remaining) or nil,
-                hourglass = true }
+                hourglass = true } end
         end
         -- Paired like the stats above them, and for the same reason: a status is a word and a number,
         -- and four of them stacked one per line is 72px of a column spent on eight short strings. The
         -- hourglass stays on every duration it quotes -- half a row is still a row.
-        appendPairs(blocks, rows)
+        -- The heading only over rows it has: an affixed body whose one status is its badge shows none.
+        if #rows > 0 then
+            blocks[#blocks + 1] = { kind = "sep" }
+            blocks[#blocks + 1] = { kind = "head", text = "Status Effects", color = { 0.85, 0.86, 0.92 } }
+            appendPairs(blocks, rows)
+        end
     end
 end
 

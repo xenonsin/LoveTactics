@@ -98,8 +98,13 @@ function EncounterBattle.spec(opts, partyIds, seed)
         -- THE DRESSING THE MAP STAMPED (models/dressing.lua): affixes, a rolled objective kind, a
         -- condition. Handed to the board as data; Arena.build makes each real. Never over an authored
         -- objective -- Dressing.eligible refuses to stamp one, and this refuses to read one.
+        --
+        -- NEVER IN THE PROLOGUE (the author, 2026-10-25). Act 0 has no run, so the map stamps nothing there
+        -- today -- but that is a fact about where the stamp is called from, not a rule, so it is said here
+        -- too: a fight that banks no class credit (`classCredit = false`, the prologue's lessons) is never
+        -- dressed, whatever its encounter carries.
         local dressing = enc.dressing
-        if dressing and not (def and def.objective) then
+        if dressing and not (def and def.objective) and opts.classCredit ~= false then
             spec.rolledObjective = dressing.objective
             spec.affixes = dressing.affixes
             spec.condition = dressing.condition

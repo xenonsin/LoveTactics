@@ -1,5 +1,12 @@
 -- AFFIXES: one or two bodies in an ordinary fight carry a named twist -- Armored, Swift, Vampiric -- read
--- off a mark on the token and a line on its hover (approved 2026-10-24, "variety in the fight itself").
+-- off a BUFF BADGE on the token and a line on its hover (approved 2026-10-24, "variety in the fight itself").
+--
+-- THE BADGE IS A STATUS, NOT A MARK OF ITS OWN (the author, 2026-10-25: "use the buff system"). It was a
+-- framed letter in the token's top-right corner, in the affix's colour; a letter the player had to learn,
+-- in a corner the turn number and status badges already compete for. Each affix now opens the fight
+-- wearing `status_affix_<name>` (Affix.badgeOf), which reads in the badge row like Hasted or Defending, and
+-- the letter is gone with BattleMap:drawAffixMark. NEVER IN THE PROLOGUE: models/encounter_battle.lua
+-- refuses to dress a fight that banks no class credit.
 --
 -- WHAT ONE IS MADE OF, and why it needs no new balance surface. An affix blueprint (data/affixes/) declares
 -- the fields a piece of gear already declares, and each folds in at the seam gear already uses:
@@ -165,10 +172,18 @@ end
 
 -- The statuses it opens the fight wearing. Called at the bell (Combat.openBattle), after every trait is
 -- attached -- so a Warded body does not shrug off its own Haste (a buff is no debuff anyway).
+-- The badge status an affix wears (data/status/status_affix_<name>.lua), or nil for an affix with none.
+function Affix.badgeOf(affixId)
+    local id = affixId and ("status_" .. affixId)
+    return (id and require("models.status").defs[id]) and id or nil
+end
+
 function Affix.open(combat)
     local Status = require("models.status")
     for _, u in ipairs((combat and combat.units) or {}) do
         local def = u.alive and Affix.def(u)
+        local badge = def and Affix.badgeOf(u.affix)
+        if badge then Status.apply(combat, u, badge) end
         for _, s in ipairs((def and def.statuses) or {}) do
             Status.apply(combat, u, s.id, { magnitude = s.magnitude, duration = s.duration })
         end

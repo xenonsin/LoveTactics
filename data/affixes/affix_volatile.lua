@@ -3,7 +3,6 @@
 return {
     name = "Volatile",
     description = "Bursts when it falls, burning everything beside it.",
-    mark = "X",
     color = { 0.95, 0.52, 0.22 },
     traits = { "trait_volatile" },
 }

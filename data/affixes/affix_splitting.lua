@@ -7,8 +7,7 @@
 -- turns at its threshold (Trait.onDamaged says why).
 return {
     name = "Splitting",
-    description = "At half health, a weaker copy of it steps out beside it, once.",
-    mark = "D",
+    description = "At half health, a copy of it with half its health steps out beside it, once.",
     color = { 0.45, 0.85, 0.55 },
     notAReaction = true,
     onDamaged = function(ctx)

@@ -4,7 +4,6 @@
 return {
     name = "Vampiric",
     description = "Heals for a third of the damage its blows deal.",
-    mark = "V",
     color = { 0.78, 0.16, 0.22 },
     share = 1 / 3,
     onBlowLanded = function(ctx)
