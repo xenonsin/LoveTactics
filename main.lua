@@ -196,6 +196,17 @@ function love.load(args)
         return
     end
 
+    -- Run simulator: `& "E:\LOVE\lovec.exe" . run-sim [runs=3] [saves=5] [seed=S] [verbose]`
+    -- Plays the first N descents of a FRESH save end to end -- the real floors, the real prowl meter,
+    -- every fight auto-battled with the dice live, attrition, injuries, relics and the Ward between
+    -- trips -- under a fixed printed policy, and reports where runs end. See tools/run_sim.
+    if args and args[1] == "run-sim" then
+        io.stdout:setvbuf("no")
+        require("tools.run_sim").run({ select(2, unpack(args)) })
+        love.event.quit(0)
+        return
+    end
+
     -- Board ledger: `& "E:\LOVE\lovec.exe" . board-report [n] [all | biome=ID] [tiers]`
     -- Rolls n overworld boards and reports what the generator laid down -- whether a fight can even
     -- happen on the ground it was seated on, boons per fight, how many ended up guarded, rest density,

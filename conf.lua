@@ -42,6 +42,7 @@ function love.conf(t)
     -- love.graphics to build their atlases and need a real GL context.
     local HEADLESS = {
         ["test"] = true,
+        ["run-sim"] = true,
         ["extract-strings"] = true,
         ["art-report"] = true,
         ["audio-report"] = true,
