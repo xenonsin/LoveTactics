@@ -166,6 +166,10 @@ local function trial(f, seed)
         objType = obj and obj.type or "killAll" }
 end
 
+-- Lent to tools/dressing_cost.lua, which prices a fight's dressing against this same company.
+M.company = company
+M.fightsOn = fightsOn
+
 function M.run(args)
     args = args or {}
     local seeds, lo, hi, only, verbose = 10, 1, 3, nil, false
