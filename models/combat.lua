@@ -6596,9 +6596,19 @@ function Combat.charge(combat, user, target, distance)
     for _ = 1, (distance or 1) do
         if not (user.alive and target.alive) then break end
         local fx_, fy_ = target.x + dx, target.y + dy
-        local ok, blocker = canShoveInto(combat, fx_, fy_)
+        local ok, blocker, kind = canShoveInto(combat, fx_, fy_)
         if not ok then
             if not blocker then break end -- impassable terrain / wall / edge halts the charge
+            -- FURNITURE STOPS THE RUN. A crate or a conjured wall has no sheet to trample and is not
+            -- shoved aside by a shoulder: the target is driven into it, and it takes the collision in
+            -- its own layer's currency. Trampling it as a body crashed every Gore that met a crate.
+            if kind ~= "unit" then
+                Combat.logEvent(combat, "damage",
+                    string.format("%s is driven into %s.", unitName(target), blocker.name or "an obstacle"),
+                    { target, user })
+                Combat.damageObject(combat, blocker, kind, Combat.COLLISION_DAMAGE, user)
+                break
+            end
             -- A bystander in the lane: shove it aside (either perpendicular) and bloody it.
             local px, py = -dy, dx
             local pushed = shoveStep(combat, blocker, px, py) or shoveStep(combat, blocker, -px, -py)
@@ -6640,6 +6650,7 @@ end
 -- stops the run -- which is why the test is `blocker.alive` rather than "is there something there".
 local function laneClears(combat, blocker, dx, dy)
     if not (blocker and blocker.alive) then return false end
+    if not blocker.char then return false end -- a prop or a wall: furniture stops the run
     if Status.blocksForcedMove(blocker) then return false end -- an anchored bystander is a wall
     local px, py = -dy, dx
     return footprintCanShift(combat, blocker, px, py) or footprintCanShift(combat, blocker, -px, -py)
@@ -6660,7 +6671,13 @@ local function chargeLane(combat, user, dx, dy, distance, trample)
     local moved = 0
     for _ = 1, (distance or 1) do
         if not user.alive then break end -- a hazard or trap in the lane may end the run mid-stride
-        local ok, blocker = footprintCanShift(combat, user, dx, dy)
+        local ok, blocker, kind = footprintCanShift(combat, user, dx, dy)
+        -- Furniture in a heave's lane is slammed, not trampled: the caster's blow is written against a
+        -- body (it reads a sheet), and a crate has none. It takes the collision and the run ends there.
+        if not ok and trample and blocker and kind ~= "unit" then
+            Combat.damageObject(combat, blocker, kind, Combat.COLLISION_DAMAGE, user)
+            break
+        end
         if not ok and trample then
             -- A HEAVE BULLDOZES rather than brushing past: the body in the lane takes the caster's blow
             -- and is driven a tile AHEAD. A sideways shove -- the rush's way, below -- cannot clear a lane
@@ -9330,6 +9347,17 @@ function Combat.heldAtOne(combat, attacker, target, opts)
 end
 
 function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opts)
+    -- A STANDING OBJECT HAS NO SHEET. Whatever a caller found in the way -- a crate a charge ran into,
+    -- a wall a sweep crossed -- is hurt in its own layer's currency rather than read as a body, which
+    -- would index a missing `char` below and crash the fight. The floor under every such caller.
+    if target and not target.char then
+        if not target.alive then return 0 end
+        local kind = (Wall.at(combat, target.x, target.y) == target and "wall")
+            or (Prop.at(combat, target.x, target.y) == target and "prop")
+            or (Trap.at(combat, target.x, target.y) == target and "trap")
+        if not kind then return 0 end
+        return Combat.damageObject(combat, target, kind, math.max(0, math.floor(base or 0)), source)
+    end
     -- Debug: an invulnerable target (toggled from the right-click debug menu, debug builds only)
     -- shrugs off every blow. Guarded here at the one funnel ALL damage runs through -- a strike, a
     -- trap, a Burn tick, an area blast -- so it needs no reach into each caller. Inert for every
