@@ -68,12 +68,32 @@ return {
             assert(Spoils.endPurse(nil, 5) == 0, "a kindless fight paid the end purse")
             assert(Spoils.endPurse("treasure", 5) == 0, "a chest paid the end purse")
 
-            for _, kind in ipairs({ "elite", "objective", "general" }) do
+            for _, kind in ipairs({ "objective", "general" }) do
                 assert(Spoils.endPurse(kind, 1) > 0, "an " .. kind .. " pays nothing at all")
             end
-            -- A general closes a circle and pays double, which is the count the old ladder used.
-            assert(Spoils.endPurse("general", 5) == 2 * Spoils.endPurse("elite", 5),
-                "a general stopped paying two shares where an elite pays one")
+            -- (2026-10-25) AN ELITE PAYS NO END PURSE: it keeps its richer wage, and the end purse is
+            -- the stairs' alone.
+            assert(Spoils.endPurse("elite", 5) == 0, "an elite paid an end purse on top of its wage")
+            -- A general closes a circle and pays double a lieutenant's stair.
+            local one, two = Spoils.endPurse("objective", 5), Spoils.endPurse("general", 5)
+            assert(math.abs(two - 2 * one) <= 1,
+                "a general stopped paying two shares where a lieutenant's stair pays one")
+        end,
+    },
+    {
+        -- WHICH STAIR PAYS WHICH: one share on a circle's first floor, two on its general's floor and at
+        -- the Crown (models/encounter_battle.lua's stairPurseKind).
+        name = "a lieutenant's stair pays one share and a general's stair two",
+        fn = function()
+            local Descent = require("models.descent")
+            local EncounterBattle = require("models.encounter_battle")
+            for floor = 1, Descent.FLOORS do
+                local want = (Descent.isGeneralFloor(floor) or Descent.isBottom(floor)) and "general" or "objective"
+                assert(EncounterBattle.stairPurseKind(floor) == want,
+                    "floor " .. floor .. " pays as " .. EncounterBattle.stairPurseKind(floor))
+            end
+            assert(EncounterBattle.stairPurseKind(1) == "objective", "floor one's lieutenant pays the general's rate")
+            assert(EncounterBattle.stairPurseKind(Descent.FLOORS) == "general", "the Crown pays one share")
         end,
     },
     {
@@ -84,20 +104,22 @@ return {
         fn = function()
             local last = 0
             for depth = 1, 11 do
-                local p = Spoils.endPurse("elite", depth)
+                local p = Spoils.endPurse("objective", depth)
                 assert(p > last, "floor " .. depth .. " pays " .. p .. ", no better than floor "
                     .. (depth - 1) .. " -- descending must raise the haul")
                 last = p
             end
-            local bottom = Spoils.endPurse("elite", 11)
-            assert(Spoils.endPurse("elite", 40) == bottom and Spoils.endPurse("elite", 99) == bottom,
+            local bottom = Spoils.endPurse("objective", 11)
+            assert(Spoils.endPurse("objective", 40) == bottom and Spoils.endPurse("objective", 99) == bottom,
                 "the purse keeps climbing past the deepest floor, so a late campaign road out-pays the "
                 .. "bottom of the rift")
             -- The old ladder's own numbers, which these were fitted to: ~150 gold on the first floor,
-            -- ~850 on the eleventh. Held loosely -- what is pinned is the band, not the arithmetic.
-            assert(Spoils.endPurse("elite", 1) >= 100 and Spoils.endPurse("elite", 1) <= 200,
+            -- ~850 on the eleventh -- times the one factor every rolled purse now carries
+            -- (Spoils.GOLD_SCALE, measured against a run's banking). Held loosely: the band, not the sum.
+            local s = Spoils.GOLD_SCALE
+            assert(Spoils.endPurse("objective", 1) >= 100 * s and Spoils.endPurse("objective", 1) <= 200 * s,
                 "the first floor's end purse left the band the valuable ladder set")
-            assert(bottom >= 700 and bottom <= 1000,
+            assert(bottom >= 700 * s and bottom <= 1000 * s,
                 "the deepest floor's end purse left the band the valuable ladder set")
         end,
     },
@@ -111,11 +133,11 @@ return {
             assert(common.valuables == nil, "a fight still rolls valuables, which are deleted")
 
             local elite = Spoils.roll({ count = 4, day = 5, floorLevel = 5, kind = "elite" })
-            assert(elite.gold > Spoils.endPurse("elite", 5),
-                "an elite paid " .. elite.gold .. ", no more than its purse alone -- the fight it was "
-                .. "fought is not being paid for")
-            assert(common.gold < Spoils.endPurse("elite", 5),
-                "an ordinary fight out-earns an end's purse, so the ends are not where the income is")
+            assert(elite.gold > common.gold,
+                "an elite paid " .. elite.gold .. ", no more than a like-sized common fight -- its wage "
+                .. "is the whole of what it pays now, and it must still be the richer one")
+            assert(common.gold < Spoils.endPurse("objective", 5),
+                "an ordinary fight out-earns a stair's purse, so the ends are not where the income is")
 
             -- AND AN AUTHORED FIGURE SPEAKS ALONE, which is this file's oldest rule: `rewardGold` short
             -- circuits the roll AND the purse, because now that both are coin an authored payout can
@@ -332,7 +354,9 @@ return {
                 p.roster = { c }
                 return p, c
             end
-            assert(Player.restWellPrice(3) == 3 * Player.REST_WELL_PER_FLOOR, "the price is per floor")
+            assert(Player.restWellPrice(3) == Player.REST_WELL_BASE + 3 * Player.REST_WELL_PER_FLOOR,
+                "the price is a base plus so much a floor")
+            assert(Player.restWellPrice(4) > Player.restWellPrice(3), "a deeper camp costs more")
             local p, c = company(1000)
             assert(Player.restWell(p, 3), "resting well refused a full purse")
             assert(c.stats.health.current == c.stats.health.max, "resting well did not heal in full")

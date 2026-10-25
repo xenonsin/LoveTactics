@@ -113,10 +113,25 @@ local END_PURSE_SLOPE = 0.55 -- ...and what each level of depth after the first 
 -- passes its DAY in as depth (Spoils.roll) and the calendar runs to 40 -- without this, a late road
 -- elite would pay four times what the deepest floor in the game does.
 local END_PURSE_CAP = 11
--- HOW MANY SHARES EACH KIND OF END PAYS. The old ladder's own counts: an elite is a fight the player
--- could have walked around, an objective is the one they came down for, and a general closes a circle
--- and pays double.
-local END_PURSE_SHARES = { elite = 1, objective = 1, general = 2 }
+-- HOW MANY SHARES EACH KIND OF END PAYS. An objective is the stair the company came down for -- a
+-- circle's lieutenant on its first floor -- and a general closes the circle and pays double
+-- (models/encounter_battle.lua picks which by Descent.isGeneralFloor).
+--
+-- AN ELITE PAYS NONE (2026-10-25). It was one share on top of an elite's richer wage, and the run
+-- simulator's gold breakdown measured the pair at a third of all income on floors 1-3: the side fights
+-- were out-earning the stairs they sit beside. An elite keeps its wage (ELITE_GOLD_MULT); the end purse
+-- is the stairs' alone.
+local END_PURSE_SHARES = { elite = 0, objective = 1, general = 2 }
+
+-- ONE FACTOR ON EVERY ROLLED PURSE (2026-10-25): a fight's wage and an end's purse are both multiplied
+-- by this, and nothing else is -- an authored `rewardGold` is somebody's exact figure and stays exact.
+--
+-- MEASURED, NOT PICKED, against one target: a run that climbs out from floors 1-3 banks about 500
+-- gold. `. run-sim saves=20 goldScale=X` (tools/run_sim.lua prints the climbed-out mean) read, with the
+-- stairs' shares cut as above: 1,108 at 1.0, 398 at 0.45, 458 at 0.55, 511 at 0.6 (13-19 such runs a
+-- sample; the engine drifts run to run, so read it as +/-60). Before the share cut, at 1.0, it was 1,378.
+-- Re-measure before moving it -- every price in docs/economy.md's sinks is set against it.
+Spoils.GOLD_SCALE = 0.6
 
 -- HOW MUCH RARER EACH RUNG OF DEPTH MAKES AN ENTRY ON ITS OWN BODY'S LIST. A list is not a flat bag:
 -- the whole point of a named body is that it carries one thing worth going back for, and a uniform
@@ -157,7 +172,7 @@ local function rollGold(count, mult, kind, override, scale)
     if override then return math.max(0, math.floor(override)) end
     local base = (GOLD_PER_FIGHT + GOLD_PER_ENEMY * math.max(1, count)) * math.max(1, mult)
     local jitter = 0.85 + rnd() * 0.30 -- +/-15% so two identical fights don't pay identically
-    local gold = base * jitter * (scale or 1)
+    local gold = base * jitter * (scale or 1) * Spoils.GOLD_SCALE
     if kind == "elite" then gold = gold * ELITE_GOLD_MULT end
     return math.max(1, math.floor(gold + 0.5))
 end
@@ -177,7 +192,7 @@ function Spoils.endPurse(kind, depth)
     local shares = END_PURSE_SHARES[kind or ""] or 0
     if shares <= 0 then return 0 end
     depth = math.min(END_PURSE_CAP, math.max(1, math.floor(tonumber(depth) or 1)))
-    return math.floor(shares * END_PURSE * (1 + END_PURSE_SLOPE * (depth - 1)) + 0.5)
+    return math.floor(shares * END_PURSE * (1 + END_PURSE_SLOPE * (depth - 1)) * Spoils.GOLD_SCALE + 0.5)
 end
 
 -- The ceiling of the ROAD BAND on `day`: how dear a thing a run can turn up at all. One number,

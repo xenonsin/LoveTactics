@@ -129,7 +129,9 @@ return {
         -- `8 * count * prestige`, purely linear in head-count. Comparing the new formula against itself
         -- would only measure how sub-linear it is, which is not the question -- the question is what a
         -- player's road fight is worth now against what it was worth then.
-        local wasNineBody = 8 * 9 * PRESTIGE
+        -- ...in today's coin: every rolled purse carries Spoils.GOLD_SCALE (2026-10-25), a uniform cut
+        -- that is not the head-count cut this case guards against.
+        local wasNineBody = 8 * 9 * PRESTIGE * Spoils.GOLD_SCALE
 
         local N = 40 -- the roll carries +/-15% jitter, so compare averages rather than single rolls
         local nowSkirmish, nowNineBody = 0, 0

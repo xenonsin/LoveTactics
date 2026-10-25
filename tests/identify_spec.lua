@@ -424,7 +424,8 @@ return {
                 -- half, so each side is asked in its own unit and neither carries a copy of the ramp.
                 local level = Descent.floorLevel({ floor = floor })
                 local fee = Identify.fee({ unidentified = floor })
-                local end_ = Spoils.endPurse("elite", level)
+                -- A lieutenant's stair: one share (an elite pays no end purse since 2026-10-25).
+                local end_ = Spoils.endPurse("objective", level)
                 assert(end_ > 0, "the fixture must actually pay an end purse on floor " .. floor)
                 local share = fee / end_
                 assert(share >= 0.25, "level " .. level .. ": naming costs " .. fee ..

@@ -44,7 +44,9 @@ a currency with one and a half sinks is a scoreboard, not a money, and `models/s
 **Three fences were available and only one survived the rest of the change.** *Evaporation* went with
 scrip itself. *Weight* — gold riding in the pack, so a purchase is priced against the slot it occupies —
 died with the mule. *Risk* — the purse dropped where the company fell — died with the pile system when a
-wipe stopped costing anything ([docs/the-count.md](the-count.md)). **Magnitude** is what is left, and
+wipe stopped costing anything ([docs/the-count.md](the-count.md)), and came back in a narrower form on
+2026-10-25: a wipe loses the gold **found this run** (`Descent.wipe`, `Descent.goldAtRisk`), never the gold
+the company walked in with. **Magnitude** is what is left, and
 unlike the other three it needs no object to hang on: only a number, anchored to the grader so a re-cut
 of the shelf moves it.
 
@@ -54,15 +56,17 @@ The campaign's real income arrived as **valuables** — priced loot with no use 
 carried out of the rift and sold at a counter. **Weight was the entire argument.** A valuable took mule
 slots, so treasure competed with the gear you found; it rode in the pack, so a wipe dropped the takings
 where the company fell. Both of those systems are deleted — the mule has no cap to fill and a wipe takes
-nothing — and what was left was an inventory step standing between winning a fight and being paid for
+only what the run found — and what was left was an inventory step standing between winning a fight and being paid for
 it: carry the idol home, open a shop, click sell. **A step with no decision in it is not a decision.**
 `models/valuable.lua` and `data/items/valuable/` are gone.
 
 **What survived is the shape**, because the shape is why the descent has a direction. An end pays an
 **end purse** in coin on top of what its fight was worth (`Spoils.endPurse`):
 
-- **Lumpy, not litter.** Only an end pays one — an elite, an objective, a general, which pays double —
-  never an ordinary body. **The grind funds spending, the work you chose to walk to funds the
+- **Lumpy, not litter.** Only a stair pays one — a lieutenant's stair one share, a general's stair and
+  the Crown two (`EncounterBattle.stairPurseKind`) — never an ordinary body. **An elite pays no end
+  purse** (2026-10-25): it keeps its richer wage (`ELITE_GOLD_MULT`), because the gold breakdown measured
+  elite wage plus purse at a third of all income, out-earning the stairs beside them. **The grind funds spending, the work you chose to walk to funds the
   campaign.** Spreading it over every fight would make the whole floor worth the same to walk.
 - **It climbs steeply**, far faster than an ordinary fight's gold (`GOLD_DEPTH_SLOPE`). That climb is
   what the greed at a landing is weighing. It goes flat at floor 11, which is where the old pool topped
@@ -70,6 +74,10 @@ it: carry the idol home, open a shop, click sell. **A step with no decision in i
 - **The numbers are the old ladder's, measured.** The valuable pool ran 110g on floor 1 to 1,500g on
   floor 11, drawn twice with the dearer kept: ~150g and ~850g expected. A base of 130 on a slope of 0.55
   tracks that at every rung it had, so measurements taken against the object economy still read.
+- **Then every rolled purse is scaled by one factor**, `Spoils.GOLD_SCALE = 0.6` (wages and end purses
+  alike; an authored `rewardGold` stays exact). It is measured against one target — a run that climbs
+  out from floors 1-3 banks about **500 gold** — with `. run-sim saves=20 goldScale=X`, which prints that
+  mean. Every sink price below is set against that 500.
 - **The stair's toll is unaffected.** It takes a share of the *finds*, counted by the head, and may
   never reach into the kit a company marched down with (`Player.atRisk`, `game:payToll`). That diff is
   the one piece of the old risk apparatus that outlived it.
@@ -132,8 +140,10 @@ hour, not for the blade:
 | one uncured Corroding (12 points) | **24g** |
 | *for comparison* — the Ward buying off a wound | 40g |
 
-Measured against descent income (`Spoils.roll`, 200 rolls a floor): an ordinary fight pays **54g on
-floor one** and **208g on floor fifteen**; elites 242g → 1267g. A fielded four keeping a dozen pieces
+Measured against descent income (`Spoils.roll`, 200 rolls a floor, before 2026-10-25): an ordinary
+fight paid **54g on floor one** and **208g on floor fifteen**; elites 242g → 1267g. Under
+`Spoils.GOLD_SCALE` and with the elite's end purse gone, that is roughly 32g → 125g, and an elite's wage
+alone about 58g → 225g. A fielded four keeping a dozen pieces
 whole runs roughly a fifth to a third of a trip's take.
 
 **What the fixed rate gives up**, recorded because it overrules the share version's own argument: it
@@ -158,9 +168,11 @@ unpriced found ware worth* and is what the share version should have been readin
   |---|---|---|---|---|
   | its rung | 0 | 2 | 5 | 7 |
   | what the counter charges | 80g | 245g | 495g | 660g |
-  | what an objective on that floor pays | 130g | 273g | 487g | 631g |
+  | what a lieutenant's stair on that floor pays | 78g | 164g | 293g | 378g |
 
-  So **an end pays about one piece at its own depth**, and a general pays two. That is a defensible
+  So **a lieutenant's stair pays about half a piece at its own depth**, and a general's stair about one
+  (the stair purses at `Spoils.GOLD_SCALE` 0.6; before 2026-10-25 every stair paid the double rate and
+  this row read 130g / 273g / 487g / 631g at one share). That is a defensible
   resting point and not a designed one — nobody chose it, it falls out of both numbers reading the
   same axis. What it means practically is that the risk is *scarcity*, not a pile: a full class shelf
   runs 6,700g (alchemist) to 23,300g (knight), so a campaign buys a handful of pieces and finds the
@@ -168,6 +180,17 @@ unpriced found ware worth* and is what the share version should have been readin
 
   **The dial is `Spoils.endPurse`, never the derived price** — a price is the grade speaking, and
   moving one by hand re-opens the tautology [shelf.md](shelf.md) exists to close.
+
+## The sinks (2026-10-25)
+
+Three things gold buys underground or at the bench, each one named constant marked TENTATIVE, each set
+against the ~500 a floors 1-3 run banks:
+
+| sink | price | share of a 500 run |
+|---|---|---|
+| reroll a stair's relic slate (`Relic.REROLL_*`) | 50, doubling per reroll, +25% a floor (50 / 63 / 75 on floors 1-3) | 10-15% for the first |
+| Rest well, a full camp (`Player.REST_WELL_*`) | 50 + 25 a floor (75 / 100 / 125 on floors 1-3) | 15-25% |
+| class gear forged for gold (`Forge.GOLD_PER_TECHNIQUE`) | 14 a technique point; +1 to +3 is 36 points, 504g | about one run |
 
 ## The invariant
 

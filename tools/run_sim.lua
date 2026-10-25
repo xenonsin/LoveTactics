@@ -251,7 +251,9 @@ local function splitSpoils(opts, spoils)
     if def and def.rescue and opts.rescue then take("rescue per head", (def.rescue.gold or 0) * (opts.rescue.saved or 0)) end
     local class = fightClass(enc)
     if enc.kind == "objective" then
-        take("end purse: stair/objective", Spoils.endPurse("general", depth))
+        local purseKind = EncounterBattle.stairPurseKind(opts.depth)
+        take(purseKind == "general" and "end purse: general's stair" or "end purse: lieutenant's stair",
+            Spoils.endPurse(purseKind, depth))
     elseif not enc.rewardGold then
         take("end purse: " .. class, Spoils.endPurse(enc.kind, depth))
     end
@@ -1216,6 +1218,12 @@ function M.goldTotals(results)
             out.total = out.total + led.total
             out.spent, out.topUp, out.ward = out.spent + led.spent, out.topUp + led.topUp, out.ward + (led.ward or 0)
             out.lostOnWipe = out.lostOnWipe + (run.goldLost or 0)
+            -- THE BANKING READ: a run that climbed out from floors 1-3, and what it took home -- the
+            -- purse it came up with over the purse it went down with.
+            if run.ending == "climb" and (run.floor or 0) >= 1 and run.floor <= 3 then
+                out.climbs = out.climbs or {}
+                out.climbs[#out.climbs + 1] = { earned = led.total, banked = (run.goldEnd or 0) - (run.goldStart or 0) }
+            end
             out.byRun[r] = (out.byRun[r] or 0) + led.total
             for k, v in pairs(led.bySource) do out.bySource[k] = (out.bySource[k] or 0) + v end
             for k, v in pairs(led.spentBy) do out.spentBy[k] = (out.spentBy[k] or 0) + v end
@@ -1236,8 +1244,9 @@ function M.printGold(results, runs, saves)
     for k in pairs(g.bySource) do labels[#labels + 1] = k end
     table.sort(labels, function(a, b) return g.bySource[a] > g.bySource[b] end)
     print("")
-    print(fmt("GOLD BREAKDOWN -- %d run(s); earned %d in all, %.0f per run (the Gate's top-up of %d not counted)",
-        g.runs, g.total, g.total / g.runs, g.topUp))
+    print(fmt("GOLD BREAKDOWN -- %d run(s); earned %d in all, %.0f per run (the Gate's top-up of %d not counted)"
+        .. "; Spoils.GOLD_SCALE %.2f", g.runs, g.total, g.total / g.runs, g.topUp,
+        require("models.spoils").GOLD_SCALE or 1))
     local bandHead = {}
     for i, b in ipairs(M.GOLD_BANDS) do bandHead[i] = fmt("%8s", fmt("F%d-%d", b[1], b[2])) end
     print(fmt("  %-40s %8s %6s %7s  %s", "source", "total", "share", "per run", table.concat(bandHead, " ")))
@@ -1267,6 +1276,18 @@ function M.printGold(results, runs, saves)
     for _, e in ipairs(sinks) do sl[#sl + 1] = fmt("%s %d", e[1], e[2]) end
     print(fmt("  spent through Player.spendGold: %d (%s); at the Ward: %d; lost on wipes: %d",
         g.spent, #sl > 0 and table.concat(sl, ", ") or "-", g.ward, g.lostOnWipe))
+    local climbs = g.climbs or {}
+    if #climbs > 0 then
+        local earned, banked, list = 0, 0, {}
+        for _, c in ipairs(climbs) do
+            earned, banked = earned + c.earned, banked + c.banked
+            list[#list + 1] = c.banked
+        end
+        print(fmt("  climbed out from floors 1-3: %d run(s), mean earned %.0f, mean banked %.0f, median banked %s",
+            #climbs, earned / #climbs, banked / #climbs, tostring(median(list))))
+    else
+        print("  climbed out from floors 1-3: none")
+    end
 end
 
 function M.report(args)
@@ -1278,6 +1299,9 @@ function M.report(args)
         local s = a:match("^saves=(%d+)$"); if s then saves = tonumber(s) end
         local sd = a:match("^seed=(%d+)$"); if sd then seed = tonumber(sd) end
         if a == "verbose" then verbose = true end
+        -- `goldScale=X` measures a candidate Spoils.GOLD_SCALE without editing it (the report says so).
+        local gs = a:match("^goldScale=([%d%.]+)$")
+        if gs then require("models.spoils").GOLD_SCALE = tonumber(gs) end
         if a == "trace" then verbose = true; M.TRACE = true end
     end
     local t0 = os.clock()

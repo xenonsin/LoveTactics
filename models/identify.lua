@@ -337,8 +337,13 @@ Identify.FEE_PER_FLOOR = 45
 -- take the gold, redeem whatever you still want later, and the question the room exists to ask -- name
 -- this one, or let it go -- is never actually asked, because letting it go costs nothing. The markup is
 -- the price of having been wrong, and it is small enough to pay when you were.
+-- SCALED BY THE SAME FACTOR AS EVERY PURSE (Spoils.GOLD_SCALE, 2026-10-25). The fee is priced as a
+-- share of what a floor pays, and the reading and the sale are one number, so when the purses were
+-- scaled to what a run banks the fee had to move with them -- or naming one find would cost more than
+-- a lieutenant's stair pays, and selling one would out-earn it.
 function Identify.fee(item)
-    return Identify.FEE_BASE + Identify.FEE_PER_FLOOR * Identify.floorOf(item)
+    local scale = require("models.spoils").GOLD_SCALE or 1
+    return math.floor((Identify.FEE_BASE + Identify.FEE_PER_FLOOR * Identify.floorOf(item)) * scale + 0.5)
 end
 
 -- ---------------------------------------------------------------------------

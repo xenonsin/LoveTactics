@@ -1084,18 +1084,19 @@ function Player.camp(player, share)
     end)
 end
 
--- WHAT A CAMP WOULD GIVE, without giving it: one row per roster member, `{ char, from, to, max }` in
--- health, plus `any` -- true when the camp would move ANY resource at all, mana and stamina included. The
--- camp panel quotes the rows (`16 -> 28`) and uses `any` to decide whether a heal is on offer at all.
 -- RESTING WELL (2026-10-25): the camp's third verb, a full heal for gold -- Player.camp at a share of
--- one, so an injury still caps it exactly as it caps the half. A gold sink, and TENTATIVE: the price per
--- floor waits on the faucets being cut after the author reads the run simulator's gold breakdown.
-Player.REST_WELL_PER_FLOOR = 30 -- TENTATIVE
+-- one, so an injury still caps it exactly as it caps the half.
+--
+-- PRICED AGAINST WHAT A RUN BANKS (Spoils.GOLD_SCALE: a run that climbs out from floors 1-3 banks about
+-- 500). 50 + 25 a floor is 75 / 100 / 125 on floors 1-3 -- 15-25% of that run, so a full heal is a
+-- real bite out of the haul rather than a reflex -- and climbs with the purse below. TENTATIVE.
+Player.REST_WELL_BASE = 50       -- TENTATIVE
+Player.REST_WELL_PER_FLOOR = 25  -- TENTATIVE
 Player.REST_WELL_SHARE = 1
 
 -- What resting well costs on floor `depth`.
 function Player.restWellPrice(depth)
-    return Player.REST_WELL_PER_FLOOR * math.max(1, math.floor(tonumber(depth) or 1))
+    return Player.REST_WELL_BASE + Player.REST_WELL_PER_FLOOR * math.max(1, math.floor(tonumber(depth) or 1))
 end
 
 -- Pay for and take a full camp. Returns true, or nil and "gold" when the purse is short (nothing paid,
@@ -1108,6 +1109,9 @@ function Player.restWell(player, depth)
     return true
 end
 
+-- WHAT A CAMP WOULD GIVE, without giving it: one row per roster member, `{ char, from, to, max }` in
+-- health, plus `any` -- true when the camp would move ANY resource at all, mana and stamina included. The
+-- camp panel quotes the rows (`16 -> 28`) and uses `any` to decide whether a heal is on offer at all.
 function Player.campForecast(player, share)
     local rows, byChar, any = {}, {}, false
     eachCamped(player, share, function(char, stat, resource, cur, to)

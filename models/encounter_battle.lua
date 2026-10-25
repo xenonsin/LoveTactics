@@ -397,7 +397,11 @@ function EncounterBattle.spoils(opts)
         -- in Quest.complete: it is what the fight LEFT, not what the job paid. The general is the
         -- archetypal end, so refusing him one would exempt the richest stop in the run from the seam the
         -- campaign's income is weighted onto. It stood here as a valuable before the objects went.
-        spoils = { gold = Spoils.endPurse("general", opts.floorLevel or opts.depth),
+        --
+        -- ONE SHARE ON A LIEUTENANT'S STAIR, TWO ON A GENERAL'S (2026-10-25): every stair paid the
+        -- general's double rate until the gold breakdown measured it at two-fifths of all income. The
+        -- general's floor (Descent.isGeneralFloor) and the Crown at the bottom keep the double.
+        spoils = { gold = Spoils.endPurse(EncounterBattle.stairPurseKind(opts.depth), opts.floorLevel or opts.depth),
         loot = {}, materials = Spoils.materials({
             kind = kind, tier = encounter.tier, houseMaterial = opts.houseMaterial,
             -- A general's chamber has crates in it like anywhere else, and the fight you came for is
@@ -514,6 +518,15 @@ function EncounterBattle.spoils(opts)
     end
 
     return spoils
+end
+
+-- Which end purse an objective fight on floor `depth` pays: "general" (two shares) on a circle's
+-- general floor and at the bottom, "objective" (one) everywhere else.
+function EncounterBattle.stairPurseKind(depth)
+    local Descent = require("models.descent")
+    depth = tonumber(depth) or 1
+    if Descent.isGeneralFloor(depth) or Descent.isBottom(depth) then return "general" end
+    return "objective"
 end
 
 return EncounterBattle

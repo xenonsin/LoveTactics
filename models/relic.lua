@@ -837,8 +837,12 @@ function Relic.offerStair(state, player, floor, ctx)
 end
 
 -- A PAID REROLL OF THE STAIR'S SLATE (2026-10-25): gold for three fresh cards, the price doubling with
--- each reroll in the same offer and climbing with depth. A gold sink, and TENTATIVE: every figure here
--- waits on the faucets being cut after the author reads the run simulator's gold breakdown.
+-- each reroll in the same offer and climbing with depth.
+--
+-- PRICED AGAINST WHAT A RUN BANKS (Spoils.GOLD_SCALE: a run that climbs out from floors 1-3 banks about
+-- 500). The first reroll is 50 / 63 / 75 on floors 1-3, 10-15% of that run; a second in the same offer
+-- doubles to 20-30%, so one reroll is a fair ask and fishing is not. The figures did not move when the
+-- purses were cut -- they were already in the band. TENTATIVE.
 Relic.REROLL_BASE = 50     -- TENTATIVE: the first reroll on floor one
 Relic.REROLL_GROWTH = 2    -- TENTATIVE: each further reroll in the same offer costs this many times the last
 Relic.REROLL_DEPTH = 0.25  -- TENTATIVE: what each floor below the first adds, as a share of the price

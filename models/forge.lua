@@ -55,11 +55,14 @@ local Forge = {}
 Forge.GOLD_PER_LEVEL = 40
 
 -- CLASS GEAR MAY BE PAID IN GOLD INSTEAD (2026-10-25): the player picks, per commit, technique or gold
--- at this rate per point of technique the rung would have cost. A gold sink, and TENTATIVE -- the rate
--- waits on the faucets being cut after the author reads the run simulator's gold breakdown. Everything
--- else on the bill (the ceiling, the class gate, the craft and house stock) is asked either way: gold
--- stands in for the technique track and for nothing else.
-Forge.GOLD_PER_TECHNIQUE = 25 -- TENTATIVE
+-- at this rate per point of technique the rung would have cost. Everything else on the bill (the
+-- ceiling, the class gate, the craft and house stock) is asked either way: gold stands in for the
+-- technique track and for nothing else.
+--
+-- PRICED AGAINST WHAT A RUN BANKS (Spoils.GOLD_SCALE: a run that climbs out from floors 1-3 banks about
+-- 500). +1 to +3 is 6 + 12 + 18 = 36 technique (Class.techniqueCost), so 14 a point puts that climb at
+-- 504 gold -- one run's banking for three rungs a body would otherwise have to fight for. TENTATIVE.
+Forge.GOLD_PER_TECHNIQUE = 14 -- TENTATIVE
 
 -- What a bill actually charges paid `pay` ("gold", or anything else for the default): returns the gold
 -- and the technique due. Paying gold on a bill with no technique on it changes nothing.
