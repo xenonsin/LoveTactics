@@ -108,7 +108,7 @@ return {
     {
         -- The forest board in the play pass: mountains at the heart, and the old fallback scanned from
         -- (1,1) and put a ONE-tile hold in the corner beside the enemy line.
-        name = "a buried centre falls back to a full patch near the middle, away from the enemy line",
+        name = "a buried centre falls back to a full patch on the midline, away from both sides' rows",
         fn = function()
             local layout = flatLayout(8, 8)
             layout.enemySpawns = { { x = 2, y = 1 }, { x = 4, y = 1 }, { x = 6, y = 1 } }
@@ -121,6 +121,7 @@ return {
             for _, t in ipairs(tiles) do
                 assert(layout.tiles[t.y][t.x] ~= "mountain", "never hand back a tile nobody can stand on")
                 assert(t.y > 2, "never on or beside the enemy spawn row, got row " .. t.y)
+                assert(t.y < 7, "never on or beside the party's spawn row, got row " .. t.y)
                 assert(math.abs(t.x - 4.5) <= 3 and math.abs(t.y - 4.5) <= 2,
                     "the patch sits near the middle, got " .. t.x .. "," .. t.y)
                 set[t.y * 100 + t.x] = true
@@ -139,7 +140,7 @@ return {
         end,
     },
     {
-        name = "a fallback uses the enemy rows only when nothing else is walkable",
+        name = "a fallback uses a side's spawn rows only when nothing else is walkable",
         fn = function()
             local layout = flatLayout(6, 6)
             layout.enemySpawns = { { x = 1, y = 1 } }
@@ -148,6 +149,101 @@ return {
             end
             local tiles = Arena.resolveRegion("center", layout)
             assert(#tiles > 0, "rows 1-2 are all that is walkable, so the fallback must use them")
+            for _, t in ipairs(tiles) do
+                assert(t.y <= 2, "only rows 1-2 stand clear of the mountains, got row " .. t.y)
+            end
+        end,
+    },
+    {
+        -- The sides are not mirrored about the board: the enemy lands on row 1 and the party on row 6 of
+        -- ten, so the board's centre (row 5.5) sits on the party's doorstep. The fallback is measured
+        -- from the MIDLINE between them (row 3.5), and with that ground blocked it must still keep off
+        -- both sides' rows rather than slide onto the party's.
+        name = "a blocked midline keeps the fallback off both sides' spawn rows",
+        fn = function()
+            local layout = flatLayout(8, 10)
+            layout.enemySpawns = { { x = 3, y = 1 }, { x = 6, y = 1 } }
+            layout.partySpawns = { { x = 3, y = 6 }, { x = 6, y = 6 } }
+            -- Bury the board's centre (the region's own ground) and the middle of the midline with it.
+            for y = 3, 6 do
+                for x = 3, 6 do layout.tiles[y][x] = "mountain" end
+            end
+            local tiles = Arena.resolveRegion("center", layout)
+            assert(#tiles == 4, "the fallback owes the centre's own four tiles, got " .. #tiles)
+            for _, t in ipairs(tiles) do
+                assert(layout.tiles[t.y][t.x] ~= "mountain", "never hand back a tile nobody can stand on")
+                assert(math.abs(t.y - 1) > 1, "on or beside the enemy's spawn row: " .. t.x .. "," .. t.y)
+                assert(math.abs(t.y - 6) > 1, "on or beside the party's spawn row: " .. t.x .. "," .. t.y)
+                assert(t.y == 3 or t.y == 4,
+                    "the patch sits on the midline between the sides, got row " .. t.y)
+            end
+        end,
+    },
+    {
+        -- A crate on a Hold tile is a hold nobody can stand on until it is broken. The objective's ground
+        -- is resolved after the furniture is laid, so Arena.build clears every prop off it -- an authored
+        -- one as surely as a rolled one -- and leaves the curated blueprint's own list untouched.
+        name = "an authored prop on the hold is cleared off it, and the blueprint keeps its list",
+        fn = function()
+            local id = "__spec_props_on_hold"
+            local tiles = {}
+            for y = 1, 8 do
+                tiles[y] = {}
+                for x = 1, 8 do tiles[y][x] = "ground" end
+            end
+            local def = {
+                cols = 8, rows = 8, tiles = tiles, fixed = true,
+                partySpawns = { { x = 3, y = 8 }, { x = 4, y = 8 } },
+                enemySpawns = { { x = 3, y = 1 }, { x = 6, y = 1 } },
+                props = { { id = "prop_crate", x = 1, y = 4 } },
+            }
+            for _, t in ipairs(Arena.resolveRegion("center", def)) do
+                def.props[#def.props + 1] = { id = "prop_crate", x = t.x, y = t.y }
+            end
+            local authored = #def.props
+            assert(authored > 1, "the spec must stand a crate on the hold to mean anything")
+            Arena.defs[id] = def
+            local ok, arena = pcall(Arena.build, {}, {
+                layout = id, seed = 7, party = { "character_rowan" },
+                composition = function() return { "character_bandit" } end,
+                objective = { type = "hold", duration = 6 },
+            })
+            Arena.defs[id] = nil
+            assert(ok, tostring(arena))
+            local on = {}
+            for _, t in ipairs(arena.objective.tiles) do on[t.y * 100 + t.x] = true end
+            for _, p in ipairs(arena.props) do
+                assert(not on[p.y * 100 + p.x], "a prop stands on the hold at " .. p.x .. "," .. p.y)
+            end
+            assert(#arena.props == 1 and arena.props[1].x == 1 and arena.props[1].y == 4,
+                "the crate off the hold stays where it was authored, got " .. #arena.props .. " props")
+            assert(#def.props == authored, "the curated blueprint's own prop list is never edited")
+        end,
+    },
+    {
+        name = "a rolled board never leaves a prop on hold or reach ground",
+        fn = function()
+            local cleared = 0
+            for seed = 1, 60 do
+                for _, obj in ipairs({ { type = "hold", duration = 6 }, { type = "reach", region = "far" } }) do
+                    local spec = {
+                        biome = "forest", seed = seed, party = { "character_rowan", "character_rowan" },
+                        composition = function() return { "character_bandit", "character_bandit" } end,
+                        objective = obj,
+                    }
+                    local arena = Arena.build({}, spec)
+                    local on = {}
+                    for _, t in ipairs(arena.objective.tiles) do on[t.y * 100 + t.x] = true end
+                    for _, p in ipairs(arena.props) do
+                        assert(not on[p.y * 100 + p.x], "seed " .. seed .. " stood a prop on the "
+                            .. obj.type .. " ground at " .. p.x .. "," .. p.y)
+                    end
+                    spec.objective = nil
+                    cleared = cleared + (#Arena.build({}, spec).props - #arena.props)
+                end
+            end
+            assert(cleared > 0, "sixty seeds never rolled a prop onto the objective's ground, "
+                .. "so this sweep proves nothing; widen it")
         end,
     },
     {

@@ -215,6 +215,17 @@ end
 --   stat  { label, value, valueColor } -- label (left) + value (right)
 --   note  { text, color, glyph }       -- a standalone coloured line (e.g. "Defeats target!"),
 --                                        with an optional inline mark drawn before the words
+-- The line under a unit cast's name: who it lands on. "vs Bandit" for a blow, but a piece used on
+-- YOURSELF (an ability authored `target = "self"`, or any cast whose target is its own actor) reads
+-- "on Rowan" -- "Smoke / vs Rowan" read as Rowan smoking himself out.
+function ActionPreview.subjectLine(action)
+    local ab = (action.item and action.item.activeAbility) or {}
+    local target = action.target
+    local name = (target and target.char and target.char.name) or "target"
+    local onSelf = ab.target == "self" or (target ~= nil and target == action.actor)
+    return (onSelf and "on " or "vs ") .. name
+end
+
 local function buildRawBlocks(action)
     if action.kind == "counter" then return buildCounterBlocks(action) end
     if action.kind == "followUp" then return buildFollowUpBlocks(action) end
@@ -282,8 +293,7 @@ local function buildRawBlocks(action)
 
     -- Otherwise a unit/self cast (attack / heal / buff): the effect on the hovered unit.
     local entry = action.entry
-    blocks[#blocks + 1] = { kind = "sub",
-        text = "vs " .. ((action.target and action.target.char and action.target.char.name) or "target") }
+    blocks[#blocks + 1] = { kind = "sub", text = ActionPreview.subjectLine(action) }
     blocks[#blocks + 1] = { kind = "sep" }
 
     if entry and (entry.damage or 0) > 0 then

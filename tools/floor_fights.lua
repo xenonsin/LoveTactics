@@ -35,7 +35,10 @@ local function rollFloor(floor, i)
     run.floor = floor
     local dq = Descent.floorQuest(run)
     local mp = dq.map
-    local pool = Descent.floorPool({ biome = mp.biome, prestige = 10, quest = dq, depth = floor })
+    -- The rung, as states/game.lua passes it: without it a circle's second floor reads the first
+    -- floor's elites (Descent.floorPool's elite branch keys on it).
+    local pool = Descent.floorPool({ biome = mp.biome, prestige = 10, quest = dq, depth = floor,
+        rung = Descent.floorWithinCircle(floor) })
     local params = {
         biome = mp.biome,
         cols = mp.cols, rows = mp.rows,

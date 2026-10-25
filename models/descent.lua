@@ -1148,8 +1148,13 @@ Descent.FLOORS_PER_CIRCLE = 2
 --
 --   floors  1-5     4.89 (1.94)  ->  4.08 (1.43)
 --   floors  6-10    5.72 (1.99)  ->  4.02 (1.10)
---   floors 11-15    6.58 (2.02)  ->  4.31 (1.02)
---   the run         86.0 (29.8)  ->  62.0 (17.8)
+--   floors 11-15    6.58 (2.02)  ->  4.28 (1.02)
+--   the run         86.0 (29.8)  ->  61.9 (17.8)
+--
+-- (2026-10-25) The "after" column is re-measured with the floor's rung passed to Descent.floorPool, as
+-- states/game.lua passes it -- the tool had been reading each circle's second floor with the first
+-- floor's elites (it was 4.31 / 62.0). 4.13 a floor either way; the constants derived from it
+-- (Class.CLASS_LEVEL_STEP, Experience.STEP, Class.TECHNIQUE_PER_LEVEL) were checked against it and stand.
 --
 -- The lever was the prowl alone (Descent.PROWL_STEPS 24 flat -> a 28-52 ramp, Descent.prowlSteps): the
 -- stair and every elite still stand. A full tour is the top of what a floor costs; a crossing that skips
