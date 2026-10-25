@@ -11,7 +11,12 @@
 --
 --   RestChoice.new({ title=, onHeal=, onSharpen=, onBind=, onClose=,
 --                    forecast = { { char=, from=, to=, max= }, ... },  -- Player.campForecast's rows
+--                    restWell = { price=, enabled=, forecast=, cb= },  -- optional: the paid full heal
 --                    fire = true })                                     -- a descent: the verbs light it
+--
+-- REST WELL (2026-10-25) sits under Rest: the same camp at a share of one, for gold (Player.restWell).
+-- It says its price on the row. Short of gold it stays drawn, dimmed, price and forecast still on it,
+-- and pressing it does nothing.
 --
 -- EVERY ROW COMES AND GOES NOW, Rest included: states/game.lua passes `onHeal` only when the camp would
 -- move a bar, because a heal that moves nothing still lights the fire (Descent.lightFire) and buys a fight
@@ -57,6 +62,7 @@ local ARROW = "→"
 -- always drawn: with Sharpen parked, Bind slid up a slot and wore another verb's colour.
 local ACCENTS = {
     heal = { 0.42, 0.80, 0.62 }, sharpen = { 0.86, 0.66, 0.30 }, bind = { 0.88, 0.83, 0.72 },
+    well = { 0.52, 0.86, 0.76 }, -- the heal's own family, a step lighter: the same verb, paid for
 }
 
 local function inRect(r, x, y) return x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h end
@@ -76,6 +82,14 @@ function RestChoice.new(opts)
         self.options[1] = { label = "Rest", accent = ACCENTS.heal,
             desc = "Get back half of what is missing: health, mana and stamina.",
             forecast = opts.forecast, cb = opts.onHeal }
+    end
+    -- REST WELL, under Rest: the paid full heal (Player.restWell).
+    if opts.restWell then
+        local w = opts.restWell
+        self.options[#self.options + 1] = { label = "Rest well", accent = ACCENTS.well,
+            price = w.price .. " gold", disabled = not w.enabled or nil,
+            desc = "Get back everything that is missing: health, mana and stamina.",
+            forecast = w.forecast, cb = w.cb }
     end
     -- SHARPEN COMES AND GOES NOW, for the Bind row's reason rather than its own. Its whole payload was
     -- Honed Edge, a run relic, and models/relic.lua is parked -- so the camp has nothing to hand over
@@ -136,7 +150,7 @@ end
 function RestChoice:choose(i)
     if self.finished then return end
     local o = self.options[i]
-    if not o then return end
+    if not o or o.disabled then return end
     self.finished = true
     if o.cb then o.cb() end
 end
@@ -177,6 +191,7 @@ function RestChoice:draw()
     for i, o in ipairs(self.options) do
         local r = o.rect
         local accent = o.accent
+        if o.disabled then accent = { accent[1] * 0.5, accent[2] * 0.5, accent[3] * 0.5 } end
         local focused = (i == self.focus)
         love.graphics.setColor(0.12, 0.13, 0.16, focused and 0.95 or 0.6)
         love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 7, 7)
@@ -188,8 +203,14 @@ function RestChoice:draw()
         love.graphics.rectangle("fill", r.x, r.y, 4, r.h, 2, 2)
 
         love.graphics.setFont(self.labelFont)
-        love.graphics.setColor(0.96, 0.95, 0.92)
+        if o.disabled then love.graphics.setColor(0.6, 0.6, 0.62) else love.graphics.setColor(0.96, 0.95, 0.92) end
         love.graphics.print(o.label, r.x + 18, r.y + 12)
+        -- A paid verb says its price on its own row, in the purse's colour (or the short one).
+        if o.price then
+            love.graphics.setFont(self.descFont)
+            if o.disabled then love.graphics.setColor(0.88, 0.48, 0.44) else Theme.set(Theme.accentAmber) end
+            love.graphics.printf(o.price, r.x + 18, r.y + 16, r.w - 34, "right")
+        end
 
         love.graphics.setFont(self.descFont)
         love.graphics.setColor(0.78, 0.80, 0.86)
@@ -232,7 +253,9 @@ end
 
 function RestChoice:cursorKind(x, y)
     if self.closeButton:contains(x, y) then return "hand" end
-    for _, o in ipairs(self.options) do if inRect(o.rect, x, y) then return "hand" end end
+    for _, o in ipairs(self.options) do
+        if inRect(o.rect, x, y) then return o.disabled and "arrow" or "hand" end
+    end
     return "arrow"
 end
 

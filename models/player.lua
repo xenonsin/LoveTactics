@@ -1087,6 +1087,27 @@ end
 -- WHAT A CAMP WOULD GIVE, without giving it: one row per roster member, `{ char, from, to, max }` in
 -- health, plus `any` -- true when the camp would move ANY resource at all, mana and stamina included. The
 -- camp panel quotes the rows (`16 -> 28`) and uses `any` to decide whether a heal is on offer at all.
+-- RESTING WELL (2026-10-25): the camp's third verb, a full heal for gold -- Player.camp at a share of
+-- one, so an injury still caps it exactly as it caps the half. A gold sink, and TENTATIVE: the price per
+-- floor waits on the faucets being cut after the author reads the run simulator's gold breakdown.
+Player.REST_WELL_PER_FLOOR = 30 -- TENTATIVE
+Player.REST_WELL_SHARE = 1
+
+-- What resting well costs on floor `depth`.
+function Player.restWellPrice(depth)
+    return Player.REST_WELL_PER_FLOOR * math.max(1, math.floor(tonumber(depth) or 1))
+end
+
+-- Pay for and take a full camp. Returns true, or nil and "gold" when the purse is short (nothing paid,
+-- nothing healed).
+function Player.restWell(player, depth)
+    local price = Player.restWellPrice(depth)
+    if not player or (player.gold or 0) < price then return nil, "gold" end
+    Player.spendGold(player, price)
+    Player.camp(player, Player.REST_WELL_SHARE)
+    return true
+end
+
 function Player.campForecast(player, share)
     local rows, byChar, any = {}, {}, false
     eachCamped(player, share, function(char, stat, resource, cur, to)

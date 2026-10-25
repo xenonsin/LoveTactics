@@ -48,6 +48,30 @@ return {
         assert(Combat.FORCE_HIT == forceBefore, "Combat.FORCE_HIT was not restored")
     end },
 
+    { name = "the gold ledger names every coin a run earned, and the wage lands under a fight purse", fn = function()
+        local res = result()
+        local run = res.runs[1]
+        local led = run.gold
+        assert(led and led.bySource and led.byFloor, "the run carries no gold ledger")
+        local sum, floorSum = 0, 0
+        for label, n in pairs(led.bySource) do
+            assert(type(label) == "string" and #label > 0 and n > 0, "a ledger line is unnamed or empty")
+            sum = sum + n
+        end
+        for _, t in pairs(led.byFloor) do for _, n in pairs(t) do floorSum = floorSum + n end end
+        assert(sum == led.total and floorSum == led.total, "the ledger's lines do not add up to its total")
+        -- A won fight's lump was split into its parts rather than landing under game.lua's raw name.
+        if run.wins > 0 and run.goldWon > 0 then
+            local fights = 0
+            for label, n in pairs(led.bySource) do
+                if label:find("^fight purse") or label:find("^end purse") then fights = fights + n end
+            end
+            assert(fights > 0, "a won fight paid and no fight purse was credited")
+        end
+        local totals = RunSim.goldTotals(res.runs and { res } or {})
+        assert(totals.total == led.total and totals.runs == 1, "goldTotals does not read the run back")
+    end },
+
     { name = "the policy prints, and names its thresholds", fn = function()
         local lines = RunSim.policyLines()
         assert(#lines >= 5, "the policy block is too short to be the policy")

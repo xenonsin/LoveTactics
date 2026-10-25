@@ -28,7 +28,13 @@
 --       offer   = { { id = , info = Relic.info(id) }, ... },     -- 1..3 relics to choose between
 --       onTake  = function(entry) ... end,                       -- TAKE: grant that relic, clear the cell
 --       onLeave = function() ... end,                            -- LEAVE / dismissed: take nothing
+--       reroll  = { price = 50, enabled = true, onReroll = fn },   -- optional: a paid re-deal (R / X)
 --   })
+--
+-- THE REROLL is a third button, left of the refusal, drawn only when the caller offers one (the stair's
+-- slate; models/relic.lua's Relic.rerollOffer). It says its price. Short of gold it stays drawn, greyed,
+-- with the price still on it, so the player can see what it would cost; it does nothing then. The
+-- caller re-opens the panel on the new cards, so this one never re-lays itself out.
 --
 -- WHAT THE REFUSAL IS CALLED, and why it is a parameter. On a reliquary, refusing leaves the cell to
 -- come back to, and "Leave" is the whole of it. A descent's LANDING opens this same panel over the
@@ -70,6 +76,7 @@ function RelicOffer.new(opts)
     self.offer = opts.offer or {}
     self.onTake = opts.onTake
     self.onLeave = opts.onLeave
+    self.reroll = opts.reroll
     self.finished = false
     self.selected = 1 -- what Take grants. Moved only by a click or an arrow, never by the mouse passing over.
     self.hover = nil -- the card under the mouse, drawn in steel and nothing more
@@ -112,14 +119,16 @@ function RelicOffer.new(opts)
     self.cardH = tallest + CARD_PAD
 
     local n = math.max(1, #self.offer)
-    self.boxW = PAD * 2 + n * CARD_W + (n - 1) * CARD_GAP
+    local cardsW = n * CARD_W + (n - 1) * CARD_GAP
+    local bw, bh, gap = 150, 44, 16
+    local buttonsW = self.reroll and (3 * bw + 2 * gap) or (2 * bw + gap)
+    self.boxW = PAD * 2 + math.max(cardsW, buttonsW)
     -- The cards start under the prompt rather than at a fixed offset. The reliquary's own one-liner
     -- fits on a line at any slate size, but a caller's prompt need not -- and a two-line one at a fixed
     -- 96 would print its second line through the top of the cards.
     self.oPrompt = 60
     local _, promptLines = self.promptFont:getWrap(self.prompt, self.boxW - PAD * 2)
     self.oCards = self.oPrompt + math.max(1, #promptLines) * self.promptFont:getHeight() + 17
-    local bw, bh, gap = 150, 44, 16
     self.oButtons = self.oCards + self.cardH + 18
     self.oHint = self.oButtons + bh + 12
     self.boxH = self.oHint + self.hintFont:getHeight() + PAD - 6
@@ -128,16 +137,22 @@ function RelicOffer.new(opts)
 
     self.closeButton = self.closeable and CloseButton.new(self.boxX + self.boxW, self.boxY) or nil
 
+    local cardsX = self.boxX + self.boxW / 2 - cardsW / 2
     for i, entry in ipairs(self.offer) do
         entry.rect = {
-            x = self.boxX + PAD + (i - 1) * (CARD_W + CARD_GAP),
+            x = cardsX + (i - 1) * (CARD_W + CARD_GAP),
             y = self.boxY + self.oCards, w = CARD_W, h = self.cardH,
         }
     end
 
     local by = self.boxY + self.oButtons
-    self.leaveBtn = { x = self.boxX + self.boxW / 2 - bw - gap / 2, y = by, w = bw, h = bh, hovered = false }
-    self.takeBtn  = { x = self.boxX + self.boxW / 2 + gap / 2,      y = by, w = bw, h = bh, hovered = false }
+    local bx = self.boxX + self.boxW / 2 - buttonsW / 2
+    if self.reroll then
+        self.rerollBtn = { x = bx, y = by, w = bw, h = bh, hovered = false }
+        bx = bx + bw + gap
+    end
+    self.leaveBtn = { x = bx, y = by, w = bw, h = bh, hovered = false }
+    self.takeBtn  = { x = bx + bw + gap, y = by, w = bw, h = bh, hovered = false }
 
     Sound.play("treasure.reveal") -- a soft glint as the reliquary opens (silent until the file exists)
     return self
@@ -155,6 +170,17 @@ function RelicOffer:leave()
     if self.finished then return end
     self.finished = true
     if self.onLeave then self.onLeave() end
+end
+
+-- Pay for three other cards. Does nothing without a reroll on offer or short of its price.
+function RelicOffer:doReroll()
+    local r = self.reroll
+    if self.finished or not (r and r.enabled and r.onReroll) then return end
+    r.onReroll()
+end
+
+function RelicOffer:rerollLabel()
+    return "Reroll  " .. tostring(self.reroll and self.reroll.price or 0) .. "g"
 end
 
 -- ---- drawing ----------------------------------------------------------------
@@ -214,10 +240,10 @@ function RelicOffer:drawCard(entry, selected, hovered)
     end
 end
 
-function RelicOffer:drawButton(b, label, primary, focused)
+function RelicOffer:drawButton(b, label, primary, focused, disabled)
     local accent = primary and RelicCard.accentOf(self.offer[self.selected] and self.offer[self.selected].info)
-        or { 0.6, 0.63, 0.7 }
-    local lit = b.hovered or focused
+        or (disabled and { 0.4, 0.42, 0.46 } or { 0.6, 0.63, 0.7 })
+    local lit = not disabled and (b.hovered or focused)
     love.graphics.setColor(accent[1], accent[2], accent[3], lit and 0.30 or 0.14)
     love.graphics.rectangle("fill", b.x, b.y, b.w, b.h, 6, 6)
     love.graphics.setColor(accent[1], accent[2], accent[3], lit and 1 or 0.7)
@@ -225,7 +251,7 @@ function RelicOffer:drawButton(b, label, primary, focused)
     love.graphics.rectangle("line", b.x, b.y, b.w, b.h, 6, 6)
     love.graphics.setLineWidth(1)
     love.graphics.setFont(self.bodyFont)
-    love.graphics.setColor(0.95, 0.95, 0.97)
+    if disabled then love.graphics.setColor(0.55, 0.56, 0.6) else love.graphics.setColor(0.95, 0.95, 0.97) end
     love.graphics.printf(label, b.x, b.y + b.h / 2 - self.bodyFont:getHeight() / 2, b.w, "center")
 end
 
@@ -254,12 +280,17 @@ function RelicOffer:draw()
 
     for i, entry in ipairs(self.offer) do self:drawCard(entry, i == self.selected, i == self.hover) end
 
+    if self.rerollBtn then
+        self:drawButton(self.rerollBtn, self:rerollLabel(), false, false, not self.reroll.enabled)
+    end
     self:drawButton(self.leaveBtn, self.leaveLabel, false, false)
     self:drawButton(self.takeBtn, "Take", true, true)
 
     local refuse = self.leaveLabel:lower()
-    local hint = InputMode.pick("D-pad to choose  -  A to take  -  B to " .. refuse, nil,
-        "Arrows to choose  -  Enter to take  -  Esc to " .. refuse)
+    local canReroll = self.reroll and self.reroll.enabled
+    local hint = InputMode.pick("D-pad to choose  -  A to take  -  B to " .. refuse
+            .. (canReroll and "  -  X to reroll" or ""), nil,
+        "Arrows to choose  -  Enter to take  -  Esc to " .. refuse .. (canReroll and "  -  R to reroll" or ""))
     if hint then
         love.graphics.setFont(self.hintFont)
         love.graphics.setColor(0.55, 0.6, 0.7)
@@ -276,6 +307,7 @@ function RelicOffer:mousemoved(x, y)
     if self.closeButton then self.closeButton:mousemoved(x, y) end
     self.leaveBtn.hovered = inRect(self.leaveBtn, x, y)
     self.takeBtn.hovered = inRect(self.takeBtn, x, y)
+    if self.rerollBtn then self.rerollBtn.hovered = inRect(self.rerollBtn, x, y) end
     self.hover = nil
     for i, entry in ipairs(self.offer) do
         if inRect(entry.rect, x, y) then self.hover = i; break end
@@ -285,6 +317,7 @@ end
 function RelicOffer:cursorKind(x, y)
     if self.closeButton and self.closeButton:contains(x, y) then return "hand" end
     if inRect(self.leaveBtn, x, y) or inRect(self.takeBtn, x, y) then return "hand" end
+    if self.rerollBtn and self.reroll.enabled and inRect(self.rerollBtn, x, y) then return "hand" end
     for _, entry in ipairs(self.offer) do if inRect(entry.rect, x, y) then return "hand" end end
     return "arrow"
 end
@@ -296,6 +329,7 @@ function RelicOffer:mousepressed(x, y, button)
     if self.closeButton and self.closeButton:mousepressed(x, y, button) then self:leave(); return end
     if inRect(self.takeBtn, x, y) then self:take(); return end
     if inRect(self.leaveBtn, x, y) then self:leave(); return end
+    if self.rerollBtn and inRect(self.rerollBtn, x, y) then self:doReroll(); return end
     for i, entry in ipairs(self.offer) do
         if inRect(entry.rect, x, y) then self.selected = i; return end
     end
@@ -313,6 +347,7 @@ function RelicOffer:keypressed(key)
     if key == "escape" then self:leave()
     elseif key == "left" or key == "a" then self:moveFocus(-1)
     elseif key == "right" or key == "d" then self:moveFocus(1)
+    elseif key == "r" then self:doReroll()
     elseif key == "return" or key == "kpenter" or key == "space" then self:take() end
 end
 
@@ -320,6 +355,7 @@ function RelicOffer:gamepadpressed(_, button)
     if button == "b" then self:leave()
     elseif button == "dpleft" then self:moveFocus(-1)
     elseif button == "dpright" then self:moveFocus(1)
+    elseif button == "x" then self:doReroll()
     elseif button == "a" or button == "start" then self:take() end
 end
 

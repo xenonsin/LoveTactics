@@ -25,6 +25,8 @@
 --     Gate.homecoming (counted trips, the Ward's rest ticking); the hub's Player.restore runs; then the
 --     Ward per policy, then the Gate's packing per policy. Hiring, shelves, forging, the Touchstone and
 --     class unlocks past the free first one are NOT simulated.
+--   * THE GOLD BREAKDOWN closes every report: each coin the runs earned, named by the faucet that paid
+--     it, across all saves, per run and per floor band (see "The gold ledger" below).
 --
 -- THE ROUTE is floor_fights.lua's TOUR, against the game's own walk: greedy nearest-unvisited over every
 -- seated fight, chest, supply cache, key, camp, reliquary, event, errand and crossroads, the stair last.
@@ -131,6 +133,178 @@ local function stubPanels()
             end
         end
     end
+end
+
+-- ---------------------------------------------------------------------------
+-- The gold ledger: where every coin a run earns comes from
+-- ---------------------------------------------------------------------------
+--
+-- EVERY GAIN IS CAUGHT AT Player.addGold, and named by WHO CALLED IT: the wrapper walks the stack to
+-- the first frame outside models/player.lua and reads its file and function. That is the one seam
+-- every faucet in the game pays through, so a faucet nobody listed still lands in the table -- under
+-- its raw `file:function` key rather than a name, which is the point: an unlisted source is shown, not
+-- hidden. The only gold written past that seam is the Gate's opening top-up (Gate.payPurse writes the
+-- field directly), which is walked-in money and is tallied on its own line.
+--
+-- A FIGHT'S TAKINGS ARRIVE AS ONE LUMP (game.lua's grantSideSpoils, and the general's purse beside
+-- Quest.complete), so EncounterBattle.spoils is wrapped too and the lump it is about to return is split
+-- into its parts -- the rolled wage, the end purse, the skim, the bounty, the per-head rescue -- and
+-- held until the matching addGold arrives. Both the played fight and the walk-off reach that function.
+
+M.GOLD_BANDS = { { 1, 3 }, { 4, 6 }, { 7, 9 }, { 10, 12 }, { 13, 15 } }
+
+-- Known callers, by `file:function` (the function name is what debug.getinfo reports; a closure in a
+-- table field reads by its field name) and the gold expression on the calling line. Matched as a plain
+-- prefix of the key, and, where a third entry is given, a plain suffix too.
+local GOLD_NAMES = {
+    { "states/game.lua:", "errand purse", ":def.rewardGold" },
+    { "states/game.lua:", "guardian's set spent (gold stand-in)", ":Descent.SPENT_SET_GOLD" },
+    { "models/relic.lua", "relic (Glutton's Purse and kin)" },
+    { "models/item_hook.lua", "item hook between fights" },
+    { "models/crossroads.lua", "crossroads dilemma" },
+    { "states/game.lua:addGold:", "crossroads dilemma" }, -- the dilemma ctx's own addGold closure
+    { "models/overworld_ability.lua", "road cast (gold ability)" },
+    { "models/scarab.lua", "coin heap (scarab)" },
+    { "models/identify.lua", "Touchstone / identify" },
+    { "models/quest.lua", "quest reward" },
+    { "models/request.lua", "request reward" },
+    { "models/hire.lua", "hire refund" },
+    { "tools/run_sim.lua", "in-fight purse (money kit)" },
+}
+
+-- The caller's source line, read once per file: it names the faucet in words that survive a line
+-- shift (`def.rewardGold`, `Descent.SPENT_SET_GOLD`), where a line number would not.
+local sourceLines = {}
+local function lineText(src, n)
+    if not sourceLines[src] then
+        local t = {}
+        local ok, body = pcall(love.filesystem.read, src)
+        if ok and body then for line in (body .. "\n"):gmatch("([^\n]*)\n") do t[#t + 1] = (line:gsub("\r", "")) end end
+        sourceLines[src] = t
+    end
+    local line = sourceLines[src][n or 0] or ""
+    return line:match("addGold%(%s*[^,]+,%s*(.-)%)%s*[%a]*%s*$") or line:match("^%s*(.-)%s*$") or ""
+end
+
+local function goldCaller()
+    for level = 3, 20 do
+        local info = debug.getinfo(level, "Snl")
+        if not info then break end
+        local src = tostring(info.short_src or "?"):gsub("\\", "/")
+        if not src:find("models/player%.lua$") then
+            src = src:match("([%w_]+/[%w_]+%.lua)$") or src
+            return src .. ":" .. tostring(info.name or "?") .. ":" .. lineText(src, info.currentline)
+        end
+    end
+    return "?"
+end
+
+local function goldLabel(key)
+    for _, entry in ipairs(GOLD_NAMES) do
+        if key:sub(1, #entry[1]) == entry[1] and (not entry[3] or key:sub(-#entry[3]) == entry[3]) then
+            return entry[2]
+        end
+    end
+    return nil
+end
+
+local function currentFloor()
+    local game = package.loaded["states.game"]
+    local d = game and game.descent and Descent.depth(game.descent)
+    return d or (sim and sim.run and sim.run.floor) or 0
+end
+
+local function creditGold(label, amount)
+    if not (sim and sim.run) or not amount or amount == 0 then return end
+    local led = sim.run.gold
+    led.bySource[label] = (led.bySource[label] or 0) + amount
+    local f = currentFloor()
+    led.byFloor[f] = led.byFloor[f] or {}
+    led.byFloor[f][label] = (led.byFloor[f][label] or 0) + amount
+    led.total = led.total + amount
+end
+
+-- What kind of stop paid a fight's lump.
+local function fightClass(enc)
+    enc = enc or {}
+    if enc.wandering then return "wandering" end
+    if enc.kind == "elite" then return "elite" end
+    if enc.kind == "objective" then return "stair/objective" end
+    if enc.kind == "combat" then return "seated" end
+    return tostring(enc.kind)
+end
+
+local function splitSpoils(opts, spoils)
+    if not (spoils and (spoils.gold or 0) > 0) then return nil end
+    local Spoils = require("models.spoils")
+    local enc = opts.encounter or {}
+    local depth = opts.floorLevel or opts.depth
+    local parts, rest = {}, spoils.gold
+    local function take(label, n)
+        n = math.min(rest, math.max(0, math.floor(n or 0)))
+        if n > 0 then parts[label] = (parts[label] or 0) + n; rest = rest - n end
+    end
+    local combat = opts.combat
+    take("in-fight skim (Skimmer's Cut)", combat and combat.skimmed)
+    take("in-fight bounty (Ledger)", combat and combat.bounty)
+    local def = enc.id and require("models.encounter").get(enc.id)
+    if def and def.rescue and opts.rescue then take("rescue per head", (def.rescue.gold or 0) * (opts.rescue.saved or 0)) end
+    local class = fightClass(enc)
+    if enc.kind == "objective" then
+        take("end purse: stair/objective", Spoils.endPurse("general", depth))
+    elseif not enc.rewardGold then
+        take("end purse: " .. class, Spoils.endPurse(enc.kind, depth))
+    end
+    take("fight purse: " .. class, rest)
+    return { amount = spoils.gold, parts = parts }
+end
+
+local function installGoldLedger()
+    local addGold = Player.addGold
+    swap(Player, "addGold", function(player, amount)
+        if sim and sim.player == player and (amount or 0) > 0 then
+            local key = goldCaller()
+            local pend = sim.pendingSpoils
+            if pend and pend.amount == amount and (key:find("^states/game%.lua") or key:find("^tools/run_sim")) then
+                for label, n in pairs(pend.parts) do creditGold(label, n) end
+                sim.pendingSpoils = nil
+            else
+                creditGold(goldLabel(key) or key, amount)
+            end
+        elseif sim and sim.player == player and (amount or 0) < 0 then
+            sim.run.gold.spent = sim.run.gold.spent - amount
+        end
+        return addGold(player, amount)
+    end)
+    local spendGold = Player.spendGold
+    swap(Player, "spendGold", function(player, amount)
+        if sim and sim.run and sim.player == player and (amount or 0) > 0 then
+            local key = goldCaller():match("^([^:]+:[^:]+)") or "?"
+            local led = sim.run.gold
+            led.spent = led.spent + amount
+            led.spentBy[key] = (led.spentBy[key] or 0) + amount
+        end
+        return spendGold(player, amount)
+    end)
+    local spoilsFn = EncounterBattle.spoils
+    swap(EncounterBattle, "spoils", function(opts)
+        local s = spoilsFn(opts)
+        if sim then sim.pendingSpoils = splitSpoils(opts or {}, s) end
+        return s
+    end)
+    local Gate = require("models.gate")
+    local payPurse = Gate.payPurse
+    swap(Gate, "payPurse", function(player, amount)
+        local before = (player and player.gold) or 0
+        payPurse(player, amount)
+        if sim and sim.run and player == sim.player then
+            sim.run.gold.topUp = sim.run.gold.topUp + math.max(0, (player.gold or 0) - before)
+        end
+    end)
+end
+
+local function newLedger()
+    return { bySource = {}, byFloor = {}, total = 0, spent = 0, spentBy = {}, topUp = 0 }
 end
 
 -- ---------------------------------------------------------------------------
@@ -849,14 +1023,16 @@ local function playRun(index)
 
     sim.run = { index = index, fights = {}, smokes = 0, walkOffs = 0, mimics = 0, stalls = 0, goldWon = 0,
         roadDraughts = 0, crashes = 0,
-        floor = 0, notes = {}, relics = {}, cleared = 0, generals = 0 }
+        floor = 0, notes = {}, relics = {}, cleared = 0, generals = 0, gold = newLedger() }
     sim.ended, sim.leaving, sim.climbing = nil, false, false
     sim.skip, sim.tries = setmetatable({}, { __mode = "k" }), setmetatable({}, { __mode = "k" })
 
     -- THE CITY between trips: the hub's restore, then the Ward, then the Gate's kit.
     if index > 1 then
         Player.restore(player)
+        local before = player.gold or 0
         sim.run.wardPaid, sim.run.wardRested = ward()
+        sim.run.gold.ward = before - (player.gold or 0)
     end
     local run = Descent.new(player)
     player.descentRun = run
@@ -885,6 +1061,8 @@ local function playRun(index)
         walkFloor()
     end
     sim.run.ending = sim.ended or "?"
+    sim.run.goldLost = player.pendingGoldLost or 0
+    player.pendingGoldLost = nil
     -- states/hub.lua's enter: the company is topped back up to what its injuries leave it.
     Player.restore(player)
     player.pendingRout, player.pendingDead = nil, nil
@@ -945,6 +1123,7 @@ function M.simulateSave(saveSeed, runs, verbose, opts)
             return endTrip(run, player)
         end)
         stubPanels()
+        installGoldLedger()
         swap(package.loaded, "states.battle", SimBattle)
         local game = require("states.game")
         local hub, credits = require("states.hub"), require("states.credits")
@@ -1019,6 +1198,75 @@ function M.policyLines()
         "  crossroads: first option; stray delvers: declined; tolls: paid; holes: stepped around",
         fmt("  avatar's free class: %s; fights over %d unit-turns are called a rout", M.AVATAR_CLASS, P.maxTurns),
     }
+end
+
+-- THE GOLD BREAKDOWN: every coin the runs earned, by where it came from -- across all saves, per run,
+-- and per floor band. Report only: it names the faucets, it does not judge them.
+function M.goldTotals(results)
+    local out = { bySource = {}, byBand = {}, byRun = {}, total = 0, runs = 0, spent = 0, spentBy = {},
+        topUp = 0, ward = 0, lostOnWipe = 0 }
+    local function bandOf(f)
+        for i, b in ipairs(M.GOLD_BANDS) do if f >= b[1] and f <= b[2] then return i end end
+        return 0
+    end
+    for _, res in ipairs(results) do
+        for r, run in ipairs(res.runs) do
+            local led = run.gold
+            out.runs = out.runs + 1
+            out.total = out.total + led.total
+            out.spent, out.topUp, out.ward = out.spent + led.spent, out.topUp + led.topUp, out.ward + (led.ward or 0)
+            out.lostOnWipe = out.lostOnWipe + (run.goldLost or 0)
+            out.byRun[r] = (out.byRun[r] or 0) + led.total
+            for k, v in pairs(led.bySource) do out.bySource[k] = (out.bySource[k] or 0) + v end
+            for k, v in pairs(led.spentBy) do out.spentBy[k] = (out.spentBy[k] or 0) + v end
+            for f, t in pairs(led.byFloor) do
+                local b = bandOf(f)
+                out.byBand[b] = out.byBand[b] or {}
+                for k, v in pairs(t) do out.byBand[b][k] = (out.byBand[b][k] or 0) + v end
+            end
+        end
+    end
+    return out
+end
+
+function M.printGold(results, runs, saves)
+    local g = M.goldTotals(results)
+    if g.runs == 0 then return end
+    local labels = {}
+    for k in pairs(g.bySource) do labels[#labels + 1] = k end
+    table.sort(labels, function(a, b) return g.bySource[a] > g.bySource[b] end)
+    print("")
+    print(fmt("GOLD BREAKDOWN -- %d run(s); earned %d in all, %.0f per run (the Gate's top-up of %d not counted)",
+        g.runs, g.total, g.total / g.runs, g.topUp))
+    local bandHead = {}
+    for i, b in ipairs(M.GOLD_BANDS) do bandHead[i] = fmt("%8s", fmt("F%d-%d", b[1], b[2])) end
+    print(fmt("  %-40s %8s %6s %7s  %s", "source", "total", "share", "per run", table.concat(bandHead, " ")))
+    for _, k in ipairs(labels) do
+        local cells = {}
+        for i = 1, #M.GOLD_BANDS do
+            local t = g.byBand[i]
+            cells[i] = fmt("%8d", (t and t[k]) or 0)
+        end
+        print(fmt("  %-40s %8d %5.1f%% %7.0f  %s", k:sub(1, 40), g.bySource[k], 100 * g.bySource[k] / math.max(1, g.total),
+            g.bySource[k] / g.runs, table.concat(cells, " ")))
+    end
+    local totals = {}
+    for i = 1, #M.GOLD_BANDS do
+        local n = 0
+        for _, v in pairs(g.byBand[i] or {}) do n = n + v end
+        totals[i] = fmt("%8d", n)
+    end
+    print(fmt("  %-40s %8d %6s %7.0f  %s", "ALL", g.total, "", g.total / g.runs, table.concat(totals, " ")))
+    local perRun = {}
+    for r = 1, runs do perRun[#perRun + 1] = fmt("run %d: %.0f", r, (g.byRun[r] or 0) / math.max(1, saves)) end
+    print("  mean earned by run index: " .. table.concat(perRun, ", "))
+    local sinks = {}
+    for k, v in pairs(g.spentBy) do sinks[#sinks + 1] = { k, v } end
+    table.sort(sinks, function(a, b) return a[2] > b[2] end)
+    local sl = {}
+    for _, e in ipairs(sinks) do sl[#sl + 1] = fmt("%s %d", e[1], e[2]) end
+    print(fmt("  spent through Player.spendGold: %d (%s); at the Ward: %d; lost on wipes: %d",
+        g.spent, #sl > 0 and table.concat(sl, ", ") or "-", g.ward, g.lostOnWipe))
 end
 
 function M.report(args)
@@ -1115,6 +1363,7 @@ function M.report(args)
             end
         end
     end
+    M.printGold(results, runs, saves)
     print(fmt("  took %.1fs", os.clock() - t0))
     return results
 end
