@@ -10791,6 +10791,37 @@ function Combat.reviveFallenParty(combat, fraction)
     return carried
 end
 
+-- THE FALLEN STAND UP AFTER A FIGHT THE COMPANY DID NOT WIN, at a quarter of what they can still use.
+--
+-- A rout (and a Smoke, which leaves by the rout's door) walks the company back onto the map with the
+-- fight not won -- and every body that was DOWN used to walk with it at 0 health, into the next fight,
+-- until a camp, a draught or the city happened to them. That is a body on the floor charged twice: the
+-- injury already written is the price (Combat.reviveFallenParty's note), and a zero is not a price,
+-- it is a member deleted from every fight until somebody pays to put them back.
+--
+-- So they stand, at Combat.ROUT_STAND_SHARE of Combat.unreservedMax -- measured after the injury is
+-- inflicted, so a fresh wound's sealed share is already out of the pool a quarter is taken of -- rounded
+-- up, never below 1. Takes the CHARACTER list the launcher charges injuries off (states/battle.lua's
+-- `fallen`, which a rout pads with the spent): only a body actually at 0 is touched, so a spent body
+-- keeps the sliver it walked off with. A body that never comes back (`revivable == false`) stays down,
+-- as it does in victory. A WIPE never calls this: the company goes home. Returns the characters stood.
+Combat.ROUT_STAND_SHARE = 0.25
+
+function Combat.standRouted(chars, share)
+    share = share or Combat.ROUT_STAND_SHARE
+    local stood = {}
+    for _, char in ipairs(chars or {}) do
+        local hp = char and char.stats and char.stats.health
+        if hp and (hp.current or 0) <= 0 and char.revivable ~= false then
+            local max = Combat.unreservedMax(char, "health")
+            if max <= 0 then max = hp.max or 0 end
+            hp.current = math.max(1, math.ceil(max * share))
+            stood[#stood + 1] = char
+        end
+    end
+    return stood
+end
+
 -- Raise a corpse as a zombie: consume the body (it can't be revived or raised again) and put a fresh
 -- `charId` creature on `caster`'s side where it lay, AI-run (yours in allegiance but not in command)
 -- and sustained by the caster. Returns the new unit (which may already be dead if its tile is deadly).

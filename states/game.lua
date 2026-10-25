@@ -3455,6 +3455,9 @@ function game:openEncounter(cell, opts)
                     -- Before the return, and the ordering is the same one the wipe branch keeps: the
                     -- ledger moves while the battle's list of who fell is still the last one written.
                     game:inflictInjuries()
+                    -- ...and whoever was DOWN stands up at a quarter of what the injury left them
+                    -- (Combat.standRouted), rather than walking into the next fight at nothing.
+                    Combat.standRouted(require("states.battle").fallen)
                     -- The tutorial's Try Again path with the rewind deleted -- drop the defeat grey and
                     -- the low-HP vignette the loss froze on screen, step the token back onto the tile it
                     -- came from, and resume THIS overworld through State.current so game.enter does not
