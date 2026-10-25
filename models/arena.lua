@@ -485,20 +485,37 @@ local function nominalRegionSize(region, layout)
     return math.max(1, math.min(4, #region(clear)))
 end
 
--- The fallback when a region's own ground is all blocked: the walkable tiles NEAREST THE BOARD'S
--- CENTRE, grown into one contiguous patch of the region's nominal size where the ground allows. It used
--- to take the first walkable tile scanning from (1,1), which on a board with mountains at its heart put
--- a one-tile hold in the corner beside the enemy line. A tile on or next to an enemy spawn row is used
--- only when nothing else on the board is walkable.
+-- The fallback when a region's own ground is all blocked: the walkable tiles NEAREST THE MIDLINE
+-- BETWEEN THE TWO SIDES, grown into one contiguous patch of the region's nominal size where the ground
+-- allows. It used to take the first walkable tile scanning from (1,1), which on a board with mountains
+-- at its heart put a one-tile hold in the corner beside the enemy line.
+--
+-- The midline, not the board's centre: the row halfway between the party's spawn rows and the enemy's
+-- (their means), at the board's middle column. On a board where one side lands deep and the other
+-- shallow the geometric centre is nearer one of them, and a hold is meant to be ground both sides have
+-- to walk to. With no spawns on one side the board's centre row stands in for the midline.
+--
+-- A tile on or next to EITHER side's spawn rows is used only when nothing else on the board is walkable
+-- -- the enemy's because a hold there is theirs at the bell, the party's because a hold the company
+-- lands on is no hold at all.
 local function centreFallback(layout, want)
-    local cx, cy = (layout.cols + 1) / 2, (layout.rows + 1) / 2
-    local enemyRow = {}
-    for _, s in ipairs(layout.enemySpawns or {}) do
-        for dy = -1, 1 do enemyRow[s.y + dy] = true end
+    local function meanRow(spawns)
+        local sum, n = 0, 0
+        for _, s in ipairs(spawns or {}) do sum, n = sum + s.y, n + 1 end
+        return n > 0 and (sum / n) or nil
+    end
+    local cx = (layout.cols + 1) / 2
+    local pRow, eRow = meanRow(layout.partySpawns), meanRow(layout.enemySpawns)
+    local cy = (pRow and eRow) and ((pRow + eRow) / 2) or ((layout.rows + 1) / 2)
+    local sideRow = {}
+    for _, list in ipairs({ layout.enemySpawns or {}, layout.partySpawns or {} }) do
+        for _, s in ipairs(list) do
+            for dy = -1, 1 do sideRow[s.y + dy] = true end
+        end
     end
     local function rank(x, y)
         local d = (x - cx) * (x - cx) + (y - cy) * (y - cy)
-        return (enemyRow[y] and 100000 or 0) + d
+        return (sideRow[y] and 100000 or 0) + d
     end
     local pool = {}
     for y = 1, layout.rows do
@@ -513,7 +530,7 @@ local function centreFallback(layout, want)
         return a.x < b.x
     end)
     if #pool == 0 then return {} end
-    local banned = (pool[1].r < 100000) -- any clean tile exists: never touch the enemy rows
+    local banned = (pool[1].r < 100000) -- any clean tile exists: never touch either side's rows
     local taken, out = {}, {}
     local function take(t)
         taken[t.y * 1000 + t.x] = true
@@ -547,6 +564,21 @@ function Arena.resolveRegion(name, layout)
     local tiles = region(layout)
     if #tiles > 0 then return tiles end
     return centreFallback(layout, nominalRegionSize(region, layout))
+end
+
+-- `props` less every one standing on the objective's ground: its `tiles` (a hold, a reach, a defend
+-- anchor) and a runner's `escapeTiles`. A prop is furniture to be fought around, and a crate on the
+-- hold is a hold nobody can stand on until it is broken. Always a fresh list; the input is not touched.
+function Arena.propsOffObjective(props, objective)
+    local ground = {}
+    for _, field in ipairs({ "tiles", "escapeTiles" }) do
+        for _, t in ipairs((objective and objective[field]) or {}) do ground[t.y * 1000 + t.x] = true end
+    end
+    local out = {}
+    for _, p in ipairs(props or {}) do
+        if not ground[p.y * 1000 + p.x] then out[#out + 1] = p end
+    end
+    return out
 end
 
 -- How often (in ticks) a synthesized endless reinforcement tops the board back up, and how the trickle
@@ -1651,6 +1683,15 @@ function Arena.build(ctx, spec)
         require("models.condition").layBand(spec.condition, layout, party, enemies, seated)
     end
 
+    -- THE OBJECTIVE'S GROUND IS RESOLVED HERE, over the finished tiles, and NO PROP STANDS ON IT. The
+    -- props were laid long before (the generator rolls them; a curated map authors them) and nothing
+    -- then knew where a hold or a reach would land, so a breakable crate could sit on a Hold tile. The
+    -- region reads the tiles alone, never the props, so resolving it here gives the same ground it
+    -- always did; what changes is that every prop on a tile of it -- rolled or authored -- is cleared
+    -- off. A fresh list, because a curated layout's props are its blueprint's own table.
+    local objective = normalizeObjective(spec.objective, layout, enemyIds)
+    local props = Arena.propsOffObjective(layout.props or {}, objective)
+
     -- The ground the deployment phase offers. Every body the BOARD itself seats is excluded -- an
     -- escorted survivor, an enemy authored deep in the party's half -- so the phase never offers a tile
     -- that is already somebody's. The party's own bound spawns are NOT excluded: those are exactly the
@@ -1667,7 +1708,7 @@ function Arena.build(ctx, spec)
     end
     for _, u in ipairs(allies) do claim(u.x, u.y, footprintOf(u.id)) end
     for _, u in ipairs(enemies) do claim(u.x, u.y, footprintOf(u.id)) end
-    for _, p in ipairs(layout.props or {}) do claim(p.x, p.y, 1, 1) end
+    for _, p in ipairs(props) do claim(p.x, p.y, 1, 1) end
 
     return {
         cols = layout.cols, rows = layout.rows,
@@ -1698,8 +1739,8 @@ function Arena.build(ctx, spec)
         -- ...and whatever ground the bodies standing here brought with them (bodyGround).
         hazards = withBodyGround(withTerrainZones(layout),
             bodyGround(layout, enemyIds, party, enemies, taken, spec.seed or layout.seed, spec.scatter)),
-        props = layout.props or {}, -- scattered/authored props (barrels, crates) carried into combat (Combat.new places them)
-        objective = normalizeObjective(spec.objective, layout, enemyIds),
+        props = props, -- scattered/authored props (barrels, crates) carried into combat (Combat.new places them)
+        objective = objective,
         -- The fight's condition (models/condition.lua), carried to Combat.new, which stamps it on the combat.
         condition = spec.condition,
         -- The seed the caller chose, not whatever the layout happened to record: it is what the
