@@ -1162,6 +1162,92 @@ function AI.squadPost(combat, unit)
     return { tiles = tiles, radius = AI.POST_RADIUS, what = "its side" }
 end
 
+-- ---------------------------------------------------------------------------
+-- The knight answers for its party
+-- ---------------------------------------------------------------------------
+--
+-- "The knight AI should be engaging enemies near the things they're defending, in Rowan's case the
+-- other party members" (the author, 2026-10-25). A `defensive` knight used to hold the ring around its
+-- post and swing only at what walked into it -- so while the company's hitters fought three tiles away,
+-- Rowan stood beside the avatar, landed a blow a fight, and fell a third of the roster behind in
+-- experience. A wall that is not between anybody and anything is the same failure AI.squadPost names.
+--
+-- So a knight's protectee set is its OWN SIDE, and a foe that THREATENS any of them -- could reach one
+-- this turn with its weapon, Combat.threatMap's red zone, which takes in the adjacent -- is the knight's
+-- fight. While one exists the knight is engaged, its stand tiles are off the post's leash, its blows
+-- favour the foe nearest the most VULNERABLE threatened ally (lowest share of health, the charge ranking
+-- breaking a tie, so the avatar first among equals), and with nothing in reach it walks at that foe
+-- rather than back to its post. With no threat on the board it holds exactly as it did.
+--
+-- KNIGHTS ONLY, read off the body's class (every `defensive` blueprint of class knight: Rowan, the
+-- templates, the adventurer knights and their disciplines). The posture is shared with bosses, mirrors
+-- and a slime that must keep holding; none of them is changed. A post that is objective GROUND
+-- (radius 0, a node held by standing on it) keeps the knight on it -- that ground is what it defends.
+AI.KNIGHT_CLASS = "knight"
+-- What a blow is worth extra for being aimed where the knight is needed: the foe on the most vulnerable
+-- ally, and any other foe threatening one. A preference like TARGET_PREF -- a kill elsewhere still wins.
+AI.KNIGHT_WARD_BONUS = 8
+AI.KNIGHT_THREAT_BONUS = 4
+
+function AI.isKnight(unit)
+    return unit ~= nil and unit.char ~= nil and unit.char.class == AI.KNIGHT_CLASS
+end
+
+-- Who the knight should be fighting for, or nil when no foe threatens anybody on its side:
+-- `{ ward = ally, foe = foe, threats = { [foe] = true } }`.
+function AI.knightGuard(combat, unit, post)
+    local Combat = require("models.combat")
+    if post and post.radius == 0 then return nil end
+    local _, sources = Combat.threatMap(combat, unit.side)
+    local threats, any = {}, false
+    local threatened = {}
+    for _, ally in ipairs(combat.units) do
+        if ally.alive and ally ~= unit and ally.side == unit.side and not ally.summoned
+            and not Combat.isOffTile(ally) then
+            for _, c in ipairs(Combat.cellsAt(ally.w or 1, ally.h or 1, ally.x, ally.y)) do
+                for _, src in ipairs(sources[c.x .. "," .. c.y] or {}) do
+                    local foe = Combat.unitAt(combat, src.x, src.y)
+                    if foe and foe.alive and foe.side ~= unit.side then
+                        threats[foe] = true
+                        any = true
+                        threatened[ally] = true
+                    end
+                end
+            end
+        end
+    end
+    if not any then return nil end
+    -- The most vulnerable of the threatened: least health left, then the charge ranking, then board order.
+    local ward, wardFrac, wardRank
+    for _, ally in ipairs(combat.units) do
+        if threatened[ally] then
+            local frac = hpFraction(ally)
+            local rank = AI.chargeScore(combat, unit, ally)
+            if not ward or frac < wardFrac or (frac == wardFrac and rank > wardRank) then
+                ward, wardFrac, wardRank = ally, frac, rank
+            end
+        end
+    end
+    -- ...and the threat standing closest to it.
+    local foe, foeGap
+    for _, u in ipairs(combat.units) do
+        if threats[u] then
+            local gap = Combat.unitGap(u, ward)
+            if not foe or gap < foeGap then foe, foeGap = u, gap end
+        end
+    end
+    return { ward = ward, foe = foe, threats = threats }
+end
+
+-- The extra a candidate earns for answering the knight's guard (0 for every other body).
+function AI.guardBonus(ctx, cand)
+    local guard, t = ctx.guard, cand.target
+    if not (guard and t) then return 0 end
+    if t == guard.foe then return AI.KNIGHT_WARD_BONUS end
+    if guard.threats[t] then return AI.KNIGHT_THREAT_BONUS end
+    return 0
+end
+
 -- Is (x, y) close enough to `post` to count as manning it?
 function AI.atPost(x, y, post)
     if not post then return true end
@@ -1835,6 +1921,12 @@ local function fallbackMove(ctx, mode)
         end
         if home and Combat.unitGap(unit, home) <= 1 then return nil end
         goal = home or nearest(ctx, foes(ctx))
+    elseif mode == "guard" then
+        -- A knight answering for its side (AI.knightGuard): the foe on its most vulnerable ally. Already
+        -- beside that foe and still nothing to swing: hold rather than shuffle round it.
+        local foe = ctx.guard and ctx.guard.foe
+        if foe and Combat.unitGap(unit, foe) <= 1 then return nil end
+        goal = foe or nearest(ctx, foes(ctx))
     elseif mode == "regroup" then
         -- Toward the ally most in need of me, not toward the fight.
         goal = weakest(allies(ctx)) or nearest(ctx, foes(ctx))
@@ -2540,8 +2632,12 @@ function AI.plan(combat, unit)
     -- has a body between it and here. Nil in a versus match and on every map that protects nobody.
     -- See AI.spared for why it is read here, once, rather than per candidate.
     local spared = AI.spared(combat, unit)
+    -- A defending KNIGHT answers for its whole side (AI.knightGuard): nil for every other body, and for
+    -- a knight while nothing threatens anybody it stands with.
+    local guard = posture.defends and postureName == "defensive" and AI.isKnight(unit)
+        and AI.knightGuard(combat, unit, post) or nil
     local ctx = { combat = combat, unit = unit, items = items, posture = posture, post = post,
-                  spared = spared }
+                  spared = spared, guard = guard }
 
     -- Stand tiles: always where I am, plus everywhere I could walk to unless the posture is rooted.
     --
@@ -2554,7 +2650,9 @@ function AI.plan(combat, unit)
     if not posture.rooted then
         local tolls = Combat.routeTolls(combat, unit) -- what the road to each tile costs in hostile ground
         for _, node in ipairs(Combat.reachableList(combat, unit)) do
-            if AI.atPost(node.x, node.y, post) then
+            -- ...unless a knight is answering a threat to its side, which is off the leash: the foe on
+            -- the archer three tiles away is as much its post as the ring round the avatar.
+            if guard or AI.atPost(node.x, node.y, post) then
                 tiles[#tiles + 1] = { x = node.x, y = node.y, steps = node.steps,
                                       toll = tolls and tolls[node.x .. "," .. node.y] or 0 }
             end
@@ -2571,7 +2669,7 @@ function AI.plan(combat, unit)
     for k, v in pairs(posture.weights or {}) do w[k] = v end
     local previews = {}
     local threat -- built lazily: a unit that never reaches the risk pass never pays for it
-    local engaged = posture.engage(ctx)
+    local engaged = guard ~= nil or posture.engage(ctx)
 
     -- A RUNNER IS A CLOCK, not a combatant: it spends every turn on its way out and none of them on a
     -- blow, so how long it takes is a number the company can read off the board and race.
@@ -2663,6 +2761,7 @@ function AI.plan(combat, unit)
                     c.score = AI.scoreCandidate(combat, unit, c, w, previews)
                     c.score = c.score + prefBonus(ctx, rule, c, w)
                     c.score = c.score + AI.courtBonus(unit, c, w)
+                    c.score = c.score + AI.guardBonus(ctx, c)
                     -- `spare and`, not a bare `~=`: a cast aimed at GROUND (ab.aiAims) has no target, and
                     -- with nobody to spare `nil ~= nil` is false -- which silently dropped every one of them.
                     if c.outcome > 0 and not (spare and c.target == spare) and not takesTheLast(c) then
@@ -2753,7 +2852,8 @@ function AI.plan(combat, unit)
     -- never reached. Once it is at the post, engage governs again and it holds until provoked.
     local marching = post ~= nil and not AI.atPost(unit.x, unit.y, post)
     if (engaged or marching) and not posture.rooted then
-        local move = fallbackMove(ctx, posture.move)
+        -- A guarding knight walks at the foe on its most vulnerable ally, not back to its post.
+        local move = fallbackMove(ctx, guard and "guard" or posture.move)
         if move then return move end
     end
     return { wait = true, reason = postureName .. ": nothing worth doing" }

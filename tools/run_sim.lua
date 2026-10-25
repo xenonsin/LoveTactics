@@ -304,6 +304,21 @@ function SimBattle.enter(self, opts)
     local rec = { id = opts.encounter and (opts.encounter.id or opts.encounter.name) or "?",
         kind = opts.encounter and opts.encounter.kind, floor = depth, turns = turns, result = result }
     sim.run.fights[#sim.run.fights + 1] = rec
+    -- WHO DID THE FIGHTING, per body across the save: kills and committed casts (Combat.tally). What
+    -- shows a body that stands at the back of every fight -- its level only says so a run later.
+    for _, u in ipairs(combat.units) do
+        if u.side == "party" and u.char and not u.summoned and not u.decoyOf then
+            sim.deeds = sim.deeds or {}
+            local d = sim.deeds[u.char.id]
+            if not d then
+                d = { kills = 0, acts = 0, fights = 0 }
+                sim.deeds[u.char.id] = d
+            end
+            d.kills = d.kills + Combat.tallyCount(u, "kill")
+            d.acts = d.acts + Combat.tallyCount(u, "cast")
+            d.fights = d.fights + 1
+        end
+    end
     Combat.returnStripped(combat)
     local function report(extra)
         if not sim.verbose then return end
@@ -961,8 +976,15 @@ function M.simulateSave(saveSeed, runs, verbose, opts)
     local game = package.loaded["states.game"]
     if game then game.activePanel, game.battle = nil, nil end
     if not ok then error(err, 0) end
+    local deeds = {}
+    for _, c in ipairs((sim.player and sim.player.roster) or {}) do
+        local d = (sim.deeds or {})[c.id] or { kills = 0, acts = 0, fights = 0 }
+        deeds[#deeds + 1] = fmt("%s L%d xp %d: %d kills, %d acts in %d fights",
+            (tostring(c.name or c.id):gsub("^character_", "")):sub(1, 2), c.level or 1, c.xp or 0,
+            d.kills, d.acts, d.fights)
+    end
     return { seed = saveSeed, runs = sim.runs, unknown = sim.unknown, start = sim.start,
-        crashTraces = sim.crashTraces,
+        crashTraces = sim.crashTraces, deeds = deeds,
         crossroads = sim.crossroads or 0 }
 end
 
@@ -1041,6 +1063,7 @@ function M.report(args)
                 .. (run.crashes > 0 and fmt(" | %d ENGINE ERROR(S)", run.crashes) or "")))
             if #run.notes > 0 then print("      notes: " .. table.concat(run.notes, "; ")) end
         end
+        if res.deeds and #res.deeds > 0 then print("  deeds  " .. table.concat(res.deeds, " | ")) end
         local unk = {}
         for k, v in pairs(res.unknown) do unk[#unk + 1] = k .. " x" .. v end
         table.sort(unk)
