@@ -196,6 +196,16 @@ function love.load(args)
         return
     end
 
+    -- Dressing cost: `& "E:\LOVE\lovec.exe" . dressing-cost [seeds=24] [floors=1-6] [per=2] [only=KIND]`
+    -- Prices each affix, condition and rolled objective in the roster's own unit (Muster.DRESSING):
+    -- paired dressed/undressed fights against a ruler of scaled-up enemy stats. See tools/dressing_cost.
+    if args and args[1] == "dressing-cost" then
+        io.stdout:setvbuf("no")
+        require("tools.dressing_cost").run({ select(2, unpack(args)) })
+        love.event.quit(0)
+        return
+    end
+
     -- Run simulator: `& "E:\LOVE\lovec.exe" . run-sim [runs=3] [saves=5] [seed=S] [verbose]`
     -- Plays the first N descents of a FRESH save end to end -- the real floors, the real prowl meter,
     -- every fight auto-battled with the dice live, attrition, injuries, relics and the Ward between

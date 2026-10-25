@@ -172,7 +172,127 @@ function Muster.encounter(def, ctx)
         local ok, char = pcall(Growth.spawn, id, danger, ctx.floorLevel, carried and carried[id])
         if ok and char then total = total + Muster.rate(char) end
     end
-    return total
+    -- ...AND WHAT THE FIGHT IS DRESSED IN (ctx.dressing, off the cell): an affixed body, a condition, a
+    -- rolled objective change the fight without changing the roster, so they are priced on top of it.
+    return total * Muster.dressingFactor(ctx.dressing, ids)
+end
+
+-- ---------------------------------------------------------------------------
+-- The dressing
+-- ---------------------------------------------------------------------------
+
+-- WHAT A FIGHT'S DRESSING IS WORTH (models/dressing.lua), as a multiplier on the roster's own worth.
+--
+-- Before this table every reading of a fight -- the marker's band and pips, the Run Away odds, the walk-off
+-- gate -- was taken off the roster alone, so a pack with a Hexing alpha on a survive clock rated exactly
+-- as the bare pack did and a dressed fight was always under-rated.
+--
+-- MEASURED, NOT AUTHORED: `. dressing-cost` (tools/dressing_cost.lua), 2026-10-25. Twelve ordinary
+-- dressable fights (the two heaviest combats on each of floors 1-6), each played 24 seeds by the company a
+-- new save carries at the floor's expected level, dice live, every dressed trial paired with the undressed
+-- trial on the same seed (288 pairs; fewer for an objective, which only rosters that carry it can take).
+-- COST is the share of the company's health a fight took, a loss counting as all of it; undressed, the
+-- sample won 100% at a cost of 0.096. The RULER is the same fights with the enemy side's stats scaled so
+-- its worth here rose a read +20 / +40 / +70%, which cost +0.069 / +0.183 / +0.355 (win 99 / 92 / 71%):
+-- convex, so the points are joined up from the origin rather than fitted with one line. A dressing's
+-- paired cost change read back through that curve is the worth increase that would cost an undressed fight
+-- the same, and the multiplier is one plus it, rounded to 0.05. An effect inside two paired standard errors
+-- is priced 1.00 -- a number there would be a number about the dice. Each row's comment is its cost change
+-- and paired error (the same-seed repeat in one process matched 288 of 288, and three processes agreed on
+-- every shared row, so the error is the seed sampling and nothing else). A multiplier under 1 is a dressing
+-- that measured as HELPING the company -- a Break ends on its totem rather than on the whole pack, and Deep
+-- Water's ford cost the company less than open ground did (measured, not explained). Re-run the tool after
+-- retuning any of these and re-paste.
+Muster.DRESSING = {
+    -- Per affixed body: a fight with two carries the product of both.
+    affix = {
+        affix_armored = 1.00,   -- -0.000 +/- 0.006 (win -1.0 pts)
+        affix_hexing = 1.10,    -- +0.038 +/- 0.005
+        affix_rallying = 1.00,  -- +0.000 +/- 0.001
+        affix_splitting = 1.05, -- +0.014 +/- 0.005 (+3.8 unit-turns)
+        affix_steadfast = 1.00, -- -0.001 +/- 0.002
+        affix_swift = 1.00,     -- +0.009 +/- 0.006
+        affix_thorned = 1.00,   -- +0.000 +/- 0.000
+        affix_vampiric = 1.00,  -- +0.002 +/- 0.001
+        affix_volatile = 1.00,  -- +0.001 +/- 0.001 (past the noise, under half a step)
+        affix_warded = 1.00,    -- +0.002 +/- 0.002
+    },
+    condition = {
+        condition_burning_ground = 1.00, -- -0.003 +/- 0.003
+        condition_darkness = 1.00,       -- +0.008 +/- 0.008
+        condition_deep_water = 0.90,     -- -0.028 +/- 0.007
+        condition_fog = 1.00,            -- +0.001 +/- 0.002
+        condition_rain = 1.00,           -- -0.001 +/- 0.006
+        condition_tremors = 1.00,        -- -0.002 +/- 0.002
+    },
+    -- A rolled kind, against kill-all on the same roster. Applied only where the roster carries it
+    -- (Dressing.compatible), since a roster that cannot is fought as a kill-all (Dressing.materialize).
+    objective = {
+        assassinate = 1.00, -- +0.012 +/- 0.015 (48 pairs)
+        ["break"] = 0.80,   -- -0.065 +/- 0.026 (24 pairs: one roster in the sample fields an object)
+        hold = 1.00,        -- +0.008 +/- 0.007
+        reach = 1.10,       -- +0.033 +/- 0.011 (win -3.6 pts)
+        survive = 1.15,     -- +0.051 +/- 0.010 (win -1.4 pts, +16.9 unit-turns)
+    },
+}
+
+-- The multiplier a dressing puts on a roster's worth: each affix once per body that can wear it (at most
+-- Affix.MAX, the highest-tier bodies first -- Affix.assign's own rule, so a roster with one eligible body
+-- prices one affix), then the condition, then the objective where the roster carries it. 1 for a fight
+-- dressed in nothing. `ids` is the roster being rated; with none, every affix and the objective count.
+function Muster.dressingFactor(dressing, ids)
+    if type(dressing) ~= "table" then return 1 end
+    local t = Muster.DRESSING
+    local factor = 1
+    if type(dressing.affixes) == "table" then
+        local Affix = require("models.affix")
+        local wearers = Affix.MAX
+        if ids then
+            wearers = 0
+            for _, id in ipairs(ids) do if Affix.canWear(id, nil) then wearers = wearers + 1 end end
+        end
+        for k, id in ipairs(dressing.affixes) do
+            if k > math.min(wearers, Affix.MAX) then break end
+            factor = factor * (t.affix[id] or 1)
+        end
+    end
+    if dressing.condition then factor = factor * (t.condition[dressing.condition] or 1) end
+    if dressing.objective and (not ids or require("models.dressing").compatible(dressing.objective, ids)) then
+        factor = factor * (t.objective[dressing.objective] or 1)
+    end
+    return factor
+end
+
+-- WHAT THE FIGHT STANDING ON A MAP CELL IS WORTH, the one door states/game.lua's cellMuster prices a
+-- marker through. Pure, so the wiring is held by a spec and not only by the state: the marker, the Run
+-- Away odds and the walk-off gate all read this one number (game:musterMargin).
+--
+-- `floor` is the reading's floor ctx: { depth, enemyLevel, quest, floorLevel }. Off the cell come the
+-- three things the blueprint does not know -- a guarded pack's cast, a mimic's swallowed kit, and the
+-- dressing the map stamped. Nil for a cell with nothing to rate.
+function Muster.encounterCell(cell, floor)
+    local enc = cell and cell.encounter
+    local def = enc and enc.id and require("models.encounter").get(enc.id)
+    -- A GUARDED PACK IS RATED OFF THE CELL, because that is where its cast is: the company standing
+    -- over a dropped bag was drawn once, when the party fell, and stored on the drop
+    -- (models/descent.lua's Descent.packGuard). Its blueprint deliberately carries no composition,
+    -- so rating the blueprint would price every pile on the board as the resolver's default body.
+    if enc and enc.kind == "pack" and enc.composition then
+        def = { kind = "pack", composition = enc.composition }
+    end
+    if not def then return nil end
+    floor = floor or {}
+    return Muster.encounter(def, {
+        depth = floor.depth,
+        enemyLevel = floor.enemyLevel,
+        quest = floor.quest,
+        floorLevel = floor.floorLevel,
+        -- ...and what the fight is HOLDING, for the same reason the pack is rated off the cell: a
+        -- mimic's kit is the chest it swallowed and lives nowhere but here (models/mimic.lua), so a
+        -- rating off the blueprint alone would price it as a body with one bite and nothing else.
+        carried = enc.carried,
+        dressing = enc.dressing,
+    })
 end
 
 -- ---------------------------------------------------------------------------

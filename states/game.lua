@@ -2148,32 +2148,24 @@ end
 -- Deliberately kept in a side table rather than written onto `cell.encounter`: models/overworld.lua's
 -- CELL_FIELDS persists that table whole into the run save, and a cached score would ride along and
 -- come back stale into a run resumed at a different prestige.
+--
+-- KEYED BY THE CELL BUT HELD AGAINST ITS ENCOUNTER: a rolled fight is written onto a tile that may have
+-- held another one (or nothing) when it was last rated, with a dressing of its own, and a memo that
+-- answered the old fight would price the new one off a stranger's roster. Rated through
+-- Muster.encounterCell -- the pack's cast, a mimic's kit and the stamped dressing all come off the cell.
 function game:cellMuster(cell)
     game.encounterMuster = game.encounterMuster or {}
-    local cached = game.encounterMuster[cell]
-    if cached == nil then
-        local enc = cell.encounter
-        local def = enc and enc.id and EncounterModel.get(enc.id)
-        -- A GUARDED PACK IS RATED OFF THE CELL, because that is where its cast is: the company standing
-        -- over a dropped bag was drawn once, when the party fell, and stored on the drop
-        -- (models/descent.lua's Descent.packGuard). Its blueprint deliberately carries no composition,
-        -- so rating the blueprint would price every pile on the board as the resolver's default body.
-        if enc and enc.kind == "pack" and enc.composition then
-            def = { kind = "pack", composition = enc.composition }
-        end
-        cached = def and Muster.encounter(def, {
+    local memo = game.encounterMuster[cell]
+    if not (memo and memo.enc == cell.encounter) then
+        memo = { enc = cell.encounter, worth = Muster.encounterCell(cell, {
             depth = game.depth,
             enemyLevel = game.quest and game.quest.dangerLevel,
             quest = game.quest,
             floorLevel = game.quest and game.quest.floorLevel,
-            -- ...and what the fight is HOLDING, for the same reason the pack is rated off the cell: a
-            -- mimic's kit is the chest it swallowed and lives nowhere but here (models/mimic.lua), so a
-            -- rating off the blueprint alone would price it as a body with one bite and nothing else.
-            carried = enc and enc.carried or nil,
-        }) or false
-        game.encounterMuster[cell] = cached
+        }) or false }
+        game.encounterMuster[cell] = memo
     end
-    return cached or nil
+    return memo.worth or nil
 end
 
 -- How this fight stands to the company, as a margin in percent -- nil for a cell there is no
