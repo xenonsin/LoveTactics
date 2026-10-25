@@ -1728,6 +1728,11 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
                     local rolled = free and Descent.wander(game.descent, game.floorPool) or nil
                     if rolled then
                         Descent.calmProwl(game.descent)
+                        -- Its dressing (models/dressing.lua): affixes, a rolled objective, a condition --
+                        -- off the run's seed, the depth and this cell, so a reload deals the same one.
+                        require("models.dressing").stamp(rolled, { seed = game.descent.seed,
+                            floor = Descent.depth(game.descent), x = cell.x, y = cell.y,
+                            biome = Descent.biomeAt(game.descent, Descent.depth(game.descent)) })
                         cell.encounter = rolled
                         cell.cleared = nil
                         game:pushToast("Something has found you.")

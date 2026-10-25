@@ -1344,6 +1344,20 @@ local function applyUnitPassives(unit)
             end
         end
     end
+    -- AN AFFIX (models/affix.lua): a body's named twist in an ordinary fight -- Swift's +2 Move -- folded
+    -- here for the reason the meal and the relics give. Nil for every body that carries none.
+    local affixBag = require("models.affix").bag(unit)
+    if affixBag then
+        for stat, amount in pairs(affixBag.bonus or {}) do
+            unit.bonus[stat] = (unit.bonus[stat] or 0) + amount
+        end
+        for tag, amount in pairs(affixBag.resist or {}) do
+            unit.resist[tag] = (unit.resist[tag] or 0) + amount
+        end
+        for stat, amount in pairs(affixBag.maxBonus or {}) do
+            maxBonus[stat] = (maxBonus[stat] or 0) + amount
+        end
+    end
     unit.char.maxBonus = maxBonus
     -- THE ONE RULE BAG EVERY CONSUMER READS, and it is per-UNIT: the bearer's gear first, then whatever
     -- the run's relics declared. Relics come second so that first-wins resolves in the item's favour --
@@ -1356,6 +1370,14 @@ local function applyUnitPassives(unit)
     -- `maxBonus` and `injuryShare` already do. Cleared to nil rather than left stale when a fight is
     -- fought without them, so a relic traded away stops applying the moment the next setup runs.
     unit.char.rules = unit.rules
+    -- ...and the fight's CONDITION last, on the UNIT only (models/condition.lua): Fog and Darkness are the
+    -- Long Shadow's horizon worn by every body on the board, folded so the nearer horizon holds. Kept off
+    -- the character, which the town reads -- weather does not follow a body home -- so the bag is copied.
+    if require("models.condition").rules(unit) then
+        local copy = {}
+        for k, v in pairs(unit.rules or {}) do copy[k] = v end
+        unit.rules = require("models.condition").foldRules(unit, copy)
+    end
 end
 
 function Combat.applyPassives(combat)
@@ -1364,6 +1386,9 @@ function Combat.applyPassives(combat)
         -- boost would move its arithmetic: the class boost below stays off there. Stamped on the unit so
         -- every later re-fold of this unit (a strip, a morph) agrees.
         unit.noClassBoost = combat.alwaysHits and true or nil
+        -- The fight's condition rides on each body, so a re-fold that has no combat in hand (a strip, a
+        -- morph) still folds it (models/condition.lua).
+        unit.fieldCondition = combat.condition
         applyUnitPassives(unit)
     end
 end
@@ -1594,6 +1619,8 @@ function Combat.addUnit(combat, char, side, x, y, opts)
     -- holding the tally from a previous fight -- and it must walk on as somebody who has not stood up,
     -- not as somebody who held. Combat.new's opening bodies are cleared in buildOpeningUnit below.
     char.spentThisTurn = nil
+    -- A body arriving mid-fight (a wave, a summon, a rotation) walks into the same weather.
+    unit.fieldCondition = combat.condition
     applyUnitPassives(unit)
     -- The ground it was set down on. AFTER applyUnitPassives, because the flier check reads the grid
     -- that pass has just finished folding -- a body put down on a fort has to know whether it is
@@ -1925,6 +1952,9 @@ function Combat.new(arena, partyUnits, enemyUnits, opts)
         -- to rotate rather than offering the whole board.
         deployZone = arena and arena.deployZone or nil,
         opened = false, -- Combat.openBattle has run; see Combat.new's `deferOpen`
+        -- The weather or ground this fight is fought in (models/condition.lua), off the arena. Nil for
+        -- nearly every fight.
+        condition = arena and arena.condition or nil,
     }
 
     local function addSide(list, side)
@@ -1932,6 +1962,8 @@ function Combat.new(arena, partyUnits, enemyUnits, opts)
     end
     addSide(partyUnits, "party")
     addSide(enemyUnits, "enemy")
+    -- The bodies the board affixed (models/affix.lua): carried from the arena's seats onto the units.
+    require("models.affix").stamp(combat, arena)
 
     -- Authored traps: arena.traps is a list of { id, x, y, side } (side defaults to "enemy",
     -- i.e. hidden from the player until detected). In-combat placement adds more via fx.placeTrap.
@@ -2063,6 +2095,11 @@ function Combat.openBattle(combat)
     -- Last, so an opener that reads or reshapes the field (Envy copying your strongest unit) finds
     -- every unit, passive, trap and hazard already in place. Its lines follow the "battle begins".
     Trait.setup(combat)
+
+    -- THE FIGHT'S DRESSING at the bell (models/dressing.lua): an affixed body opens in its statuses
+    -- (Armored's barrier, Swift's Haste), and the condition soaks the board and names itself in the log.
+    require("models.affix").open(combat)
+    require("models.condition").open(combat)
 
     Combat.openCharge(combat)
 
@@ -3797,6 +3834,9 @@ function Combat.startTurn(combat)
     combat.turn = unit and { unit = unit, moved = false, moveCost = 0, startX = unit.x, startY = unit.y } or nil
     -- Decided in the block below, granted past Status.onTurnStart at the foot of this function.
     local veil = false
+    -- The fight's condition, once per turn's worth of clock: the rain re-soaks, the ground catches, the
+    -- roof comes down (models/condition.lua). A no-op on a fight fought in none.
+    if combat.condition then require("models.condition").tick(combat) end
     -- An Overwatch stance is a one-turn watch: it lapses the moment its holder comes back around to
     -- act, so the unit chooses anew each turn whether to hold the line again.
     -- Free actions refresh on the same beat and for the same reason (Combat.FREE_ACTIONS_PER_TURN).

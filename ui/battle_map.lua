@@ -1691,6 +1691,7 @@ function BattleMap:drawUnitInfo()
             self:drawHpBar(u, wx, wy, alpha)
             self:drawTurnNumber(orderIndex[u] or self.lastOrderIndex[u], wx, wy, alpha)
             if self:isBoss(u) then self:drawBossMark(u, wx, wy, alpha) end
+            if u.affix then self:drawAffixMark(u, wx, wy, alpha) end
             if u.alive then self:drawStatusBadges(u, wx, wy) end
         elseif Status.get(u, "status_downed") and self:corpseVisible(u) then
             -- A fallen but revivable body: its rescue clock stands in for the HP bar it no longer has,
@@ -1729,6 +1730,31 @@ function BattleMap:drawBossMark(u, wx, wy, alpha)
     love.graphics.rectangle("line", x + 0.5, y + 0.5, d - 1, d - 1, 4, 4)
     Theme.crest(x + d / 2, y + d / 2, BOSS_CREST_R,
         { Theme.accentAmber[1], Theme.accentAmber[2], Theme.accentAmber[3], al })
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- THE AFFIX MARK (models/affix.lua): a framed letter in the affix's own colour, in the tile's top-right
+-- corner -- the corner the boss crest uses, because the turn number holds the top-left and the badges and
+-- the bar hold the bottom. An affixed body is never a stair's boss, but an elite's lead can wear the
+-- crest; then the mark steps in beside it rather than over it. Cut out of the art the way the crest is,
+-- on a near-opaque plate, and named in full on the hover (ui/tile_tooltip.lua) in the same colour.
+function BattleMap:drawAffixMark(u, wx, wy, alpha)
+    local def = require("models.affix").defs[u.affix]
+    if not def then return end
+    local al = alpha or 1
+    local boxW = self:spanPixels(u.w, u.h)
+    local d = BOSS_CREST_R * 2 + 6
+    local x = math.floor(wx + boxW - 3 - d - (self:isBoss(u) and (d + 2) or 0))
+    local y = math.floor(wy + 3)
+    local c = def.color or Theme.accentAmber
+    love.graphics.setColor(0.05, 0.05, 0.07, 0.94 * al)
+    love.graphics.rectangle("fill", x, y, d, d, 4, 4)
+    love.graphics.setColor(c[1], c[2], c[3], 0.85 * al)
+    love.graphics.rectangle("line", x + 0.5, y + 0.5, d - 1, d - 1, 4, 4)
+    love.graphics.setFont(self.numberFont)
+    love.graphics.setColor(c[1], c[2], c[3], al)
+    local fh = self.numberFont:getHeight()
+    love.graphics.printf(def.mark or def.name:sub(1, 1), x, y + math.floor((d - fh) / 2), d, "center")
     love.graphics.setColor(1, 1, 1, 1)
 end
 

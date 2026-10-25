@@ -1400,6 +1400,11 @@ function Trait.attach(unit, combat)
     for _, id in ipairs(require("models.meal").traits(unit.meal)) do
         list[#list + 1] = Trait.instantiate(id, nil, unit.meal and unit.meal.skillParams)
     end
+    -- An AFFIX (models/affix.lua): the traits it lends, and its own hook as an item-less instance. Nil
+    -- for every body that is not affixed.
+    if unit.affix then
+        for _, inst in ipairs(require("models.affix").traitInstances(unit)) do list[#list + 1] = inst end
+    end
     unit.traits = list
     return list
 end

@@ -1533,6 +1533,19 @@ function Arena.build(ctx, spec)
     local enemyIds = Arena.clampComposition(
         Arena.resolveComposition(spec.composition, ctx), Arena.enemyCap(ctx, spec.enemyCap))
 
+    -- A ROLLED OBJECTIVE (models/dressing.lua) is made real HERE, against the roster actually dealt: the
+    -- map promised a kind ("Defeat the leader"), and only now is there a leader to name. A roster that
+    -- cannot carry it stays a kill-all. Never over an authored objective. A copy of the spec, as above.
+    if spec.rolledObjective and not spec.objective then
+        local obj = require("models.dressing").materialize(spec.rolledObjective, enemyIds)
+        if obj then
+            local copy = {}
+            for k, v in pairs(spec) do copy[k] = v end
+            copy.objective = obj
+            spec = copy
+        end
+    end
+
     -- EVERY FIGHT ROLLS ITS OWN BOARD. A campaign stop, a descent floor, a draft match, a duel, the
     -- menu's mock and the debug harness all arrive here the same way: the biome names what the ground is
     -- made of and Arena.pickLayout hands back a board shaped to be fought on -- a curated one where the
@@ -1570,6 +1583,13 @@ function Arena.build(ctx, spec)
     local allies = bindAllies(allyIds, spec, layout, seated)
     local enemies = bindUnits(enemyIds, layout.enemySpawns, 0, layout, seated)
     Arena.seatMarksBehind(enemies, layout, spec.objective)
+    -- THE FIGHT'S DRESSING (models/dressing.lua): its affixes handed to the bodies that can wear them,
+    -- never the objective's mark (Affix.assign), and a condition's terrain band laid across the board
+    -- before the tiles are hydrated (Condition.layBand copies the rows it writes into).
+    if spec.affixes then require("models.affix").assign(enemies, spec.affixes, spec.objective) end
+    if spec.condition then
+        require("models.condition").layBand(spec.condition, layout, party, enemies, seated)
+    end
 
     -- The ground the deployment phase offers. Every body the BOARD itself seats is excluded -- an
     -- escorted survivor, an enemy authored deep in the party's half -- so the phase never offers a tile
@@ -1620,6 +1640,8 @@ function Arena.build(ctx, spec)
             bodyGround(layout, enemyIds, party, enemies, taken, spec.seed or layout.seed, spec.scatter)),
         props = layout.props or {}, -- scattered/authored props (barrels, crates) carried into combat (Combat.new places them)
         objective = normalizeObjective(spec.objective, layout, enemyIds),
+        -- The fight's condition (models/condition.lua), carried to Combat.new, which stamps it on the combat.
+        condition = spec.condition,
         -- The seed the caller chose, not whatever the layout happened to record: it is what the
         -- battle's own draw sequence is built from (Combat.new), so it has to be the authoritative
         -- number even when a curated layout was picked and generated nothing.

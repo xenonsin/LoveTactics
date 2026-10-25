@@ -95,6 +95,15 @@ function EncounterBattle.spec(opts, partyIds, seed)
         -- because a blueprint's would be re-rolled on every re-entry and this fight has to be the same
         -- fight the second time you walk up to it.
         if enc.composition then spec.composition = enc.composition end
+        -- THE DRESSING THE MAP STAMPED (models/dressing.lua): affixes, a rolled objective kind, a
+        -- condition. Handed to the board as data; Arena.build makes each real. Never over an authored
+        -- objective -- Dressing.eligible refuses to stamp one, and this refuses to read one.
+        local dressing = enc.dressing
+        if dressing and not (def and def.objective) then
+            spec.rolledObjective = dressing.objective
+            spec.affixes = dressing.affixes
+            spec.condition = dressing.condition
+        end
     end
     -- A fight against somebody's team rather than a roll of the encounter table: a stored build, or
     -- another player. The far side arrives as live character instances, so THEIR ids are the
@@ -143,6 +152,9 @@ function EncounterBattle.cellEligible(cell)
     -- from before the guard existed is a pickup, and there is nothing to rate or to walk off.
     if enc.kind == "pack" then return enc.composition ~= nil end
     if enc.kind ~= "combat" and enc.kind ~= "elite" then return false end
+    -- A ROLLED objective (models/dressing.lua) has a win clock exactly as an authored one does, so it is
+    -- rated but never walked off, on the same terms.
+    if enc.dressing and enc.dressing.objective then return false end
     return EncounterBattle.eligible(enc.id and EncounterModel.get(enc.id))
 end
 
