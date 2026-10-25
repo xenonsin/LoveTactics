@@ -102,4 +102,38 @@ return {
                 "smokeOut does not leave through the rout")
         end,
     },
+    {
+        -- The play pass: after a smoke the map simply came back, and the battle log was the only record.
+        name = "the map says the company slipped away, once it is shown again",
+        fn = function()
+            local game = readText("states/game.lua")
+            local rout = game:find("if game.descent and require(\"states.battle\").routed then", 1, true)
+            assert(rout, "the rout branch of onLoss is not where it was")
+            local retreat = game:find("game.map:retreatFromEncounter()", rout, true)
+            local toast = game:find("game:pushToast(\"The company slipped away.\")", rout, true)
+            local done = game:find("game.endFight()", rout, true)
+            assert(retreat and toast and done, "the rout branch pushes no slip-away toast")
+            assert(retreat < toast and toast < done,
+                "the toast is pushed where the map is shown again, inside the rout branch")
+            local gate = game:sub(retreat, toast)
+            assert(gate:find("slippedAway", 1, true) and gate:find("combat.smoke == true", 1, true),
+                "only a smoke says it -- a Fall Back is a rout too")
+        end,
+    },
+    {
+        -- The play pass: armed, Smoke said "Click an ally to support". It targets its user.
+        name = "an armed self-target item is told to aim at its user, on every device",
+        fn = function()
+            local battle = readText("states/battle.lua")
+            assert(battle:find("battle.armedSelf = item.activeAbility.target == \"self\"", 1, true),
+                "arming an item does not note a self target")
+            assert(battle:find("\"A on yourself to \"", 1, true), "the pad has no self line")
+            assert(battle:find("\"Enter on yourself to \"", 1, true), "the keyboard has no self line")
+            assert(battle:find("\" yourself to \"", 1, true), "the pointer has no self line")
+            local selfAt = battle:find("battle.armedSelf and (\"A on yourself", 1, true)
+            local supportAt = battle:find("battle.armedSupport and \"A on an ally to support\"", 1, true)
+            assert(selfAt and supportAt and selfAt < supportAt,
+                "the self line is asked before the support line, which a self buff also answers")
+        end,
+    },
 }

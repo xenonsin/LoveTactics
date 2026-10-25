@@ -106,6 +106,51 @@ return {
         end,
     },
     {
+        -- The forest board in the play pass: mountains at the heart, and the old fallback scanned from
+        -- (1,1) and put a ONE-tile hold in the corner beside the enemy line.
+        name = "a buried centre falls back to a full patch near the middle, away from the enemy line",
+        fn = function()
+            local layout = flatLayout(8, 8)
+            layout.enemySpawns = { { x = 2, y = 1 }, { x = 4, y = 1 }, { x = 6, y = 1 } }
+            for y = 4, 5 do
+                for x = 3, 6 do layout.tiles[y][x] = "mountain" end
+            end
+            local tiles = Arena.resolveRegion("center", layout)
+            assert(#tiles == 4, "the fallback owes the centre's own four tiles, got " .. #tiles)
+            local set = {}
+            for _, t in ipairs(tiles) do
+                assert(layout.tiles[t.y][t.x] ~= "mountain", "never hand back a tile nobody can stand on")
+                assert(t.y > 2, "never on or beside the enemy spawn row, got row " .. t.y)
+                assert(math.abs(t.x - 4.5) <= 3 and math.abs(t.y - 4.5) <= 2,
+                    "the patch sits near the middle, got " .. t.x .. "," .. t.y)
+                set[t.y * 100 + t.x] = true
+            end
+            -- Contiguous: every tile touches another one of the patch.
+            for _, t in ipairs(tiles) do
+                assert(set[t.y * 100 + t.x - 1] or set[t.y * 100 + t.x + 1]
+                    or set[(t.y - 1) * 100 + t.x] or set[(t.y + 1) * 100 + t.x],
+                    "the patch is one piece of ground, " .. t.x .. "," .. t.y .. " stands alone")
+            end
+            -- Deterministic.
+            local again = Arena.resolveRegion("center", layout)
+            for i, t in ipairs(tiles) do
+                assert(again[i].x == t.x and again[i].y == t.y, "the same board resolves the same patch")
+            end
+        end,
+    },
+    {
+        name = "a fallback uses the enemy rows only when nothing else is walkable",
+        fn = function()
+            local layout = flatLayout(6, 6)
+            layout.enemySpawns = { { x = 1, y = 1 } }
+            for y = 3, 6 do
+                for x = 1, 6 do layout.tiles[y][x] = "mountain" end
+            end
+            local tiles = Arena.resolveRegion("center", layout)
+            assert(#tiles > 0, "rows 1-2 are all that is walkable, so the fallback must use them")
+        end,
+    },
+    {
         -- A road you WALK across can't be won by clearing the field, so a reach objective is handed an
         -- endless reinforcement drawn from its own opening roster (Arena.reachWave). See spawnWaves.
         name = "a reach objective is dealt endless reinforcements from its own roster",

@@ -1733,20 +1733,48 @@ function BattleMap:drawBossMark(u, wx, wy, alpha)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
+-- The affix mark's ink: its colour, lifted toward white until its luminance reaches AFFIX_INK_FLOOR, so a
+-- dark affix colour (Vampiric's crimson, Hexing's plum) still reads on the near-black plate. A colour
+-- already that light is handed back as it is.
+local AFFIX_INK_FLOOR = 0.5
+function BattleMap.affixInk(c)
+    local lum = 0.2126 * c[1] + 0.7152 * c[2] + 0.0722 * c[3]
+    if lum >= AFFIX_INK_FLOOR then return c end
+    local t = (AFFIX_INK_FLOOR - lum) / (1 - lum)
+    return { c[1] + (1 - c[1]) * t, c[2] + (1 - c[2]) * t, c[3] + (1 - c[3]) * t }
+end
+
 -- THE AFFIX MARK (models/affix.lua): a framed letter in the affix's own colour, in the tile's top-right
 -- corner -- the corner the boss crest uses, because the turn number holds the top-left and the badges and
 -- the bar hold the bottom. An affixed body is never a stair's boss, but an elite's lead can wear the
 -- crest; then the mark steps in beside it rather than over it. Cut out of the art the way the crest is,
 -- on a near-opaque plate, and named in full on the hover (ui/tile_tooltip.lua) in the same colour.
+--
+-- IT ALSO STEPS IN FOR THE BAKED DISC. A blueprint with `boss = true` carries a gold disc in this same
+-- corner of its token ART (tools/char_compose.lua's rank badge, the one baked mark of rank) whether or
+-- not this board crowns it -- the Ancient Stag is a quest boss on the road and an ordinary body in the
+-- Herd -- and the plate sat squarely on it. So the one rule is: the corner belongs to the rank mark,
+-- drawn or baked, and the affix takes the slot beside it.
+--
+-- THE PLATE HAS TO READ AGAINST ANY BORDER. An enemy's border is red and Vampiric's colour is crimson, so
+-- the frame melted into the side border and the letter sank into the dark plate. A dark outer ring now
+-- cuts the plate off from whatever it sits against, and the letter and frame are lifted toward white
+-- until they are light enough to read on the plate (BattleMap.affixInk) -- the hue stays the affix's own.
 function BattleMap:drawAffixMark(u, wx, wy, alpha)
-    local def = require("models.affix").defs[u.affix]
+    local Affix = require("models.affix")
+    local def = Affix.defs[u.affix]
     if not def then return end
     local al = alpha or 1
     local boxW = self:spanPixels(u.w, u.h)
     local d = BOSS_CREST_R * 2 + 6
-    local x = math.floor(wx + boxW - 3 - d - (self:isBoss(u) and (d + 2) or 0))
+    local ranked = self:isBoss(u) or (u.char and u.char.boss)
+    local x = math.floor(wx + boxW - 3 - d - (ranked and (d + 2) or 0))
     local y = math.floor(wy + 3)
-    local c = def.color or Theme.accentAmber
+    local c = BattleMap.affixInk(def.color or Theme.accentAmber)
+    love.graphics.setColor(0.02, 0.02, 0.03, 0.94 * al)
+    love.graphics.setLineWidth(2)
+    love.graphics.rectangle("line", x - 1, y - 1, d + 2, d + 2, 5, 5)
+    love.graphics.setLineWidth(1)
     love.graphics.setColor(0.05, 0.05, 0.07, 0.94 * al)
     love.graphics.rectangle("fill", x, y, d, d, 4, 4)
     love.graphics.setColor(c[1], c[2], c[3], 0.85 * al)

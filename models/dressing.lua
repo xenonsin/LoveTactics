@@ -277,12 +277,23 @@ function Dressing.rows(enc)
     return rows
 end
 
--- The deploy screen's standing notice: the condition's line ahead of whatever else the fight says (the
--- Rooted Oath's, models/relic.lua). Nil when there is nothing to say.
-function Dressing.notice(combat, other)
+-- The deploy screen's standing notices, as separate lines: the condition's first, then whatever else
+-- the fight says (the Rooted Oath's, models/relic.lua). Kept apart so the deploy phase can fit each on
+-- rows of its own (DeployPhase.noticeRows) -- joined into one string, the Oath's warning was the tail an
+-- ellipsis cut off, on exactly the reach, hold and escape fights it is about. An empty list when there
+-- is nothing to say.
+function Dressing.noticeLines(combat, other)
+    local lines = {}
     local line = Condition.line(combat and combat.condition)
-    if line and other then return line .. "  " .. other end
-    return line or other
+    if line then lines[#lines + 1] = line end
+    if other then lines[#lines + 1] = other end
+    return lines
+end
+
+-- The same, as one string (for a reader with one line to give). Nil when there is nothing to say.
+function Dressing.notice(combat, other)
+    local lines = Dressing.noticeLines(combat, other)
+    return #lines > 0 and table.concat(lines, "  ") or nil
 end
 
 -- The HUD's objective row carries the condition's name after the work: "Objective: Defeat every enemy

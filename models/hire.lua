@@ -383,6 +383,9 @@ function Hire.giftFor(player, class, roll)
     return pool[draw(roll, 15, #pool)]
 end
 
+-- How many times a board slot is rolled again for a name the roster or the board already holds.
+Hire.NAME_REROLLS = 12
+
 -- THIS HOMECOMING'S BOARD, dealt on first ask and kept (see the header). A new homecoming -- the trip
 -- count has moved -- deals a fresh one, and whoever was not hired off the last has moved on.
 function Hire.board(player)
@@ -393,12 +396,27 @@ function Hire.board(player)
 
     local pool = Hire.classPool(player)
     local offers = {}
+    -- NO STRANGER WEARS A NAME ALREADY ON THE ROSTER, OR ON THIS BOARD. The name is a function of the
+    -- roll, so a clash is answered by rolling the slot again -- a different stranger, off a seed derived
+    -- from the first, so the same homecoming still deals the same board. Attempt 0 is the roll this
+    -- board always made, so a board with no clash is dealt exactly as before. Gives up after
+    -- NAME_REROLLS and keeps the last roll rather than leave a slot empty.
+    local taken = {}
+    for _, char in ipairs(player.roster or {}) do
+        if char.name then taken[char.name] = true end
+    end
     for slot = 1, Hire.SLATE do
-        local roll = Seed.mix(Seed.lap(player), trip, slot, Seed.text("hire"))
-        local class = pool[draw(roll, 1, #pool)]
-        local race = raceFor(class, roll)
-        local id = Hire.idOf(class, race, roll)
-        local def = require("models.character").defs[id]
+        local base = Seed.mix(Seed.lap(player), trip, slot, Seed.text("hire"))
+        local roll, class, race, id, def
+        for attempt = 0, Hire.NAME_REROLLS do
+            roll = (attempt == 0) and base or Seed.mix(base, attempt, Seed.text("rename"))
+            class = pool[draw(roll, 1, #pool)]
+            race = raceFor(class, roll)
+            id = Hire.idOf(class, race, roll)
+            def = require("models.character").defs[id]
+            if not (def and taken[def.name]) then break end
+        end
+        if def and def.name then taken[def.name] = true end
         offers[slot] = {
             id = id,
             gift = (def and def.gifted) and Hire.giftFor(player, class, roll) or nil,

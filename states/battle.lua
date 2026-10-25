@@ -1545,6 +1545,7 @@ local function armDefaultAction(current)
     battle.armedSupport = battle.defaultSupport
     battle.armedHarmless = battle.defaultHarmless
     battle.armedTile = action.activeAbility.target == "tile"
+    battle.armedSelf = action.activeAbility.target == "self"
     computeRange(current, action)
 end
 
@@ -2904,6 +2905,9 @@ local function armItem(item)
     battle.armedSupport = Combat.isSupportAbility(item.activeAbility)
     battle.armedHarmless = Combat.isHarmlessAbility(item.activeAbility)
     battle.armedTile = item.activeAbility.target == "tile" -- tile-target (e.g. summon a trap)
+    -- A self-target item (Smoke, a stance) has one target and it is the user: the hint names that,
+    -- rather than "an ally to support", which sent the player looking for somebody else to click.
+    battle.armedSelf = item.activeAbility.target == "self"
     -- A two-stage throw (Heave) opens in its GRAB phase: the first aim picks the adjacent target, a
     -- second phase then picks where it lands (enterThrowDest). nil for every single-aim ability.
     battle.throwStage = Item.isThrow(item.activeAbility) and "grab" or nil
@@ -5526,7 +5530,7 @@ local function openDeployPhase(opts)
         -- The Rooted Oath's word on a fight won on ground, under the hint (models/relic.lua). Nil on
         -- every fight with no trip behind it and on every fight the company can simply walk.
         -- ...led by the fight's condition, when it is fought in one (models/dressing.lua).
-        notice = require("models.dressing").notice(battle.combat,
+        notices = require("models.dressing").noticeLines(battle.combat,
             require("models.relic").deployNotice(opts.player, battle.combat)),
         onCommit = function(deployed, front, placed, auto, speed)
             if autoAllowed() then battle.autoAll = auto and true or false end
@@ -7418,12 +7422,14 @@ function battle.drawHudText(boardX, boardW)
             local harm = battle.armedHarmless and "read"
             if pad then
                 local verb = battle.armedTile and ("Aim a tile, A to " .. (set or ("place " .. name)))
+                    or battle.armedSelf and ("A on yourself to " .. (set or "use"))
                     or battle.armedSupport and "A on an ally to support"
                     or ("A on a target to " .. (set or harm or "strike"))
                 hint = verb .. (canAim and "  ·  LB/RB to aim" or "")
                     .. "  ·  Y to switch  ·  B to cancel"
             elseif kbd then
                 local verb = battle.armedTile and ("Move to a tile, Enter to " .. (set or ("place " .. name)))
+                    or battle.armedSelf and ("Enter on yourself to " .. (set or "use"))
                     or battle.armedSupport and "Enter on an ally to support"
                     or ("Enter on a target to " .. (set or harm or "strike"))
                 hint = verb .. (canAim and "  ·  Tab to aim next" or "")
@@ -7435,6 +7441,9 @@ function battle.drawHudText(boardX, boardW)
                 -- the moment of committing to it (battle.dragTarget).
                 local press = InputMode.touch and "Drag onto" or "Click"
                 local verb = battle.armedTile and (press .. " a tile to " .. (set or ("place " .. name)))
+                    -- A finger TAPS here: there is nowhere to carry the body to but where it stands.
+                    or battle.armedSelf and ((InputMode.touch and "Tap" or "Click") .. " yourself to "
+                        .. (set or "use"))
                     or battle.armedSupport and (press .. " an ally to support")
                     or (press .. " a target to " .. (set or harm or "strike"))
                 -- Esc is not on a handset, so the finger's route out is the one that is: pressing the

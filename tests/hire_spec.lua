@@ -139,6 +139,45 @@ return {
         end,
     },
     {
+        -- The play pass: an offer could wear the name of a body already in the company.
+        name = "no offer wears a name the roster or the board already holds, and the re-roll is deterministic",
+        fn = function()
+            local function nameOf(o) return Character.defs[o.id].name end
+            for seed = 1, 40 do
+                local p = freshPlayer(seed * 7717)
+                -- Seat bodies wearing every name the untouched board would have dealt.
+                local first = Hire.board(p)
+                for _, o in ipairs(first.offers) do
+                    local c = Character.instantiate("character_rowan")
+                    c.name = nameOf(o)
+                    p.roster[#p.roster + 1] = c
+                end
+                p.hireBoard = nil
+                local board = Hire.board(p)
+                local onRoster, seen = {}, {}
+                for _, c in ipairs(p.roster) do onRoster[c.name] = true end
+                for _, o in ipairs(board.offers) do
+                    local name = nameOf(o)
+                    assert(not onRoster[name], "seed " .. seed .. " offered " .. name .. ", already on the roster")
+                    assert(not seen[name], "seed " .. seed .. " offered " .. name .. " twice on one board")
+                    seen[name] = true
+                end
+                -- The same company deals the same board again.
+                p.hireBoard = nil
+                for i, o in ipairs(Hire.board(p).offers) do
+                    assert(o.id == board.offers[i].id, "seed " .. seed .. ": the re-roll is not deterministic")
+                end
+            end
+            -- With no clash, the board is the one it always was (attempt 0 is the old roll).
+            local plain = freshPlayer()
+            local id = Hire.board(plain).offers[1].id
+            local _, _, roll = Hire.split(id)
+            local Seed = require("models.seed")
+            assert(roll == Seed.mix(Seed.lap(plain), Player.tripsHome(plain), 1, Seed.text("hire")),
+                "a board with nothing to avoid changed its first roll")
+        end,
+    },
+    {
         name = "hiring charges the fee, arrives at the median, and never raises a shelf",
         fn = function()
             local p = freshPlayer()

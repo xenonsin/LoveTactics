@@ -472,6 +472,72 @@ Arena.OBJECTIVE_REGIONS = {
     end,
 }
 
+-- How many tiles a region would have offered on this board with nothing in the way: the size its
+-- fallback owes. Capped at four (the centre's own 2x2) so a buried EDGE region does not come back as
+-- a whole row of scattered ground.
+local function nominalRegionSize(region, layout)
+    local clear = { cols = layout.cols, rows = layout.rows, tiles = {},
+        partySpawns = layout.partySpawns, enemySpawns = layout.enemySpawns }
+    for y = 1, layout.rows do
+        clear.tiles[y] = {}
+        for x = 1, layout.cols do clear.tiles[y][x] = "ground" end
+    end
+    return math.max(1, math.min(4, #region(clear)))
+end
+
+-- The fallback when a region's own ground is all blocked: the walkable tiles NEAREST THE BOARD'S
+-- CENTRE, grown into one contiguous patch of the region's nominal size where the ground allows. It used
+-- to take the first walkable tile scanning from (1,1), which on a board with mountains at its heart put
+-- a one-tile hold in the corner beside the enemy line. A tile on or next to an enemy spawn row is used
+-- only when nothing else on the board is walkable.
+local function centreFallback(layout, want)
+    local cx, cy = (layout.cols + 1) / 2, (layout.rows + 1) / 2
+    local enemyRow = {}
+    for _, s in ipairs(layout.enemySpawns or {}) do
+        for dy = -1, 1 do enemyRow[s.y + dy] = true end
+    end
+    local function rank(x, y)
+        local d = (x - cx) * (x - cx) + (y - cy) * (y - cy)
+        return (enemyRow[y] and 100000 or 0) + d
+    end
+    local pool = {}
+    for y = 1, layout.rows do
+        for x = 1, layout.cols do
+            if walkableAt(layout, x, y) then pool[#pool + 1] = { x = x, y = y, r = rank(x, y) } end
+        end
+    end
+    -- Nearest first; ties broken by row then column so the pick is the same every time.
+    table.sort(pool, function(a, b)
+        if a.r ~= b.r then return a.r < b.r end
+        if a.y ~= b.y then return a.y < b.y end
+        return a.x < b.x
+    end)
+    if #pool == 0 then return {} end
+    local banned = (pool[1].r < 100000) -- any clean tile exists: never touch the enemy rows
+    local taken, out = {}, {}
+    local function take(t)
+        taken[t.y * 1000 + t.x] = true
+        out[#out + 1] = { x = t.x, y = t.y }
+    end
+    take(pool[1])
+    while #out < want do
+        -- Best untaken tile that touches the patch; failing that, the best untaken tile at all.
+        local pick
+        for _, t in ipairs(pool) do
+            if not taken[t.y * 1000 + t.x] and not (banned and t.r >= 100000) then
+                local touches = taken[t.y * 1000 + t.x - 1] or taken[t.y * 1000 + t.x + 1]
+                    or taken[(t.y - 1) * 1000 + t.x] or taken[(t.y + 1) * 1000 + t.x]
+                if touches then pick = t; break end
+                pick = pick or t
+            end
+        end
+        if not pick then break end
+        -- `pick` holds the first touching tile if the loop broke on one, else the best loose tile.
+        take(pick)
+    end
+    return out
+end
+
 -- Resolve a region name to concrete tiles, widening the search if the board's scatter happened
 -- to bury the whole patch under obstacles. An objective with no reachable tile is unwinnable, and
 -- a generated board is allowed to be unlucky -- so this never returns empty while ANY walkable
@@ -480,13 +546,7 @@ function Arena.resolveRegion(name, layout)
     local region = Arena.OBJECTIVE_REGIONS[name] or Arena.OBJECTIVE_REGIONS.center
     local tiles = region(layout)
     if #tiles > 0 then return tiles end
-
-    for y = 1, layout.rows do
-        for x = 1, layout.cols do
-            if walkableAt(layout, x, y) then return { { x = x, y = y } } end
-        end
-    end
-    return {}
+    return centreFallback(layout, nominalRegionSize(region, layout))
 end
 
 -- How often (in ticks) a synthesized endless reinforcement tops the board back up, and how the trickle

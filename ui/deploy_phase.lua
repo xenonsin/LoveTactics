@@ -160,7 +160,12 @@ function DeployPhase.new(opts)
     -- A standing word about THIS fight that the hint line must not crowd out: today only the Rooted
     -- Oath's on a fight won on ground (models/relic.lua's Relic.deployNotice). Drawn on its own line
     -- under the hint; nil on nearly every fight.
-    self.notice = opts.notice
+    -- A LIST since the fight's condition joined it (models/dressing.lua's Dressing.noticeLines): one
+    -- entry per thing said, condition first and the Oath second, each fitted on rows of its own. A bare
+    -- string is still taken, as a list of one.
+    local notices = opts.notices or opts.notice
+    if type(notices) == "string" then notices = { notices } end
+    self.notices = (notices and #notices > 0) and notices or nil
     self.gutter = opts.gutter or { x = 0, y = 0, w = 0, h = 0 }
     self.column = opts.column or { x = 16, y = 104, w = 130 }
 
@@ -851,14 +856,19 @@ function DeployPhase:draw(bounds)
     end
     love.graphics.setColor(color[1], color[2], color[3])
     love.graphics.print(Theme.ellipsize(line, self.font, hintW), hintX, r.y + 3)
-    -- The fight's standing notice, on the line below and in the warning tint, so the controls hint and
-    -- the refusal line above keep their row. Only where the gutter has the second row to give (not on
-    -- a handheld's six-pixel strip): a word that cannot be read whole is not drawn at all.
-    if self.notice then
-        local lineH = self.font:getHeight()
-        if r.h >= 2 * lineH + 8 then
-            love.graphics.setColor(0.92, 0.78, 0.45)
-            love.graphics.print(Theme.ellipsize(self.notice, self.font, hintW), hintX, r.y + 3 + lineH + 2)
+    -- The fight's standing notices, on the rows below and in the warning tint, so the controls hint and
+    -- the refusal line above keep their row. They take only the whole rows the gutter has left under
+    -- the hint (DeployPhase.noticeRows) and never draw past its foot, so they cannot reach the board
+    -- above or anything below. On a handheld's strip there may be none to give, and then nothing is
+    -- drawn: a word that cannot be read whole is not drawn at all.
+    if self.notices then
+        local step = self.font:getHeight() + 2
+        local top = r.y + 3 + step
+        local rows = DeployPhase.noticeRows(self.notices, self.font, hintW,
+            math.floor((r.y + r.h - top) / step))
+        love.graphics.setColor(0.92, 0.78, 0.45)
+        for i, row in ipairs(rows) do
+            love.graphics.print(row, hintX, top + (i - 1) * step)
         end
     end
 
@@ -874,6 +884,43 @@ end
 
 -- One tile of the board, ringed. Drawn per CELL rather than as one rect over a body's footprint,
 -- because a turned board puts a wide body's anchor somewhere other than the top-left of its own block.
+-- The rows the standing notices draw on, given `budget` whole rows of `width`. Each notice is folded
+-- onto rows of its own -- never run on after another, which is how the Oath's warning used to be cut off
+-- the end of the condition's line. Every notice is handed one row before any gets a second, and the
+-- spare rows go to the LAST notice first: the Oath's, which is the one a reach or hold fight turns on.
+-- When there are fewer rows than notices the earlier ones give way for the same reason. A notice cut
+-- short ends its last row in an ellipsis. Returns the rows top to bottom, in the notices' own order.
+function DeployPhase.noticeRows(notices, font, width, budget)
+    local out = {}
+    if not notices or budget < 1 then return out end
+    local folded, give = {}, {}
+    for i, n in ipairs(notices) do
+        local lines = font.getWrap and select(2, font:getWrap(n, width)) or { n }
+        if #lines == 0 then lines = { n } end
+        folded[i], give[i] = lines, 0
+    end
+    local left = budget
+    for i = #notices, 1, -1 do
+        if left > 0 then give[i], left = 1, left - 1 end
+    end
+    for i = #notices, 1, -1 do
+        local more = math.min(left, #folded[i] - give[i])
+        give[i], left = give[i] + more, left - more
+    end
+    for i, lines in ipairs(folded) do
+        for k = 1, give[i] do
+            if k == give[i] and give[i] < #lines then
+                local rest = {}
+                for m = k, #lines do rest[#rest + 1] = lines[m] end
+                out[#out + 1] = Theme.ellipsize(table.concat(rest, " "), font, width)
+            else
+                out[#out + 1] = Theme.ellipsize(lines[k], font, width)
+            end
+        end
+    end
+    return out
+end
+
 local function ringCell(map, x, y, color, alpha)
     local px, py = map:cellToPixel(x, y)
     local s = map.size

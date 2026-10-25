@@ -414,4 +414,42 @@ return {
         assert(Dressing.notice({ condition = "condition_fog" }, nil):find("^Fog: "), "the deploy notice names it")
         assert(Dressing.hudSuffix({ condition = "condition_fog" }) == " -- Fog")
     end },
+    { name = "the condition and the Oath are two notices, each fitted on rows of its own", fn = function()
+        local Relic = require("models.relic")
+        local DeployPhase = require("ui.deploy_phase")
+        local lines = Dressing.noticeLines({ condition = "condition_fog" }, Relic.ROOTED_NOTICE)
+        assert(#lines == 2, "two things said are two lines, got " .. #lines)
+        assert(lines[1]:find("^Fog: "), "the condition comes first")
+        assert(lines[2] == Relic.ROOTED_NOTICE, "the Oath comes second, whole")
+        assert(#Dressing.noticeLines({}, nil) == 0, "nothing to say is an empty list")
+
+        -- A stub that WRAPS (six pixels a character, greedy on words), so a fold can be measured.
+        local font = {}
+        function font:getWidth(t) return #t * 6 end
+        function font:getWrap(text, limit)
+            local out, cur = {}, nil
+            for word in text:gmatch("%S+") do
+                local try = cur and (cur .. " " .. word) or word
+                if cur and #try * 6 > limit then out[#out + 1] = cur; cur = word else cur = try end
+            end
+            out[#out + 1] = cur
+            return limit, out
+        end
+        local width = 300 -- 50 characters: the Oath alone needs two rows
+        -- Room for everything: the condition keeps its row and the Oath is never cut.
+        local rows = DeployPhase.noticeRows(lines, font, width, 6)
+        assert(rows[1]:find("^Fog: "), "the condition's row comes first")
+        local tail = table.concat(rows, " ", 2)
+        assert(not tail:find("...", 1, true), "with the room, nothing is ellipsized: " .. tail)
+        assert(tail:find("abilities that move", 1, true), "the Oath's warning is read to its end")
+        for _, r in ipairs(rows) do assert(font:getWidth(r) <= width, "every row fits its width: " .. r) end
+        -- Two rows: one each, the condition first, neither run on into the other.
+        rows = DeployPhase.noticeRows(lines, font, width, 2)
+        assert(#rows == 2 and rows[1]:find("^Fog: ") and rows[2]:find("^The company"),
+            "two rows give each notice its own")
+        -- One row: the Oath keeps it -- it is what a ground fight turns on.
+        rows = DeployPhase.noticeRows(lines, font, width, 1)
+        assert(#rows == 1 and rows[1]:find("^The company"), "one row goes to the Oath")
+        assert(#DeployPhase.noticeRows(lines, font, width, 0) == 0, "no room draws nothing")
+    end },
 }

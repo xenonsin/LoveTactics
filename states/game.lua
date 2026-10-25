@@ -3464,6 +3464,15 @@ function game:openEncounter(cell, opts)
                     if game.map and game.map.retreatFromEncounter then
                         game.map:retreatFromEncounter()
                     end
+                    -- A SMOKE leaves by this same door (states/battle.lua's battle.smokeOut), with no
+                    -- defeat panel in between -- so without a line here the map simply came back, and
+                    -- the battle log was the only record that anything had happened. Said once the map
+                    -- is shown again, where it is read.
+                    -- The same two-part test the battle reads before it calls smokeOut (resolveAdvance).
+                    if (require("states.battle").combat or {}).slippedAway
+                            and require("states.battle").combat.smoke == true then
+                        game:pushToast("The company slipped away.")
+                    end
                     require("models.sound").music("music.overworld")
                     game:refreshMuster() -- the fight was paid for in health and potions; re-rate
                     -- BOTH saves, because a rout moves both halves: the board (a token stepped back off
