@@ -456,6 +456,12 @@ function SimBattle.enter(self, opts)
             end
             if down >= M.POLICY.smokeDown and healthShare(c.units, "enemy") > M.POLICY.smokeEnemyAbove then
                 local u, it = smokeCarrier(c)
+                -- A Smoke wanted where one may be thrown, and nobody standing holds one: say so once a
+                -- fight (spreadKit is the policy's answer to the stack lying under a fallen body).
+                if not u and c.smoke == true and not c.simNoCarrier then
+                    c.simNoCarrier = true
+                    if sim.verbose then print("        smoke wanted, none in a standing hand") end
+                end
                 if u then
                     it.quantity = math.max(0, (it.quantity or 1) - 1)
                     c.slippedAway = u
@@ -652,6 +658,56 @@ local function kitUp(id, want)
         have, bought = have + 1, bought + 1
     end
     return bought
+end
+
+-- ONE SMOKE A BODY, THE AVATAR LAST. A Smoke can only be thrown by the body whose grid holds it, and
+-- kitUp stacks every one on the first grid with room -- the avatar, a front-liner, who was one of the
+-- first two down in most of the wipes a trace showed (2026-10-25: 10 of 13 ordinary-fight wipes over
+-- one 20-save read had the policy wanting a Smoke while the only stack lay under a fallen avatar). No
+-- player packs the escape on the body that falls first; spread the stack one per body, round-robin,
+-- the rest of the company before the avatar. Smokes already in the pack stay there (out of reach on
+-- the board, as before). Returns how many bodies now hold one.
+local function spreadKit(id)
+    local order = {}
+    for _, c in ipairs(party()) do
+        if c.id ~= Class.AVATAR_ID then order[#order + 1] = c end
+    end
+    for _, c in ipairs(party()) do
+        if c.id == Class.AVATAR_ID then order[#order + 1] = c end
+    end
+    local total = 0
+    for _, c in ipairs(order) do
+        for _, it in ipairs(Character.eachItem(c)) do
+            if it.id == id then
+                total = total + (it.quantity or 1)
+                Character.removeItem(c, it)
+            end
+        end
+    end
+    local holders, k = {}, 0
+    while total > 0 and #order > 0 do
+        local placed = false
+        for _ = 1, #order do
+            k = k % #order + 1
+            local item = Item.instantiate(id)
+            item.quantity = 1
+            if Character.addItem(order[k], item) then
+                holders[order[k]] = true
+                placed = true
+                break
+            end
+        end
+        if not placed then
+            local item = Item.instantiate(id)
+            item.quantity = total
+            Player.addToPack(sim.player, item)
+            break
+        end
+        total = total - 1
+    end
+    local n = 0
+    for _ in pairs(holders) do n = n + 1 end
+    return n
 end
 
 -- The Ward (ui/panels/ward.lua): pay for each injury while the purse allows, else rest the body off.
@@ -1042,6 +1098,7 @@ local function playRun(index)
     Gate.payPurse(player, Descent.OPENING_GOLD)
     sim.run.boughtSmokes = kitUp(M.POLICY.smoke, M.POLICY.packSmokes)
     sim.run.boughtDraughts = kitUp(M.POLICY.draught, M.POLICY.packDraughts)
+    spreadKit(M.POLICY.smoke)
     sim.run.goldStart = player.gold or 0
     sim.run.trips = player.tripsCounted or 0
     note(fmt("run %d: party %d, bought %d smoke + %d draught, purse %d, trips %d", index, sim.run.party,
@@ -1192,6 +1249,7 @@ function M.policyLines()
             P.smokeDown, P.smokeEnemyAbove * 100),
         fmt("  at the Gate: top up to %d Smoke and %d %s in hand, bought at shelf price if affordable",
             P.packSmokes, P.packDraughts, P.draught),
+        "  Smokes spread one per body, the avatar last (a Smoke is thrown only by the body holding it)",
         "  Ward between runs: pay 40g per injury while affordable, else rest the body (the avatar cannot rest)",
         "  route: greedy tour of every fight/chest/cache/key/camp/reliquary/event/errand/crossroads, stair last",
         "  walk-offs: Auto-resolve when offered; camps: heal if anyone is short, else bind an injury",
