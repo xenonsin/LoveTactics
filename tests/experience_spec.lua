@@ -126,7 +126,10 @@ return {
         -- the one the player walks. Eight a floor is the measurement's mean, rounded, and is the same
         -- figure tests/reward_scale_spec simulates the ramp at.
         local actionsPerFight, killsPerFight = 7, 1.25
-        local fights = Descent.FLOORS * 8
+        --
+        -- (2026-10-24) FOUR NOW: the rift resets to floor one every run and `. floor-fights` reads the
+        -- same greedy tour at 4.13 a floor. Experience.STEP was re-cut 24 -> 13 against it.
+        local fights = Descent.FLOORS * 4
         local earned = fights *
             (actionsPerFight * Experience.PER_ACTION + killsPerFight * Experience.PER_FELLING)
 
@@ -362,8 +365,9 @@ return {
             local Descent = require("models.descent")
             local Growth = require("models.growth")
 
-            -- The same units tests/reward_scale_spec simulates at, and the same eight fights a floor
-            -- the measured tours of real rolled floors give (see Descent.FLOOR_FIGHTS).
+            -- The same units tests/reward_scale_spec simulates at, and the same four fights a floor
+            -- the measured tours of real rolled floors give (see Descent.FLOOR_FIGHTS: 4.13 since the
+            -- 2026-10-24 reset, where this read eight).
             local perFight = 7 * Experience.PER_ACTION + 1.25 * Experience.PER_FELLING
             local xp = Experience.totalFor(Descent.OPENING_LEVEL)
 
@@ -374,7 +378,7 @@ return {
                     "floor %d: the curve lands the company at %d and Descent.expectedLevel claims %d",
                     floor, reached, claimed))
                 local stock = Growth.combatantLevel({}, Descent.dangerLevel({ floor = floor }))
-                for _ = 1, 8 do
+                for _ = 1, 4 do
                     xp = xp + perFight * Experience.rewardScale(Experience.levelFor(xp), stock)
                 end
             end

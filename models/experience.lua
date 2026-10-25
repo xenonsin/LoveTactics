@@ -154,7 +154,19 @@ Experience.PER_FELLING = 4
 -- A level every two fights at parity, against every eight before. That is a real change in feel and it
 -- is the point: the ladder is three and a half times longer, so a rung has to be three and a half
 -- times cheaper or the bottom is unreachable.
-Experience.STEP = 24
+--
+-- (2026-10-24, RE-CUT TO 13 when the rift began resetting to floor one every run. The method above is
+-- unchanged -- simulate one pass down the stack at the TOUR rate, through rewardScale, and read where
+-- the company lands -- and only its input moved: `. floor-fights` (tools/floor_fights.lua) measures the
+-- greedy tour at 4.13 fights a floor, where the eight above was the old tours' rounded mean. Simulated
+-- at four a floor (and at 4.13 -- they agree), 24 lands the company at 30 against a bottom of 50 and 16
+-- lands 47; 14 is the cheapest step that still arrives. THIRTEEN, ONE UNDER IT, because it reproduces
+-- the shipped ladder EXACTLY: floor by floor it enters at 2 5 9 12 15 19 22 25 28 32 35 38 41 44 48 --
+-- the same rungs 24 gave at eight fights -- so Descent.expectedLevel, every Balance reading taken off it
+-- and every enemy level priced against it stand where they stood. It is also the plain ratio:
+-- 24 x 4.13 / 7.3 = 13.6, the scaling Class.CLASS_LEVEL_STEP took the same day. A level is now about
+-- one fight at parity, against two.)
+Experience.STEP = 13
 
 -- Total experience needed to have REACHED `level`. Level 1 costs nothing -- everybody starts there.
 function Experience.totalFor(level)
