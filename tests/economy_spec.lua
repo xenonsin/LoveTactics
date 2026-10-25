@@ -205,16 +205,149 @@ return {
         -- A lost expedition is billed on the count now (models/descent.lua's COUNT_WIPE) -- two marks
         -- against the stair's one, which is what keeps dying from being the cheaper way home without
         -- reaching into anything the player is holding.
-        name = "a wipe takes neither gold nor ore -- it is billed on the count",
+        --
+        -- (2026-10-25) EXCEPT WHAT IT FOUND, and that is the haul's rule rather than a share of the
+        -- purse: the gold earned this run goes with the haul (Descent.wipe, tests/wipe_spec.lua), and
+        -- gold the company walked in with never does. No share, no percentage -- the diff, floored at 0.
+        name = "a wipe takes the gold found this run and nothing walked in with -- no share of the purse",
         fn = function()
             assert(Player.loseHaul == nil,
                 "Player.loseHaul is back: a wipe is priced in marks, never out of a purse or a pack")
             assert(Player.WIPE_LOSS == nil, "and the share it took is gone with it")
+            local p = Player.new()
+            p.gold = 500
+            assert(require("models.descent").goldAtRisk(p, { gold = 500 }) == 0,
+                "a wipe would take gold the company walked in with")
+            assert(require("models.descent").goldAtRisk(p, { gold = 200 }) == 300,
+                "a wipe would not take exactly the gold found")
 
             local Descent = require("models.descent")
             assert(Descent.COUNT_WIPE > Descent.COUNT_STAIR,
                 "dying must cost more than walking out, or the optimal play is to die where you stand "
                 .. "rather than walk back to the stair (models/descent.lua)")
+        end,
+    },
+
+    -- ---------------------------------------------------------------------
+    -- The sinks (2026-10-25): three things gold buys, every price TENTATIVE
+    -- ---------------------------------------------------------------------
+    {
+        -- A REROLL OF THE STAIR'S SLATE. The price doubles inside one offer and climbs with depth; the
+        -- deal is a function of the run's seed and the reroll count, so a reload cannot fish for cards.
+        name = "a relic reroll costs gold, climbs per reroll, and deals off the run's seed",
+        fn = function()
+            local Relic = require("models.relic")
+            local function offer(depth)
+                return { source = "stair", ids = Relic.slate({ depth = depth }, Relic.STAIR_SLATE),
+                    floor = depth, rerolls = 0, ctx = { depth = depth } }
+            end
+            local o = offer(1)
+            assert(Relic.rerollPrice(o) == Relic.REROLL_BASE, "the first reroll on floor one is the base")
+            o.rerolls = 1
+            assert(Relic.rerollPrice(o) == Relic.REROLL_BASE * Relic.REROLL_GROWTH, "the second costs more")
+            assert(Relic.rerollPrice(offer(5)) > Relic.REROLL_BASE, "a deeper floor's reroll costs more")
+            assert(Relic.rerollPrice({ source = "elite", ids = { "x" } }) == nil, "an elite's drop is not rerolled")
+
+            -- Two identical states, the same seed: the same three cards, none of them the ones shown.
+            local a, b = Relic.newState(), Relic.newState()
+            a.offer = offer(3)
+            b.offer = { source = "stair", ids = { a.offer.ids[1], a.offer.ids[2], a.offer.ids[3] }, floor = 3,
+                rerolls = 0, ctx = { depth = 3 } }
+            local shown = {}
+            for _, id in ipairs(a.offer.ids) do shown[id] = true end
+            local pa, pb = Player.new(), Player.new()
+            pa.gold, pb.gold = 1000, 1000
+            local price = Relic.rerollPrice(a.offer)
+            local ids, paid = Relic.rerollOffer(a, pa, 4242)
+            local idsB = Relic.rerollOffer(b, pb, 4242)
+            assert(ids and #ids == Relic.STAIR_SLATE and paid == price, "the reroll did not deal or charge")
+            assert(pa.gold == 1000 - price, "the reroll took " .. (1000 - pa.gold) .. ", not its price " .. price)
+            for i, id in ipairs(ids) do
+                assert(idsB[i] == id, "the same seed dealt different cards")
+                assert(not shown[id], "a reroll dealt back a card already on the table")
+            end
+            assert(a.offer.rerolls == 1 and Relic.rerollPrice(a.offer) > price, "the next reroll did not climb")
+
+            -- Short of gold: nothing paid, nothing dealt.
+            local poor = Player.new()
+            poor.gold = Relic.rerollPrice(a.offer) - 1
+            local before = a.offer.ids[1]
+            local none, why = Relic.rerollOffer(a, poor, 4242)
+            assert(none == nil and why == "gold", "a short purse rerolled")
+            assert(poor.gold == Relic.rerollPrice(a.offer) - 1 and a.offer.ids[1] == before,
+                "a refused reroll moved the purse or the cards")
+        end,
+    },
+    {
+        -- CLASS GEAR, PAID IN GOLD. Technique or gold, the player's pick; gold stands in for the
+        -- technique track at Forge.GOLD_PER_TECHNIQUE a point and for nothing else on the bill.
+        name = "class gear forges for gold instead of technique, and every other refusal still holds",
+        fn = function()
+            local Forge = require("models.forge")
+            local Character = require("models.character")
+            local p = Player.new()
+            p.gold = 100000
+            p.materials = setmetatable({}, { __index = function() return 9999 end })
+            local knight = Character.instantiate("character_knight")
+            knight.technique, knight.techniqueSpent = {}, {} -- no technique banked at all
+            p.roster = { knight }
+            local sword = Item.instantiate("weapon_iron_sword") -- knight stock
+            local cost = Forge.upgradeCost(p, sword)
+            assert(cost.technique > 0 and cost.gold == 0, "the fixture sword is not billed in technique")
+            assert(cost.goldInstead == cost.technique * Forge.GOLD_PER_TECHNIQUE, "the gold rate is off")
+
+            local none, why = Forge.upgrade(p, sword)
+            assert(none == nil and why == "technique", "with no technique the default pay should refuse")
+            local fresh = Forge.upgrade(p, sword, "gold")
+            assert(fresh and fresh.level == 1, "paying in gold did not forge")
+            assert(p.gold == 100000 - cost.goldInstead, "gold paid " .. (100000 - p.gold))
+
+            -- The ceiling holds: gold does not buy past it.
+            local ceiling = Forge.ceilingFor(p, sword)
+            local _, lockedWhy = Forge.upgradeTo(p, fresh, ceiling + 1, "gold")
+            assert(lockedWhy == "locked", "gold forged past the ceiling: " .. tostring(lockedWhy))
+            -- The stock holds: gold stands in for technique only.
+            p.materials = {}
+            local _, matWhy = Forge.upgrade(p, fresh, "gold")
+            assert(matWhy == "materials", "gold paid for the craft stock: " .. tostring(matWhy))
+            -- A short purse is refused as gold.
+            p.materials = setmetatable({}, { __index = function() return 9999 end })
+            p.gold = 0
+            local _, goldWhy = Forge.upgrade(p, fresh, "gold")
+            assert(goldWhy == "gold", "an empty purse forged: " .. tostring(goldWhy))
+            -- Classless stock is unchanged by the choice.
+            assert(select(1, Forge.due({ gold = 80, technique = 0 }, "gold")) == 80, "classless gold moved")
+        end,
+    },
+    {
+        -- RESTING WELL: the camp at a share of one, for gold. A plain Rest still heals half, free.
+        name = "resting well heals in full for gold, and refuses a short purse",
+        fn = function()
+            local Character = require("models.character")
+            local function company(gold)
+                local p = Player.new()
+                p.gold = gold
+                local c = Character.instantiate("character_knight")
+                c.stats.health.current = 1
+                p.roster = { c }
+                return p, c
+            end
+            assert(Player.restWellPrice(3) == 3 * Player.REST_WELL_PER_FLOOR, "the price is per floor")
+            local p, c = company(1000)
+            assert(Player.restWell(p, 3), "resting well refused a full purse")
+            assert(c.stats.health.current == c.stats.health.max, "resting well did not heal in full")
+            assert(p.gold == 1000 - Player.restWellPrice(3), "resting well charged the wrong price")
+
+            local q, d = company(Player.restWellPrice(3) - 1)
+            local ok, why = Player.restWell(q, 3)
+            assert(not ok and why == "gold", "a short purse rested well")
+            assert(d.stats.health.current == 1 and q.gold == Player.restWellPrice(3) - 1,
+                "a refused rest moved the bar or the purse")
+
+            -- The free rest is still half, so the paid one is buying something.
+            local r, e = company(0)
+            Player.camp(r)
+            assert(e.stats.health.current < e.stats.health.max, "a plain rest healed in full")
         end,
     },
 }

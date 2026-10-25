@@ -236,12 +236,13 @@ function Relic._excludeSet(x)
     return set
 end
 
--- Draw one relic id from `pool` (Relic.pool output) by weight, or nil if the pool is empty.
-function Relic.roll(pool)
+-- Draw one relic id from `pool` (Relic.pool output) by weight, or nil if the pool is empty. `rng` is an
+-- optional `() -> [0,1)` for a seeded draw (a paid reroll, Relic.rerollOffer); the shared generator else.
+function Relic.roll(pool, rng)
     if not pool or #pool == 0 then return nil end
     local total = 0
     for _, e in ipairs(pool) do total = total + e.weight end
-    local r = rnd() * total
+    local r = (rng or rnd)() * total
     for _, e in ipairs(pool) do
         r = r - e.weight
         if r <= 0 then return e.id end
@@ -272,10 +273,10 @@ function Relic.slate(ctx, n)
     local taken, ids = {}, {}
     for i = 1, n do
         local sub = { exclude = taken }
-        for k, v in pairs(ctx) do if k ~= "exclude" then sub[k] = v end end
+        for k, v in pairs(ctx) do if k ~= "exclude" and k ~= "rng" then sub[k] = v end end
         -- The caller's own exclusions (if any) still apply, on top of this slate's own distinctness.
         for id in pairs(Relic._excludeSet(ctx.exclude)) do sub.exclude[id] = true end
-        local id = Relic.roll(Relic.pool(sub))
+        local id = Relic.roll(Relic.pool(sub), ctx.rng)
         if not id then break end
         taken[id] = true
         ids[#ids + 1] = id
@@ -829,8 +830,56 @@ function Relic.offerStair(state, player, floor, ctx)
     local ids = Relic.slate(ctx, Relic.STAIR_SLATE)
     if #ids == 0 then return nil end
     state.stairFloors[key] = true
-    state.offer = { source = "stair", ids = ids }
+    -- What the slate was dealt against is kept beside it, so a paid reroll deals off the same shelf.
+    state.offer = { source = "stair", ids = ids, floor = floor or 1, rerolls = 0,
+        ctx = { depth = ctx and ctx.depth, sin = ctx and ctx.sin } }
     return ids
+end
+
+-- A PAID REROLL OF THE STAIR'S SLATE (2026-10-25): gold for three fresh cards, the price doubling with
+-- each reroll in the same offer and climbing with depth. A gold sink, and TENTATIVE: every figure here
+-- waits on the faucets being cut after the author reads the run simulator's gold breakdown.
+Relic.REROLL_BASE = 50     -- TENTATIVE: the first reroll on floor one
+Relic.REROLL_GROWTH = 2    -- TENTATIVE: each further reroll in the same offer costs this many times the last
+Relic.REROLL_DEPTH = 0.25  -- TENTATIVE: what each floor below the first adds, as a share of the price
+
+-- What the next reroll of `offer` costs, or nil when it cannot be rerolled (an elite's single drop).
+function Relic.rerollPrice(offer)
+    if not (offer and offer.source == "stair") then return nil end
+    local depth = (offer.ctx and offer.ctx.depth) or offer.floor or 1
+    local base = Relic.REROLL_BASE * Relic.REROLL_GROWTH ^ (offer.rerolls or 0)
+    return math.floor(base * (1 + Relic.REROLL_DEPTH * math.max(0, depth - 1)) + 0.5)
+end
+
+-- A seeded draw for the reroll: the same run, floor and reroll count deal the same three cards, on any
+-- machine. Each draw feeds the last back through Seed.mix, so consecutive draws are not affine in k.
+local function rerollRng(seed, floor, count)
+    local Seed = require("models.seed")
+    local h = Seed.mix(seed or 0, 9157, floor or 1, count or 0)
+    return function()
+        h = Seed.mix(h, 4513)
+        return h / Seed.SPAN
+    end
+end
+
+-- Pay for and deal the reroll. `seed` is the run's (run.seed). Returns the new ids and the price paid,
+-- or nil and a reason ("none", "gold"). The cards on the table are left out of the new deal, so a
+-- reroll always shows three others.
+function Relic.rerollOffer(state, player, seed)
+    local offer = state and state.offer
+    local price = Relic.rerollPrice(offer)
+    if not price then return nil, "none" end
+    if not player or (player.gold or 0) < price then return nil, "gold" end
+    local exclude = {}
+    for _, id in ipairs(offer.ids or {}) do exclude[id] = true end
+    local ctx = { depth = offer.ctx and offer.ctx.depth, sin = offer.ctx and offer.ctx.sin, exclude = exclude,
+        rng = rerollRng(seed, offer.floor, (offer.rerolls or 0) + 1) }
+    local ids = Relic.slate(ctx, Relic.STAIR_SLATE)
+    if #ids == 0 then return nil, "none" end
+    require("models.player").spendGold(player, price)
+    offer.ids = ids
+    offer.rerolls = (offer.rerolls or 0) + 1
+    return ids, price
 end
 
 -- AN ELITE DROPS ONE, at most once per floor per trip. The elites are dealt again every time a kept

@@ -54,6 +54,28 @@ local Forge = {}
 -- the ladder kept its shape when the currency moved.
 Forge.GOLD_PER_LEVEL = 40
 
+-- CLASS GEAR MAY BE PAID IN GOLD INSTEAD (2026-10-25): the player picks, per commit, technique or gold
+-- at this rate per point of technique the rung would have cost. A gold sink, and TENTATIVE -- the rate
+-- waits on the faucets being cut after the author reads the run simulator's gold breakdown. Everything
+-- else on the bill (the ceiling, the class gate, the craft and house stock) is asked either way: gold
+-- stands in for the technique track and for nothing else.
+Forge.GOLD_PER_TECHNIQUE = 25 -- TENTATIVE
+
+-- What a bill actually charges paid `pay` ("gold", or anything else for the default): returns the gold
+-- and the technique due. Paying gold on a bill with no technique on it changes nothing.
+function Forge.due(cost, pay)
+    if not cost then return 0, 0 end
+    if pay == "gold" and (cost.technique or 0) > 0 then
+        return (cost.gold or 0) + (cost.goldInstead or cost.technique * Forge.GOLD_PER_TECHNIQUE), 0
+    end
+    return cost.gold or 0, cost.technique or 0
+end
+
+-- The gold that stands in for `technique` points.
+local function goldInstead(technique)
+    return (technique or 0) > 0 and technique * Forge.GOLD_PER_TECHNIQUE or nil
+end
+
 -- Rungs a class item may climb before its house has been run at all, with the rest of the ladder
 -- spread over the errands it asks for after (see Forge.ceilingFor).
 --
@@ -393,6 +415,7 @@ function Forge.upgradeCost(player, item)
         level = target,
         gold = gold,
         technique = technique,
+        goldInstead = goldInstead(technique), -- the price of the technique track in coin (Forge.due)
         techniqueId = techId,
         techniqueHolder = holder,
         techniqueHeld = held,
@@ -414,9 +437,10 @@ end
 -- Perform an upgrade on `item` owned by `player`: verify the bench, the ceiling, the gold and the
 -- materials, spend them, and return a FRESH instance at the new level (the caller swaps it into the
 -- grid or stash it came from -- baking a clean instance from the blueprint is why the level math never
--- double-applies). Returns the new item, or nil + a reason:
+-- double-applies). `pay` = "gold" pays the technique track in coin (Forge.due). Returns the new item, or
+-- nil + a reason:
 --   "not forgeable" | "cursed" | "max level" | "untrained" | "locked" | "gold" | "technique" | "materials"
-function Forge.upgrade(player, item)
+function Forge.upgrade(player, item, pay)
     if not Forge.canWork(item) then return nil, "not forgeable" end
     local hexed = Forge.hexRefusal(item)
     if hexed then return nil, hexed end
@@ -424,15 +448,16 @@ function Forge.upgrade(player, item)
     if not cost then return nil, "max level" end
     if cost.untrained then return nil, "untrained" end
     if cost.locked then return nil, "locked" end
-    if player.gold < cost.gold then return nil, "gold" end
-    if cost.technique > 0 and cost.techniqueHeld < cost.technique then return nil, "technique" end
+    local gold, technique = Forge.due(cost, pay)
+    if player.gold < gold then return nil, "gold" end
+    if technique > 0 and cost.techniqueHeld < technique then return nil, "technique" end
     if not Player.canAffordMaterials(player, cost.materials) then return nil, "materials" end
 
-    Player.spendGold(player, cost.gold)
+    Player.spendGold(player, gold)
     -- Comes off ONE body -- the strongest holder, the same one the bill named. See
     -- Class.spendTechnique for why it is never pooled across the roster.
-    if cost.technique > 0 then
-        Class.spendTechnique(player, cost.techniqueId, cost.technique)
+    if technique > 0 then
+        Class.spendTechnique(player, cost.techniqueId, technique)
     end
     Player.spendMaterials(player, cost.materials)
     return Item.instantiate(item.id, item.quantity, cost.level)
@@ -480,6 +505,7 @@ function Forge.costTo(player, item, target)
         levels = target - from,
         gold = gold,
         technique = technique,
+        goldInstead = goldInstead(technique),
         techniqueId = techId,
         techniqueHolder = holder,
         techniqueHeld = held,
@@ -502,7 +528,7 @@ end
 -- would cost the player real materials) the item reached so far is returned ALONGSIDE the reason, so
 -- the caller still has something to put back in the slot. A non-nil second return therefore means
 -- "this is not what you asked for", not "nothing happened".
-function Forge.upgradeTo(player, item, target)
+function Forge.upgradeTo(player, item, target, pay)
     if not Forge.canWork(item) then return nil, "not forgeable" end
     local hexed = Forge.hexRefusal(item)
     if hexed then return nil, hexed end
@@ -514,13 +540,14 @@ function Forge.upgradeTo(player, item, target)
     if not cost then return nil, "max level" end
     if cost.untrained then return nil, "untrained" end
     if cost.locked then return nil, "locked" end
-    if player.gold < cost.gold then return nil, "gold" end
-    if cost.technique > 0 and cost.techniqueHeld < cost.technique then return nil, "technique" end
+    local gold, technique = Forge.due(cost, pay)
+    if player.gold < gold then return nil, "gold" end
+    if technique > 0 and cost.techniqueHeld < technique then return nil, "technique" end
     if not Player.canAffordMaterials(player, cost.materials) then return nil, "materials" end
 
     local current = item
     for _ = from + 1, target do
-        local stepped, reason = Forge.upgrade(player, current)
+        local stepped, reason = Forge.upgrade(player, current, pay)
         if not stepped then
             return (current ~= item) and current or nil, reason
         end
@@ -716,6 +743,7 @@ function Forge.recipeCost(player, itemId)
         level = target,
         gold = gold,
         technique = technique,
+        goldInstead = goldInstead(technique),
         techniqueId = techId,
         techniqueHolder = holder,
         techniqueHeld = held,
@@ -731,7 +759,7 @@ end
 -- Returns the new tier, or nil + a reason ("not forgeable" | "max level" | "locked" | "gold" |
 -- "technique" | "materials") -- the same reason set as Forge.upgrade, so the panel needs one
 -- message table.
-function Forge.refineRecipe(player, itemId)
+function Forge.refineRecipe(player, itemId, pay)
     local def = Item.defs[itemId]
     -- A blueprint probe rather than a real instance: isUpgradable reads the blueprint off `id` anyway,
     -- so instantiating a potion just to ask whether it refines would be a wasted bake.
@@ -742,13 +770,14 @@ function Forge.refineRecipe(player, itemId)
     if not cost then return nil, "max level" end
     if cost.untrained then return nil, "untrained" end
     if cost.locked then return nil, "locked" end
-    if player.gold < cost.gold then return nil, "gold" end
-    if cost.technique > 0 and cost.techniqueHeld < cost.technique then return nil, "technique" end
+    local gold, technique = Forge.due(cost, pay)
+    if player.gold < gold then return nil, "gold" end
+    if technique > 0 and cost.techniqueHeld < technique then return nil, "technique" end
     if not Player.canAffordMaterials(player, cost.materials) then return nil, "materials" end
 
-    Player.spendGold(player, cost.gold)
-    if cost.technique > 0 then
-        Class.spendTechnique(player, cost.techniqueId, cost.technique)
+    Player.spendGold(player, gold)
+    if technique > 0 then
+        Class.spendTechnique(player, cost.techniqueId, technique)
     end
     Player.spendMaterials(player, cost.materials)
     Player.setRecipeLevel(player, itemId, cost.level)

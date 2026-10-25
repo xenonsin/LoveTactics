@@ -27,6 +27,11 @@
 -- an instance, so a recipe row pins `aim` at the next tier and the track is a readout only. Better a
 -- category that plainly does one rung than a bill that promises three and charges for one.
 --
+-- PAYING IN GOLD (2026-10-25): a rung billed in technique may be paid in gold instead (models/forge.lua's
+-- Forge.due, at Forge.GOLD_PER_TECHNIQUE a point). A two-way switch sits over the bill on any row that has
+-- a technique track -- Technique | Gold -- and the choice holds across rows until it is switched back.
+-- Click a side, G on the keyboard, Y on a pad. The rest of the bill does not change.
+--
 -- This replaced a pair of tables: a list of identical plates each carrying one concatenated string,
 -- and ui/growth_ladder.lua's 11-row x N-column sheet of every stat at every level. The numbers were
 -- exact and unreadable; what a bench is actually asked is "where am I", "how far can I go" and "what
@@ -176,6 +181,7 @@ function ForgePanel.new(opts)
 
     self.sel, self.scroll = 1, 0
     self.chipRects = {}
+    self.pay = "technique" -- or "gold": how a technique track is paid (Forge.due)
     self.mx, self.my = -1, -1
     self:refresh()
     self.closeButton = CloseButton.new(self.boxX + BOX_W, self.boxY)
@@ -236,10 +242,11 @@ end
 -- The cost in a card's right column: what the NEXT rung costs, or why there isn't one. Anything
 -- belonging to a house is billed in technique, so the tail names the house it is owed to -- "40 Ninja",
 -- "30 Knight" -- and only classless stock still shows a plain "160g".
-local function costTail(cost)
+local function costTail(cost, pay)
     if not cost then return "fully forged", "max" end
     if cost.untrained then return "untrained", "locked" end
     if cost.locked then return "standing", "locked" end
+    if cost.technique > 0 and pay == "gold" then return Forge.due(cost, pay) .. "g", nil end
     if cost.technique > 0 then
         return cost.technique .. " " .. keyLabel(cost.techniqueId), nil
     end
@@ -291,7 +298,7 @@ function ForgePanel:refresh()
             local level = Player.recipeLevel(self.player, id)
             local sample = Item.instantiate(id, nil, level)
             local cost = Forge.recipeCost(self.player, id)
-            local tail, state = costTail(cost)
+            local tail, state = costTail(cost, self.pay)
             self.rows[#self.rows + 1] = { kind = "recipe", id = id, item = sample, level = level,
                 cost = cost, tail = tail, state = state, where = "recipe" }
         end
@@ -304,7 +311,7 @@ function ForgePanel:refresh()
             return Forge.canWork(item) and Forge.benchFor(item) == want
         end)) do
             local cost = Forge.upgradeCost(self.player, up.item)
-            local tail, state = costTail(cost)
+            local tail, state = costTail(cost, self.pay)
             self.rows[#self.rows + 1] = { kind = "instance", item = up.item, up = up,
                 level = up.item.level or 0, cost = cost, tail = tail, state = state, where = up.where }
         end
@@ -349,6 +356,24 @@ function ForgePanel:cycleMode(delta)
 end
 
 function ForgePanel:setMsg(text, ok) self.message, self.messageOk = text, ok end
+
+-- Switch how a technique track is paid. Only where the selected row has one: a switch with nothing to
+-- switch is a control that is not on the screen.
+function ForgePanel:setPay(pay)
+    local row = self:current()
+    local cost = row and (row.cost or self:aimedCost())
+    if not (cost and (cost.technique or 0) > 0) then return end
+    if pay == self.pay then return end
+    self.pay = pay
+    Sound.play("ui.move")
+    local keep = self.aim
+    self:refresh()
+    self:setAim(keep or 1)
+end
+
+function ForgePanel:togglePay()
+    self:setPay(self.pay == "gold" and "technique" or "gold")
+end
 
 function ForgePanel:close()
     if self.onClose then self.onClose() end
@@ -592,7 +617,7 @@ end
 function ForgePanel:upgrade(row)
     local up = row.up
     -- previewLevel, never self.aim: what the bill just showed is what gets bought.
-    local newItem, reason = Forge.upgradeTo(self.player, up.item, self:previewLevel())
+    local newItem, reason = Forge.upgradeTo(self.player, up.item, self:previewLevel(), self.pay)
     if not newItem then
         self:setMsg(self:refusal(reason, up.item), false)
         return
@@ -613,7 +638,7 @@ function ForgePanel:upgrade(row)
 end
 
 function ForgePanel:refine(row)
-    local level, reason = Forge.refineRecipe(self.player, row.id)
+    local level, reason = Forge.refineRecipe(self.player, row.id, self.pay)
     if not level then
         self:setMsg(self:refusal(reason, row.item), false)
         return
@@ -674,6 +699,7 @@ function ForgePanel:draw()
         -- An empty category draws no track, no chips and no button, so drop the rects that would
         -- otherwise keep answering clicks on behalf of whatever was listed a moment ago.
         self.track, self.forgeRect, self.breakRect, self.chipRects = nil, nil, nil, {}
+        self.payRects = nil
         love.graphics.setFont(self.bodyFont)
         Theme.set(Theme.muted)
         love.graphics.printf(EMPTY_LABEL[self.mode] or "Nothing to work on.",
@@ -696,14 +722,17 @@ function ForgePanel:draw()
     local trackless = self.mode == "mend" or self.mode == "break"
     local verb = MODE_VERB[self.mode] or "forge"
     local hint
+    local payable = self.payRects ~= nil
     if InputMode.isGamepad() then
         hint = trackless
             and ("A: " .. verb .. "    D-pad up/down: pick    LB/RB: category    B: close")
-            or ("A: " .. verb .. "    D-pad up/down: pick    left/right: aim a rung    LB/RB: category    B: close")
+            or ("A: " .. verb .. "    D-pad up/down: pick    left/right: aim a rung"
+                .. (payable and "    Y: pay in gold/technique" or "") .. "    LB/RB: category    B: close")
     else
         hint = trackless
             and ("Enter: " .. verb .. "    Tab: category    Esc: close")
-            or ("Hover a rung to preview, click to pick    Enter: " .. verb .. "    Tab: category    Esc: close")
+            or ("Hover a rung to preview, click to pick    Enter: " .. verb
+                .. (payable and "    G: pay in gold/technique" or "") .. "    Tab: category    Esc: close")
     end
     love.graphics.printf(hint, self.boxX, self.boxY + BOX_H - 30, BOX_W, "center")
 
@@ -972,6 +1001,7 @@ function ForgePanel:drawMendDetail(row, x, y, w)
 end
 
 function ForgePanel:drawDetail()
+    self.payRects = nil -- drawn again by drawBill when this row has a technique track to pay
     local row = self:current()
     if not row then return end
     if row.kind == "break" then
@@ -1203,6 +1233,7 @@ function ForgePanel:drawBill(row, cost, x, y, w, batch, aim, level)
     -- item selected would still answer a click after the thing it belonged to stopped being drawn.
     self.chipRects = {}
     self.forgeRect = nil
+    self.payRects = nil
     -- ...and the other pane's button, which is drawn by a different function on a different tab: a
     -- rect left standing answers clicks on behalf of a control that is no longer on screen.
     self.breakRect = nil
@@ -1250,12 +1281,14 @@ function ForgePanel:drawBill(row, cost, x, y, w, batch, aim, level)
     end
 
     -- The currency track: technique for anything belonging to a house, gold only for classless stock --
-    -- never both, so exactly one of these draws (models/forge.lua).
-    if cost.technique > 0 then
+    -- never both, so exactly one of these draws (models/forge.lua). A technique track may be PAID in gold
+    -- (the switch below), and then the chip is the gold it costs.
+    if cost.technique > 0 and self.pay ~= "gold" then
         chip(nil, cost.technique .. " " .. keyLabel(cost.techniqueId),
             cost.techniqueHeld or 0, cost.technique, "money")
     else
-        chip(nil, cost.gold .. " gold", self.player.gold, cost.gold, "money")
+        local gold = Forge.due(cost, self.pay)
+        chip(nil, gold .. " gold", self.player.gold, gold, "money")
     end
 
     local ids = {}
@@ -1272,6 +1305,27 @@ function ForgePanel:drawBill(row, cost, x, y, w, batch, aim, level)
     -- and nothing on screen ever said so.
     local bw, bh = 224, 46
     local bx = x + w - bw
+
+    -- THE PAY SWITCH, on the caption row over the button, on a row that has a technique track to pay.
+    if cost.technique > 0 then
+        local sy, sh = y - 24, 18
+        Theme.set(Theme.panel)
+        love.graphics.rectangle("fill", bx - 6, sy, bw + 6, sh)
+        self.payRects = {}
+        local sides = { { "technique", "Technique" }, { "gold", "Gold" } }
+        for i, side in ipairs(sides) do
+            local r = { x = bx + (i - 1) * bw / 2, y = sy, w = bw / 2, h = sh, pay = side[1] }
+            local on = self.pay == side[1]
+            Theme.set(on and Theme.accentAmber or Theme.panel2, on and 0.28 or 1)
+            love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 2, 2)
+            Theme.set(on and Theme.accentAmber or Theme.hairline)
+            love.graphics.rectangle("line", r.x, r.y, r.w, r.h, 2, 2)
+            love.graphics.setFont(self.smallFont)
+            Theme.set(on and Theme.ink or Theme.muted)
+            love.graphics.printf(side[2], r.x, r.y + sh / 2 - self.smallFont:getHeight() / 2, r.w, "center")
+            self.payRects[#self.payRects + 1] = r
+        end
+    end
     local blocked = cost.locked or cost.untrained
     local live = affordable and not blocked
     self.forgeRect = { x = bx, y = y - 2, w = bw, h = bh }
@@ -1349,6 +1403,7 @@ function ForgePanel:cursorKind(x, y)
     end
     if pointIn(self.forgeRect, x, y) then return "hand" end
     if pointIn(self.breakRect, x, y) then return "hand" end
+    for _, r in ipairs(self.payRects or {}) do if pointIn(r, x, y) then return "hand" end end
     if self.track and ForgeTrack.hit(self.track, x, y) then return "hand" end
     if self:hasRows() then
         for i = 1, #self.rows do
@@ -1369,6 +1424,9 @@ function ForgePanel:mousepressed(x, y, button)
         if pointIn(self.segRects[m], x, y) then self:setMode(m) return end
     end
     if self:hasRows() then
+        for _, r in ipairs(self.payRects or {}) do
+            if pointIn(r, x, y) then self:setPay(r.pay) return end
+        end
         if pointIn(self.forgeRect, x, y) or pointIn(self.breakRect, x, y) then
             Sound.play("ui.confirm")
             self:commit()
@@ -1396,6 +1454,7 @@ function ForgePanel:keypressed(key)
     elseif key == "pagedown" then self:moveSelection(self:visibleCount())
     elseif key == "left" or key == "a" then self:nudgeAim(-1)
     elseif key == "right" or key == "d" then self:nudgeAim(1)
+    elseif key == "g" then self:togglePay()
     elseif key == "return" or key == "kpenter" or key == "space" then
         Sound.play("ui.confirm")
         self:commit()
@@ -1410,6 +1469,7 @@ function ForgePanel:gamepadpressed(joystick, button)
     elseif button == "dpdown" then self:moveSelection(1)
     elseif button == "dpleft" then self:nudgeAim(-1)
     elseif button == "dpright" then self:nudgeAim(1)
+    elseif button == "y" then self:togglePay()
     elseif button == "a" or button == "start" then
         Sound.play("ui.confirm")
         self:commit()

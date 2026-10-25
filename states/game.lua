@@ -1093,6 +1093,8 @@ function game:openRelicOffer()
     else
         local rows = {}
         for _, id in ipairs(offer.ids) do rows[#rows + 1] = row(id) end
+        -- A PAID REROLL (Relic.rerollOffer): three other cards for gold, dealt off the run's seed.
+        local price = Relic.rerollPrice(offer)
         game.activePanel = RelicOffer.new({
             title = "Choose a Relic",
             prompt = "Take one, or skip. Relics last until you leave the rift.",
@@ -1100,6 +1102,16 @@ function game:openRelicOffer()
             offer = rows,
             onTake = function(entry) answer(entry.id) end,
             onLeave = function() answer(nil) end,
+            reroll = price and {
+                price = price,
+                enabled = (game.player and game.player.gold or 0) >= price,
+                onReroll = function()
+                    if Relic.rerollOffer(state, game.player, game.descent and game.descent.seed) then
+                        saveRun()
+                        game:openRelicOffer()
+                    end
+                end,
+            } or nil,
         })
     end
     game:teachRelics()
@@ -4521,10 +4533,18 @@ function game:openEncounter(cell, opts)
         -- runs (Player.campForecast), and a company with nothing missing is not offered a heal at all:
         -- a row that lights the fire and moves no bar is a fight bought for nothing.
         local forecast, anyMissing = Player.campForecast(game.player)
+        -- RESTING WELL (Player.restWell): the full heal, for gold, on a descent only.
+        local wellPrice = game.descent and anyMissing and Player.restWellPrice(Descent.depth(game.descent)) or nil
         game.activePanel = RestChoice.new({
             title = cell.encounter.name or "Make Camp",
             fire = game.descent ~= nil,
             forecast = anyMissing and forecast or nil,
+            restWell = wellPrice and {
+                price = wellPrice,
+                enabled = (game.player.gold or 0) >= wellPrice,
+                forecast = (Player.campForecast(game.player, Player.REST_WELL_SHARE)),
+                cb = camp(function() game:restHeal(wellPrice) end),
+            } or nil,
             onBind = (#Injury.injured(game.player) > 0) and camp(function()
                 game:restBind()
             end) or nil,
@@ -5014,7 +5034,7 @@ end
 -- fights before it cost, which left a won fight costing nothing durable and made every optional fight
 -- on the board a free yes. Player.CAMP_SHARE carries the reasoning; the hub still heals whole, because
 -- going home is supposed to be the thing that makes you whole.
-function game:restHeal()
+function game:restHeal(wellPrice)
     if not game.player then return end
     -- THE UNPAID TITHE (a rare relic): the company recovers nothing between fights, and a camp is the
     -- loudest thing that would otherwise quietly disagree with that.
@@ -5041,7 +5061,16 @@ function game:restHeal()
             entries[#entries + 1] = { char = char, from = hp.current or hp.max, max = hp.max or 0 }
         end
     end
-    Player.camp(game.player)
+    -- RESTING WELL pays and heals in full (Player.restWell); a plain rest heals half, free.
+    if wellPrice then
+        if not Player.restWell(game.player, Descent.depth(game.descent)) then
+            game:pushToast("Not enough gold to rest well")
+            game.activePanel = nil
+            return
+        end
+    else
+        Player.camp(game.player)
+    end
     -- ...and the "after", read back off the same live stat the camp just moved. Taken here rather than
     -- computed from CAMP_SHARE so the bar cannot disagree with the roster: an injury cap, a rounding rule
     -- or a later change to what a camp restores all land on this line for free.
