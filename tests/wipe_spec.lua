@@ -93,7 +93,46 @@ return {
             assert(out.lost == 1, "one piece was found this trip and " .. out.lost .. " were lost")
             assert(#player.stash == 1 and player.stash[1].id == "weapon_iron_sword",
                 "the sword they brought was taken with the haul")
-            assert(player.gold == gold, "a wipe took gold")
+            assert(player.gold == gold and out.gold == 0, "a wipe took gold the company walked in with")
+        end,
+    },
+    {
+        name = "a wipe loses the gold found this run and never the gold the company walked in with",
+        fn = function()
+            local player, run, rowan = company()
+            Descent.setParty(run, { rowan.id })
+            player.gold = 120 -- what they walked in with: the opening purse, topped up at the Gate
+            run.entry = Save.snapshot(player)
+            Player.addGold(player, 340) -- earned down there
+            local out = Descent.wipe(player, run)
+            assert(out.gold == 340, "the wipe took " .. tostring(out.gold) .. " of the 340 gold found")
+            assert(player.gold == 120, "the wipe left " .. player.gold .. " where 120 was walked in with")
+
+            -- A company that spent below what it brought loses nothing more.
+            player, run, rowan = company()
+            Descent.setParty(run, { rowan.id })
+            player.gold = 120
+            run.entry = Save.snapshot(player)
+            Player.spendGold(player, 50)
+            Player.addGold(player, 30)
+            out = Descent.wipe(player, run)
+            assert(out.gold == 0 and player.gold == 100, "a wipe reached below the gold walked in with")
+
+            -- No entry snapshot, nothing at stake.
+            assert(Descent.goldAtRisk(player, nil) == 0, "gold is at risk with no entry snapshot")
+        end,
+    },
+    {
+        name = "climbing out keeps the gold: only the wipe branch charges it",
+        fn = function()
+            local src = assert(love.filesystem.read("models/descent.lua"), "cannot read models/descent.lua")
+            src = src:gsub("\r", "")
+            local n = 0
+            for _ in src:gmatch("Descent%.goldAtRisk%(") do n = n + 1 end
+            -- the definition, and the one call inside Descent.wipe
+            assert(n == 2, "Descent.goldAtRisk is called " .. (n - 1) .. " times in descent.lua; only the wipe may")
+            local branch = wipeBranch()
+            assert(branch:find("pendingGoldLost", 1, true), "the wipe branch no longer tells the city the gold lost")
         end,
     },
     {
@@ -133,11 +172,18 @@ return {
         end,
     },
     {
-        name = "the city's rout notice says the haul is lost and who died",
+        name = "the city's rout notice says the haul and the gold are lost, and who died",
         fn = function()
             local src = assert(love.filesystem.read("states/hub.lua"), "cannot read states/hub.lua")
-            assert(src:find("The haul is lost.", 1, true), "the rout notice no longer says the haul is lost")
-            assert(src:find("pendingDead", 1, true), "the rout notice no longer names the dead hires")
+            assert(src:find("routNotice(", 1, true),
+                "the hub no longer says the rout through Descent.routNotice")
+            assert(src:find("pendingDead", 1, true) and src:find("pendingGoldLost", 1, true),
+                "the rout notice no longer reads the dead hires and the gold lost")
+            assert(Descent.routNotice(4, 340, {}) == "Routed on floor 4. The haul and 340 gold are lost.",
+                Descent.routNotice(4, 340, {}))
+            assert(Descent.routNotice(2, 0, {}) == "Routed on floor 2. The haul is lost.")
+            assert(Descent.routNotice(2, nil, { "Bram" }) == "Routed on floor 2. The haul is lost. Bram died.")
+            assert(Descent.routNotice(3, 15, { "A", "B" }) == "Routed on floor 3. The haul and 15 gold are lost. 2 hires died.")
         end,
     },
 }

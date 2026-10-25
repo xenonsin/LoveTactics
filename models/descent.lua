@@ -3390,14 +3390,23 @@ end
 -- (It was a CARRIER for a day -- what killed the company held the haul on the fall tile and hires were
 -- stranded beside it -- and a heap on the floor before that. Both needed a floor that outlived the run.)
 --
--- Returns { lost = how many pieces, dead = { names } }. Nothing is saved here; the caller saves.
+-- THE GOLD FOUND THIS RUN GOES WITH THE HAUL (2026-10-25), on the haul's own terms: what the purse holds
+-- above the entry snapshot is lost, and nothing below it ever is (Descent.goldAtRisk). The snapshot is
+-- taken as the company steps onto floor one, after the Gate's opening top-up and the packing, so the
+-- opening purse is gold the company walked in with. Before this a wipe cost nothing in coin, and coin
+-- is what a run pays most of.
+--
+-- Returns { lost = how many pieces, gold = coin lost, dead = { names } }. Nothing is saved here; the
+-- caller saves.
 function Descent.wipe(player, run)
     local Player = require("models.player")
     local Hire = require("models.hire")
-    local out = { lost = 0, dead = {} }
+    local out = { lost = 0, gold = 0, dead = {} }
     if not player then return out end
     local haul = Player.takeAtRisk(player, run and run.entry)
     out.lost = #haul
+    out.gold = Descent.goldAtRisk(player, run and run.entry)
+    player.gold = (player.gold or 0) - out.gold
     local hires = {}
     for _, char in ipairs(run and Descent.party(run, player) or {}) do
         if Hire.isHire(char) then hires[#hires + 1] = char end
@@ -3406,6 +3415,26 @@ function Descent.wipe(player, run)
         if Hire.dismiss(player, char.id) then out.dead[#out.dead + 1] = char.name or char.id end
     end
     return out
+end
+
+-- The coin a wipe would take right now: the purse above what the company walked in with, never below
+-- nought. No entry snapshot (no run, or the prologue's scripted legs) means nothing is at stake.
+function Descent.goldAtRisk(player, entry)
+    if not (player and entry) then return 0 end
+    return math.max(0, math.floor((player.gold or 0) - (entry.gold or 0)))
+end
+
+-- What the city says to a routed company (states/hub.lua). `goldLost` and `dead` are Descent.wipe's.
+function Descent.routNotice(floor, goldLost, dead)
+    local lost = (goldLost or 0) > 0 and ("The haul and " .. goldLost .. " gold are lost.") or "The haul is lost."
+    local notice = "Routed on floor " .. tostring(floor) .. ". " .. lost
+    dead = dead or {}
+    if #dead == 1 then
+        notice = notice .. " " .. dead[1] .. " died."
+    elseif #dead > 1 then
+        notice = notice .. " " .. #dead .. " hires died."
+    end
+    return notice
 end
 
 

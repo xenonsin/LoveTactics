@@ -645,7 +645,8 @@ function hub.enter()
     -- (states/game.lua's onLoss). One visit's worth: consumed here so it cannot greet the player a
     -- second time on the way back from the shops.
     --
-    -- WHAT IT SAYS NOW (2026-10-24): the haul is lost, and which hires died. The rift resets every run,
+    -- WHAT IT SAYS NOW (2026-10-24): the haul is lost (and the gold found this run, 2026-10-25), and
+    -- which hires died. The rift resets every run,
     -- so nothing waits on the floor (models/descent.lua's Descent.wipe); the kit they walked down with
     -- came home, which is why the sentence names only those two.
     --
@@ -653,14 +654,9 @@ function hub.enter()
     -- in the file at all.
     notice = nil
     if hub.player.pendingRout then
-        notice = "Routed on floor " .. hub.player.pendingRout .. ". The haul is lost."
-        local dead = hub.player.pendingDead or {}
-        if #dead == 1 then
-            notice = notice .. " " .. dead[1] .. " died."
-        elseif #dead > 1 then
-            notice = notice .. " " .. #dead .. " hires died."
-        end
-        hub.player.pendingRout, hub.player.pendingDead = nil, nil
+        notice = require("models.descent").routNotice(hub.player.pendingRout, hub.player.pendingGoldLost,
+            hub.player.pendingDead)
+        hub.player.pendingRout, hub.player.pendingDead, hub.player.pendingGoldLost = nil, nil, nil
     end
     -- The town is the safe home a battle hands back to, so clear any screen effect the last fight left
     -- standing -- the defeat grey most of all -- rather than let it bleed into the city (ui/screen_fx).

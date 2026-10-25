@@ -3498,7 +3498,11 @@ function game:openEncounter(cell, opts)
                 --      roster for good; the company's gear on them goes back to the stash (Descent.wipe).
                 --      The named cast comes home injured.
                 --
-                -- What it does NOT take: the kit they marched down with, the gold and the levels.
+                --   4. THE GOLD FOUND THIS RUN IS LOST with the haul -- the purse above what it walked
+                --      in with (Descent.wipe).
+                --
+                -- What it does NOT take: the kit they marched down with, the gold they walked in with,
+                -- and the levels.
                 if game.descent then
                     local floor = Descent.depth(game.descent)
                     -- The tally's two marks. Inert while it is parked (Descent.COUNT_PARKED); left
@@ -3518,7 +3522,8 @@ function game:openEncounter(cell, opts)
                     game.endFight()
 
                     -- (2, 3) The haul, and the hires. Read off the run before it is let go.
-                    game.player.pendingDead = Descent.wipe(game.player, game.descent).dead
+                    local wiped = Descent.wipe(game.player, game.descent)
+                    game.player.pendingDead, game.player.pendingGoldLost = wiped.dead, wiped.gold
 
                     -- What is left in the bag is what they packed at the Gate, and that comes home.
                     Player.unpack(game.player)
