@@ -181,8 +181,8 @@ function RelicReveal:draw()
     self:drawButton(self.takeBtn, takeLabel, true, self.focus == "take", self.priceLabel and not self.canPay)
 
     local verb = self.priceLabel and "pay" or "take"
-    local hint = InputMode.pick("A " .. verb .. "  -  B leave", nil,
-        "Enter " .. verb .. "  -  Esc leave")
+    local hint = InputMode.pick("A to " .. verb .. "  -  B to leave", nil,
+        "Enter to " .. verb .. "  -  Esc to leave")
     if hint then
         love.graphics.setFont(self.hintFont)
         love.graphics.setColor(0.55, 0.6, 0.7)

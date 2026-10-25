@@ -43,7 +43,7 @@ return {
         { "character_rowan", "Classes", tag = 5, id = "classes_title" },
         { "character_rowan", "Leveling up increases the stats determined by your chosen class. You are free to change classes at any time.\n\nYour class level increases when you use actions in combat. Using any action increases your class technique by 2.\n\nClass level unlocks abilities from trainers and new classes, while the technique can be spent to upgrade items of unlocked classes.", tag = 6, id = "classes_body" },
         { "character_rowan", "Relics", tag = 10, id = "relics_title" },
-        { "character_rowan", "Relics are bonuses that affect the whole party that only last until you leave the rift.", tag = 11, id = "relics_body" },
+        { "character_rowan", "Relics are bonuses that affect the whole company that only last until you leave the rift.", tag = 11, id = "relics_body" },
         { "character_rowan", "Injuries", tag = 12, id = "injury_title" },
         { "character_rowan", "When a character becomes incapacitated in battle and isn't revived before they bleed out, they take an injury. There are seven kinds and which one they take is dealt on the spot: Blood Loss seals part of the health pool, while a Shattered Leg, a Torn Shoulder, Cracked Ribs, a Rattled head, a Burst Lung or a Ruptured Font each leave something the body fights under until it is set. They stack, and nothing in a fight lifts one.\n\nThe Cathedral can mend injuries instantly for a price, or you can choose to have the character rest for a few descents for free, but they won't be able to descend with you until they recover.", tag = 13, id = "injury_body" },
         { "character_rowan", "A to continue", tag = 7, id = "dismiss_pad" },

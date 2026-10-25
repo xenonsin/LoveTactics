@@ -1760,6 +1760,7 @@ function Descent.floorPool(ctx)
     local out = {}
     for _, e in ipairs(pool) do
         local weight = e.weight
+        local billed -- this floor's named elite (Descent.skipLastRun never takes it off the floor)
         if e.kind == "elite" then
             -- ---------------------------------------------------------------------------
             -- THE CIRCLE NAMES ITS OWN STANDING THREAT, AND THE RUNG SAYS WHICH ONE
@@ -1801,6 +1802,7 @@ function Descent.floorPool(ctx)
             weight = Descent.ELITE_WEIGHT
             if mine then
                 weight = (e.id == mine) and Descent.ELITE_NAMED_WEIGHT or Descent.ELITE_WEIGHT
+                if e.id == mine then billed = true end
             end
         elseif e.kind ~= "combat" then
             weight = weight * Descent.TEXTURE_SCALE
@@ -1848,7 +1850,7 @@ function Descent.floorPool(ctx)
             end
         end
         if not light then
-            out[#out + 1] = { id = e.id, kind = e.kind, name = e.name, weight = weight }
+            out[#out + 1] = { id = e.id, kind = e.kind, name = e.name, weight = weight, billed = billed }
         end
     end
 
@@ -3018,6 +3020,86 @@ function Descent.wander(run, pool)
         if r <= 0 then pick = e break end
     end
     return { kind = "combat", id = pick.id, name = pick.name, wandering = true }
+end
+
+-- ---------------------------------------------------------------------------
+-- Not last run's fights
+-- ---------------------------------------------------------------------------
+--
+-- THE RIFT RESETS EVERY RUN, AND A RESET THAT DEALS THE SAME MONSTERS IS NOT ONE. A floor keeps its
+-- identity by depth -- its circle, its stair, its billed elite -- so the pool it draws from is the same
+-- pool every run, and a company walking floor two for the fourth time was meeting the same two or three
+-- fights it met the last three times. So the run writes down what it met on each floor (`run.met`,
+-- Descent.noteMet), the run's end hands that to the player (`player.lastRunFights`,
+-- Descent.closeRunFights), and the next run's pool leaves those fights out (Descent.skipLastRun).
+--
+-- ONE RUN OF MEMORY, NOT A LEDGER. Only the previous run is skipped, so a fight is never gone for long,
+-- and a floor the last run never reached skips nothing.
+--
+-- NEVER AT THE COST OF AN EMPTY POOL. Each kind is filtered on its own and given back whole when the
+-- filter would leave it with nothing: a thin floor deals a repeat rather than no fight at all.
+--
+-- WHAT IS NEVER SKIPPED: the floor's billed elite (Descent.floorPool marks it `billed`; it is the floor's
+-- identity, dealt off Descent.eliteSeed), the adventuring parties (each one is what keeps a class shelf
+-- droppable on this floor, models/adventurers.lua), and everything outside the pool -- the stair, its
+-- ward, errands, companion postings and every scripted fight are seated by other passes.
+
+local function metKey(floor) return tostring(floor or 1) end
+
+-- Write down that the company met `enc` on the floor `run` is standing on. Fights only; idempotent.
+function Descent.noteMet(run, enc)
+    if not (type(run) == "table" and type(enc) == "table" and enc.id) then return end
+    if enc.kind ~= "combat" and enc.kind ~= "elite" then return end
+    run.met = run.met or {}
+    local key = metKey(Descent.depth(run))
+    local list = run.met[key] or {}
+    for _, id in ipairs(list) do if id == enc.id then return end end
+    list[#list + 1] = enc.id
+    run.met[key] = list
+end
+
+-- The run is over: what it met becomes "last run" for the next one. Replaces the whole record, so only
+-- one run is ever remembered. Safe to call twice (the second call sees the same run).
+function Descent.closeRunFights(player, run)
+    if type(player) ~= "table" or type(run) ~= "table" then return end
+    local out = {}
+    for key, list in pairs(run.met or {}) do
+        if type(list) == "table" and #list > 0 then
+            local copy = {}
+            for i, id in ipairs(list) do copy[i] = id end
+            out[tostring(key)] = copy
+        end
+    end
+    player.lastRunFights = next(out) and out or nil
+end
+
+-- `pool` (Descent.floorPool's) without the fights the company met on `floor` last run. Returns a new
+-- list; `pool` is untouched.
+function Descent.skipLastRun(pool, player, floor)
+    if type(pool) ~= "table" then return pool end
+    local list = player and player.lastRunFights and player.lastRunFights[metKey(floor)]
+    if type(list) ~= "table" or #list == 0 then return pool end
+    local skip = {}
+    for _, id in ipairs(list) do skip[id] = true end
+    local Encounter = require("models.encounter")
+    local function isParty(e) return (Encounter.get(e.id) or {}).party == true end
+    local function skippable(e)
+        if not skip[e.id] then return false end
+        if e.kind ~= "combat" and e.kind ~= "elite" then return false end
+        if e.billed then return false end
+        return not isParty(e)
+    end
+    -- Per kind: would the kind still deal one of the floor's OWN fights with its skippable entries gone?
+    -- A party left standing does not count -- a floor dealing nothing but adventurers is not a floor.
+    local left = {}
+    for _, e in ipairs(pool) do
+        if (e.weight or 1) > 0 and not skippable(e) and not isParty(e) then left[e.kind] = true end
+    end
+    local out = {}
+    for _, e in ipairs(pool) do
+        if not (skippable(e) and left[e.kind]) then out[#out + 1] = e end
+    end
+    return out
 end
 
 -- A WANDERER IS SWEPT OFF THE BOARD RATHER THAN WOKEN, and that clause is the far end of a repair
@@ -5547,7 +5629,27 @@ function Descent.snapshot(run)
         -- THE RUN'S BOARDS (Descent.keepFloor), written raw: a kept board is already plain Overworld
         -- snapshot data. Nil when the run has kept none. A resume finds floor N-1 as it was left.
         floors = next(run.floors or {}) and run.floors or nil,
+        -- THE FIGHTS THIS RUN HAS MET, per floor (Descent.noteMet), or a quit-and-Continue would forget
+        -- them and the next run would deal them again. Nil while it has met none. Additive.
+        met = next(run.met or {}) and run.met or nil,
     }
+end
+
+-- A `{ ["floor"] = { id, ... } }` record read back from a save: keys forced to strings, lists copied,
+-- anything that is not an id dropped. Shared by the run's `met` and the player's `lastRunFights`.
+function Descent.restoreMet(rec)
+    if type(rec) ~= "table" then return nil end
+    local out = {}
+    for key, list in pairs(rec) do
+        if type(list) == "table" then
+            local copy = {}
+            for _, id in ipairs(list) do
+                if type(id) == "string" then copy[#copy + 1] = id end
+            end
+            if #copy > 0 then out[tostring(key)] = copy end
+        end
+    end
+    return next(out) and out or nil
 end
 
 function Descent.restore(snap)
@@ -5618,6 +5720,7 @@ function Descent.restore(snap)
             end
             return out
         end)(),
+        met = Descent.restoreMet(snap.met), -- ...and what it has met; see snapshot
         entry = nil, -- re-attached by Save.restoreRun from the run-level copy; see above
     }
 end

@@ -522,6 +522,7 @@ return {
     ["items/consumable_plaguebearers_draught.png"] = { icon = "lorc/overdose", by = "hand" },
     ["items/consumable_puffball.png"] = { icon = "delapouite/chanterelles", by = "hand" },
     ["items/consumable_sappers_line.png"] = { icon = "lorc/land-mine", by = "hand" },
+    ["items/consumable_smoke.png"] = { icon = "delapouite/steam", by = "hand" },
     ["items/consumable_spiders_supper.png"] = { icon = "lorc/dripping-tube", by = "hand" },
     ["items/consumable_the_tithe.png"] = { icon = "lorc/chalice-drops", by = "hand" },
     ["items/consumable_thinblood_rime.png"] = { icon = "lorc/snowflake-2", by = "auto" },

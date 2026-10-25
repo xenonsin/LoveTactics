@@ -16,7 +16,7 @@ return {
     scale = { 3, 1 },
     battleStart = function(_, _, ctx)
         for _, c in ipairs(ctx.party) do
-            ctx.grantBoon(c, "status_regen", { duration = ctx.mag(3, 1) })
+            ctx.grantBoon(c, "status_regen", { duration = ctx.mag(3, 1) * require("models.status").TICKS_PER_TURN }) -- the blurb counts TURNS; a status counts ticks
         end
     end,
 }

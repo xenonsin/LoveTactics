@@ -341,14 +341,16 @@ return {
             assert(#boons == 2, "Duelist's Spur queues a boon for each front-row unit")
             for _, boon in ipairs(boons) do
                 assert(boon.id == "status_hasted", "the boon is Hasted")
-                assert(boon.opts.duration == 3, "one copy is the authored base duration")
+                assert(boon.opts.duration == 3 * require("models.status").TICKS_PER_TURN,
+                    "one copy is the authored base duration: three turns, in ticks")
             end
             -- A second copy deepens the DURATION, which is how an opening boon stacks.
             local ctx2 = ctxFor({ a })
             Relic.grant(ctx2.state, "relic_duelists_spur")
             Relic.grant(ctx2.state, "relic_duelists_spur")
             local deeper = Relic.openingBoons(Relic.dispatch("battleStart", ctx2))
-            assert(deeper[1].opts.duration == 4, "a second copy adds a turn; got " .. tostring(deeper[1].opts.duration))
+            assert(deeper[1].opts.duration == 4 * require("models.status").TICKS_PER_TURN,
+                "a second copy adds a turn; got " .. tostring(deeper[1].opts.duration))
         end,
     },
     {

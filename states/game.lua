@@ -544,6 +544,7 @@ local function endDescent(outcome, result, keep)
         Player.unpack(game.player)
         -- Relics last one trip (models/relic.lua). The screen's run first: after a quit-and-Continue
         -- it is the copy carrying the relics, and `descentRun` is a sibling restored from the profile.
+        Descent.closeRunFights(game.player, game.descent or game.player.descentRun) -- next run skips them
         Relic.endTrip(game.descent or game.player.descentRun, game.player)
         game.player.descentRun = nil
     end
@@ -1454,7 +1455,9 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
     -- re-armed (Descent.rearmFloor) but its ordinary combat was never seated at all, so a pool hung off
     -- the generate branch would leave every walked-back floor silently quiet. That is the shape of bug
     -- Descent.FLOOR_FEATURE_KEYS exists to prevent, one layer up.
-    game.floorPool = game.descent and Descent.floorPool(ctx) or nil
+    -- ...less the fights the last run met on this floor, where the pool has others (Descent.skipLastRun).
+    game.floorPool = game.descent
+        and Descent.skipLastRun(Descent.floorPool(ctx), game.player, game.depth) or nil
 
     -- ACT 0's FLOOR ONE DEALS ITS FIGHTS THE SAME WAY, OUT OF A SCRIPT (states/prologue.lua's FLIGHT_QUEST
     -- `prowl`). The tutorial floor has no run and no pool -- its fights are lessons, in an order -- but a
@@ -2821,6 +2824,11 @@ function game:openEncounter(cell, opts)
             -- two is shown is decided by the board at the moment the fight is decided, since only it knows
             -- whether anybody was left (states/battle.lua's lose stamps `battle.routed`).
             routedLabel = game.descent and "Fall Back" or nil,
+            -- WHETHER A SMOKE MAY END THIS FIGHT (data/items/consumable/consumable_smoke.lua): true, or
+            -- the reason it may not. Underground only, and never on a stair -- the guardian, her ward and
+            -- the Crown are the work a floor is walked for. Its exit is the rout below (onLoss).
+            smoke = game.descent and ((kind == "objective" and objSpec and not objSpec.questId
+                and not objSpec.leadIn) and "Not on a stair." or true) or nil,
             -- THE WAY OUT, offered on the deploy screen (models/flee.lua, ui/deploy_phase.lua).
             --
             -- A DESCENT ONLY, and the narrowness is the point. Down here the ordinary fighting is rolled
@@ -2991,7 +2999,7 @@ function game:openEncounter(cell, opts)
                     -- (Player.newGamePlus) and a pack left full would be a shelf's worth of gear
                     -- sealed in a container the next campaign never opens.
                     if game.player then Player.unpack(game.player) end
-                    if game.player then Relic.endTrip(game.descent or game.player.descentRun, game.player); game.player.descentRun = nil end
+                    if game.player then Descent.closeRunFights(game.player, game.descent or game.player.descentRun); Relic.endTrip(game.descent or game.player.descentRun, game.player); game.player.descentRun = nil end
                     Player.save()
                     State.switch(require("states.credits"), { newGamePlus = true })
                     return
@@ -3163,7 +3171,7 @@ function game:openEncounter(cell, opts)
                             Player.finishCampaign(game.player)
                             clearRun()
                             if game.player then Player.unpack(game.player) end
-                            if game.player then Relic.endTrip(game.descent or game.player.descentRun, game.player); game.player.descentRun = nil end
+                            if game.player then Descent.closeRunFights(game.player, game.descent or game.player.descentRun); Relic.endTrip(game.descent or game.player.descentRun, game.player); game.player.descentRun = nil end
                             Player.save()
 
                             -- AND THIS IS THE END OF THE GAME, not the end of a mode.
@@ -3505,6 +3513,7 @@ function game:openEncounter(cell, opts)
                     require("models.gate").homecoming(game.player, game.descent, true)
 
                     -- THE RUN CLOSES ON A WIPE, as on the climb-out; the next descent starts at floor one.
+                    Descent.closeRunFights(game.player, game.descent) -- the next run skips what this one met
                     Relic.endTrip(game.descent, game.player) -- relics stay below (models/relic.lua)
                     game.player.descentRun = nil
                     game.descent = nil
@@ -3686,6 +3695,8 @@ function game:openEncounter(cell, opts)
             fireAbility("objectiveReached", { cell = cell })
             fireRelics("objectiveReached", { cell = cell })
         end
+        -- Met, however it is settled -- fought, walked off or fled -- so the next run deals another.
+        if game.descent then Descent.noteMet(game.descent, cell.encounter) end
         if EncounterBattle.cellEligible(cell) and Muster.canWalkOver(game:musterMargin(cell)) then
             game.activePanel = Choice.new({
                 title = cell.encounter.name or "A Fight Beneath You",
@@ -4683,6 +4694,7 @@ function game:openEncounter(cell, opts)
                 run.entry = entry
                 -- (counted trips, 2026-10-23) HOME: the trip counts if it won a fight (Gate.homecoming).
                 require("models.gate").homecoming(game.player, run, false)
+                Descent.closeRunFights(game.player, run) -- the next run skips what this one met
                 Relic.endTrip(run, game.player) -- relics stay below (models/relic.lua)
                 game.player.descentRun = nil
                 game.descent = nil
@@ -5694,6 +5706,13 @@ function game.drawHud()
         local baseY = game:checklistTop() + game:checklistHeight()
         for i, toast in ipairs(game.toasts) do
             local a = math.min(1, toast.t / 0.6) -- fade out over the last 0.6s
+            -- A PLATE UNDER EACH LINE, so a long one does not print bare over the board. Panel stock
+            -- with the quiet frame, fading with the text; one pixel short of the 20px pitch so two
+            -- stacked toasts read as two plates rather than one block.
+            Theme.set(Theme.panel, 0.92 * a)
+            love.graphics.rectangle("fill", 12, baseY + (i - 1) * 20, hudFont:getWidth(toast.text) + 12, 19, 3, 3)
+            Theme.set(Theme.frame, 0.8 * a)
+            love.graphics.rectangle("line", 12, baseY + (i - 1) * 20, hudFont:getWidth(toast.text) + 12, 19, 3, 3)
             love.graphics.setColor(0.85, 0.9, 0.7, a)
             love.graphics.print(toast.text, 18, baseY + (i - 1) * 20)
         end

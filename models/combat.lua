@@ -15166,6 +15166,16 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
         end
     end
 
+    -- A SMOKE ENDS THE FIGHT (data/items/consumable/consumable_smoke.lua). Marked here, on the live path
+    -- and never in the effect -- the effect also runs under the forecast, and a hover must not end a
+    -- fight. The state reads the mark before it judges the board (states/battle.lua's resolveAdvance)
+    -- and leaves through the rout.
+    if ab.slipAway then
+        combat.slippedAway = unit
+        Combat.logEvent(combat, "action",
+            string.format("%s throws down %s. The company slips away.", unitName(unit), item.name or "smoke"), unit)
+    end
+
     return true, result
 end
 

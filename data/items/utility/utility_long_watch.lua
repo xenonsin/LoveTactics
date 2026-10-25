@@ -20,5 +20,5 @@ return {
     -- so left underived it files at ~0 -- see models/grade.lua on a passive being BLIND.
     grade = 0.45,
     unlockLevel = 9,
-    openingBoon = { id = "status_regen", opts = { duration = 3 } },
+    openingBoon = { id = "status_regen", opts = { duration = 15 } }, -- 3 turns, in ticks (Status.TICKS_PER_TURN = 5): a bare 3 was under one turn
 }

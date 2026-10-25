@@ -2262,6 +2262,8 @@ Grade.SLOT_PINS = {
     consumable_net = { at = 0, why = "a standing draught: a gate on it would price a need" },
     consumable_panacea = { at = 0, why = "a standing draught: a gate on it would price a need" },
     consumable_stamina_potion = { at = 0, why = "a standing draught: a gate on it would price a need" },
+    -- ...and the one way out of a fight that is going wrong, which is a need of the same kind (2026-10-24).
+    consumable_smoke = { at = 0, why = "a standing escape: a gate on the way out would price a need" },
 
     -- THE CHASE IS THE DEEPEST THING ON ITS OWN LIST, which is the whole of the drop-rate design: a
     -- floor picks a rank before it looks at who died, so within one body's list the TIER IS THE RARITY

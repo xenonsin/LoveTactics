@@ -43,14 +43,16 @@ local Market = require("models.market")
 local Player = require("models.player")
 local Vendor = require("models.vendor")
 
--- THE STANDING RACK, DECLARED. Ten draughts and nothing else. It held the thirteen plain opening
+-- THE STANDING RACK, DECLARED. Eleven draughts and nothing else. It held the thirteen plain opening
 -- weapons as well until 2026-10-13; a blade is not a need, and the class shelves sell it. Reviving
 -- Salts joined the nine on 2026-10-15 (models/grade.lua pins it at rung 0): the one revive a company
--- can carry is a need, and a gate on it would price one.
+-- can carry is a need, and a gate on it would price one. Smoke joined on 2026-10-24 for the same reason:
+-- it is the way out of a fight, and a gate on the way out prices a need.
 local DRAUGHTS = {
     "consumable_ball_bearings", "consumable_clearwater_vial", "consumable_healing_potion",
     "consumable_mana_potion", "consumable_net", "consumable_panacea", "consumable_reviving_salts",
-    "consumable_stamina_potion", "consumable_throwing_stone", "consumable_witchlight_flare",
+    "consumable_smoke", "consumable_stamina_potion", "consumable_throwing_stone",
+    "consumable_witchlight_flare",
 }
 
 local function set(list)
@@ -119,7 +121,7 @@ return {
     {
         -- Both directions: every draught is out, and no weapon is -- not even the plain opening blades,
         -- which is the half a derived "everything at rung 0" would quietly put back.
-        name = "the standing rack is the ten draughts, and sells no weapon",
+        name = "the standing rack is the eleven draughts, and sells no weapon",
         fn = function()
             local p = Player.new()
             local got = ids(rack(p, 1, Market.COUNTER))

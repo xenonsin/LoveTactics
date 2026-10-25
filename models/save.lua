@@ -860,6 +860,9 @@ function Save.snapshot(player)
         -- here: the thing it teaches about lives on the run, and the run does not survive the stair --
         -- so a mark kept beside the relics would be spent again every expedition.
         relicsTaught = player.relicsTaught or nil,
+        -- WHICH FIGHTS THE LAST RUN MET, per floor (Descent.closeRunFights), so the next run's pool can
+        -- leave them out (Descent.skipLastRun). Nil until a run has ended having met one. Additive.
+        lastRunFights = player.lastRunFights or nil,
         -- ...and whether they have ever walked into the city at all, which is what puts the Roll tab on
         -- the strip in the first place (Descent.classesUnlocked). Saved rather than derived because a
         -- save is loaded straight back onto the leg it was written on, where the panel opens with no
@@ -1489,6 +1492,7 @@ function Save.restore(snap)
         returnedToCity = snap.returnedToCity == true,
         classesTaught = snap.classesTaught == true, -- ...nor the Roll's, which costs one window at worst
         relicsTaught = snap.relicsTaught == true,   -- ...nor been told what a relic is, same worst case
+        lastRunFights = require("models.descent").restoreMet(snap.lastRunFights), -- see snapshot
         -- An older save has no field here, and it reads as TRUE rather than as the false every other
         -- mark above defaults to: the flag only ever hides a control, and a company that has been
         -- playing long enough to have a save from before it landed has certainly seen the town. A

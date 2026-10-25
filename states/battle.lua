@@ -1060,6 +1060,27 @@ local function lose()
     finishBattle("loss")
 end
 
+-- A SMOKE WAS THROWN (data/items/consumable/consumable_smoke.lua; Combat marks `slippedAway`). The fight
+-- ends with nobody beaten, and it leaves by the ROUT: the launcher's onLoss with `routed` set walks the
+-- company back onto the map where it stood, leaves the cell armed and injures whoever is down
+-- (states/game.lua). No defeat panel and no grey -- nothing was lost -- so onLoss is called straight
+-- away, as the panel's Fall Back button would have. Only the bodies already DOWN are hurt: the spent
+-- half of lose()'s list is the price of having fought on to the end, and a smoke is not that.
+-- A field rather than a local: this file sits at Lua 5.1's local ceiling (see win()).
+function battle.smokeOut()
+    battle.over = true
+    battle.walk = nil
+    battle.script = nil
+    battle.heldObjects = nil
+    battle.fallen = Combat.fallenParty(battle.combat)
+    battle.routed = true
+    CombatTrace.close("smoke")
+    Combat.returnStripped(battle.combat)
+    releaseParty()
+    ScreenFx.vignette(0)
+    if battle.onLoss then battle.onLoss() end
+end
+
 -- Narrow one of the overlay sets to what a running tutorial permits, or hand it back untouched when
 -- no tutorial is running (every ordinary battle). `kind` is "move" or "attack".
 --
@@ -2080,6 +2101,11 @@ end
 -- the next unit's turn.
 local function resolveAdvance()
     battle.pendingAdvance = nil
+    -- A smoke ends the fight before anything else is judged or staged (battle.smokeOut).
+    if battle.combat and battle.combat.slippedAway and battle.combat.smoke == true then
+        battle.smokeOut()
+        return
+    end
     -- A SCRIPTED BEAT THE ACTION JUST ARMED AND SPENT. A boss phase crossed inside the blow that has
     -- just finished playing, and the model resolved the whole of what it triggered there and then
     -- (models/combat.lua's Combat.spendScriptedFell -- on the threshold, because a beat that waited for
@@ -5759,6 +5785,9 @@ function battle.enter(self, opts)
     -- ...and banks nothing toward a class: `classCredit = false` (the prologue's fights) stops both
     -- technique and deeds (Combat.awardTechnique, Class.bankDeeds). Nil, and so counted, everywhere else.
     battle.combat.noClassCredit = opts.classCredit == false or nil
+    -- ...and whether a Smoke may end it: true, or the reason it may not (states/game.lua; nil reads as
+    -- "not in this fight"). Read by the item's own `usable` gate through `unit.combat`.
+    battle.combat.smoke = opts.smoke
 
     -- THE FIGHT, RECORDED TO A FILE, in a debug build and nowhere else (models/combat_trace.lua). Opened
     -- here rather than inside Combat.new so the headless suite -- which builds combats by the thousand
