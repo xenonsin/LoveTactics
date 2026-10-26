@@ -157,33 +157,93 @@ local function crestColor(id)
     return colorCache[root] or Theme.frame
 end
 
--- WHAT A CLASS'S SHELF OPENS ON: the first pieces filed under it, lowest rung first and weapons
--- before abilities before kit inside a rung, because "what will I be swinging" is the first question.
--- Read off Item.defs by `class` -- the same field the vendor shelves on -- and instanced once per class
--- (for the sprite and the hover card), so the preview is the real shelf rather than a list kept beside it.
+-- WHAT A CLASS'S SHELF HOLDS, as THE SHOWCASE: `n` pieces that stand for the whole class, the last of
+-- them its GOAL.
+--
+-- It used to be the first pieces on the shelf -- rung 0 and 1 -- which said what a class starts with
+-- and nothing about what it becomes. The goal is the piece at the top of the class's ladder (the
+-- highest `unlockLevel` it sells; a weapon before an ability before kit on a tie): what a player is
+-- climbing toward. The rest are spread over the ladder below it -- the pool is cut into n-1 bands by
+-- rung, and each band gives the piece whose KIND the showcase has least of so far, nearest the band's
+-- middle -- so four slots read as a weapon, an ability, a coat and a charm across the climb rather than
+-- four rung-0 swords.
+--
+-- Read off Item.defs by `class`, the field the vendor shelves on, so the showcase is the real shelf.
+-- A body's trophies (`unstocked`, `dropOnly`) are left out: no counter sells them, so they are neither
+-- a fair sample of the shelf nor a goal the class ladder can reach.
 local SHELF_ORDER = { weapon = 1, ability = 2, armor = 3, utility = 4, consumable = 5 }
-local SHELF_MAX = 8
-local shelfCache = {}
+local poolCache, showcaseCache, instanceCache = {}, {}, {}
 
-local function shelfPreview(id)
+local function shelfPool(id)
     if not id then return {} end
-    local cached = shelfCache[id]
-    if cached then return cached end
-    local defs = {}
+    local pool = poolCache[id]
+    if pool then return pool end
+    pool = {}
     for itemId, def in pairs(Item.defs) do
-        if def.class == id and SHELF_ORDER[def.type] then defs[#defs + 1] = { id = itemId, def = def } end
+        if def.class == id and SHELF_ORDER[def.type] and not def.unstocked and not def.dropOnly then
+            pool[#pool + 1] = { id = itemId, rung = def.unlockLevel or 0, kind = def.type }
+        end
     end
-    table.sort(defs, function(a, b)
-        local la, lb = a.def.unlockLevel or 0, b.def.unlockLevel or 0
-        if la ~= lb then return la < lb end
-        local ta, tb = SHELF_ORDER[a.def.type], SHELF_ORDER[b.def.type]
+    table.sort(pool, function(a, b)
+        if a.rung ~= b.rung then return a.rung < b.rung end
+        local ta, tb = SHELF_ORDER[a.kind], SHELF_ORDER[b.kind]
         if ta ~= tb then return ta < tb end
         return a.id < b.id
     end)
-    cached = {}
-    for i = 1, math.min(#defs, SHELF_MAX) do cached[i] = Item.instantiate(defs[i].id) end
-    shelfCache[id] = cached
-    return cached
+    poolCache[id] = pool
+    return pool
+end
+
+local function instanceOf(itemId)
+    instanceCache[itemId] = instanceCache[itemId] or Item.instantiate(itemId)
+    return instanceCache[itemId]
+end
+
+-- `{ item, rung, goal }` entries, the samples in rung order and the goal last.
+local function showcase(id, n)
+    local key = tostring(id) .. ":" .. n
+    if showcaseCache[key] then return showcaseCache[key] end
+    local pool, out = shelfPool(id), {}
+    if #pool == 0 or n < 1 then showcaseCache[key] = out return out end
+
+    local top = pool[#pool].rung
+    local goal
+    for _, e in ipairs(pool) do
+        if e.rung == top then goal = e break end -- the first at the top rung is its weapon-first pick
+    end
+    local rest = {}
+    for _, e in ipairs(pool) do if e ~= goal then rest[#rest + 1] = e end end
+
+    local picks, bands = {}, n - 1
+    if bands > 0 and #rest <= bands then
+        picks = rest
+    elseif bands > 0 then
+        local have = { consumable = 1 } -- a draught samples a shelf poorly: it is picked last
+        for b = 0, bands - 1 do
+            local lo = math.floor(b * #rest / bands) + 1
+            local hi = math.floor((b + 1) * #rest / bands)
+            local mid, best, bestScore = (lo + hi) / 2, nil, nil
+            for i = lo, hi do
+                local e = rest[i]
+                local score = (have[e.kind] or 0) * 1000 + math.abs(i - mid) * 10 + SHELF_ORDER[e.kind]
+                if not bestScore or score < bestScore then best, bestScore = e, score end
+            end
+            picks[#picks + 1] = best
+            have[best.kind] = (have[best.kind] or 0) + 1
+        end
+    end
+    for _, e in ipairs(picks) do out[#out + 1] = { item = instanceOf(e.id), rung = e.rung } end
+    out[#out + 1] = { item = instanceOf(goal.id), rung = goal.rung, goal = true }
+    showcaseCache[key] = out
+    return out
+end
+
+ClassEditor.showcase = showcase -- for tests/class_unlock_spec.lua
+
+-- "Fighter 7", the class level that deals a piece; rung 0 is on the shelf from the start.
+local function rungLabel(id, rung)
+    if (rung or 0) <= 0 then return "from the start" end
+    return (Class.displayName(id) or id) .. " " .. rung
 end
 
 -- THE CREST: drawn art when it exists (a root's `crest` path, data/classes/<id>.lua -- `. art-report`
@@ -1630,13 +1690,18 @@ function ClassEditor:giftPreview(id)
 end
 
 -- An icon that opens the full item card on hover, or on a press (a finger has no hover).
--- `hitW` widens the hover/press area past the icon (a list entry answers across its whole row).
-function ClassEditor:previewIcon(item, x, y, size, hitW)
+-- `hitW` widens the hover/press area past the icon (a list entry answers across its whole row);
+-- `goal` rings it in the accent at rest, the showcase's mark for the piece at the top of the ladder.
+function ClassEditor:previewIcon(item, x, y, size, hitW, goal)
     local r = { x = x, y = y, w = hitW or size, h = size, item = item }
     self.previewRects[#self.previewRects + 1] = r
     local on = (self.hoverPreview and self.hoverPreview.item == item)
         or (self.pinnedPreview and self.pinnedPreview.item == item)
-    drawItemIcon(item, x, y, size, on and Theme.accentAmber or Theme.frame, self.fonts.small)
+    drawItemIcon(item, x, y, size, (on or goal) and Theme.accentAmber or Theme.frame, self.fonts.small)
+    if goal and on then
+        Theme.set(Theme.accentAmber)
+        love.graphics.rectangle("line", x - 2, y - 2, size + 4, size + 4, 5, 5)
+    end
 end
 
 -- "YOU START WITH": the gift, its icon, its name and the line it describes itself in. Returns y; draws
@@ -1722,55 +1787,61 @@ function ClassEditor:drawBoostBlock(id, x, y, w, floor)
     return y + 8
 end
 
--- "THE COLOSSEUM SELLS": the first pieces on the class's shelf, each opening its item card.
+-- "LEARNED FROM THE COLOSSEUM", as the first pick's compact row: the showcase (see `showcase`), samples across
+-- the ladder and then, a step apart and ringed, the goal at the top of it.
 function ClassEditor:drawShelfBlock(id, x, y, w, floor)
-    local items = shelfPreview(id)
-    if #items == 0 then return y end
     local small = self.fonts.small
-    local ICON, GAP = 34, 6
+    local ICON, GAP, STEP = 34, 6, 14
     if y + small:getHeight() + 6 + ICON > floor then return y end
+    local fit = math.max(1, math.min(8, math.floor((w - STEP + GAP) / (ICON + GAP))))
+    local entries = showcase(id, fit)
+    if #entries == 0 then return y end
     local house = Building.houseForClass(rootOf(id), self.player)
     local where = (house and house.name) and string.upper(house.name) or "ITS HOUSE"
-    y = caption(where .. " SELLS", x, y, w, small)
-    local fit = math.max(1, math.floor((w + GAP) / (ICON + GAP)))
-    for i = 1, math.min(#items, fit) do
-        self:previewIcon(items[i], x + (i - 1) * (ICON + GAP), y, ICON)
+    y = caption("LEARNED FROM " .. where, x, y, w, small)
+    local ix = x
+    for i, e in ipairs(entries) do
+        if e.goal and i > 1 then ix = ix + STEP end
+        self:previewIcon(e.item, ix, y, ICON, nil, e.goal)
+        ix = ix + ICON + GAP
     end
     return y + ICON + 12
 end
 
--- THE SAME SHELF, AS A LIST, for the ledger's detail pane: bigger icons with each piece's name and
--- kind beside them, two columns where the pane is wide enough, up to two rows (four pieces) -- it sits
--- high in the pane, and a shut class still owes its checklist the room under it. The first pick keeps
--- the compact row (drawShelfBlock), where the cards above already carry the comparison.
+-- THE SAME SHOWCASE, AS A LIST, for the ledger's detail pane: bigger icons with each piece's name, its
+-- kind and the class level that deals it, two columns where the pane is wide enough, up to two rows
+-- (four pieces, the last the goal) -- it sits high in the pane, and a shut class still owes its
+-- checklist the room under it.
 local KIND = { weapon = "Weapon", ability = "Ability", armor = "Armor", utility = "Kit", consumable = "Consumable" }
 
 -- `reserve` is the room the blocks under it will want: a second row is drawn only if it leaves them that.
 function ClassEditor:drawShelfList(id, x, y, w, floor, reserve)
-    local items = shelfPreview(id)
-    if #items == 0 then return y end
+    local pool = shelfPool(id)
+    if #pool == 0 then return y end
     local small, body = self.fonts.small, self.fonts.body
     local ICON, ROW, GAP = 32, 37, 14
     local cols = (w >= 340) and 2 or 1
     local colW = math.floor((w - (cols - 1) * GAP) / cols)
     local capH = small:getHeight() + 6
-    local rows = math.min(2, math.ceil(#items / cols), math.floor((floor - y - capH - 8) / ROW))
+    local rows = math.min(2, math.ceil(#pool / cols), math.floor((floor - y - capH - 8) / ROW))
     if rows > 1 and y + capH + rows * ROW + 6 + (reserve or 0) > floor then rows = 1 end
     if rows < 1 then return y end
+    local entries = showcase(id, rows * cols)
     local house = Building.houseForClass(rootOf(id), self.player)
-    y = caption(((house and house.name) and string.upper(house.name) or "ITS HOUSE") .. " SELLS", x, y, w, small)
-    for i = 1, math.min(#items, rows * cols) do
-        local item = items[i]
+    y = caption("LEARNED FROM " .. ((house and house.name) and string.upper(house.name) or "ITS HOUSE"), x, y, w, small)
+    for i, e in ipairs(entries) do
+        local item = e.item
         local ix = x + ((i - 1) % cols) * (colW + GAP)
         local iy = y + math.floor((i - 1) / cols) * ROW
-        self:previewIcon(item, ix, iy, ICON, colW)
+        self:previewIcon(item, ix, iy, ICON, colW, e.goal)
         local tx, tw = ix + ICON + 8, colW - ICON - 8
         love.graphics.setFont(body)
         Theme.set(Theme.ink)
         love.graphics.print(Theme.ellipsize(item.name or "?", body, tw), tx, iy - 1)
         love.graphics.setFont(small)
-        Theme.set(Theme.muted)
-        love.graphics.print(KIND[item.type] or "", tx, iy + body:getHeight() - 2)
+        local sub = (KIND[item.type] or "") .. "  -  " .. rungLabel(id, e.rung)
+        Theme.set(e.goal and Theme.accentAmber or Theme.muted)
+        love.graphics.print(Theme.ellipsize(sub, small, tw), tx, iy + body:getHeight() - 2)
     end
     return y + rows * ROW + 6
 end

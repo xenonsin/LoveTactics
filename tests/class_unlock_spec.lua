@@ -283,6 +283,45 @@ return {
         assert(ed:giftPreview("fighter") == nil, "a held class previews nothing")
     end },
 
+    -- THE SHOWCASE stands for the whole class: the goal is the top of its ladder, the samples spread
+    -- across the rungs below it, and nothing on it is a trophy no counter sells.
+    { name = "the class showcase ends on the top-rung goal and samples the ladder below it", fn = function()
+        local ClassEditor = require("ui.class_editor")
+        for id in pairs(Class.defs) do
+            if Class.isPlayable(id) and not Class.isStarter(id) then
+                local top = -1
+                for _, def in pairs(Item.defs) do
+                    if def.class == id and not def.unstocked and not def.dropOnly
+                        and ({ weapon = 1, ability = 1, armor = 1, utility = 1, consumable = 1 })[def.type] then
+                        top = math.max(top, def.unlockLevel or 0)
+                    end
+                end
+                local list = ClassEditor.showcase(id, 4)
+                if top >= 0 then
+                    local goal = list[#list]
+                    assert(goal and goal.goal and goal.rung == top,
+                        id .. ": the goal is not the top of the ladder (" .. tostring(goal and goal.rung) .. " vs " .. top .. ")")
+                    local seen = {}
+                    for _, e in ipairs(list) do
+                        local def = Item.defs[e.item.id]
+                        assert(def.class == id and not def.unstocked and not def.dropOnly, id .. ": " .. e.item.id .. " is no shelf piece")
+                        assert(not seen[e.item.id], id .. ": " .. e.item.id .. " twice")
+                        seen[e.item.id] = true
+                    end
+                end
+            end
+        end
+        -- A deep shelf samples more than its opening rungs.
+        local list = ClassEditor.showcase("fighter", 4)
+        assert(#list == 4, "four pieces off the fighter shelf")
+        assert(list[3].rung > list[1].rung, "the samples climb the ladder rather than sitting on one rung")
+        local kinds = {}
+        for i = 1, 3 do kinds[list[i].item.type] = true end
+        local n = 0
+        for _ in pairs(kinds) do n = n + 1 end
+        assert(n >= 2, "the samples are not all one kind of thing")
+    end },
+
     { name = "Rowan's recommendation: the avatar's first root is picked free -- no level, deed or seal", fn = function()
         local ClassEditor = require("ui.class_editor")
         local a = avatar()
