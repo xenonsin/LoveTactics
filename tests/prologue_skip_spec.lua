@@ -32,10 +32,10 @@ local function grantsIn(sceneId)
     return out
 end
 
--- The stash as a map of item id -> total quantity held.
-local function stashCounts(player)
+-- A loose list (`player.pack` or `player.stash`) as a map of item id -> total quantity held.
+local function listCounts(list)
     local counts = {}
-    for _, item in ipairs(player.stash or {}) do
+    for _, item in ipairs(list or {}) do
         counts[item.id] = (counts[item.id] or 0) + (item.quantity or 1)
     end
     return counts
@@ -244,19 +244,22 @@ return {
             -- and left standing it would fold onto whatever the city opens first.
             assert(#Conversation.pendingJoins == 0, "the skipped join is not left queued")
 
-            -- Every stop's authored loot is in the stash.
-            local counts = stashCounts(player)
+            -- Every stop's authored loot is in the BAG, as a played road leaves it (Player.findsToPack),
+            -- and none of it on the town shelf.
+            local counts = listCounts(player.pack)
+            local shelved = listCounts(player.stash)
             for _, list in ipairs({ prologue.FLIGHT_QUEST.map.encounters.always,
                                     prologue.FLIGHT_QUEST.map.encounters.prowl or {} }) do
                 for _, stop in ipairs(list) do
                     for _, id in ipairs(stop.loot or {}) do
-                        assert((counts[id] or 0) > 0, "the road's " .. id .. " is missing from the stash")
+                        assert((counts[id] or 0) > 0, "the road's " .. id .. " is missing from the pack")
+                        assert((shelved[id] or 0) == 0, "the road's " .. id .. " was filed in the stash")
                     end
                 end
             end
             -- ...and so are the two scene gifts.
             for _, gift in ipairs(prologue.SCENE_GIFTS) do
-                assert((counts[gift.item] or 0) > 0, gift.item .. " is missing from the stash")
+                assert((counts[gift.item] or 0) > 0, gift.item .. " is missing from the pack")
             end
             -- The teaching chest's three potions, plus one per survivor walked out of the valley
             -- (data/encounters/encounter_survivors_defend.lua prices its purse per head).
@@ -277,8 +280,8 @@ return {
                     granted = granted + 1
                     assert(grid[step.grant], "the village lesson's " .. step.grant
                         .. " is not in the avatar's grid")
-                    assert((counts[step.grant] or 0) == 0, step.grant
-                        .. " was filed in the stash instead of handed over")
+                    assert((counts[step.grant] or 0) == 0 and (shelved[step.grant] or 0) == 0, step.grant
+                        .. " was filed loose instead of handed over")
                 end
             end
             assert(granted == 2, "the village lesson hands the avatar two abilities, found " .. granted)

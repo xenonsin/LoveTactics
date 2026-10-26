@@ -723,6 +723,10 @@ function prologue.skip(player)
     local Item = require("models.item")
     local Building = require("models.building")
 
+    -- ACT 0'S FINDS RIDE INTO THE CITY IN THE BAG, as a played road's do: Player.findsToPack reads
+    -- `prologueBeat`, so it is held for the length of this payout and cleared with the rest at the bottom.
+    player.prologueBeat = player.prologueBeat or 1
+
     -- The avatar, built exactly as begin() builds it: the typed name and chosen body when character
     -- creation ran, the blueprint's own "Stranger" and body 1 when it did not -- the skip does not stop
     -- to ask, which is the whole point of it.

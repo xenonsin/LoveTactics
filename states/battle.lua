@@ -5482,9 +5482,9 @@ function battle.openDeployLoadout(player)
         classes = require("models.descent").classesUnlocked(battle.player),
         -- THE BAG, not the town's shelf, once the company is below ground. Asked of the player rather
         -- than of this fight, because a deployment screen has no run to read and Player.packOpen is the
-        -- same question every other surface asks (models/player.lua). Nil above ground, which leaves
-        -- the duel, the draft and Act 0 exactly as they were.
-        pool = require("models.player").packOpen(battle.player) and "pack" or nil,
+        -- same question every other surface asks (models/player.lua). Act 0 asks it too, since its finds
+        -- land in the bag (Player.findsToPack); nil in town, the duel and the draft.
+        pool = require("models.player").findsToPack(battle.player) and "pack" or nil,
         onClose = function()
             battle.deployLoadout = nil
             -- A body snapshots what its gear decides at the moment it is stood up (its initiative is

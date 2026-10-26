@@ -745,6 +745,7 @@ function Save.snapshot(player)
         -- from runsStarted, which would hand a company of empty dips the trips it never earned.
         tripsCounted = (runsStarted or (player.tripsCounted or 0) > 0) and (player.tripsCounted or 0) or nil,
         purseTrip = player.purseTrip,
+        packUpgrades = player.packUpgrades, -- steps bought on the bag (Descent.buyBagStep)
         ngPlus = ngPlus,
         campaignsFinished = campaignsFinished,
         day = day,
@@ -1463,6 +1464,7 @@ function Save.restore(snap)
         tripsCounted = tonumber(snap.tripsCounted) or math.max(0, (tonumber(snap.runsStarted) or 0)
             - ((type(snap.descentRun) == "table") and 1 or 0)),
         purseTrip = tonumber(snap.purseTrip),
+        packUpgrades = tonumber(snap.packUpgrades), -- absent: the bag a company starts with
         hireBoard = snap.hireBoard and {
             trip = tonumber(snap.hireBoard.trip) or 0,
             offers = snap.hireBoard.offers or {},

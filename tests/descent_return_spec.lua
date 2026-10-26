@@ -262,19 +262,59 @@ return {
     },
     {
         -- A cap nobody can reach is not a cap, and one that binds on floor one is a different game.
-        name = "the bag is big enough to be worth filling and small enough to bite",
+        -- (2026-10-25) The STARTING bag is small on purpose -- ten, and the rest is bought -- so the
+        -- promises moved to the bag gold can buy.
+        name = "the bag starts small, and gold grows it to one worth filling and small enough to bite",
         fn = function()
-            assert(Descent.CARRY_MAX >= 12,
-                "a bag this small (" .. Descent.CARRY_MAX .. ") binds before a company has had a trip")
-            assert(Descent.CARRY_MAX <= 40,
-                "a bag this big (" .. Descent.CARRY_MAX .. ") is never reached, which is the mule's "
+            assert(Descent.CARRY_MAX < Descent.CARRY_CAP, "a starting bag with nothing left to buy")
+            assert((Descent.CARRY_CAP - Descent.CARRY_MAX) % Descent.CARRY_STEP == 0,
+                "the last step overshoots the cap and the bag stops between two sizes")
+            assert(Descent.CARRY_CAP <= 40,
+                "a bag this big (" .. Descent.CARRY_CAP .. ") is never reached, which is the mule's "
                 .. "own complaint: a bet with no ceiling is not a bet")
-            -- ...AND IT HAS TO LEAVE ROOM FOR A TRIP ON TOP OF THE RATIONS. The bag carries the
-            -- provisions now, so a ceiling that a packed company meets before it has found anything is
-            -- a ceiling that prices the Gate rather than the descent (models/descent.lua's header:
-            -- twenty of finding plus eight of supplies).
-            assert(Descent.CARRY_MAX >= 20 + 8,
-                "the bag no longer holds a provisioned company plus four floors of finding")
+            -- ...AND THE BOUGHT BAG HAS TO LEAVE ROOM FOR A TRIP ON TOP OF THE RATIONS (models/descent.lua's
+            -- header: twenty of finding plus eight of supplies).
+            assert(Descent.CARRY_CAP >= 20 + 8,
+                "the biggest bag no longer holds a provisioned company plus four floors of finding")
+        end,
+    },
+    {
+        name = "a bag step costs twice the last, adds its slots, and stops at the cap",
+        fn = function()
+            local player = { gold = 0, roster = {}, pack = {} }
+            assert(Descent.carryMax(player) == Descent.CARRY_MAX, "a new company's bag is not the base")
+            assert(Descent.bagStepPrice(player) == Descent.CARRY_PRICE, "the first step is not the base price")
+            local ok, why = Descent.buyBagStep(player)
+            assert(not ok and why == "gold", "a step was sold to an empty purse")
+            assert(Descent.carryMax(player) == Descent.CARRY_MAX, "a refused step still grew the bag")
+
+            player.gold = 10 ^ 9
+            local price, steps = Descent.CARRY_PRICE, 0
+            while Descent.bagStepPrice(player) do
+                assert(Descent.bagStepPrice(player) == price, "step " .. steps .. " is not double the last")
+                local before = player.gold
+                assert(Descent.buyBagStep(player), "an affordable step was refused")
+                assert(before - player.gold == price, "the step charged something other than its price")
+                steps, price = steps + 1, price * 2
+                assert(Descent.carryMax(player) == Descent.CARRY_MAX + steps * Descent.CARRY_STEP,
+                    "step " .. steps .. " did not add its slots")
+            end
+            assert(Descent.carryMax(player) == Descent.CARRY_CAP, "the bought bag stops short of the cap")
+            local ok2, why2 = Descent.buyBagStep(player)
+            assert(not ok2 and why2 == "full", "a step was sold past the cap")
+        end,
+    },
+    {
+        name = "the bag's steps ride a save",
+        fn = function()
+            local Save = require("models.save")
+            local Player = require("models.player")
+            local player = Player.new()
+            player.gold = 1000
+            assert(Descent.buyBagStep(player) and Descent.buyBagStep(player), "two steps refused")
+            local back = Save.restore(Save.decode("return " .. Save.encode(Save.snapshot(player), 0)))
+            assert(Descent.carryMax(back) == Descent.CARRY_MAX + 2 * Descent.CARRY_STEP,
+                "the bag came back from the save at " .. Descent.carryMax(back))
         end,
     },
     {

@@ -3258,7 +3258,17 @@ end
 -- pool column is a slot, so the container and the readout over it mean the same thing. Descent.found
 -- below still counts quantities, because the toll spends quantities -- the two questions were always
 -- different and only ever looked alike while one number answered both.
-Descent.CARRY_MAX = 28
+--
+-- (2026-10-25) TEN TO START, AND THE REST IS BOUGHT. The twenty-eight above is no longer where a
+-- company begins: it begins on ten and pays at the Armory for two slots a step (Descent.buyBagStep),
+-- up to forty. So the bag is a thing a company grows into, the twenty-eight a mid-campaign bag rather
+-- than a given, and every argument above about what a full bag holds is an argument about where the
+-- steps are worth buying to. CARRY_MAX keeps its name as the BASE because haulBonus and every reader
+-- of carryMax already sit on top of it.
+Descent.CARRY_MAX = 10
+Descent.CARRY_STEP = 2   -- slots one purchase adds
+Descent.CARRY_CAP = 40   -- the biggest bag gold buys (haulBonus gear still adds over it)
+Descent.CARRY_PRICE = 25 -- gold for the first step; each step after costs twice the one before
 
 -- HOW MUCH IS IN THE BAG: a count of the pack, and nothing derived.
 --
@@ -3326,7 +3336,29 @@ end
 -- (states/game.lua's "Carrying n / max"). A limit the player cannot see is one they meet by having a
 -- chest refuse to open, and a limit the readout states WRONG is worse than either.
 function Descent.carryMax(player)
-    return Descent.CARRY_MAX + Descent.haulBonus(player)
+    return Descent.bagSize(player) + Descent.haulBonus(player)
+end
+
+-- THE BAG ITSELF, before any gear widens it: the base plus every step bought, never over the cap.
+function Descent.bagSize(player)
+    local steps = (player and player.packUpgrades) or 0
+    return math.min(Descent.CARRY_CAP, Descent.CARRY_MAX + Descent.CARRY_STEP * steps)
+end
+
+-- What the NEXT step costs, or nil when the bag is as big as gold makes it. Doubling: 25, 50, 100, ...
+function Descent.bagStepPrice(player)
+    if Descent.bagSize(player) >= Descent.CARRY_CAP then return nil end
+    local steps = (player and player.packUpgrades) or 0
+    return Descent.CARRY_PRICE * 2 ^ steps
+end
+
+-- Buy one step: true, or false plus a reason ("full" | "gold"). Persistence is the caller's call.
+function Descent.buyBagStep(player)
+    local price = Descent.bagStepPrice(player)
+    if not price then return false, "full" end
+    if not require("models.player").spendGold(player, price) then return false, "gold" end
+    player.packUpgrades = (player.packUpgrades or 0) + 1
+    return true
 end
 
 -- How many more the company could pick up before the bag is full. Never negative: a company that is

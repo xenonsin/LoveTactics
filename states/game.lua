@@ -458,7 +458,9 @@ local function openLoadout()
         -- source on floor nine, so a company could reach into the city from the bottom of the rift. The
         -- column shows the bag now, and the rail shows the four who are carrying it.
         party = game.descent and Descent.party(game.descent, game.player) or nil,
-        pool = game.descent and "pack" or nil,
+        -- ...and the bag on Act 0's road too, where every find lands (Player.findsToPack): a column
+        -- showing the empty town shelf there would hide every chest the flight lesson just opened.
+        pool = game.player and Player.findsToPack(game.player) and "pack" or nil,
         -- Clear the equip coach the instant the player equips something, not on panel close.
         onEquip = function()
             if game.coach == "equip" then game.coach = nil end

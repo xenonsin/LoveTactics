@@ -198,6 +198,16 @@ function Player.packOpen(player)
     return (run and run.entry) ~= nil
 end
 
+-- DO FINDS GO IN THE BAG? Everywhere the pack is open, AND through Act 0 -- a different question from
+-- packOpen, which also means "not in town" to the class screen and the Lodge's Dismiss, and Act 0 opens
+-- a class screen of its own at the Champion. The prologue's road is the company's first floor in all
+-- but name, and a chest opened on it filing its piece on a shelf in a city nobody has reached yet was
+-- the one find in the game that did not land where the company could see it. `prologueBeat` is set
+-- for exactly the run of Act 0's beats (states/prologue.lua), and the bag rides into the city packed.
+function Player.findsToPack(player)
+    return Player.packOpen(player) or (player ~= nil and player.prologueBeat ~= nil)
+end
+
 -- The stack-merge body, over whichever list it is handed. Lifted out of Player.addToStash when the
 -- pack arrived so that ONE merge rule serves both containers: a +1 potion is a different item from a
 -- +0 one in the bag for exactly the reason it is on the shelf.
@@ -245,7 +255,7 @@ end
 -- general's own piece, a lift off a pocket, a cart's purchase on the road and a pile picked back up
 -- all call this, and not one of them has to know which container is open or ask where it is standing.
 function Player.stow(player, item)
-    if Player.packOpen(player) then return Player.addToPack(player, item) end
+    if Player.findsToPack(player) then return Player.addToPack(player, item) end
     return Player.addToStash(player, item)
 end
 
@@ -256,7 +266,7 @@ end
 -- container without combat having to know there are two.
 function Player.carryList(player)
     if not player then return nil end
-    if Player.packOpen(player) then
+    if Player.findsToPack(player) then
         player.pack = player.pack or {}
         return player.pack
     end

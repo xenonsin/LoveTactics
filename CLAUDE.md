@@ -158,7 +158,7 @@ The codebase is organized into layers loaded via `require()`. See
   written before there was one, and it was enforced in exactly one place -- the Use panel -- while the
   Loadout screen went on showing the whole town shelf as a live drag source on floor nine. It is a real
   container now, packed at the Armory or at the Gate (`ui/panels/party.lua`'s `pool = "both"` stacks a
-  28-slot **pack band over the stash** in one column, empty slots drawn; a piece moves across by drag,
+  **pack band over the stash** in one column, empty slots drawn; a piece moves across by drag,
   click-to-place, or the one-press send -- right-click, X -- and the band holds the bag to
   `Descent.carryMax` exactly as a chest does; underground the column is the bag alone). It replaced a
   Stash | Pack switch that showed one container at a time and dropped the hand when it flipped, so a
@@ -166,11 +166,19 @@ The codebase is organized into layers loaded via `require()`. See
   spoils, a lift off a pocket, a pile picked back up -- so no other seam on the way in learns a rule;
   `Player.packOpen` is the flag, and it reads `descentRun.entry` rather than `descentRun`, because the
   run is seated the moment you walk onto the Gate screen and a company packing a bag there is still
-  standing in the city. Both exits empty it onto the shelf (`Player.unpack`).
+  standing in the city. Both exits empty it onto the shelf (`Player.unpack`). **Act 0's finds land in
+  the bag too** (`Player.findsToPack` = packOpen or `prologueBeat` set, 2026-10-25) and ride into the city
+  packed; it is a separate question from `packOpen` because `packOpen` also means "not in town" to the
+  class screen, and the Champion opens one inside Act 0.
+
+  **THE BAG STARTS AT 10 AND IS BOUGHT UP** (2026-10-25): `Descent.CARRY_MAX` is the base, and the
+  pack band's header in the Armory/Gate panel sells `Descent.CARRY_STEP` (2) slots a step up to
+  `Descent.CARRY_CAP` (40), the price doubling from `Descent.CARRY_PRICE` (25g)
+  (`Descent.buyBagStep`, `player.packUpgrades`, saved). `haulBonus` gear still adds on top.
 
   **AND IT MADE ONE NUMBER INTO TWO, WHICH MUST NOT BE COLLAPSED AGAIN.** `Descent.carried` counts the
-  BAG -- slots, rations included, against `Descent.carryMax` (**28**: twenty of finding plus eight of
-  supplies) -- and is what the chest refusal and the *"Carrying n / max"* readout ask. `Descent.found`
+  BAG -- slots, rations included, against `Descent.carryMax` (the bought bag; **28** was its old fixed size -- twenty of
+  finding plus eight of supplies) -- and is what the chest refusal and the *"Carrying n / max"* readout ask. `Descent.found`
   is the old diff against the entry snapshot -- quantities -- and is what the stair's toll
   (`Descent.tollFor`) and Still Hungry's bite ask. A toll priced against the bag would quote a share of
   the company's own draughts and then fail to take them, since `Player.takeAtRisk` only ever hands over
