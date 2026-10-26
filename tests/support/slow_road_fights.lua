@@ -275,4 +275,9 @@ return {
     -- THE CROWN'S BESTIARY, SLICE A
     -- The fifth roll: an ordinary undead stop the Fireball's miss carries over the budget.
     encounter_the_bone_orchard = 25,
+    -- (2026-10-25) The defending knight now walks out to answer threats to any party member
+    -- (models/ai.lua AI.knightGuard, e6cddba3) instead of holding the avatar's ring: one unit-turn
+    -- longer here, 22 -> 23. Recorded at 24 on Keno's call -- the knight is doing its job.
+    encounter_crown_the_tribunal = 24,
+    encounter_sloth_the_heave = 24, -- the same knight change, 22 -> 23; recorded on the same call
 }
