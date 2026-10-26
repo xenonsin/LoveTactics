@@ -1666,7 +1666,7 @@ function ClassEditor:drawGiftBlock(id, x, y, w, floor)
 end
 
 -- "WHILE YOU'RE A X", and what every level in it adds. A root's boost IS one level of its growth, so
--- there the two collapse into one row with a line saying so; an earned class pays double while
+-- there the two collapse into one row; an earned class pays double while
 -- selected (Class.boostFor) and shows both. The body's own points are said as a footnote, as before.
 -- While the growth peek is on (or the mouse is over the block) the per-level row gives way to the
 -- transitions it adds up to, the old table.
@@ -1684,8 +1684,7 @@ function ClassEditor:drawBoostBlock(id, x, y, w, floor)
 
     -- Measured first: the block yields whole rather than drawing half a sentence.
     local need = capH + (boost and (drawChips(boost, x, 0, w, small, true)) or 0) + 4
-    if same then need = need + small:getHeight() + 4
-    elseif growth then need = need + capH + drawChips(growth, x, 0, w, small, true) + 4 end
+    if growth and not same then need = need + capH + drawChips(growth, x, 0, w, small, true) + 4 end
     if personal then need = need + small:getHeight() + 4 end
     if y + need > floor then return y end
 
@@ -1703,12 +1702,7 @@ function ClassEditor:drawBoostBlock(id, x, y, w, floor)
             y = caption("WHILE YOU'RE " .. string.upper(withArticle(name)), x, y, w, small)
             y = drawChips(boost, x, y, w, small) + 4
         end
-        if same then
-            love.graphics.setFont(small)
-            Theme.set(Theme.muted)
-            love.graphics.print("...and the same again for every level you gain in it.", x, y)
-            y = y + small:getHeight() + 4
-        elseif growth then
+        if growth and not same then
             y = caption("EVERY LEVEL IN " .. string.upper(name), x, y, w, small)
             y = drawChips(growth, x, y, w, small) + 4
         end
