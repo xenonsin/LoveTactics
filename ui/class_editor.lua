@@ -78,6 +78,8 @@ local InputMode = require("input_mode")
 -- the unlock simply plays no card.
 local okCard, LevelupCard = pcall(require, "ui.levelup_card")
 if not okCard then LevelupCard = nil end
+local okGift, GiftCard = pcall(require, "ui.gift_card")
+if not okGift then GiftCard = nil end
 
 local ClassEditor = {}
 ClassEditor.__index = ClassEditor
@@ -465,7 +467,7 @@ end
 
 function ClassEditor:setChar(char)
     self.char = char
-    self.card = nil
+    self.card, self.pendingGift = nil, nil
     if char then Class.grandfather(char) end
     self.cursor = 1
     self.scroll = 0
@@ -534,10 +536,14 @@ function ClassEditor:unlockClass()
     local ok, gift = Class.unlock(self.player, self.char, id)
     if not ok then return false end
     self.lastGift = gift
+    -- The gift's card waits behind the stat card and takes its slot when that one is dismissed
+    -- (ClassEditor:update); with no stat card to wait behind it plays at once.
+    self.pendingGift = gift and { id = gift, classId = id } or nil
     if LevelupCard and LevelupCard.showUnlock then
         local okShow, card = pcall(LevelupCard.showUnlock, self.char, id, Class.boostFor(id) or {})
         if okShow then self.card = card end
     end
+    if not self.card then self:nextCard() end
     if ClassEditor.onUnlocked then ClassEditor.onUnlocked(self.char, id, gift) end
     local keepHouse, keepCursor = self.house, self.cursor
     self:buildHouses()
@@ -676,10 +682,21 @@ function ClassEditor:gamepadpressed(joystick, button)
     return false
 end
 
+-- The ceremony's second beat: the item the unlock handed over (ui/gift_card.lua), or nothing.
+function ClassEditor:nextCard()
+    local gift = self.pendingGift
+    self.pendingGift = nil
+    self.card = nil
+    if gift and GiftCard then
+        local ok, card = pcall(GiftCard.new, gift.id, { classId = gift.classId, char = self.char })
+        if ok then self.card = card end
+    end
+end
+
 function ClassEditor:update(dt)
     if self.card then
         self.card:update(dt)
-        if self.card.done then self.card = nil end
+        if self.card.done then self:nextCard() end
     end
 end
 

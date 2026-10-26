@@ -216,6 +216,27 @@ return {
         assert(a.declaredClass == "fighter", "confirm changed class")
     end },
 
+    { name = "an unlock's gift is shown after the stat card, and the tab is free once both are dismissed", fn = function()
+        local ClassEditor = require("ui.class_editor")
+        local a = avatar()
+        local p = companyWith(a)
+        p.flags = {}
+        local ed = ClassEditor.new({ x = 0, y = 0, w = 900, h = 500, fonts = {}, player = p, char = a })
+        a.technique = { novice = Class.classLevelCost(1) }
+        a.deeds = { killMelee = 15 }
+        Player.addMaterial(p, SEAL, 1)
+        for i, h in ipairs(ed.houses) do if h.id == "fighter" then ed:setHouse(i) end end
+        ed.region, ed.cursor = "classes", 1
+        ed:confirm()
+        local gift = Class.giftFor(a, "fighter")
+        assert(stashHas(p, gift), "the gift landed in the stash")
+        assert(ed.card and ed.card.kind == "unlock", "the stat card plays first")
+        ed:cancel(); ed:cancel(); ed:update(0)
+        assert(ed.card and ed.card.itemId == gift, "then the gift's card names " .. gift)
+        ed:cancel(); ed:cancel(); ed:update(0)
+        assert(ed.card == nil, "and the tab is the player's again")
+    end },
+
     { name = "Rowan's recommendation: the avatar's first root is picked free -- no level, deed or seal", fn = function()
         local ClassEditor = require("ui.class_editor")
         local a = avatar()
