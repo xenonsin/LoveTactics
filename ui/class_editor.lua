@@ -1630,8 +1630,9 @@ function ClassEditor:giftPreview(id)
 end
 
 -- An icon that opens the full item card on hover, or on a press (a finger has no hover).
-function ClassEditor:previewIcon(item, x, y, size)
-    local r = { x = x, y = y, w = size, h = size, item = item }
+-- `hitW` widens the hover/press area past the icon (a list entry answers across its whole row).
+function ClassEditor:previewIcon(item, x, y, size, hitW)
+    local r = { x = x, y = y, w = hitW or size, h = size, item = item }
     self.previewRects[#self.previewRects + 1] = r
     local on = (self.hoverPreview and self.hoverPreview.item == item)
         or (self.pinnedPreview and self.pinnedPreview.item == item)
@@ -1661,7 +1662,7 @@ function ClassEditor:drawGiftBlock(id, x, y, w, floor)
         love.graphics.printf(table.concat(lines, " ", 1, keep) .. (#lines > keep and "..." or ""),
             x + ICON + 10, y + body:getHeight() + 1, tw, "left")
     end
-    return y + ICON + 12
+    return y + ICON + 8
 end
 
 -- "WHILE YOU'RE A X", and what every level in it adds. A root's boost IS one level of its growth, so
@@ -1744,6 +1745,42 @@ function ClassEditor:drawShelfBlock(id, x, y, w, floor)
     return y + ICON + 12
 end
 
+-- THE SAME SHELF, AS A LIST, for the ledger's detail pane: bigger icons with each piece's name and
+-- kind beside them, two columns where the pane is wide enough, up to two rows (four pieces) -- it sits
+-- high in the pane, and a shut class still owes its checklist the room under it. The first pick keeps
+-- the compact row (drawShelfBlock), where the cards above already carry the comparison.
+local KIND = { weapon = "Weapon", ability = "Ability", armor = "Armor", utility = "Kit", consumable = "Consumable" }
+
+-- `reserve` is the room the blocks under it will want: a second row is drawn only if it leaves them that.
+function ClassEditor:drawShelfList(id, x, y, w, floor, reserve)
+    local items = shelfPreview(id)
+    if #items == 0 then return y end
+    local small, body = self.fonts.small, self.fonts.body
+    local ICON, ROW, GAP = 32, 37, 14
+    local cols = (w >= 340) and 2 or 1
+    local colW = math.floor((w - (cols - 1) * GAP) / cols)
+    local capH = small:getHeight() + 6
+    local rows = math.min(2, math.ceil(#items / cols), math.floor((floor - y - capH - 8) / ROW))
+    if rows > 1 and y + capH + rows * ROW + 6 + (reserve or 0) > floor then rows = 1 end
+    if rows < 1 then return y end
+    local house = Building.houseForClass(rootOf(id), self.player)
+    y = caption(((house and house.name) and string.upper(house.name) or "ITS HOUSE") .. " SELLS", x, y, w, small)
+    for i = 1, math.min(#items, rows * cols) do
+        local item = items[i]
+        local ix = x + ((i - 1) % cols) * (colW + GAP)
+        local iy = y + math.floor((i - 1) / cols) * ROW
+        self:previewIcon(item, ix, iy, ICON, colW)
+        local tx, tw = ix + ICON + 8, colW - ICON - 8
+        love.graphics.setFont(body)
+        Theme.set(Theme.ink)
+        love.graphics.print(Theme.ellipsize(item.name or "?", body, tw), tx, iy - 1)
+        love.graphics.setFont(small)
+        Theme.set(Theme.muted)
+        love.graphics.print(KIND[item.type] or "", tx, iy + body:getHeight() - 2)
+    end
+    return y + rows * ROW + 6
+end
+
 -- The item card for whichever preview is hovered or pinned, over everything else on the tab.
 function ClassEditor:drawPreviewTip()
     local r = self.hoverPreview or self.pinnedPreview
@@ -1809,19 +1846,30 @@ function ClassEditor:drawDetail()
     love.graphics.line(x, ty, x + w, ty)
     ty = ty + 12
 
+    -- WHAT YOU'D BE USING, first: the pieces its house sells, as a list with names. It answers "what is
+    -- this class like" in the game's own objects, which a blurb can only describe.
+    -- The blocks stop above the button stack -- or at the foot of the pane, on a row that draws no button
+    -- (a class this body can neither unlock nor change into yet), where the stack's room is empty.
+    local stack = self:canUnlock() or self:canChange() or self:trainer() or (self:readOnly() and row.id)
+    local floor = stack and (self:buttonsTop() - 8) or (self.y + self.h - 4)
+    -- What the checklist, the gift and the boost under it will want, roughly, so the list keeps them room.
+    local small = self.fonts.small
+    local lineH = small:getHeight() + 4
+    local reserve = (Class.isUnlocked(char or {}, row.id) and 0 or (lineH * 4 + 24))
+        + (self:giftPreview(row.id) and 64 or 0) + (lineH * 4 + 30)
+    ty = self:drawShelfList(row.id, x, ty, w, floor, reserve)
+
     -- WHAT UNLOCKS IT, for a class this body does not hold yet: the level gate, the deed with its
-    -- counter, and the seal. Ahead of everything else, because on a shut row it is the question.
+    -- counter, and the seal.
     local held = char and row.id and Class.isUnlocked(char, row.id)
     if char and row.id and not held then
         ty = self:drawRequirement(row, x, ty, w)
     end
 
-    -- WHAT IT GIVES: the ability the unlock hands over, what standing in it pays, and the first gear
-    -- its house sells. Each yields whole above the buttons rather than drawing under them.
-    local floor = self:buttonsTop() - 8
+    -- WHAT IT GIVES: the ability the unlock hands over and what standing in it pays. Each yields whole
+    -- above the buttons rather than drawing under them.
     ty = self:drawGiftBlock(row.id, x, ty, w, floor)
     ty = self:drawBoostBlock(row.id, x, ty, w, floor)
-    ty = self:drawShelfBlock(row.id, x, ty, w, floor)
 
     -- This body's standing on it, as a transition rather than a bare figure: what the next rung costs
     -- is the number a player is actually deciding against. ONLY ON A CLASS IT HOLDS: "Fighter 0,
