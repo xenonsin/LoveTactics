@@ -5,4 +5,6 @@ return {
     description = "Fights with what it brews. Throws bombs and acid, drinks elixirs that raise a stat for "
         .. "a few turns, and coats blades in poison between swings.",
     exemplar = "character_ren", -- the companion the Crucible posts
+    -- The class crest on the Classes tab (ui/class_editor.lua); until drawn, its house's mark stands in.
+    crest = "assets/classes/alchemist.png",
 }

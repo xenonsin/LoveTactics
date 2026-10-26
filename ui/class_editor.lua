@@ -89,9 +89,9 @@ local ROW_H = 30
 -- a top edge, so equal rows would line house i up with class i and draw a pairing that does not exist.
 local HOUSE_ROW_H = 34
 local COL_GAP = 20
--- The shelf's left gutter, holding the level in THIS house that opens each row. Every row on the shelf
--- shares it -- open ones included -- because a column of integers is only readable as a ladder if the
--- rungs already climbed are standing in it too.
+-- The shelf's left gutter: the step an earned class hangs off its base. It held each row's gate as a
+-- bare integer until 2026-10-26; a shut row carries its gate as a pill on the right now ("Fighter 3",
+-- or "Ready" once it can be unlocked), so the gutter is indent and nothing else.
 local GUTTER_W = 30
 local BUTTON_H = 34
 local BUTTON_GAP = 8
@@ -118,6 +118,171 @@ local ARROW = "→"
 
 local function hit(r, x, y)
     return r and x >= r.x and x <= r.x + r.w and y >= r.y and y <= r.y + r.h
+end
+
+-- ---------------------------------------------------------------------------
+-- What a class looks like before you take it (the 2026-10-26 pass)
+-- ---------------------------------------------------------------------------
+--
+-- THE TAB USED TO SELL NOTHING. Everything a player gets for a class -- the stat boost, the ability
+-- the unlock hands over, the gear its house deals -- was shown on the unlock card AFTER the choice, and
+-- the screen in front of the choice was a ledger of greyed names and gate numbers. The pieces below
+-- put those three things on the screen before the press: the same data the ceremony reads
+-- (Class.boostFor, Class.giftFor) and the real shelf (Item.defs by `class`), so a preview can never
+-- promise what the unlock does not give.
+
+local function rootOf(id)
+    if not id or Class.isRoot(id) then return id end
+    return Class.parents(id)[1]
+end
+
+-- EACH ROOT WEARS ITS HOUSE'S COLOUR AND MARK (ui/vendor_icons.lua), so the seven houses stop reading as
+-- one grey list: a bar on the house row, the band under the detail's name, the crest on a first-pick
+-- card. They are the colours and marks the counters already title themselves with, so a player meets
+-- one identity per house rather than a second palette made up for this tab. A subclass or a crossing
+-- wears its first parent's.
+local VendorIcons = require("ui.vendor_icons")
+local function houseVendor(id)
+    local root = rootOf(id)
+    return root and require("models.vendor").forClass(root) or nil
+end
+
+local colorCache = {}
+local function crestColor(id)
+    local root = rootOf(id) or ""
+    if colorCache[root] == nil then
+        local r, g, b = VendorIcons.color(houseVendor(id))
+        colorCache[root] = r and { r, g, b } or false
+    end
+    return colorCache[root] or Theme.frame
+end
+
+-- WHAT A CLASS'S SHELF OPENS ON: the first pieces filed under it, lowest rung first and weapons
+-- before abilities before kit inside a rung, because "what will I be swinging" is the first question.
+-- Read off Item.defs by `class` -- the same field the vendor shelves on -- and instanced once per class
+-- (for the sprite and the hover card), so the preview is the real shelf rather than a list kept beside it.
+local SHELF_ORDER = { weapon = 1, ability = 2, armor = 3, utility = 4, consumable = 5 }
+local SHELF_MAX = 8
+local shelfCache = {}
+
+local function shelfPreview(id)
+    if not id then return {} end
+    local cached = shelfCache[id]
+    if cached then return cached end
+    local defs = {}
+    for itemId, def in pairs(Item.defs) do
+        if def.class == id and SHELF_ORDER[def.type] then defs[#defs + 1] = { id = itemId, def = def } end
+    end
+    table.sort(defs, function(a, b)
+        local la, lb = a.def.unlockLevel or 0, b.def.unlockLevel or 0
+        if la ~= lb then return la < lb end
+        local ta, tb = SHELF_ORDER[a.def.type], SHELF_ORDER[b.def.type]
+        if ta ~= tb then return ta < tb end
+        return a.id < b.id
+    end)
+    cached = {}
+    for i = 1, math.min(#defs, SHELF_MAX) do cached[i] = Item.instantiate(defs[i].id) end
+    shelfCache[id] = cached
+    return cached
+end
+
+-- THE CREST: drawn art when it exists (a root's `crest` path, data/classes/<id>.lua -- `. art-report`
+-- counts the missing ones), and until then the house's own mark in its colour.
+local function drawCrest(id, x, y, w, h, alpha)
+    local root = rootOf(id)
+    local def = root and Class.defs[root]
+    local color = crestColor(id)
+    Theme.set(color, 0.2 * (alpha or 1))
+    love.graphics.rectangle("fill", x, y, w, h, 4, 4)
+    local img = def and def.crest and require("models.sprite").load(def.crest)
+    if type(img) == "userdata" then
+        love.graphics.setColor(1, 1, 1, alpha or 1)
+        local sw, sh = img:getDimensions()
+        local s = math.min((h - 6) / sw, (h - 6) / sh)
+        love.graphics.draw(img, x + w / 2, y + h / 2, 0, s, s, sw / 2, sh / 2)
+        return
+    end
+    local size = h - 10
+    VendorIcons.draw(houseVendor(id), x + (w - size) / 2, y + 5, size, size, color[1], color[2], color[3], alpha or 1)
+end
+
+-- One item's icon in a square, its sprite fitted inside or its initial where the art is missing.
+local function drawItemIcon(item, x, y, size, ring, font)
+    Theme.fill(Theme.panel2, x, y, size, size, 4)
+    local sprite = item and item.sprite
+    if type(sprite) == "userdata" then
+        love.graphics.setColor(1, 1, 1)
+        local sw, sh = sprite:getDimensions()
+        local s = math.min((size - 6) / sw, (size - 6) / sh)
+        love.graphics.draw(sprite, x + size / 2, y + size / 2, 0, s, s, sw / 2, sh / 2)
+    elseif font then
+        love.graphics.setFont(font)
+        Theme.set(Theme.muted)
+        love.graphics.printf(((item and item.name) or "?"):sub(1, 1), x, y + (size - font:getHeight()) / 2, size, "center")
+    end
+    Theme.set(ring or Theme.frame)
+    love.graphics.rectangle("line", x, y, size, size, 4, 4)
+end
+
+-- A row of stat gains as chips ("+4 HP"), in the sheet's stat order, wrapping inside `w`. Returns the y
+-- under the last line. `dry` measures without drawing, so a block can ask whether it fits first.
+local function drawChips(stats, x, y, w, font, dry)
+    local h = font:getHeight() + 4
+    local cx, cy, any = x, y, false
+    for _, row in ipairs(GROWTH_ROWS) do
+        local v = stats and stats[row.key]
+        if v and v > 0 then
+            any = true
+            local text = "+" .. v .. " " .. row.label
+            local cw = font:getWidth(text) + 12
+            if cx > x and cx + cw > x + w then cx, cy = x, cy + h + 4 end
+            if not dry then
+                love.graphics.setColor(ANNOT_PENDING[1], ANNOT_PENDING[2], ANNOT_PENDING[3], 0.16)
+                love.graphics.rectangle("fill", cx, cy, cw, h, h / 2, h / 2)
+                love.graphics.setColor(ANNOT_PENDING)
+                love.graphics.setFont(font)
+                love.graphics.print(text, cx + 6, cy + 2)
+            end
+            cx = cx + cw + 4
+        end
+    end
+    return any and (cy + h) or y
+end
+
+-- Two stat tables with the same figures? (A root's boost IS one level of its growth.)
+local function sameStats(a, b)
+    if not (a and b) then return false end
+    for k, v in pairs(a) do if (b[k] or 0) ~= v then return false end end
+    for k, v in pairs(b) do if (a[k] or 0) ~= v then return false end end
+    return true
+end
+
+-- "a Fighter", "an Alchemist".
+local function withArticle(name)
+    return ((name or ""):match("^[AEIOUaeiou]") and "an " or "a ") .. (name or "")
+end
+
+-- A block's caption, LEFT-aligned over the block it heads (Theme.printTracked centres in the width it
+-- is handed, so it is handed exactly the tracked word).
+local function caption(text, x, y, w, font)
+    love.graphics.setFont(font)
+    Theme.set(Theme.accentAmber, 0.9)
+    Theme.printTracked(text, x, y, font:getWidth(text) + (#text - 1), 1)
+    return y + font:getHeight() + 6
+end
+
+-- A checklist mark, drawn rather than typed: a tick for met, an empty ring for not yet. `cy` is the
+-- line's middle.
+local function checkMark(x, cy, met)
+    if met then
+        love.graphics.setColor(ANNOT_PENDING)
+        love.graphics.setLineWidth(2)
+        love.graphics.line(x, cy, x + 3, cy + 3, x + 9, cy - 4)
+        love.graphics.setLineWidth(1)
+    else
+        Theme.set(Theme.muted)
+        love.graphics.circle("line", x + 4, cy, 4)
+    end
 end
 
 -- The seven root classes, in a fixed order. Class.roots() is keyed by id and `pairs` over it is
@@ -395,6 +560,11 @@ function ClassEditor.new(opts)
     -- overworld and under a battle's deployment, where the town is a day's march away and a button
     -- onto it would be a control that never works.
     self.onVisitTrainer = opts.onVisitTrainer
+    -- The panel's growth peek (G / left stick, Party:growthPeeking): while it is on, the growth chips
+    -- give way to the transitions they add up to ("+4 (62 → 66)"). Hover does the same for the mouse.
+    self.growthPeeking = opts.growthPeeking
+    self.previewRects = {}
+    self.cardRects = {}
 
     -- Three columns across what the Armory gives this tab: the houses, one house's shelf, and the
     -- highlighted class in full. FIXED WIDTHS rather than shares, because the first two are sized by
@@ -477,6 +647,54 @@ function ClassEditor:setChar(char)
     -- ...and then onto the body itself. After the two builds rather than instead of them: focusCurrent
     -- reads the house rail it is choosing from, and re-builds the row list once it has moved.
     self:focusCurrent()
+    -- THE FIRST PICK NEVER OPENS ON THE NOVICE, the one class it cannot choose: it opens on the first
+    -- of the seven cards.
+    if self:firstPick() then self:pickCard(1) end
+end
+
+-- ---------------------------------------------------------------------------
+-- The first pick: seven cards instead of the ledger
+-- ---------------------------------------------------------------------------
+--
+-- THE AVATAR'S FIRST CLASS IS CHOSEN FROM A SPREAD, not from the three columns. The ledger opened on
+-- the Novice -- the one class the pick cannot take -- with a houses column of eight identical grey
+-- names, a shelf of one row, and a detail pane about Novice growth; the only call to action was a coach
+-- line in the corner. The seven roots stand side by side as cards now, each showing what it pays and
+-- what it starts you with, and the picked one opens underneath with its gear.
+--
+-- IT IS A VIEW OVER THE SAME STATE, not a second flow. A card is a house: picking one opens that house
+-- and puts the cursor on its base class, so the press, the unlock, the free-pick rule and the two cards
+-- that play after are all the ledger's own, unchanged. Once the pick is spent (Class.pickOwed) the tab
+-- is the ledger again.
+function ClassEditor:firstPick()
+    return self.char ~= nil and self.player ~= nil and not self:readOnly()
+        and Class.pickOwed(self.player, self.char) == true
+end
+
+-- The house indices the cards stand for: every root on the rail, in the rail's order.
+function ClassEditor:cardHouses()
+    local out = {}
+    for i, house in ipairs(self.houses or {}) do
+        if Class.isRoot(house.id) then out[#out + 1] = i end
+    end
+    return out
+end
+
+function ClassEditor:cardIndex()
+    for i, idx in ipairs(self:cardHouses()) do
+        if idx == self.house then return i end
+    end
+    return nil
+end
+
+function ClassEditor:pickCard(i)
+    local cards = self:cardHouses()
+    if #cards == 0 then return end
+    i = math.max(1, math.min(#cards, i))
+    self:setHouse(cards[i])
+    self.region = "classes"
+    self.cursor = 1 -- the base class heads every shelf (buildRows)
+    self:scrollToCursor()
 end
 
 -- Open a house's shelf. The cursor goes back to the top of it rather than holding its index across the
@@ -585,6 +803,9 @@ function ClassEditor:trainer()
     if not self.onVisitTrainer then return nil end
     local row = self:currentRow()
     if not row then return nil end
+    -- Not until the class is held: a door the player cannot use yet, on a class they cannot stand in
+    -- yet, was a greyed plate in the way of the one press that matters.
+    if not (self.char and row.id and Class.isUnlocked(self.char, row.id)) then return nil end
     return Building.houseForClass(row.kind == "class" and row.id or row.parent, self.player)
 end
 
@@ -618,6 +839,7 @@ end
 -- host is told the walk ran off its end (Party:cycleEditorRegion), and the region is put back to the
 -- first on the way out so the next entry starts where the screen's first question is.
 function ClassEditor:cycleRegion()
+    if self:firstPick() then return false end -- one row of cards: Tab walks straight off it
     if self.region == "houses" then
         self.region = "classes"
         return true
@@ -628,6 +850,8 @@ end
 
 function ClassEditor:isFirstRegion()
     if self.card then return false end -- the ceremony holds the tab: no walking off it to the rail
+    -- On the spread, left off the first card is the rail's, as left off the houses column is.
+    if self:firstPick() then return (self:cardIndex() or 1) == 1 end
     return self.region == "houses"
 end
 
@@ -637,6 +861,11 @@ function ClassEditor:navigate(dc, dr)
     -- that is the edge of the editor, and it leads back to the portrait rail (Party:navigate reads
     -- isFirstRegion), which is why this only handles the crossing it owns.
     if dc > 0 and self.region == "houses" then self.region = "classes" return end
+    if self:firstPick() then
+        local d = dc ~= 0 and dc or dr
+        if d ~= 0 then self:pickCard((self:cardIndex() or 1) + d) end
+        return
+    end
     if dc < 0 and self.region == "classes" then self.region = "houses" return end
     if dr == 0 then return end
     if self.region == "houses" then self:stepHouse(dr) else self:step(dr) end
@@ -706,6 +935,14 @@ end
 
 function ClassEditor:mousemoved(x, y)
     if self.card then return true end
+    self.mx, self.my = x, y
+    self.hoverCard, self.hoverPreview = nil, nil
+    for i, r in pairs(self.cardRects) do
+        if hit(r, x, y) then self.hoverCard = i break end
+    end
+    for _, r in ipairs(self.previewRects) do
+        if hit(r, x, y) then self.hoverPreview = r break end
+    end
     self.hoverUnlock = hit(self.unlockRect, x, y)
     self.hoverRow, self.hoverHouse = nil, nil
     for i, r in pairs(self.rowRects) do
@@ -732,6 +969,20 @@ function ClassEditor:mousepressed(x, y, button)
     if hit(self.unlockRect, x, y) then
         self:unlockClass()
         return true
+    end
+    -- A preview icon pins its card on a press, which is how a finger -- no hover -- reads one.
+    for _, r in ipairs(self.previewRects) do
+        if hit(r, x, y) then
+            self.pinnedPreview = (self.pinnedPreview and self.pinnedPreview.item == r.item) and nil or r
+            return true
+        end
+    end
+    self.pinnedPreview = nil
+    for i, r in pairs(self.cardRects) do
+        if hit(r, x, y) then
+            self:pickCard(i)
+            return true
+        end
     end
     -- A house opens on the press that picks it: there is no second click for "open", because the shelf
     -- beside it is already the thing a player clicked the house to see.
@@ -766,6 +1017,12 @@ end
 function ClassEditor:cursorKind(x, y)
     if self.card then return "arrow" end
     if hit(self.changeRect, x, y) or hit(self.unlockRect, x, y) then return "hand" end
+    for _, r in pairs(self.cardRects) do
+        if hit(r, x, y) then return "hand" end
+    end
+    for _, r in ipairs(self.previewRects) do
+        if hit(r, x, y) then return "hand" end
+    end
     -- The hand appears over an OPEN door only. A shut trainer's plate is a notice, and a pointer that
     -- turned into a hand over it would promise a press that does nothing.
     if hit(self.trainerRect, x, y) then
@@ -787,6 +1044,12 @@ function ClassEditor:prompts()
     local function add(glyph, label) out[#out + 1] = { glyph = glyph, label = label } end
     if self.card then
         add(pad and "A" or "Enter", "Continue")
+        return out
+    end
+    if self:firstPick() then
+        add(pad and "D-pad" or "Left/Right", "Pick class")
+        local row = self:currentRow()
+        if self:canUnlock() and row then add(pad and "A" or "Enter", "Choose " .. row.name) end
         return out
     end
     if self.region == "houses" then
@@ -851,6 +1114,12 @@ function ClassEditor:drawHouses(focused)
 
         local plateH = HOUSE_ROW_H - 4
 
+        -- The house's own colour, a bar at the row's left edge: seven houses, seven marks.
+        if Class.isRoot(house.id) then
+            Theme.set(crestColor(house.id), 0.9)
+            love.graphics.rectangle("fill", x + 2, ry + 6, 3, plateH - 12)
+        end
+
         -- The mark the shelf uses for the class being applied, put on the house that teaches it.
         if self:standsIn(house.id) then
             Theme.set(Theme.accentAmber)
@@ -896,47 +1165,46 @@ function ClassEditor:drawList(focused)
         -- but drawn as an outline on the stock rather than a filled plate, and never with the cursor's
         -- edge: it is a place waiting to be taken, not a control refusing to be pressed.
         if row.kind == "shut" then
-            Theme.set(Theme.frame, 0.35)
+            -- READY, or WHAT OPENS IT, on the right where an opened row keeps its level. A row this body
+            -- can unlock now is lit (an amber edge and "Ready"); any other carries its gate as a pill --
+            -- "Fighter 3", "Fighter 6 + Priest 6" -- instead of a bare integer in the gutter.
+            local ready = self.char and (Class.canUnlock(self.char, row.id)
+                or Class.isFreePick(self.player, self.char, row.id))
+            Theme.set(ready and Theme.accentAmber or Theme.frame, ready and 0.8 or 0.35)
             love.graphics.rectangle("line", x + GUTTER_W, ry, w - GUTTER_W, ROW_H - 2, 3, 3)
-            -- Picked, it wears the cursor's edge like any row: a shut class is a destination the
-            -- detail column can now say how to reach (and unlock, once met).
             if i == self.cursor then
                 Theme.set(focused and Theme.cursor or Theme.frame)
                 love.graphics.rectangle("line", x + GUTTER_W, ry, w - GUTTER_W, ROW_H - 2, 3, 3)
             end
-            -- Met and waiting on a seal: an amber dot in the gutter, so the rows worth a seal stand out.
-            if self.char and (Class.canUnlock(self.char, row.id)
-                or Class.isFreePick(self.player, self.char, row.id)) then
-                Theme.set(Theme.accentAmber)
-                love.graphics.circle("fill", x + 6, ry + (ROW_H - 2) / 2, 3)
+
+            local pill
+            if ready then
+                pill = "Ready"
+            elseif row.gate then
+                pill = (house and house.name or "") .. " " .. tostring(row.gate)
+                    .. (row.locked and (" " .. row.locked) or "")
             end
             love.graphics.setFont(small)
-            -- The gate, in the gutter every row on the shelf shares. It is the house's own level, and
-            -- it is amber once this body has passed it -- which happens on a row that is still shut,
-            -- because a crossing has a second house to satisfy and the gutter answers for one.
-            if row.gate then
-                Theme.set(row.gate <= (house and house.level or 0) and Theme.accentAmber or Theme.muted,
-                    0.85)
-                love.graphics.printf(tostring(row.gate), x, ry + 7, GUTTER_W - 9, "right")
+            local pillW = pill and (small:getWidth(pill) + 12) or 0
+            if pill then
+                local px, ph = x + w - pillW - 6, small:getHeight() + 2
+                local py = ry + (ROW_H - 2 - ph) / 2
+                if ready then
+                    Theme.set(Theme.accentAmber, 0.18)
+                    love.graphics.rectangle("fill", px, py, pillW, ph, ph / 2, ph / 2)
+                    Theme.set(Theme.accentAmber)
+                else
+                    Theme.set(Theme.frame, 0.6)
+                    love.graphics.rectangle("line", px, py, pillW, ph, ph / 2, ph / 2)
+                    Theme.set(Theme.muted, 0.85)
+                end
+                love.graphics.print(pill, px + 6, py + 1)
             end
-            -- THE NAME, IN THE COLUMN EVERY OTHER NAME STANDS IN -- same indent, so the shelf reads as
-            -- one ladder of classes rather than as a list of things and a list of prices. Muted rather
-            -- than levelled: it is the only ink on the row that is not about a rung this body holds.
-            -- (A small empty square used to stand here instead, to keep the outline from reading as a
-            -- row that failed to draw. A name does that better and says something as well.)
-            local nameFont, shutName = Theme.fitText(Theme.body, row.name or "", w - GUTTER_W - 100, 15, 12)
+
+            local nameFont, shutName = Theme.fitText(Theme.body, row.name or "", w - GUTTER_W - pillW - 24, 15, 12)
             love.graphics.setFont(nameFont)
-            Theme.set(Theme.muted, 0.9)
+            Theme.set(ready and Theme.ink or Theme.muted, 0.9)
             love.graphics.print(shutName, x + GUTTER_W + 10, ry + 5)
-            -- The crossing's OTHER half, after the name exactly as an opened crossing carries it.
-            if row.locked then
-                love.graphics.setFont(small)
-                Theme.set(Theme.muted, 0.7)
-                love.graphics.print(Theme.ellipsize("  " .. row.locked, small, w - GUTTER_W - 20
-                    - nameFont:getWidth(shutName)),
-                    x + GUTTER_W + 10 + nameFont:getWidth(shutName),
-                    ry + 5 + nameFont:getHeight() - small:getHeight())
-            end
         else
             local on = i == self.cursor
             -- A CLASS THIS BODY HOLDS IS A CARD; ONE IT DOES NOT IS AN EMPTY SLOT. The base class always
@@ -967,11 +1235,6 @@ function ClassEditor:drawList(focused)
             -- The step is the gutter itself now: an earned class hangs off a gate and its name starts
             -- where the gate column ends, while the base class has no gate and stands to the left of it.
             local indent = base and 10 or (GUTTER_W + 10)
-            if row.gate then
-                love.graphics.setFont(small)
-                Theme.set(Theme.muted, 0.85)
-                love.graphics.printf(tostring(row.gate), x, ry + 6, GUTTER_W - 9, "right")
-            end
             -- The one tail a named row carries: a crossing's other parent. What is still shut behind a
             -- house is counted on the house's own row in the column to the left, which is a place a
             -- count can stand without standing instead of the rows it counts.
@@ -1290,14 +1553,14 @@ end
 -- counter and bar, and the seal. Each line is amber once met, so the row reads as a checklist.
 function ClassEditor:drawRequirement(row, x, y, w)
     local small, char = self.fonts.small, self.char
-    love.graphics.setFont(small)
-    Theme.set(Theme.muted)
-    Theme.printTracked("TO UNLOCK", x, y, w, 1)
-    y = y + 18
+    y = caption("TO UNLOCK", x, y, w, small) + 2
 
+    -- A tick or an empty ring before each line, drawn rather than typed: "+ / -" read as a diff.
     local function line(text, met)
-        Theme.set(met and Theme.accentAmber or Theme.ink)
-        love.graphics.print((met and "+ " or "- ") .. text, x, y)
+        checkMark(x, y + small:getHeight() / 2, met)
+        Theme.set(met and Theme.ink or Theme.muted)
+        love.graphics.setFont(small)
+        love.graphics.print(text, x + 16, y)
         y = y + small:getHeight() + 4
     end
 
@@ -1327,7 +1590,7 @@ function ClassEditor:drawRequirement(row, x, y, w)
     local held, needed, label = Class.deedProgress(char, row.id)
     if label then
         line(string.format("%s (%d / %d)", label, math.min(held, needed), needed), held >= needed)
-        ProgressBar.draw(x + 12, y - 2, w - 12, 4, needed > 0 and math.min(1, held / needed) or 1, 1,
+        ProgressBar.draw(x + 16, y - 2, w - 16, 4, needed > 0 and math.min(1, held / needed) or 1, 1,
             { color = held >= needed and Theme.accentAmber or Theme.cursor })
         y = y + 6
     end
@@ -1335,6 +1598,159 @@ function ClassEditor:drawRequirement(row, x, y, w)
     local seals = self.player and Player.materialCount(self.player, Class.SEAL_ID) or 0
     line(string.format("1 Charter Seal (%d held)", seals), seals > 0)
     return y + 8
+end
+
+-- ---------------------------------------------------------------------------
+-- The previews: what a class gives, before it is taken
+-- ---------------------------------------------------------------------------
+
+-- THE ONE ACT, drawn as the primary control it is: filled in the accent, dark ink on it. Every other
+-- plate on the tab is an outline, so the press the screen exists for is the one that looks pressable.
+local function primaryButton(x, y, w, h, text, font, hover)
+    Theme.set(Theme.accentAmber, hover and 1 or 0.86)
+    love.graphics.rectangle("fill", x, y, w, h, 4, 4)
+    love.graphics.setColor(0.11, 0.10, 0.08)
+    love.graphics.setFont(font)
+    love.graphics.printf(text, x, y + (h - font:getHeight()) / 2, w, "center")
+end
+
+
+-- The ability the unlock would hand THIS body, or nil: roots only, once per body (char.giftsTaken),
+-- and never for a class it already holds -- the same three conditions Class.unlock checks, so the
+-- preview cannot name a gift the press will not give.
+local giftCache = {}
+function ClassEditor:giftPreview(id)
+    local char = self.char
+    if not (id and char and Class.isRoot(id)) or Class.isUnlocked(char, id) then return nil end
+    if (char.giftsTaken or {})[id] then return nil end
+    local giftId = Class.giftFor(char, id)
+    if not (giftId and Item.defs[giftId]) then return nil end
+    giftCache[giftId] = giftCache[giftId] or Item.instantiate(giftId)
+    return giftCache[giftId]
+end
+
+-- An icon that opens the full item card on hover, or on a press (a finger has no hover).
+function ClassEditor:previewIcon(item, x, y, size)
+    local r = { x = x, y = y, w = size, h = size, item = item }
+    self.previewRects[#self.previewRects + 1] = r
+    local on = (self.hoverPreview and self.hoverPreview.item == item)
+        or (self.pinnedPreview and self.pinnedPreview.item == item)
+    drawItemIcon(item, x, y, size, on and Theme.accentAmber or Theme.frame, self.fonts.small)
+end
+
+-- "YOU START WITH": the gift, its icon, its name and the line it describes itself in. Returns y; draws
+-- nothing (and returns y unchanged) where there is no gift or no room above `floor`.
+function ClassEditor:drawGiftBlock(id, x, y, w, floor)
+    local item = self:giftPreview(id)
+    if not item then return y end
+    local small, body = self.fonts.small, self.fonts.body
+    local ICON = 38
+    if y + small:getHeight() + 6 + ICON > floor then return y end
+    y = caption("YOU START WITH", x, y, w, small)
+    self:previewIcon(item, x, y, ICON)
+    love.graphics.setFont(body)
+    Theme.set(Theme.ink)
+    love.graphics.print(item.name or "?", x + ICON + 10, y)
+    local desc = item.description
+    if type(desc) == "string" then
+        love.graphics.setFont(small)
+        Theme.set(Theme.muted)
+        local tw = w - ICON - 10
+        local _, lines = small:getWrap(desc, tw)
+        local keep = math.max(1, math.min(#lines, 2))
+        love.graphics.printf(table.concat(lines, " ", 1, keep) .. (#lines > keep and "..." or ""),
+            x + ICON + 10, y + body:getHeight() + 1, tw, "left")
+    end
+    return y + ICON + 12
+end
+
+-- "WHILE YOU'RE A X", and what every level in it adds. A root's boost IS one level of its growth, so
+-- there the two collapse into one row with a line saying so; an earned class pays double while
+-- selected (Class.boostFor) and shows both. The body's own points are said as a footnote, as before.
+-- While the growth peek is on (or the mouse is over the block) the per-level row gives way to the
+-- transitions it adds up to, the old table.
+function ClassEditor:drawBoostBlock(id, x, y, w, floor)
+    local char = self.char
+    local small = self.fonts.small
+    local boost = Class.boostFor(id)
+    local growth = Growth.defs[id]
+    if not (boost or growth) then return y end
+
+    local name = Class.displayName(id) or id
+    local same = sameStats(boost, growth)
+    local personal = char and Growth.personal(char)
+    local capH = small:getHeight() + 6
+
+    -- Measured first: the block yields whole rather than drawing half a sentence.
+    local need = capH + (boost and (drawChips(boost, x, 0, w, small, true)) or 0) + 4
+    if same then need = need + small:getHeight() + 4
+    elseif growth then need = need + capH + drawChips(growth, x, 0, w, small, true) + 4 end
+    if personal then need = need + small:getHeight() + 4 end
+    if y + need > floor then return y end
+
+    local top = y
+    local peek = (self.growthPeeking and self.growthPeeking())
+        or (self.mx and self.boostRect and hit(self.boostRect, self.mx, self.my))
+    if peek and char then
+        if boost and not same then
+            y = caption("WHILE YOU'RE " .. string.upper(withArticle(name)), x, y, w, small)
+            y = drawChips(boost, x, y, w, small) + 8
+        end
+        y = self:drawGrowth(id, x, y, w)
+    else
+        if boost then
+            y = caption("WHILE YOU'RE " .. string.upper(withArticle(name)), x, y, w, small)
+            y = drawChips(boost, x, y, w, small) + 4
+        end
+        if same then
+            love.graphics.setFont(small)
+            Theme.set(Theme.muted)
+            love.graphics.print("...and the same again for every level you gain in it.", x, y)
+            y = y + small:getHeight() + 4
+        elseif growth then
+            y = caption("EVERY LEVEL IN " .. string.upper(name), x, y, w, small)
+            y = drawChips(growth, x, y, w, small) + 4
+        end
+        if personal and char then
+            local parts = {}
+            for _, row in ipairs(GROWTH_ROWS) do
+                if personal[row.key] then parts[#parts + 1] = "+" .. personal[row.key] .. " " .. row.label end
+            end
+            love.graphics.setFont(small)
+            Theme.set(Theme.muted, 0.75)
+            love.graphics.print(string.format("Plus %s's own %s a level, in any class.", char.name or "this body",
+                table.concat(parts, " and ")), x, y)
+            y = y + small:getHeight() + 4
+        end
+    end
+    self.boostRect = { x = x, y = top, w = w, h = y - top }
+    return y + 8
+end
+
+-- "THE COLOSSEUM SELLS": the first pieces on the class's shelf, each opening its item card.
+function ClassEditor:drawShelfBlock(id, x, y, w, floor)
+    local items = shelfPreview(id)
+    if #items == 0 then return y end
+    local small = self.fonts.small
+    local ICON, GAP = 34, 6
+    if y + small:getHeight() + 6 + ICON > floor then return y end
+    local house = Building.houseForClass(rootOf(id), self.player)
+    local where = (house and house.name) and string.upper(house.name) or "ITS HOUSE"
+    y = caption(where .. " SELLS", x, y, w, small)
+    local fit = math.max(1, math.floor((w + GAP) / (ICON + GAP)))
+    for i = 1, math.min(#items, fit) do
+        self:previewIcon(items[i], x + (i - 1) * (ICON + GAP), y, ICON)
+    end
+    return y + ICON + 12
+end
+
+-- The item card for whichever preview is hovered or pinned, over everything else on the tab.
+function ClassEditor:drawPreviewTip()
+    local r = self.hoverPreview or self.pinnedPreview
+    if not (r and r.item) then return end
+    local ok, ItemTooltip = pcall(require, "ui.item_tooltip")
+    if not ok then return end
+    ItemTooltip.draw(r.item, r.x + r.w + 6, r.y, self.x + self.w, nil, self.char)
 end
 
 function ClassEditor:drawDetail()
@@ -1348,6 +1764,9 @@ function ClassEditor:drawDetail()
     love.graphics.setFont(font)
     Theme.set(Theme.ink)
     love.graphics.print(name, x, y)
+    -- The house's colour under the name: whose class this is, at a glance.
+    Theme.set(crestColor(row.id))
+    love.graphics.rectangle("fill", x, y + font:getHeight() + 1, math.min(w, font:getWidth(name) + 10), 3)
 
     love.graphics.setFont(small)
     Theme.set(Theme.muted)
@@ -1357,9 +1776,9 @@ function ClassEditor:drawDetail()
             or ("Subclass of " .. Item.classDisplayName(row.parent)))
         or row.kind == "subclass" and ("Subclass of " .. Item.classDisplayName(row.parent))
         or "Crossing"
-    love.graphics.print(kindLabel, x, y + 26)
+    love.graphics.print(kindLabel, x, y + 30)
 
-    local ty = y + 50
+    local ty = y + 54
 
     -- WHERE THE BODY IS STANDING, said beside the name it is standing in. It used to sit at the foot of
     -- this column, under the growth table and the technique rule -- a long way from the thing it is a
@@ -1368,7 +1787,7 @@ function ClassEditor:drawDetail()
         local here = (char.name or "?") .. "'s Current Class"
         Theme.set(Theme.accentAmber)
         if small:getWidth(kindLabel) + 10 + small:getWidth(here) <= w then
-            love.graphics.print(here, x + small:getWidth(kindLabel) + 10, y + 26)
+            love.graphics.print(here, x + small:getWidth(kindLabel) + 10, y + 30)
         else
             love.graphics.print(here, x, ty)
             ty = ty + small:getHeight() + 4
@@ -1391,18 +1810,23 @@ function ClassEditor:drawDetail()
     ty = ty + 12
 
     -- WHAT UNLOCKS IT, for a class this body does not hold yet: the level gate, the deed with its
-    -- counter, and the seal. Ahead of the lineage, because on a shut row it is the question.
-    if char and row.id and not Class.isUnlocked(char, row.id) then
+    -- counter, and the seal. Ahead of everything else, because on a shut row it is the question.
+    local held = char and row.id and Class.isUnlocked(char, row.id)
+    if char and row.id and not held then
         ty = self:drawRequirement(row, x, ty, w)
     end
 
-    -- Where it sits on the ladder, before anything about this particular body: the shape is a fact
-    -- about the class, and the numbers under it are facts about the member standing in front of it.
-    ty = self:drawLineage(row, x, ty, w)
+    -- WHAT IT GIVES: the ability the unlock hands over, what standing in it pays, and the first gear
+    -- its house sells. Each yields whole above the buttons rather than drawing under them.
+    local floor = self:buttonsTop() - 8
+    ty = self:drawGiftBlock(row.id, x, ty, w, floor)
+    ty = self:drawBoostBlock(row.id, x, ty, w, floor)
+    ty = self:drawShelfBlock(row.id, x, ty, w, floor)
 
     -- This body's standing on it, as a transition rather than a bare figure: what the next rung costs
-    -- is the number a player is actually deciding against.
-    if char then
+    -- is the number a player is actually deciding against. ONLY ON A CLASS IT HOLDS: "Fighter 0,
+    -- 0 / 28 to 1" and the technique sentence said nothing about a class the body cannot stand in yet.
+    if held and ty + 62 <= floor then
         love.graphics.setFont(body)
         Theme.set(Theme.ink)
         love.graphics.print((char.name or "?") .. ": " .. row.name .. " " .. tostring(row.level), x, ty)
@@ -1420,9 +1844,11 @@ function ClassEditor:drawDetail()
             ty = ty + 40
         end
 
-        ty = self:drawGrowth(row.id, x, ty, w)
         ty = self:drawTechniqueRule(row, x, ty, w)
     end
+
+    -- Where it sits on the ladder, last: the shape around the numbers, and the first thing to give way.
+    ty = self:drawLineage(row, x, ty, w)
 
     -- THE OTHER DOOR OUT OF THIS COLUMN: the house where this class is taught, sold and climbed. It
     -- stands above the act, because changing class is what you do HERE and the trainer is where you go
@@ -1468,12 +1894,8 @@ function ClassEditor:drawDetail()
     if self:canUnlock() then
         local by = self:changeY()
         self.unlockRect = { x = x, y = by, w = w, h = BUTTON_H }
-        Theme.plate(x, by, w, BUTTON_H, 4, self.hoverUnlock and Theme.panel or Theme.panel2)
-        Theme.set(Theme.accentAmber)
-        love.graphics.rectangle("line", x, by, w, BUTTON_H, 4, 4)
-        love.graphics.setFont(body)
-        love.graphics.printf(Class.isFreePick(self.player, char, row.id) and ("Choose " .. row.name)
-            or ("Unlock " .. row.name .. " (1 seal)"), x, by + 9, w, "center")
+        primaryButton(x, by, w, BUTTON_H, Class.isFreePick(self.player, char, row.id) and ("Choose " .. row.name)
+            or ("Unlock " .. row.name .. " (1 seal)"), body, self.hoverUnlock)
     elseif self:readOnly() and row.id then
         love.graphics.setFont(small)
         Theme.set(Theme.muted)
@@ -1486,11 +1908,112 @@ function ClassEditor:drawDetail()
     if self:canChange() then
         local by = self:changeY()
         self.changeRect = { x = x, y = by, w = w, h = BUTTON_H }
-        Theme.plate(x, by, w, BUTTON_H, 4, self.hoverChange and Theme.panel or Theme.panel2)
-        Theme.set(Theme.accentAmber)
-        love.graphics.rectangle("line", x, by, w, BUTTON_H, 4, 4)
+        primaryButton(x, by, w, BUTTON_H, "Change to " .. row.name, body, self.hoverChange)
+    end
+end
+
+-- THE SPREAD (see "The first pick" above): a title, Rowan's line, the seven roots as cards, and the
+-- picked one opened underneath -- what it is and what it starts you with on the left, what it pays and
+-- what its house sells on the right, and the press.
+local CARD_GAP = 8
+local CREST_H = 46
+
+function ClassEditor:drawFirstPick(focused)
+    local x, y, w = self.x, self.y, self.w
+    local small, body = self.fonts.small, self.fonts.body
+    local tiny = self.fonts.tiny or small
+    self.unlockRect, self.changeRect, self.trainerRect = nil, nil, nil
+    self.rowRects, self.houseRects = {}, {}
+
+    local title = Theme.display(24)
+    love.graphics.setFont(title)
+    Theme.set(Theme.accentAmber)
+    love.graphics.printf(Locale.get("ui.class_editor.first_pick_title", "Choose your first class"), x, y, w, "center")
+    local ty = y + title:getHeight() + 2
+    local coach = self:pickCoach()
+    if coach then
+        love.graphics.setFont(small)
+        Theme.set(Theme.muted)
+        love.graphics.printf(coach, x, ty, w, "center")
+        ty = ty + small:getHeight() + 10
+    end
+
+    -- The cards.
+    local cards = self:cardHouses()
+    local n = math.max(1, #cards)
+    local cw = math.floor((w - CARD_GAP * (n - 1)) / n)
+    local picked = self:cardIndex()
+    -- One height for the row, set by the tallest chip block (a mage pays five stats, a fighter three),
+    -- with the gift line under the chips rather than pinned to a foot they could run into.
+    local nameH = Theme.display(18):getHeight()
+    local chipsH = 0
+    for _, idx in ipairs(cards) do
+        chipsH = math.max(chipsH, drawChips(Class.boostFor(self.houses[idx].id), 0, 0, cw - 16, tiny, true))
+    end
+    local CARD_H = 6 + CREST_H + 10 + nameH + 4 + chipsH + 6 + tiny:getHeight() + 10
+    for i, idx in ipairs(cards) do
+        local house = self.houses[idx]
+        local cx = x + (i - 1) * (cw + CARD_GAP)
+        local r = { x = cx, y = ty, w = cw, h = CARD_H }
+        self.cardRects[i] = r
+        local on, hov = i == picked, i == self.hoverCard
+        Theme.plate(cx, ty, cw, CARD_H, 5, on and Theme.panel or Theme.panel2)
+        Theme.set(on and (focused and Theme.cursor or Theme.accentAmber) or Theme.frame, (on or hov) and 1 or 0.5)
+        love.graphics.rectangle("line", cx, ty, cw, CARD_H, 5, 5)
+
+        -- The crest: drawn art, or the house's mark in its colour.
+        drawCrest(house.id, cx + 6, ty + 6, cw - 12, CREST_H, on and 1 or 0.75)
+
+        local iy = ty + 6 + CREST_H + 10
+        local nf, nm = Theme.fitText(Theme.display, house.name, cw - 12, 18, 12)
+        love.graphics.setFont(nf)
+        Theme.set(on and Theme.ink or Theme.muted)
+        love.graphics.print(nm, cx + 8, iy)
+        iy = iy + nameH + 4
+
+        drawChips(Class.boostFor(house.id), cx + 8, iy, cw - 16, tiny)
+
+        local gift = self:giftPreview(house.id)
+        if gift then
+            love.graphics.setFont(tiny)
+            Theme.set(Theme.muted)
+            local text = Theme.ellipsize("Starts with " .. (gift.name or "?"), tiny, cw - 16)
+            love.graphics.print(text, cx + 8, iy + chipsH + 6)
+        end
+    end
+
+    -- The picked card, opened.
+    local row = self:currentRow()
+    if not row then return end
+    local dy = ty + CARD_H + 16
+    local bottom = y + self.h
+    local leftW = math.floor(w * 0.52)
+    local rx, rw = x + leftW + 24, w - leftW - 24
+
+    local nf, nm = Theme.fitText(Theme.display, row.name, leftW, 24, 16)
+    love.graphics.setFont(nf)
+    Theme.set(Theme.ink)
+    love.graphics.print(nm, x, dy)
+    Theme.set(crestColor(row.id))
+    love.graphics.rectangle("fill", x, dy + nf:getHeight() + 1, math.min(leftW, nf:getWidth(nm) + 10), 3)
+    local ly = dy + nf:getHeight() + 12
+
+    local blurb = Item.classDescription(row.id) or Class.description(row.id)
+    if type(blurb) == "string" then
         love.graphics.setFont(body)
-        love.graphics.printf("Change to " .. row.name, x, by + 9, w, "center")
+        Theme.set(Theme.ink, 0.9)
+        love.graphics.printf(blurb, x, ly, leftW, "left")
+        local _, lines = body:getWrap(blurb, leftW)
+        ly = ly + body:getHeight() * math.max(1, #lines) + 14
+    end
+    self:drawGiftBlock(row.id, x, ly, leftW, bottom)
+
+    local by = bottom - BUTTON_H
+    local ry = self:drawBoostBlock(row.id, rx, dy, rw, by - 10)
+    self:drawShelfBlock(row.id, rx, ry, rw, by - 10)
+    if self:canUnlock() then
+        self.unlockRect = { x = rx, y = by, w = rw, h = BUTTON_H }
+        primaryButton(rx, by, rw, BUTTON_H, "Become " .. withArticle(row.name), body, self.hoverUnlock)
     end
 end
 
@@ -1499,16 +2022,31 @@ function ClassEditor:draw(focused)
     -- selection drawn -- a house stays picked while the cursor is off reading its shelf -- so the ring
     -- is the one thing on the tab that says where the next press lands.
     local on = focused ~= false
-    self:drawHouses(on and self.region == "houses")
-    self:drawList(on and self.region == "classes")
-    self:drawDetail()
-    -- Rowan's coach line, over the foot of the houses column until the first pick is spent.
-    local coach = self:pickCoach()
-    if coach then
-        love.graphics.setFont(self.fonts.small)
-        Theme.set(Theme.accentAmber)
-        love.graphics.printf(coach, self.houseX, self.y + self.h - 60, self.houseW, "left")
+    -- Rebuilt every frame by whatever draws them, so a rect from the other layout is never hit.
+    self.previewRects, self.cardRects = {}, {}
+    if self:firstPick() then
+        self:drawFirstPick(on)
+    else
+        self:drawHouses(on and self.region == "houses")
+        self:drawList(on and self.region == "classes")
+        self:drawDetail()
     end
+    -- A pinned card belongs to an icon still on screen; one that scrolled or switched away lets go.
+    if self.pinnedPreview then
+        local still = false
+        for _, r in ipairs(self.previewRects) do
+            if r.item == self.pinnedPreview.item then still = true break end
+        end
+        if not still then self.pinnedPreview = nil end
+    end
+    if self.hoverPreview then
+        local still = false
+        for _, r in ipairs(self.previewRects) do
+            if r.item == self.hoverPreview.item and r.x == self.hoverPreview.x then still = true break end
+        end
+        if not still then self.hoverPreview = nil end
+    end
+    self:drawPreviewTip()
     love.graphics.setColor(1, 1, 1)
     -- THE CEREMONY, LAST, over the whole frame. The Armory forwards no update to a column editor, so the
     -- card is ticked here off the frame's own delta.

@@ -5,4 +5,6 @@ return {
     description = "Takes the opening and the purse. A strike that meets its condition hits for a multiple, "
         .. "blinks return you to where you stood, and blows bleed, disarm or steal.",
     exemplar = "character_clem", -- the companion the Undercroft posts
+    -- The class crest on the Classes tab (ui/class_editor.lua); until drawn, its house's mark stands in.
+    crest = "assets/classes/rogue.png",
 }

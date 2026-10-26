@@ -74,6 +74,16 @@ what the source asks for; what changed is that the board still now answers them.
 > honest as it stands. What it still cannot tell you is *token or painting*, which is the same blind
 > spot `items/` has and is what `art-source` exists to answer.
 
+## Class crests — seven slots, the house mark until drawn
+
+Each root class names a crest (`crest = "assets/classes/<root>.png"` in `data/classes/<root>.lua`), drawn
+on the first-pick cards of the Classes tab (`ui/class_editor.lua`). None is drawn yet, so `art-report`
+counts seven missing in an `assets/classes/` bucket. Until one lands, the tab draws **the house's own
+mark in the house's colour** (`ui/vendor_icons.lua`, the section below) — the same identity the counter
+titles itself with — so the stand-in is already honest. A commissioned crest should read as that house
+at 40px, not as a weapon: the marks were drawn as buildings precisely so the seven would not collapse
+into seven weapons.
+
 ## Vendors wear a mark, not a face
 
 `assets/vendors/` was 11 shopkeeper portraits. It is now **not a bucket at all** — the `sprite` field is

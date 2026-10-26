@@ -637,6 +637,8 @@ function Party.new(opts)
         -- not, and the Roll draws no trainer plate there. `(houseId, class)` -- where to go, and what
         -- for; everything about getting there belongs to whoever handed this in.
         onVisitTrainer = opts.onVisitTrainer,
+        -- The G peek reaches the Classes tab too: its growth chips give way to the transitions.
+        growthPeeking = function() return self:growthPeeking() end,
     }
     self.editors = { tactics = TacticsEditor.new(column) }
     if opts.classes ~= false then self.editors.classes = ClassEditor.new(column) end

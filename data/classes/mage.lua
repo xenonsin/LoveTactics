@@ -5,4 +5,6 @@ return {
     description = "Casts the elements and remakes the ground. Spells are channelled over a turn or two, "
         .. "hazards are laid on tiles, and sigils reshape whatever is cast beside them.",
     exemplar = "character_gyeom", -- the companion the Arcanum posts
+    -- The class crest on the Classes tab (ui/class_editor.lua); until drawn, its house's mark stands in.
+    crest = "assets/classes/mage.png",
 }

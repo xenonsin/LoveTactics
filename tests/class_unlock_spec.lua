@@ -237,6 +237,52 @@ return {
         assert(ed.card == nil, "and the tab is the player's again")
     end },
 
+    -- THE FIRST PICK IS A SPREAD OF THE SEVEN ROOTS (ui/class_editor.lua), and it never opens on the
+    -- Novice -- the one class it cannot take. Each card is a house; picking one lands on its base class.
+    { name = "the first pick opens on a root card, never the Novice, and walks the seven roots", fn = function()
+        local ClassEditor = require("ui.class_editor")
+        local a = avatar()
+        local p = companyWith(a)
+        p.classPick = true
+        local ed = ClassEditor.new({ x = 0, y = 0, w = 900, h = 500, fonts = {}, player = p, char = a })
+        assert(ed:firstPick(), "the spread shows while the pick is owed")
+        assert(#ed:cardHouses() == 7, "seven cards, one per root, found " .. #ed:cardHouses())
+        local row = ed:currentRow()
+        assert(row and Class.isRoot(row.id), "it opens on a root, not on " .. tostring(row and row.id))
+        assert(ed:canUnlock(), "and the opened card is choosable")
+        local seen = {}
+        for i = 1, 7 do
+            ed:pickCard(i)
+            local id = ed:currentRow().id
+            assert(Class.isRoot(id) and not seen[id], "card " .. i .. " is a distinct root")
+            seen[id] = true
+        end
+        ed:navigate(1, 0)
+        assert(ed:cardIndex() == 7, "the walk stops at the last card")
+        ed:pickCard(1)
+        assert(ed:isFirstRegion(), "left off the first card belongs to the rail")
+        assert(ed:confirm() == nil and Class.isUnlocked(a, ed:currentRow().id), "confirm picks the card")
+        assert(not ed:firstPick(), "and the tab is the ledger again once the pick is spent")
+    end },
+
+    -- "YOU START WITH" MAY NEVER PROMISE A GIFT THE UNLOCK DOES NOT HAND OVER: the preview reads the same
+    -- three conditions Class.unlock does (a root, not yet held, not yet collected by this body).
+    { name = "the gift preview names exactly the unlock's gift, and goes once it is taken", fn = function()
+        local ClassEditor = require("ui.class_editor")
+        local a = avatar()
+        local p = companyWith(a)
+        p.classPick = true
+        local ed = ClassEditor.new({ x = 0, y = 0, w = 900, h = 500, fonts = {}, player = p, char = a })
+        for id in pairs(Class.roots()) do
+            local item = ed:giftPreview(id)
+            assert(item and item.id == Class.giftFor(a, id), id .. ": the preview is not the unlock's gift")
+        end
+        assert(ed:giftPreview("warlord") == nil, "a subclass hands over no gift and previews none")
+        local _, gift = Class.unlock(p, a, "fighter")
+        assert(gift == Class.giftFor(a, "fighter"), "the unlock handed over what was previewed")
+        assert(ed:giftPreview("fighter") == nil, "a held class previews nothing")
+    end },
+
     { name = "Rowan's recommendation: the avatar's first root is picked free -- no level, deed or seal", fn = function()
         local ClassEditor = require("ui.class_editor")
         local a = avatar()

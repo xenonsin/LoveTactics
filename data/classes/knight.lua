@@ -12,4 +12,6 @@ return {
     description = "Decides where the enemy stands. Taunts pull attacks onto you, Knockback and Halt move "
         .. "foes off their tiles, and a guard takes an ally's hit onto your own plate.",
     exemplar = "character_rowan", -- the companion the Bastion posts; roots are the companions' own tier
+    -- The class crest on the Classes tab (ui/class_editor.lua); until drawn, its house's mark stands in.
+    crest = "assets/classes/knight.png",
 }
