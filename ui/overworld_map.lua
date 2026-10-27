@@ -262,6 +262,12 @@ function OverworldMap:updateCamera()
     self.camTargetX = mapW / 2 - Overworld.BOARD_CX
     self.camTargetY = (mapH - Scale.HEIGHT) / 2
     self.camX, self.camY = self.camTargetX, self.camTargetY
+    -- Which space that was centred in, so :update can re-aim when it changes (Scale.spaceEpoch). A
+    -- hosted fight borrows the handheld space and hands it back (states/game.lua's endFight), and three
+    -- of its exits step the token back off the marker -- which lands here -- while the fight's shorter
+    -- space is still live: on a phone the board came back aimed at the wrong height, its top rows off
+    -- the screen.
+    self.spaceEpoch = Scale.spaceEpoch
 end
 
 
@@ -438,6 +444,7 @@ end
 -- apart. Changing direction re-arms the pause so a quick tap is a single tile.
 function OverworldMap:update(dt)
     self.fogTime = (self.fogTime or 0) + (dt or 0) -- the fog shader's drift clock
+    if self.camTargetX and self.spaceEpoch ~= Scale.spaceEpoch then self:updateCamera() end
     -- Camera easing + token slide run every frame, whether or not we're moving.
     if self.camTargetX then
         local t = math.min(1, dt * CAM_LERP)

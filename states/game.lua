@@ -5328,6 +5328,10 @@ end
 function game.endFight()
     game.battle = nil
     game.useHandheldSpace(false)
+    -- ...and the board re-aimed in it, on this same beat: three exits step the token back off the
+    -- marker (OverworldMap:retreatFromEncounter) BEFORE calling this, which centred the board in the
+    -- fight's space. The map catches that itself on its next update; this closes the frame before it.
+    if game.map and game.map.updateCamera then game.map:updateCamera() end
 end
 
 function game.update(dt)
