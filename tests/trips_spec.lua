@@ -5,7 +5,7 @@
 --   * the city schedule (Player.tripsHome), the Ward's rest and the opening purse all read the counted
 --     number, never `runsStarted`, which still advances per descent begun and still seeds the run;
 --   * the counted number survives a save, and an old save seeds it from runsStarted;
---   * the prowl deals a fight per Descent.prowlSteps (28 on floor one, 52 at the bottom) of walking, and a floor whose stair is beaten at half
+--   * the prowl deals a fight per Descent.prowlSteps (25 on floor one, 47 at the bottom) of walking, and a floor whose stair is beaten at half
 --     that rate -- with the gauge's bands moved to match.
 
 local Gate = require("models.gate")
@@ -145,11 +145,11 @@ return {
         end,
     },
     {
-        -- (2026-10-24) 28 at the top, ramping to 52 at the bottom (Descent.prowlSteps): about four fights
+        -- (2026-10-27) 25 at the top, ramping to 47 at the bottom (Descent.prowlSteps): about four fights
         -- a floor, measured with `. floor-fights`. These runs carry no floor, so they read floor one.
-        name = "the prowl deals a fight per 28 steps on floor one, and a beaten floor at half that rate",
+        name = "the prowl deals a fight per 25 steps on floor one, and a beaten floor at half that rate",
         fn = function()
-            assert(Descent.PROWL_STEPS == 28 and Descent.prowlSteps(1) == 28, "the top of the ramp is 28")
+            assert(Descent.PROWL_STEPS == 25 and Descent.prowlSteps(1) == 25, "the top of the ramp is 25")
             assert(Descent.prowlSteps(Descent.FLOORS) == Descent.PROWL_STEPS_DEEP, "the bottom is the deep figure")
             for f = 2, Descent.FLOORS do
                 assert(Descent.prowlSteps(f) >= Descent.prowlSteps(f - 1), "the ramp dips at floor " .. f)

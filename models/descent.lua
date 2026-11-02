@@ -2921,8 +2921,11 @@ end
 -- carries the before/after table). A deep floor already seats a second elite (Descent.floorSeen), so the
 -- walk deals fewer there and the floor's total stays flat. This is the TOP of the ramp; Descent.prowlSteps
 -- is what the meter reads.
-Descent.PROWL_STEPS = 28
-Descent.PROWL_STEPS_DEEP = 52
+--
+-- (2026-10-27) TWENTY-FIVE TO FORTY-SEVEN: a touch more fighting. `. floor-fights 24` puts the run at
+-- 65.7 fights (tour) against 61.9, about 4.4 a floor.
+Descent.PROWL_STEPS = 25
+Descent.PROWL_STEPS_DEEP = 47
 
 -- The prowl interval on floor `f`: linear between the two above, rounded, the same shape as floorSeen.
 function Descent.prowlSteps(f)
@@ -2953,7 +2956,7 @@ function Descent.stairBeaten(grid)
 end
 
 -- How far either side of PROWL_STEPS a leg may actually run, so the meter is not a metronome the player
--- can count on their fingers. Twenty to twenty-eight (doubled on a beaten floor, Descent.prowlScale).
+-- can count on their fingers. Twenty-one to twenty-nine on floor one (doubled on a beaten floor, Descent.prowlScale).
 Descent.PROWL_JITTER = 4
 
 -- HOW LONG THIS PARTICULAR LEG RUNS, in steps. Dealt off the run's seed and the LEG NUMBER -- how many

@@ -137,7 +137,7 @@ The codebase is organized into layers loaded via `require()`. See
   -- and only the layout changes (the elites are re-dealt off the lap seed and the depth,
   `Descent.eliteSeed`; the circle order still shuffles per run once the Crown has fallen). A floor
   crossing is **about 4 fights** -- the stair, one or two elites, and what the prowl deals
-  (`Descent.prowlSteps`, 28 steps on floor 1 to 52 at the bottom) -- about 60 a run, measured with
+  (`Descent.prowlSteps`, 25 steps on floor 1 to 47 at the bottom) -- about 65 a run, measured with
   `. floor-fights` (`tools/floor_fights.lua`; the table is in `Descent.FLOOR_FIGHTS`'s header). Climbing
   out from any floor ends the run and banks the haul; relics are lost (`Relic.endTrip`). (The rift was
   one persistent place with a map book on the player, `player.floors`, from 2026-09-17 to 2026-10-24;
