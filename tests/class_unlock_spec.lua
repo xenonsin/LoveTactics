@@ -265,6 +265,36 @@ return {
         assert(not ed:firstPick(), "and the tab is the ledger again once the pick is spent")
     end },
 
+    -- THE FIRST PICK IS ITS OWN PANEL (states/hub.lua's openFirstPick): the Party panel with `only`, so
+    -- there is no Loadout tab, no debug pill and no other body on the rail to leave the pick by.
+    { name = "a one-tab party panel offers no other tab, no debug pill and only the bodies it is handed", fn = function()
+        local Party = require("ui.panels.party")
+        local a = avatar()
+        local p = companyWith(a)
+        p.classPick = true
+        -- Fonts stubbed, as every panel spec stubs them (`t.window = false`, so newFont throws).
+        local gfx, realFont = love.graphics, love.graphics.newFont
+        local face = {
+            getHeight = function() return 18 end,
+            getWidth = function(_, s) return #tostring(s or "") * 8 end,
+            getWrap = function(self, text) return self:getWidth(text), { tostring(text) } end,
+        }
+        gfx.newFont = function() return face end
+        local ok, panel = pcall(Party.new, { player = p, party = { a }, only = "classes", persist = false,
+            holdOpen = function() return Class.pickOwed(p, a) end })
+        gfx.newFont = realFont
+        assert(ok, panel)
+        panel:focusChar(1)
+        panel:setMode("classes")
+        panel.note = nil -- the Roll's lesson window, which is not what is being asked about
+        assert(#panel.modes == 1 and panel.modes[1] == "classes", "one tab, the Roll")
+        assert(panel.debugRect == nil, "no debug pill")
+        assert(#panel.chars == 1 and panel.chars[1] == a, "the avatar alone on the rail")
+        panel:keypressed("1")
+        assert(panel.mode == "classes", "no number key reaches the Loadout")
+        assert(panel:close() == false, "and it holds open while the pick is owed")
+    end },
+
     -- "YOU START WITH" MAY NEVER PROMISE A GIFT THE UNLOCK DOES NOT HAND OVER: the preview reads the same
     -- three conditions Class.unlock does (a root, not yet held, not yet collected by this body).
     { name = "the gift preview names exactly the unlock's gift, and goes once it is taken", fn = function()

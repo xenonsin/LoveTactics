@@ -498,6 +498,12 @@ function Party.new(opts)
     if opts.tactics ~= false and allowed("tactics") then self.modes[#self.modes + 1] = "tactics" end
     if opts.classes ~= false and allowed("classes") then self.modes[#self.modes + 1] = "classes" end
     if opts.stats then self.modes[#self.modes + 1] = "stats" end
+    -- ONE TAB AND NOTHING ELSE (`only`): the panel as a screen of its own rather than as the Loadout. The
+    -- avatar's first class is the one use (states/hub.lua's openFirstPick) -- a pick the player cannot
+    -- walk away from has no business offering a Loadout tab, a debug pill or a rail of other bodies.
+    -- The tab strip is not drawn, and the hints drop Tab and Switch where there is nothing to switch to.
+    self.only = opts.only
+    if self.only then self.modes = { self.only } end
     self.persist = opts.persist ~= false
     self.fielded = opts.fielded
     self.filters = opts.filters
@@ -613,7 +619,7 @@ function Party.new(opts)
     -- character editor's catalog restock), where a second catalog switch would fight the first. The
     -- Armory's filters are a non-destructive VIEW over the real stash, so the catalog toggle sits
     -- happily beside them (and just gets narrowed by the same view).
-    if Debug.enabled and not self.onFilterChanged then
+    if Debug.enabled and not self.onFilterChanged and not self.only then
         local dbgW = 190
         self.debugRect = { x = self.boxX + self.boxW - 24 - dbgW, y = self.modeY, w = dbgW, h = MODE_H }
     end
@@ -1259,6 +1265,7 @@ function Party:catalogIdle()
 end
 
 function Party:toggleDebugAll()
+    if self.only then return end -- no pill drawn, so no F1 either
     self:setDebugAll(not self.debugAll)
 end
 
@@ -2897,6 +2904,7 @@ end
 -- Loadout / Tactics segmented tabs, mirroring ui/panels/shop.lua's mode selector: filled + outlined
 -- when active, flat when not.
 function Party:drawModeSelector()
+    if #self.modes < 2 then return end -- a strip of one is a label, not a choice
     love.graphics.setFont(self.smallFont)
     for _, m in ipairs(self.modes) do
         local r = self.segRects[m]
@@ -3012,9 +3020,9 @@ function Party:drawPromptBar()
         else
             add(confirmGlyph, "Select", PROMPT_GO)
         end
-        add(cancelGlyph, "Close", PROMPT_NO)
-        add(pad and "LT/RT" or self:tabGlyph(), "Tab")
-        add(switchGlyph, "Switch")
+        if not (self.holdOpen and self.holdOpen()) then add(cancelGlyph, "Close", PROMPT_NO) end
+        if #self.modes > 1 then add(pad and "LT/RT" or self:tabGlyph(), "Tab") end
+        if #self.chars > 1 then add(switchGlyph, "Switch") end
         ButtonPrompt.drawHints(segments, self.boxX, self.boxY + self.boxH - 30, self.boxW, { align = "center" })
         return
     end

@@ -559,13 +559,24 @@ end
 -- `holdOpen`): a Novice walking into the rift is the state this whole beat exists to end, and a pick
 -- that could be shut away would be one a player could walk past without noticing it was the game's
 -- first real decision.
+--
+-- IT IS A SCREEN OF ITS OWN, not the Armory's Loadout opened on its Classes tab: the Party panel with
+-- one tab (`only`) and the avatar alone on its rail, so nothing on it is a way off the pick -- no Loadout
+-- tab, no debug pill, no Rowan to click across to.
 local function openFirstPick()
-    activePanel = newPanel("party", nil, nil, dismissPanel)
     local avatar
-    for i, char in ipairs(activePanel.chars or {}) do
-        if char.id == Class.AVATAR_ID then avatar = char; activePanel:focusChar(i) end
+    for _, char in ipairs(hub.player.roster or {}) do
+        if char.id == Class.AVATAR_ID then avatar = char end
     end
-    activePanel.holdOpen = function() return Class.pickOwed(hub.player, avatar) end
+    activePanel = require("ui.panels.party").new({
+        title = "Your Class",
+        player = hub.player,
+        party = avatar and { avatar } or nil,
+        only = "classes",
+        holdOpen = function() return Class.pickOwed(hub.player, avatar) end,
+        onClose = dismissPanel,
+    })
+    activePanel:focusChar(1)
     activePanel:setMode("classes")
 end
 
