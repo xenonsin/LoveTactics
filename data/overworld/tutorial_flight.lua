@@ -27,6 +27,10 @@
 -- every stop sitting near where the part is entered. The two notes above about the bow chest "beside the
 -- door" and the rest "on the Champion's doorstep" describe the layout before this.
 --
+-- THE DELVER CAME OUT OF HER SPUR (2026-10-30, by the author, on a screenshot): one cell down, from the
+-- dead end at (4,5) onto the corridor at (4,6), and the second fight now waits for her (states/prologue.lua's
+-- `waitFor = 3`). So "every stop but two is in a dead end" above is now every stop but three.
+--
 -- =====================================================================================================
 -- THE CITY-SWEEP MAP'S OWN RECORD (superseded):
 --
@@ -100,8 +104,8 @@ return {
         "..#...#...#..#X.", -- y2  the Champion on the stair, at the far end of part three
         "....#...#.....#.", -- y3
         "#b##############", -- y4  the second chokepoint
-        "..#3#...#..#..#4", -- y5  the wounded delver down a spur, the last chest at the far end
-        ".#...##.#.....#.", -- y6
+        "..#.#...#..#..#4", -- y5  the last chest at the far end
+        ".#.3.##.#.....#.", -- y6  the wounded delver, on the way through
         "...#........#...", -- y7
         "########a#######", -- y8  the first chokepoint
         "...#.#.#...#..2.", -- y9  the shrine, out east

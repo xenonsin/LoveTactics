@@ -1485,13 +1485,15 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
             if def then
                 -- `waitFor` names a route stop (its index in `always`) this fight will not arrive ahead
                 -- of: the step count still runs, but nothing is seated until that stop is cleared.
-                -- Matched by id and FIRST LOOT, never by table identity: a board restored from a save
-                -- carries copies, and an identity test there held the fight -- and every fight queued
-                -- behind it -- forever.
+                -- Matched by id, FIRST LOOT and CONVERSATION, never by table identity: a board restored
+                -- from a save carries copies, and an identity test there held the fight -- and every
+                -- fight queued behind it -- forever. The conversation is what tells the two event stops
+                -- apart (the shrine and the delver are both `encounter_event` with no loot).
                 local wait = e.waitFor and always[e.waitFor]
                 queue[#queue + 1] = { id = e.id, kind = def.kind, name = def.name, loot = e.loot,
                                       after = e.after or 0, by = e.by, opening = e.opening,
-                                      waitId = wait and wait.id, waitLoot = wait and wait.loot and wait.loot[1] }
+                                      waitId = wait and wait.id, waitLoot = wait and wait.loot and wait.loot[1],
+                                      waitConv = wait and wait.conversation }
             end
         end
         game.tutorialProwl = { queue = queue, steps = 0, total = #queue }
@@ -1770,8 +1772,8 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
                     end
                 end
                 local free = not (cell.encounter or cell.cache or cell.key or cell.gate)
-                -- HELD BEHIND A STOP (`waitFor`): the bow chest comes before the first fight, however
-                -- the company wanders (2026-10-23). A chokepoint still owed overrides it, as it always
+                -- HELD BEHIND A STOP (`waitFor`): the bow chest comes before the first fight, and the
+                -- wounded delver before the second, however the company wanders (2026-10-23, -30). A chokepoint still owed overrides it, as it always
                 -- has -- the chest is optional, and the gift is owed before the next part either way.
                 local held = false
                 if head.waitId then
@@ -1781,7 +1783,7 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
                             local c = game.grid.cells[y][x]
                             local e = c.encounter
                             if e and e.id == head.waitId and (e.loot and e.loot[1]) == head.waitLoot
-                                and c.cleared then
+                                and e.conversation == head.waitConv and c.cleared then
                                 held = false
                             end
                         end

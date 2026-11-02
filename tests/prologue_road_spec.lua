@@ -166,6 +166,7 @@ return {
             assert(prowl[1].after >= 12, "the first fight must not find the company near the door")
             assert(prowl[2].after >= 16, "and the second must not follow straight on from the first")
             assert(prowl[1].waitFor == 1, "the first fight waits behind the bow chest, the first stop")
+            assert(prowl[2].waitFor == 3, "the second fight waits behind the wounded delver, the third stop")
             -- ...and the coach never names the chest: it is found under the fog (2026-10-23).
             local bag = require("data.conversations.tutorial.conversation_tutorial_flight").script
             for _, node in ipairs(bag) do

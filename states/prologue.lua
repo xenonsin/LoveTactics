@@ -268,8 +268,11 @@ local FLIGHT_QUEST = {
                 -- with an imp and a grunt beside her. Combat.mitigatedDamage sums the resist of every matching
                 -- tag, so the coat blunts all of it. The spoils land after the win, so the body it is
                 -- actually FOR is the Champion at the end of the trail.
+                -- Held behind the wounded delver (`waitFor = 3`, 2026-10-30, the author's word): the
+                -- fight does not find the company in part two until she has been met. The `b`
+                -- chokepoint still owes it either way, so the hide is in hand before part three.
                 { id = "encounter_survivors_extract", loot = { "armor_salamander_hide" }, after = 16, by = "b",
-                  opening = "conversation_flight_extract" },
+                  waitFor = 3, opening = "conversation_flight_extract" },
             },
         },
         objective = {
