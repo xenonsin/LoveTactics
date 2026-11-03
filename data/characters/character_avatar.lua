@@ -83,16 +83,9 @@ return {
     tier = 2,
     sprite = "assets/chars/avatar_1.png", -- default; overridden by the chosen body at creation
     portrait = "assets/portraits/avatar_1.png",
-    -- PERSONAL GROWTH: what this body gains a level on top of whatever class it is standing in
-    -- (models/growth.lua, Growth.personal -- Fire Emblem's class-plus-character arithmetic, without
-    -- the dice). Two points, and they are the character rather than the build.
-    --
-    -- Endurance, because the blank slate has no gift and that is the point of it: this body was
-    -- trained in nothing in particular, walked out of a burning town, and kept walking. It is also the
-    -- one table that must stay off the damage exchange -- the avatar is Balance.REFERENCE, so a point
-    -- of attack or armour here would move every band in docs/balance.md rather than saying anything
-    -- about who they are.
-    personalGrowth = { stamina = 2 },
+    -- NO PERSONAL GROWTH (removed 2026-11-02): the avatar grows by its class alone. It carried
+    -- { stamina = 2 } as "the character rather than the build", but it read as a constant +2 SP stuck
+    -- to every class's chart, and the blank slate needs no gift to be one.
     stats = {
         health = 62, mana = 20, stamina = 15,
         staminaRegen = 2,

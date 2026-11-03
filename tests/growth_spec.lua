@@ -161,7 +161,8 @@ return {
             -- REACHED, not merely allowed. The mechanism is worth nothing if no blueprint uses it, and
             -- an unread data field is this project's commonest silent failure -- see the note in
             -- models/trait.lua about a blueprint's own `traits`.
-            assert(authored >= 8, "the avatar and the companions should each carry a personal table")
+            -- The avatar carries none (2026-11-02: it grows by its class alone); the companions do.
+            assert(authored >= 7, "the companions should each carry a personal table")
         end,
     },
     {

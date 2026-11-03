@@ -284,31 +284,6 @@ local function drawItemIcon(item, x, y, size, ring, font)
     love.graphics.rectangle("line", x, y, size, size, 4, 4)
 end
 
--- A row of stat gains as chips ("+4 HP"), in the sheet's stat order, wrapping inside `w`. Returns the y
--- under the last line. `dry` measures without drawing, so a block can ask whether it fits first.
-local function drawChips(stats, x, y, w, font, dry)
-    local h = font:getHeight() + 4
-    local cx, cy, any = x, y, false
-    for _, row in ipairs(GROWTH_ROWS) do
-        local v = stats and stats[row.key]
-        if v and v > 0 then
-            any = true
-            local text = "+" .. v .. " " .. row.label
-            local cw = font:getWidth(text) + 12
-            if cx > x and cx + cw > x + w then cx, cy = x, cy + h + 4 end
-            if not dry then
-                love.graphics.setColor(ANNOT_PENDING[1], ANNOT_PENDING[2], ANNOT_PENDING[3], 0.16)
-                love.graphics.rectangle("fill", cx, cy, cw, h, h / 2, h / 2)
-                love.graphics.setColor(ANNOT_PENDING)
-                love.graphics.setFont(font)
-                love.graphics.print(text, cx + 6, cy + 2)
-            end
-            cx = cx + cw + 4
-        end
-    end
-    return any and (cy + h) or y
-end
-
 -- Two stat tables with the same figures? (A root's boost IS one level of its growth.)
 local function sameStats(a, b)
     if not (a and b) then return false end
@@ -620,9 +595,6 @@ function ClassEditor.new(opts)
     -- overworld and under a battle's deployment, where the town is a day's march away and a button
     -- onto it would be a control that never works.
     self.onVisitTrainer = opts.onVisitTrainer
-    -- The panel's growth peek (G / left stick, Party:growthPeeking): while it is on, the growth chips
-    -- give way to the transitions they add up to ("+4 (62 → 66)"). Hover does the same for the mouse.
-    self.growthPeeking = opts.growthPeeking
     self.previewRects = {}
     self.cardRects = {}
 
@@ -1730,60 +1702,42 @@ function ClassEditor:drawGiftBlock(id, x, y, w, floor)
     return y + ICON + 8
 end
 
--- "WHILE YOU'RE A X", and what every level in it adds. A root's boost IS one level of its growth, so
--- there the two collapse into one row; an earned class pays double while
--- selected (Class.boostFor) and shows both. The body's own points are said as a footnote, as before.
--- While the growth peek is on (or the mouse is over the block) the per-level row gives way to the
--- transitions it adds up to, the old table.
+-- WHAT A LEVEL IN THIS CLASS ADDS, always as the full table (drawGrowth: "+2 (63 → 65)"). It replaced
+-- a "WHILE YOU'RE A X" chip row that showed the gain alone and opened into this table only on the G
+-- peek or a hover: the transition is the figure the choice is made against, so it is never hidden.
+-- A root's boost IS one level of its growth, so the table says it whole; an earned class pays double
+-- while selected (Class.boostFor), and that one difference is a line under it.
 function ClassEditor:drawBoostBlock(id, x, y, w, floor)
     local char = self.char
     local small = self.fonts.small
     local boost = Class.boostFor(id)
     local growth = Growth.defs[id]
-    if not (boost or growth) then return y end
+    if not (growth and char) then return y end
 
-    local name = Class.displayName(id) or id
-    local same = sameStats(boost, growth)
-    local personal = char and Growth.personal(char)
-    local capH = small:getHeight() + 6
+    local same = boost == nil or sameStats(boost, growth)
 
-    -- Measured first: the block yields whole rather than drawing half a sentence.
-    local need = capH + (boost and (drawChips(boost, x, 0, w, small, true)) or 0) + 4
-    if growth and not same then need = need + capH + drawChips(growth, x, 0, w, small, true) + 4 end
+    -- Measured first: the block yields whole rather than drawing half a table.
+    local merged = {}
+    for stat, amount in pairs(growth) do merged[stat] = amount end
+    local personal = Growth.personal(char)
+    for stat, amount in pairs(personal or {}) do merged[stat] = (merged[stat] or 0) + amount end
+    local rows = 0
+    for _, row in ipairs(GROWTH_ROWS) do
+        if (merged[row.key] or 0) > 0 and baseStat(char, row.key) then rows = rows + 1 end
+    end
+    local need = 18 + math.ceil(rows / 2) * 20 + 6
     if personal then need = need + small:getHeight() + 4 end
+    if not same then need = need + small:getHeight() + 4 end
     if y + need > floor then return y end
 
-    local top = y
-    local peek = (self.growthPeeking and self.growthPeeking())
-        or (self.mx and self.boostRect and hit(self.boostRect, self.mx, self.my))
-    if peek and char then
-        if boost and not same then
-            y = caption("WHILE YOU'RE " .. string.upper(withArticle(name)), x, y, w, small)
-            y = drawChips(boost, x, y, w, small) + 8
-        end
-        y = self:drawGrowth(id, x, y, w)
-    else
-        if boost then
-            y = caption("WHILE YOU'RE " .. string.upper(withArticle(name)), x, y, w, small)
-            y = drawChips(boost, x, y, w, small) + 4
-        end
-        if growth and not same then
-            y = caption("EVERY LEVEL IN " .. string.upper(name), x, y, w, small)
-            y = drawChips(growth, x, y, w, small) + 4
-        end
-        if personal and char then
-            local parts = {}
-            for _, row in ipairs(GROWTH_ROWS) do
-                if personal[row.key] then parts[#parts + 1] = "+" .. personal[row.key] .. " " .. row.label end
-            end
-            love.graphics.setFont(small)
-            Theme.set(Theme.muted, 0.75)
-            love.graphics.print(string.format("Plus %s's own %s a level, in any class.", char.name or "this body",
-                table.concat(parts, " and ")), x, y)
-            y = y + small:getHeight() + 4
-        end
+    y = self:drawGrowth(id, x, y, w)
+    if not same then
+        love.graphics.setFont(small)
+        Theme.set(Theme.muted, 0.75)
+        love.graphics.printf(string.format("Doubled while you're %s.", withArticle(Class.displayName(id) or id)),
+            x, y - 6, w, "left")
+        y = y + small:getHeight() - 2
     end
-    self.boostRect = { x = x, y = top, w = w, h = y - top }
     return y + 8
 end
 
@@ -2034,7 +1988,6 @@ local CREST_H = 46
 function ClassEditor:drawFirstPick(focused)
     local x, y, w = self.x, self.y, self.w
     local small, body = self.fonts.small, self.fonts.body
-    local tiny = self.fonts.tiny or small
     self.unlockRect, self.changeRect, self.trainerRect = nil, nil, nil
     self.rowRects, self.houseRects = {}, {}
 
@@ -2056,14 +2009,10 @@ function ClassEditor:drawFirstPick(focused)
     local n = math.max(1, #cards)
     local cw = math.floor((w - CARD_GAP * (n - 1)) / n)
     local picked = self:cardIndex()
-    -- One height for the row, set by the tallest chip block (a mage pays five stats, a fighter three),
-    -- with the gift line under the chips rather than pinned to a foot they could run into.
+    -- A card is the crest and the name: what a class pays and what it starts with are read off the
+    -- picked one opened underneath, where they are not squeezed into a seventh of the width.
     local nameH = Theme.display(18):getHeight()
-    local chipsH = 0
-    for _, idx in ipairs(cards) do
-        chipsH = math.max(chipsH, drawChips(Class.boostFor(self.houses[idx].id), 0, 0, cw - 16, tiny, true))
-    end
-    local CARD_H = 6 + CREST_H + 10 + nameH + 4 + chipsH + 6 + tiny:getHeight() + 10
+    local CARD_H = 6 + CREST_H + 10 + nameH + 10
     for i, idx in ipairs(cards) do
         local house = self.houses[idx]
         local cx = x + (i - 1) * (cw + CARD_GAP)
@@ -2082,17 +2031,6 @@ function ClassEditor:drawFirstPick(focused)
         love.graphics.setFont(nf)
         Theme.set(on and Theme.ink or Theme.muted)
         love.graphics.print(nm, cx + 8, iy)
-        iy = iy + nameH + 4
-
-        drawChips(Class.boostFor(house.id), cx + 8, iy, cw - 16, tiny)
-
-        local gift = self:giftPreview(house.id)
-        if gift then
-            love.graphics.setFont(tiny)
-            Theme.set(Theme.muted)
-            local text = Theme.ellipsize("Starts with " .. (gift.name or "?"), tiny, cw - 16)
-            love.graphics.print(text, cx + 8, iy + chipsH + 6)
-        end
     end
 
     -- The picked card, opened.
