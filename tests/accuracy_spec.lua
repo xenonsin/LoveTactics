@@ -271,7 +271,7 @@ return {
             local ca, cd = cc.units[1], cc.units[2]
             local charmed = Combat.hitChance(cc, ca, cd, Fixture.itemNamed(ca.char, "weapon_iron_sword"))
             assert(charmed < bare,
-                "the Opportunist's Charm must lower an attacker's hit chance -- " .. bare .. " -> " .. charmed)
+                "the Hemophage Charm's luck must lower an attacker's hit chance -- " .. bare .. " -> " .. charmed)
         end,
     },
     {

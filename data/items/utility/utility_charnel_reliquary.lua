@@ -13,14 +13,15 @@
 -- them when they do -- which, for a Necromancer, is not much of a gamble.
 return {
     name = "Charnel Reliquary",
-    description = "Each body that falls near you raises your Magic Damage this battle.",
+    description = "Each body that falls near you raises your Magic Damage. Corpse Burst deals 3 more per corpse it consumes.",
     flavor = "Every grave is a lesson, the Arcanum notes, and it charges tuition for the ones it keeps.",
     sprite = "assets/items/utility_charnel_reliquary.png",
     type = "utility",
     tags = { "charm" },
     class = "necromancer", -- deeper cut of the shelf: buyable only once the necromancer gate is cleared
     unlockLevel = 8,
-    traits = { "trait_deaths_dividend" },
+    -- THE NECROMANCER'S MULTIPLIER (docs/engines.md, 2026-11-18): every corpse is worth more to the burst.
+    traits = { "trait_deaths_dividend", "trait_charnel_tithe" },
     -- it banks Power per body; the reliquary itself only wards
     bonus = { magicDefense = 1 },
 }

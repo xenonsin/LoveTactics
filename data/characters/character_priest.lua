@@ -30,15 +30,16 @@ return {
     -- own arm and belongs to this shelf and no other (data/items/weapon/weapon_censer.lua), so a body that
     -- fought with a staff was borrowing the mage's. Around it, a support caster's kit: Heal at
     -- range, Jolt to delay a pressing threat, silk robes for spell resistance, a potion as a fallback
-    -- heal, and the focus stone (Wait -> Focus) to refuel the non-regenerating mana pool.
+    -- heal, a plain staff carried for its Wait -> Focus to refuel the non-regenerating mana pool (the
+    -- Focus Stone became the mage's Static Focus, 2026-11-18).
     --
     -- Trading the parasitic staff for the censer costs the second mana-refuel route (the staff siphoned
     -- on hit) and buys the family's real verb: walking smoke that Blesses whoever stays beside him. That
     -- is the more priestly bargain, and it makes mana upkeep a gear decision rather than a given.
     startingItems = {
         "ability_heal",              "ability_minor_shock",     "armor_silk_robes",
-        "consumable_healing_potion", "weapon_censer",    "utility_focus_stone",
-        "ability_sanctuary",         false,              false,
+        "consumable_healing_potion", "weapon_censer",    false,
+        "ability_sanctuary",         "weapon_staff",     false,
     },
     -- The go-to action pinned by default (Combat.defaultAction): armed at the start of its turn so
     -- its range shows, and driving the basic click-to-use. Jolt (an offensive zap) keeps click-to-

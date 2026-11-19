@@ -29,6 +29,9 @@ return {
     magnitude = 2,  -- Damage per body
     maxStacks = 5,  -- the ceiling; see above
     onAnyDeath = function(ctx)
+        -- `ownKills` (the Butcher's Tally, 2026-11-18): only a body the bearer itself felled counts, read off
+        -- the felling blow's striker (`lastBlowBy`, stamped by the damage core on every landed blow).
+        if ctx.param("ownKills", false) and not (ctx.fallen and ctx.fallen.lastBlowBy == ctx.unit) then return end
         local cap = ctx.def.maxStacks or 5
         if ctx.trait.stacks >= cap then return end
         ctx.trait.stacks = ctx.trait.stacks + 1

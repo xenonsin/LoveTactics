@@ -40,7 +40,6 @@ local STEP_CURVES = {
     utility_wolfsong_horn = { ["bonus.speed"] = true },
     utility_distant_sigil = { ["aura.rangeBonus"] = true },
     utility_long_fuse_reagent = { ["aura.rangeBonus"] = true },
-    utility_quickened_sigil = { ["aura.speedBonus"] = true },
     utility_shadow_fist = { ["unarmedBonus.range"] = true },
     utility_swift_fist = { ["unarmedBonus.hits"] = true },
     -- Battle Casting's refund is paid per BODY a blow lands on, so a cleave collects it three times in

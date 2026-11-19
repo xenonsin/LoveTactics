@@ -6,7 +6,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Invocation",
-    description = "Channeled: sears enemies in area.",
+    description = "Channeled: sears enemies in area, 2 more for each tick held.",
     flavor = "The longer the prayer, the fewer the words needed at the end of it.",
     sprite = "assets/items/ability_invocation.png",
     type = "ability",
@@ -25,8 +25,11 @@ return {
         aoe = { radius = 1, shape = "diamond" },
         damage = Curve.ramp(15, 25), -- carries `holy` + `magical` via tags
         effect = function(fx)
+            -- THE THEURGE'S PAYOFF (docs/engines.md, 2026-11-18): the one channel that ignored the hold now
+            -- grows with it, so a Votive Flame's banked Radiance lands here as fire.
+            local amount = (fx.amount or 0) + 2 * (fx.held or 0)
             for _, u in ipairs(fx.aoeUnits()) do
-                if u.side ~= fx.user.side then fx.damage(u) end
+                if u.side ~= fx.user.side then fx.damage(u, { amount = amount }) end
             end
         end,
     },

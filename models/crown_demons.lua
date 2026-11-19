@@ -207,6 +207,16 @@ end
 -- and Combat.previewAbility subtract it from a physical blow without spending it) and the badge/tooltip print.
 function Crown.barrierPool(target)
     local st = target and target.statuses and Status().get(target, Crown.BULWARK)
+    local own = (st and st.pool and st.pool > 0) and st.pool or 0
+    -- THE PALADIN'S RAMPART (models/engine.lua): a body beside an ally who SHARES a barrier is covered
+    -- by that pool too, once its own has run dry -- one amount, spent for whoever is struck.
+    local sharer = target and require("models.engine").sharedBarrierFor(target)
+    return own + (sharer and Crown.ownPool(sharer) or 0)
+end
+
+-- What `unit`'s OWN pool holds, without anybody's shared cover folded in.
+function Crown.ownPool(unit)
+    local st = unit and unit.statuses and Status().get(unit, Crown.BULWARK)
     return (st and st.pool and st.pool > 0) and st.pool or 0
 end
 
@@ -215,13 +225,23 @@ end
 function Crown.soakBarrier(combat, target, dmg, tags)
     if not dmg or dmg <= 0 or hasTag(tags, "magical") then return 0 end
     local st = target and target.statuses and Status().get(target, Crown.BULWARK)
-    if not (st and st.pool) then return 0 end
-    local covered = math.min(dmg, st.pool)
-    st.pool = st.pool - covered
-    if st.pool <= 0 then Status().remove(combat, target, Crown.BULWARK) end
-    if combat then
-        Combat().logEvent(combat, "status", string.format("%s's barrier takes %d of the blow%s.", nameOf(target),
-            covered, st.pool > 0 and string.format(" (%d left)", st.pool) or ""), target)
+    local covered = 0
+    if st and st.pool then
+        covered = math.min(dmg, st.pool)
+        st.pool = st.pool - covered
+        if st.pool <= 0 then Status().remove(combat, target, Crown.BULWARK) end
+        if combat then
+            Combat().logEvent(combat, "status", string.format("%s's barrier takes %d of the blow%s.", nameOf(target),
+                covered, st.pool > 0 and string.format(" (%d left)", st.pool) or ""), target)
+        end
+    end
+    -- What its own pool could not cover, a sharing Paladin beside it pays (the shared rampart,
+    -- models/engine.lua). Only a sharer with something left is asked, so two sharers cannot ping-pong.
+    if covered < dmg and target then
+        local sharer = require("models.engine").sharedBarrierFor(target)
+        if sharer and sharer ~= target then
+            covered = covered + Crown.soakBarrier(combat, sharer, dmg - covered, tags)
+        end
     end
     return covered
 end

@@ -1430,6 +1430,15 @@ function Status.apply(combat, unit, id, opts)
     -- grants a zone-bound status. Read by Bleed, whose ticks feed the vampire that cut the wound
     -- (models/thirst.lua's Running Feeds It).
     if opts.applier then status.opener = opts.applier end
+    -- A COUNTED status (`countsStacks`, Bleed): every application is one more of the wound, kept as
+    -- `count` and APART from the magnitude, which a weapon authors as the wound's per-tile bite. The
+    -- Bloodletting engine doubles the count and cashes it in (models/engine.lua); `opts.stacks` lands
+    -- several at once (a Widen the Wound, a Hemophage's jump).
+    if def.countsStacks then
+        local add = math.max(1, math.floor(opts.stacks or 1))
+        local cap = def.maxCount or math.huge
+        status.count = math.min(cap, (isNew and 0 or (status.count or 1)) + add)
+    end
     -- WHEN IT LANDED, in the combat's own order of events. A blow struck inside a resolving cast is
     -- HELD and reported to the survivor's statuses only once the cast is over (models/combat.lua,
     -- Combat.beginAnswers) -- so a cast that wounds a body and THEN puts it to sleep or makes it swoon

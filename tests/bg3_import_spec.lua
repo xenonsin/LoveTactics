@@ -214,6 +214,9 @@ return {
             quick.inventory = {}
             quick.inventory[4] = Item.instantiate("ability_fire_bolt")
             quick.inventory[5] = Item.instantiate("utility_quickened_sigil")
+            -- The Quickened Sigil became the Relay Sigil (2026-11-18) and no shipped piece carries a
+            -- `speedBonus` aura now; the field is still read, so the case lends the sigil one.
+            quick.inventory[5].aura = { appliesTo = { "ability", "weapon" }, requiresTags = { "magical" }, speedBonus = -2 }
 
             local pu, qu = { char = plain }, { char = quick }
             local base = Combat.actionSpeed(pu, plain.inventory[4].activeAbility, plain.inventory[4])
@@ -233,7 +236,7 @@ return {
             -- Four sigils around it, all discounting at once.
             for _, slot in ipairs({ 2, 4, 6, 8 }) do
                 local sigil = Item.instantiate("utility_quickened_sigil")
-                sigil.aura.speedBonus = -20 -- absurd on purpose: the floor has to hold anyway
+                sigil.aura = { appliesTo = { "ability" }, speedBonus = -20 } -- absurd on purpose: the floor has to hold anyway
                 char.inventory[slot] = sigil
             end
             local speed = Combat.actionSpeed({ char = char }, bolt.activeAbility, bolt)

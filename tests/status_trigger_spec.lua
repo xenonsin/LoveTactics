@@ -159,7 +159,7 @@ return {
     {
         name = "Opportunist: afflicting a foe with a debuff hastes the bearer",
         fn = function()
-            local bearer = withGrid("character_bandit", { "utility_opportunists_charm" })
+            local bearer = withGrid("character_bandit", { "armor_opportunists_harness" })
             local c = Combat.new(arena(8, 8), { unit(bearer, 1, 1) }, { unit(tough("character_bandit"), 1, 3) })
             local b = c.units[1]
             local foe = Combat.unitAt(c, 1, 3)

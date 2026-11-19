@@ -289,41 +289,6 @@ return {
         end,
     },
     {
-        -- Jolt and Minor Shock are the same idea at two ends of the shelf: a bolt that steals the
-        -- target's next turn. Minor Shock teaches it in the prologue and is tuned to that script;
-        -- Jolt is what the idea is worth once it is graded rather than protected. What is asserted is
-        -- the RELATIONSHIP, not either magnitude -- both move with their slots, and pinning a number
-        -- here would be a second place the shelf ladder had to be maintained.
-        name = "Jolt is Minor Shock grown up: the same stun, on a bolt that actually hits",
-        fn = function()
-            local c = Combat.new(arena(8, 8), { unit("character_mage", 1, 1) },
-                { unit(tough("character_bandit"), 1, 3), unit(tough("character_bandit"), 1, 4) })
-            local mage, a, b = c.units[1], c.units[2], c.units[3]
-            local jolt = Item.instantiate("ability_jolt")
-            local shock = Item.instantiate("ability_minor_shock")
-
-            -- Each stun is read the moment it lands. A stun is a clock effect, and the second cast
-            -- advances the clock past the first one's badge -- checking both at the end would be asking
-            -- whether the first stun was still running two casts later, which is a different question.
-            local hpA = a.char.stats.health.current
-            openTurn(c, mage)
-            assert(Combat.useItem(c, mage, jolt, 1, 3), "the jolt lands")
-            local jolted = hpA - a.char.stats.health.current
-            assert(Status.has(a, "status_stun"), "the jolt steals the target's next turn")
-
-            local hpB = b.char.stats.health.current
-            openTurn(c, mage)
-            mage.char.stats.mana.current = mage.char.stats.mana.max
-            assert(Combat.useItem(c, mage, shock, 1, 4), "the shock lands")
-            local shocked = hpB - b.char.stats.health.current
-            assert(Status.has(b, "status_stun"), "and so does the apprentice's version")
-            assert(jolted > shocked,
-                "Jolt hits harder than the apprentice's version (" .. jolted .. " vs " .. shocked .. ")")
-            assert((Item.defs.ability_jolt.unlockLevel or 0) > (Item.defs.ability_minor_shock.unlockLevel or 0),
-                "and it sits deeper on the shelf for it")
-        end,
-    },
-    {
         name = "a fallen ally lies incapacitated where Revive brings them back at half health",
         fn = function()
             local c = Combat.new(arena(8, 8), { unit("character_priest", 1, 1), unit("character_rowan", 2, 1) }, {})

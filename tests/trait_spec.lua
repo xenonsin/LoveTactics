@@ -550,7 +550,7 @@ return {
             -- The one hook keyed to the FIELD rather than to its bearer (Trait.onAnyDeath). What makes
             -- it wrath's and not grief's is that it never asks whose death it was.
             local fighter = plainChar("character_rowan")
-            fighter.inventory[1] = Item.instantiate("utility_butchers_tally")
+            fighter.inventory[1] = Item.instantiate("armor_blood_fever_mail") -- the Tally counts own kills only (2026-11-18)
             local c = Combat.new(arena(10, 10),
                 { unit(fighter, 1, 1), unit(plainChar("character_rowan"), 2, 1) },
                 { unit(plainChar("character_bandit"), 8, 8), unit(plainChar("character_bandit"), 8, 7) })
@@ -580,7 +580,7 @@ return {
             local perBody, cap = def.magnitude, def.maxStacks
 
             local fighter = plainChar("character_rowan")
-            fighter.inventory[1] = Item.instantiate("utility_butchers_tally")
+            fighter.inventory[1] = Item.instantiate("armor_blood_fever_mail") -- the Tally counts own kills only (2026-11-18)
             -- Two more bodies than the ceiling allows, so the cap is what stops the count and not
             -- the supply of corpses.
             local foes = {}

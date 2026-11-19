@@ -57,6 +57,7 @@ local Curse = require("models.curse") -- the hex a grid piece may be carrying, f
 local Class = require("models.class") -- growthClasses: which classes a use tallies
 local Growth = require("models.growth") -- classOf: the class a body stands in, which takes a share of every award
 local Experience = require("models.experience") -- what a body earns for acting; the descent spends it
+local Engine = require("models.engine") -- the build engines' seams (docs/engines.md); lazy back into this module
 
 local Combat = {}
 
@@ -767,6 +768,10 @@ local function flatStat(unit, name)
             v = v + math.floor(math.max(0, max - current) * rate)
         end
     end
+    -- SHATTERED (the alchemist's Rime Draught met by a hammer or an axe): armour reads nothing at all,
+    -- whatever the coat and the charms say, until it wears off (Engine.afterWound). A floor of 0 rather
+    -- than a subtraction, so a body already naked is not driven into a debt of defence.
+    if name == "defense" and v > 0 and Engine.zeroesDefense(unit) then v = 0 end
     return v
 end
 
@@ -1069,7 +1074,9 @@ function Combat.actionSpeed(unit, ab, item)
     -- A hungry head comes round sooner (Status.actionTimeScale, status_starving). Folded here, the one
     -- reader, so the turn strip's ghost slot and the settled turn quote the same time.
     local scale = unit and Status.actionTimeScale(unit) or 1
-    return math.max(1, math.floor((base + bonus) * scale + 0.5))
+    -- QUICKENED (a Carrion Mark's kill, a full Overflowing Cup): this one action comes round sooner.
+    -- Taken off after the scale, so it is the two ticks the badge says and not a share of them.
+    return math.max(1, math.floor((base + bonus) * scale + 0.5) - Engine.speedRebate(unit))
 end
 
 -- Cells an area-of-effect ability centred on (tx, ty) covers, clamped to the arena. An ability's
@@ -2477,6 +2484,16 @@ function Combat.chargeDef(unit, key)
     if unit and unit.char then
         for _, item in ipairs(Character.eachItem(unit.char)) do
             local c = item.charge
+            -- `deepens`: a neighbour that raises THIS item's pool ceiling while it sits beside it (the Deep
+            -- Vessel beside a Storm Vessel). It declares no pool of its own, so away from one it is inert.
+            if c and c.key == key then
+                local idx = Character.slotIndex(unit.char, item)
+                for _, nb in ipairs(idx and Character.adjacentItems(unit.char, idx) or {}) do
+                    local d = nb.deepens
+                    if d and d.key == key and d.max and (not d.id or d.id == item.id)
+                        and (not max or d.max > max) then max = d.max end
+                end
+            end
             if c and c.key == key then
                 from = from or {}
                 -- `from` may be a single tally name or a list of them; both read the same way here.
@@ -2582,17 +2599,21 @@ function Combat.spendCharge(unit, key, n)
     if not unit then return 0 end
     local have = Combat.chargePool(unit, key)
     unit.chargeSpent = unit.chargeSpent or {}
+    local def = Combat.chargeDef(unit, key)
     if not n then
-        local def = Combat.chargeDef(unit, key)
         local banked = 0
         if def then
             for tally in pairs(def.from) do banked = banked + Combat.tallyCount(unit, tally) end
         end
         unit.chargeSpent[key] = banked
+        -- THE BUILD ENGINES: a spend is an event (`<key>Spent`, the Static Focus's count; onChargeSpent,
+        -- the Overflowing Cup's quickening). Live only: an effect reaches this through fx.spendCharge.
+        Engine.onChargeSpent(unit, key, have, def ~= nil and have >= (def.max or math.huge))
         return have
     end
     local take = math.max(0, math.min(n, have))
     unit.chargeSpent[key] = (unit.chargeSpent[key] or 0) + take
+    Engine.onChargeSpent(unit, key, take, def ~= nil and have >= (def.max or math.huge) and take >= have)
     return take
 end
 
@@ -3881,6 +3902,8 @@ function Combat.startTurn(combat)
     -- the opening counts (see Combat.tally). Counted before the turn's own actions, so its own cast
     -- can't be the turn that unlocked it.
     if unit then Combat.tally(unit, "turnTaken", 1) end
+    -- THE BUILD ENGINES: this turn's blood (the Scab's) and relay (the Relay Sigil's) start fresh.
+    if unit then Engine.onTurnStart(combat, unit) end
     -- WHERE IT STOOD LAST TIME. Two tiles, kept on the unit: where this turn opened, and where the
     -- PREVIOUS one did. Combat.recall (the Backward Glance) sends a unit to the older of the two --
     -- deliberately not to where it opened this turn, which for a unit that has not moved yet is simply
@@ -5684,6 +5707,9 @@ local function walkOut(combat, plan, capture)
                                   fx = Combat.drainFx(combat) }
         end
     end
+    -- TEMPO is a body planting its feet: a walk forfeits it (Engine.onWalk; pools declaring resetOn
+    -- "moved"). Here, in the one loop both the headless move and the watched one run through.
+    Engine.onWalk(combat, unit, #(plan.path or {}) - 1)
     -- The move initiative this walk ran up, read off the turn record it was written to. A walk that
     -- KILLED its walker leaves no record to read (leaveTurn took the turn with the body) and owes 0:
     -- there is no turn left for the ground to be billed to, and nobody to bill it.
@@ -6847,6 +6873,8 @@ function Combat.matchesAdjacency(item, pred)
     if not (item and pred) then return false end
     if pred.type and item.type ~= pred.type then return false end
     if pred.tag and not hasFamilyTag(item, pred.tag) then return false end
+    -- `id`: one named piece (the Deep Vessel deepens only a Storm Vessel beside it).
+    if pred.id and item.id ~= pred.id then return false end
     return true
 end
 
@@ -6875,6 +6903,22 @@ function Combat.auraApplies(a, item)
     end
     for _, t in ipairs(a.exceptTags or {}) do
         if hasTag(item.tags, t) then return false end
+    end
+    -- `anyTags`: the neighbour carries AT LEAST ONE of these (the Serrated Whetstone's "blades" are a
+    -- dagger or a sword, and no single tag is both).
+    if a.anyTags then
+        local any = false
+        for _, t in ipairs(a.anyTags) do
+            if hasTag(item.tags, t) then any = true break end
+        end
+        if not any then return false end
+    end
+    -- `maxSpeed`: only a QUICK neighbour, by its authored speed (the Whetted Edge sharpens a jab and
+    -- not a greatsword). Authored rather than effective, so the aura cannot be bought by the very
+    -- discount it sits beside.
+    if a.maxSpeed then
+        local ab = item.activeAbility
+        if not (ab and (ab.speed or Combat.DEFAULT_SPEED) <= a.maxSpeed) then return false end
     end
     return true
 end
@@ -6927,11 +6971,21 @@ end
 local function adjacencyAura(char, item)
     local tags, statuses = {}, {}
     local mods = { amount = 0, range = 0, speed = 0, preserve = false, lifesteal = 0,
-                   manaHeal = 0, careful = false, twin = false, critUnseen = false }
+                   manaHeal = 0, careful = false, twin = false, critUnseen = false,
+                   -- THE BUILD ENGINES (models/engine.lua): the Storm Vessel's per-charge multiplier, the
+                   -- Censer Chain's splash, the Reagent Vest's extra ticks, the Keystone's forge levels.
+                   stormMult = 0, healSplash = 0, statusTicks = 0, forgeStep = 0 }
     local idx = char and Character.slotIndex(char, item)
     if idx then
         for _, nb in ipairs(Character.adjacentItems(char, idx)) do
-            if nb.aura and Combat.auraApplies(nb.aura, item) and not Combat.auraSpent(nb) then
+            -- `onlyCentre`: a Keystone speaks only from the middle cell of the grid.
+            local seated = not (nb.aura and nb.aura.onlyCentre)
+                or Character.slotIndex(char, nb) == math.ceil(Character.MAX_INVENTORY / 2)
+            if nb.aura and seated and Combat.auraApplies(nb.aura, item) and not Combat.auraSpent(nb) then
+                mods.stormMult = mods.stormMult + (nb.aura.stormMult or 0)
+                mods.healSplash = mods.healSplash + (nb.aura.healSplash or 0)
+                mods.statusTicks = mods.statusTicks + (nb.aura.statusTicks or 0)
+                mods.forgeStep = mods.forgeStep + (nb.aura.forgeStep or 0)
                 for _, t in ipairs(nb.aura.grantTags or {}) do tags[#tags + 1] = t end
                 if nb.aura.status then statuses[#statuses + 1] = nb.aura.status end
                 mods.amount = mods.amount + (nb.aura.amountBonus or 0)
@@ -7085,6 +7139,12 @@ local function castAmount(combat, unit, ab, tx, ty, auraMods, item)
     -- charm is a different item, on a different class's ladder, and folding it in here would pay the
     -- wielder's commitment to one house for a bonus another house granted.
     local amount = Combat.classScaled(unit, item, declared) + auraMods.amount
+    -- THE KEYSTONE: a neighbour of the centre cell lands as though forged one level higher, per stone.
+    if (auraMods.forgeStep or 0) > 0 then amount = amount + Engine.forgeStep(item) * auraMods.forgeStep end
+    -- THE STORM VESSEL: every charge banked multiplies the cast beside it by another half. Read here on
+    -- all three cast paths so the forecast quotes it; the live cast spends the pool (Engine.afterCast).
+    local storm = Engine.stormFactor(unit, auraMods)
+    if storm ~= 1 then amount = math.floor(amount * storm + 0.5) end
     if ab.frenzy and combat then
         local caught = #Combat.aoeUnits(combat, ab, tx, ty, unit)
         if caught > 1 then
@@ -9402,7 +9462,10 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
             for k, v in pairs(opts) do redirected[k] = v end
             redirected.knockback = nil
         end
-        return Combat.dealFlatDamage(combat, guardian, base, tags, source, attacker, redirected)
+        local taken = Combat.dealFlatDamage(combat, guardian, base, tags, source, attacker, redirected)
+        -- THE SENTINEL'S RAMPART: what a guardian took for somebody else goes onto its barrier pool.
+        if guardian ~= target then Engine.onGuarded(combat, guardian, taken) end
+        return taken
     end
     -- A CONGREGATION takes the blow instead, in shares, and was never asked (Trait.shareTargets and
     -- data/traits/trait_the_congregation.lua). The guardian redirect above is the same seam pointed
@@ -9716,6 +9779,9 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
     if dmg > 0 and hasTag(tags, "bleed") then
         require("models.basin").onBleed(combat, target, dmg)
     end
+    -- THE BUILD ENGINES (models/engine.lua): blood lost on your own turn, oil meeting fire, a heavy blow
+    -- meeting a chilled body. After the wound is on the bar and before either death branch reads it.
+    if dmg > 0 then Engine.afterWound(combat, target, dmg, tags, attacker, opts) end
     -- THE THIN SMILE (models/envy_oneoffs.lua, 2026-10-06): every wound is seen, and whoever smiles at it is fed.
     if dmg > 0 then require("models.envy_oneoffs").thinSmile(combat, target, dmg) end
     -- THE CROWN'S BESTIARY, SLICE B (2026-10-09): a striker under Blood Debt runs up what it deals.
@@ -9827,6 +9893,9 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
         -- The felling blow banks a `kill` toward any signature the attacker gates on kills. Only a
         -- real attack passes an attacker; a trap or a burn tick fells with none and tallies nothing.
         if attacker then Combat.tally(attacker, "kill", 1) end
+        -- THE BUILD ENGINES: a fall is read while the body still wears its wounds (Hemophage, Carrion
+        -- Mark), and the killer's pieces answer it (Reaper's Ledger, Scab, Butcher's Tally).
+        Engine.onFell(combat, target, attacker, opts)
         -- A covering deed: the avatar or a partner felling the foe that last hit the other (models/bond.lua).
         if attacker then Combat.bondAvenged(combat, attacker, target) end
         -- A blow that DENIES REVIVAL (opts.denyRevival -- the Necromancer's severing kit) stamps the
@@ -10486,6 +10555,11 @@ function Combat.applyHeal(combat, target, amount, opts)
     local healed = math.max(0, hp.current - before)
     -- SURFEIT (the Surfeit Heart): what would have gone past full is banked as a shield instead of lost.
     if (amount or 0) > healed then Combat.bankSurfeit(combat, target, (amount or 0) - healed) end
+    -- OVERFLOW (the priest's engine): ...and the HEALER banks it as Radiance, when the caller named one
+    -- (`opts.healer` -- the cast's fx.heal does; a regeneration tick has nobody to credit).
+    if (amount or 0) > healed and opts and opts.healer then
+        Engine.overheal(combat, opts.healer, target, (amount or 0) - healed, opts)
+    end
     -- ...and a heal on any of them lifts all of them, the same way (Combat.syncSharedPool).
     if target.sharedPool then Combat.syncSharedPool(combat) end
     if healed > 0 then
@@ -10929,6 +11003,7 @@ function Combat.previewAbility(combat, unit, item, tx, ty, dest, windup, spend)
     local strikes = require("models.lerna").strikes(unit, item, ab)
     local fx = {
         user = unit, target = target, item = item, combat = combat, tx = tx, ty = ty,
+        engine = Engine.inert, -- a forecast moves nothing (models/engine.lua)
         dest = dest, -- a two-stage throw's chosen landing (Heave); nil for every single-aim ability
         -- The wind-up depth this preview is priced at (nil unless the caller named one): `windup` the
         -- total tell, `held` the ticks chosen above the floor -- the same pair the live cast hands the
@@ -11560,6 +11635,7 @@ function Combat.abilityOutput(unit, item)
 
     local fx = {
         user = userProxy, target = dummy, item = item, combat = board, tx = 0, ty = 0,
+        engine = Engine.inert, -- a tooltip moves nothing (models/engine.lua)
         -- A channel's depth. Both are numbers in the live table and in Combat.previewAbility; absent
         -- here, `(fx.windup or 0)` was fine but `fx.held * n` was not, and a chargeable ability faulted.
         windup = 0, held = 0,
@@ -12480,12 +12556,18 @@ function Combat.spendCost(combat, unit, cost)
             local shortfall = cost.amount - have
             spendResource(char, "mana", have) -- drain the pool to 0
             spendResource(char, "health", shortfall) -- pay the rest in blood
+            if combat.turn and combat.turn.unit == unit then Engine.noteSelfWound(combat, unit, shortfall) end
             Combat.logEvent(combat, "status",
                 string.format("%s overchannels, burning %d health.", unitName(unit), shortfall), unit)
             return
         end
     end
     spendResource(char, cost.stat, cost.amount)
+    -- BLOOD PRICE: a price paid in health on your own turn is a self-wound (Engine.noteSelfWound) --
+    -- the Wound Gift's, a blood mage's, an overchannel's alike.
+    if cost.stat == "health" and (cost.amount or 0) > 0 and combat.turn and combat.turn.unit == unit then
+        Engine.noteSelfWound(combat, unit, cost.amount)
+    end
 end
 
 -- Pay ALL of `ab`'s costs for `unit`, in authored order. The one spend path useItem / strikeTrap /
@@ -12965,7 +13047,9 @@ function Combat.abilityCosts(unit, ab)
         c.amount = math.floor(c.amount * mult + 0.5)
         if c.amount > 0 then c.amount = c.amount + add end
     end
-    return out
+    -- THE WOUND GIFT (the barbarian's): a stamina price the body cannot meet is quoted in blood instead,
+    -- when the gift sits beside the ability. Here, so the gate, the spend and the forecast agree.
+    return Engine.bloodCosts(unit, ab, out)
 end
 
 -- Everything a cast takes out of `unit`'s own pools, in the order Combat.useItem takes it: the
@@ -13771,6 +13855,7 @@ function Combat.strikeWith(combat, user, weapon, tx, ty)
     local fx = {
         user = user, target = target, item = weapon, combat = combat,
         tx = tx, ty = ty, amount = effectiveAmount,
+        engine = Engine.live(combat, user), -- a sub-strike is a real blow (models/engine.lua)
         unitAt = function(x, y) return Combat.unitAt(combat, x, y) end,
         unitsNear = function(x, y, radius) return Combat.unitsNear(combat, x, y, radius) end,
         aoeUnits = function() return Combat.aoeUnits(combat, ab, tx, ty, user) end,
@@ -14461,7 +14546,7 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
         -- The turn still ends and still bills its initiative, on the same reasoning: the casting
         -- happened. Returning resolveCast's own (true, result) shape so every caller -- the battle
         -- state, the AI, the channel resolver -- reads a spent action exactly as it always does.
-        endTurn(combat, unit, Combat.actionSpeed(unit, ab, item))
+        if not unit._relaying then endTurn(combat, unit, Combat.actionSpeed(unit, ab, item)) end
         return true, { damageDealt = 0, healed = 0, warded = true }
     end
 
@@ -14530,6 +14615,7 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
     local fx
     fx = {
         user = unit, target = target, item = item, combat = combat,
+        engine = Engine.live(combat, unit), -- the build engines' mutators (models/engine.lua)
         tx = tx, ty = ty, -- the targeted cell, for tile-targeted abilities (e.g. placing a trap)
         dest = dest, -- a two-stage throw's chosen landing (Heave); nil for every single-aim ability
         amount = effectiveAmount, -- effects derive heal/status/restore magnitude from it
@@ -14641,8 +14727,12 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
                 if hit > 0 then
                     for _, st in ipairs(auraStatuses) do
                         local side = tgt.side
-                        Combat.tallyStatusDeed(unit, tgt, st.id,
-                            Status.apply(combat, tgt, st.id, coatingOpts(st.opts, unit)), side)
+                        local o = coatingOpts(st.opts, unit)
+                        -- The Reagent Vest lengthens a coating's status as it does a cast's own.
+                        if (auraMods.statusTicks or 0) > 0 and Status.defs[st.id] then
+                            o.duration = (o.duration or Status.defs[st.id].duration or 0) + auraMods.statusTicks
+                        end
+                        Combat.tallyStatusDeed(unit, tgt, st.id, Status.apply(combat, tgt, st.id, o), side)
                     end
                     -- A neighboring Vampiric Strike charm makes this weapon drink: the caster heals a
                     -- share of the damage it just dealt. Per LANDING, not per swing -- the charm reads
@@ -14702,8 +14792,23 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
             if type(tithe) == "number" and (amount or 0) > 0 then
                 amount = Combat.mirrorTithe(combat, unit, tgt, amount, tithe)
             end
-            local h = Combat.applyHeal(combat, tgt, amount)
+            -- The healer is named, so healing past full banks as Radiance on the CASTER (Engine.overheal).
+            -- `healOpts` lets a Radiance-paid heal decline to refill the pool that paid for it.
+            local h = Combat.applyHeal(combat, tgt, amount, { healer = unit, noBank = fx.noBank })
             result.healed = result.healed + h
+            -- THE CENSER CHAIN: a heal from an item beside it also lands on everyone next to the patient,
+            -- for the chain's share. The splash is a heal of its own, so it overheals and banks too.
+            if (auraMods.healSplash or 0) > 0 and not fx._splashing and (amount or 0) > 0 then
+                fx._splashing = true
+                local share = math.floor(amount * auraMods.healSplash)
+                for _, nb in ipairs(Combat.unitsNear(combat, tgt.x, tgt.y, 1)) do
+                    if nb ~= tgt and nb.alive and nb.side == tgt.side and share > 0 then
+                        result.healed = result.healed + Combat.applyHeal(combat, nb, share,
+                            { healer = unit, noBank = fx.noBank })
+                    end
+                end
+                fx._splashing = nil
+            end
             -- THE SHARED LEDGER (the Apothecary's): a heal that landed also lends the patient a share
             -- of the healer's own guard (status_lent_guard). Here rather than in Combat.applyHeal
             -- because this is the one heal path that knows WHO did the healing -- applyHeal is handed
@@ -14738,6 +14843,14 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
             if not tgt then return nil end
             opts = opts or {}
             if opts.applier == nil then opts.applier = unit end
+            -- THE REAGENT VEST: a status laid by an item beside it lasts a turn's worth of ticks longer.
+            -- A fresh table, since `opts` is often a blueprint's own.
+            if (auraMods.statusTicks or 0) > 0 and Status.defs[id] then
+                local longer = {}
+                for k, v in pairs(opts) do longer[k] = v end
+                longer.duration = (opts.duration or Status.defs[id].duration or 0) + auraMods.statusTicks
+                opts = longer
+            end
             local side = tgt.side
             local landed = Status.apply(combat, tgt, id, opts)
             Combat.tallyStatusDeed(opts.applier, tgt, id, landed, side) -- CLASS DEEDS
@@ -15334,8 +15447,26 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
     -- hung on onCast is a rider outside the dice: it fires on a whiff, which is exactly the hole the
     -- Chorister's Lure was sitting in (data/traits/trait_lure.lua). Totalled across the whole cast
     -- rather than per body, which is the honest grain for a hook that is handed an aim and not a target.
+    -- THE BUILD ENGINES: a quick action banks Tempo, a Storm Vessel empties into what it sharpened, a
+    -- quickened action spends its haste (Engine.afterCast).
+    Engine.afterCast(combat, unit, item, ab, ctl.speed, auraMods)
     Trait.onCast(combat, unit, { item = item, ability = ab, tx = tx, ty = ty,
-                                 damageDealt = result.damageDealt })
+                                 damageDealt = result.damageDealt, speed = ctl.speed })
+    -- THE RELAY SIGIL: the item at the far end of this one's row fires at the same mark, free, once a
+    -- turn. Resolved through this very function with `relaying` latched, so it lands with all of its own
+    -- machinery and neither ends the turn nor pays nor relays again.
+    if not unit._relaying and unit.alive then
+        local far = Engine.relayPartner(combat, unit, item, tx, ty)
+        if far then
+            unit.relayedThisTurn = true
+            unit._relaying = true
+            Combat.logEvent(combat, "action", string.format("%s's relay sigil carries it to %s.",
+                unitName(unit), far.name or "the far end"), unit)
+            local ok, err = pcall(resolveCast, combat, unit, far, far.activeAbility, tx, ty, true, 0, 0)
+            unit._relaying = nil
+            if not ok then error(err, 0) end
+        end
+    end
     -- ...and the field's own answer to a working having been done in it (the Gaunt Vigil). Fired after
     -- the caster's own hook, so a ward that punishes sorcery bites on the far side of a finished spell
     -- rather than into the middle of one.
@@ -15400,7 +15531,10 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
     -- Guarded even though every free ability carries a resource cost: the cost bounds how often you can
     -- AFFORD to press it, never how many times per turn you may, and a full stamina bar spent inside
     -- one initiative slot is not a burst, it is a solo.
-    if ab.free and Combat.freeActionsLeft(unit) > 0 then
+    -- A RELAYED cast (the Relay Sigil) rides inside the cast that set it off, which bills the turn.
+    if unit._relaying then
+        -- nothing to bill: the cast that set it off owns the turn
+    elseif ab.free and Combat.freeActionsLeft(unit) > 0 then
         unit.freeActionsUsed = (unit.freeActionsUsed or 0) + 1
         -- A SOLE ACTION (Harrier's Bow) is free of initiative and free of the move, but it is NOT free
         -- of the turn's action: latch it so Combat.itemBlockReason refuses everything after it. The move
@@ -15488,6 +15622,8 @@ function Combat.resolveChannel(combat, unit)
     if Item.defs[pending.item and pending.item.id or ""] and Item.defs[pending.item.id].drawnStance then
         unit.drawnShot = pending.drawn == true
     end
+    -- THE VOTIVE FLAME (the Theurge's): banked Radiance becomes wind-up the prayer did not have to wait.
+    Engine.onChannelResolve(combat, unit, pending)
     local ok, info = resolveCast(combat, unit, pending.item, pending.ab, pending.tx, pending.ty, true,
         pending.windup, pending.held)
     unit.drawnShot = nil

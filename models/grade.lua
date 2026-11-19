@@ -325,6 +325,27 @@ Grade.TRAIT_COOLDOWN_FLOOR = 0.35
 -- when the pool is dry" is a rule about the whole fight, and nothing in the trait file says so. The
 -- inverse happened too: Demon Ascendant and Contagion seeded reactive and were judged at 0.5.
 Grade.TRAIT_GRADE = {
+    -- THE BUILD ENGINES (docs/engines.md, 2026-11-18). Every piece is weak alone by design, so each is
+    -- weighed as the piece it is and not as the engine it completes: a builder or a keeper near a
+    -- reflex's 2.0, a grid joker or a payoff that reads the build near 2.5.
+    trait_afterimage =                  2.0,  -- barrier per quick action
+    trait_bastion =                     1.5,  -- the barrier stops wearing off (needs a barrier)
+    trait_brimming =                    2.0,  -- overheal becomes barrier
+    trait_charnel_tithe =               1.5,  -- each corpse a Corpse Burst eats is worth 3 more
+    trait_guard_barrier =               1.5,  -- a guarded blow banks as barrier
+    trait_hemophage =                   2.0,  -- a fallen foe's Bleed jumps
+    trait_hollow_idol =                 2.5,  -- +2 an ability per empty cell
+    trait_overflowing_cup =             1.5,  -- a full chi bank spent quickens
+    trait_rampart_buckle =              2.0,  -- barrier per shield beside it when hit
+    trait_reactive_blasts =             2.0,  -- bombs leave reaction ground
+    trait_reapers_ledger =              2.5,  -- a kill refunds and strides
+    trait_sanguine_font =               2.5,  -- +3 to the next ability per self-wound
+    trait_scab =                        2.0,  -- a kill heals the turn's blood
+    trait_shared_rampart =              2.0,  -- the barrier covers allies beside
+    trait_static_focus =                2.0,  -- +1 magic damage per Storm consumed
+    trait_storm_vessel =                1.0,  -- +1 magic defense per Storm held
+    trait_tempo_on_the_move =           1.5,  -- walking keeps Tempo
+    trait_votive_flame =                1.5,  -- Radiance becomes wind-up
     -- THE AVATAR'S BONDS (models/bond.lua). Never on an item -- Bond.traitsFor hands them to an A-rank pair
     -- for a fight -- so no shelf prices them; weighed for the record against what they mirror. The
     -- follow-up is Follow-Up's pile-on narrowed to one striker and made free, so the same 3.0; Stand Firm

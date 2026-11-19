@@ -1,40 +1,31 @@
--- Resonance Prism: the mage's Alchemic Mastery. A charm with no ability of its own whose aura raises
--- the MAGNITUDE of the magical things sitting adjacent to it in the 3x3 grid (diagonals included) --
--- a Fire Bolt next to it bites deeper, a Fireball lands heavier, an enchanted blade cuts harder.
+-- Storm Vessel: the mage's engine core and its grid piece (docs/engines.md). It gathers a charge every
+-- turn its bearer takes, up to three (the `storm` pool, banked off `turnTaken`), and the spell or
+-- enchanted blade beside it spends the WHOLE pool for half again its damage per charge
+-- (Engine.stormFactor, read by castAmount on every cast path so the forecast quotes it). A turn-five
+-- spell is far bigger than a turn-one spell, in a game where mana never comes back mid-fight.
 --
--- The one new thing it needs is `requiresTags`: every aura before this narrowed by item TYPE, and
--- "magic" is not a type -- a spell is an `ability`, an enchanted sword is a `weapon`, and they are the
--- same school. So the prism applies to both types and then filters by the `magical` tag, which is the
--- same tag the damage core reads to route a hit through magicDefense (see Combat.auraApplies). The
--- prism sharpens exactly the things that count as magic when they land, and cannot drift out of step
--- with that, because it is asking the same question.
+-- The aura filters by the `magical` tag, the same tag the damage core reads to route a hit through
+-- magic defense, so it sharpens exactly what counts as magic when it lands -- a Battlemage's enchanted
+-- blade beside it spends the storm too (the Battlemage's twist, round 2).
 --
--- Compare the shelf it completes:
---   * Fire Stone       -- grants a TAG to its neighbor (turns a blade elemental).
---   * Alchemic Mastery -- raises the magnitude of adjacent CONSUMABLES (a type).
---   * Resonance Prism  -- raises the magnitude of adjacent MAGIC (a school).
--- Three auras, three different axes to build a grid around, and a mage now has a reason to care where
--- in the nine cells its spells actually sit.
---
--- Deliberately does NOT touch a healing spell: `magical` is a damage-school tag and the priest's
--- restoratives don't carry it, so the prism is a damage relic. The heal-boosting charm is a different
--- item that does not exist yet, and should not quietly be this one.
-local Curve = require("models.curve")
-
+-- Reworked from the Resonance Prism (2026-11-18), whose flat bonus to adjacent magic was a stat stick
+-- in a cell. Named Storm Vessel in round 3 (the author's pick over Wellstone and Gathering Stone; the
+-- machine word went to the Artificer for later). The id stays so the slime's drop list keeps its piece.
 return {
-    name = "Resonance Prism",
-    description = "Increases the amount every adjacent spell and enchanted weapon deals.",
-    flavor = "The Arcanum tunes it by ear, and will not say to what.",
+    name = "Storm Vessel",
+    description = "Gathers 1 Storm a turn, up to 3. A spell next to it consumes it for +50% damage per Storm. +1 magic defense per Storm.",
+    flavor = "It hums when the weather turns. The Arcanum says that is the only thing it does on its own.",
     sprite = "assets/items/resonance_prism.png",
     type = "utility",
     tags = { "arcane" },
     class = "mage",
     unlockLevel = 6,
+    charge = { key = "storm", from = { "turnTaken" }, max = 3 },
+    traits = { "trait_storm_vessel" },
     aura = {
         appliesTo = { "ability", "weapon" }, -- a spell and an enchanted blade are the same school
         requiresTags = { "magical" },        -- ...and only the ones that actually ARE magic
-        amountBonus = Curve.ramp(4, 14), -- added to the neighbor's ability magnitude
+        stormMult = 0.5,                     -- per Storm spent (Engine.stormFactor)
     },
-    -- it raises the magnitude of everything beside it
-    bonus = { magicDamage = 2 },
+    bonus = { magicDamage = 1 },
 }

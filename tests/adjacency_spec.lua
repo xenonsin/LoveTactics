@@ -1,5 +1,5 @@
 -- Tests for inventory-grid adjacency effects (models/character.lua grid helpers + the
--- Combat.* adjacency layer): 3x3 neighbor math, Omnislash scaling off adjacent weapons (with a
+-- Combat.* adjacency layer): 3x3 neighbor math, Cascade spending banked Tempo (with a
 -- preview/live match), Rain of Arrows' adjacent-bow requirement gate, a Fire Stone aura granting
 -- the fire tag + Burn to a neighboring cast, and the UI connector-link descriptor. Pure logic,
 -- headless.
@@ -62,39 +62,31 @@ return {
         end,
     },
     {
-        name = "Omnislash damage scales per adjacent weapon, and the preview matches the live cast",
+        name = "Cascade strikes once per banked Tempo, the preview matches the live cast, and it spends the pool",
         fn = function()
-            -- Base cast: no adjacent weapons -> 1x power.
-            local c0 = Combat.new(arena(8, 8), { unit("character_rowan", 3, 3) }, { unit("character_bandit", 3, 4) })
-            local k0 = c0.units[1]
-            equip(k0.char, { [5] = "ability_omnislash" })
-            k0.char.stats.stamina.current = 99
-            openTurn(c0, k0)
-            local ok0, r0 = Combat.useItem(c0, k0, k0.char.inventory[5], 3, 4)
-            assert(ok0, "omnislash lands with no adjacent weapons")
-
-            -- Two adjacent weapons -> 3x power (1x base + 1x each). Every weapon adds `power` (6)
-            -- pre-mitigation, so two weapons is exactly +12 damage over the base cast.
-            local c2 = Combat.new(arena(8, 8), { unit("character_rowan", 3, 3) }, { unit("character_bandit", 3, 4) })
-            local k2, b2 = c2.units[1], c2.units[2]
-            equip(k2.char, { [5] = "ability_omnislash", [4] = "weapon_iron_sword", [6] = "weapon_iron_sword" })
-            k2.char.stats.stamina.current = 99
-            openTurn(c2, k2)
-
-            local preview = Combat.previewAbility(c2, k2, k2.char.inventory[5], 3, 4)
-            local predicted = preview.entries[b2].damage
-            local ok2, r2 = Combat.useItem(c2, k2, k2.char.inventory[5], 3, 4)
-            assert(ok2, "omnislash lands with adjacent weapons")
-            assert(r2.damageDealt == predicted,
-                "preview (" .. predicted .. ") matches the live hit (" .. r2.damageDealt .. ")")
-            -- The bonus is "+1x per adjacent weapon", so two of them add twice the ability's own
-            -- magnitude. Read off the item rather than pinned as a literal: the figure moves with the
-            -- slot the ability unlocks from (Balance.slotTarget), and a hard-coded 12 only ever meant
-            -- "the magnitude was 6 the day this was written".
-            local mag = Combat.abilityMagnitude(k2.char.inventory[5].activeAbility)
-            assert(r2.damageDealt == r0.damageDealt + 2 * mag,
-                "two adjacent weapons add twice the magnitude (" .. (2 * mag) .. "), got "
-                    .. (r2.damageDealt - r0.damageDealt))
+            -- Cascade (the fighter's Tempo payoff, ability_omnislash) swings once per Tempo. Quick Jab is a
+            -- speed-1 action, so each one banks a Tempo (Engine.afterCast's quickAction).
+            local c = Combat.new(arena(8, 8), { unit("character_rowan", 3, 3) }, { unit("character_bandit", 3, 4) })
+            local k, b = c.units[1], c.units[2]
+            equip(k.char, { [5] = "ability_omnislash", [4] = "ability_penetrating_strike" })
+            k.char.stats.stamina.current = 99
+            b.char.stats.health.max, b.char.stats.health.current = 999, 999
+            openTurn(c, k)
+            assert(Combat.itemBlockReason(k, k.char.inventory[5]), "no Tempo: Cascade will not swing")
+            for _ = 1, 3 do
+                openTurn(c, k)
+                assert(Combat.useItem(c, k, k.char.inventory[4], 3, 4), "the jab lands")
+            end
+            assert(Combat.chargePool(k, "tempo") == 3, "three quick actions bank three Tempo, got "
+                .. Combat.chargePool(k, "tempo"))
+            openTurn(c, k)
+            local preview = Combat.previewAbility(c, k, k.char.inventory[5], 3, 4)
+            local predicted = preview.entries[b].damage
+            local ok, r = Combat.useItem(c, k, k.char.inventory[5], 3, 4)
+            assert(ok, "Cascade lands")
+            assert(r.damageDealt == predicted,
+                "preview (" .. predicted .. ") matches the live cascade (" .. r.damageDealt .. ")")
+            assert(Combat.chargePool(k, "tempo") == 0, "Cascade spends every Tempo")
         end,
     },
     {
@@ -241,14 +233,14 @@ return {
             knight.inventory = {}
             knight.inventory[5] = Item.instantiate("consumable_fire_stone")           -- aura source (center)
             knight.inventory[4] = Item.instantiate("weapon_iron_sword")           -- infused neighbor
-            knight.inventory[1] = Item.instantiate("ability_omnislash")    -- scales off weapons
-            knight.inventory[2] = Item.instantiate("weapon_iron_sword")           -- feeds Omnislash
+            knight.inventory[1] = Item.instantiate("ability_culling_stroke") -- scales off weapons
+            knight.inventory[2] = Item.instantiate("weapon_iron_sword")           -- feeds the Culling Stroke
             knight.inventory[7] = Item.instantiate("ability_rain_of_arrows") -- needs a bow
             knight.inventory[8] = Item.instantiate("weapon_iron_bow")                  -- satisfies the requirement
 
             local links = Combat.adjacencyLinks(knight)
             assert(hasLink(links, 5, 4, "aura"), "Fire Stone (5) auras the adjacent sword (4)")
-            assert(hasLink(links, 1, 2, "boost"), "Omnislash (1) scales off the adjacent weapon (2)")
+            assert(hasLink(links, 1, 2, "boost"), "Culling Stroke (1) scales off the adjacent weapon (2)")
             assert(hasLink(links, 7, 8, "requirement"), "Rain of Arrows (7) requirement met by the bow (8)")
 
             -- Items placed apart form no relationship.

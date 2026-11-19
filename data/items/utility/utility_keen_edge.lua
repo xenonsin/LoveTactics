@@ -1,29 +1,21 @@
--- THE KEEN EDGE: three points of damage for three points of guard.
+-- Sanguine Font: the barbarian's Blood Price multiplier (docs/engines.md). Health lost on your own turn
+-- banks Blood, up to four, and the next ability spends all of it for 3 more damage a point
+-- (trait_sanguine_font). The Red Tithe and the Wound Gift are what feed it on purpose; a riposte taken
+-- mid-swing feeds it by accident.
 --
--- WAS A RUN RELIC (`relic_keen_edge`, uncommon tier) until the relic shelf was parked on 2026-09-17; see
--- models/relic.lua's park note for the whole move. The effect is unchanged in kind and RESCOPED: a
--- relic was held by the run and felt by the whole company, and this is worn by one body and felt by
--- that body.
---
--- THE PLAINEST TRADE ON THE SHELF, and the line the others are measured against. Mitigation here is
--- subtractive, so a point of damage and a point of defense are the same quantity moving in opposite
--- directions: +3 / -3 is a wash on paper and a real decision in practice, because you take it knowing
--- whether the ground ahead hits once hard or many times lightly.
+-- Reworked from The Keen Edge (2026-11-18), a +3/-3 stat trade whose relic twin (relic_keen_edge)
+-- still carries that trade for the company. The id stays so saves and drop lists keep their piece.
 return {
-    name = "The Keen Edge",
-    description = "Raises damage by 3. Lowers defense by 3.",
-    flavor = "A strop and a tin of green paste, and a habit of walking off to use them before anyone sits down.",
+    name = "Sanguine Font",
+    description = "Each time you lose health on your turn, your next ability deals 3 more (up to 12).",
+    flavor = "The Colosseum's barbarians do not bandage between bouts. They say it keeps the arm honest.",
     sprite = "assets/items/keen_edge.png",
     type = "utility",
     tags = { "trinket" },
-    -- SHELVED WITH THE DISCIPLINE ITS EFFECT FEEDS, not with the root class: the shelf that already trades its own safety for damage.
-    -- `class` is the vendor shelf and never an equip gate -- anyone may carry this.
     class = "barbarian",
-    -- GRADED BY JUDGEMENT rather than by dry run (Grade.of's authored hatch), in turns per
-    -- fight: the plainest trade on the shelf: three damage for three guard, and a wash on paper.
-    -- The instrument reads net stat swing and replayed damage; this item's worth is in neither,
-    -- so left underived it files at ~0 -- see models/grade.lua on a passive being BLIND.
     grade = 0.90,
     unlockLevel = 12,
-    bonus = { damage = 3, defense = -3 },
+    charge = { key = "blood", from = { "selfWound" }, max = 4 },
+    traits = { "trait_sanguine_font" },
+    bonus = { damage = 1 },
 }

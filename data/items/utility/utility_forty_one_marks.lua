@@ -1,25 +1,34 @@
--- Quest reward, slot 9 of the Bastion's line (data/quests/forty_first_day.lua). A gatepost splinter
--- off Greywatch, forty-one strokes cut into it.
---
--- The order teaches the number as forty-one days held. It is not. It is forty-one people who said
--- yes, one mark each, cut by Acedia's own hand so that nobody could claim afterwards they had been
--- carried (data/conversations/bastion_forty_first_day_confront.lua). The same tally the Greywatch
--- Muster Roll's flavor already misreads at slot 5 -- the player has been carrying the wrong reading
--- for four quests by the time this arrives.
+-- Shield Slam: the knight's Rampart payoff (docs/engines.md). Raw damage equal to the barrier you are
+-- holding, and the barrier stays. Body Slam: the knight's guard is its weapon, and the turn it spent
+-- raising one is the turn it spent sharpening the other. Renamed from the round's working name Shield
+-- Bash, which an existing ability already carries.
 --
 -- `class = "knight"` with NO `price`: unbuyable, and still tallying toward knight growth
--- (docs/classes.md, "class without price"). No `traits` -- see utility_closed_entry.lua.
-local Curve = require("models.curve")
-
+-- (docs/classes.md, "class without price").
+--
+-- Reworked from Forty-One Marks (2026-11-18), a plain damage charm. The id stays for saves.
 return {
-    name = "Forty-One Marks",
-    description = "Grants bonus damage.",
-    flavor = "The order teaches it as forty-one days held. She cut them herself, one for each of " ..
-        "them, so that no one could ever say they had been carried.",
+    name = "Shield Slam",
+    description = "Deals raw damage equal to your barrier. The barrier stays.",
+    flavor = "Every knight of the Bastion has done it once by accident. The good ones do it on purpose.",
     sprite = "assets/items/forty_one_marks.png",
-    type = "utility",
-    tags = { "charm" },
+    type = "ability",
+    tags = { "impact", "physical" },
     class = "knight",
     unlockLevel = 3,
-    bonus = { damage = Curve.ramp(2, 12) },
+    activeAbility = {
+        target = "enemy",
+        range = 1,
+        speed = 4,
+        cost = { stat = "stamina", amount = 6 },
+        counter = function(unit)
+            return unit and require("models.engine").barrierPool(unit) or 0
+        end,
+        counterEmpty = "No barrier to slam with",
+        effect = function(fx)
+            local have = require("models.engine").barrierPool(fx.user)
+            if have <= 0 then return end
+            fx.flatDamage(fx.target, have, { "impact", "physical" })
+        end,
+    },
 }

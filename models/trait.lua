@@ -26,6 +26,10 @@
 --   * onTurnEnd(ctx)     -- the bearer's OWN turn just ended (fired beside onAnyTurnEnd)
 --   * onAnyTurnStart(ctx) -- somebody ELSE's turn just opened; ctx.actor is who (Trait.onAnyTurnStart)
 --   * onTurnStart(ctx)   -- the bearer's OWN turn just opened (fired beside onAnyTurnStart; Envy, slice B)
+--   * onKill(ctx)        -- the bearer FELLED a foe; ctx.fallen, ctx.blow (the item that struck). The
+--                           build engines' (models/engine.lua): the Reaper's Ledger, the Scab
+--   * onChargeSpent(ctx) -- a pool the bearer holds was spent; ctx.key, ctx.amount, ctx.full (spent at
+--                           its ceiling). The Overflowing Cup's
 --
 -- Two things carry traits, and both flow through Trait.attach:
 --   * a character blueprint  -- `traits = { "trait_wrath_rising" }` on data/characters/<id>.lua
@@ -1382,6 +1386,19 @@ function Trait.attach(unit, combat)
             -- reaction read Trait.param off the thing it is nailed to exactly as a blueprint's own does.
             for _, id in ipairs(require("models.curse").traitsOn(item)) do
                 list[#list + 1] = Trait.instantiate(id, item)
+            end
+        end
+        -- THE MIRROR SHARD (the Ninja's grid joker, docs/engines.md): a shard carries a second copy of
+        -- the traits of the piece to its RIGHT in the same row, owned by that piece so its tunables read
+        -- off the forge it was raised at. Nothing to the right, or the right edge, and it carries nothing.
+        local inv = unit.char.inventory or {}
+        for i = 1, Character.MAX_INVENTORY do
+            local shard = inv[i]
+            if shard and shard.mirrorsRight and (i % Character.COLS) ~= 0 then
+                local src = inv[i + 1]
+                for _, id in ipairs((src and src.traits) or {}) do
+                    list[#list + 1] = Trait.instantiate(id, src)
+                end
             end
         end
     end

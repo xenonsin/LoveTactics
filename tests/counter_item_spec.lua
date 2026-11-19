@@ -19,7 +19,7 @@ local Fixture = require("tests.support.fixture")
 
 return {
     {
-        name = "an empty Reliquary of Tallies is refused, and fills as allies fall",
+        name = "an empty Reliquary of Tallies is refused, and fills as its bearer heals past full",
         fn = function()
             local map = Fixture.new(8, 8)
             local hero = Fixture.unit("character_xin", 2, 2,
@@ -34,8 +34,8 @@ return {
             local blocked = Combat.itemBlockReason(h, reliquary)
             assert(blocked and blocked.kind == "empty", "an empty reliquary is refused, kind 'empty'")
 
-            Combat.tally(h, "allyDown", 2) -- two allies lost
-            assert(ab.counter(h, reliquary) == 2, "the purse now reads the two it is owed")
+            Combat.tally(h, "overheal", 2) -- two points healed past full (the Overflow engine, docs/engines.md)
+            assert(ab.counter(h, reliquary) == 2, "the purse now reads the two Radiance banked")
             assert(Combat.itemBlockReason(h, reliquary) == nil,
                 "and with the mana to pay it, the cast is no longer refused")
         end,

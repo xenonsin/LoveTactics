@@ -21,6 +21,23 @@ return {
                    -- the victim real ground (it bites per tile crossed, not per tick)
     magnitude = 3, -- damage per tile entered
     debuff = true, -- removable by Cure / Panacea
+    -- STACKS (the rogue's Bloodletting engine, models/engine.lua): every application is one more wound,
+    -- kept as the instance's `count` and apart from `magnitude` above, which stays the per-tile bite a
+    -- weapon authors. Widen the Wound doubles the count, Exsanguinate cashes it in, a Hemophage Charm
+    -- carries it to the next body. The badge prints the count once there is more than one.
+    countsStacks = true,
+    maxCount = 20,
+    badgeText = function(st)
+        if st and (st.count or 1) > 1 then return tostring(st.count) end
+        return nil
+    end,
+    describe = function(st)
+        local n = st and st.count or 1
+        if n > 1 then
+            return string.format("Bleeding (%d wounds): takes damage for every tile it moves through.", n)
+        end
+        return "Bleeding: takes damage for every tile it moves through. Standing still costs nothing."
+    end,
     onEnterTile = function(ctx)
         -- `raw`: armor turns a blade, but it does nothing whatever about a wound already open. This is
         -- also the only way the magnitude can mean anything -- defense stats run 6-10, so a mitigated

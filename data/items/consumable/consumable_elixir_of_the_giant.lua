@@ -1,41 +1,29 @@
--- Elixir of the Giant: drink someone else's arm. A long window of raised Damage
--- (data/status/status_giants_vigour.lua), bottled.
+-- Rime Draught: the alchemist's Reactions setup for plate (docs/engines.md). Thrown at a foe, it leaves
+-- them Chilled (status_chilled), which does nothing on its own. A hammer or an axe blow on a chilled body
+-- shatters its armour to nothing for two turns (Engine.afterWound). An answer to plate that is not raw
+-- damage: the alchemist lays it, and the knight or the barbarian beside her spends it.
 --
--- The elixir shelf is envy stated as plainly as the Crucible knows how: it does not make you stronger,
--- it makes you strong FOR A WHILE, out of a bottle, and then you are what you were. Nothing on it is
--- cast -- every one of the three is a thing somebody else had that you bought a measure of. That is
--- the same argument the Powder Keg makes about damage and the Homunculus makes about bodies, and it
--- is why the shelf holds twelve consumables and three abilities without that being a failure
--- (docs/classes.md, "Known debt").
---
--- Drunk on your own turn at a real cost in tempo (speed 3), which is what separates an elixir from the
--- charm it resembles. A charm works because it is in the grid; this works because you spent a turn
--- early in a fight betting the fight would last long enough to pay you back. Nine turns of duration is
--- that bet's payout, and drinking it on the last turn of a battle is how you lose it.
---
--- `target = "ally"` includes the drinker (a unit is its own ally), so it doubles as a way to hand the
--- fighter their courage on a turn the fighter had something better to do.
+-- Reworked from the Elixir of the Giant (2026-11-18), one of three interchangeable stat elixirs. The id
+-- stays so saves and drop lists keep their piece; the adventurer alchemist's kit drinks another elixir.
 return {
-    name = "Elixir of the Giant",
-    description = "Grants Giant's Vigour.",
-    flavor = "Ogre marrow, mostly. The Crucible would rather you did not ask which part is 'mostly'.",
+    name = "Rime Draught",
+    description = "Inflicts Chilled. A hammer or axe blow on a Chilled foe drops its defense to 0 for 2 turns.",
+    flavor = "Do not drink it. The label says so twice, and the second time it is underlined.",
     sprite = "assets/items/consumable_elixir_of_the_giant.png",
     type = "consumable",
-    tags = { "potion", "elixir", "restorative" },
+    tags = { "ice" }, -- no "magical": the cold is chemistry
     class = "alchemist",
     price = 140,
     unlockLevel = 6,
     activeAbility = {
-        target = "ally", -- includes the user: a unit is its own ally
-        range = 1,
+        target = "enemy",
+        range = 3,
+        requiresSight = true,
         speed = 3,
+        cost = { stat = "stamina", amount = 4 },
         consumesItem = true,
-        ai = { priority = "low", act = "support", targetPref = "self" },
         effect = function(fx)
-            -- Duration scales with the forge; the bonus is the status's own. A better-distilled
-            -- elixir lasts longer rather than hitting harder -- the same principle the incense
-            -- radius follows (docs/weapons.md): an upgrade buys more of the thing, never a wider one.
-            fx.applyStatus(fx.target, "status_giants_vigour", { duration = 45 + 3 * fx.level })
+            fx.applyStatus(fx.target, "status_chilled")
         end,
     },
 }

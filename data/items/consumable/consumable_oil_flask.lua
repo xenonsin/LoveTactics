@@ -1,14 +1,13 @@
--- Oil Flask: a thrown flask of lamp-oil that bursts over a small area and coats everything in it,
--- leaving each body Vulnerable: Fire (data/status/status_vulnerable_fire.lua) -- +10 from every fire hit
--- that follows. It does NO damage of its own; the whole payload is what the fire mage lands next.
+-- Oil Flask: the alchemist's Reactions setup for fire (docs/engines.md). Thrown, it slicks everyone in
+-- a small burst with Oiled (status_oiled), which does nothing on its own. The next fire that touches an
+-- oiled body sets it off: two tiles of fire and burning ground, and any other oiled body in the blast
+-- goes up with it (Engine.ignite). Anybody on the line can bring the fire.
 --
--- The alchemist's exact sibling of the Acid Bomb on the same shelf, and the clean read-forwards of the
--- Rain-then-Jolt combo the game already loves: douse a cluster, then torch it. Envy's voice -- it makes
--- someone else's fire worth more rather than casting any of its own -- and a throwable, which is the
--- shelf's keyword (docs/classes.md). See docs/vulnerability.md for the family.
+-- Reworked 2026-11-18 from a flask that laid Vulnerable: Fire, a bigger number on the next fire hit. The
+-- reaction is the same promise made into an event the board can see.
 return {
     name = "Oil Flask",
-    description = "Inflicts Vulnerable: Fire in area.",
+    description = "Inflicts Oiled in area. Fire on an Oiled body explodes within 2 tiles.",
     flavor = "The Crucible does not sell you the fire. It sells you the reason the fire works.",
     sprite = "assets/items/oil_flask.png",
     type = "consumable",
@@ -27,7 +26,7 @@ return {
         aoe = { radius = 1, shape = "square" },
         effect = function(fx)
             for _, u in ipairs(fx.aoeUnits()) do
-                if u.alive then fx.applyStatus(u, "status_vulnerable_fire") end
+                if u.alive then fx.applyStatus(u, "status_oiled") end
             end
         end,
     },

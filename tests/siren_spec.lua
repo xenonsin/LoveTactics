@@ -304,31 +304,31 @@ return {
     {
         name = "the Siren's Comb carries an ability two tiles further to a Wet foe, and only to a Wet one",
         fn = function()
-            local c = Combat.new(board(), { body(1, 1, { "ability_jolt", "utility_sirens_comb" }) },
+            local c = Combat.new(board(), { body(1, 1, { "ability_minor_shock", "utility_sirens_comb" }) },
                 { unit("character_harpy", 1, 6), unit("character_harpy", 6, 1) })
             local caster, wet, dry = c.units[1], c.units[2], c.units[3]
             Status.apply(c, wet, "status_wet")
             local reach = {}
-            for _, t in ipairs(Combat.abilityTargets(c, caster, itemNamed(caster.char, "ability_jolt"))) do reach[t] = true end
+            for _, t in ipairs(Combat.abilityTargets(c, caster, itemNamed(caster.char, "ability_minor_shock"))) do reach[t] = true end
             assert(reach[wet], "a Wet foe five tiles off is in reach of a range-3 spell")
             assert(not reach[dry], "a dry one five tiles off is not")
             openTurn(c, caster)
-            assert(Combat.useItem(c, caster, itemNamed(caster.char, "ability_jolt"), wet.x, wet.y),
+            assert(Combat.useItem(c, caster, itemNamed(caster.char, "ability_minor_shock"), wet.x, wet.y),
                 "and the cast gate agrees with the target list")
         end,
     },
     {
         name = "Echo: an ally's cast within earshot lends the bearer a half-power copy, spent on use",
         fn = function()
-            local c = Combat.new(board(), { body(1, 4, { "utility_echo" }), body(2, 4, { "ability_jolt" }) },
+            local c = Combat.new(board(), { body(1, 4, { "utility_echo" }), body(2, 4, { "ability_minor_shock" }) },
                 { unit("character_harpy", 2, 6, { stats = { health = 500 } }) })
             local echo, caster, foe = c.units[1], c.units[2], c.units[3]
             openTurn(c, caster)
-            assert(Combat.useItem(c, caster, itemNamed(caster.char, "ability_jolt"), foe.x, foe.y), "the ally casts")
+            assert(Combat.useItem(c, caster, itemNamed(caster.char, "ability_minor_shock"), foe.x, foe.y), "the ally casts")
             local copy
             for _, it in ipairs(Character.eachItem(echo.char)) do if it.echo then copy = it end end
-            assert(copy and copy.id == "ability_jolt", "the bearer holds an echo of it")
-            local full = itemNamed(caster.char, "ability_jolt").activeAbility.damage
+            assert(copy and copy.id == "ability_minor_shock", "the bearer holds an echo of it")
+            local full = itemNamed(caster.char, "ability_minor_shock").activeAbility.damage
             assert(copy.activeAbility.damage == math.max(1, math.floor(full / 2)), "at half power")
             openTurn(c, echo)
             assert(Combat.useItem(c, echo, copy, foe.x, foe.y), "the echo is thrown")

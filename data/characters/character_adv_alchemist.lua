@@ -23,14 +23,14 @@ return {
         skill = 7, luck = 3,
     },
     startingItems = {
-        "weapon_apothecarys_lancet", "consumable_fire_bomb", "consumable_elixir_of_the_giant",
+        "weapon_apothecarys_lancet", "consumable_fire_bomb", "consumable_elixir_of_the_adept",
         "armor_leather_armor", "consumable_elixir_of_heroism", "consumable_healing_potion",
     },
     defaultAction = "weapon_apothecarys_lancet",
     signatureWeapon = "weapon_apothecarys_lancet",
     signatureAbility = "consumable_fire_bomb",
     ai = {
-        { priority = "high", act = "support", item = "consumable_elixir_of_the_giant",
+        { priority = "high", act = "support", item = "consumable_elixir_of_the_adept",
           when = { subject = "nearest_ally", test = "lacks_status", value = "status_giants_vigour" } },
         { priority = "high", act = "attack", item = "consumable_fire_bomb",
           when = { subject = "any_foe", test = "count_at_least", value = 2 } },

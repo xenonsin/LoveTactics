@@ -141,21 +141,20 @@ return {
         end,
     },
     {
-        name = "Penetrating Strike lands raw, ignoring the target's armor",
+        name = "Exsanguinate lands raw, 3 a Bleed stack, ignoring the target's armor, and closes the wound",
         fn = function()
             local c = Combat.new(arena(6, 6),
-                { mkunit(2, 2, { stats = { damage = 0 }, items = { "weapon_iron_sword", "ability_penetrating_strike" } }) },
+                { mkunit(2, 2, { stats = { damage = 0 }, items = { "ability_exsanguinate" } }) },
                 { mkunit(2, 3, { stats = { defense = 100, health = 100 } }) })
             local hero, foe = c.units[1], c.units[2]
-            local pen = hero.char.inventory[2]
-            -- The target's armor is set far above the strike's Power on purpose: a MITIGATED hit
-            -- would floor at 1, so landing the whole Power is only possible if defense was skipped.
-            local raw = power("ability_penetrating_strike")
-            assert(foe.char.stats.defense > raw, "the fixture needs armor that would otherwise swallow this")
+            local Engine = require("models.engine")
+            Engine.addBleed(c, foe, 4, hero)
+            assert(Engine.bleedStacks(foe) == 4, "four stacks of Bleed, got " .. Engine.bleedStacks(foe))
             openTurn(c, hero)
-            local _, res = Combat.useItem(c, hero, pen, foe.x, foe.y)
-            assert(res.damageDealt == raw,
-                "penetrating strike ignores " .. foe.char.stats.defense .. " defense, dealing its Power " .. raw)
+            local _, res = Combat.useItem(c, hero, hero.char.inventory[1], foe.x, foe.y)
+            assert(res.damageDealt == 12,
+                "exsanguinate ignores " .. foe.char.stats.defense .. " defense: 4 stacks x 3 = 12, got " .. res.damageDealt)
+            assert(Engine.bleedStacks(foe) == 0, "the wound is closed")
         end,
     },
     {

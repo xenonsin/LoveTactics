@@ -6,7 +6,7 @@ local Curve = require("models.curve")
 
 return {
     name = "Harrying Strike",
-    description = "Strikes a foe, then slips back a tile out of reach.",
+    description = "Strikes a foe, then slips back a tile out of reach. Walking does not reset your Tempo.",
     flavor = "The Lodge does not teach the blow. It teaches the step after it.",
     sprite = "assets/items/ability_harrying_strike.png",
     type = "ability",
@@ -14,6 +14,9 @@ return {
     class = "skirmisher", -- fighter x hunter; the Hit-and-run mechanic's first stock
     price = 345,
     unlockLevel = 6,
+    -- THE SKIRMISHER'S TWIST on the fighter's Tempo (docs/engines.md): the base engine forfeits its pool
+    -- on a walk, and the class built on never standing where it swung keeps it.
+    traits = { "trait_tempo_on_the_move" },
     activeAbility = {
         target = "enemy",
         range = 1,

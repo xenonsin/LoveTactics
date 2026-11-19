@@ -5,14 +5,15 @@ local Curve = require("models.curve")
 
 return {
     name = "Warden's Oath",
-    description = "Takes the first hit each turn on an adjacent ally in their place.",
+    description = "Takes the first hit each turn on an adjacent ally in their place, and adds what it took to your barrier.",
     flavor = "The Bastion will sell the vow to anyone. Keeping it is not included in the price.",
     sprite = "assets/items/wardens_oath.png",
     type = "armor",
     tags = { "plate" },
     class = "sentinel", -- the Intercept mechanic itself -- soak the blow aimed at the ally beside you
     unlockLevel = 4,
-    traits = { "trait_oathward" },
+    -- THE SENTINEL'S RAMPART (docs/engines.md, 2026-11-18): a blow taken for an ally banks as barrier.
+    traits = { "trait_oathward", "trait_guard_barrier" },
     bonus = { defense = Curve.ramp(6, 16), movement = -1 },
     resist = { physical = 2 },
 }

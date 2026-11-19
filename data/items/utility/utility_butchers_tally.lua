@@ -18,7 +18,7 @@
 -- read, and "raises your Damage" alone asks a buyer to price +10 Damage against 380 gold blind.
 return {
     name = "Butcher's Tally",
-    description = "Increase damage by 2 per death on the field, either side, up to 5 deaths this battle.",
+    description = "Increase damage by 2 per foe you kill, up to 5 kills this battle.",
     flavor = "The stable hands cut a notch per body. They have never once asked whose.",
     sprite = "assets/items/butchers_tally.png",
     type = "utility",
@@ -26,6 +26,9 @@ return {
     class = "barbarian", -- deeper cut of the shelf: buyable only once the barbarian gate is cleared
     unlockLevel = 5,
     traits = { "trait_blood_fever" },
+    -- THE BARBARIAN'S BLOOD PRICE (docs/engines.md, 2026-11-18): the strap counts only the bodies its
+    -- bearer put down, so it scales with the kills a build makes rather than with how badly the fight goes.
+    traitParams = { ownKills = true },
     -- the tally banks its own Power per corpse; this is only the apron
     bonus = { defense = 1 },
 }

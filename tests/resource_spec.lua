@@ -100,7 +100,7 @@ return {
             local pu, bandit = c.units[1], c.units[2]
             local focus = Combat.waitBehavior(pu)
             local focusSpeed = focus.speed
-            assert(focus.kind == "focus", "focus stone swaps Wait -> Focus")
+            assert(focus.kind == "focus", "the staff in the priest's kit swaps Wait -> Focus")
             pu.initiative, bandit.initiative = 0, 5
             openTurn(c, pu)
             assert(Combat.focus(c, pu), "focus succeeds")

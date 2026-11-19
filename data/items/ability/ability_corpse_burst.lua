@@ -41,7 +41,10 @@ return {
             local n = #corpses
             if n == 0 then return end -- nothing to detonate; the mana is spent either way
             for _, corpse in ipairs(corpses) do fx.consumeCorpse(corpse) end
-            local dmg = fx.amount + n * 6 -- each body spent adds to the blast
+            -- Each body spent adds to the blast, and a Charnel Reliquary makes each one worth more.
+            local tithe = require("models.trait").flag(fx.user, "corpseWorth")
+            local per = 6 + ((tithe and tithe.def.corpseWorth) or 0)
+            local dmg = fx.amount + n * per
             for _, u in ipairs(fx.aoeUnits()) do
                 fx.damage(u, { amount = dmg })
             end

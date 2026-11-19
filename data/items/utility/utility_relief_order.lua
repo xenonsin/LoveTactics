@@ -1,31 +1,23 @@
--- Quest reward, slot 7 of the Bastion's line (data/quests/the_order_given.lua) -- THE TURN. The
--- relief order cut for Greywatch, out of the archive and out of its seal: issued the nineteenth,
--- for a gate that was opened from the inside on the fourteenth.
---
--- Five days. There was no window to miss and no battle to arrive at, which means Rowan is innocent,
--- which is the one thing she cannot accept (docs/story.md, "Rowan"). The player is holding the proof
--- for the rest of the game.
+-- Rampart Buckle: the knight's Rampart grid piece (docs/engines.md). When the bearer is hit, every shield
+-- sitting next to the buckle raises barrier (trait_rampart_buckle). Getting hit is how a knight builds,
+-- and the grid decides how quickly.
 --
 -- `class = "knight"` with NO `price`: unbuyable, and still tallying toward knight growth
--- (docs/classes.md, "class without price"). No `traits` -- see utility_closed_entry.lua on why only
--- four of the ten carry a rule.
+-- (docs/classes.md, "class without price").
 --
--- The two dates live in `flavor`, not `description`, per docs/item-text.md: a player who reads only
--- descriptions must lose no mechanical information, and a player who reads only flavor must learn
--- the world. This is the second kind of line and it is the most load-bearing one in the game.
+-- Reworked from The Relief Order, Unsealed (2026-11-18), a plain defense charm. The id stays for saves.
 local Curve = require("models.curve")
 
 return {
-    name = "The Relief Order, Unsealed",
-    description = "Grants bonus defense and magic defense.",
-    flavor = "Issued the nineteenth, countersigned by two hands. The gate was opened on the " ..
-        "fourteenth. There was nothing to be late for.",
+    name = "Rampart Buckle",
+    description = "When you are hit, each shield next to it grants 3 barrier.",
+    flavor = "A strap and a brass catch. Every shield in the Bastion has one.",
     sprite = "assets/items/relief_order.png",
     type = "utility",
     tags = { "charm" },
     class = "knight",
     unlockLevel = 3,
-    --                       level:  0  1  2  3  4  5  6  7  8  9  10
-    bonus = { defense = Curve.ramp(2, 12),
-              magicDefense = Curve.ramp(2, 12) },
+    traits = { "trait_rampart_buckle" },
+    traitParams = { barrier = Curve.ramp(3, 13) },
+    bonus = { magicDefense = Curve.ramp(1, 11) },
 }
