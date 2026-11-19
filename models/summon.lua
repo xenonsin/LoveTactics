@@ -278,7 +278,7 @@ function Summon.copyOf(combat, copier, target, x, y, opts)
     local char = buildCopyChar(target.char)
     -- A COPY IN BONE (`opts.bones`): the shape a lich raises -- Foreclosure's victim, Raise the Owing's
     -- corpse (data/items/ability/ability_foreclosure.lua). The body it was, with the two facts of being a
-    -- skeleton put in its grid: Bare Bones (the lattice and the bone picture) and Grave-Cold, and the
+    -- skeleton put in its grid: Bare Bones (the bone picture and the holy line) and Grave-Cold, and the
     -- undead tag stamped so every reader of Character.isUndead agrees. A grid with no room keeps the
     -- piece it has, and the tag alone still makes it dead.
     if opts.bones then

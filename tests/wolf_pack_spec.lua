@@ -147,8 +147,8 @@ return {
             local target, wolf = c.units[1], c.units[2]
             openTurn(c, wolf)
             Combat.strikeWith(c, wolf, itemOf(wolf, "weapon_wolf_fangs"), target.x, target.y)
-            assert(Combat.unitGap(wolf, target) == 2,
-                "one tile of ground given, not two -- it is out of reach and no further")
+            assert(Combat.unitGap(wolf, target) == 3,
+                "two tiles of ground given, once -- not once per bite")
         end,
     },
     {
@@ -390,7 +390,7 @@ return {
     {
         -- The guard that keeps the two systems apart: a weapon that already declares hitAndRun takes
         -- its own step inside its effect, so the charm must add nothing on top of it.
-        name = "a wolf wearing the charm still gives ground exactly one tile",
+        name = "a wolf wearing the charm still gives ground exactly two tiles",
         fn = function()
             local wolfChar = Character.instantiate("character_wolf_grunt")
             local slot
@@ -404,8 +404,8 @@ return {
 
             openTurn(c, wolf)
             Combat.useItem(c, wolf, itemOf(wolf, "weapon_wolf_fangs"), target.x, target.y)
-            assert(Combat.unitGap(wolf, target) == 2,
-                "one step, not two -- the teeth already stepped and the charm declines to repeat it")
+            assert(Combat.unitGap(wolf, target) == 3,
+                "its own two steps, no more -- the teeth already stepped and the charm declines to repeat it")
         end,
     },
     {

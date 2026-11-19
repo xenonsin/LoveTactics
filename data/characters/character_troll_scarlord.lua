@@ -31,4 +31,10 @@ return {
     drops = { "weapon_scarring_club" },
     defaultAction = "weapon_scarlords_club",
     signatureWeapon = "weapon_scarlords_club",
+    -- THE SCAR GOES WHERE IT HURTS (the creature identity pass's targeting sweep, 2026-11-19): a body its club
+    -- strikes cannot be healed until its next turn, so it strikes the body that most needs the healing.
+    ai = {
+        { priority = "normal", act = "attack", targetPref = "most_wounded",
+          when = { subject = "any_foe", test = "exists" } },
+    },
 }

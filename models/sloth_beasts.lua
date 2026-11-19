@@ -7,10 +7,16 @@
 --                   once per banked turn and once more for the turn itself; a blow that lands on it knocks one
 --                   turn out. The Old Sloth spends the same bank as ring sweeps. Sleeper's Claws is the bank on a
 --                   monk's fist.
---   WHITEOUT ROAR   at the top of a yeti's turn, every foe within 4 with no ally beside it is Rooted. The
---                   Yeti-Hide Mantle roots the nearest such foe within 3.
---   DRAG INTO THE WHITE   the Dread hauls a Rooted body 3 tiles toward her -- through the Root, which is the whole
---                   point of the pairing: the yeti's fear pins a body, and she is the one thing that can move it.
+--   WHITEOUT ROAR   at the top of a yeti's turn, every foe within 4 with no ally beside it is Cowering. The
+--                   Yeti-Hide Mantle roots the nearest such foe within 3 (its own `status` param).
+--   DRAG INTO THE WHITE   the Dread hauls the nearest foe with no ally beside it 3 tiles toward her -- through a
+--                   Root if something else planted it, so a body pinned alone is still hers to take.
+--
+-- OFF ROOT (the creature identity pass, 2026-11-19). The roar Rooted and the Dread dragged only a Rooted body, so
+-- the pair were two of the four Sloth bodies hinging on Root (with the Old Spruce and Mora, who keep it). The
+-- lesson is unchanged -- move in pairs -- and the two now read it straight off the board: the yeti frightens a
+-- straggler (Cowering, the wolves' flinch: fewer steps back to its friends), and the Dread takes stragglers
+-- whether or not a yeti stands with her.
 --   HIBERNAL HIDE   the blow that wakes the wearer from Sleep deals half, and the first blow it throws after waking
 --                   deals 50% more.
 --
@@ -156,40 +162,47 @@ function SlothBeasts.lonely(combat, roarer, radius)
     return out
 end
 
--- WHITEOUT ROAR (onTurnStart): Root every lonely foe within `radius` (or only the nearest, for the mantle).
+-- WHITEOUT ROAR (onTurnStart): frighten every lonely foe within `radius` (or only the nearest, for the mantle).
+-- What it lays is the trait's `status` param -- Cowering for the yeti, for about two turns (`duration`), Root for
+-- the mantle a company wears.
 function SlothBeasts.roar(ctx)
     local u = ctx.unit
     if not (u and u.alive) then return end
     local caught = SlothBeasts.lonely(ctx.combat, u, ctx.param("radius", 4))
     if #caught == 0 then return end
     if ctx.param("nearest", false) then caught = { caught[1] } end
+    local id = ctx.param("status", "status_cowering")
+    local duration = ctx.param("duration", nil)
     for _, f in ipairs(caught) do
-        ctx.applyStatus(f, "status_root", { applier = u })
+        ctx.applyStatus(f, id, { applier = u, duration = duration })
         Combat().logEvent(ctx.combat, "status",
-            string.format("%s is caught alone in the white and freezes with fear.", nameOf(f)), { f, u })
+            string.format("%s is caught alone in the white.", nameOf(f)), { f, u })
     end
 end
 
--- DRAG INTO THE WHITE (onTurnStart): the Dread hauls the nearest Rooted foe within `reach` up to `steps` tiles
--- toward her. THROUGH THE ROOT: Root refuses every forced move (Status.blocksForcedMove), so the instance is lifted
--- off for the haul and put back after it, and the body arrives still Rooted -- held where she wanted it. Anything
--- else that plants a body (Unmoved, a Mast-Rope) still holds. Returns the tiles moved.
+-- DRAG INTO THE WHITE (onTurnStart): the Dread hauls the nearest foe within `reach` that has no ally beside it
+-- (SlothBeasts.alone) up to `steps` tiles toward her. THROUGH A ROOT: Root refuses every forced move
+-- (Status.blocksForcedMove), so a Rooted straggler's instance is lifted off for the haul and put back after it,
+-- and the body arrives still Rooted -- held where she wanted it. Anything else that plants a body (Unmoved, a
+-- Mast-Rope) still holds. Returns the tiles moved.
 function SlothBeasts.drag(combat, dread, reach, steps)
     local C, S = Combat(), Status()
     local best
     for _, f in ipairs(combat.units or {}) do
-        if f.alive and f.side ~= dread.side and not C.isOffTile(f) and S.has(f, "status_root") then
+        if f.alive and f.side ~= dread.side and not C.isOffTile(f) and SlothBeasts.alone(combat, f) then
             local d = C.unitGap(dread, f)
             if d > 1 and d <= reach and (not best or d < C.unitGap(dread, best)) then best = f end
         end
     end
     if not best then return 0 end
     local root = S.get(best, "status_root")
-    for i, s in ipairs(best.statuses) do
-        if s == root then table.remove(best.statuses, i) break end
+    if root then
+        for i, s in ipairs(best.statuses) do
+            if s == root then table.remove(best.statuses, i) break end
+        end
     end
     local moved = C.pullBy(combat, dread, best, steps)
-    if best.alive then table.insert(best.statuses, root) end
+    if root and best.alive then table.insert(best.statuses, root) end
     if moved > 0 then
         C.logEvent(combat, "move", string.format("%s drags %s into the white.", nameOf(dread), nameOf(best)),
             { best, dread })

@@ -1,5 +1,10 @@
-    -- THE GLACIER KING: all three Sloth slimes in one -- an elite on Sloth's seat floor. Its blows push your
--- turn back twice as far and Numb you, it grows while it holds still, and it divides into one of each.
+    -- THE GLACIER KING: Sloth's slimes in one -- an elite on Sloth's seat floor. Its blows push your turn back
+-- twice as far (Torpor), a foe beside it whose blow lands is Frozen (Frostbite), it grows while it holds still
+-- (Drift), and it divides into one of each slime.
+--
+-- The creature identity pass (2026-11-19) took Numb off it with the Frost Slime's move to Frostbite. It does
+-- not carry the Rime Slime's Freeze Solid: its death is the split, and walls on the tiles its pieces need would
+-- cancel the one rule a King is for.
     --
     -- `boss = true` for the King Slime's reasons (Coup de Grace must not skip the split), and fielded
     -- under `killAll` -- never an `assassinate` mark.

@@ -27,4 +27,5 @@ return {
     drops = { "ability_goad" },
     defaultAction = "weapon_iron_spear",
     signatureWeapon = "weapon_iron_spear",
+    ai = require("models.wrath_targeting").orc, -- the killing blow (2026-11-19)
 }

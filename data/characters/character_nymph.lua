@@ -12,6 +12,11 @@
 -- SHE WAS DRAFTED STEPPING BETWEEN WALLS, and a fight board is eight by eight with a few blockers on it.
 -- So the line grows its own grain (models/grove.lua): what she steps between is what she planted.
 --
+-- HER IDENTITY LEVER IS THE GROVE (2026-11-19, the creature identity pass). Springwater heals 3 for
+-- each plant of her side standing on the board, so a Nymph with a grove grown is very hard to finish and
+-- one with none barely mends at all -- and Greenstep has nowhere to go without a plant either. The
+-- saplings are the target: cut the plants first and both of her escapes are gone.
+--
 -- ALONE SHE IS A NUISANCE; BESIDE A HARPY SHE IS A PROBLEM. That pairing is what the Dryad line is in the
 -- Move half of the circle for: nothing in it roots, so it shares its fights with the flock and the
 -- succubi, and never with a rooter (Descent.SINS' Lust entry).
@@ -48,7 +53,8 @@ return {
     },
     defaultAction = "weapon_mistlight",
     ai = {
-        -- She plants before anything else: without a grove there is nowhere for Greenstep to go.
+        -- She plants before anything else: without a grove there is nowhere for Greenstep to go, and
+        -- (since 2026-11-19) nothing for Springwater to draw on.
         { priority = "high", act = "cast", item = "weapon_seedfall",
           when = { subject = "any_foe", test = "within", value = 6 } },
         { priority = "normal", act = "attack", item = "weapon_mistlight", targetPref = "nearest",

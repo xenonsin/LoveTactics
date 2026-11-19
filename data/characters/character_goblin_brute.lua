@@ -5,6 +5,12 @@
 -- every tile beside it, harder for each stack (Pent Up, utility_pent_up). From three stacks it wears Primed. So
 -- chipping at it makes it both stronger and a bomb: kill it in one blow, from range, or among its own.
 --
+-- ITS LEVER IS POSITION NOW, NOT ORDER (2026-11-19, the creature identity pass). The paragraph above is the
+-- 2026-09-26 build; the audit put the Brute among four Wrath bodies teaching "chipping it charges it" and kept the
+-- asura on that rule. So Pent Up's charge is fixed: it opens Primed and bursts for 24 when it dies, however it was
+-- worn down. What the company decides is where it is when it goes -- finish it from range, with nobody of yours
+-- beside it, or among its own warband.
+--
 -- It drops Bottled Rage, the burst put under the bearer's control. A barbarian on the fighter table.
 return {
     name = "Goblin Brute",
@@ -31,4 +37,5 @@ return {
     drops = { "ability_bottled_rage" },
     defaultAction = "weapon_iron_hammer",
     signatureWeapon = "weapon_iron_hammer",
+    ai = require("models.wrath_targeting").goblin, -- the cornered body (2026-11-19)
 }

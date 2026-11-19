@@ -5,7 +5,8 @@
 -- WHAT IT WAS, PLUS UNDEAD. It extends character_gilt_wyrm.lua the way the Dwarf Skeleton extends the Delver:
 -- the shape, the sprite (redrawn in bone by Bare Bones' skin), the race, the hide and the drop list are the
 -- wyrm's, and `undead = true` is what happened to it (models/character.lua) -- Grave-Cold comes with the tag,
--- the lattice and the picture come with Bare Bones.
+-- the picture and the holy line come with Bare Bones. (The bone lattice came off Bare Bones on 2026-11-19,
+-- so this body asks what the wyrm's own hide asks -- a point -- rather than the orchard's mace.)
 --
 -- IT KEEPS THE BITE AND THE BREATH, AND LOSES WHAT WAS THE GOLD'S. The Gilt Maw and the Venom Breath are a
 -- dragon's and stay; Dread and Stout were the sickness in it -- the helm of terror a hoard wears, and a dwarf's

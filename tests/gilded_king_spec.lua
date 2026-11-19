@@ -1,7 +1,7 @@
 -- Tests for THE GILDED KING (approved over review rounds on 2026-09-26): Greed's rung-2 spare elite, the
 -- dead king crusted in the gold that starved him, his gilded guard, and the two trophies he drops --
 --   * a heal aimed at him is a coin heap beside him, and restores nothing (nor burns him, undead as he is)
---   * any blow knocks a gold plate off as a heap, and nothing puts one back
+--   * any blow knocks a gold plate off as a heap, and only a heap beside him at his turn start puts one back
 --   * his guard of Dwarf Skeletons opens the fight Gilded
 --   * the Gilded Crown opens its bearer Gilded
 --   * Gilded Bread's bearer cannot be healed, and its cast buys health with the company's gold at five a
@@ -174,7 +174,9 @@ return {
         end,
     },
     {
-        name = "Gold Plate: nothing puts a plate back -- not a heap he walks over, not a heal",
+        -- Narrowed 2026-11-19: a heap BESIDE him at his turn start does climb back on now (The Gold Comes
+        -- Back, tests/identity_greed_spec.lua). Walking over one and being healed still do not.
+        name = "Gold Plate: walking over a heap or being healed puts no plate back",
         fn = function()
             local c, knight, king = withKing()
             Combat.dealFlatDamage(c, king, 3, { "slash", "physical" }, nil, knight)

@@ -1,7 +1,7 @@
 -- TORMENT: the Pit Locust's trophy ("The Crown's Bestiary", slice C, approved 2026-10-09), for a Plague Knight: "Strike
 -- a foe: it can't drop below 1 health from this, and gains Torment: -3 damage, -1 movement."
 --
--- The swarm's sting with the patience taken out: the locust Torments only a body already at 1, and this lays a stack
+-- The swarm's sting without the swarm: the locust Torments only a body another locust stands beside, and this lays a stack
 -- on any foe it lands on. The blow is held at 1 (`spares`, read by Combat.dealFlatDamage beside the Lioness's hold),
 -- so it is never the blow that kills -- a Plague Knight's house is wearing a body down, not finishing it. The stack is
 -- carried on the blow (`inflicts`), so a miss lays nothing.

@@ -50,8 +50,10 @@ return {
     archetype = "aggressive",
     ai = {
         { priority = "high", act = "cast", item = "ability_silk_shot" },
-        { priority = "high", act = "attack", targetPref = "lowest_hp",
-          when = { subject = "foe_lowest_hp", test = "hp_pct_below", value = 0.5 } },
+        -- THE CORNERED ONE (2026-11-19, the targeting pass): a web-spinner takes the body with the fewest
+        -- ways out, which is the body its Silk Shot has just pinned against something.
+        { priority = "high", act = "attack", targetPref = "hemmed",
+          when = { subject = "any_foe", test = "in_reach" } },
         { act = "cast", item = "ability_spin" },
     },
 }

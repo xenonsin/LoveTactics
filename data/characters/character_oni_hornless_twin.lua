@@ -31,4 +31,5 @@ return {
     drops = { "utility_borrowed_eyes" },
     defaultAction = "ability_wind_blades",
     signatureWeapon = "weapon_staff",
+    ai = require("models.wrath_targeting").oni, -- the marked, else the nearest (2026-11-19)
 }

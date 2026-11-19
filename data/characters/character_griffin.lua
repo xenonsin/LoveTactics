@@ -42,7 +42,10 @@ return {
     defaultAction = "weapon_beak_and_claw",
     archetype = "aggressive",
     ai = {
-        { priority = "high", act = "attack", targetPref = "lowest_hp",
-          when = { subject = "foe_lowest_hp", test = "hp_pct_below", value = 0.5 } },
+        -- WHATEVER IS IN FRONT OF IT (2026-11-19, the targeting pass): a griffin bites back at every blow
+        -- (utility_griffin_temper), so it fights the body standing at its beak rather than diving past it
+        -- for the wounded. Its fight is a trade, and it wants to be traded with.
+        { priority = "high", act = "attack", targetPref = "nearest",
+          when = { subject = "nearest_foe", test = "in_reach" } },
     },
 }

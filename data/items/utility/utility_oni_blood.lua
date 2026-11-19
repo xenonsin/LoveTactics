@@ -11,7 +11,8 @@
 -- the innate contract (see the race's header). Bound and unstealable: an organ, never kit.
 return {
     name = "The Horn",
-    description = "Below half health, or when an oni of your side falls: Horn Out. A critical hit snaps the horn.",
+    description = "Below half health (a Student: once wounded), or when an oni of your side falls: Horn Out."
+        .. " A crit snaps the horn.",
     flavor = "Everything an oni is lives in the horn. It is why they never let you near the head.",
     sprite = "assets/items/utility_oni_blood.png",
     type = "utility",

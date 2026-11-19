@@ -36,4 +36,10 @@ return {
     -- ITS OWN PIECE (docs/drops.md): one rising, for whoever carries it.
     drops = { "utility_phoenix_feather" },
     archetype = "aggressive",
+    -- TARGETING (the creature identity pass, 2026-11-19): it has died before and means to make somebody else do it:
+    -- the kill first.
+    ai = {
+        { priority = "normal", act = "attack", targetPref = "lethal",
+          when = { subject = "any_foe", test = "exists" } },
+    },
 }

@@ -36,7 +36,7 @@
 -- (docs/bestiary.md). What comes off her body is an authored rebuild, not this.
 local Curve = require("models.curve")
 
-local GIVE_GROUND = 1 -- one step, however many times the teeth landed
+local GIVE_GROUND = 2 -- two steps, however many times the teeth landed
 local REACH = 2       -- how near a wolf must stand to be counted into the blow
 local WOUNDED = 0.5   -- "the wounded": at or below half health
 

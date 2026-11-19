@@ -4,8 +4,9 @@
 --   the Bog-Bound        Past Feeling -- a blow of 8 damage or less does nothing, the threshold on the badge; and
 --                        the Mire Holds -- a body that starts its turn beside one pays 2 movement to step away,
 --                        while a shove pays nothing. The Cairn-Keeper's Deeper Peat doubles both within 3.
---   the Frost Worm       the Trill sleeps every body in a ring of 4 when it lands, either side, every other turn;
---                        its bite Freezes a sleeper; its death Freezes everything within 2
+--   the Frost Worm       the Trill Freezes every body in a ring of 4 when it lands, either side, every other turn
+--                        (it sang them Asleep until the creature identity pass, 2026-11-19); its death Freezes
+--                        everything within 2
 --   the Noonday Demon    a foe within 4 that ends its turn having dealt no damage grows Listless (-3 Damage a
 --                        stack); at 3 its next turn is Shamed; dealing damage clears it -- and a blow Past Feeling
 --                        swallowed dealt nothing
@@ -208,7 +209,7 @@ return {
     },
     -- ------------------------------------------------------------------------------ the Frost Worm
     {
-        name = "the Trill: a wind-up, and every body in a ring of 4 when it lands falls Asleep, on either side",
+        name = "the Trill: a wind-up, and every body in a ring of 4 when it lands is Frozen, on either side",
         fn = function()
             local c = Fixture.combat(board(), { walker(6, 9), walker(6, 11) },
                 { unit("character_frost_worm", 6, 6), unit("character_bog_body", 7, 6) })
@@ -220,17 +221,18 @@ return {
             openTurn(c, worm)
             assert(Combat.useItem(c, worm, trill, worm.x, worm.y))
             assert(worm.channel, "it rears")
-            assert(not Status.has(inRing, "status_sleep"), "nothing sleeps until it lands")
+            assert(not Status.has(inRing, "status_freeze"), "nothing freezes until it lands")
             Combat.resolveChannel(c, worm)
-            assert(Status.has(inRing, "status_sleep"), "three tiles off: Asleep")
-            assert(Status.has(bog, "status_sleep"), "its own line sleeps too")
-            assert(not Status.has(outside, "status_sleep"), "five tiles off: awake")
-            assert(not Status.has(worm, "status_sleep"), "the worm does not sleep through its own song")
+            assert(Status.has(inRing, "status_freeze"), "three tiles off: Frozen")
+            assert(not Status.has(inRing, "status_sleep"), "and not Asleep: the worm is off Sleep")
+            assert(Status.has(bog, "status_freeze"), "its own line freezes too")
+            assert(not Status.has(outside, "status_freeze"), "five tiles off: free")
+            assert(not Status.has(worm, "status_freeze"), "the worm does not freeze in its own song")
             assert(Combat.onCooldown(worm, Combat.castCooldownKey(trill)), "and it cannot trill again straight away")
         end,
     },
     {
-        name = "a shove breaks the Trill, and nobody sleeps",
+        name = "a shove breaks the Trill, and nobody freezes",
         fn = function()
             local c = Fixture.combat(board(), walker(6, 7), { unit("character_frost_worm", 6, 6) })
             local foe, worm = c.units[1], one(c, "character_frost_worm")
@@ -238,19 +240,20 @@ return {
             Combat.useItem(c, worm, itemNamed(worm.char, "ability_the_trill"), worm.x, worm.y)
             Combat.knockback(c, foe, worm, 1)
             assert(not worm.channel, "the wind-up is broken")
-            assert(not Status.has(foe, "status_sleep"), "and the note never lands")
+            assert(not Status.has(foe, "status_freeze"), "and the note never lands")
         end,
     },
     {
-        name = "the worm's bite Freezes a sleeper, and only a sleeper",
+        -- A plain bite since the creature identity pass (2026-11-19): the worm's two rules are both Frozen already.
+        name = "the worm's bite is a plain bite, and freezes nobody, asleep or awake",
         fn = function()
             local c = Fixture.combat(board(), { walker(6, 7), walker(5, 6) }, { unit("character_frost_worm", 6, 6) })
             local sleeper, waking, worm = c.units[1], c.units[2], one(c, "character_frost_worm")
             Status.apply(c, sleeper, "status_sleep", {})
             Fixture.strike(c, worm, sleeper, "weapon_frost_worm_bite")
-            assert(Status.has(sleeper, "status_freeze"), "bitten asleep: Frozen")
+            assert(hp(sleeper) < 200 and not Status.has(sleeper, "status_freeze"), "bitten asleep: wounded, not Frozen")
             Fixture.strike(c, worm, waking, "weapon_frost_worm_bite")
-            assert(not Status.has(waking, "status_freeze"), "bitten awake: not")
+            assert(hp(waking) < 200 and not Status.has(waking, "status_freeze"), "bitten awake: the same")
         end,
     },
     {

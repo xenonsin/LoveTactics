@@ -31,4 +31,10 @@ return {
     drops = { "consumable_troll_blood", "utility_grafted_troll_arm" },
     defaultAction = "weapon_troll_club",
     signatureWeapon = "weapon_troll_club",
+    -- A BRUTE'S AIM (the creature identity pass's targeting sweep, 2026-11-19): it clubs whatever is closest. A
+    -- troll does not pick; it regrows, and lets the company come to it.
+    ai = {
+        { priority = "normal", act = "attack", targetPref = "nearest",
+          when = { subject = "any_foe", test = "exists" } },
+    },
 }

@@ -38,4 +38,10 @@ return {
     drops = { "utility_ascension" },
     defaultAction = "weapon_mana_cut_blade",
     signatureWeapon = "weapon_mana_cut_blade",
+    -- TARGETING (the creature identity pass, 2026-11-19): the Duke wants the court's dead and the company's alike:
+    -- the kill first.
+    ai = {
+        { priority = "normal", act = "attack", targetPref = "lethal",
+          when = { subject = "any_foe", test = "exists" } },
+    },
 }

@@ -68,7 +68,12 @@ return {
     defaultAction = "weapon_harpy_talons",
     archetype = "skirmish",
     ai = {
-        { priority = "high", act = "attack", targetPref = "nearest",
+        -- THE BODY IT CAN PUT ON BAD GROUND (2026-11-19, the targeting pass). The flock's verbs are a
+        -- snatch and a shove, so a harpy goes first for the foe it can haul or drive onto a hazard, a trap
+        -- or the edge of the water; with nothing like that on the board the bias adds nothing and it
+        -- takes what is in reach, as before. Lust's targeting used to split by faction -- every demon
+        -- `nearest` -- and this is where the flock stops reading like the coils.
+        { priority = "high", act = "attack", targetPref = "hazardous",
           when = { subject = "any_foe", test = "in_reach" } },
     },
 }

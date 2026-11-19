@@ -233,12 +233,13 @@ return {
         end,
     },
     {
-        name = "Pent Up: every hit adds Seething; at three it is Primed; dead, it bursts on everything beside it",
+        -- A FIXED CHARGE since 2026-11-19 (the creature identity pass): it no longer banks Seething per hit, so
+        -- it is Primed before a blow lands. tests/identity_wrath_spec.lua holds the burst to one size.
+        name = "Pent Up: the Brute opens Primed; dead, it bursts on everything beside it",
         fn = function()
             local c = warband({ { "character_goblin_brute", 5, 5 } }, walker(5, 6))
             local foe, brute = c.units[1], one(c, "character_goblin_brute")
-            for _ = 1, 3 do Combat.dealFlatDamage(c, brute, 1, { "physical" }, "test", foe) end
-            assert(Status.has(brute, "status_primed"), "three hits and it is Primed")
+            assert(Status.has(brute, "status_primed"), "Primed from the start")
             local before = hp(foe)
             Combat.dealFlatDamage(c, brute, 999, { "physical" }, "test", foe, { raw = true })
             assert(not brute.alive, "the Brute falls")

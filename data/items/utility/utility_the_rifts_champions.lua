@@ -4,7 +4,7 @@
 -- unstealable, and carried into every face it wears.
 return {
     name = "The Rift's Champions",
-    description = "Its hand is the rift's champions, each with its signature rule. It wears the one that answers you.",
+    description = "Wears the rift's champions, each with its signature rule. At its turn's end it names the face it wears next.",
     flavor = "Every champion you have beaten, beaten by it first.",
     sprite = "assets/items/utility_the_rifts_champions.png",
     type = "utility",

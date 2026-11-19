@@ -150,21 +150,25 @@ return {
         end,
     },
     {
-        name = "her Kiss deals double to a sleeper, and the sleeper sleeps on",
+        -- The kiss LAYS sleep since the creature identity pass (2026-11-19); it no longer feeds on a sleeper.
+        name = "her Kiss lays Drowsy, and the third kiss puts a body under",
         fn = function()
-            local c = Fixture.combat(board(), { body(4, 5), body(5, 4) }, { unit("character_yuki_onna", 4, 4) })
-            local party = sides(c)
-            local awake, sleeper = party[1], party[2]
+            local c = Fixture.combat(board(), { body(4, 5) }, { unit("character_yuki_onna", 4, 4) })
+            local target = sides(c)[1]
+            -- No ward: a Sleep landed mid-cast is resisted like any other, and a well-warded body's few ticks of it
+            -- run out inside the kiss's own recovery. What is pinned here is that the third stack puts it under.
+            target.char.stats.magicDefense = 0
             local yuki = one(c, "character_yuki_onna")
             local kiss = itemNamed(yuki.char, "weapon_snow_kiss")
-            Fixture.strike(c, yuki, awake, kiss)
-            local plain = 100 - hp(awake)
-            asleep(c, sleeper)
-            yuki.char.stats.mana.current = yuki.char.stats.mana.max
-            Fixture.strike(c, yuki, sleeper, kiss)
-            local kissed = 100 - hp(sleeper)
-            assert(plain > 0 and kissed >= plain * 2, "double on a sleeper: " .. plain .. " -> " .. kissed)
-            assert(Status.has(sleeper, "status_sleep"), "and it does not wake")
+            Fixture.strike(c, yuki, target, kiss)
+            assert(100 - hp(target) > 0, "the kiss still wounds")
+            local d = Status.get(target, "status_drowsy")
+            assert(d and d.magnitude == 1, "one Drowsy")
+            for _ = 1, 2 do
+                yuki.char.stats.mana.current = yuki.char.stats.mana.max
+                Fixture.strike(c, yuki, target, kiss)
+            end
+            assert(Status.has(target, "status_sleep"), "the third kiss puts it Asleep, and does not wake it")
         end,
     },
     -- ------------------------------------------------------------------------------ the Snow Queen

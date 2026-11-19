@@ -31,4 +31,5 @@ return {
     drops = { "weapon_instant_draw_katana" },
     defaultAction = "weapon_instant_draw_katana",
     signatureWeapon = "weapon_instant_draw_katana",
+    ai = require("models.wrath_targeting").oni, -- the marked, else the nearest (2026-11-19)
 }

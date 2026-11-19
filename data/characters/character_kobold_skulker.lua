@@ -38,5 +38,11 @@ return {
     ai = {
         { priority = "high", act = "attack", targetPref = "lowest_hp",
           when = { subject = "foe_lowest_hp", test = "hp_pct_below", value = 0.5 } },
+        -- TARGETING (2026-11-19, the Greed targeting pass): a pack goes for the body with nowhere to step.
+        -- With nobody under half, a kobold presses the foe with the fewest open tiles around it -- the one
+        -- its kin (and Pack) have already hemmed in. A preference like the rest; the Kobold Skeleton
+        -- inherits it.
+        { priority = "normal", act = "attack", targetPref = "hemmed",
+          when = { subject = "any_foe", test = "exists" } },
     },
 }

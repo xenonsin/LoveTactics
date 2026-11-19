@@ -4,6 +4,10 @@
 -- is genuinely bipolar rather than merely buffed -- and the castle's `rooms` carve is what makes that a
 -- puzzle instead of a number, because a doorway is where a rank comes apart.
 --
+-- THE SWORN HOLDS, THE PAGE FETCHES (the creature identity pass, 2026-11-19). The two were one body at two tiers until
+-- the page was handed the Gilded Hook and a hollow hide. The sworn keeps the pike, the plate and the line, and stays
+-- the rank's spear lesson: a point through the gap.
+--
 -- Its base stats are deliberately modest for tier 2. What it is worth on the board is mostly not on this
 -- blueprint, which is the correct place for a formation body's power to live.
 return {

@@ -134,7 +134,11 @@ return {
         end,
     },
     {
-        name = "a Mimic hits harder the more it has been hit",
+        -- REWRITTEN 2026-11-19 (creature identity pass): the mimic used to hit harder the more it had been hit, a
+        -- missing-health ramp under a description that promised something else. Its weapon now throws back the
+        -- ELEMENT it was struck with; tests/identity_envy_spec.lua holds the whole rule, and this keeps the circle's
+        -- own line on it.
+        name = "a Mimic throws back the element it was struck with",
         fn = function()
             local map = Fixture.new(10, 10)
             local c = Fixture.combat(map,
@@ -144,48 +148,32 @@ return {
             for _, u in ipairs(c.units) do
                 if u.side == "party" then victim = u else mimic = u end
             end
-            local echo = itemNamed(mimic.char, "weapon_ashen_echo")
-
-            openTurn(c, mimic)
-            local before = Fixture.hp(victim)
-            assert(Combat.useItem(c, mimic, echo, victim.x, victim.y), "the mimic strikes")
-            local unhurtBlow = before - Fixture.hp(victim)
-
-            -- Bruise it heavily, then let it swing again.
-            Combat.dealFlatDamage(c, mimic, 40, {}, "test")
-            openTurn(c, mimic)
-            local mid = Fixture.hp(victim)
-            assert(Combat.useItem(c, mimic, echo, victim.x, victim.y), "the mimic strikes again")
-            local hurtBlow = mid - Fixture.hp(victim)
-
-            assert(hurtBlow > unhurtBlow, string.format(
-                "swing big at the mirror and it swings big back (%d then %d)", unhurtBlow, hurtBlow))
+            assert(itemNamed(mimic.char, "weapon_ashen_echo"), "the mimic carries its echo")
+            assert(Combat.strikeElement(mimic) == nil, "it opens holding nothing")
+            Combat.dealFlatDamage(c, mimic, 6, { "magical", "ice" }, "test", victim)
+            assert(Combat.strikeElement(mimic) == "ice", "throw cold at the mirror and the mirror throws cold back")
         end,
     },
 
     -- ------------------------------------------------------------ the apex
     {
-        name = "the Unwanted sheds motes rather than getting stronger",
+        -- REWRITTEN 2026-11-19 (creature identity pass): it shed a pair of glass-motes at each threshold, which was
+        -- The Long Winter's template with the bodies swapped (the audit's same-apex row). It now cracks the floor
+        -- instead; tests/identity_envy_spec.lua plays the cracks on a board.
+        name = "the Unwanted breaks the ground rather than getting stronger or multiplying",
         fn = function()
             local def = Character.defs.character_the_unwanted
             assert(def.footprint and def.footprint.w == 2, "the apex stands on four tiles")
 
             local frac = Item.defs["utility_fracture_line"]
-            assert(frac and frac.phases and #frac.phases == 2, "it comes apart twice")
-            for _, phase in ipairs(frac.phases) do
-                local summons = false
-                for _, r in ipairs(phase.responses or {}) do
-                    if r.kind == "summon" then
-                        summons = true
-                        assert(r.id == "character_glass_mote", string.format(
-                            "it shatters into the circle's own swarm, never into %s -- the discard is "
-                            .. "cargo and fielding it would rebuild the bug this pass removed", r.id))
-                    end
-                    assert(r.kind ~= "bonus" or r.amount < 0,
-                        "the Unwanted multiplies; it does not escalate")
-                end
-                assert(summons, "every threshold sheds glass")
+            assert(frac and frac.cracks and #frac.cracks == 2, "it comes apart twice")
+            local carries = false
+            for _, t in ipairs(frac.traits or {}) do
+                assert(t ~= "trait_boss_phases", "no phase script: it neither escalates nor sheds bodies")
+                if t == "trait_fracture_line" then carries = true end
             end
+            assert(carries, "every threshold cracks the floor")
+            assert(not frac.phases, "and summons nothing -- the shed was The Long Winter's shape")
         end,
     },
     {

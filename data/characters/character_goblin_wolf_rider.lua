@@ -30,4 +30,5 @@ return {
     drops = { "utility_endurance", "armor_runners_hide" }, -- the wolf's
     defaultAction = "weapon_iron_spear",
     signatureWeapon = "weapon_iron_spear",
+    ai = require("models.wrath_targeting").goblin, -- the cornered body (2026-11-19)
 }

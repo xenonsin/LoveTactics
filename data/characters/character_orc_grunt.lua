@@ -7,6 +7,10 @@
 -- The fighter table and no discipline (the kobold round's finding: a lighter table lags the enemy scaling at
 -- depth; the vanguard it was pitched as descends from knight and rogue, not fighter). It drops Orc Scars, the
 -- race's rule in a player's hand.
+--
+-- ITS LEVER IS POSITION (2026-11-19, the creature identity pass): SHOULDERING (utility_shouldering). A foe that
+-- ends its turn beside a Grunt is shoved a tile back -- the Blood Ring crowd's shove, now on every board. So a
+-- company cannot settle in beside one, and a Grunt line in front of fire or a ledge is a line that puts you in it.
 return {
     name = "Orc Grunt",
     race = "orc",
@@ -24,11 +28,12 @@ return {
         skill = 4, luck = 3,
     },
     startingItems = {
-        "weapon_iron_axe", "ability_shieldbreak", false,
+        "weapon_iron_axe", "ability_shieldbreak", "utility_shouldering",
         false,             false,                 false,
         false,             false,                 false,
     },
     drops = { "utility_orc_scars" },
     defaultAction = "weapon_iron_axe",
     signatureWeapon = "weapon_iron_axe",
+    ai = require("models.wrath_targeting").orc, -- the killing blow (2026-11-19)
 }

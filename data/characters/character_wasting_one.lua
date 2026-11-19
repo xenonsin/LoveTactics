@@ -34,4 +34,11 @@ return {
     drops = { "utility_the_thin_smile" },
     defaultAction = "weapon_viper_fed_bite",
     archetype = "aggressive",
+    -- TARGETING (creature identity pass, 2026-11-19): the most wounded of the company. It smiles only at another's
+    -- pain, and a body already bleeding is the pain it can see best -- which is also the body whose next wound
+    -- feeds the whole pack.
+    ai = {
+        { priority = "normal", act = "attack", targetPref = "lowest_hp",
+          when = { subject = "any_foe", test = "exists" } },
+    },
 }

@@ -24,7 +24,13 @@
 -- lets the rest of the orchard be cold, and be bone, without being unkillable.
 return {
     name = "Barrow Binding",
-    description = "Consume 30 mana when a blow would fell this body, and it stands back up at full health.",
+    -- SILENCE SEALS THE RISE (2026-11-19, the creature identity pass). The review's note on this body was
+    -- that Bone-Knit read clearly and asked for nothing but more damage -- three health bars. So the toll
+    -- it pays in mana is refused while the Lord is Silenced (`silenceSeals`, read by Trait.trySurvive):
+    -- the fight now asks the company to BRING something, a Silence or a mana burn, and a blow landed
+    -- under that badge is the one that keeps him down. Chosen over a holy weakness while rising because
+    -- Silence is a badge the player already reads, and it is the one answer that is about his blue bar.
+    description = "Consume 30 mana when a blow would fell this body, and it stands back up at full health. Silenced, it cannot rise.",
     flavor = "Nine knots, and eight of them are for show. They never could agree which.",
     sprite = "assets/items/barrow_binding.png",
     type = "utility",
@@ -46,5 +52,6 @@ return {
     traits = { "trait_bone_knit" },
     traitParams = {
         cost = { stat = "mana", amount = 30 },
+        silenceSeals = true,
     },
 }

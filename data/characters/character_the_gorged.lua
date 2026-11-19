@@ -40,4 +40,5 @@ return {
     drops = { "utility_surfeit_heart" },
     defaultAction = "weapon_iron_axe",
     signatureWeapon = "weapon_iron_axe",
+    ai = require("models.wrath_targeting").vampire, -- the faintest pulse (2026-11-19)
 }

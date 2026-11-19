@@ -7,6 +7,10 @@
 -- DEVOTION FOUND ANOTHER GOD. A dead kobold treats a lich as its dragon (Devotion.isDragonTo): the Dragon's
 -- Eye beside Vesh, Fervor when he is struck, Forsaken when he is destroyed. And he eats them (The Offering):
 -- the escort is his battery, so the company kills the chaff first and reads why off his blue bar.
+--
+-- IT ASKS FOR AN EDGE (2026-11-19, the creature identity pass). Bare Bones gave up its mace-shaped lattice,
+-- and what is left on this frame is the kobold's own line: thin scales over thin bone, slash -2, a point
+-- and a hammer turned aside. The one bone body in the orchard a sword is FOR.
 local base = require("data.characters.character_kobold_skulker")
 
 local dead = {}

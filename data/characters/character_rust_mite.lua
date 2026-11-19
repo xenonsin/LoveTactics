@@ -30,4 +30,10 @@ return {
     drops = { "armor_rustcoat" },
     defaultAction = "weapon_mandibles",
     archetype = "aggressive",
+    -- TARGETING (2026-11-19, the Greed targeting pass): the Coin-Eaters' rule (character_gilded_scarab.lua) --
+    -- a body plated in gold is metal to eat, and the mite goes for it first. With nobody Gilded, its posture.
+    ai = {
+        { priority = "normal", act = "attack", targetPref = "gilded",
+          when = { subject = "any_foe", test = "has_status", value = "status_gilded" } },
+    },
 }

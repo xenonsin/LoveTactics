@@ -26,4 +26,5 @@ return {
         false,               false, false,
     },
     signatureWeapon = "utility_iron_fist",
+    ai = require("models.wrath_targeting").asura, -- whoever is winding up (2026-11-19)
 }

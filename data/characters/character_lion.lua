@@ -23,8 +23,10 @@ return {
         speed = 4,
         skill = 5, luck = 5,
     },
-    -- The mane: a blade bites into a yard of hair. A spear goes under it.
-    resist = { slash = 3, pierce = -3 },
+    -- The mane: a blade bites into a yard of hair. A club goes through it to the skull, as it does on his lionesses.
+    -- (Was pierce-weak until 2026-11-19, the creature identity pass: with the gilded line and the titan, every heavy
+    -- body on Pride's floors asked for a spear. The pride now asks for a club, the lionesses and the lion alike.)
+    resist = { slash = 3, impact = -3 },
     startingItems = {
         "weapon_rending_maw", "utility_the_lions_share", false,
         false,                false,                     false,

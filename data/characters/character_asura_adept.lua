@@ -3,6 +3,11 @@
 -- SPENDS 3 chi, and that is what makes it worse than an Acolyte: a smart Adept empties its own pool before it
 -- bursts. Furor's stair escort.
 --
+-- ITS LEVER IS ORDER (2026-11-19, the creature identity pass): LEFT ALONE, IT GATHERS (`idleHeats` on Four Arms,
+-- models/asura.lua). An idle turn banks 2 chi where an Acolyte's drains 1, so the one you ignored is the one that
+-- bursts. It inverts the Acolyte's lesson on purpose: the circle teaches "leave it alone" and then fields the body
+-- you cannot.
+--
 -- Imagery: a Khon masked-dance demon.
 return {
     name = "Asura Adept",
@@ -28,4 +33,5 @@ return {
     },
     signatureWeapon = "utility_iron_fist",
     signatureAbility = "ability_flurry",
+    ai = require("models.wrath_targeting").asura, -- whoever is winding up (2026-11-19)
 }

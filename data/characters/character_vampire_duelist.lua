@@ -31,4 +31,5 @@ return {
     drops = { "armor_mistcloak" },
     defaultAction = "weapon_main_gauche",
     signatureWeapon = "weapon_main_gauche",
+    ai = require("models.wrath_targeting").vampire, -- the faintest pulse (2026-11-19)
 }

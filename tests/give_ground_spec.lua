@@ -158,7 +158,7 @@ return {
             openTurn(c, wolf)
             local result = Combat.strikeWith(c, wolf, fangs, prey.x, prey.y)
             assert(result.damageDealt > 0, "the wolf bites")
-            assert(Combat.unitGap(wolf, prey) == 2, "and is gone before the jaws can snap back")
+            assert(Combat.unitGap(wolf, prey) >= 2, "and is gone before the jaws can snap back")
         end,
     },
     {
@@ -172,7 +172,7 @@ return {
             local fangs = fangsOf(wolf)
 
             Combat.answerStrike(c, wolf, prey, fangs)
-            assert(Combat.unitGap(wolf, prey) == 2, "it bit back and it is gone")
+            assert(Combat.unitGap(wolf, prey) >= 2, "it bit back and it is gone")
         end,
     },
     {

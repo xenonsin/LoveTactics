@@ -5,6 +5,13 @@
 -- the top of every turn. It comes in threes, so one squad can be an orc, an elf archer and a dwarf shield by the
 -- second turn -- three hands, nine possible bodies.
 --
+-- IDENTITY LEVER (creature identity pass, 2026-11-19): BRING. Its identity was borrowed -- the player only ever
+-- reacted to whatever face it read -- so the race now carries a constant tell: an impact blow that wounds it knocks
+-- the face off, and it fights in its own grey body, Unmasked, until its turn ends (trait_a_thousand_faces,
+-- Faces.knockOff). "Bring a club" is an answer under every face. TARGETING: nearest, in its own body -- the face it
+-- was wearing was chosen to answer the nearest of the company, so bared it goes for that body. (A face brings its
+-- own tactics with its grid; this rule is the one it falls back to Unmasked.)
+--
 -- It drops Borrowed Face, the trick lent to a ninja.
 return {
     name = "Faceless",
@@ -31,4 +38,8 @@ return {
     drops = { "ability_borrowed_face" },
     defaultAction = "weapon_iron_sword",
     signatureWeapon = "weapon_iron_sword",
+    ai = {
+        { priority = "normal", act = "attack", targetPref = "nearest",
+          when = { subject = "any_foe", test = "exists" } },
+    },
 }

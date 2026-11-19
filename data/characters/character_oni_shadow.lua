@@ -31,4 +31,5 @@ return {
     drops = { "ability_steel_thread" },
     defaultAction = "weapon_iron_dagger",
     signatureWeapon = "weapon_iron_dagger",
+    ai = require("models.wrath_targeting").oni, -- the marked, else the nearest (2026-11-19)
 }

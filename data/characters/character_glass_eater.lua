@@ -1,4 +1,4 @@
--- A glass-eater: the Envy circle's line body, and the only line body in the descent that cannot kill you.
+-- A glass-eater: the Envy circle's line body, and the one that grows on what it takes from you.
 --
 -- It strips two blessings a swing and hits for less than anything else on its rung
 -- (data/items/weapon/weapon_vitreous_bite.lua). Which is the sin as tactics: Envy does not want to beat
@@ -8,6 +8,13 @@
 -- The design problem it solves is that "spoiler" enemies are usually ignorable. This one is not, because
 -- the circle behind it cashes what it takes -- a stripped body is what Second Water's mirror copies and
 -- what a Mimic finds easiest to out-trade. Ignoring the eater is a decision about the next fight.
+--
+-- IDENTITY LEVER (creature identity pass, 2026-11-19): ORDER. On floor 11 nothing behind it cashed in what it took,
+-- and its header admitted it "cannot kill you". Now it keeps what it eats: every blessing it strips is a stack of
+-- Glass-Fed on the eater (+2 damage each, up to 6, counted on its badge; data/status/status_glass_fed.lua). An
+-- eater that has fed is the next kill -- or the next Dispel, since Glass-Fed is itself a blessing. Against a
+-- company with no blessings it stays the soft body it was. (The row's other option, hit-and-run after stripping,
+-- gave the stripping no payoff, which was the complaint.)
 return {
     name = "Glass-Eater",
     race = "construct",
@@ -34,7 +41,8 @@ return {
     startingItems = { "weapon_vitreous_bite" },
     defaultAction = "weapon_vitreous_bite",
     -- Basic tactics (models/ai.lua): nearest, for the mote's reason -- any blessing will do, and picking
-    -- favourites would waste turns walking.
+    -- favourites would waste turns walking. TARGETING (2026-11-19): ahead of it, the glass strikes the Fairest
+    -- whenever it can reach it this turn (models/envy_oneoffs.lua) -- the body with the most to eat.
     archetype = "aggressive",
     ai = {
         { priority = "high", act = "attack", targetPref = "nearest",

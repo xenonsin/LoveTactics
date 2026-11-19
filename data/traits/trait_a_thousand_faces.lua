@@ -6,9 +6,20 @@
 -- wearing something. The turn-top read rides on status_faceless, which a transform never touches.
 --
 -- `faceHandSize` (a blueprint field, read off the body's own def) sizes the hand; the line soldier's is three.
+--
+-- THE RACE'S TELL (creature identity pass, 2026-11-19): an impact blow that wounds it knocks the face off -- it
+-- reverts to its own body and is Unmasked until its turn ends (Faces.knockOff). Only a face Reshape chose; a
+-- locked face is another rule's script and is left alone. A stage of what it is, not a reflex, so a stunned
+-- Faceless loses its face as surely as a standing one (`notAReaction`).
 return {
     name = "A Thousand Faces",
-    description = "Carry a hand of faces. Each turn, wear the one that best answers the nearest foe.",
+    description = "Each turn, wear the face that best answers the nearest foe. An impact blow knocks it off until its turn ends.",
+    notAReaction = true,
+    onDamaged = function(ctx)
+        if ctx.unit and ctx.combat then
+            require("models.faces").knockOff(ctx.combat, ctx.unit, ctx.tags, ctx.attacker)
+        end
+    end,
     onCombatStart = function(ctx)
         local u = ctx.unit
         if not (u and u.alive and ctx.combat) then return end

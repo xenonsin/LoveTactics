@@ -33,4 +33,12 @@ return {
     drops = { "ability_furys_verdict" },
     defaultAction = "weapon_fit_the_crime",
     archetype = "skirmish",
+    -- TARGETING (the creature identity pass, 2026-11-19): a Fury answers a crime. A body winding up a working is
+    -- committing one she can see coming (her arrow Silences what cast), so she aims there first; otherwise she picks
+    -- as any archer does. (A second "nearest" rule was tried and dropped: it slowed the Tribunal past its budget in
+    -- tests/skirmish_spec.lua, because the nearest body is rarely the one a Fury's arrow should answer.)
+    ai = {
+        { priority = "high", act = "attack", targetPref = "channeling",
+          when = { subject = "any_foe", test = "has_status", value = "status_channeling" } },
+    },
 }

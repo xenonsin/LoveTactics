@@ -2,7 +2,7 @@
 -- character_stone_challenger.lua; trait_turned_to_stone). Creature kit: bound, unstealable, on no shelf.
 return {
     name = "Turned to Stone",
-    description = "Petrified until Medusa falls to half health.",
+    description = "Petrified until Medusa falls to half health. Once woken, each blow it lands gives the target 1 Stone.",
     flavor = "It came for her head. It is still holding the sword.",
     sprite = "assets/items/utility_turned_to_stone.png",
     type = "utility",

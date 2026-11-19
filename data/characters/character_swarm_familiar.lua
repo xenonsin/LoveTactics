@@ -26,4 +26,5 @@ return {
     startingItems = { "weapon_bat_fangs", "utility_blood_courier", "utility_the_swarm" },
     drops = { "ability_swarm_form" },
     defaultAction = "weapon_bat_fangs",
+    ai = require("models.wrath_targeting").vampire, -- the faintest pulse, as its masters (2026-11-19)
 }

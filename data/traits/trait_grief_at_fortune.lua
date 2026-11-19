@@ -5,6 +5,12 @@
 -- where the bearer can see it -- within `reach`, when the granter names one -- the bearer leaps beside it and
 -- strikes, once a round. A heal is heard in Combat.applyHeal and a blessing here; both only MARK the leap, which
 -- is thrown once the action has finished resolving (models/envy_oneoffs.lua's lunge).
+--
+-- AND AT YOUR KILLS, ON THE CRONE'S OWN ORGAN (creature identity pass, 2026-11-19: the same-envy-support row). A
+-- heal or a blessing was her only trigger, so a company with no support body never once saw her leap. Success is
+-- also a kill: with `grievesKills` named by the granter (utility_grief_at_fortune's traitParams), a foe she can
+-- see felling a body marks the leap on the killer exactly as a heal does. Off by default, so the Skirmisher's
+-- Thorned Staff -- the same rule pointed the other way -- reads heals and blessings only, as it always has.
 local function Envy() return require("models.envy_oneoffs") end
 
 return {
@@ -14,6 +20,14 @@ return {
     onAnyStatusApplied = function(ctx)
         local r = ctx.recipient
         if r and ctx.unit and r.side ~= ctx.unit.side then Envy().noteFortune(ctx.combat, r, ctx.status) end
+    end,
+    onAnyDeath = function(ctx)
+        if not ctx.param("grievesKills", false) then return end
+        local fallen = ctx.fallen
+        local killer = fallen and fallen.lastAttacker
+        if killer and killer.alive and ctx.unit and killer.side ~= ctx.unit.side and fallen.side ~= killer.side then
+            Envy().noteFortune(ctx.combat, killer)
+        end
     end,
     onAnyCast = function(ctx) Envy().lunge(ctx.combat, ctx.unit) end,
     onAnyTurnEnd = function(ctx) Envy().lunge(ctx.combat, ctx.unit) end,

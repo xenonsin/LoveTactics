@@ -5,6 +5,13 @@
 --
 -- A CONSTRUCT, because what steps down is stone, not the man: nothing human is fielded on the waste. Its kit is the
 -- earth elemental's Stone Fists, the body's own weapon now.
+--
+-- IDENTITY LEVER (creature identity pass, 2026-11-19): ORDER. Cracked open it used to be a plain Stone-Fists
+-- bruiser. Now it carries Medusa's gaze in its fists: every blow it lands gives the target 1 Stone (its organ's
+-- trait_turned_to_stone; 3 Stone is Petrified for 2 turns), so the challengers are killed before they stone the
+-- front line, and the company that let her gaze stack Stone walks into her half health already halfway there.
+-- TARGETING: it goes for the foe carrying the most Stone it can reach, to finish what her eyes started
+-- (models/envy_oneoffs.lua's plan).
 return {
     name = "Stone Challenger",
     race = "construct",

@@ -3,7 +3,12 @@
 --
 --   THE EYE FALLS   at the start of its turn it looks at the Fairest -- the body of the company holding the most
 --                   blessings (models/fairest.lua) -- and, if it can see that body, sours one of its blessings
---                   into Rattled (trait_the_eye_falls; models/envy_oneoffs.lua)
+--                   into Rattled (trait_the_eye_falls; models/envy_oneoffs.lua). A Fairest with nothing to sour --
+--                   the healthiest body of a company that carries no blessings -- is Rattled outright (2026-11-19,
+--                   the creature identity pass's same-envy-support row: the eye reads every company, not only one
+--                   with a priest in it)
+--   TARGETING       its gaze goes for the Fairest when it can reach it this turn (models/envy_oneoffs.lua's plan):
+--                   the eye looks where the fortune is
 --   IT FLOATS       the `flying` tag on its organ
 --   ITS GAZE        a burning look at range 3, which needs the same line of sight
 --

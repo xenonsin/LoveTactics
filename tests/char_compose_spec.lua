@@ -57,6 +57,11 @@ local ALIAS = {
     -- corpse, he carries his own silhouette (CHARACTER_SILHOUETTE), and the board is meant to say so.
     character_skeleton_knight = "character_knight",
     character_barrow_lord = "character_knight",
+    -- The Blooded Knight (2026-11-19) is not a corpse but the same living knight, standing with a
+    -- succubus on a Lust floor; he extends the generic knight only to swap one coat for the Warden's
+    -- Oath. He is meant to read as a knight. What sets him apart on the board is the guard he takes,
+    -- not a picture.
+    character_blooded_knight = "character_knight",
     character_skeleton_archer = "character_archer",
     -- Greed's dead (2026-09-25): a dead Delver and a dead Skulker, drawn from their living tokens in bone.
     character_dwarf_skeleton = "character_dwarf_delver",

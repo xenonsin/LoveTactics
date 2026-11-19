@@ -20,6 +20,12 @@
 -- down by thirty each time works out that there are three deaths in here and plays for burst instead,
 -- because chip damage is the one thing a body that heals BY DYING does not care about.
 --
+-- ITS IDENTITY LEVER IS SILENCE (2026-11-19, the creature identity pass). Counting the blue bar was the
+-- lesson, but the only answer it allowed was more damage. The Binding now names `silenceSeals`: while
+-- the Lord wears Silenced he cannot pay the toll, and the blow that would fell him fells him. So the
+-- fight asks what you BRING -- a Silence, or a mana burn that empties the bar the rise is bought from --
+-- and the mace stays the answer to the two knights beside him.
+--
 -- AND THEN THE RIFT SELLS YOU THE TRICK. It pays Marrowlight (see `drops`), which is this rule with the
 -- player's name on it. That ordering is the whole reason this body is authored: an aspect that makes one
 -- of your own stand back up for mana is a strange thing to be handed cold, and an ordinary thing to be

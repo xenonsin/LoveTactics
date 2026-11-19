@@ -1,5 +1,6 @@
--- PRIMED: a Goblin Brute that has taken enough to burst (data/traits/trait_pent_up.lua). The badge is the
--- telegraph: kill it now and everything beside it burns. It lasts as long as the Brute does.
+-- PRIMED: a Goblin Brute, which opens every fight ready to burst (data/traits/trait_pent_up.lua; worn from the
+-- start since 2026-11-19, when the charge stopped counting blows). The badge is the telegraph: kill it and
+-- everything beside it burns. It lasts as long as the Brute does.
 return {
     name = "Primed",
     abbr = "Prim",

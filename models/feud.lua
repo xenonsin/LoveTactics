@@ -24,6 +24,13 @@ function Feud.of(combat, side)
     return nil
 end
 
+-- Is `side`'s Feud one the Hobgoblin NAMED (ability_name_the_enemy stamps `named` on the status it lands)?
+function Feud.named(combat, side)
+    local u = Feud.of(combat, side)
+    local s = u and Status.get(u, Feud.STATUS)
+    return s ~= nil and s.named == true
+end
+
 -- Does `unit`'s side hold its Feud against `target`?
 function Feud.isFeudOf(unit, target)
     if not (unit and target) then return false end
@@ -40,6 +47,11 @@ function Feud.mark(combat, target, marker)
     if not (combat and target and target.alive and marker) then return end
     if target.side == marker.side and not Status.has(target, "status_bloodlust") then return end
     local old = Feud.of(combat, marker.side)
+    -- A NAMED FEUD HOLDS (the Hobgoblin's Name the Enemy; 2026-11-19, the creature identity pass). A Feud the
+    -- Hobgoblin named is not moved by a blow on a goblin, and it outlives the Hobgoblin: it ends when it runs out,
+    -- when no goblin is left to hold it, or when a Cure lifts it (it is a debuff). That is the Hobgoblin's lever
+    -- now -- BRING a cure -- where it used to be one more alpha you killed first to get the old Feud back.
+    if old and old ~= target and Feud.named(combat, marker.side) then return end
     if old == target then
         Status.apply(combat, target, Feud.STATUS, { applier = marker }) -- a refresh
         return

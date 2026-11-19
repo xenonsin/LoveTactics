@@ -22,6 +22,10 @@
 --                   raises, so they stack with it. Furor's arms GROW with his chi (`armsGrow`), read here.
 --                   Arms are never lost (the author, twice: "Don't lose arms", "Don't cut arms").
 --   THE SHRINE      a shrine tile (hazard_shrine, the Meditation Hall) is ground where chi does not drain.
+--   LEFT ALONE      a piece declaring `idleHeats` (the Adept's Four Arms; 2026-11-19, the creature identity pass)
+--                   turns the idle turn's drain around: a turn in which nothing struck it and it struck nothing, it
+--                   GATHERS that much chi instead. The Acolyte teaches "leave it alone and it cools"; the Adept is
+--                   the rung that breaks the lesson, so the company has to keep a body on it or burst it.
 --
 -- Pure logic, no love.graphics. Combat, Status, Trait and Hazard are required lazily, since combat.lua reaches
 -- this module from inside Combat.gather and the unarmed strike.
@@ -143,7 +147,23 @@ function Asura.onTurnEnd(combat, unit)
     local seen = Combat.tallyCount(unit, "hitDealt") + Combat.tallyCount(unit, "hitTaken")
     local idle = unit._asuraSeen ~= nil and seen == unit._asuraSeen and not unit._asuraActive
     unit._asuraSeen, unit._asuraActive = seen, nil
-    if idle and not Asura.onShrine(combat, unit) and Asura.chi(unit) > 0 then
+    local heats = 0
+    if idle then
+        -- Read off the BLUEPRINT: Item.instantiate copies a named list of fields, and this one is not on it.
+        local defs = require("models.item").defs
+        for _, item in ipairs(Character().eachItem(unit.char)) do
+            local def = item.id and defs[item.id]
+            heats = heats + ((def and def.idleHeats) or 0)
+        end
+    end
+    if heats > 0 then
+        -- LEFT ALONE, IT GATHERS: the drain turned around (see the header). Granted, so a pool it fills says so.
+        local got = Asura.grant(combat, unit, heats)
+        if got > 0 then
+            Combat.logEvent(combat, "action",
+                string.format("%s gathers itself: +%d chi.", (unit.char and unit.char.name) or "It", got), unit)
+        end
+    elseif idle and not Asura.onShrine(combat, unit) and Asura.chi(unit) > 0 then
         Combat.spendCharge(unit, Asura.KEY, Asura.DRAIN)
         Combat.logEvent(combat, "action",
             string.format("%s cools.", (unit.char and unit.char.name) or "It"), unit)

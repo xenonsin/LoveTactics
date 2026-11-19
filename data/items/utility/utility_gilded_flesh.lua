@@ -2,8 +2,11 @@
 -- gold in his mouth, and the gold did not stop at the bread:
 --   * GOLD PLATE        six plates, +2 Defense each, and ANY blow knocks one off as a COIN HEAP beside him
 --                       (trait_shed_plate with `shedOn = "blow"`, status_gold_plate -- the Gold Golem's own
---                       plating). He never eats one back and nothing puts one on again, so every blow the
---                       company lands makes him softer and pays it.
+--                       plating).
+--   * THE GOLD COMES BACK  at the start of his turn, one heap beside him climbs back on as a plate, never past
+--                       six (trait_the_gold_comes_back, 2026-11-19, the creature identity pass). It used to be
+--                       that nothing put a plate back, and the heaps were a payout with no decision in them.
+--                       Now the company loots as it goes, or fights him away from his gold.
 --   * TURNED TO GOLD    a heal aimed at him is a coin heap instead, and restores nothing (trait_turned_to_gold)
 --   * THE GILDED GUARD  his men open the fight Gilded (trait_the_gilded_guard)
 --
@@ -13,7 +16,7 @@
 -- BOUND AND UNSTEALABLE: an organ, not kit.
 return {
     name = "Gilded Flesh",
-    description = "Gold plates that any blow knocks off as coin heaps, never to return. Heals turn to gold. Allies open Gilded.",
+    description = "Blows knock gold plates off as heaps; a heap beside him at his turn start goes back on. Heals turn to gold.",
     flavor = "The bread went first. Then the hand that held it.",
     sprite = "assets/items/utility_gilded_flesh.png",
     type = "utility",
@@ -21,6 +24,6 @@ return {
     class = "creature",
     noSteal = true,
     bound = true,
-    traits = { "trait_shed_plate", "trait_turned_to_gold", "trait_the_gilded_guard" },
+    traits = { "trait_shed_plate", "trait_the_gold_comes_back", "trait_turned_to_gold", "trait_the_gilded_guard" },
     traitParams = { plateStatus = "status_gold_plate", plates = 6, shedAs = "heap", shedOn = "blow" },
 }

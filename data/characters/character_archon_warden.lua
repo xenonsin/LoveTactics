@@ -38,4 +38,10 @@ return {
     drops = { "utility_wardens_post" },
     defaultAction = "weapon_gatekeepers_glaive",
     signatureWeapon = "weapon_gatekeepers_glaive",
+    -- TARGETING (the creature identity pass, 2026-11-19): a gatekeeper shoves out whatever has come within its
+    -- glaive, and does not leave its post to find more.
+    ai = {
+        { priority = "high", act = "attack", targetPref = "nearest",
+          when = { subject = "any_foe", test = "in_reach" } },
+    },
 }

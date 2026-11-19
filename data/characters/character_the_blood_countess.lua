@@ -37,4 +37,5 @@ return {
     drops = { "ability_the_waltz", "armor_iron_maiden" },
     defaultAction = "weapon_countess_hand",
     signatureWeapon = "weapon_countess_hand",
+    ai = require("models.wrath_targeting").vampire, -- the faintest pulse (2026-11-19)
 }

@@ -37,4 +37,10 @@ return {
     -- ITS OWN PIECE (docs/drops.md): its ambition, on a maul.
     drops = { "weapon_babel_maul" },
     archetype = "aggressive",
+    -- TARGETING (the creature identity pass, 2026-11-19): it walks into the thick of the company, which is where its
+    -- fall lands hardest.
+    ai = {
+        { priority = "normal", act = "attack", targetPref = "nearest",
+          when = { subject = "any_foe", test = "exists" } },
+    },
 }

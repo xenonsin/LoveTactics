@@ -53,7 +53,13 @@ return {
     -- price. See docs/bestiary.md, "What a creature wears instead of armour".
     --   The same scale as the young ones, laid deeper, and an edge slides further before it stops.
     --   The same soft length underneath. A weight still only has to land.
-    resist = { slash = 4, impact = -4, fire = 4, holy = -8 },
+    --   COLD-BLOODED (2026-11-19, the creature identity pass): the deep weakness is ICE, not holy. Six
+    --   bodies of this circle wore the same holy line, so the harpy and the lamia -- the two halves of the
+    --   circle's Move rule, met on the same floors -- asked the same Bring question. The flock keeps the
+    --   Smite; the coils want frost, which slows the thing whose whole plan is to stay. The demon race's
+    --   own holy -3 still stands under it (data/races/demon.lua), so a Smite is not wasted -- only no
+    --   longer the answer.
+    resist = { slash = 4, impact = -4, fire = 4, ice = -8 },
     startingItems = { "weapon_strangleknot", "weapon_lunging_fang", "utility_serpents_length" },
     -- WHAT SHE IS KNOWN FOR (docs/drops.md), and it is the slope rather than the string. The Lamia's
     -- own drop hands over a tether; this hands over what she does WITH one -- a blow that lands harder

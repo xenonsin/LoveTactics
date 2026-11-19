@@ -23,8 +23,14 @@ return {
     -- what it has instead of a coat -- and the negative line is not an oversight, it is the
     -- price. See docs/bestiary.md, "What a creature wears instead of armour".
     --   A blade skates. It has always skated, and it always will.
-    --   Ice under a hammer is the oldest answer there is, and heat is the other one.
-    resist = { ice = 2, slash = 2, impact = -2, fire = -4 },
+    --   Ice under a hammer is the oldest answer there is.
+    -- THE FIRE LINE CAME OFF (the creature identity pass, 2026-11-19): every ice body in Sloth answered fire, so
+    -- the tundra asked one question eight times. This one asks for the hammer instead. Fire still matters
+    -- here, on the company's side of the board: it thaws the Cold-Hearted these fists lay.
+    --
+    -- ITS LEVER IS ORDER: its Frost Fists lay the Snow Queen's Cold-Hearted, so her escort shuts down the
+    -- company's healing one body at a time. Kill the escorts before the Queen.
+    resist = { ice = 2, slash = 2, pierce = 2, impact = -4 },
     startingItems = { "weapon_frost_fists" },
     -- Basic tactics (models/ai.lua): press the wounded -- finish the foe already closest to falling.
     ai = {

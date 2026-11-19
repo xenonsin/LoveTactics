@@ -4,6 +4,10 @@
 -- not ask the dice can mar it -- a spell, an area, a hazard, a blow that cannot be avoided -- and once marred it is
 -- an ordinary swordsman with a light build. The fight asks whether the company brought anything that does not roll.
 --
+-- WOUNDED PRIDE (the creature identity pass, 2026-11-19; utility_wounded_pride, models/elf_court.lua): the blow that
+-- marks it Taunts it onto the striker for 2 turns. Whoever brought the thing that does not roll had better be able
+-- to take a swordsman's answer. TARGETING: the kill -- a duelist finishes what it starts.
+--
 -- It drops the Dancer's Veil. On the fighter table.
 return {
     name = "Elf Bladedancer",
@@ -22,11 +26,15 @@ return {
         skill = 4, luck = 5,
     },
     startingItems = {
-        "weapon_iron_sword", "utility_untouchable", false,
+        "weapon_iron_sword", "utility_untouchable", "utility_wounded_pride",
         false,               false,                 false,
         false,               false,                 false,
     },
     drops = { "armor_dancers_veil" },
     defaultAction = "weapon_iron_sword",
     signatureWeapon = "weapon_iron_sword",
+    ai = {
+        { priority = "normal", act = "attack", targetPref = "lethal",
+          when = { subject = "any_foe", test = "exists" } },
+    },
 }

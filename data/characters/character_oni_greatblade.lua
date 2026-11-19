@@ -31,4 +31,5 @@ return {
     drops = { "weapon_odachi", "consumable_questionable_stew" },
     defaultAction = "weapon_odachi",
     signatureWeapon = "weapon_odachi",
+    ai = require("models.wrath_targeting").oni, -- the marked, else the nearest (2026-11-19)
 }

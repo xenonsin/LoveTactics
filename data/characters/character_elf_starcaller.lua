@@ -5,6 +5,10 @@
 -- Starlight (utility_by_starlight) strikes a Limned foe for 3 more and casts a tile further out while any foe is
 -- Limned -- on top of Unblemished's own +4 and tile. Step out of the light, or kill the one that lights it.
 --
+-- WOUNDED PRIDE (the creature identity pass, 2026-11-19; utility_wounded_pride, models/elf_court.lua): the blow that
+-- marks it Taunts it onto the striker for 2 turns, wand in hand and its spells put aside. TARGETING: a caster winding
+-- up first -- the court's mage will not be out-spelled.
+--
 -- It drops the Skywalker's Sandals. On the mage table.
 return {
     name = "Elf Starcaller",
@@ -24,10 +28,14 @@ return {
     },
     startingItems = {
         "weapon_wand",          "ability_ice_bolt", "ability_starlight",
-        "utility_by_starlight", false,              false,
+        "utility_by_starlight", "utility_wounded_pride", false,
         false,                        false,              false,
     },
     drops = { "armor_skywalkers_sandals" },
     defaultAction = "weapon_wand",
     signatureWeapon = "weapon_wand",
+    ai = {
+        { priority = "high", act = "attack", targetPref = "channeling",
+          when = { subject = "any_foe", test = "has_status", value = "status_channeling" } },
+    },
 }

@@ -7,17 +7,24 @@
 --
 -- So this is the rare swarm weapon that is not about damage at all. Killing motes is cheap; letting them
 -- work decides what the rest of the floor does to you.
+--
+-- AND WHERE IT FALLS IS GROUND (creature identity pass, 2026-11-19). The mote fields from floor 11 and the
+-- reflection that cashes its stripping in only from 12, so on the first floor it stripped a blessing and was
+-- nothing. It now shatters into Glass Shards where it dies (trait_shatters_to_shards): a foe ending a turn on
+-- that tile takes 3 damage, through armour, and loses a blessing. Its identity lever is POSITION -- kill it where you will not need to
+-- stand -- and the cut reaches a company that carries no blessings at all.
 local Curve = require("models.curve")
 
 return {
     name = "Glass Shard",
-    description = "Cuts an adjacent foe and strips a blessing from it.",
+    description = "Cuts an adjacent foe and strips a blessing from it. When its bearer falls, it leaves Glass Shards on its tile.",
     flavor = "It cannot make anything. It is extremely good at the other thing.",
     sprite = "assets/items/glass_shard.png",
     type = "weapon",
     class = "creature",
     tags = { "natural", "slash", "physical", "melee" },
     noSteal = true,
+    traits = { "trait_shatters_to_shards" },
     activeAbility = {
         target = "enemy",
         range = 1,

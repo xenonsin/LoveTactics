@@ -218,16 +218,18 @@ return {
     },
     -- ------------------------------------------------------------------------------ the yeti
     {
-        name = "Whiteout Roar: a foe within 4 with no ally beside it is Rooted; a pair is not, nor one beyond 4",
+        -- Cowering, not Rooted, since the creature identity pass (2026-11-19) took the yeti off Root.
+        name = "Whiteout Roar: a foe within 4 with no ally beside it is Cowering; a pair is not, nor one beyond 4",
         fn = function()
             local c = Fixture.combat(board(),
                 { walker(5, 8), walker(8, 5), walker(8, 6), walker(5, 10) },
                 { unit("character_yeti", 5, 5) })
             local lone, pairA, pairB, far = c.units[1], c.units[2], c.units[3], c.units[4]
             Trait.onAnyTurnStart(c, one(c, "character_yeti"))
-            assert(Status.has(lone, "status_root"), "alone within 4: frozen with fear")
-            assert(not Status.has(pairA, "status_root") and not Status.has(pairB, "status_root"), "a pair is not")
-            assert(not Status.has(far, "status_root"), "and beyond 4 the roar does not reach")
+            assert(Status.has(lone, "status_cowering"), "alone within 4: it cowers")
+            assert(not Status.has(lone, "status_root"), "and it is not Rooted")
+            assert(not Status.has(pairA, "status_cowering") and not Status.has(pairB, "status_cowering"), "a pair is not")
+            assert(not Status.has(far, "status_cowering"), "and beyond 4 the roar does not reach")
         end,
     },
     {
@@ -257,17 +259,24 @@ return {
         end,
     },
     {
-        name = "Drag Into the White: she hauls a Rooted foe 3 tiles toward her, and it arrives still Rooted",
+        -- Any straggler, not only a Rooted one, since the creature identity pass (2026-11-19) took the pair off
+        -- Root. A Rooted straggler is still hauled through its Root and arrives Rooted.
+        name = "Drag Into the White: she hauls the nearest foe with no ally beside it 3 tiles toward her, through a Root",
         fn = function()
-            local c = Fixture.combat(board(), { walker(7, 5), walker(1, 9) },
+            local c = Fixture.combat(board(), { walker(7, 5), walker(1, 10), walker(2, 10) },
                 { unit("character_dread_of_the_whiteout", 1, 5) })
-            local rooted, free = c.units[1], c.units[2]
+            local rooted, pairA, pairB = c.units[1], c.units[2], c.units[3]
             local dread = one(c, "character_dread_of_the_whiteout")
             Status.apply(c, rooted, "status_root", {})
             Trait.onAnyTurnStart(c, dread)
             assert(rooted.x == 4 and rooted.y == 5, "hauled 3 tiles toward her (now at " .. rooted.x .. "," .. rooted.y .. ")")
             assert(Status.has(rooted, "status_root"), "and still Rooted when it gets there")
-            assert(free.x == 1 and free.y == 9, "a body that is not Rooted is not hers to take")
+            assert(pairA.x == 1 and pairA.y == 10 and pairB.x == 2 and pairB.y == 10, "a pair is not hers to take")
+            -- And a straggler nothing has planted is hers just the same.
+            local c2 = Fixture.combat(board(), { walker(7, 5) }, { unit("character_dread_of_the_whiteout", 1, 5) })
+            local lone = c2.units[1]
+            Trait.onAnyTurnStart(c2, one(c2, "character_dread_of_the_whiteout"))
+            assert(lone.x == 4 and lone.y == 5, "an unrooted straggler is hauled too (now at " .. lone.x .. "," .. lone.y .. ")")
         end,
     },
     -- ------------------------------------------------------------------------------ the trophies

@@ -6,7 +6,7 @@
 -- over is on the body's `drops` list instead (the Nazar).
 return {
     name = "The Evil Eye",
-    description = "Floats. At the start of its turn, sours one blessing of the Fairest it can see into Rattled.",
+    description = "Floats. Each turn, sours one blessing of the Fairest it sees into Rattled, or Rattles it if it has none.",
     flavor = "It does not want what you have. It wants you not to have it, which is cheaper.",
     sprite = "assets/items/utility_the_evil_eye.png",
     type = "utility",

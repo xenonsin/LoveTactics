@@ -1,6 +1,6 @@
 -- A wolf's bite. Four rules ride on it, and together they are what a wolf IS.
 --
--- 1. THE STEP BACK. It bites an adjacent foe and immediately gives ground a tile. Because a melee
+-- 1. THE STEP BACK. It bites an adjacent foe and immediately gives ground two tiles. Because a melee
 -- counter is thrown only once the WHOLE action has resolved, and re-checks reach at that point
 -- (data/traits/trait_melee_counter.lua, Combat.beginAnswers), stepping back out of adjacency means the
 -- bite is answered by nothing: the wolf darts in, takes its bite, and is gone before the jaws can snap
@@ -61,7 +61,7 @@
 -- weapon with the doubling swapped for a count of her pack.
 local Curve = require("models.curve")
 
-local GIVE_GROUND = 1   -- tiles, stated once so the bite and the counter can never drift apart
+local GIVE_GROUND = 2   -- tiles, stated once so the bite and the counter can never drift apart
 local DOUBLE_GAP = 2    -- speed advantage needed to bite twice (FE's rule, re-scaled -- see the header)
 local WOUNDED = 0.5     -- "the wounded": at or below half health
 local WOUNDED_BONUS = 4 -- extra damage against one, on top of opening the wound
@@ -78,7 +78,7 @@ end
 
 return {
     name = "Fangs",
-    description = "Bites an adjacent foe, then gives ground a tile. Bites twice when much faster, and tears at wounded prey.",
+    description = "Bites an adjacent foe, then gives ground two tiles. Bites twice when much faster, and tears at wounded prey.",
     flavor = "A wolf is born holding it. It does not trade blows; it takes one and is gone.",
     sprite = "assets/items/fangs.png",
     type = "weapon",
@@ -114,7 +114,7 @@ return {
                 fx.damage(target, blow())
             end
 
-            -- Rule 1: give ground a tile away from the foe just bitten -- ONCE, however many times the
+            -- Rule 1: give ground two tiles away from the foe just bitten -- ONCE, however many times the
             -- teeth landed. Out of adjacency, the melee counter that would answer this finds nothing in
             -- reach to answer (see the header).
             fx.retreat(target, GIVE_GROUND)

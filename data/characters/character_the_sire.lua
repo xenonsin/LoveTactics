@@ -37,4 +37,5 @@ return {
     drops = { "utility_sires_signet", "utility_box_of_grave_earth" },
     defaultAction = "weapon_iron_greatsword",
     signatureWeapon = "weapon_iron_greatsword",
+    ai = require("models.wrath_targeting").vampire, -- the faintest pulse (2026-11-19)
 }

@@ -45,7 +45,10 @@ return {
     defaultAction = "weapon_tongue_lash",
     archetype = "aggressive",
     ai = {
-        { priority = "high", act = "attack", targetPref = "lowest_hp",
-          when = { subject = "foe_lowest_hp", test = "hp_pct_below", value = 0.5 } },
+        -- THE BAD GROUND BETWEEN (2026-11-19, the targeting pass): the tongue drags its catch across
+        -- every tile on the way in, so the toad goes first for the body it can haul over a hazard -- a
+        -- fire, a trap, a pool -- rather than diving the wounded like every other beast in the wood.
+        { priority = "high", act = "attack", targetPref = "hazardous",
+          when = { subject = "any_foe", test = "in_reach" } },
     },
 }

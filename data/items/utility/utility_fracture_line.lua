@@ -1,37 +1,25 @@
--- The Unwanted's fracture lines, and the phase script that shatters it.
+-- The Unwanted's fracture lines: the organ that cracks it open, and the floor around it with it.
 --
--- Built on trait_boss_phases, whose `summon` response calls bodies onto open tiles beside the bearer.
--- Every threshold crossed sheds a pair of glass-motes: the apex does not get stronger as it is cut, it
--- gets MORE, which is a different problem from the one the health bar suggests.
+-- AT EACH THRESHOLD IT CRACKS (trait_fracture_line; creature identity pass, 2026-11-19). Straight lines of glass
+-- run three tiles out of each side of its body; every foe on a line is cut, and the lines are left as Glass
+-- Shards (data/hazards/hazard_glass_shards.lua) that cut and strip whoever of the company ends a turn on them.
 --
--- IT SHATTERS INTO MOTES, not into character_homunculus_discard. The discard is CARGO -- a `protect`
--- objective that stands where it is put with a holdGround posture -- and its own header spends a
--- paragraph on why it must never be fielded as a combatant. Splitting into it would have rebuilt the
--- exact bug this pass removed from Gluttony's honour-guard slot. The motes are the circle's own swarm
--- and behave like something that just came off a larger piece of glass.
---
--- Which also feeds the circle's real rule: every mote it sheds is another body stripping blessings, and
--- what the stripping decides is who Second Water's mirror finds weakest.
+-- IT USED TO SHED GLASS-MOTES, a pair per threshold on trait_boss_phases -- which is The Long Winter's shape with
+-- the drift-things swapped for motes, and the audit flagged the two apexes as one template (same-apex). The
+-- Winter multiplies; the Unwanted now breaks the ground. Its bar is the telegraph: at two-thirds and at one-third,
+-- do not be standing in line with a side of it. The old header's argument against splitting it into
+-- character_homunculus_discard (cargo, never a combatant) is moot now that it splits into nothing at all.
 --
 -- Natural kit: no class, no price, noSteal (tests/bestiary_spec.lua).
 return {
     name = "Fracture Line",
-    description = "Sheds a pair of glass-motes as it is wounded.",
+    description = "At 2/3 and 1/3 health, cracks 3-tile lines from each side: 8 damage to foes on them, and Glass Shards.",
     flavor = "Cast in one piece, and not well. It has been coming apart since the day it cooled.",
     sprite = "assets/items/fracture_line.png",
     type = "utility",
     class = "creature",
     tags = { "natural" },
     noSteal = true,
-    traits = { "trait_boss_phases" },
-    phases = {
-        { at = 0.66, responses = {
-            { kind = "summon", id = "character_glass_mote", count = 2 },
-            { kind = "log", text = "A crack runs through the Unwanted, and two pieces of it walk away." },
-        } },
-        { at = 0.33, responses = {
-            { kind = "summon", id = "character_glass_mote", count = 2 },
-            { kind = "log", text = "The Unwanted comes further apart, and there is more of it than before." },
-        } },
-    },
+    traits = { "trait_fracture_line" },
+    cracks = { 0.66, 0.33 },
 }

@@ -4,7 +4,8 @@
 --   Hellhound      Hearth-Born: its breath leaves fire; standing in fire it heals instead of burning and hits for +3
 --   Cerberus       Three Heads: up to three bites a turn, one per head; each head a third of the bar, quiet when it is
 --                  gone. Honey-Cake: a Sleep, or a draught thrown at a head, quiets it for 2 turns
---   Pit Locust     Seek Death: its sting cannot take a body below 1; on a body at 1 each sting adds Torment
+--   Pit Locust     Seek Death: its sting cannot take a body below 1; a sting on a body another locust stands beside
+--                  adds Torment (a body at 1 until the creature identity pass, 2026-11-19)
 --   Reaper         The Harvest: a sweep of every tile around it; a foe under a quarter is downed at once
 --   Lethe Shallows a body that ends its turn in the grey water forgets every status, good and bad
 --
@@ -342,20 +343,30 @@ return {
     },
     -- ------------------------------------------------------------------------------ Seek Death
     {
-        name = "Seek Death: a sting never takes a body below 1, and on a body at 1 it adds Torment",
+        name = "Seek Death: a sting never takes a body below 1, and with another locust beside the body it adds Torment",
         fn = function()
+            -- THE SWARM, NOT THE HEALTH BAR (the creature identity pass, 2026-11-19). One locust alone on a body holds
+            -- it at 1 and Torments nothing however low it is; a second locust beside the same body makes every sting
+            -- a stack.
             local c = Fixture.combat(board(), walker(5, 6, 10),
-                { unit("character_pit_locust", 5, 5, { stats = { damage = 40 } }) })
+                { unit("character_pit_locust", 5, 5, { stats = { damage = 40 } }),
+                  unit("character_pit_locust", 9, 9) })
             local body, locust = c.units[1], one(c, "character_pit_locust")
+            local other
+            for _, u in ipairs(c.units) do
+                if u ~= locust and u.char.id == "character_pit_locust" then other = u end
+            end
             Fixture.strike(c, locust, body, "weapon_pit_locust_sting")
             assert(body.alive and hp(body) == 1, "held at 1, got " .. hp(body))
-            assert(not Status.has(body, "status_torment"), "a body above 1 is not Tormented by the blow that brought it there")
+            Fixture.strike(c, locust, body, "weapon_pit_locust_sting")
+            assert(not Status.has(body, "status_torment"), "one locust alone Torments nothing, even a body at 1")
             local dmg = Combat.flatStat(body, "damage")
             local mov = Combat.flatStat(body, "movement")
+            assert(Combat.teleportUnit(c, other, 6, 6), "the second locust lands beside the body")
             Fixture.strike(c, locust, body, "weapon_pit_locust_sting")
             Fixture.strike(c, locust, body, "weapon_pit_locust_sting")
             assert(body.alive and hp(body) == 1, "still at 1")
-            assert(Status.stacksOf(body, "status_torment") == 2, "each sting at 1 adds a stack")
+            assert(Status.stacksOf(body, "status_torment") == 2, "each sting with the swarm beside adds a stack")
             assert(Combat.flatStat(body, "damage") == dmg - 6, "-3 Damage a stack")
             assert(Combat.flatStat(body, "movement") == mov - 2, "-1 Movement a stack")
             Combat.cleanse(c, body)

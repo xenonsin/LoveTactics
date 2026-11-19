@@ -33,6 +33,8 @@ return {
     drops = { "ability_djinnis_breath" },
     defaultAction = "ability_djinnis_breath",
     ai = {
-        { priority = "high", act = "cast", item = "ability_djinnis_breath" },
+        -- TARGETING (the creature identity pass, 2026-11-19): the gale goes at the body it can blow onto bad ground --
+        -- an Ifrit's fire, a trap, the edge of a drop (targetPref "hazardous").
+        { priority = "high", act = "cast", item = "ability_djinnis_breath", targetPref = "hazardous" },
     },
 }

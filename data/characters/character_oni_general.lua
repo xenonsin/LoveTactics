@@ -5,8 +5,12 @@
 --   BLACK-FLAME DOME   a 3x3 marked for a turn, then closed: Rooted and Burning inside
 --   CALL TO VENGEANCE  every oni with its horn whole goes Horn Out at the foe it points at
 --   BESTOW             an oni ally gains +2 to every stat, and its horn cannot be snapped while the General stands
---   THE CLAN STANDS    while it stands, a felled oni stays up for one more action, once
+--   THE CLAN STANDS    while it stands, a felled oni within 2 of it stays up for one more action, once
 -- Kill the General and all four go with it.
+--
+-- THE CLAN STANDS HAS A REACH NOW (2026-11-19, the creature identity pass). It held the whole board up, which made
+-- the General one of six Wrath alphas pulling the same kill-the-head lever. Within 2 it is POSITION as well: draw
+-- the clan off the General and its oni fall like anybody else's.
 --
 -- It drops the Black-Flame Dome. A warlord on the fighter table.
 return {
@@ -34,4 +38,5 @@ return {
     drops = { "ability_black_flame_dome" },
     defaultAction = "weapon_iron_greatsword",
     signatureWeapon = "weapon_iron_greatsword",
+    ai = require("models.wrath_targeting").oni, -- the marked, else the nearest (2026-11-19)
 }

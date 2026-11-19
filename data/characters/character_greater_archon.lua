@@ -35,4 +35,9 @@ return {
     drops = { "ability_killing_magic" },
     defaultAction = "weapon_mana_cut_blade",
     signatureWeapon = "weapon_mana_cut_blade",
+    -- TARGETING (the creature identity pass, 2026-11-19): the court's caster spends its beam where it ends somebody.
+    ai = {
+        { priority = "normal", act = "attack", targetPref = "lethal",
+          when = { subject = "any_foe", test = "exists" } },
+    },
 }

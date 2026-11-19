@@ -7,6 +7,11 @@
 --     whoever felled it (`unit.hornTarget`, read by AI.preempt).
 -- A HORN OUT is once and for the fight. A second trigger only re-aims it at the newer killer.
 --
+-- NO RESTRAINT YET (2026-11-19, the creature identity pass): a blueprint declaring `noRestraint` (the Oni Student)
+-- comes Horn Out at its FIRST wound rather than at half. It was the plain Oni's rule on less health, so meeting one
+-- changed nothing; now a chip from the company's softest body sets it off and sends it at whoever threw it, which
+-- makes "who touches the Student first" a choice. Read off the blueprint, so the race grant stays one item.
+--
 -- SNAPPED (status_horn_snapped): a critical hit on the bearer breaks the horn. Horn Out comes off, the -1 goes on,
 -- and nothing brings either back. Two things keep a horn whole against a crit, both approved in review: an ally
 -- beside the bearer that keeps horns (the Oni Priestess, `keepsHorn`), and a share of the General's power
@@ -43,7 +48,8 @@ end
 
 return {
     name = "The Horn",
-    description = "Below half health, or when an oni of your side falls: Horn Out. A critical hit snaps the horn.",
+    description = "Below half health (a Student: once wounded), or when an oni of your side falls: Horn Out."
+        .. " A critical hit snaps the horn.",
     oniHorn = true,
     notAReaction = true,
     onDamaged = function(ctx)
@@ -60,7 +66,15 @@ return {
         local Combat = require("models.combat")
         local hp = u.char and u.char.stats and u.char.stats.health
         local max = Combat.unreservedMax(u.char, "health")
-        if hp and max > 0 and (hp.current or 0) * 2 <= max then hornOut(ctx, u, ctx.attacker) end
+        if not (hp and max > 0) then return end
+        local def = u.char.id and require("models.character").defs[u.char.id]
+        local wounded
+        if def and def.noRestraint then
+            wounded = (hp.current or 0) < max
+        else
+            wounded = (hp.current or 0) * 2 <= max
+        end
+        if wounded then hornOut(ctx, u, ctx.attacker) end
     end,
     onAnyDeath = function(ctx)
         local u, fallen = ctx.unit, ctx.fallen

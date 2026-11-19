@@ -68,9 +68,11 @@ return {
     --   Edges and points pass through the gaps they were already aiming for.
     --   The frame pays for both, in full, so the three lines sum to zero (Balance.INNATE_PHYSICAL).
     --   And the Cathedral was right about the dead, at the tier-4 weakness cap.
-    -- Less than it reads: Bare Bones in his grid carries the tier-2 lattice (3/3/-6/-6), and these
-    -- are what his crown adds on top, so the total is the 5/5/-10/-10 the tier-4 budget allows.
-    resist = { slash = 2, pierce = 2, impact = -4, holy = -4 },
+    -- Bare Bones in his grid carries only the holy line now (holy -6, 2026-11-19: the lattice came off
+    -- that shared piece so the rest of the orchard could ask for other things). The physical line it
+    -- used to add is folded in here instead, so his total is still the 5/5/-10/-10 the tier-4 budget
+    -- allows. His question was never the weapon -- it is the court (trait_court_of_bone.lua).
+    resist = { slash = 5, pierce = 5, impact = -10, holy = -4 },
     -- Its loadout as the 3x3 grid (row-major; false = empty). The crown in the centre where a bound
     -- relic goes, the reach beside it, the court on call, and the two standing facts of being a
     -- skeleton. Every one of them is `class = "creature"` -- unpriced, noSteal, on nobody's shelf --

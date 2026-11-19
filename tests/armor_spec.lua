@@ -266,6 +266,8 @@ return {
                 ["utility_demonic_essence"] = true,
                 ["utility_bare_bones"] = true,
                 ["utility_barrow_binding"] = true,
+                -- The dead company's lattice, moved off Bare Bones on 2026-11-19 (Bare Bones keeps holy).
+                ["utility_company_bones"] = true,
             }
             for _, id in ipairs(all) do
                 if not WEARABLE_AMPLIFIERS[id] then
@@ -273,7 +275,7 @@ return {
                     assert(Item.defs[id].noSteal, id .. " is flesh, so it must be noSteal")
                 end
             end
-            assert(#all == 6, "three armours and three pieces of flesh; found " .. #all)
+            assert(#all == 7, "three armours and four pieces of flesh; found " .. #all)
         end,
     },
 }

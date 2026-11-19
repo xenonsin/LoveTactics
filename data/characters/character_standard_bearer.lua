@@ -27,9 +27,11 @@ return {
     -- table is written in and summed into the same total. This body wears nothing, so this is
     -- what it has instead of a coat -- and the negative line is not an oversight, it is the
     -- price. See docs/bestiary.md, "What a creature wears instead of armour".
-    --   It is wearing the colours and the plate that goes under them.
-    --   Both hands are full of colours. It brought no shield and cannot close a gap it cannot see.
-    resist = { slash = 3, pierce = -3 },
+    --   Layers of heavy silk over the plate turn a point the way a bale of cloth stops an arrow.
+    --   An edge goes through cloth. Cut the colours off it and the plate under them was never closed.
+    --   (Was the sworn's slash/pierce line until 2026-11-19, the creature identity pass: four gilded bodies and the
+    --   lion and the titan all asked for a spear, so Pride's floors had one answer. The bearer asks for a blade.)
+    resist = { pierce = 3, slash = -3 },
     startingItems = { "weapon_gilded_pike", "utility_gilded_standard" },
     defaultAction = "weapon_gilded_pike",
     archetype = "defensive",

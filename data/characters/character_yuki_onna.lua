@@ -3,8 +3,13 @@
 --
 --   SNOW-SLEEP   a foe that ends its turn within 3 of her without having moved gains Drowsy; at 3 Drowsy it falls
 --                Asleep (utility_snow_sleep, trait_snow_sleep; Drowsy is the foundation's status_drowsy).
---   HER KISS     on a sleeper it deals double and does not wake it (weapon_snow_kiss).
+--   HER KISS     lays a stack of Drowsy on whoever it strikes (weapon_snow_kiss).
 --   COUNTER      keep moving -- or wake the sleeper yourself: a Cure, or a blow that catches it.
+--
+-- SHE PUTS THEM DOWN; OTHERS FEED (the creature identity pass, 2026-11-19). Her kiss dealt double to a sleeper
+-- and left it asleep until then, which made her the third Sloth body feeding on Sleep beside the Mare and Baku.
+-- Now she only lays it, two ways at once, and a company that meets her with the Mare (Ride by Night) kills her
+-- first. She hunts the foe with the fewest open tiles around it (`hemmed`): the one that cannot keep moving.
 --
 -- AN ONI, AS A YOKAI: the race grants the Horn and the Witch's Taint (data/races/oni.lua). How they sit on her: the
 -- Horn comes out when she is wounded to half, and sends her at whoever did it -- which pulls her off her ground,
@@ -39,7 +44,7 @@ return {
     signatureWeapon = "weapon_snow_kiss",
     -- The sleeper first: a body under is a body she kisses for double, and it stays under.
     ai = {
-        { priority = "high", act = "attack", targetPref = "sleeping",
-          when = { subject = "any_foe", test = "has_status", value = "status_sleep" } },
+        { priority = "normal", act = "attack", targetPref = "hemmed",
+          when = { subject = "any_foe", test = "exists" } },
     },
 }

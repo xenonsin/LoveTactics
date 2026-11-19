@@ -2,7 +2,7 @@
 -- on "Sloth's Bestiary", slice A. What the fight hands over is the Yeti-Hide Mantle, a smaller roar.
 return {
     name = "Whiteout Roar",
-    description = "At the start of its turn, each foe within 4 with no ally beside it is Rooted.",
+    description = "At the start of its turn, each foe within 4 with no ally beside it is Cowering.",
     flavor = "Out in the white, it only ever sounds like it is right behind you.",
     sprite = "assets/items/utility_whiteout_roar.png",
     type = "utility",

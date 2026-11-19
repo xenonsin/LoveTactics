@@ -16,7 +16,7 @@
 -- drops lend the trick (Borrowed Face, Doppel-Step) without the race.
 return {
     name = "Faceless",
-    description = "Shapeless folk of the waste. Each one wears the body that best answers whoever stands nearest.",
+    description = "Shapeless folk of the waste. Each one wears the body that best answers whoever stands nearest, and an impact blow knocks that face off.",
     kind = "humanoid",
     playable = false,
     resist = {

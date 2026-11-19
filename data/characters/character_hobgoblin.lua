@@ -6,6 +6,10 @@
 -- within 2 into acting again at once, for a tenth of its health. Kill it and the warband goes back to chasing
 -- whoever hurts it, which the company controls again.
 --
+-- ITS LEVER IS BRING NOW (2026-11-19, the creature identity pass). The paragraph above was one of six Wrath alphas
+-- pulling the kill-the-head lever. The Feud it names now HOLDS (models/feud.lua's Feud.named): no blow on a goblin
+-- moves it, and it outlives the Hobgoblin. Killing it no longer frees the named body; a Cure does.
+--
 -- It drops the Lash, which does both halves in a player's hand. A warlord on the fighter table; the alpha never
 -- cowers alone.
 return {
@@ -33,4 +37,5 @@ return {
     drops = { "weapon_hobgoblins_lash" },
     defaultAction = "weapon_hobgoblins_lash",
     signatureWeapon = "weapon_hobgoblins_lash",
+    ai = require("models.wrath_targeting").goblin, -- the cornered body (2026-11-19)
 }

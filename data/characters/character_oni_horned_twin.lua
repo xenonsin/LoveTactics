@@ -30,4 +30,5 @@ return {
     drops = { "weapon_morning_star" },
     defaultAction = "weapon_morning_star",
     signatureWeapon = "weapon_morning_star",
+    ai = require("models.wrath_targeting").oni, -- the marked, else the nearest (2026-11-19)
 }

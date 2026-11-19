@@ -25,4 +25,10 @@
         -- ITS OWN PIECES, and only its own (docs/drops.md).
         drops = { "utility_pecking_order" },
         archetype = "aggressive",
+        -- THE PECKING ORDER, AIMED (the creature identity pass's targeting sweep, 2026-11-19): a crystal answers
+        -- only to rank, and it picks on whoever ranks lowest -- the foe with the least health left.
+        ai = {
+            { priority = "normal", act = "attack", targetPref = "lowest_hp",
+              when = { subject = "any_foe", test = "exists" } },
+        },
     }

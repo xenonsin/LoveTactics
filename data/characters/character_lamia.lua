@@ -58,7 +58,13 @@ return {
     -- price. See docs/bestiary.md, "What a creature wears instead of armour".
     --   Scale over scale over scale, and an edge slides down the lie of them.
     --   A weight does not have to find a seam. It only has to land on what is underneath.
-    resist = { slash = 3, impact = -3, fire = 3, holy = -6 },
+    --   COLD-BLOODED (2026-11-19, the creature identity pass): the deep weakness is ICE, not holy. Six
+    --   bodies of this circle wore the same holy line, so the harpy and the lamia -- the two halves of the
+    --   circle's Move rule, met on the same floors -- asked the same Bring question. The flock keeps the
+    --   Smite; the coils want frost, which slows the thing whose whole plan is to stay. The demon race's
+    --   own holy -3 still stands under it (data/races/demon.lua), so a Smite is not wasted -- only no
+    --   longer the answer.
+    resist = { slash = 3, impact = -3, fire = 3, ice = -6 },
     startingItems = { "weapon_strangleknot", "weapon_lunging_fang" },
     -- WHAT IT IS KNOWN FOR (docs/drops.md). The tether, handed over: a foe you mark cannot end its
     -- turn away from YOU without paying. The rift sells you the trick.

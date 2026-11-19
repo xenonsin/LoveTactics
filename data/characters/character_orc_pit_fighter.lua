@@ -32,4 +32,5 @@ return {
     drops = { "utility_pit_fighters_belt" },
     defaultAction = "weapon_iron_greatsword",
     signatureWeapon = "weapon_iron_greatsword",
+    ai = require("models.wrath_targeting").orc, -- the killing blow (2026-11-19)
 }

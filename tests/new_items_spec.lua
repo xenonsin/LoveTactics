@@ -325,8 +325,8 @@ return {
             local hpBefore = attacker.char.stats.health.current
             openTurn(c, attacker)
             assert(Combat.useItem(c, attacker, itemNamed(attacker.char, "weapon_wolf_fangs"), 5, 4), "the wolf bites")
-            -- It stepped a tile straight back from the foe it bit...
-            assert(attacker.x == 3 and attacker.y == 4,
+            -- It stepped two tiles straight back from the foe it bit...
+            assert(attacker.x == 2 and attacker.y == 4,
                 "the wolf gives ground, got " .. attacker.x .. "," .. attacker.y)
             -- ...so the defender's held melee counter, re-checked against the final board, finds nothing in reach.
             assert(attacker.char.stats.health.current == hpBefore, "the counter whiffs; the wolf is untouched")
@@ -350,7 +350,7 @@ return {
             assert(Combat.useItem(c, bandit, itemNamed(bandit.char, "weapon_iron_sword"), 5, 4),
                 "the bandit swings at the wolf")
             assert(bandit.char.stats.health.current < banditHp, "the wolf answered")
-            assert(wolf.x == 6 and wolf.y == 4,
+            assert(wolf.x == 7 and wolf.y == 4,
                 "the wolf gives ground after countering, got " .. wolf.x .. "," .. wolf.y)
         end,
     },

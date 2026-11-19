@@ -1,15 +1,17 @@
 -- THE DREAD OF THE WHITEOUT: the yeti matriarch, an elite on the tundra's approach ("Sloth's Bestiary", slice A,
--- 2026-10-04). She walks with two or three yeti, and they do her rooting.
+-- 2026-10-04). She walks with two or three yeti, and they frighten the stragglers she takes.
 --
 --   WHITEOUT              she is Unseen to foes more than 2 tiles away (utility_the_whiteout, trait_whiteout --
 --                         the Shadow Mantle's `concealedBeyond`, at 2)
---   DRAG INTO THE WHITE   at the top of her turn she hauls the nearest Rooted foe 3 tiles toward her and away from
---                         its friends, still Rooted (utility_drag_into_the_white, trait_drag_into_the_white)
+--   DRAG INTO THE WHITE   at the top of her turn she hauls the nearest foe with no ally beside it 3 tiles toward
+--                         her and away from its friends (utility_drag_into_the_white, trait_drag_into_the_white)
 --
 -- THE COUNTERPLAY, STATED, and it is the review's own: close the distance as a group so she cannot pick anyone off.
 -- Limn her, or keep a body near enough to see her.
 --
--- She does not roar; her yeti do. Kill them and nothing on the board is Rooted for her to take.
+-- She does not roar; her yeti do, and a Cowering straggler is slow getting back to the group she just pulled it
+-- out of. She took only a Rooted body until the creature identity pass (2026-11-19) moved the pair off Root; now
+-- she needs no yeti to have a rule -- the straggler is hers either way.
 return {
     name = "The Dread of the Whiteout",
     race = "beast",

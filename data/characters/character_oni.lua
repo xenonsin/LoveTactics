@@ -29,4 +29,5 @@ return {
     drops = { "utility_oni_horn" },
     defaultAction = "weapon_iron_sword",
     signatureWeapon = "weapon_iron_sword",
+    ai = require("models.wrath_targeting").oni, -- the marked, else the nearest (2026-11-19)
 }

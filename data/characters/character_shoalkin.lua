@@ -18,6 +18,13 @@
 --
 -- The knife is the whole kit, and the grid is deliberately loose: the race takes a cell, and an author
 -- who fills all nine on a naga will find out the hard way (tests/race_spec.lua counts).
+--
+-- ITS IDENTITY LEVER IS THE WATER (2026-11-19, the creature identity pass). The audit called it chaff
+-- with an invisible trick -- the knife collects on Wet, and nothing is Wet until a lancer has acted. So it
+-- now carries Lying Low (utility_lying_low): +25 Avoid while it stands in water, nothing on the bank.
+-- That is a question about WHERE you fight it, readable off the board before it moves, and the two
+-- answers are the faction's own weakness: drag it out of the channel, or put lightning through the
+-- channel it is hiding in. Its blow follows the cover: it takes the body it can finish.
 return {
     name = "Shoalkin",
     race = "naga",
@@ -35,8 +42,8 @@ return {
         skill = 5, luck = 4,
     },
     startingItems = {
-        "weapon_silt_knife", false, false,
-        false,               false, false,
+        "weapon_silt_knife", "utility_lying_low", false,
+        false,               false,               false,
         false,               false, false,
     },
     drops = {
@@ -49,9 +56,10 @@ return {
     defaultAction = "weapon_silt_knife",
     signatureWeapon = "weapon_silt_knife",
     ai = {
-        -- Straight at whoever is closest to falling. A Shoalkin has no plan; the plan is that there are
-        -- five of them and the Lancer behind them is working the same bank.
-        { priority = "normal", act = "attack", targetPref = "lowest_hp",
+        -- The blow that ends somebody (2026-11-19, the targeting pass). A Shoalkin has no plan; the plan
+        -- is that there are five of them, hard to hit in the channel, and each one swings where a knife
+        -- can finish the job -- which is where the Lancer has already soaked the bank.
+        { priority = "normal", act = "attack", targetPref = "lethal",
           when = { subject = "any_foe", test = "in_reach" } },
     },
 }

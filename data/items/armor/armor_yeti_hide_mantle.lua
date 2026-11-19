@@ -16,6 +16,6 @@ return {
     unlockLevel = 9,
     unstocked = true,
     traits = { "trait_whiteout_roar" },
-    traitParams = { radius = 3, nearest = true },
+    traitParams = { radius = 3, nearest = true, status = "status_root", duration = false },
     bonus = { defense = Curve.ramp(3, 13), movement = -1 },
 }

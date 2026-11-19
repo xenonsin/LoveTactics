@@ -28,4 +28,10 @@ return {
     },
     drops = { "utility_heralds_trumpet" },
     defaultAction = "weapon_choir_light",
+    -- TARGETING (the creature identity pass, 2026-11-19): a choir drowns out a rival voice: the Herald's bolt goes at
+    -- a caster winding up.
+    ai = {
+        { priority = "high", act = "attack", targetPref = "channeling",
+          when = { subject = "any_foe", test = "has_status", value = "status_channeling" } },
+    },
 }

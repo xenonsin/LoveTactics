@@ -12,7 +12,9 @@
 return {
     name = "Blood Feud",
     abbr = "Feud",
-    description = "Marked by the goblins: they deal 2 extra damage to it, and any that can reach it attacks nothing else.",
+    -- A Feud the Hobgoblin NAMED holds where a struck goblin's moves (models/feud.lua's Feud.named, 2026-11-19).
+    description = "Marked by the goblins: they deal 2 extra damage to it, and any that can reach it attacks nothing else."
+        .. " A Feud the Hobgoblin names is not moved by blows.",
     color = { 0.760, 0.180, 0.150 }, -- badge tint (blood)
     duration = 25, -- ~five turns; every fresh blow on a goblin renews it
     debuff = true,

@@ -2,15 +2,15 @@
 -- Keno's note that a trigger may repeat on a floor "if the payoff is unique". (Named Pent Up, not Short Fuse:
 -- that is Pol's signature relic, data/items/utility/utility_short_fuse.lua.)
 --
--- The trigger is Ira's and the Caldera King's: every hit it takes adds Seething (the existing status, more
--- Damage per stack). The payoff is its own: when it dies, the stacks BURST AS FIRE on every tile within one,
--- with more damage per stack (trait_pent_up). From three stacks it wears Primed, so the company can see the
--- bomb it is building. Bound and unstealable: an organ, not kit -- the drop is Bottled Rage, the burst put
--- under the bearer's control.
+-- A FIXED CHARGE SINCE 2026-11-19 (the creature identity pass; trait_pent_up has the whole account). It opens the
+-- fight Primed and bursts as fire on every tile within one when it dies, for the same damage however it was
+-- worn down. It used to bank Seething per hit taken, which was the fourth "chipping it charges it" body on Wrath's
+-- floors; the lever is now where it dies, not how often it was struck. Bound and unstealable: an organ, not kit --
+-- the drop is Bottled Rage, the burst put under the bearer's control.
 return {
     name = "Pent Up",
-    description = "Each hit taken adds Seething. On death, deals 6 plus 6 per stack to everything adjacent and sets it alight.",
-    flavor = "Every blow goes in and none of it comes out. Until it all does.",
+    description = "Primed from the start. On death, deals 24 damage to everything adjacent and sets it alight.",
+    flavor = "Every blow went in years ago. None of it has come out yet.",
     sprite = "assets/items/utility_pent_up.png",
     type = "utility",
     tags = { "natural" },

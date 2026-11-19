@@ -22,8 +22,10 @@ return {
         speed = 5,
         skill = 4, luck = 3,
     },
-    -- Skin like a cliff face: a club finds nothing to break, and a point finds the cracks.
-    resist = { impact = 3, pierce = -3 },
+    -- Skin like a cliff face: a club finds nothing to break, and an axe splits the strata. And the bolt that put it in
+    -- its chains is still in it: lightning goes straight to the iron. (Was pierce-weak until 2026-11-19, the creature
+    -- identity pass, which found every heavy body on Pride's floors asking for a spear.)
+    resist = { impact = 3, slash = -3, lightning = -3 },
     startingItems = {
         "weapon_hanging_chain", "utility_the_gods_chains", "utility_the_chains_break",
         false,                  false,                     false,

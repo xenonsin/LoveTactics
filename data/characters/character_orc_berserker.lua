@@ -31,4 +31,5 @@ return {
     drops = { "weapon_unbroken_axe", "utility_warpaint" },
     defaultAction = "weapon_iron_axe",
     signatureWeapon = "weapon_iron_axe",
+    ai = require("models.wrath_targeting").orc, -- the killing blow (2026-11-19)
 }

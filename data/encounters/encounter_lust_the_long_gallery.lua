@@ -34,6 +34,9 @@
 -- IS ITS PLACEMENT. A circle owns a fixed stratum, so a depth on top of that is a second opinion about
 -- where this goes, and it disagrees the moment the shuffle deals Lust at another depth
 -- (Descent.sinOrder).
+-- THE KNIGHT HERE IS THE BLOODED KNIGHT (2026-11-19, the creature identity pass): the generic knight
+-- with the Warden's Oath in place of his mail, so he takes the first blow each turn aimed at the ally
+-- beside him -- her. See data/characters/character_blooded_knight.lua.
 local Band = require("models.band")
 
 return {
@@ -55,6 +58,6 @@ return {
         -- in armour lengthen a fight far more than their count suggests, so a stop that fields them
         -- fields fewer of them than one that fields animals.
         local list = { "character_lesser_succubus" }
-        return Band.fill(list, ctx, "character_knight", { base = 2, per = 8, max = 2 })
+        return Band.fill(list, ctx, "character_blooded_knight", { base = 2, per = 8, max = 2 })
     end,
 }

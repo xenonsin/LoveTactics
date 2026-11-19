@@ -4,7 +4,12 @@
 -- A DELVER STILL, AND DEAD. It extends character_dwarf_delver.lua the way the Skeleton Knight extends the
 -- knight: the sprite (redrawn in bone), the class, the hammer and Delve are the living blueprint's, and so
 -- is the race -- Stout (it cannot be moved, it cannot be robbed) and Inheritance. `undead = true` is what
--- happened to it (models/character.lua), and Bare Bones is the lattice and the bone picture.
+-- happened to it (models/character.lua), and Bare Bones is the bone picture.
+--
+-- ITS HIDE IS THE DWARF'S NOW, NOT THE ORCHARD'S (2026-11-19, the creature identity pass). Bare Bones gave
+-- up its slash/pierce/impact lattice so the bone bodies stop all asking for a mace, and what is left on
+-- this frame is the race's line: fire runs off it, and a hammer still rings it (-2), only not at the
+-- lattice's -8. Its lever is WHERE you stand -- it comes up from below (Delve) -- not what you bring.
 --
 -- WHAT DIED WITH IT IS THE WANT. "As skeletons they lose desire for gold": Stout's pull toward loose gold is
 -- a rule the dead forget (trait_stout's `deadForget`), so it walks past a heap -- no pocket, no
@@ -22,7 +27,7 @@ dead.coffer = nil
 
 dead.stats = {}
 for k, v in pairs(base.stats) do dead.stats[k] = v end
--- Thin, on the Skeleton Knight's measured argument: the lattice is the identity and the pool is not.
+-- Thin, on the Skeleton Knight's measured argument: the hide is the identity and the pool is not.
 dead.stats.health = 18
 
 dead.startingItems = {

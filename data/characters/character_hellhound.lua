@@ -35,4 +35,10 @@ return {
     drops = { "utility_hellhound_collar" },
     defaultAction = "weapon_hellhound_bite",
     archetype = "aggressive",
+    -- TARGETING (the creature identity pass, 2026-11-19): the kennel runs down the body with the fewest ways out, the
+    -- one the pack has cornered.
+    ai = {
+        { priority = "normal", act = "attack", targetPref = "hemmed",
+          when = { subject = "any_foe", test = "exists" } },
+    },
 }

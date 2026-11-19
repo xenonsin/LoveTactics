@@ -1,41 +1,31 @@
 -- PENT UP: the Goblin Brute's rule (data/items/utility/utility_pent_up.lua).
 --
--- Each hit taken adds a stack of Seething, counted the way Boil Over counts it (`count`, magnitude = count x
--- step). It never erupts while the Brute stands -- that is the Caldera King's payoff, not this one. It bursts
--- when the Brute DIES: fire on every tile within one, and `perStack` damage per stack to every body there,
--- both sides (a bomb is not particular). At `primeAt` stacks it wears Primed, the badge that says so.
+-- THE BRUTE IS A BOMB WITH A FIXED CHARGE (2026-11-19, the creature identity pass). It opens every fight Primed,
+-- and when it dies it bursts: fire on every tile within one, and `power` damage to every body there, both sides
+-- (a bomb is not particular). Nothing it takes makes the burst bigger.
 --
--- So chipping at it makes it both stronger and a bomb: kill it in one blow, from range, or while it stands
--- among its own.
-local STEP = 2
+-- IT USED TO COUNT THE BLOWS. Each hit added Seething, the burst was 6 plus 6 a stack, and Primed came at three
+-- -- Ira's trigger with its own payoff, approved 2026-09-26 on "a trigger may repeat if the payoff is unique". The
+-- audit then found four bodies on Wrath's floors teaching the same sentence ("chipping it charges it: burst it or
+-- leave it alone") -- the Asura's chi, this, the Cinder Slime and the Caldera King -- and the asura were kept on
+-- it. So the Brute's charge is fixed and its lever moved from ORDER to POSITION: what matters now is not how many
+-- times you hit it but WHERE it is when it dies. Finish it from range, or with nobody of yours beside it, or drive
+-- it into its own warband and let it go off there.
+local POWER = 24
 
 return {
     name = "Pent Up",
-    description = "Each hit taken adds Seething. On death, deals 6 plus 6 per stack to everything adjacent and sets it alight.",
-    notAReaction = true, -- a stunned Brute still takes it in
-    perStack = 6,
-    base = 6,
-    primeAt = 3,
-    onDamaged = function(ctx)
+    description = "Primed from the start. On death, deals 24 damage to everything adjacent and sets it alight.",
+    notAReaction = true, -- a stunned Brute still bursts
+    power = POWER,
+    onCombatStart = function(ctx)
         local u = ctx.unit
-        if not (u and u.alive) or (ctx.amount or 0) <= 0 then return end
-        local Status = require("models.status")
-        if not Status.has(u, "status_seething") then ctx.applyStatus(u, "status_seething", { magnitude = 0 }) end
-        local s = Status.get(u, "status_seething")
-        if not s then return end
-        s.count = (s.count or math.floor((s.magnitude or 0) / STEP)) + 1
-        s.magnitude = s.count * STEP
-        if s.count >= ctx.param("primeAt", 3) and not Status.has(u, "status_primed") then
-            ctx.applyStatus(u, "status_primed")
-        end
+        if u and u.alive then ctx.applyStatus(u, "status_primed") end
     end,
     onDeath = function(ctx)
         local u = ctx.unit
         if not u then return end
-        local s = require("models.status").get(u, "status_seething")
-        local stacks = (s and s.count) or 0
-        if stacks <= 0 then return end
-        local power = ctx.param("base", 6) + ctx.param("perStack", 6) * stacks
+        local power = ctx.param("power", POWER)
         ctx.log("action", string.format("%s bursts!", (u.char and u.char.name) or "It"), u)
         ctx.burst(u.x, u.y, { "fire" })
         for dy = -1, 1 do

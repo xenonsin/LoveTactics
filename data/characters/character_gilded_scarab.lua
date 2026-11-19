@@ -32,4 +32,11 @@ return {
     drops = { "ability_gathering_roll" },
     defaultAction = "weapon_mandibles",
     archetype = "aggressive",
+    -- TARGETING (2026-11-19, the Greed targeting pass): a coin-eater goes for gold, and a body wearing
+    -- Gilded is gold with legs. Only when somebody is Gilded (the King's Crown, his guard's touch); with
+    -- nobody gilt it falls to its posture as it always did.
+    ai = {
+        { priority = "normal", act = "attack", targetPref = "gilded",
+          when = { subject = "any_foe", test = "has_status", value = "status_gilded" } },
+    },
 }

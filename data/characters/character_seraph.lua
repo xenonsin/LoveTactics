@@ -27,4 +27,10 @@ return {
     },
     drops = { "armor_seraphs_wing" },
     defaultAction = "weapon_seraph_flame",
+    -- TARGETING (the creature identity pass, 2026-11-19): the Burning One closes on the nearest body and stays there,
+    -- which is where its wing burns.
+    ai = {
+        { priority = "normal", act = "attack", targetPref = "nearest",
+          when = { subject = "any_foe", test = "exists" } },
+    },
 }

@@ -52,4 +52,5 @@ return {
     },
     signatureWeapon = "utility_iron_fist",
     signatureAbility = "ability_every_arm",
+    ai = require("models.wrath_targeting").asura, -- whoever is winding up (2026-11-19)
 }

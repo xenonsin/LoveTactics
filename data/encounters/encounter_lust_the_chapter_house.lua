@@ -24,6 +24,9 @@
 -- cleared of them, and what the distinction is.
 --
 -- Locked to Lust's stratum by ctx.biome (the fen since the 2026-09-25 swap). NO DEPTH GATE: ITS CIRCLE IS ITS PLACEMENT.
+-- THE KNIGHT HERE IS THE BLOODED KNIGHT (2026-11-19, the creature identity pass): the generic knight
+-- with the Warden's Oath in place of his mail, so he takes the first blow each turn aimed at the ally
+-- beside him -- her. See data/characters/character_blooded_knight.lua.
 local Band = require("models.band")
 
 return {
@@ -34,7 +37,7 @@ return {
     rung = 2, -- home floor of the circle (models/encounter.lua)
     composition = function(ctx)
         local list = { "character_succubus", "character_lesser_succubus" }
-        Band.fill(list, ctx, "character_knight", { base = 1, per = 7, max = 2 })
+        Band.fill(list, ctx, "character_blooded_knight", { base = 1, per = 7, max = 2 })
         return Band.fill(list, ctx, "character_priest", { base = 1, per = 7, max = 2 })
     end,
 }

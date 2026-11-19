@@ -1,9 +1,12 @@
 -- YETI: the thing in the whiteout, on the tundra's approach ("Sloth's Bestiary", slice A, 2026-10-04).
 --
---   WHITEOUT ROAR   at the start of its turn it roars: each foe within 4 with no ally beside it is Rooted, frozen
---                   with fear (utility_whiteout_roar, trait_whiteout_roar; models/sloth_beasts.lua)
+--   WHITEOUT ROAR   at the start of its turn it roars: each foe within 4 with no ally beside it is Cowering, two
+--                   fewer steps back to its friends (utility_whiteout_roar, trait_whiteout_roar; models/sloth_beasts.lua)
 --
 -- THE COUNTERPLAY, STATED, and it is the review's own: move in pairs.
+--
+-- ITS LEVER IS POSITION, and it no longer rides Root (the creature identity pass, 2026-11-19): four Sloth bodies
+-- hinged on Root, and the yeti's lesson is distance from a friend, which the flinch says as plainly.
 --
 -- A thick pelt over a heavy frame: a club sinks in, a point goes through to something.
 return {

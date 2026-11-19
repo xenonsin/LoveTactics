@@ -33,4 +33,10 @@ return {
     drops = { "ability_hook_and_drag" },
     defaultAction = "weapon_drag_below",
     archetype = "aggressive",
+    -- TARGETING (the creature identity pass, 2026-11-19): it drags the body whose way to it crosses fire, a trap or a
+    -- drop (the pull scans the line back).
+    ai = {
+        { priority = "normal", act = "attack", targetPref = "hazardous",
+          when = { subject = "any_foe", test = "exists" } },
+    },
 }

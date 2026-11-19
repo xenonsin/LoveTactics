@@ -7,14 +7,18 @@
 -- he grows on the classless fallback. The tag seeds Grave-Cold, and his curse is asked ahead of it.
 --
 -- HIS DEFENCE IS THE GOLD, AND IT PAYS OUT (utility_gilded_flesh):
---   GOLD PLATE        six plates, +2 Defense each; ANY blow knocks one off as a coin heap beside him. He
---                     never eats one back and nothing re-plates him, so he gets softer as the fight pays.
+--   GOLD PLATE        six plates, +2 Defense each; ANY blow knocks one off as a coin heap beside him.
+--   THE GOLD COMES    at the start of his turn, one heap beside him climbs back on as a plate, never past six
+--     BACK            (2026-11-19, the creature identity pass: his IDENTITY LEVER). The heaps used to be a
+--                     payout with no decision in them. Now where you stand and what you loot matters: take
+--                     the gold off the floor as you go, or fight him away from it -- a plate lands on the
+--                     side away from the blow, so his heaps pile up BEHIND him.
 --   TURNED TO GOLD    he cannot be healed: a heal aimed at him is a coin heap instead
 --   THE GILDED GUARD  the dwarves he hired to dig his vault, and kept, open the fight Gilded
 -- And he wears the Gilded Crown, so a real fight opens him Gilded too: slower still, and harder at the bell.
 --
 -- SLOW AND WEAK IN THE ARM: a sceptre, a short walk and a late turn. What makes him an elite is the shell
--- and the guard, and the answer is many blows rather than big ones -- every one of them is a heap.
+-- and the guard, and the answer is many blows and a hand free to pick up what they knock loose.
 --
 -- `boss`, as every elite body is, and never an `assassinate` mark (encounter_greed_the_gilded_king).
 return {

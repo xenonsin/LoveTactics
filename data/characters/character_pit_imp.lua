@@ -33,4 +33,10 @@ return {
     drops = { "ability_signed_in_blood" },
     defaultAction = "weapon_the_offer",
     archetype = "aggressive",
+    -- TARGETING (the creature identity pass, 2026-11-19): the Offer goes where a body is about to fall; a debt is best
+    -- sold to the desperate.
+    ai = {
+        { priority = "normal", act = "attack", targetPref = "lethal",
+          when = { subject = "any_foe", test = "exists" } },
+    },
 }

@@ -33,4 +33,10 @@ return {
     },
     drops = { "utility_pinhole_mouth" },
     defaultAction = "weapon_hungry_grasp",
+    -- TARGETING (the creature identity pass, 2026-11-19): it goes where the heals will go: the most wounded body, so
+    -- the next draught lands within its 2.
+    ai = {
+        { priority = "normal", act = "attack", targetPref = "lowest_hp",
+          when = { subject = "any_foe", test = "exists" } },
+    },
 }

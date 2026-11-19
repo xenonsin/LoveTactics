@@ -33,4 +33,10 @@ return {
     -- ITS OWN PIECE (docs/drops.md): the barrier, on a Defend.
     drops = { "armor_bailiffs_bar" },
     archetype = "aggressive",
+    -- IT HOLDS THE GATE (the creature identity pass's targeting sweep, 2026-11-19): the Bailiff braces the
+    -- Tollkeepers beside it, so it does not wander off after a far body -- it strikes the nearest.
+    ai = {
+        { priority = "normal", act = "attack", targetPref = "nearest",
+          when = { subject = "any_foe", test = "exists" } },
+    },
 }

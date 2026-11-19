@@ -239,14 +239,99 @@ end
 
 -- The turn-top rule (status_faceless calls this). A body that has its face chosen for it some other way
 -- (`unit.faceLocked`: the Doppelganger's copy, a Mask-Maker's assignment) skips the read.
+--
+-- CREATURE IDENTITY PASS (2026-11-19): two more answers before the read. An Unmasked body (Faces.knockOff) puts
+-- on nothing until its turn ends. And a body that has COMMITTED its next face (`unit.nextFace`, the Faceless
+-- Champion's telegraph -- Faces.telegraph) wears that one rather than reading again, so the badge that named it a
+-- turn ago tells the truth.
 function Faces.reshape(combat, unit)
     if not (unit and unit.alive) or unit.faceLocked then return nil end
+    if require("models.status").has(unit, Faces.UNMASKED) then return nil end
     if not unit.faceHand or #unit.faceHand == 0 then return nil end
+    local committed = unit.nextFace
+    if committed then
+        -- Already wearing the face it promised (the bell reads twice -- the champion's own opener and the race's --
+        -- and both see the same board): the promise stands, badge and all, until it is kept by a change of face
+        -- or replaced at the turn's end.
+        if committed == unit.faceWorn and require("models.transform").isTransformed(unit) then return unit.char end
+        unit.nextFace = nil
+        unit.faceForm = unit.nextForm or unit.faceForm
+        require("models.status").remove(combat, unit, Faces.NEXT)
+        return Faces.wear(combat, unit, committed)
+    end
     local form = Faces.read(combat, unit)
     unit.faceForm = form
     local face = Faces.pick(unit, form)
     if face then return Faces.wear(combat, unit, face) end
     return nil
 end
+
+-- --------------------------------------------------------------- CREATURE IDENTITY PASS (2026-11-19)
+-- THE RACE'S CONSTANT TELL: an impact blow knocks the face off. A Faceless's identity was borrowed -- it wore
+-- whatever answered the nearest of the company -- so the player only ever reacted to the face. A flat blow lands
+-- on all of a shape that gives (the race's own resist line, impact -2, already says so), and now it knocks the
+-- face clean off: the body reverts to its own grey shape and is Unmasked until its next turn ends. So a club is
+-- an answer under every face in the bestiary.
+--
+-- Only a face REshape chose. A locked face is somebody else's script -- the Doppelganger's copy, a Mask-Maker's
+-- assignment, the Assassin's disguise, a stolen face held for its ticks, the general's forms -- and knocking one
+-- of those off would leave a body its script never puts back. A `boss` is a fight, not a face-wearer, and keeps
+-- its face for the same reason.
+Faces.UNMASKED = "status_unmasked"
+
+local function hasTag(tags, want)
+    for _, t in ipairs(tags or {}) do if t == want then return true end end
+    return false
+end
+
+-- Would a blow carrying `tags` knock `unit`'s face off? Pure, so a spec and the trait ask the same question.
+function Faces.knockable(unit, tags)
+    if not (unit and unit.alive and unit.faceWorn) or unit.faceLocked then return false end
+    if not require("models.transform").isTransformed(unit) then return false end
+    local own = Faces.originalChar(unit)
+    local def = own and Character.defs[own.id]
+    if def and def.boss then return false end
+    return hasTag(tags, "impact")
+end
+
+-- Knock the face off: back into its own body, what the face's opener laid comes off with it, and Unmasked.
+-- Returns true when a face came off.
+function Faces.knockOff(combat, unit, tags, attacker)
+    if not Faces.knockable(unit, tags) then return false end
+    local Status = require("models.status")
+    local Combat = require("models.combat")
+    local face = unit.char and unit.char.name
+    -- A champion's face opened its race's rule as it was put on (StolenFaces.openFace); that goes with the face.
+    for _, id in ipairs(unit.faceOpened or {}) do Status.remove(combat, unit, id) end
+    unit.faceOpened = nil
+    if not require("models.transform").revert(combat, unit) then return false end
+    -- Nothing is worn now, so the Colossus has no first face to lend a second one beside (models/masks.lua).
+    unit.faceWorn, unit.secondFace, unit._secondFaceShape = nil, nil, nil
+    Status.apply(combat, unit, Faces.UNMASKED, { applier = attacker })
+    Combat.logEvent(combat, "status", string.format("The blow knocks the %s face off it.", face or "borrowed"), unit)
+    return true
+end
+
+-- THE CHAMPION'S TELEGRAPH. Its counter was four other bodies' identities, picked by the same nearest-foe read as
+-- every Faceless, so the player only ever met the face after it was on. Now, at the end of its turn, it reads the
+-- nearest of the company as the board stands and COMMITS the face it will wear next (`unit.nextFace`), named on a
+-- badge (status_next_face). Reshape wears exactly that one at the top of its next turn. So the player knows which
+-- champion is coming and chooses who stands nearest it -- magic beside the Untouchable, a shield beside the
+-- Challenger. Returns the committed face's id, or nil.
+Faces.NEXT = "status_next_face"
+
+function Faces.telegraph(combat, unit)
+    if not (unit and unit.alive) or unit.faceLocked then return nil end
+    if not unit.faceHand or #unit.faceHand == 0 then return nil end
+    local form = Faces.read(combat, unit)
+    local face = Faces.pick(unit, form)
+    if not face then return nil end
+    unit.nextFace, unit.nextForm = face, form
+    local def = type(face) == "string" and Character.defs[face]
+    local st = require("models.status").apply(combat, unit, Faces.NEXT, { applier = unit })
+    if st then st.face = (def and def.name) or (type(face) == "table" and face.name) or tostring(face) end
+    return face
+end
+-- --------------------------------------------------------------- end CREATURE IDENTITY PASS
 
 return Faces

@@ -82,7 +82,8 @@ return {
         assert(not Trait.flag(dead, "seeksHeaps"), "Stout's want is gone: it walks past loose gold")
         assert(Trait.flag(living, "seeksHeaps"), "a living dwarf still goes for the gold")
         assert(hasItem(dead, "ability_delve") and hasItem(dead, "utility_bare_bones"), "Delve, and the bone")
-        assert(dead.resist.impact < 0 and dead.resist.slash > 0, "the lattice: a hammer, not a blade")
+        -- The race's line now, not the orchard's lattice (Bare Bones lost it on 2026-11-19).
+        assert(dead.resist.impact < 0 and dead.resist.slash > 0, "the dwarf's line: a hammer, not a blade")
     end },
 
     { name = "a dead kobold kneels to a lich, and a living one does not", fn = function()

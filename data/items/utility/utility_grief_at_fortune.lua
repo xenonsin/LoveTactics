@@ -5,7 +5,7 @@
 -- over is on the body's `drops` list instead (the Thorned Staff).
 return {
     name = "Grief at Your Fortune",
-    description = "Once a round, when a foe it can see is healed or blessed, it leaps beside that foe and strikes.",
+    description = "Once a round, when a foe it can see is healed, blessed or fells a body, it leaps beside that foe and strikes.",
     flavor = "She wastes at the sight of anyone doing well, and she has never once looked away.",
     sprite = "assets/items/utility_grief_at_fortune.png",
     type = "utility",
@@ -14,4 +14,6 @@ return {
     bound = true,
     noSteal = true, -- a creature's body is not loot
     traits = { "trait_grief_at_fortune" },
+    -- Her own reads kills as well (creature identity pass, 2026-11-19); the Thorned Staff's does not.
+    traitParams = { grievesKills = true },
 }

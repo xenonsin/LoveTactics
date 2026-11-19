@@ -238,7 +238,7 @@ return {
             openTurn(c, w)
             local result = Combat.strikeWith(c, w, fangs, prey.x, prey.y)
             assert(result.damageDealt > 0, "the wolf bites")
-            assert(w.x == 6 and w.y == 2, "and springs back out of reach")
+            assert(w.x == 7 and w.y == 2, "and springs two tiles back out of reach")
 
             -- The preview path must survive the same effect without erroring, or hovering a wolf's
             -- attack would take the panel down.

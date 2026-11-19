@@ -18,7 +18,17 @@
 -- outright, the ninja's own weakness.
 --
 -- Slower than every wolf (movement 4, speed 4): an ambusher, not a runner -- the pounce's three tiles are
--- how it closes. The hide turns an edge; a club knocks it flat (impact -3), as with most of the wood.
+-- how it closes.
+--
+-- SPLIT FROM THE LONGFANG (2026-11-19, the creature identity pass, "same-pounce"). The two cats were one
+-- loop with one sentence added. Now the Sabertooth is ONLY the ambusher: it no longer carries Feral
+-- Instinct, so the round it stands exposed after a pounce is a round it can be hit for free -- the strike-
+-- back is the Longfang's, who stands in the open and lends her pride the kill-kept veil
+-- (data/traits/trait_the_longfangs_hunt.lua). Its blow goes where the pounce can end somebody.
+--
+-- AND ITS HIDE ASKS FOR A BLADE (same pass, "same-mace"): nine of the wood's beasts wore slash+/impact-,
+-- so every Gluttony fight answered "bring a mace". A cat is muscle under a short coat -- a club is soaked
+-- by the weight of it, and an edge opens it (slash -3, impact +3). The wolves and the boars keep the mace.
 return {
     name = "Sabertooth",
     race = "beast",
@@ -33,10 +43,10 @@ return {
         speed = 4,
         skill = 4, luck = 5,
     },
-    resist = { slash = 3, impact = -3 },
+    resist = { slash = -3, impact = 3 },
     startingItems = {
         "weapon_pounce",          "utility_tawny_hide",    "utility_wood_walker",
-        "utility_feral_instinct", false,                   false,
+        false,                    false,                   false,
         false,                    false,                   false,
     },
     -- Its patience as a cloak, its crit as a charm, and its appetite as a cord. Shallow to deep
@@ -45,9 +55,10 @@ return {
     defaultAction = "weapon_pounce",
     archetype = "aggressive",
     -- Nothing here names the hiding: the planner scores a blow by its forecast, and a pounce out of hiding
-    -- forecasts a critical, so it is taken without being told to be. What the rule adds is the kill.
+    -- forecasts a critical, so it is taken without being told to be. What the rule adds is the kill: an
+    -- ambusher goes for the body its bite can END (`lethal`, 2026-11-19), not merely the most wounded.
     ai = {
-        { priority = "high", act = "attack", targetPref = "lowest_hp",
-          when = { subject = "foe_lowest_hp", test = "hp_pct_below", value = 0.5 } },
+        { priority = "high", act = "attack", targetPref = "lethal",
+          when = { subject = "any_foe", test = "in_reach" } },
     },
 }

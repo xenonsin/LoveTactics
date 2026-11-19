@@ -4,43 +4,38 @@
 -- crossing, no cover (data/biomes/desert.lua). So on this floor your opening move is INFORMATION, and
 -- this is the body that hands the information back.
 --
--- Implemented as a strike scaled by what the mimic has been hit with rather than by re-casting a stored
--- ability: re-casting would mean a mimic that had eaten a party's best spell could delete the party with
--- it, and a body that copies your peak output is not counterplay, it is a coin flip. Instead it hits
--- harder the more it has been hit, which reads as the same idea at the board level -- swing big at it,
--- and it swings big back -- and stays inside the numbers its rung was authored for.
+-- WHAT IT THROWS BACK IS THE ELEMENT, NOT THE SPELL (creature identity pass, 2026-11-19). It used to be a
+-- strike that grew with the mimic's missing health -- a ramp that read like every enrage in the game, under a
+-- description that promised something else. Now the weapon carries trait_ashen_echo: an elemental blow that
+-- wounds the mimic is remembered, and this strike carries that element until a plain blow clears it (the
+-- Resonant Grip's own machinery, `carriesLastElement`). The badge names the element.
 --
--- `struck` rides on the item instance, so two mimics on the same board each answer for their own
--- bruises rather than sharing one tally.
+-- Still not a literal re-cast, for the reason the old header gave: a mimic that re-threw a party's best spell
+-- would be a coin flip and would sit outside its rung. Borrowing the ELEMENT keeps the blow this weapon's size
+-- and turns it into a question about resists -- your fire, landing on whoever is weakest to fire.
+--
+-- The Second Self wields the same echo, and is ash for the same reason.
 local Curve = require("models.curve")
-
-local PER_WOUND = 2  -- damage added per blow it has taken
-local CEILING = 14   -- ...and the cap, so a long fight cannot turn it into a general
 
 return {
     name = "Ashen Echo",
-    description = "Strikes an adjacent foe. Increase damage by 2 per 10 health it is missing, up to 14.",
+    description = "Strikes an adjacent foe. Its strikes carry the element of the last blow that wounded it, until a plain blow lands.",
     flavor = "It has no opinions of its own. It has an excellent memory for other people's.",
     sprite = "assets/items/ashen_echo.png",
     type = "weapon",
     class = "creature",
     tags = { "natural", "impact", "physical", "melee" },
     noSteal = true,
+    traits = { "trait_ashen_echo" },
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 3,
         cost = { stat = "stamina", amount = 5 },
         damage = Curve.ramp(5, 15),
+        -- The element rides in through Combat.dealDamage (Combat.strikeElement), so the effect is a plain blow.
         effect = function(fx)
-            local u = fx.user
-            local hp = u.char and u.char.stats and u.char.stats.health
-            local taken = 0
-            if hp and hp.max then taken = math.max(0, hp.max - (hp.current or hp.max)) end
-            -- Read off missing health rather than a counter, so it cannot drift out of step with the
-            -- board and needs nothing stored between turns.
-            local bonus = math.min(CEILING, math.floor(taken / 10) * PER_WOUND)
-            fx.damage(fx.target, { amount = (fx.amount or 0) + bonus })
+            fx.damage(fx.target)
         end,
     },
 }

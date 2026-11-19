@@ -396,10 +396,13 @@ return {
             assert(hp(scarred) > 5, "the scarred Grunt heals")
             assert(Trait.has(scarred, "trait_the_strongest_leads"), "and leads now")
             assert(not Trait.has(plain, "trait_the_strongest_leads"), "the fresh one does not")
-            local dmg = Combat.flatStat(plain, "damage")
-            Status.remove(c, plain, "status_proven")
-            plain.x, plain.y = scarred.x + 1, scarred.y
-            assert(Combat.flatStat(plain, "damage") >= dmg, "and its Presence reaches the one beside it")
+            -- ...and its Presence with it, which since 2026-11-19 roots a foe that ends its turn beside it (it was a
+            -- +2 Damage aura; tests/identity_wrath_spec.lua holds the Warchief to the new one).
+            -- The fresh Grunt stands behind the foe, so the heir's own Shouldering meets a body and moves nothing.
+            foe.x, foe.y = scarred.x + 1, scarred.y
+            plain.x, plain.y = scarred.x + 2, scarred.y
+            Trait.onAnyTurnEnd(c, foe)
+            assert(Status.has(foe, "status_root"), "and its Presence holds the foe beside it")
         end,
     },
     {

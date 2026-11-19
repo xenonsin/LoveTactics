@@ -45,6 +45,9 @@
 --
 -- THE OBJECTIVE (the objective pass, 2026-10-21): kill the Abbess. The payoff above made into the win: when
 -- she falls the room is over, and the congregation goes back to itself instead of being cut down.
+-- THE KNIGHT HERE IS THE BLOODED KNIGHT (2026-11-19, the creature identity pass): the generic knight
+-- with the Warden's Oath in place of his mail, so he takes the first blow each turn aimed at the ally
+-- beside him -- her. See data/characters/character_blooded_knight.lua.
 local Band = require("models.band")
 
 return {
@@ -60,7 +63,7 @@ return {
         -- Her and one rung below her, then the congregation. The ladder the player climbed to get here,
         -- standing on one board.
         local list = { "character_succubus_abbess", "character_succubus" }
-        Band.fill(list, ctx, "character_knight", { base = 1, per = 7, max = 2 })
+        Band.fill(list, ctx, "character_blooded_knight", { base = 1, per = 7, max = 2 })
         return Band.fill(list, ctx, "character_priest", { base = 1, per = 7, max = 2 })
     end,
     -- `markStays`: she is meant to be in reach -- the congregation shields her by taking her wounds, not by standing

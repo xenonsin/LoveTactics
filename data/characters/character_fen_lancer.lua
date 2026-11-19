@@ -10,6 +10,12 @@
 -- undertow drags. The soaking is worth nothing by itself (nothing in this game is hurt by water); what
 -- it is worth is the Tidecaller's next turn, and the +6 that a soaked body takes from lightning.
 --
+-- ITS IDENTITY LEVER IS ITS OWN PAYOFF (2026-11-19, the creature identity pass). The audit found the
+-- lancer's identity existed only through the Tidecaller and the Siren. So the lance now collects on the
+-- Wet it lays: a body the point finds already soaked is knocked back a tile (weapon_brackish_lance). The
+-- first thrust soaks the rank behind; the second drives it, and on a fen the tile behind is often the
+-- channel. Stay dry beside a lancer, or keep dry ground at your back.
+--
 -- `class = "fighter"` rather than `knight`, and the reason is arithmetic rather than fiction. The
 -- knight table grows damage +1 a level against an enemy scaling of +3, so a level-20 knight-classed
 -- lancer cannot hurt an armoured party -- the exact trap `class = "rogue"` sprang on character_bandit.
@@ -49,9 +55,9 @@ return {
     defaultAction = "weapon_brackish_lance",
     signatureWeapon = "weapon_brackish_lance",
     ai = {
-        -- 1. Work the body standing nearest the water first. The lance does not displace anybody, so
-        --    this is not a drowning blow -- it is the Mere keeping the pressure on the bank, which is
-        --    where the Undertow wants the company to be when she takes her turn.
+        -- 1. Work the body standing nearest the water first. Since 2026-11-19 the lance knocks a Wet
+        --    body back a tile, so against a soaked bank this IS a drowning blow; against a dry one it is
+        --    the Mere keeping the pressure on, which is where the Undertow wants the company to be.
         { priority = "normal", act = "attack", item = "weapon_brackish_lance", targetPref = "drownable",
           when = { subject = "any_foe", test = "in_reach" } },
         -- 2. Otherwise reach out of the water and hit whatever is on it. The spear's own family rule

@@ -34,4 +34,5 @@ return {
     drops = { "ability_kings_lever" },
     defaultAction = "weapon_iron_hammer",
     signatureWeapon = "weapon_iron_hammer",
+    ai = require("models.wrath_targeting").goblin, -- the cornered body (2026-11-19)
 }

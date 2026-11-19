@@ -3,7 +3,8 @@
 -- it is standing on, so each is the same fight wherever it is met.
 --
 --   THE EVIL EYE     at the start of its turn it looks at the Fairest, and if it can see that body it sours one of
---                    its blessings into Rattled. It floats.
+--                    its blessings into Rattled -- or, with no blessing there to sour, Rattles it outright
+--                    (2026-11-19). It floats.
 --   MIRAGE           four identical bodies, three of them illusions: a blow fells one, and their blows land
 --                    nothing. Once a round, struck, the real one trades places with an illusion. Illusions weigh
 --                    nothing, so only the real one is Mired in quicksand.
@@ -66,7 +67,18 @@ function Envy.evilEye(combat, eye)
     if not body then return nil end
     if not Combat().hasLineOfSight(combat, eye.x, eye.y, body.x, body.y) then return nil end
     local id = blessingToSour(body)
-    if not id then return nil end
+    if not id then
+        -- NOTHING TO SOUR, AND THE LOOK STILL LANDS (creature identity pass, 2026-11-19: the same-envy-support row).
+        -- The eye read only blessings, so a company with no support body walked past it. The Fairest of a company
+        -- that holds no blessings is its healthiest body (models/fairest.lua's tie-break), and the eye falls on
+        -- whoever stands tallest all the same: that body is Rattled outright. It reads something every company
+        -- does -- keep your healthiest out of its sight, or let it be the one that is put off its aim.
+        if Status().has(body, "status_rattled") then return nil end
+        Status().apply(combat, body, "status_rattled", { applier = eye, duration = Envy.SOUR_TICKS })
+        Combat().logEvent(combat, "status", string.format("The Evil Eye falls on %s, and %s is Rattled.",
+            nameOf(body), nameOf(body)), { eye, body })
+        return "status_rattled"
+    end
     local def = Status().defs[id]
     Status().remove(combat, body, id)
     Status().apply(combat, body, "status_rattled", { applier = eye, duration = Envy.SOUR_TICKS })
@@ -443,6 +455,76 @@ local function ready(unit, item)
     return item ~= nil and Combat().itemBlockReason(unit, item) == nil
 end
 
+-- ------------------------------------------------------------------- the targeting pass (2026-11-19)
+--
+-- CREATURE IDENTITY PASS: each Envy family's target preference, where the planner's closed set of preferences
+-- (models/ai.lua's prefBonus) has no word for it. Every one of these is a PREFERENCE and not a compulsion: it
+-- returns a plan only when the body it wants can be struck THIS turn (from here or a tile it can walk to), and
+-- otherwise leaves the turn to the ordinary planner -- so none of them can walk a body away from a fight it is
+-- in to chase a favourite across the board. The company's own bodies are never compelled (the guard at the top
+-- of Envy.plan).
+--
+--   GLASS (mote, eater, Unwanted)  the Fairest -- the most blessed of the company, then the healthiest. Envy of
+--                                  what you built, and of whoever towers when you built nothing.
+--   THE EVIL EYE                   the Fairest too, with its gaze: the eye looks where the fortune is.
+--   MIMIC-OF-ASH                   whoever last struck it: what it throws back goes home to the body that threw it.
+--   STONE CHALLENGER (woken)       the foe carrying the most Stone: it finishes what Medusa's eyes began.
+
+-- A strike at `tt` this turn, or nil. strikeOrClose's own search, refusing its walk-closer fallback.
+local function strikeNow(combat, unit, tt, weapon, reason)
+    if not (tt and tt.alive and weapon and ready(unit, weapon)) then return nil end
+    local plan = strikeOrClose(combat, unit, tt, weapon, reason)
+    return (plan and plan.item) and plan or nil
+end
+
+local function carriedAny(unit, ids)
+    for _, id in ipairs(ids) do
+        local item = carried(unit, id)
+        if item then return item end
+    end
+    return nil
+end
+
+-- The foe of `unit` carrying the most Stone (status_stone), or nil when nobody carries any.
+local function mostStoned(combat, unit)
+    local best, bestN
+    for _, u in ipairs(foesOf(combat, unit)) do
+        local n = Status().stacksOf(u, "status_stone")
+        if n > 0 and (not bestN or n > bestN) then best, bestN = u, n end
+    end
+    return best
+end
+
+function Envy.targetPlan(combat, unit)
+    local Trait = require("models.trait")
+    -- A Taunted or Charmed body's turn belongs to whoever is holding it; a preference must not talk it out of that.
+    if Status().has(unit, "status_taunt") or Status().has(unit, "status_charm") then return nil end
+    local glass = carriedAny(unit, { "weapon_glass_shard", "weapon_vitreous_bite" })
+    if glass then
+        local plan = strikeNow(combat, unit, require("models.fairest").across(combat, unit), glass, "envies the Fairest")
+        if plan then return plan end
+    end
+    local gaze = carried(unit, "weapon_baleful_gaze")
+    if gaze then
+        local plan = strikeNow(combat, unit, require("models.fairest").across(combat, unit), gaze, "the eye on the Fairest")
+        if plan then return plan end
+    end
+    local echo = unit.char and unit.char.id == "character_mimic_of_ash" and carried(unit, "weapon_ashen_echo")
+    if echo then
+        local last = unit.lastAttacker
+        if last and last.side ~= unit.side then
+            local plan = strikeNow(combat, unit, last, echo, "throws it back")
+            if plan then return plan end
+        end
+    end
+    if unit.statueWoken and Trait.flag(unit, "dormantStatue") then
+        local plan = strikeNow(combat, unit, mostStoned(combat, unit), Combat().defaultWeapon(unit.char),
+            "finishes what her eyes began")
+        if plan then return plan end
+    end
+    return nil
+end
+
 function Envy.plan(combat, unit)
     if not (combat and unit and unit.alive) or unit.side == "party" then return nil end
     local Trait = require("models.trait")
@@ -471,7 +553,8 @@ function Envy.plan(combat, unit)
             return { item = roar, tx = unit.x, ty = unit.y, reason = "it hates closeness" }
         end
     end
-    return nil
+    -- THE TARGETING PASS (2026-11-19), last: a family's preference never preempts a body's own rule above.
+    return Envy.targetPlan(combat, unit)
 end
 
 return Envy

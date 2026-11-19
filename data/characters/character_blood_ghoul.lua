@@ -30,4 +30,5 @@ return {
     drops = { "consumable_vitae" },
     defaultAction = "weapon_iron_sword",
     signatureWeapon = "weapon_iron_sword",
+    ai = require("models.wrath_targeting").vampire, -- the faintest pulse, as its masters (2026-11-19)
 }

@@ -640,9 +640,16 @@ function Trait.trySurvive(combat, unit)
     -- oni of its side does not fall to the first lethal blow. It stays up at 1 health under Not Yet for one
     -- more action, and then it can fall. Once a body, and never the General itself -- the rule lives on the
     -- General, and the one who holds the clan up cannot hold itself.
+    --
+    -- AND ONLY WITHIN ITS REACH (2026-11-19, the creature identity pass): a trait declaring `radius` holds up an
+    -- oni that close to the General and no farther. It held the whole board up before, which made the General one
+    -- more kill-the-head alpha; with a reach the lever is POSITION -- draw the clan off it and they fall like
+    -- anybody else, while the oni at its side do not.
     if not unit.clanStood and Trait.flag(unit, "oniHorn") and not Trait.flag(unit, "clanStands") then
         for _, other in ipairs(combat.units or {}) do
-            if other ~= unit and other.alive and other.side == unit.side and Trait.flag(other, "clanStands") then
+            local stands = other ~= unit and other.alive and other.side == unit.side and Trait.flag(other, "clanStands")
+            local reach = stands and stands.def and stands.def.radius
+            if stands and (not reach or Combat.unitGap(unit, other) <= reach) then
                 unit.clanStood = true
                 unit.char.stats.health.current = 1
                 require("models.status").apply(combat, unit, "status_not_yet", { duration = 6 })
@@ -738,7 +745,19 @@ function Trait.trySurvive(combat, unit)
                 return true
             end
         end
-        if t.def.revivesOnLethal then
+        -- SEALED BY SILENCE (2026-11-19, the creature identity pass): a granter that names `silenceSeals`
+        -- -- the Barrow Lord's Binding -- cannot pay its toll while its bearer is Silenced, because Silence
+        -- seals the very pool the rise is bought from. Read through Trait.param so it is the GRANTER's
+        -- choice: Marrowlight in a company grid names nothing and rises through a Silence as it always did.
+        -- The refusal says so in the log, since a body that stays down when it rose last time is the one
+        -- moment the player has to be told why.
+        local sealed = t.def.revivesOnLethal and Trait.param(t, "silenceSeals")
+            and require("models.status").silenced(unit)
+        if sealed then
+            require("models.combat").logEvent(combat, "action", string.format("%s reaches for the rite, and the silence holds.",
+                (unit.char and unit.char.name) or "Unit"), unit)
+        end
+        if t.def.revivesOnLethal and not sealed then
             local cost = Trait.param(t, "cost")
             -- canPay only ASKS; payCost is the line under it that bills. Kept apart for the reason
             -- the pay helpers' own header gives -- a reflex that checks affordability and then

@@ -1,7 +1,9 @@
 -- THE ORC WARCHIEF, rung 3: the orcs' elite, and the strongest leads (approved as pitched, 2026-09-26, "The Orcs
 -- of Wrath"; Keno's reversal made the Warchief the elite).
 --
--- His Presence (utility_warchiefs_presence): allies within 3 deal +2 Damage. The Strongest Leads: when he falls,
+-- His Presence (utility_warchiefs_presence): a foe that ends its turn beside him is Rooted -- a pack aura (+2 Damage
+-- within 3) until 2026-11-19, when the creature identity pass moved half of Wrath's alphas off the aura; his lever
+-- is POSITION now, so engage him with the body that can stand and trade. The Strongest Leads: when he falls,
 -- the most-Proven orc on the board (ties: most health) takes his place -- it heals half and takes up the Presence
 -- and the rule. Killing the head promotes the veteran; kill him before anyone is Proven, or cut the scarred down
 -- first. He wears his own Heir's Torc, so every orc that falls around him makes him worse.
@@ -33,4 +35,5 @@ return {
     drops = { "utility_heirs_torc", "ability_the_strongest_leads" },
     defaultAction = "weapon_crimson_greataxe",
     signatureWeapon = "weapon_crimson_greataxe",
+    ai = require("models.wrath_targeting").orc, -- the killing blow (2026-11-19)
 }

@@ -1,11 +1,13 @@
 -- FROST WORM'S BITE: the Frost Worm's own blow (data/characters/character_frost_worm.lua; "Sloth's Bestiary",
--- 2026-10-04, slice C). Its bite on a sleeper Freezes -- the Trill puts a company down, and the bite is what it
--- does with one. Asked BEFORE the blow lands, because the blow is what wakes the sleeper (status_sleep).
+-- 2026-10-04, slice C). A plain bite: the worm's rules are the Trill and its death throes, both Frozen.
+--
+-- It Froze a sleeper until the creature identity pass (2026-11-19) took the worm off Sleep (ability_the_trill
+-- says why). A bite that froze a body the Trill had already frozen would be the same rule twice.
 local Curve = require("models.curve")
 
 return {
     name = "Frost Worm's Bite",
-    description = "Inflicts Frozen on a sleeping foe.",
+    description = "Bites an adjacent foe.",
     flavor = "It does not chew. The cold does that part later.",
     sprite = "assets/items/weapon_frost_worm_bite.png",
     type = "weapon",
@@ -19,9 +21,7 @@ return {
         cost = { stat = "stamina", amount = 7 },
         damage = Curve.ramp(12, 22),
         effect = function(fx)
-            local asleep = fx.hasStatus(fx.target, "status_sleep")
             fx.damage(fx.target)
-            if asleep and fx.target.alive then fx.applyStatus(fx.target, "status_freeze") end
         end,
     },
 }

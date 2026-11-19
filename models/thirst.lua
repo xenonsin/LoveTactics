@@ -273,9 +273,35 @@ end
 
 -- A vampire's turn, or nil to let the ordinary planner run (AI.preempt). In Bloodlust it bites the nearest
 -- body, either side; an enemy vampire at Thirst 2 beside a Blood-Ghoul drinks from the thrall instead.
+--
+-- A LONE FEEDER (a blueprint declaring `loneFeeder`, the Fledgling; 2026-11-19, the creature identity pass) does
+-- not bite the nearest body in Bloodlust: it goes for the nearest BLEEDING FOE on the board, wherever that is, with
+-- Scent of Blood's two extra tiles under it, and falls back to the nearest body only when no foe bleeds. The
+-- audit found the Fledgling differed from every other vampire by one point of Thirst; this is what it does that
+-- they do not -- it breaks off from its brood and hunts the open wound, so a company that lets one of its own
+-- bleed has chosen who the Fledgling crosses the board for. A cure for Bleed is the tool it asks you to pack.
+function Thirst.loneFeed(combat, unit)
+    local def = unit and unit.char and Character.defs[unit.char.id]
+    if not (def and def.loneFeeder) then return nil end
+    local Combat = require("models.combat")
+    local Status = require("models.status")
+    local best, bestD
+    for _, u in ipairs((combat and combat.units) or {}) do
+        if u.alive and u.side ~= unit.side and Status.has(u, "status_bleed") and not Combat.isOffTile(u)
+            and not Status.untargetable(u, combat) then
+            local d = Combat.unitGap(unit, u)
+            if not bestD or d < bestD then best, bestD = u, d end
+        end
+    end
+    if not best then return nil end
+    return require("models.rampage").hitBody(combat, unit, best, "the open wound")
+end
+
 function Thirst.plan(combat, unit)
     local Status = require("models.status")
     if Status.has(unit, Thirst.BLOODLUST) then
+        local lone = Thirst.loneFeed(combat, unit)
+        if lone then return lone end
         return require("models.rampage").hitNearest(combat, unit, "bloodlust")
             or { wait = true, reason = "bloodlust, nothing near" }
     end

@@ -9,6 +9,9 @@ local goblin = {}
 for k, v in pairs(base) do goblin[k] = v end
 
 goblin.name = "Goblin Fledgling"
+-- NOT A LONE FEEDER (2026-11-19, the creature identity pass): the human Fledgling hunts the nearest bleeding foe
+-- in Bloodlust, and this one must keep biting the nearest body -- a goblin beside it -- or Bad Blood never fires.
+goblin.loneFeeder = nil
 goblin.race = "goblin"
 goblin.sprite = "assets/chars/goblin_fledgling.png"
 goblin.stats = {}

@@ -6,6 +6,12 @@
 -- face leaves free (Two Faces, models/masks.lua). So it can be a troll with a naga's spells in its hands. A hand of
 -- four, so there is a runner-up to lend; the heap keeps its own four tiles under every face.
 --
+-- IDENTITY LEVER (creature identity pass, 2026-11-19): ORDER, in time. Two random kits and no counter, said the
+-- audit. Now reaching for the lent kit opens the seam between its faces (status_seam_open, until its next turn),
+-- and the next blow that lands through it tears the second face off for the rest of the fight (trait_two_faces).
+-- Hold a blow for the turn after it uses what it borrowed. And as every Faceless, an impact blow knocks its first
+-- face off for a turn (Faces.knockOff) -- which takes the lent kit with it until it reads again.
+--
 -- It drops the Twofold Hauberk, on the bulwark's shelf.
 return {
     name = "Faceless Colossus",
@@ -31,6 +37,8 @@ return {
     drops = { "armor_twofold_hauberk" },
     defaultAction = "weapon_iron_greatsword",
     archetype = "aggressive",
+    -- TARGETING: nearest, as the whole line does in its own body -- its faces were read off the nearest of the
+    -- company, so the body they answer is the body it strikes when a blow has knocked them off.
     ai = {
         { priority = "normal", act = "attack", targetPref = "nearest",
           when = { subject = "any_foe", test = "exists" } },

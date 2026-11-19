@@ -6,8 +6,16 @@
 --                           it at once and strikes, out of turn, once a round (trait_grief_at_fortune;
 --                           models/envy_oneoffs.lua)
 --
+--                           AND AT YOUR KILLS (creature identity pass, 2026-11-19): a foe in her sight that
+--                           fells a body is leapt on the same way. Success is not only a priest's: every company
+--                           kills, so she now reads every company (the same-envy-support row).
+--
 -- THE COUNTERPLAY, STATED, and it is the review's own: heal behind a ridge, or bait the leap -- bless a body
--- standing where she will land in the open, among your blades.
+-- standing where she will land in the open, among your blades. And take your kills out of her sight, or with the
+-- body you want her to land beside.
+--
+-- TARGETING: her leap is her targeting -- she goes to whoever prospered, out of turn -- so her own turn is left to
+-- the ordinary planner.
 --
 -- NOT THE KINSLAYER, though both read heals and blessings: he hunts the favoured body across a fight, and she
 -- answers each one with a single leap. A demon, so her staff burns and she takes holy the harder.

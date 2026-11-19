@@ -77,8 +77,12 @@ return {
             -- The hiding is the Smoke Mantle's own rule, not a second one.
             local traits = Item.defs["utility_tawny_hide"].traits
             assert(traits[1] == "trait_smoke_mantle", "the Tawny Hide wears the Smoke Mantle's trait")
-            assert(Item.defs["utility_the_unbroken_stalk"].traits[1]
-                == Item.defs["utility_the_longfangs_hunt"].traits[1], "the Longfang's rule and its drop are one trait")
+            -- Split 2026-11-19 (the creature identity pass): the Longfang's rule is LENT to her pride now, so it
+            -- is its own trait; her drop is still the person's version, worn on oneself.
+            assert(Item.defs["utility_the_unbroken_stalk"].traits[1] == "trait_the_unbroken_stalk",
+                "the Longfang's drop is The Unbroken Stalk")
+            assert(Item.defs["utility_the_longfangs_hunt"].traits[1] == "trait_the_longfangs_hunt",
+                "the Longfang's own kit lends the hunt to her pride")
         end,
     },
     {
@@ -180,24 +184,45 @@ return {
 
     -- ------------------------------------------------------------------------------ the Longfang
     {
-        name = "the Longfang's kill keeps her hidden and opens her next turn hidden; a plain cat's does not",
+        name = "a cat beside the Longfang that kills from hiding stays hidden into its next turn; a lone cat does not",
         fn = function()
-            for _, case in ipairs({ { id = "character_the_longfang", kept = true },
-                                    { id = "character_sabertooth", kept = false } }) do
-                local c = Combat.new(board(), { walker(2, 5, 5), walker(9, 9) }, { unit(case.id, 5, 5) })
+            -- The split (2026-11-19): she no longer hides; her rule is lent to the cats within three tiles.
+            for _, case in ipairs({ { leader = true, kept = true }, { leader = false, kept = false } }) do
+                local foes = { unit("character_sabertooth", 5, 5) }
+                if case.leader then foes[2] = unit("character_the_longfang", 5, 7) end
+                local c = Combat.new(board(), { walker(2, 5, 5), walker(9, 9) }, foes)
                 local prey, other, cat = c.units[1], c.units[2], c.units[3]
                 cat.lastTurnHits = Combat.tallyCount(cat, "hitDealt")
                 hiddenTurn(c, cat)
                 assert(Combat.useItem(c, cat, itemNamed(cat.char, "weapon_pounce"), prey.x, prey.y), "pounce")
                 assert(not prey.alive, "the pounce downs its target")
                 assert(Status.has(cat, "status_invisible") == case.kept,
-                    case.id .. (case.kept and " stays hidden" or " is seen"))
-                other.initiative = 50
+                    case.leader and "beside her, the cat stays hidden" or "alone, the cat is seen")
                 standUp(c, cat)
                 assert(Status.has(cat, "status_invisible") == case.kept,
-                    case.id .. (case.kept and " opens her next turn hidden despite the blood"
-                        or " does not open its next turn hidden, having drawn blood"))
+                    case.leader and "and opens its next turn hidden despite the blood"
+                        or "and does not open its next turn hidden, having drawn blood")
             end
+        end,
+    },
+    {
+        name = "the Longfang stands in the open: she carries no hide to veil her, and she strikes back",
+        fn = function()
+            local body = Character.defs.character_the_longfang
+            local kit = {}
+            for _, id in ipairs(body.startingItems) do if id then kit[id] = true end end
+            assert(not kit.utility_tawny_hide, "the Longfang does not hide")
+            assert(kit.utility_feral_instinct, "she is the cat that strikes back")
+            local cat = {}
+            for _, id in ipairs(Character.defs.character_sabertooth.startingItems) do if id then cat[id] = true end end
+            assert(cat.utility_tawny_hide and not cat.utility_feral_instinct,
+                "the Sabertooth hides and does not strike back: the round after its pounce is free")
+            -- Out in the open and an unhurt turn behind her, she does not open the next one veiled.
+            local c = Combat.new(board(), { walker(1, 1) }, { unit("character_the_longfang", 8, 8) })
+            local leader = c.units[2]
+            leader.lastTurnHits = Combat.tallyCount(leader, "hitDealt")
+            standUp(c, leader)
+            assert(not Status.has(leader, "status_invisible"), "she opens her turn in plain sight")
         end,
     },
 

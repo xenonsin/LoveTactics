@@ -8,6 +8,13 @@
 -- The counter is the review's: know the rift's champions, because you have fought each one before, and every
 -- face brings its own known answer -- magic for Untouchable, focusing the Challenger. It drops the Mask of
 -- Champions, on the duelist's rack.
+--
+-- IDENTITY LEVER (creature identity pass, 2026-11-19): POSITION. It picked its face by the nearest-foe read every
+-- Faceless uses, so the player met each champion only once it was on. Now it TELEGRAPHS: at the end of its turn
+-- (and at the bell) it commits the face it will wear next and names it on a badge (status_next_face,
+-- Faces.telegraph), and Reshape wears exactly that face next turn. So the player knows which champion is coming
+-- and chooses who stands nearest it. TARGETING: nearest in its own body -- a champion takes whoever steps up. (A
+-- champion's face brings that champion's own tactics; this is the rule it falls back to Unmasked.)
 return {
     name = "Faceless Champion",
     race = "faceless",
@@ -32,4 +39,8 @@ return {
     drops = { "utility_mask_of_champions" },
     defaultAction = "weapon_iron_sword",
     signatureWeapon = "weapon_iron_sword",
+    ai = {
+        { priority = "normal", act = "attack", targetPref = "nearest",
+          when = { subject = "any_foe", test = "exists" } },
+    },
 }

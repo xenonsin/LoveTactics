@@ -4,9 +4,21 @@
 --   MANA EDGE     its blade is cut from its own mana, so its blows land on Magic Defense, not Defense
 --                 (weapon_mana_cut_blade, a `magical` blade)
 --   SPIRIT BODY   the race: felled, its wisp walks back to raise it (data/races/archon.lua)
+--   WISP-CARRIER  its own, since the creature identity pass (2026-11-19): a fallen Archon's wisp within 3 of it,
+--                 and nearer to it than to its own body, comes to the Lesser Archon instead -- and arriving, the body
+--                 stands at once, wherever it lies (utility_wisp_carrier; models/archon_court.lua). It yields to a
+--                 Duke: a wisp in the Duke's reach is the Duke's.
+--
+-- WHY THE LEVER IS ON THIS BODY. The audit found it dead before either rule mattered: tier 1, 10 health, a blade the
+-- Duke shares and a race every Archon wears. The pitch offered two shapes -- a wisp that reaches a Lesser Archon
+-- raises at once, or a Lesser Archon that picks a wisp up and carries it to the Duke. The first was built: it rides
+-- the `wispGoal` seam the Duke and the Crown already walk wisps on, the wisp's turn toward it is logged and seen on
+-- the board, and it makes the cheapest body in the court the one to kill FIRST rather than the one that does not
+-- matter. The second needed the planner to carry a body across the board, and models/ai.lua was not to be touched.
 --
 -- HOW YOU BEAT IT, the review's own: your plate does nothing here. Wear a magic ward, or put your spell-hardened
--- bodies in front.
+-- bodies in front. And now the order: kill the Lesser Archons before the court's heavier bodies, or every wisp you
+-- throw has a short walk home.
 --
 -- ON THE PRIEST TABLE, like the whole court, and it was measured into it. Its blade scales on Magic Damage, which the
 -- classless fallback never grows; the mage table does, but it also grows Defense a point a level, and at the floor's
@@ -32,11 +44,17 @@ return {
         skill = 4, luck = 3,
     },
     startingItems = {
-        "weapon_mana_cut_blade", false, false,
+        "weapon_mana_cut_blade", "utility_wisp_carrier", false,
         false,                   false, false,
         false,                   false, false,
     },
     drops = { "utility_mana_edge" },
     defaultAction = "weapon_mana_cut_blade",
     signatureWeapon = "weapon_mana_cut_blade",
+    -- TARGETING (the creature identity pass, 2026-11-19): the court's chaff closes on the nearest body. Its value is
+    -- where it stands -- near the court's fallen -- not whom it picks.
+    ai = {
+        { priority = "normal", act = "attack", targetPref = "nearest",
+          when = { subject = "any_foe", test = "exists" } },
+    },
 }

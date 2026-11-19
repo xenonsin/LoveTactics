@@ -5,6 +5,13 @@
 -- Blood-Ghoul beside it).
 --
 -- Drops the Hungering Fang (the wait made a weapon) and Bloodhound's Scent (Scent of Blood for the living).
+--
+-- ITS LEVER IS ORDER AND BRING (2026-11-19, the creature identity pass): A LONE FEEDER (`loneFeeder`,
+-- Thirst.loneFeed). Of the two options the review offered -- leap to the nearest bleeding foe in Bloodlust, or
+-- feed off a downed company body -- this is the one built, because Bleed is a badge the player already reads and
+-- the planner already has the walk: in Bloodlust it crosses the board to the nearest BLEEDING foe instead of
+-- biting whoever stands beside it, and only with no foe bleeding does it bite the nearest body. So the body you
+-- let bleed is the body it hunts, and a cure for Bleed is the tool it asks for.
 return {
     name = "Fledgling",
     race = "human",
@@ -12,6 +19,7 @@ return {
     class = "fighter",
     vampire = true,
     newlyTurned = true,
+    loneFeeder = true,
     sprite = "assets/chars/fledgling.png",
     archetype = "aggressive",
     stats = {
@@ -31,4 +39,5 @@ return {
     drops = { "weapon_hungering_fang", "utility_bloodhounds_scent" },
     defaultAction = "weapon_iron_dagger",
     signatureWeapon = "weapon_iron_dagger",
+    ai = require("models.wrath_targeting").vampire, -- the faintest pulse (2026-11-19)
 }

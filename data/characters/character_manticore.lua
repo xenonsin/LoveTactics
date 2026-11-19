@@ -56,11 +56,14 @@ return {
     defaultAction = "weapon_three_rows",
     archetype = "aggressive",
     -- Basic tactics (models/ai.lua). The volley carries its own rule and is reached first (an item's rule
-    -- sits above the body's), so: fill the air when the tail is ready, and otherwise press whoever is
-    -- closest to falling. Nothing here names the Quilled -- the planner scores a blow by what it will deal,
+    -- sits above the body's), so: fill the air when the tail is ready, and otherwise take the blow that
+    -- ends somebody. Nothing here names the Quilled -- the planner scores a blow by what it will deal,
     -- and a quilled body is worth more to a pierce bite, so it is chosen without being told to be.
     ai = {
-        { priority = "high", act = "attack", targetPref = "lowest_hp",
-          when = { subject = "foe_lowest_hp", test = "hp_pct_below", value = 0.5 } },
+        -- THE BODY IT CAN EAT (2026-11-19, the targeting pass): a foe that falls beside it is eaten
+        -- (utility_man_eater), so it goes for the blow that ENDS somebody rather than merely the most
+        -- wounded -- and its volley comes back for it.
+        { priority = "high", act = "attack", targetPref = "lethal",
+          when = { subject = "any_foe", test = "in_reach" } },
     },
 }

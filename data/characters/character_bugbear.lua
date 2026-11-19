@@ -30,4 +30,5 @@ return {
     drops = { "utility_ambushers_hood" },
     defaultAction = "weapon_iron_mace",
     signatureWeapon = "weapon_iron_mace",
+    ai = require("models.wrath_targeting").goblin, -- the cornered body (2026-11-19)
 }

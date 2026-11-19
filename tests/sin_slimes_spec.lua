@@ -1,5 +1,6 @@
--- Tests for the last four slime lines -- Wrath's Boil Over, Sloth's three (Torpid, Numbed, Drift), Envy's
--- Mimicry + Begrudge, Pride's Rank -- their Kings' splits, and the drops that touch the engine. Each
+-- Tests for the last four slime lines -- Wrath's Cinder Trail, Sloth's three (Freeze Solid, Frostbite, Drift),
+-- Envy's Mimicry + Begrudge, Pride's Rank -- their Kings' splits, and the drops that touch the engine. Wrath's
+-- and two of Sloth's rules changed in the creature identity pass (2026-11-19). Each
 -- circle's slime carries ONE rule of its own (the per-circle slime law); what is under test is that each
 -- rule does what its card says on a real board.
 
@@ -101,35 +102,34 @@ return {
         end,
     },
 
-    -- ----- WRATH: Boil Over -----
+    -- ----- WRATH: Cinder Trail (it was Boil Over until the creature identity pass, 2026-11-19; the full
+    -- behaviour is held in tests/identity_sloth_slimes_spec.lua) -----
     {
-        name = "Boil Over: five landed hits and it erupts on its neighbours in the element it took",
+        name = "Cinder Trail: the slime opens wearing Fire Trail, walks through fire unharmed, and no longer Seethes",
         fn = function()
-            local c = Combat.new(arena(10, 10), { unit("character_knight", 4, 5) },
+            local c = Combat.new(arena(10, 10), { unit("character_knight", 1, 1) },
                 { unit("character_cinder_slime", 5, 5) })
-            local knight, slime = c.units[1], c.units[2]
-            local before = knight.char.stats.health.current
-            for i, el in ipairs({ "fire", "ice", "lightning", "water" }) do
-                Combat.dealFlatDamage(c, slime, 5, spell(el), "test")
-                assert(Status.get(slime, "status_seething").magnitude == 2 * i, "stack " .. i)
-            end
-            assert(knight.char.stats.health.current == before, "no eruption yet")
-            Combat.dealFlatDamage(c, slime, 5, spell("holy"), "test")
-            assert(knight.char.stats.health.current < before, "the fifth hit erupts on the knight beside it")
-            assert(not Status.has(slime, "status_seething"), "and the count starts again")
+            local slime = c.units[2]
+            assert(Status.has(slime, "status_fire_trail"), "the trail is lit at the bell")
+            assert(Trait.flag(slime, "emberwalk"), "and its own fire does not touch it")
+            Combat.dealFlatDamage(c, slime, 5, spell("ice"), "test")
+            assert(not Status.has(slime, "status_seething"), "a hit charges nothing any more")
         end,
     },
     {
-        name = "the Caldera King comes apart into cinder slimes that are already Seething",
+        name = "the Caldera King comes apart into three cinder slimes, each laying its own trail",
         fn = function()
             local c = Combat.new(arena(12, 12), { unit("character_bandit", 1, 1) },
                 { unit("character_caldera_king", 6, 6) })
+            assert(Status.has(c.units[2], "status_fire_trail"), "the King walks in fire too")
             Combat.dealFlatDamage(c, c.units[2], 99999, spell("fire"), "test")
             local pieces = living(c, "character_cinder_slime")
             assert(#pieces == 3, "three pieces, got " .. #pieces)
             for _, p in ipairs(pieces) do
-                assert(Status.get(p, "status_seething") and Status.get(p, "status_seething").magnitude == 2,
-                    "each piece arrives with one stack")
+                assert(not Status.has(p, "status_seething"), "the pieces arrive cold")
+                Trait.onAnyTurnStart(c, p)
+                assert(Status.has(p, "status_fire_trail"),
+                    "and each lights its own trail on its first turn")
             end
         end,
     },
@@ -151,31 +151,19 @@ return {
     },
 
     -- ----- SLOTH: three slimes and their King -----
+    -- The Rime Slime made you Torpid and the Frost Slime Numbed you until the creature identity pass
+    -- (2026-11-19); they Freeze Solid and carry Frostbite now. Their full behaviour is held in
+    -- tests/identity_sloth_slimes_spec.lua; this pins that the old riders are gone.
     {
-        name = "Torpid Touch: a rime slime's blow pushes your next turn back and slows you",
+        name = "the rime and frost slimes' blows no longer push the turn back or raise a cost",
         fn = function()
-            -- Measured against an untouched second knight, because the timeline moves everyone on as the
-            -- slime's own action is spent.
-            local c = Combat.new(arena(10, 10), { unit("character_knight", 4, 5), unit("character_knight", 1, 1) },
-                { unit("character_rime_slime", 5, 5) })
-            local knight, control, slime = c.units[1], c.units[2], c.units[3]
-            local gap = knight.initiative - control.initiative
-            Combat.useItem(c, slime, itemNamed(slime.char, "weapon_pseudopod"), knight.x, knight.y)
-            assert(Status.has(knight, "status_torpid"), "the knight is Torpid")
-            assert(knight.initiative - control.initiative >= gap + 3, "and its next turn comes later than it would have")
-        end,
-    },
-    {
-        name = "Numb: a frost slime's blow makes every cost the knight pays 1 higher",
-        fn = function()
-            local c = Combat.new(arena(10, 10), { unit("character_knight", 4, 5) },
-                { unit("character_frost_slime", 5, 5) })
-            local knight, slime = c.units[1], c.units[2]
-            local ab = Item.instantiate("ability_heal").activeAbility
-            local base = Combat.abilityCosts(knight, ab)[1].amount
-            Combat.useItem(c, slime, itemNamed(slime.char, "weapon_pseudopod"), knight.x, knight.y)
-            assert(Status.has(knight, "status_numbed"), "Numbed")
-            assert(Combat.abilityCosts(knight, ab)[1].amount == base + 1, "a cast costs one more")
+            local c = Combat.new(arena(10, 10), { unit("character_knight", 4, 5), unit("character_knight", 6, 5) },
+                { unit("character_rime_slime", 5, 5), unit("character_frost_slime", 5, 6) })
+            local a, b, rime, frost = c.units[1], c.units[2], c.units[3], c.units[4]
+            Combat.useItem(c, rime, itemNamed(rime.char, "weapon_pseudopod"), a.x, a.y)
+            assert(not Status.has(a, "status_torpid"), "no Torpor off the rime slime")
+            Combat.useItem(c, frost, itemNamed(frost.char, "weapon_pseudopod"), b.x, b.y)
+            assert(not Status.has(b, "status_numbed"), "no Numb off the frost slime")
         end,
     },
     {
@@ -193,12 +181,12 @@ return {
         end,
     },
     {
-        name = "the Glacier King carries all three rules and comes apart into one of each",
+        name = "the Glacier King carries Torpor, Frostbite and Drift, and comes apart into one of each slime",
         fn = function()
             local c = Combat.new(arena(12, 12), { unit("character_bandit", 1, 1) },
                 { unit("character_glacier_king", 6, 6) })
             local king = c.units[2]
-            for _, t in ipairs({ "trait_torpid_touch", "trait_numb", "trait_drift" }) do
+            for _, t in ipairs({ "trait_torpid_touch", "trait_frostbite", "trait_drift" }) do
                 local found = false
                 for _, tr in ipairs(king.traits) do found = found or tr.id == t end
                 assert(found, "the King carries " .. t)

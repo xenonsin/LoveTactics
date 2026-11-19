@@ -1,7 +1,8 @@
 -- Tests for THE ELVES OF PRIDE, the approach's line (2026-09-30, "Pride's Bestiary"): the bodies that wear the race's
 -- Unblemished (tests/elf_race_spec.lua pins the race), their own rules, their fights and their drops.
 --
---   Elf Retainer      the filler: the race rule and a spear, and nothing else           -> Livery of the House
+--   Elf Retainer      the filler: the race rule, a spear, and the Retainer's Oath (2026-11-19; the oath itself is
+--                     pinned in tests/identity_pride_crown_spec.lua)                   -> Livery of the House
 --   Elf Longbow       DRAWN STANCE: drawn unmoved, the shot cannot be avoided and carries through to the body
 --                     behind                                                             -> Heartstring Longbow
 --   Elf Bladedancer   UNTOUCHABLE: while Unblemished, every attack that rolls to hit is evaded -> Dancer's Veil
@@ -41,7 +42,8 @@ local SHELF = {
     armor_livery_of_the_house = "knight", weapon_heartstring_longbow = "hunter", armor_dancers_veil = "duelist",
     armor_skywalkers_sandals = "mage", utility_highborn_circlet = "knight", utility_laurel_of_renown = "warlord",
 }
-local ORGANS = { "utility_untouchable", "utility_by_starlight", "utility_will_not_admit", "utility_renown" }
+local ORGANS = { "utility_untouchable", "utility_by_starlight", "utility_will_not_admit", "utility_renown",
+                 "utility_sworn_retainer", "utility_wounded_pride" }
 local FIGHTS = {
     encounter_pride_elf_patrol = "combat", encounter_pride_the_ring = "combat", encounter_pride_on_the_span = "combat",
     encounter_pride_the_court = "combat", encounter_pride_the_elf_lord = "elite",
@@ -121,14 +123,14 @@ return {
     },
     -- ------------------------------------------------------------------------------ the Retainer
     {
-        name = "the Retainer carries the race rule and a spear and nothing else; its Livery guards only the unmarked",
+        name = "the Retainer carries the race rule, a spear and its oath; its Livery guards only the unmarked",
         fn = function()
             local c = Character.instantiate("character_elf_retainer")
             local held = {}
             for _, item in ipairs(Character.eachItem(c)) do held[#held + 1] = item.id end
             table.sort(held)
-            assert(#held == 2 and held[1] == "utility_elf_blood" and held[2] == "weapon_iron_spear",
-                "a spear and Unblemished: " .. table.concat(held, ", "))
+            assert(#held == 3 and held[1] == "utility_elf_blood" and held[2] == "utility_sworn_retainer"
+                and held[3] == "weapon_iron_spear", "a spear, Unblemished and the oath: " .. table.concat(held, ", "))
 
             local cb = Fixture.combat(board(), body(5, 5, { "armor_livery_of_the_house" }),
                 unit("character_elf_retainer", 5, 6))

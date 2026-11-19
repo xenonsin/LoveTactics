@@ -5,7 +5,8 @@
 --
 --   * the common dead (character_skeleton_knight.lua) do not rise at all. The question is WHICH WEAPON.
 --   * the Barrow Lord (character_barrow_lord.lua) rises on its own mana, twice. The question is WHICH
---     BAR -- it is the fight that teaches a player to stop watching the red one.
+--     BAR -- it is the fight that teaches a player to stop watching the red one. (Silenced, it does not
+--     rise at all: the Binding names `silenceSeals`, 2026-11-19.)
 --   * the King rises on its SUBJECTS. The question is WHICH BODY, and the answer is all of them.
 --
 -- WHAT IT DOES, mechanically, and the reason it is this and not a bespoke revival rule: it keeps the

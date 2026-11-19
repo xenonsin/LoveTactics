@@ -76,19 +76,34 @@ dead.archetype = "aggressive"
 -- orchard that pays for its own deaths is the Barrow Lord, and it says so on its sheet.
 dead.stats.mana = 0
 
--- THE LATTICE RIDES ON BARE BONES NOW (data/items/utility/utility_bare_bones.lua), at exactly the line
--- this body used to declare innate: slash 3, pierce 3, impact -6, holy -6. A humanoid buys its per-tag
--- line off what it carries and may not also have a hide (tests/bestiary_spec.lua), and with the class
--- back this is a humanoid -- so the bone that IS the lattice carries it, and every skeleton that is bone
--- gets it from the same cell.
+-- THE LATTICE RIDES ON COMPANY BONES NOW (data/items/utility/utility_company_bones.lua), at exactly the
+-- line this body used to declare innate: slash 3, pierce 3, impact -6 (holy -6 stays on Bare Bones). A
+-- humanoid buys its per-tag line off what it carries and may not also have a hide (tests/bestiary_spec.lua).
+-- It moved off Bare Bones on 2026-11-19 so the other bone bodies in Greed could stop asking for a mace.
+--
+-- ITS IDENTITY LEVER IS THE GUARD (2026-11-19, the creature identity pass). The audit's note was that
+-- "bring a mace" was this body's only question. Company Bones carries trait_the_old_company: while a
+-- Skeleton Knight stands, the Skeleton Archers of its side are Shielded (half damage) -- a knight's verb
+-- that outlived the knight. So kill order matters: the knights first, with the mace, and then the bows.
 
 -- The knight's own grid, minus everything that rotted: the spear and the sword it was buried holding,
--- and the two standing facts of being a skeleton. No chainmail, no buckler, no potion -- a body that
--- wounds itself by drinking one would spend the fight proving it.
+-- and the standing facts of being a skeleton in a dead company. No chainmail, no buckler, no potion -- a
+-- body that wounds itself by drinking one would spend the fight proving it.
 dead.startingItems = {
-    "weapon_iron_spear", "weapon_iron_sword",  false,
-    "utility_bare_bones", false,                false,
-    false,                false,                false,
+    "weapon_iron_spear",  "weapon_iron_sword",     false,
+    "utility_bare_bones", "utility_company_bones", false,
+    false,                false,                   false,
+}
+
+-- TARGETING (2026-11-19, the Greed targeting pass): the dead company goes for the hammer. The archers
+-- Mark the foe holding an impact weapon (trait_the_old_company), and the knights press that body first,
+-- because it is the one that can break them. Ahead of the inherited "finish the wounded" rule, which
+-- stays as the fallback. A preference, not a filter: a lethal blow elsewhere still wins.
+dead.ai = {
+    { priority = "high", act = "attack", targetPref = "marked",
+      when = { subject = "any_foe", test = "has_status", value = "status_mark" } },
+    { priority = "high", act = "attack", targetPref = "lowest_hp",
+      when = { subject = "foe_lowest_hp", test = "hp_pct_below", value = 0.5 } },
 }
 
 return dead

@@ -32,4 +32,10 @@ return {
     -- ITS OWN PIECE (docs/drops.md): the pike, reading the line the other way.
     drops = { "weapon_collectors_pike" },
     archetype = "aggressive",
+    -- IT COLLECTS FROM EFFORT (the creature identity pass's targeting sweep, 2026-11-19): Sloth's tollkeepers
+    -- charge for doing things, and the Collector goes first for the body winding something up.
+    ai = {
+        { priority = "normal", act = "attack", targetPref = "channeling",
+          when = { subject = "any_foe", test = "exists" } },
+    },
 }

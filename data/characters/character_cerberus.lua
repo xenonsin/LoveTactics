@@ -40,4 +40,10 @@ return {
     drops = { "ability_three_heads" },
     defaultAction = "weapon_three_mouths",
     archetype = "aggressive",
+    -- TARGETING (the creature identity pass, 2026-11-19): three mouths want three bodies beside it: it closes on the
+    -- nearest and lets the rest come.
+    ai = {
+        { priority = "normal", act = "attack", targetPref = "nearest",
+          when = { subject = "any_foe", test = "exists" } },
+    },
 }

@@ -15,6 +15,9 @@
 --                    healed to full, with a new spell (ArchonCourt.claimWisps / takeWisp).
 --   COMMAND          at the end of each of the Duke's own turns, every Archon within 3 of it is pulled ahead of
 --                    the company's soonest body on the timeline (ArchonCourt.command).
+--   WISP-CARRIER     a wisp within 3 of a Lesser Archon, and nearer to it than to its own body, walks to the Lesser
+--                    Archon instead; arriving, the body stands at once (ArchonCourt.relayWisps / relayArrive; the
+--                    creature identity pass, 2026-11-19). It yields to a Duke.
 --
 -- WHY THE WARDEN'S TEST IS A NAMED HELPER. The Hollow Crown's first phase takes no damage at all while a holding
 -- Warden stands within 2 of its throne. That is a different consequence of the same fact, so the fact is asked one
@@ -175,6 +178,67 @@ function ArchonCourt.takeWisp(combat, duke, trait)
     shape.stats.health.current = C.unreservedMax(shape, "health")
     C.logEvent(combat, "action", string.format("%s Ascends.", (require("models.transform").originalChar(duke) or {}).name
         or "The Duke"), duke)
+end
+
+-- ------------------------------------------------------------------------------------------------ WISP-CARRIER
+-- The creature identity pass (2026-11-19) found the Lesser Archon dead before either of its rules mattered: tier 1, 10
+-- health, a blade the Duke shares and a race every Archon wears. Its own job now is the court's nearest door home. A
+-- walking wisp of its side within its reach, nearer to it than to the body the wisp left, turns toward it; arriving,
+-- the body stands at once wherever it lies (Spirit's `wispGoal` / `onWispTaken` seams, as the Duke's).
+--
+-- IT YIELDS TO A DUKE. A wisp inside a standing, un-Ascended Duke's reach is the Duke's to take, so a court of lesser
+-- archons around a Duke does not starve its Ascension -- the Duke's rule is the bigger one, and it stays the Duke's.
+-- A wisp the carrier already called that then comes into a Duke's reach is HANDED to the Duke here, rather than left
+-- for the Duke's own claim to find: that claim passes over any wisp with a live goal, and which of the two hooks
+-- hears a turn's edge first is only the order the bodies stand in. The Hollow Crown's throne in its first phase,
+-- which draws EVERY wisp of its court, outranks a carrier the same way: the Crown's stair is fought over those wisps.
+local function dukeClaiming(combat, w)
+    local C = Combat()
+    local HollowCrown = require("models.hollow_crown")
+    for _, d in ipairs(combat.units or {}) do
+        if d.alive and d.side == w.side then
+            local t = not d.ascended and Trait().flag(d, "takesWisps")
+            if t and C.unitGap(w, d) <= Trait().param(t, "reach", 3) then return d end
+            if HollowCrown.phase(d) == 1 then return d end
+        end
+    end
+    return nil
+end
+
+function ArchonCourt.relayWisps(combat, carrier)
+    if not (combat and carrier and carrier.alive) or carrier.wispOf then return end
+    local t = Trait().flag(carrier, "carriesWisps")
+    if not t then return end
+    local C = Combat()
+    local reach = Trait().param(t, "reach", 3)
+    for _, w in ipairs(combat.units or {}) do
+        local body = w.alive and w.wispOf
+        if body and w.side == carrier.side then
+            local duke = dukeClaiming(combat, w)
+            if w.wispGoal == carrier and duke then
+                w.wispGoal = duke
+                C.logEvent(combat, "status", string.format("The wisp turns toward %s.", name(duke)), { w, duke })
+            elseif body ~= carrier and not duke and not (w.wispGoal and w.wispGoal.alive)
+                and C.unitGap(w, carrier) <= reach and C.unitGap(w, carrier) < C.unitGap(w, body) then
+                w.wispGoal = carrier
+                C.logEvent(combat, "status", string.format("The wisp turns toward %s.", name(carrier)), { w, carrier })
+            end
+        end
+    end
+end
+
+-- A wisp reached its carrier (Spirit.tryArrive fires `onWispTaken`). Its body stands at once, at the same share a
+-- wisp walking home would raise it to, and refused by the same gate: a body gone cold, or one a living unit stands on,
+-- stays down -- the race's two counters hold here as they hold at the body.
+function ArchonCourt.relayArrive(combat, carrier, body)
+    if not (combat and carrier and body) then return false end
+    local C = Combat()
+    if C.reanimate(combat, body, require("models.spirit").RAISE_AT) then
+        C.logEvent(combat, "action", string.format("%s carries the wisp home, and %s stands.", name(carrier), name(body)),
+            { carrier, body })
+        return true
+    end
+    return false
 end
 
 -- ------------------------------------------------------------------------------------------------ COMMAND

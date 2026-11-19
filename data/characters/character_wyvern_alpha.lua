@@ -19,7 +19,11 @@ return {
         speed = 7, -- first in the flight
         skill = 5, luck = 8,
     },
-    resist = { slash = 3, impact = -3, wind = 3 },
+    -- RE-CUT 2026-11-19 (the creature identity pass, "same-mace"): the wyverns' hide follows the flight's: nine of Gluttony's beasts wore the
+    -- same slash+/impact- hide, so the circle had one Bring answer. A wyvern's scale still turns an edge,
+    -- but the WING is the soft part, and a point goes through it -- bring a spear or a bow. A bow gives the
+    -- line its question back: the Tailwind punishes a shot from range, so the spear that closes is better.
+    resist = { slash = 3, pierce = -3, wind = 3 },
     startingItems = {
         "weapon_wind_shear",       "ability_take_wing",      "utility_tailwind",
         "utility_lead_the_wind",   "utility_manticore_wings", "utility_feral_instinct",

@@ -5,7 +5,7 @@
 -- of each of its turns and only a status hears that. The look itself is models/envy_oneoffs.lua's.
 return {
     name = "The Eye Falls on Good Fortune",
-    description = "At the start of its turn, sours one blessing of the Fairest it can see into Rattled.",
+    description = "At the start of its turn, sours a blessing of the Fairest it can see into Rattled, or Rattles it if none.",
     onCombatStart = function(ctx)
         local u = ctx.unit
         if u and u.alive then ctx.applyStatus(u, "status_evil_eye", { applier = u }) end

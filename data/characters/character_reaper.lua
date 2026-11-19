@@ -36,4 +36,13 @@ return {
     drops = { "ability_the_harvest" },
     defaultAction = "weapon_reapers_scythe",
     archetype = "aggressive",
+    -- TARGETING (the creature identity pass, 2026-11-19): the Harvest Downs a body under the line, so it walks to the
+    -- one already under it; then whoever is nearest. The intent shows the walk before the scythe, and that is the
+    -- read: get them above the line or out of its ring.
+    ai = {
+        { priority = "high", act = "attack", targetPref = "lowest_hp",
+          when = { subject = "foe_lowest_hp", test = "hp_pct_below", value = 0.25 } },
+        { priority = "normal", act = "attack", targetPref = "nearest",
+          when = { subject = "any_foe", test = "exists" } },
+    },
 }

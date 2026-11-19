@@ -31,4 +31,5 @@ return {
     drops = { "ability_open_veins", "ability_boiling_blood" },
     defaultAction = "weapon_staff",
     signatureWeapon = "weapon_staff",
+    ai = require("models.wrath_targeting").vampire, -- the faintest pulse (2026-11-19)
 }

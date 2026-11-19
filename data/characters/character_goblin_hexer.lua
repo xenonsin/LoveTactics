@@ -28,4 +28,5 @@ return {
     drops = { "ability_red_mist" },
     defaultAction = "weapon_staff",
     signatureWeapon = "weapon_staff",
+    ai = require("models.wrath_targeting").goblin, -- the cornered body (2026-11-19)
 }

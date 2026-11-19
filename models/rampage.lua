@@ -90,6 +90,24 @@ function Rampage.plan(combat, unit)
     return Rampage.hitNearest(combat, unit, Status.has(unit, "status_unchained") and "unchained" or "blood up")
 end
 
+-- Strike `tt` with the default weapon, walking first if it must, or close on it; nil when it can do neither.
+-- The Fledgling's lone feed (models/thirst.lua) aims its Bloodlust at one body chosen there rather than the nearest.
+function Rampage.hitBody(combat, unit, tt, reason)
+    if not (tt and tt.alive) then return nil end
+    local plan = strikeAt(combat, unit, tt, reason)
+    if plan then return plan end
+    local Combat = require("models.combat")
+    local dest
+    for _, node in ipairs(Combat.reachableList(combat, unit)) do
+        local d = Combat.cellGap(node.x, node.y, tt)
+        if not dest or d < dest.dist then dest = { x = node.x, y = node.y, dist = d } end
+    end
+    if dest and dest.dist < Combat.cellGap(unit.x, unit.y, tt) then
+        return { move = { x = dest.x, y = dest.y }, reason = reason }
+    end
+    return nil
+end
+
 -- Strike the nearest body, either side, walking first if it must, or close on it; nil with nobody on the board.
 -- Shared with a vampire's Bloodlust (models/thirst.lua), which bites whoever is nearest on EVERY turn rather than
 -- only when no foe is in reach -- so the vampires read it without the Berserker's gate above.

@@ -38,8 +38,15 @@ dead.stats.defense = 1
 -- one body's blue bar is the whole fight (character_barrow_lord.lua), that misreading is expensive.
 dead.stats.mana = 0
 
--- The lattice rides on Bare Bones (see character_skeleton_knight.lua), at the line this body used to
+-- The lattice rides on Company Bones (see character_skeleton_knight.lua), at the line this body used to
 -- declare innate.
+--
+-- ITS IDENTITY LEVER IS THE HUNT FOR THE HAMMER (2026-11-19, the creature identity pass). The review
+-- offered two: give ground after each volley, or go for whoever holds the mace. The second was picked --
+-- the engine has no give-ground on a bow in this tree, and a Mark is a badge the player can SEE and a Cure
+-- can answer. Company Bones carries trait_the_old_company: at the start of its turn the archer Marks the
+-- nearest foe holding an impact weapon, and it (and its knights) shoot the Marked first. And while a
+-- knight of its company stands, the archer is Shielded -- so it is the last body to kill, not the first.
 
 -- The bow it was buried with, the volley it still remembers, and the trapper's kit back where it fits
 -- (the review's retrofit line): a dead hunter still knows where it laid its spikes. The wolf does not
@@ -47,9 +54,17 @@ dead.stats.mana = 0
 -- Grave-Cold is seeded by the tag; Bare Bones is the lattice and the picture.
 dead.startingItems = {
     "ability_spike_trap", "weapon_iron_bow",    "ability_rain_of_arrows",
-    "utility_trap_sense", "utility_bare_bones", false,
+    "utility_trap_sense", "utility_bare_bones", "utility_company_bones",
     false,                false,                false,
 }
 dead.defaultAction = "weapon_iron_bow"
+
+-- TARGETING (2026-11-19, the Greed targeting pass): the Marked first -- the hammer it marked itself --
+-- then the living archer's own "finish the wounded".
+dead.ai = {
+    { priority = "high", act = "attack", targetPref = "marked",
+      when = { subject = "any_foe", test = "has_status", value = "status_mark" } },
+}
+for _, rule in ipairs(base.ai or {}) do dead.ai[#dead.ai + 1] = rule end
 
 return dead

@@ -41,4 +41,10 @@ return {
     drops = { "armor_two_heads", "ability_cauterise", "utility_hydras_blood" },
     defaultAction = "weapon_hydra_jaws",
     archetype = "aggressive",
+    -- TARGETING (the creature identity pass, 2026-11-19): the jaws land once per head on whatever is nearest; the
+    -- heads are the threat, not the pick.
+    ai = {
+        { priority = "normal", act = "attack", targetPref = "nearest",
+          when = { subject = "any_foe", test = "exists" } },
+    },
 }

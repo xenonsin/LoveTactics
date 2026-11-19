@@ -39,4 +39,5 @@ return {
     -- WHAT IT IS KNOWN FOR (docs/drops.md): its three rules, each handed over on its own.
     drops = { "utility_flowwalkers_soles", "utility_heart_of_the_wildfire", "utility_coal_in_the_fist" },
     defaultAction = "weapon_blaze_fists",
+    ai = require("models.wrath_targeting").elemental, -- the nearest, as the Arc (2026-11-19)
 }

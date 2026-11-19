@@ -9,7 +9,7 @@
 return {
     name = "Evil Eye",
     abbr = "Eye",
-    description = "Evil Eye: at the start of its turn it sours one blessing of the Fairest it can see into Rattled.",
+    description = "Evil Eye: at the start of its turn it sours one blessing of the Fairest it can see into Rattled, or Rattles it if it holds none.",
     color = { 0.420, 0.620, 0.380 }, -- badge tint (an envious green)
     duration = math.huge,
     hideDuration = true,

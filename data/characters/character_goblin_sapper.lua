@@ -28,4 +28,5 @@ return {
     drops = { "ability_powder_keg" },
     defaultAction = "weapon_iron_dagger",
     signatureWeapon = "weapon_iron_dagger",
+    ai = require("models.wrath_targeting").goblin, -- the cornered body (2026-11-19)
 }
