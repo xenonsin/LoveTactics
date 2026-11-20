@@ -27,7 +27,10 @@ end
 -- HOW LONG an objective fight may run, in the unit-turns models/autobattle.lua counts. Twice and a bit
 -- the skirmish budget (22): a set-piece with a clock or a crossing in it is longer than a road fight by
 -- construction, and what is guarded here is that it ENDS, at a length a sitting can hold.
-local OBJECTIVE_TURN_BUDGET = 70
+-- Times Growth.ENEMY_HEALTH_SCALE, for the reason tests/skirmish_spec.lua's budget gives: the scale
+-- makes every spawned body last half as long again on purpose (2026-11-19), so a clock that ignored it
+-- would be timing the old bodies.
+local OBJECTIVE_TURN_BUDGET = math.ceil(70 * require("models.growth").ENEMY_HEALTH_SCALE)
 
 local function objectiveFights()
     local ids = {}

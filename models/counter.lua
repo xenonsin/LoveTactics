@@ -51,7 +51,19 @@ Counter.DESK = "desk"
 -- The answer that means "walk out". Authored on the Exit line of every desk. Anything unrecognised means
 -- the same thing -- an escaped scene reports nil -- so leaving is the safe default and a typo in a
 -- blueprint shuts the door rather than opening the wrong room.
+--
+-- A desk may gate its Exit line on `when = { offer = "leave" }`, and Counter.context puts `leave` in the
+-- open set on every visit but the one the first morning holds the company at (Counter.held).
 Counter.LEAVE = "leave"
+
+-- IS THIS DESK HOLDING THE COMPANY? On the first morning, while Rowan is still owed her mending
+-- (`hubIntro == "ward"`, the stage states/hub.lua's plaza rail reads), a desk with the mending on it
+-- cannot be walked out of: no Exit line, and an escaped scene comes back to the desk rather than to the
+-- plaza (2026-11-02, the author's call -- the plaza would only send them straight back). It lets go the
+-- moment the bone is set, which is the deed that clears the stage, so Xin's scene ends on an Exit line.
+function Counter.held(player, building)
+    return player ~= nil and player.hubIntro == "ward" and Offer.openSet(player, building).mend == true
+end
 
 -- The conversation context for a counter: the ordinary one, plus which rooms behind this door are open.
 -- Rebuilt on every pass through the desk rather than captured once, because a room can OPEN while the
@@ -68,11 +80,13 @@ function Counter.context(player, building)
     ctx.offers = Offer.openSet(player, building)
     -- THE FIRST MORNING'S DESK OFFERS ONE ROOM. While Rowan is still owed her mending (`hubIntro ==
     -- "ward"`, the stage states/hub.lua's plaza rail reads), every other room on this desk is held
-    -- back, so the Cathedral opens onto "Heal an injury" and the Exit line and nothing else. Narrowed
-    -- here rather than in the scene, so it is one stage read in one place and no desk line has to
-    -- learn a tutorial condition. A desk with no mending room is left alone.
-    if player and player.hubIntro == "ward" and ctx.offers.mend then
+    -- back, so the Cathedral opens onto "Heal an injury" and nothing else -- not even its Exit line
+    -- (Counter.held). Narrowed here rather than in the scene, so it is one stage read in one place.
+    -- A desk with no mending room is left alone.
+    if Counter.held(player, building) then
         ctx.offers = { mend = true }
+    else
+        ctx.offers.leave = true
     end
     ctx.news = Offer.newsSet(player, building)
     return ctx
@@ -133,7 +147,11 @@ function Counter.open(player, building, openPanel, onLeave, opts)
     -- One pass: play the scene (from the top, or back at the desk), then act on what was answered.
     local function desk(startAt)
         Conversation.play(building.counter, function(answer)
-            if not answer or answer == Counter.LEAVE then return leave() end
+            if not answer or answer == Counter.LEAVE then
+                -- Escaped out of on the held morning: back to the desk, which has no Exit line on it.
+                if Counter.held(player, building) then return desk(Counter.DESK) end
+                return leave()
+            end
 
             -- A room, if the answer names one that is open. Offer.roomFor returns nil for the Exit line,
             -- for an unknown answer, and for an answer whose gate has shut since the scene was resolved

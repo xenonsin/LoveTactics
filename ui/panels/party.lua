@@ -2619,10 +2619,12 @@ function Party:drawFocus()
             local cx = x + col * colW
             -- The EFFECTIVE figure, gear folded in (Party.statTotal) -- for a resource that is the
             -- ceiling, with `current` left where it is, so a wounded member still reads as wounded.
-            local total = Party.statTotal(char, row.key)
+            -- Whole numbers only: a pool refilled by a fractional regen (stamina between fights) can
+            -- carry a remainder, and the sheet reads the whole points a body can spend.
+            local total = math.floor(Party.statTotal(char, row.key))
             local value
             if row.res and type(stat) == "table" then
-                value = (stat.current or total) .. "/" .. total
+                value = math.floor(stat.current or total) .. "/" .. total
             else
                 value = tostring(total)
             end
@@ -2710,7 +2712,7 @@ end
 
 -- BONDS (models/bond.lua) -- the one place a rank is printed, the way Fire Emblem keeps supports on the
 -- unit's own page and off the map. The avatar is the hub, so its sheet lists every bond it holds; a
--- partner's sheet shows only its bond with the avatar. A body with no points yet shows nothing at all.
+-- partner's sheet shows only its bond with the avatar. A body with no points and no rank shows nothing.
 -- Rows read like the technique rows under them: the rank letter in amber, the name, and the points owed
 -- to the next rank (a full A says so). Returns the y the next section starts at.
 function Party:drawBonds(char, x, y)
@@ -2721,7 +2723,7 @@ function Party:drawBonds(char, x, y)
         for _, b in ipairs(Bond.list(player)) do
             rows[#rows + 1] = { rank = b.rank, name = b.char.name or b.id, toNext = b.toNext }
         end
-    elseif Bond.points(player, char.id) > 0 then
+    elseif Bond.points(player, char.id) > 0 or Bond.rank(player, char.id) then
         local avatar = Bond.avatarOf(player)
         rows[1] = { rank = Bond.rank(player, char.id), name = (avatar and avatar.name) or "You",
                     toNext = Bond.toNext(player, char.id) }

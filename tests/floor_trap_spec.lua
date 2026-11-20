@@ -131,9 +131,24 @@ return {
         assert(Trap.detectRadiusFor(player) == r, "two charms stacked into a bigger radius")
     end },
 
+    { name = "while parked, no descent floor asks for bad road or a wired lid", fn = function()
+        -- The flag is the whole of the parking, so it is checked at the seam the game reads: every
+        -- floor's map, the Crown's included.
+        if not Descent.FLOOR_TRAPS_PARKED then return end
+        local player = Player.new()
+        local run = Descent.new(player, 4242)
+        for floor = 1, Descent.FLOORS do
+            run.floor = floor
+            local mp = Descent.floorQuest(run, player).map
+            assert(mp.trapCount == nil, "floor " .. floor .. " still asks for road traps while parked")
+            assert(mp.trappedChestChance == nil, "floor " .. floor .. " still wires chests while parked")
+        end
+    end },
+
     { name = "the floor's trap count is worth carrying a charm against", fn = function()
         -- A rate nobody meets makes the charm dead weight; a rate that bites every other step makes the
-        -- floor a minefield and walking it a chore. Measured against ~91 places on a floor.
+        -- floor a minefield and walking it a chore. Measured against ~91 places on a floor. Kept as the
+        -- standing rate for the day the flag comes back off (Descent.FLOOR_TRAPS_PARKED).
         assert(Descent.FLOOR_TRAPS.min >= 1,
             "a floor that can roll zero traps makes the charm a coin flip on whether it does anything")
         assert(Descent.FLOOR_TRAPS.max <= 8,

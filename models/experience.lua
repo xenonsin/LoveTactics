@@ -38,8 +38,16 @@ local Experience = {}
 -- A kill is worth four actions. High enough that finishing a fight is worth taking, low enough that the
 -- body that lands the last blow does not pull three levels clear of the one that softened the target:
 -- across a floor a company spreads its kills, and the actions are the bulk of the income either way.
+--
+-- TWO (2026-11-15), and the paragraph above is why. At four a level cost 13 and a body acting five
+-- times with two kills banked a level a FIGHT; the traces showed the avatar and the mage taking most
+-- of the kills and walking to 11 and 9 by floor three while the healer sat at 4. The company spread
+-- its kills less than the paragraph assumed. At two the felling blow is still worth taking, the
+-- company averages about a fifth less (Descent.expectedLevel lands 45 at the bottom against 50 at
+-- four), and the leader no longer runs off from the field. Experience.STEP was left at 13 on purpose:
+-- a slower curve leaves the company far under the 4-to-50 enemy climb with nothing to catch it up.
 Experience.PER_ACTION = 1
-Experience.PER_FELLING = 4
+Experience.PER_FELLING = 2
 
 -- THE CURVE IS FLAT: every level costs STEP, at every level. ALL of the control is in the AWARD
 -- (Experience.rewardScale), and none of it is here.

@@ -51,7 +51,13 @@ end
 -- these average around twelve, and the budget carries roughly 1.5x headroom over the worst single one.
 -- Shared by two cases -- the length itself, and the technique cap that has to be sized against it --
 -- because a fight's length is the one number both of those claims are really about.
-local SKIRMISH_TURN_BUDGET = 22
+--
+-- TIMES Growth.ENEMY_HEALTH_SCALE (2026-11-19). The 22 was measured against bodies at their blueprint
+-- health; the scale exists to make every spawned body take half as many blows again, which is a fight
+-- half as long again BY DESIGN -- Balance.TTK's bands rose by the same factor the same day. Held at 22,
+-- 38 of 111 road fights read as regressions for doing exactly what the scale asked of them. Read off the
+-- constant, so a retune of the scale moves the budget with it rather than reddening the backlog again.
+local SKIRMISH_TURN_BUDGET = math.ceil(22 * require("models.growth").ENEMY_HEALTH_SCALE)
 
 local function openedBodies(def, day)
     local ctx = { day = day, encounterKind = def.kind, encounterCap = def.enemyCap }

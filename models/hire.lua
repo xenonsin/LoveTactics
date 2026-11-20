@@ -93,8 +93,10 @@ Hire.ROOT_TEMPLATE = {
 }
 
 -- THE STANDARD KIT (round 1, "kit-standard"): every hire of a class walks in with the same pieces, all
--- of them rung 0 -- so hiring can never put a piece in a hand that the shelf would not sell this
--- morning. tests/hire_spec.lua holds every cell to unlockLevel 0.
+-- of them off the OPENING RACK -- so hiring can never put a piece in a hand that is past the shelf's
+-- plain kit. tests/hire_spec.lua holds every cell to Class.FIRST_RUNG_EVICTED_TO: the rack was rung 0
+-- until 2026-11-13, when a fresh class's rung 0 became Act 0's kit and its unlock gifts
+-- (Class.opensFirst) and the rack moved up two. The board opens on trip 3, by when it is reachable.
 --
 -- WHAT RUNG 0 COSTS, measured rather than assumed: no root's shelf carries ARMOUR at rung 0 (leather is
 -- the rogue's rung 1, chainmail the knight's 4), and the priest's carries no heal (Heal is rung 3). So a

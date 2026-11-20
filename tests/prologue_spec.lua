@@ -26,7 +26,7 @@ local Conversation = require("models.conversation")
 local PROLOGUE_SCENES = {
     "conversation_prologue_opening", "conversation_prologue_village", "conversation_prologue_classes",
     "conversation_prologue_ruins", "conversation_flight_turn_back",
-    "conversation_prologue_arrival",
+    "conversation_prologue_arrival", "conversation_prologue_mend",
     "conversation_colosseum_slot_01_outro", "conversation_tutorial_village",
 }
 -- `conversation_prologue_flier` was the sixth and is DELETED. `. content-report` reported it as an

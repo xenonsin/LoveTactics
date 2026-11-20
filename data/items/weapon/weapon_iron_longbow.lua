@@ -25,7 +25,7 @@ return {
     hands = 2, -- two-handed, like every bow -- and a longbow more literally than most
     class = "hunter",
     price = 80,
-    unlockLevel = 0,
+    unlockLevel = 2,
     activeAbility = {
         target = "enemy",
         range = 5,     -- two tiles further than data/items/weapon/weapon_iron_bow.lua's 3

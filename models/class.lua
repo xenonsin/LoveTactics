@@ -478,7 +478,7 @@ end
 -- The requirement table (data/class_requirements.lua): class id -> { deed, count, label }.
 Class.requirements = require("data.class_requirements")
 
--- THE ITEM A SEAL IS (data/materials/material_charter_seal.lua, held in player.materials). One drops
+-- THE ITEM A SEAL IS (data/materials/material_charter_seal.lua, a stack in the stash or the pack). One drops
 -- the first time the company beats each elite (models/encounter_battle.lua), and an unlock spends one.
 -- There is no free one: the avatar's FIRST class is Rowan's recommendation (Class.pickOwed, below),
 -- which is what the seal Rowan used to hand over at Novice 1 was standing in for.
@@ -536,7 +536,46 @@ function Class.giftFor(char, id)
     return Class.ROOT_GIFTS[id]
 end
 
--- `id`'s requirement row, or nil (a crossing, the starter, the creature bucket, an unknown id).
+-- WHAT A ROOT'S SHELF DEALS ON THE DAY IT IS UNLOCKED (2026-11-13, the author: "the only things able to
+-- be bought in the trainer should be either items found in the prologue or the one just unlocked").
+-- A fresh class stands at level 0, and rung 0 of its house used to be a re-arm rack -- six or seven
+-- plain wares, a base weapon of every family the house works in -- so the first visit after the
+-- ceremony read as a wall of choices the unlock had nothing to do with. Rung 0 of a ROOT is now two
+-- things only: what the company already owns when Act 0 ends (below), and the unlock gifts
+-- (ROOT_GIFTS, AVATAR_GIFTS). Everything else the ladder once seated on rung 0 sits on rung 2.
+--
+-- EVERYTHING THE COMPANY OWNS WHEN ACT 0 ENDS -- the chests, the scenes' gifts, the fights' loot, what
+-- Rowan hands over mid-fight, and what the avatar and Rowan walk in carrying. Authored rather than read
+-- off states/prologue.lua (a model has no business requiring a screen), and tests/first_rung_spec.lua
+-- holds it to what prologue.skip actually hands over, so a beat that gives a new thing reddens there.
+Class.ACT0_KIT = {
+    ability_clear_out = true, ability_heal = true, ability_mark_target = true,
+    ability_minor_shock = true, ability_renewal = true, ability_shout = true,
+    armor_chainmail = true, armor_leather_armor = true, armor_salamander_hide = true,
+    armor_sworn_aegis = true, consumable_healing_potion = true, consumable_mana_potion = true,
+    utility_reliquary_kept_trust = true, utility_torch = true, utility_wolfsbane_oil = true,
+    weapon_crozier = true, weapon_iron_bow = true, weapon_iron_mace = true, weapon_iron_sword = true,
+}
+
+-- Does item `id` (blueprint `def`) open on rung 0 of its root's shelf? Only a root's own ware: an earned
+-- class's stock has its own gate (Vendor.lockReason), and a discipline is never "first unlocked" with
+-- the empty rack this rule exists for.
+--
+-- A GIFT OR AN ACT 0 PIECE THAT RANKS HIGHER STILL OPENS AT 0, and its `unlockLevel` is left where the
+-- grader put it. That field is also the item's POWER level (models/balance.lua reads it as the slot its
+-- magnitude is judged at), so seating Called Shot -- a rank-7 strike -- on rung 0 in the data would have
+-- the balance pass cut it to a rung-0 number. The gift is in the body's hands at that power already;
+-- selling a second copy on the same morning is the same act, so only the GATE moves (Vendor.lockReason).
+function Class.opensFirst(id, def)
+    local class = def and def.class
+    if not (id and class and Class.isRoot(class)) then return false end
+    return Class.ACT0_KIT[id] == true or Class.ROOT_GIFTS[class] == id or Class.AVATAR_GIFTS[class] == id
+end
+
+-- The rung everything else a root seated on 0 now waits for.
+Class.FIRST_RUNG_EVICTED_TO = 2
+
+-- `id`'s requirement row, or nil (the starter, the creature bucket, an unknown id).
 function Class.requirementOf(id)
     return id and Class.requirements[id] or nil
 end
@@ -895,7 +934,12 @@ end
 -- Fifteen actions of one house still comfortably clears an honestly played set-piece and leaves the
 -- milked fight nothing to milk. The cap has never been a target to play toward; it is the line past
 -- which the commitment has been demonstrated and the rest is farming.
-Class.TECHNIQUE_PER_BATTLE = 30
+--
+-- 34 (2026-11-19), from 30, because the fight it caps got longer: Growth.ENEMY_HEALTH_SCALE put every
+-- spawned body at half as much health again, and the road budget tests/skirmish_spec.lua sizes this
+-- against rose to 33 unit-turns with it -- half of which, spent on one house, is 33. Still half the
+-- whole fight's worth, which is the far edge that spec holds.
+Class.TECHNIQUE_PER_BATTLE = 34
 
 -- What a rung costs in technique. Climbs with the target level exactly as the gold track it replaces
 -- did (Forge.GOLD_PER_LEVEL), so the shape of the ladder is unchanged and only the currency moved.

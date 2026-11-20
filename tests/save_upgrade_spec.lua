@@ -186,11 +186,11 @@ return {
         name = "a save round trip preserves forging materials",
         fn = function()
             local player = Player.new()
-            player.materials = { material_iron_scrap = 7, material_steel_ingot = 2 }
+            Player.setMaterials(player, { material_iron_scrap = 7, material_steel_ingot = 2 })
 
             local restored = Save.restore(Save.snapshot(player))
-            assert(restored.materials.material_iron_scrap == 7, "iron scrap survives")
-            assert(restored.materials.material_steel_ingot == 2, "steel ingots survive")
+            assert(Player.materialCount(restored, "material_iron_scrap") == 7, "iron scrap survives")
+            assert(Player.materialCount(restored, "material_steel_ingot") == 2, "steel ingots survive")
         end,
     },
     {

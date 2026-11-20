@@ -34,13 +34,11 @@
 --   * THE STREET ITSELF -- two townsfolk arguing over how many breaches this season, which is what
 --     made the cause an argument the city was already having rather than an explanation to the player.
 --
--- AND IT ENDS ON HER WOUND (2026-10-01). Rowan was felled by the Champion (models/combat.lua's
--- Combat.spendScriptedFell) and walks into the city carrying Blood Loss, and the city now HOLDS the
--- company to seeing to it: every plaza card but the Cathedral refuses until she is mended
--- (states/hub.lua's openPanel), and the Cathedral's desk offers only the mending (models/counter.lua).
--- A rail with nobody saying why is a locked screen, so the last thing she says before the bubble goes
--- up is that she is hurt and needs a priest. The two lines are PLACEHOLDERS; the words are the
--- author's. Name the CATHEDRAL (the card's `name`), not "the Ward" -- that is the room behind its desk.
+-- HER WOUND IS NOT HERE ANY MORE (2026-11-02). Rowan was felled by the Champion (models/combat.lua's
+-- Combat.spendScriptedFell) and walks into the city carrying Blood Loss, and the city HOLDS the company
+-- to seeing to it. Her two lines saying she is hurt and needs a priest closed this scene until the class
+-- pick was put between them and the bubble that acts on them; they are their own scene now
+-- (conversation_prologue_mend), played as the pick's panel shuts.
 --
 -- The city's ECONOMIC dependence on the Rift is deliberately not here -- no market stocked out of it,
 -- no treasury. It is a hole that has to be kept clear, and the reason to go down is that it pays.
@@ -54,7 +52,7 @@
 -- counted toward a class, so this is the avatar's first. It ends on the attendant's line because the
 -- pick follows it on the next frame.
 --
--- Tags 1, 3, 4 and 6-11 are PLACEHOLDERS, and so is the order. 1, 3 and 4 were the author's street
+-- Tags 1, 3, 4 and 8-11 are PLACEHOLDERS, and so is the order. 1, 3 and 4 were the author's street
 -- lines (rift raff; the guild failing to clear the Rift), retired when the scene moved to the guild's
 -- own counter; 2 and 5 are the author's and stand.
 return {
@@ -70,8 +68,6 @@ return {
         { "guild", "PLACEHOLDER -- the attendant asks what the company brings up.", tag = 10 },
         { "character_avatar", "PLACEHOLDER -- the avatar lays the Demon Champion's horn on the counter.", tag = 11 },
         { "character_rowan", "PLACEHOLDER -- she stands as the guild's witness: the avatar took it down.", tag = 8 },
-        { "character_rowan", "PLACEHOLDER -- she says the Champion's blow is still on her, and she is hurt.", tag = 6 },
-        { "character_rowan", "PLACEHOLDER -- and that she needs a priest at the Cathedral before anything else.", tag = 7 },
         { "guild", "PLACEHOLDER -- the attendant takes the horn and her word, and asks what class the avatar will be entered as.", tag = 9 },
     },
 }

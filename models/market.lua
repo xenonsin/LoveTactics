@@ -78,6 +78,17 @@ Market.STAPLE_TYPES = { consumable = true }
 -- because it is what a body starts with. Everything above it is the rotation's to offer.
 Market.STAPLE_RUNG = 0
 
+-- ...AND THE DRAUGHTS THAT STOOD THERE UNTIL 2026-11-13. The class houses moved them to rung 2 that day
+-- (Class.opensFirst: a fresh class's first rung is Act 0's kit and its unlock gifts), and that is a
+-- statement about a TRAINER's first morning, not about this counter -- which answers a need, and a need
+-- does not wait on a class level. Named rather than re-derived, because the rung that used to derive
+-- them now also holds a house's ordinary rung-2 stock.
+Market.STANDING = {
+    consumable_ball_bearings = true, consumable_clearwater_vial = true, consumable_net = true,
+    consumable_panacea = true, consumable_reviving_salts = true, consumable_smoke = true,
+    consumable_stamina_potion = true, consumable_throwing_stone = true, consumable_witchlight_flare = true,
+}
+
 -- How many rotating wares the counter carries. Three against a stock of several hundred, so what is out
 -- today is a fact a player can hold in their head and come back for. It was twelve, which is a list you
 -- read rather than three things you decide between.
@@ -136,11 +147,11 @@ end
 -- The first test read `item.discipline` before the fold, which is the same sentence in the vocabulary
 -- of two fields (docs/class-fold.md). With one field a truthiness check would answer false forever and
 -- let a crossing's gear onto the standing rack.
-function Market.isStaple(item)
+function Market.isStaple(item, id)
     if not (item and item.price) then return false end
     if item.class and not Class.isRoot(item.class) then return false end
     if not Market.STAPLE_TYPES[item.type] then return false end
-    return (item.unlockLevel or 0) <= Market.STAPLE_RUNG
+    return (item.unlockLevel or 0) <= Market.STAPLE_RUNG or (id ~= nil and Market.STANDING[id] == true)
 end
 
 -- Will the market actually put this staple out for THIS company?
@@ -253,7 +264,7 @@ function Market.stock(player, day)
     local counter, pool = {}, {}
     for _, row in ipairs(Market.catalogue(player)) do
         local item = Item.defs[row.id]
-        if Market.isStaple(item) then
+        if Market.isStaple(item, row.id) then
             if Market.stocksStaple(player, item) then
                 row.rack = Market.COUNTER
                 counter[#counter + 1] = row
@@ -355,7 +366,7 @@ function Market.markOpened(player)
     -- staples does this class own", and that does not depend on which day it is.
     local opened = {}
     for id, def in pairs(Item.defs) do
-        if risen[Item.classOf(def)] and Market.isStaple(def) then
+        if risen[Item.classOf(def)] and Market.isStaple(def, id) then
             Player.markNew(player, Player.NEW_STOCK, id)
             opened[#opened + 1] = id
         end
@@ -395,7 +406,7 @@ function Market.hasUnread(player)
     if not marked then return false end
     for id in pairs(marked) do
         local def = Item.defs[id]
-        if def and Market.isStaple(def) and Market.stocksStaple(player, def) then return true end
+        if def and Market.isStaple(def, id) and Market.stocksStaple(player, def) then return true end
     end
     return false
 end

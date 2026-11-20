@@ -372,7 +372,7 @@ return {
             assert(#Curse.rites(player) == 0, "and the altar is empty")
             -- To the STASH, never to the cell it came off: that cell is two trips stale and the player
             -- has almost certainly filled it.
-            assert(player.stash[1] == sword, "it comes back to the stash")
+            assert(player.stash[#player.stash] == sword, "it comes back to the stash")
         end,
     },
     {

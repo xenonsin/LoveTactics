@@ -4,7 +4,9 @@
 --   * Trade Places (B) swaps tiles and spends the move, not the action -- once a fight;
 --   * Teamwork (B) ends the avatar's turn and the partner acts next -- once a fight;
 --   * an A partner beside the foe follows up the avatar's blow, free, once a round, and the forecast says so;
---   * a covering deed (a blow taken for the other) is banked on the fight's ledger;
+--   * an S partner follows up from anywhere its weapon reaches the foe, and an A partner does not;
+--   * a bond deed (a strike beside the other, a heal, a blow taken, an avenging) is banked on the fight's
+--     ledger once a kind a turn, capped, and pops over the partner's head;
 --   * all of it travels as a `bond` command, so a peer resolves the same board.
 
 local Character = require("models.character")
@@ -145,6 +147,33 @@ return {
         end,
     },
     {
+        name = "an S partner follows up from range, an A partner at the same spot does not",
+        fn = function()
+            -- Avatar (2,2) strikes the bandit at (3,2); Rowan stands at (5,2) with a bow, two tiles off.
+            for _, rank in ipairs({ "S", "A" }) do
+                local c, avatar, rowan, foe = fight(rank, 5, 2, 3, 2)
+                rowan.char.inventory[1] = Item.instantiate("weapon_iron_bow")
+                foe.char.stats.health.current, foe.char.stats.health.max = 300, 300
+                openTurn(c, avatar)
+                local weapon = Combat.defaultWeapon(avatar.char)
+                local reaches = Combat.answeringWeapon(c, rowan, 2) ~= nil
+                assert(reaches, "the bow should reach two tiles")
+                local follows = Combat.previewFollowUps(c, avatar, weapon, foe, {})
+                local solo = Combat.computeDamage(c, avatar, foe, weapon)
+                local before = foe.char.stats.health.current
+                Combat.dealDamage(c, avatar, foe, weapon)
+                local dealt = before - foe.char.stats.health.current
+                if rank == "S" then
+                    assert(follows and follows[1].ally == rowan and follows[1].bond, "the forecast names the S follow-up")
+                    assert(dealt > solo, "the S partner adds a blow from range")
+                else
+                    assert(follows == nil, "an A partner two tiles off is not forecast")
+                    assert(dealt == solo, "an A partner two tiles off does not follow up")
+                end
+            end
+        end,
+    },
+    {
         name = "a B partner does not follow up",
         fn = function()
             local c, avatar, _, foe = fight("B", 3, 3, 3, 2)
@@ -176,17 +205,44 @@ return {
         end,
     },
     {
-        name = "covering deeds bank on the fight's ledger for the pair",
+        name = "bond deeds bank on the fight's ledger, once a kind a turn, capped, each one popping overhead",
         fn = function()
             local c, avatar, rowan = fight(nil, 3, 2)
             c.bonds = {}
-            Combat.bondDeed(c, avatar, rowan)
-            Combat.bondDeed(c, rowan, avatar)
-            assert(c.bondDeeds.character_rowan == 2)
+            openTurn(c, avatar)
+            c.fx = {}
+            Combat.bondDeed(c, avatar, rowan, "heal")
+            Combat.bondDeed(c, rowan, avatar, "heal")
+            assert(c.bondDeeds.character_rowan == 1, "one kind banks once a turn")
+            Combat.bondDeed(c, rowan, avatar, "cover")
+            assert(c.bondDeeds.character_rowan == 2, "a different kind is a second deed")
+            local pops = 0
+            for _, e in ipairs(c.fx) do if e.type == "bond" and e.unit == rowan then pops = pops + 1 end end
+            assert(pops == 2, "each banked deed pops over the partner")
             local foe = c.units[3]
             rowan.lastAttacker = foe
             Combat.bondAvenged(c, avatar, foe)
             assert(c.bondDeeds.character_rowan == 3, "felling the foe that last hit the partner is a deed")
+            openTurn(c, avatar)
+            Combat.bondDeed(c, avatar, rowan, "heal")
+            assert(c.bondDeeds.character_rowan == Bond.DEED_CAP, "past the fight's cap nothing banks")
+        end,
+    },
+    {
+        name = "a strike thrown beside the partner is a deed; the same strike apart is not",
+        fn = function()
+            -- Avatar (2,2) strikes the bandit at (2,3) with Rowan beside at (3,2).
+            local c, avatar, rowan, foe = fight("D", 3, 2, 2, 3)
+            foe.char.stats.health.current, foe.char.stats.health.max = 300, 300
+            openTurn(c, avatar)
+            Combat.dealDamage(c, avatar, foe, Combat.defaultWeapon(avatar.char))
+            -- Asked by kind: the bandit's counter can hand Rowan a cover deed of her own in the same exchange.
+            assert(c.turn.bondDeeds and c.turn.bondDeeds["character_rowan|side"], "side by side: a deed")
+            local c2, avatar2, _, foe2 = fight("D", 8, 5, 2, 3)
+            foe2.char.stats.health.current, foe2.char.stats.health.max = 300, 300
+            openTurn(c2, avatar2)
+            Combat.dealDamage(c2, avatar2, foe2, Combat.defaultWeapon(avatar2.char))
+            assert(not (c2.turn.bondDeeds and c2.turn.bondDeeds["character_rowan|side"]), "apart: nothing")
         end,
     },
 }

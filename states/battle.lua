@@ -4714,6 +4714,29 @@ refreshView = function()
             for _, m in ipairs(marks) do logHighlight[m.unit] = true end
         end
     end
+    -- A bond plate under the mouse or a pad's Y cycle lights the partners it would act with, in the
+    -- same white on the board and the strip: for Teamwork, who takes the turn next. Inside a `do` so it
+    -- adds no local to this function's count (the ceiling).
+    if not logHighlight and isParty then
+        do
+            local verb = battle.panel and battle.panel.bondHover
+            if not verb and battle.bondFocus then
+                local v = battle.bondVerbsFor(current)[battle.bondFocus]
+                verb = v and v.verb
+            end
+            if verb then
+                local marks = {}
+                for _, u in ipairs(Combat.bondVerbTargets(battle.combat, current, verb)) do
+                    marks[#marks + 1] = { x = u.x, y = u.y, unit = u }
+                end
+                if #marks > 0 then
+                    overlays.logSubjects, overlays.logSubjectsApart = marks, true
+                    logHighlight = {}
+                    for _, m in ipairs(marks) do logHighlight[m.unit] = true end
+                end
+            end
+        end
+    end
 
     -- "Threats" survey (the left-column toggle): wash EVERY tile any enemy could reach-and-strike
     -- this turn in purple, so the whole danger picture reads at once. During the actor's own move
@@ -6825,6 +6848,14 @@ function battle.draw()
         local b = battle.panel:bottomBarRects()
         local title, lines = CombatPanel.waitNote(battle.current)
         NoteTooltip.draw(title, lines, b.x + b.w / 2, b.y + b.h / 2, Scale.WIDTH - PANEL_W)
+    elseif not InputMode.isMouse() and battle.bondFocus then
+        -- A pad resting on a bond plate reads its note the way the armed Wait does, anchored to the plate.
+        local _, plates = battle.panel:bottomBarRects()
+        local p = plates[battle.bondFocus]
+        if p then
+            local title, lines = CombatPanel.bondNote(p.verb)
+            NoteTooltip.draw(title, lines, p.x + p.w / 2, p.y + p.h / 2, Scale.WIDTH - PANEL_W)
+        end
     elseif not InputMode.isMouse() then
         -- KEYBOARD / PAD: THE BOARD CURSOR IS THE HOVER. Without this the entire docked column --
         -- the ground, the body standing on it, and the forecast for the blow being lined up at it --
@@ -6878,6 +6909,10 @@ function battle.draw()
             -- the action grid above it -- a reading that hides its own subject, and the timeline ghost
             -- it is meant to be read alongside. The column stays visible; the words stand beside it.
             local title, lines = CombatPanel.waitNote(battle.current)
+            NoteTooltip.draw(title, lines, mx, my, Scale.WIDTH - PANEL_W)
+        elseif battle.panel.bondHover then
+            -- A bond plate beside it, glossed the same way and held off the panel for the same reason.
+            local title, lines = CombatPanel.bondNote(battle.panel.bondHover)
             NoteTooltip.draw(title, lines, mx, my, Scale.WIDTH - PANEL_W)
         elseif st then
             StatusTooltip.draw(st, mx, my, Scale.WIDTH)

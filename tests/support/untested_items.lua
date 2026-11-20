@@ -107,7 +107,6 @@ return {
     "consumable_bannerets_steel",
     "consumable_berserkers_brew",
     "consumable_crawler_mucus",
-    "consumable_elixir_of_heroism",
     "consumable_elixir_of_the_adept",
     "consumable_flask_of_liquid_fire",
     "consumable_scent_marker",

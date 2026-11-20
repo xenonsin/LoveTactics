@@ -2325,6 +2325,29 @@ end
 --   revived                 -- stood a downed ally back up                      (fx.reanimate)
 --   summoned                -- cast a summon that stood                         (fx.summon)
 --   (consumed and unarmedHit above are deeds too.)
+-- THE CROSSINGS' DEEDS, each one act that needs both parents at once (2026-11-03):
+--   killHoly                -- felled a demon or undead foe with a melee blow  (Crusader)
+--   killTaunted             -- felled a foe its own taunt had drawn            (Champion)
+--   duelHeld                -- struck one foe on 3 of its own turns in a row   (Duelist)
+--   killMoving              -- felled a foe on a turn it walked 3+ tiles       (Skirmisher)
+--   killSpellClose          -- felled a foe with a spell from the tile beside  (Battlemage)
+--   draughtInMelee          -- drank a stat-raising draught beside a foe       (Warbrewer)
+--   healByDraught           -- HP restored to an ally by a consumable          (Apothecary)
+--   killBlessed             -- felled a foe carrying a boon                    (Inquisitor)
+--   healBeside              -- HP restored to an ally on the next tile         (Paladin)
+--   longChannel             -- finished a wind-up of 5+ ticks                  (Theurge)
+--   healFromAfar            -- HP restored to an ally 3+ tiles off by ground it laid, its
+--                              summon, or a consumable it threw -- never its own cast (Totemist)
+--   killRooted              -- felled a Rooted foe                             (Poacher)
+--   killByHazard            -- a foe fell to ground it laid (hazard.laidBy)    (Saboteur)
+--   constructKill           -- a construct it fielded felled a foe             (Artificer)
+--   brewedBothWays          -- poisoned a foe AND healed an ally with consumables, once per fight (Herbalist)
+--   poisonBeside            -- poisoned a foe standing on the next tile        (Plague Knight)
+--   sunderApplied           -- landed Sundered on a foe                        (Vanguard)
+--   stoppedMidWalk          -- Rooted or Halted a foe in the middle of its own walk (Warden)
+--   channelBroken           -- broke an enemy's wind-up on its own turn        (Spellbreaker)
+--   killCursed              -- felled a foe while carrying a cursed piece      (Shaman)
+--   (the Ninja's is tilesBlinked, above.)
 -- ---------------------------------------------------------------------------
 
 -- Add `n` (default 1) to `unit`'s running count of `event`. Nil-safe on both the unit and its
@@ -2356,6 +2379,8 @@ function Combat.deedContext(combat, user, target, magical)
             flank = flank + 1
         end
     end
+    local taunt = Status.get(target, "status_taunt")
+    local turn = combat.turn
     return {
         magical = magical,
         gap = Combat.unitGap(user, target),
@@ -2364,7 +2389,40 @@ function Combat.deedContext(combat, user, target, magical)
         flanked = flank >= 2,
         undead = Character.isUndead(target.char),
         controlled = Status.has(target, "status_stun") or Status.has(target, "status_root"),
+        demon = target.char.kind == "demon",
+        taunted = taunt ~= nil and taunt.taunter == user,
+        rooted = Status.has(target, "status_root"),
+        blessed = Combat.carriesBoon(target),
+        walked = turn ~= nil and turn.unit == user and (turn.walked or 0) >= 3,
+        cursed = Combat.carriesCurse(user),
     }
+end
+
+-- Does `unit` wear a BOON -- a status somebody would want on them? Not a debuff, not an injury, not one of
+-- the silent bookkeeping badges (hideLog), and not a fact about what the body IS: an elite's affix and an
+-- innate immunity, resistance or weakness are its nature, never a blessing laid on it (the Inquisitor's).
+local NOT_BOONS = { "status_affix_", "status_immune_", "status_resistant_", "status_vulnerable_" }
+function Combat.carriesBoon(unit)
+    for _, s in ipairs(unit and unit.statuses or {}) do
+        local def = s.def
+        if def and not def.debuff and not def.injury and not def.hideLog and s.id ~= "status_downed" then
+            local innate = false
+            for _, prefix in ipairs(NOT_BOONS) do
+                if (s.id or ""):sub(1, #prefix) == prefix then innate = true; break end
+            end
+            if not innate then return true end
+        end
+    end
+    return false
+end
+
+-- Is a cursed piece sitting in `unit`'s grid (models/curse.lua)? The Shaman's.
+function Combat.carriesCurse(unit)
+    if not (unit and unit.char and unit.char.inventory) then return false end
+    for _, item in ipairs(Character.eachItem(unit.char)) do
+        if Curse.isCursed(item) then return true end
+    end
+    return false
 end
 
 -- A kill, judged against the board deedContext saw.
@@ -2372,14 +2430,74 @@ function Combat.tallyKillDeeds(user, ctx)
     if not (user and ctx) then return end
     if ctx.magical then
         Combat.tally(user, "killSpell", 1)
+        if ctx.gap <= 1 then Combat.tally(user, "killSpellClose", 1) end
     elseif ctx.gap <= 1 then
         Combat.tally(user, "killMelee", 1)
+        if ctx.undead or ctx.demon then Combat.tally(user, "killHoly", 1) end
     end
     if ctx.gap >= 3 then Combat.tally(user, "killRanged", 1) end
     if ctx.wounded then Combat.tally(user, "killWounded", 1) end
     if ctx.execute then Combat.tally(user, "killExecute", 1) end
     if ctx.flanked then Combat.tally(user, "killFlanked", 1) end
     if ctx.undead then Combat.tally(user, "killUndead", 1) end
+    if ctx.taunted then Combat.tally(user, "killTaunted", 1) end
+    if ctx.rooted then Combat.tally(user, "killRooted", 1) end
+    if ctx.blessed then Combat.tally(user, "killBlessed", 1) end
+    if ctx.walked then Combat.tally(user, "killMoving", 1) end
+    if ctx.cursed then Combat.tally(user, "killCursed", 1) end
+end
+
+-- THE DUELIST'S STREAK, counted in the striker's OWN turns rather than in blows (the repeatStrike tally
+-- counts blows). The first blow of each of its turns decides who the duel is with: the same foe as last
+-- turn, on the very next turn, extends the run; anything else starts it over. Every third turn of one run
+-- banks a `duelHeld` and the run starts again, so eight of them is twenty-four turns on a foe, not ten.
+-- A blow thrown off its own turn (a counter) has no turn of its own to belong to and is ignored.
+function Combat.noteDuel(combat, user, target)
+    local turn = combat and combat.turn
+    if not (turn and turn.unit == user and user ~= target) then return end
+    if user.duelTurn == turn then return end
+    local n = Combat.tallyCount(user, "turnTaken")
+    if user.duelFoe == target and user.duelTurnN == n - 1 then
+        user.duelRun = (user.duelRun or 1) + 1
+    else
+        user.duelRun = 1
+    end
+    user.duelFoe, user.duelTurn, user.duelTurnN = target, turn, n
+    if user.duelRun >= 3 then
+        Combat.tally(user, "duelHeld", 1)
+        user.duelRun = 0
+    end
+end
+
+-- Is a living foe of `unit` standing on a tile next to it?
+function Combat.foeBeside(combat, unit)
+    for _, u in ipairs(combat and combat.units or {}) do
+        if u.alive and not u.incapacitated and u.side ~= unit.side and Combat.unitGap(unit, u) == 1 then
+            return true
+        end
+    end
+    return false
+end
+
+-- THE HERBALIST'S: a consumable has poisoned a foe (`which` = "poison") or healed an ally ("heal"). The
+-- first fight in which a body has done both banks one `brewedBothWays` -- the unit is rebuilt every
+-- Combat.new, so the marks are per fight for free.
+function Combat.noteBrew(unit, which)
+    if not unit then return end
+    unit.brewed = unit.brewed or {}
+    unit.brewed[which] = true
+    if unit.brewed.poison and unit.brewed.heal and not unit.brewed.counted then
+        unit.brewed.counted = true
+        Combat.tally(unit, "brewedBothWays", 1)
+    end
+end
+
+-- A Root or a Halt that landed on a body IN THE MIDDLE OF ITS OWN WALK (Combat's walkOut marks the
+-- walker), banked on whoever laid it when that was a foe of the walker (the Warden's). Nil-safe.
+function Combat.tallyStopDeed(applier, target, id, landed)
+    if not (landed and applier and target and applier ~= target and target.walking) then return end
+    if applier.side == target.side then return end
+    if id == "status_root" or id == "status_halted" then Combat.tally(applier, "stoppedMidWalk", 1) end
 end
 
 -- A status that LANDED (Status.apply returned an instance), banked on whoever laid it when it is one of
@@ -2390,12 +2508,17 @@ local DEED_STATUSES = {
     status_poison = "poisonApplied",
     status_root = "rootApplied",
     status_disarmed = "disarmApplied",
+    status_sundered = "sunderApplied",
 }
 function Combat.tallyStatusDeed(applier, target, id, landed, side)
     if not (landed and applier and target and applier ~= target) then return end
     if applier.side == (side or target.side) then return end
     local key = DEED_STATUSES[id]
     if key then Combat.tally(applier, key, 1) end
+    if id == "status_poison" and Combat.unitGap(applier, target) == 1 then
+        Combat.tally(applier, "poisonBeside", 1)
+    end
+    Combat.tallyStopDeed(applier, target, id, landed)
     if id == "status_charm" and target.char and target.char.kind == "beast" then
         Combat.tally(applier, "charmBeast", 1)
     end
@@ -5174,11 +5297,14 @@ function Combat.attackReach(combat, unit, range, reachable, requiresSight, minRa
                     local d = math.abs(dx) + math.abs(dy)
                     if d <= r and d >= minRange then
                         local x, y = bc.x + dx, bc.y + dy
-                        -- Impassable tiles (solid obstacles, which also fully block sight) can never
-                        -- hold a target, so they're never part of the reach -- no red highlight, and
-                        -- click-to-attack can't fire into a wall.
+                        -- Impassable tiles (solid obstacles, which also fully block sight) hold no
+                        -- target on their own, so an EMPTY one is never part of the reach -- no red
+                        -- highlight, and click-to-attack can't fire into a wall. An OCCUPIED one is: a
+                        -- flier perched on a mountain, a swimmer in the deep channel, a lavaborn in the
+                        -- flow all stand on ground nobody else can, and dropping their tile here made
+                        -- them unaimable for the whole party (sight already excludes the endpoints).
                         if x >= 1 and x <= combat.arena.cols and y >= 1 and y <= combat.arena.rows
-                            and combat.arena.tiles[y][x].walkable
+                            and (combat.arena.tiles[y][x].walkable or Combat.unitAt(combat, x, y) ~= nil)
                             and (not requiresSight or Combat.hasLineOfSight(combat, bc.x, bc.y, x, y)
                                 or sightWaivedAt(combat, unit, x, y)) then
                             local k = key(x, y)
@@ -5649,6 +5775,7 @@ function Combat.stepMove(combat, walk)
     -- A step in the same direction as the one before lengthens it; a turn starts it again at one.
     local turn = combat.turn
     if turn and turn.unit == walk.unit then
+        turn.walked = (turn.walked or 0) + 1 -- tiles on its own feet this turn (the Skirmisher's deed)
         local dx, dy = tile.x - fromX, tile.y - fromY
         if turn.runDx == dx and turn.runDy == dy then turn.runLine = (turn.runLine or 0) + 1
         else turn.runDx, turn.runDy, turn.runLine = dx, dy, 1 end
@@ -5699,6 +5826,9 @@ local function walkOut(combat, plan, capture)
     local walk = Combat.beginMove(combat, plan)
     local unit = plan.unit
     local steps = capture and {} or nil
+    -- Mid-walk, for as long as the route is being walked: what a Root or Halt landing now interrupts
+    -- (Combat.tallyStopDeed, the Warden's deed).
+    unit.walking = true
     while true do
         local fromX, fromY = unit.x, unit.y
         if not Combat.stepMove(combat, walk) then break end
@@ -5707,6 +5837,7 @@ local function walkOut(combat, plan, capture)
                                   fx = Combat.drainFx(combat) }
         end
     end
+    unit.walking = nil
     -- TEMPO is a body planting its feet: a walk forfeits it (Engine.onWalk; pools declaring resetOn
     -- "moved"). Here, in the one loop both the headless move and the watched one run through.
     Engine.onWalk(combat, unit, #(plan.path or {}) - 1)
@@ -9195,6 +9326,9 @@ local function dispatchAnswer(combat, held)
     -- them and the chain stops, without a latch of its own.
     if held.attacker and not (held.at and held.at.answering) then
         Trait.onAllyStrike(combat, held.attacker, held.unit)
+        -- ...and a strike thrown beside a bond partner is the pair acting together (models/bond.lua).
+        -- Only at a foe: a blow on an ally (a mind-controlled friend) is not teamwork.
+        if held.unit and held.unit.side ~= held.attacker.side then Combat.bondSideBySide(combat, held.attacker) end
     end
     -- AND A SCRIPT THE BLOW JUST ARMED IS SPENT HERE, ON THE THRESHOLD THAT ARMED IT. A phase response
     -- ARMS (data/traits/trait_boss_phases.lua's `mark`); the act is the engine's, and this is where it
@@ -9453,7 +9587,7 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
         -- CLASS DEEDS: a blow taken for an ally, banked on the guardian (the Sentinel's deed).
         if guardian ~= target then Combat.tally(guardian, "guarded", 1) end
         -- ...and a covering deed when the avatar and a partner took one for each other (models/bond.lua).
-        if guardian ~= target then Combat.bondDeed(combat, guardian, target) end
+        if guardian ~= target then Combat.bondDeed(combat, guardian, target, "cover") end
         -- THE RIFT'S ADVENTURERS, SLICE D: a Sworn Shield Blesses the ally it took the blow for.
         require("models.race_items").tookBlow(combat, guardian, target)
         local redirected = opts
@@ -9898,6 +10032,11 @@ function Combat.dealFlatDamage(combat, target, base, tags, source, attacker, opt
         Engine.onFell(combat, target, attacker, opts)
         -- A covering deed: the avatar or a partner felling the foe that last hit the other (models/bond.lua).
         if attacker then Combat.bondAvenged(combat, attacker, target) end
+        -- ...and the felling blow is a strike thrown side by side too, which the survivors' dispatch
+        -- (dispatchAnswer) never sees. Not a counter: a riposte is not the pair choosing to act.
+        if attacker and target.side ~= attacker.side and not Trait.isReacting(attacker) then
+            Combat.bondSideBySide(combat, attacker)
+        end
         -- A blow that DENIES REVIVAL (opts.denyRevival -- the Necromancer's severing kit) stamps the
         -- body so killUnit routes it straight to a corpse, skipping the incapacitation window. Set only
         -- on the fatal path, so a severing weapon that merely wounds does nothing -- it is the KILL that is
@@ -10210,7 +10349,13 @@ function Combat.dealDamage(combat, user, target, item, opts)
     local dealt = Combat.dealFlatDamage(combat, target, base, tags, nil, user, opts)
     if deedCtx then
         if dealt > 0 and deedCtx.controlled then Combat.tally(user, "hitControlled", 1) end
-        if Combat.tallyCount(user, "kill") > killsBefore then Combat.tallyKillDeeds(user, deedCtx) end
+        if Combat.tallyCount(user, "kill") > killsBefore then
+            Combat.tallyKillDeeds(user, deedCtx)
+            -- A CONSTRUCT's kill banks on whoever fielded it (the Artificer's): the machine did the work.
+            if user.summoner and user.char.kind == "construct" then
+                Combat.tally(user.summoner, "constructKill", 1)
+            end
+        end
     end
     -- Let the attacker's statuses record what they just did (Fury banks damage dealt to heal from
     -- later). Fired here, where the attacker is known, only for a survived-or-not real hit.
@@ -10273,6 +10418,7 @@ function Combat.dealDamage(combat, user, target, item, opts)
                 if user.streakTarget then Combat.resetChargesOn(user, "targetSwitch") end
                 user.streakTarget, user.streakCount = target, 1
             end
+            Combat.noteDuel(combat, user, target) -- the same streak counted in turns (the Duelist's deed)
         end
         -- THE BITE (models/thirst.lua): a vampire's weapon strike opens a vein, and a weapon that wounds a
         -- living body is a drink -- the vampire's own, a Familiar's courier run, or Vitae's debt paid.
@@ -12720,11 +12866,17 @@ function Combat.bondBonus(combat, unit)
     return Bond.HIT[rank] or 0
 end
 
--- A COVERING DEED between `a` and `b`: one is the avatar and the other a partner on its side. Banked on
--- `combat.bondDeeds[partnerId]` and settled on a win (Bond.settle caps them). Called from the three seams
--- the review named: a heal given, a blow taken that was meant for the other, the foe that last hit the
--- other felled.
-function Combat.bondDeed(combat, a, b)
+-- A BOND DEED between `a` and `b`: one is the avatar and the other a partner on its side. Fire Emblem's
+-- supports, the Awakening-to-Engage way: the pair grows by ACTING TOGETHER, a point a deed, and each one
+-- pops over the partner's head as it happens (the "bond" fx, ui/combat_fx.lua). Banked on
+-- `combat.bondDeeds[partnerId]` and settled on a win (Bond.settle). Called from four seams: a strike
+-- thrown with the other beside the striker (Combat.bondSideBySide), a heal given, a blow taken that was
+-- meant for the other, the foe that last hit the other felled.
+--
+-- `kind` names the seam, and a pair banks each kind at most ONCE A TURN, so a sweep that strikes three
+-- foes or a heal that ticks twice is one deed rather than a fistful. Past Bond.DEED_CAP for the fight the
+-- deed is not banked and does not pop: a heart over a head that bought nothing would be a lie.
+function Combat.bondDeed(combat, a, b, kind)
     if not (combat and combat.bonds and a and b) or a == b then return end
     if a.side ~= "party" or b.side ~= "party" or a.summoned or b.summoned then return end
     local Bond = require("models.bond")
@@ -12734,8 +12886,33 @@ function Combat.bondDeed(combat, a, b)
     else return end
     local id = partner.char and partner.char.id
     if not id or Bond.isAvatar(id) then return end
+    local turn = combat.turn
+    if turn then
+        local key = id .. "|" .. (kind or "deed")
+        turn.bondDeeds = turn.bondDeeds or {}
+        if turn.bondDeeds[key] then return end
+        turn.bondDeeds[key] = true
+    end
     combat.bondDeeds = combat.bondDeeds or {}
+    if (combat.bondDeeds[id] or 0) >= Bond.DEED_CAP then return end
     combat.bondDeeds[id] = (combat.bondDeeds[id] or 0) + 1
+    Combat.pushFx(combat, { type = "bond", unit = partner })
+end
+
+-- `striker` threw a real blow: if it is the avatar or a partner and the other half of the pair stands
+-- beside it, that is the pair fighting side by side -- Fire Emblem's adjacent attack. Every partner
+-- beside the avatar counts when the avatar strikes; only the avatar counts when a partner does.
+function Combat.bondSideBySide(combat, striker)
+    if not (combat and combat.bonds and striker and striker.alive and striker.char) then return end
+    if striker.side ~= "party" or striker.summoned then return end
+    local Bond = require("models.bond")
+    local strikerIsAvatar = Bond.isAvatar(striker.char)
+    for _, u in ipairs(combat.units) do
+        if u ~= striker and u.alive and u.side == "party" and not u.summoned and u.char
+            and (strikerIsAvatar or Bond.isAvatar(u.char)) and Combat.unitGap(striker, u) <= 1 then
+            Combat.bondDeed(combat, striker, u, "side")
+        end
+    end
 end
 
 -- `killer` felled `foe`: every body on the killer's side that `foe` last hit is avenged -- a deed for the
@@ -12744,7 +12921,7 @@ function Combat.bondAvenged(combat, killer, foe)
     if not (combat and combat.bonds and killer and foe) then return end
     for _, u in ipairs(combat.units) do
         if u ~= killer and u.side == killer.side and u.lastAttacker == foe then
-            Combat.bondDeed(combat, killer, u)
+            Combat.bondDeed(combat, killer, u, "avenge")
         end
     end
 end
@@ -12813,7 +12990,7 @@ end
 
 -- WHO WILL FOLLOW UP a blow `unit` is lining up at `target` -- the forecast twin of Trait.onAllyStrike,
 -- pure, for the exchange stack (states/battle.lua). Two kinds of follower: an A-rank bond partner when
--- the striker is the avatar (free, once a round), and any ally carrying a `followUp` trait (the Pincer
+-- the striker is the avatar (free, once a round; at S from anywhere its weapon reaches), and any ally carrying a `followUp` trait (the Pincer
 -- Banner's -- priced as an answer). Nothing when the blow would be lethal: a follow-up hangs on a foe
 -- that SURVIVED. Entries: { name, ally, damage, lethal, cost?, bond? }.
 function Combat.previewFollowUps(combat, unit, item, target, opts)
@@ -12832,15 +13009,23 @@ function Combat.previewFollowUps(combat, unit, item, target, opts)
     local isAvatar = unit.char and unit.char.id == "character_avatar"
     local left = (target.hp or 0) - ((entry and entry.damage) or 0)
     local out = {}
+    local Bond = require("models.bond")
     for _, ally in ipairs(combat.units) do
+        -- Beside the foe, or (an S-rank partner of the avatar) anywhere its weapon reaches it: the
+        -- forecast twin of trait_bond_follow_up's range rule, measured by the anchor distance
+        -- ctx.canReach measures by.
+        local rank = isAvatar and Combat.bondRank(combat, ally) or nil
+        local beside = Combat.unitGap(ally, probe) == 1
+        local reachDist = beside and 1
+            or (rank == "S" and math.abs(ally.x - probe.x) + math.abs(ally.y - probe.y)) or nil
         if ally ~= unit and ally.alive and ally.side == unit.side and not Trait.reactionsSuppressed(ally)
-            and Combat.unitGap(ally, probe) == 1 then
-            local bond = isAvatar and Combat.bondRank(combat, ally) == "A"
+            and reachDist then
+            local bond = rank and Bond.atLeast(rank, "A")
                 and not (unit.turnFlags and unit.turnFlags["bondFollowUp:" .. tostring(ally.char and ally.char.id)])
             local follower, cost = nil, nil
             if bond then
                 follower = true
-            else
+            elseif beside then -- a followUp trait (the Pincer Banner's) answers only from beside the foe
                 for _, t in ipairs(ally.traits or {}) do
                     if t.def and t.def.followUp and not t.def.bondFollowUp then
                         local price = Trait.answerCost(combat, ally, t, 1)
@@ -12849,7 +13034,7 @@ function Combat.previewFollowUps(combat, unit, item, target, opts)
                     end
                 end
             end
-            local weapon = follower and Combat.answeringWeapon(combat, ally, 1)
+            local weapon = follower and Combat.answeringWeapon(combat, ally, reachDist)
             if weapon then
                 local dmg = Combat.computeDamage(combat, ally, target, weapon) or 0
                 if type(dmg) == "table" then dmg = dmg.damage or 0 end
@@ -14825,8 +15010,22 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
             -- side (the Druid's). Only someone else's wounds: tending your own is not a deed.
             if h > 0 and tgt ~= unit and tgt.side == unit.side then
                 Combat.tally(unit, "healGiven", h)
-                Combat.bondDeed(combat, unit, tgt) -- a covering deed between the avatar and a partner
+                Combat.bondDeed(combat, unit, tgt, "heal") -- a bond deed between the avatar and a partner
                 if tgt.char and tgt.char.kind == "beast" then Combat.tally(unit, "healBeast", 1) end
+                local gap = Combat.unitGap(unit, tgt)
+                if gap == 1 then Combat.tally(unit, "healBeside", h) end -- the Paladin's
+                if item and item.type == "consumable" then
+                    Combat.tally(unit, "healByDraught", h) -- the Apothecary's
+                    Combat.noteBrew(unit, "heal") -- the Herbalist's
+                    -- ...and a thrown one landing far off is the Totemist's: a heal that is not a cast.
+                    if gap >= 3 then Combat.tally(unit, "healFromAfar", h) end
+                end
+                -- A SUMMON's heal is the Totemist's too, banked on whoever fielded it, measured from them.
+                local owner = unit.summoner
+                if owner and tgt ~= owner and owner.alive and tgt.side == owner.side
+                    and Combat.unitGap(owner, tgt) >= 3 then
+                    Combat.tally(owner, "healFromAfar", h)
+                end
             end
             -- THE CROWN'S BESTIARY, SLICE B (2026-10-09): a heal is a deed the Erinys answers (models/crown_demons.lua).
             if h > 0 then require("models.crown_demons").noteDeed(combat, unit, "healed") end
@@ -14854,6 +15053,23 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
             local side = tgt.side
             local landed = Status.apply(combat, tgt, id, opts)
             Combat.tallyStatusDeed(opts.applier, tgt, id, landed, side) -- CLASS DEEDS
+            if landed and item and item.type == "consumable" then
+                -- The Herbalist's poison half: a consumable that poisoned a foe.
+                if id == "status_poison" and side ~= unit.side and opts.applier == unit then
+                    Combat.noteBrew(unit, "poison")
+                end
+                -- The Warbrewer's: a draught that raised one of the drinker's own stats, drunk beside a
+                -- foe. Once per drink, however many boons the one draught lands.
+                if tgt == unit and not result.draughtCounted and Combat.foeBeside(combat, unit) then
+                    for _, v in pairs(landed.statBonus or (landed.def and landed.def.statBonus) or {}) do
+                        if type(v) == "number" and v > 0 then
+                            result.draughtCounted = true
+                            Combat.tally(unit, "draughtInMelee", 1)
+                            break
+                        end
+                    end
+                end
+            end
             return landed
         end,
         -- Does `tgt` currently carry status `id`? What a conditional strike keys its bonus off (a blow
@@ -14920,6 +15136,10 @@ function resolveCast(combat, unit, item, ab, tx, ty, alreadyConsumed, windup, he
             opts = opts or {}
             opts.side = opts.side or unit.side
             local zone = Hazard.place(combat, px, py, id, opts)
+            -- Who LAID it, for the deeds that credit ground's work to its maker (the Saboteur's kills,
+            -- the Totemist's far heals, the Warden's stops). Not `owner`: an owner holds a zone open,
+            -- carries it about and takes it down when it falls, and laying ground promises none of that.
+            if zone and not zone.laidBy then zone.laidBy = unit end
             -- THE WARDEN'S WRIT: a bearer whose charm declares `haltsOwnHazards` stamps every zone it
             -- lays as Halting (Hazard.onEnter reads the rider). Applied here rather than inside
             -- Hazard.place so it only ever catches ground a UNIT deliberately laid -- a hazard that
@@ -15627,6 +15847,9 @@ function Combat.resolveChannel(combat, unit)
     local ok, info = resolveCast(combat, unit, pending.item, pending.ab, pending.tx, pending.ty, true,
         pending.windup, pending.held)
     unit.drawnShot = nil
+    -- THE THEURGE'S DEED: a long working seen through to the end -- a wind-up of a turn's worth of ticks
+    -- or more, in the hourglass number the tooltip quotes (the commitment, not the hasted time).
+    if ok and (pending.windup or 0) >= Status.TICKS_PER_TURN then Combat.tally(unit, "longChannel", 1) end
     -- SECOND UTTERANCE: a mage carrying the trait banks a free wind-up the moment a channel LANDS --
     -- never when one begins, and never when one is interrupted, so the charge is paid for by a spell
     -- that actually resolved. Granted after the cast rather than before so a caster cut down by its own
@@ -15701,6 +15924,14 @@ function Combat.interruptChannel(combat, unit, reason)
     Status.remove(combat, unit, "status_channeling")
     Combat.logEvent(combat, "status",
         string.format("%s's channel is interrupted (%s)!", unitName(unit), reason or "disrupted"), unit)
+    -- THE SPELLBREAKER'S DEED: a wind-up BROKEN -- shoved, stunned, silenced -- by a foe on that foe's own
+    -- turn (a channeller takes no turns until its working resolves, so whoever's turn it is did it).
+    -- Killing the caster is not breaking the spell, and a dismissal is nobody's doing.
+    local breaker = combat.turn and combat.turn.unit
+    if breaker and breaker ~= unit and breaker.side ~= unit.side
+        and reason ~= "death" and reason ~= "dismissed" then
+        Combat.tally(breaker, "channelBroken", 1)
+    end
     return true
 end
 
@@ -16626,6 +16857,12 @@ function Combat.outcomeFor(combat, side)
         return nil
     elseif obj.type == "hold" then
         if (combat.heldTicks or 0) >= (obj.duration or math.huge) then return "win" end
+        -- ...or once nobody is left to contest it, whether or not the hold wrote `orKillAll`. The survive
+        -- branch's rule for the same reason: with the board cleared and no wave still owed, the ticks left on
+        -- the clock measure nothing, and the player would be walking onto empty ground to press Wait on it.
+        -- Six authored holds (the High Glade, the Gatehouse, ...) never wrote the flag and sat open on a
+        -- cleared board, with the felled lying there on their downed countdown.
+        if Combat.allWavesArrived(combat, obj) and Combat.eliminated(combat, foe) then return "win" end
         return nil
     elseif obj.type == "heaps" then
         -- CARRY OUT THE HEAPS: a race for the coin, won on the count. A dwarf that pockets a heap takes it

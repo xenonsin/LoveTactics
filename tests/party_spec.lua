@@ -223,7 +223,7 @@ return {
             p.gold = 5000
             local item = Item.instantiate(abilityId)
             local cost = Forge.upgradeCost(p, item)
-            for id, n in pairs(cost.materials) do p.materials[id] = n end
+            Player.setMaterials(p, cost.materials)
             p.roster[1].technique = { [cost.techniqueId] = cost.technique }
             p.roster[1].techniqueSpent = {}
             -- Whichever house `pairs` handed back, the company is trained into it (Forge.untrained);

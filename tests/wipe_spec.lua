@@ -80,6 +80,7 @@ return {
         fn = function()
             local player, run, rowan = company()
             Descent.setParty(run, { rowan.id }) -- no hire down there, so the stash is the haul's alone
+            Player.setMaterials(player, {}) -- the opening ore takes shelf slots; this case counts pieces
             local brought = Item.instantiate("weapon_iron_sword")
             assert(brought, "fixture blueprint is gone -- retarget this case")
             Player.addToStash(player, brought)

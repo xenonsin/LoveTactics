@@ -1023,6 +1023,22 @@ return {
         end,
     },
     {
+        name = "attackReach lights a body perched on unwalkable ground (a flier on a mountain) and no empty rock",
+        fn = function()
+            -- The band used to drop every unwalkable tile as "a wall can never hold a target", so a
+            -- wyvern landed on a mountain could not be aimed at by anybody in the party.
+            local rock = { type = "mountain", walkable = false, moveCost = 99, sightCost = 99 }
+            local map = arena(8, 8)
+            for _, p in ipairs({ { 5, 4 }, { 4, 6 } }) do
+                for k, v in pairs(rock) do map.tiles[p[2]][p[1]][k] = v end
+            end
+            local c = Combat.new(map, { unit("character_archer", 4, 4) }, { unit("character_bandit", 5, 4) })
+            local ar = Combat.attackReach(c, c.units[1], 3, {}, true, 0)
+            assert(ar["5,4"], "the body on the mountain is in the band")
+            assert(ar["4,6"] == nil, "an empty mountain still holds no target")
+        end,
+    },
+    {
         name = "Shadow Strike hits an adjacent foe, then blinks the caster back to its turn origin",
         fn = function()
             -- Rogue opens its turn at (1,1), moves up beside a bandit at (3,1), strikes, and snaps

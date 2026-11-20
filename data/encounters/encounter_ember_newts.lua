@@ -5,9 +5,10 @@
 -- bodies vanish the moment the lesson is over is a stage set. So the newts are part of the wood now,
 -- fielded as the unpinned copy (character_ember_newt.lua says why the tutorial body cannot be).
 --
--- WHAT IT ASKS is the spit: a clutch of fragile bodies that hurt from three tiles and die to a stroke.
+-- WHAT IT ASKS is the spit: a clutch of light bodies that hurt from two tiles and die to two strokes.
 -- The fight is closing the distance before the embers add up, which is the opposite read from the
--- wolves' (they close on you).
+-- wolves' (they close on you). (They died to ONE stroke until 2026-11-13, the lesson's own numbers, and
+-- the fight was over before the spit had said anything -- character_ember_newt.lua has the measurement.)
 local Band = require("models.band")
 
 return {

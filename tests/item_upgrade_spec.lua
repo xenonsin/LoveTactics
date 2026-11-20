@@ -6,6 +6,12 @@
 local Item = require("models.item")
 local Character = require("models.character")
 local Player = require("models.player")
+-- Bottomless forging stock, as stacks on the shelf (materials take slots now, models/material.lua).
+local function plenty(n)
+    local t = {}
+    for id in pairs(require("models.material").defs) do t[id] = n or 999 end
+    return t
+end
 local Forge = require("models.forge")
 local Class = require("models.class")
 local Vendor = require("models.vendor")
@@ -164,7 +170,7 @@ return {
             local sword = Item.instantiate("weapon_iron_sword")
 
             local cost = Forge.upgradeCost(player, sword)
-            for id, n in pairs(cost.materials) do player.materials[id] = n end
+            Player.setMaterials(player, cost.materials)
             local char = bank(player, cost.techniqueId, cost.technique)
 
             local up = Forge.upgrade(player, sword)
@@ -174,7 +180,7 @@ return {
             assert(char.technique[cost.techniqueId] == cost.technique,
                 "off the spent ledger, leaving what was EARNED intact")
             for id, n in pairs(cost.materials) do
-                assert((player.materials[id] or 0) == 0, "every material in the bill was spent (" .. id .. " x" .. n .. ")")
+                assert(Player.materialCount(player, id) == 0, "every material in the bill was spent (" .. id .. " x" .. n .. ")")
             end
         end,
     },
@@ -183,7 +189,7 @@ return {
         fn = function()
             local player = Player.new()
             player.gold = 0
-            player.materials = {}
+            Player.setMaterials(player, {})
             local sword = Item.instantiate("weapon_iron_sword")
             local up, reason = Forge.upgrade(player, sword)
             assert(up == nil and (reason == "technique" or reason == "materials"),
@@ -201,7 +207,7 @@ return {
             local spell = Item.instantiate("ability_fireball") -- mage class -> arcanum
             local cost1 = Forge.upgradeCost(player, spell)
             assert(cost1 and not cost1.locked, "the first rung is open with no quests done")
-            for id, n in pairs(cost1.materials) do player.materials[id] = n end
+            Player.setMaterials(player, cost1.materials)
             local char = bank(player, cost1.techniqueId, cost1.technique)
 
             local up = Forge.upgrade(player, spell)
@@ -248,7 +254,7 @@ return {
 
             local cost = Forge.recipeCost(player, "consumable_acid_bomb")
             assert(cost.technique > 0 and cost.gold == 0, "Bombardier stock is billed in technique")
-            for id, n in pairs(cost.materials) do player.materials[id] = n end
+            Player.setMaterials(player, cost.materials)
             local char = bank(player, cost.techniqueId, cost.technique)
 
             local level = Forge.refineRecipe(player, "consumable_acid_bomb")
@@ -277,7 +283,7 @@ return {
         fn = function()
             local player = Player.new()
             player.gold = 5000
-            player.materials = setmetatable({}, { __index = function() return 99 end })
+            Player.setMaterials(player, plenty(99))
             local classId = Forge.recipeCost(player, "consumable_acid_bomb").techniqueId
             assert(classId, "the acid bomb is discipline stock")
 
@@ -299,7 +305,7 @@ return {
             -- discipline -- so an empty ledger refuses it for the same reason and with the same word.
             local plain = Player.new()
             plain.gold = 0
-            plain.materials = setmetatable({}, { __index = function() return 99 end })
+            Player.setMaterials(plain, plenty(99))
             -- A ROOT class, and the lowest id rather than the first `pairs` hands back: an earned
             -- class's recipe is refused as `untrained` before the ledger is ever read
             -- (Forge.untrained), so which of the two this drew decided the case by hash order.

@@ -20,14 +20,14 @@ return {
     tags = { "pierce", "physical" },
     class = "fighter",
     price = 80,
-    unlockLevel = 0,
+    unlockLevel = 2,
     charge = { key = "tempo", from = { "quickAction" }, max = 6, resetOn = "moved" },
     activeAbility = {
         target = "enemy",
         range = 1,
         speed = 1,
         cost = { stat = "stamina", amount = 3 },
-        damage = Curve.ramp(6, 16),
+        damage = Curve.ramp(7, 17),
         effect = function(fx)
             fx.damage(fx.target)
         end,

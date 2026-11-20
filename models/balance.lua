@@ -73,11 +73,17 @@ Balance.REFERENCE = {
 --
 -- Snappy on purpose: a line body falls in two to four swings, so a four-strong field is a handful of
 -- exchanges rather than an attrition sink, and a mistake costs a body rather than a few percent.
+--
+-- RAISED BY HALF (2026-11-14) with Growth.ENEMY_HEALTH_SCALE, which is the same decision read from the
+-- other side. Played, "two to four swings" from ONE attacker was a company of four felling a line body
+-- before it acted: real traces of the wood showed hawks and wolves dropping to a single blow and two
+-- stair bosses won without the company losing a point. The bands say what a fight should take; the
+-- scale is what makes the bodies take it.
 Balance.TTK = {
-    chaff = { min = 1, max = 2 },  -- tier 0-1: it is meant to fall to a blow or two
-    line = { min = 2, max = 4 },   -- tier 2: the rank the protagonist stands in
-    elite = { min = 4, max = 8 },  -- tier 3: a fight's centrepiece
-    boss = { min = 6, max = 14 },  -- tier 4: a general, a Lord
+    chaff = { min = 1, max = 3 },  -- tier 0-1: it is meant to fall to a blow or two
+    line = { min = 3, max = 6 },   -- tier 2: the rank the protagonist stands in
+    elite = { min = 6, max = 12 }, -- tier 3: a fight's centrepiece
+    boss = { min = 9, max = 21 },  -- tier 4: a general, a Lord
 }
 
 -- THE SAME STATEMENT, COMING THE OTHER WAY: hits from ONE body of this rank to fell the reference.
@@ -305,6 +311,9 @@ Balance.SLOT_TOLERANCE = { share = 0.15, floor = 1 }
 -- Distinct from the ALLY-TARGETED exclusion below, which is not a waiver at all: those items are not
 -- being let off a damage rule, they have no damage to rule on.
 Balance.MAGNITUDE_WAIVERS = {
+    weapon_iron_longbow = "the longbow family's ANCHOR (Balance.FAMILY_BASE): its unforged number IS the"
+        .. " ladder's slot 0, so it cannot also be judged against slot 2, which is where it sits since a"
+        .. " fresh class's rung 0 became Act 0's kit and its unlock gifts (Class.opensFirst, 2026-11-13).",
     ability_thousand_hands = "its blows are the bearer's own fists (fx.strikeWith, like Flurry's): one per 2 chi,"
         .. " each carrying every fist charm, so its authored damage is never read and a ladder target has"
         .. " nothing to attach to.",

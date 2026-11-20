@@ -961,6 +961,22 @@ function CombatPanel:bondPlateAt(px, py)
     return nil
 end
 
+-- WHAT A BOND PLATE WILL DO, as a NoteTooltip title and paragraphs -- the hover reading waitNote gives
+-- the plate beside it. The ranges are read off Combat.BOND_VERBS so the words cannot drift from the rule.
+CombatPanel.BOND_VERB_TITLE = { trade = "Trade Places", teamwork = "Teamwork" }
+function CombatPanel.bondNote(verb)
+    local spec = Combat.BOND_VERBS[verb] or {}
+    local lines
+    if verb == "teamwork" then
+        lines = { string.format("End your turn. A bonded ally within %d tiles acts next.", spec.range or 0) }
+    else
+        lines = { string.format("Swap places with a bonded ally within %d tiles.", spec.range or 0),
+                  "It spends your move, not your action." }
+    end
+    lines[#lines + 1] = string.format("Needs bond %s or higher. Once a fight.", spec.rank or "B")
+    return CombatPanel.BOND_VERB_TITLE[verb] or verb, lines
+end
+
 -- The word the bottom lane's button wears for `unit`: whichever wait swap its kit grants, else plain
 -- Wait. Static and pure so the plate and the note that explains it (waitNote, below) can never name
 -- two different actions -- they are the same button, read twice.
@@ -2573,6 +2589,7 @@ function CombatPanel:mousemoved(x, y)
     if not self:contains(x, y) then
         self:setHover(nil, nil, nil)
         self.waitHover = false
+        self.bondHover = nil
         return false
     end
     local item, i = self:usableItemAt(x, y)

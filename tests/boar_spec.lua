@@ -138,6 +138,22 @@ return {
         end,
     },
     {
+        name = "a boar only charges: point-blank, on an empty bar, it still plans Gore",
+        fn = function()
+            -- The author's call (2026-11-13): Gore is free and reaches an adjacent foe, so there is no
+            -- range and no stamina at which the animal settles for the jab.
+            local AI = require("models.ai")
+            local c = Combat.new(arena(10, 10), { unit("character_rowan", 4, 5) },
+                { unit("character_boar", 3, 5) })
+            local boar = c.units[2]
+            boar.char.stats.stamina.current = 0
+            openTurn(c, boar)
+            local act = AI.plan(c, boar)
+            assert(act and act.item, "the boar acts")
+            assert(act.item.id == "ability_gore", "it charges, got " .. tostring(act.item.id))
+        end,
+    },
+    {
         name = "a run stopped by stone puts the boar on the floor; a clear run does not",
         fn = function()
             -- Nothing on the board does this. The player chose where to be standing, which is the

@@ -269,12 +269,31 @@ return {
             for answer in pairs(ctx.offers) do
                 assert(answer == "mend", "the coached desk offers " .. answer .. " beside the mending")
             end
+            -- ...AND NO WAY OUT (2026-11-02): the Exit line is gated on `offer = "leave"`, so the
+            -- resolved desk holds exactly one choice, and Counter.held is what sends an escape back to it.
+            assert(Counter.held(player, cathedral), "the coached desk does not hold the company")
+            local Conversation = require("models.conversation")
+            local function deskAnswers(c)
+                local scene = Conversation.resolve(Conversation.defs[cathedral.counter], c)
+                for _, node in ipairs(scene.script) do
+                    if node.id == Counter.DESK then
+                        local answers = {}
+                        for _, choice in ipairs(node.choices or {}) do answers[choice.answer] = true end
+                        return answers
+                    end
+                end
+                error("the Cathedral's desk node is gone")
+            end
+            local answers = deskAnswers(ctx)
+            assert(answers.mend and not answers[Counter.LEAVE], "the coached desk can still be walked out of")
 
             player.hubIntro = nil
             player.tripsCounted = 1 -- the priest shelf is trip 1 on the city schedule (Offer.SCHEDULE)
             ctx = Counter.context(player, cathedral)
             assert(ctx.offers.mend and ctx.offers.shelf,
                 "once the morning is spent the desk offers its shelf again")
+            assert(not Counter.held(player, cathedral) and deskAnswers(ctx)[Counter.LEAVE],
+                "...and its Exit line")
         end,
     },
     {

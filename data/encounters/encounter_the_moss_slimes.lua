@@ -12,6 +12,8 @@ return {
     weight = 4,
     condition = function(ctx) return ctx.biome == "forest" end,
     composition = function(ctx)
-        return Band.fill({}, ctx, "character_moss_slime", { base = 2, min = 2, per = 6, max = 3 })
+        -- Two on the approach, three on the seat (`per = 2`): at a flat two the seat's slimes rated
+        -- 349 against floor one's 600-750 fights, and a company arriving on floor two walked them off.
+        return Band.fill({}, ctx, "character_moss_slime", { base = 2, min = 2, per = 2, max = 4 })
     end,
 }

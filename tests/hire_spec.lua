@@ -94,7 +94,7 @@ return {
         end,
     },
     {
-        name = "every class's standard kit is real, rung 0, and leads with its weapon",
+        name = "every class's standard kit is real, on the opening rack, and leads with its weapon",
         fn = function()
             for _, class in ipairs(playableClasses()) do
                 local kit = Hire.kitOf(class)
@@ -102,7 +102,8 @@ return {
                 for _, id in ipairs(kit) do
                     local d = Item.defs[id]
                     assert(d, class .. "'s kit names a missing item " .. id)
-                    assert((d.unlockLevel or 0) == 0, class .. "'s kit carries " .. id .. " at rung "
+                    assert((d.unlockLevel or 0) <= Class.FIRST_RUNG_EVICTED_TO,
+                        class .. "'s kit carries " .. id .. " at rung "
                         .. tostring(d.unlockLevel) .. "; hiring must never hand over a piece past the shelf")
                 end
                 assert(Item.defs[kit[1]].type == "weapon", class .. "'s kit does not lead with a weapon")

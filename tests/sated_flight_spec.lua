@@ -123,14 +123,33 @@ return {
             local sated = c.units[2]
             assert(meals(sated) == 3, "three meals at the bell, got " .. meals(sated))
             assert(stat(sated, "damage") == 18 and stat(sated, "defense") == 13, "full: 18 damage, 13 defense")
-            assert(stat(sated, "movement") == 1 and stat(sated, "speed") == 2, "full: move 1, speed 2")
+            assert(stat(sated, "movement") == 3 and stat(sated, "speed") == 2, "full: move 3, speed 2")
             assert(Status.spendStacks(c, sated, "status_full", 1), "a meal can be spent")
-            assert(stat(sated, "damage") == 15 and stat(sated, "defense") == 10 and stat(sated, "movement") == 2,
-                "two meals: 15 / 10 / move 2")
+            assert(stat(sated, "damage") == 15 and stat(sated, "defense") == 10 and stat(sated, "movement") == 4,
+                "two meals: 15 / 10 / move 4")
             assert(Status.spendStacks(c, sated, "status_full", 2) and not Status.has(sated, "status_full"),
                 "the last meal takes the badge with it")
-            assert(stat(sated, "damage") == 9 and stat(sated, "movement") == 4, "empty: 9 damage, move 4")
+            assert(stat(sated, "damage") == 9 and stat(sated, "movement") == 6, "empty: 9 damage, move 6")
             assert(not Status.spendStacks(c, sated, "status_full", 1), "an empty belly spends nothing")
+        end,
+    },
+    {
+        -- The floor-1 stair board as it shipped (2026-11-14): seated at the top edge on (2,1), a forest tile
+        -- below its block and one beside it. At move 1 a 2x2 body pays the roughest tile it steps onto, so
+        -- both forward steps cost 2, and it stood on its spawn for the whole fight.
+        name = "a full Sated can still step through one tile of forest toward a foe",
+        fn = function()
+            local map = Fixture.new(8, 8, { tiles = {
+                { x = 2, y = 3, type = "forest", moveCost = 2 }, { x = 4, y = 2, type = "forest", moveCost = 2 },
+            } })
+            local c = Combat.new(map, { walker(2, 8) }, { unit("character_the_sated", 2, 1) })
+            local sated = c.units[2]
+            assert(meals(sated) == 3, "at the bell")
+            local down = false
+            for _, n in ipairs(Combat.reachableList(c, sated)) do
+                if n.y > 1 then down = true end
+            end
+            assert(down, "three meals in, it can still step down through the forest toward the company")
         end,
     },
     {
@@ -240,6 +259,25 @@ return {
             hawk.turnStartX = 1
             hawk.x, hawk.y = 9, 5
             assert(Trait.outgoingDamageBonus(c, hawk, foe, talons, {}) == 6, "capped at +6")
+        end,
+    },
+    {
+        name = "the planner flies the hawk the longest run its Swoop pays for, not to the nearest tile",
+        fn = function()
+            local AI = require("models.ai")
+            local c = Combat.new(board(12), { walker(6, 6) }, { unit("character_hawk", 1, 6) })
+            local hawk = c.units[2]
+            local talons = itemNamed(hawk.char, "weapon_raking_talons")
+            assert(talons.activeAbility.range == 2, "the stoop reaches two tiles")
+            Fixture.openTurn(c, hawk)
+            c.turn.startX, c.turn.startY = 1, 6
+            hawk.turnStartX, hawk.turnStartY = 1, 6
+            local plan = AI.plan(c, hawk)
+            assert(plan and plan.item and plan.item.id == "weapon_raking_talons", "it rakes: " .. AI.explain(plan))
+            assert(plan.move, "it takes off")
+            local run = math.max(math.abs(plan.move.x - 1), math.abs(plan.move.y - 6))
+            -- The nearest strike tile is three tiles off (two short of the mark); the cap is six.
+            assert(run >= 5, "a long run, got " .. run .. " to " .. plan.move.x .. "," .. plan.move.y)
         end,
     },
     {

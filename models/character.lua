@@ -374,6 +374,11 @@ local RACE_PLURAL = { dwarf = "dwarves", elf = "elves", human = "humans", goblin
 -- nothing -- docs/classes.md's "anyone can carry anything" holds for every other piece. Takes a live
 -- item or a blueprint. Returns false plus the sentence a refusal says.
 function Character.canCarry(char, item)
+    -- FORGING STOCK IS NEVER WORN. It sits in the stash or the pack and is spent at the Forge, so a grid
+    -- cell given to a stack of ore is a cell that does nothing (models/material.lua).
+    if item and item.type == "material" then
+        return false, (item.name or "That") .. " is a crafting material. It stays in the stash or the pack."
+    end
     local def = item and (Item.defs[item.id] or item)
     local race = def and def.race
     if not race then return true end

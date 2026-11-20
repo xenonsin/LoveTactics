@@ -188,9 +188,16 @@ return {
         -- CONTENT now -- the haul you left on the floor you died on, the stair you have not opened,
         -- the piece a body is known for -- and never as a level deficit, because grinding one shut no
         -- longer works (tests/reward_scale_spec).
+        --
+        -- SIX, AND UNDER RATHER THAN EITHER WAY (2026-11-15). The felling blow was cut from four to two
+        -- because the company's kill-takers ran off from its healers (models/experience.lua), and the
+        -- author chose that over keeping one pass level with the world: one pass now earns about 44
+        -- against 50. rewardScale throttles a company that is AHEAD and pays nothing extra to one that
+        -- is behind, so the paragraph above was only half right -- the gap closes from above, never from
+        -- below. Re-treading closes this one, which is the paragraph before it, back in force.
         local gap = wanted - reached
-        assert(math.abs(gap) <= 3, string.format(
-            "one pass down should leave a company within three levels of the world at floor %d " ..
+        assert(gap >= -3 and gap <= 6, string.format(
+            "one pass down should leave a company within six levels under the world at floor %d " ..
             "(it wants %d, one pass earns %d, gap %d) -- the award scaling makes the two ladders " ..
             "track, so a wide gap either way means one of them was retuned out from under it",
             Descent.FLOORS, wanted, reached, gap))
@@ -240,7 +247,12 @@ return {
         local exit = Experience.totalFor(Descent.OPENING_LEVEL)
         for _, banked in ipairs({ exit - 1, exit }) do
             local level = Experience.levelFor(banked)
-            assert(level >= stock - 2 and level <= stock + 1, string.format(
+            -- THREE UNDER, not two (2026-11-14), when Growth.ENEMY_LEVEL_LAG went to zero and floor
+            -- one's stock rose to Descent.OPENING_DANGER itself. The `exit - 1` total is the hold INSIDE
+            -- Act 0; the Champion pays the last point before the rift opens, so the body that walks onto
+            -- the first stair is the `exit` one, two under. Lowering the dial to keep two would have put
+            -- the whole shallow ramp -- Gula's floor included -- back where the lag left it.
+            assert(level >= stock - 3 and level <= stock + 1, string.format(
                 "a body leaving Act 0 with %d experience is level %d, and the first stair is held by "
                 .. "stock at %d -- the company has to arrive able to fight it",
                 banked, level, stock))
@@ -384,8 +396,9 @@ return {
             end
 
             -- ...and it arrives. A ladder the company cannot finish is a ladder whose bottom floor is
-            -- priced for somebody who does not exist.
-            assert(Experience.levelFor(xp) >= Descent.BOTTOM_DANGER, string.format(
+            -- priced for somebody who does not exist. Within six, since the felling blow was halved
+            -- (2026-11-15): one pass lands about 45, and the rest is re-treading (the gap case above).
+            assert(Experience.levelFor(xp) >= Descent.BOTTOM_DANGER - 6, string.format(
                 "one pass down the stack reaches level %d against a bottom of %d",
                 Experience.levelFor(xp), Descent.BOTTOM_DANGER))
         end,

@@ -4,9 +4,11 @@
 -- won fight -- Class.bankDeeds), `count` is how many, and `label` is the line the Classes tab prints.
 -- A deed counts whatever class the body is standing in when it does it.
 --
--- The seven ROOTS and the seventeen SUBCLASSES carry one each. Crossings carry none: their gate is both
--- parents' levels plus a subclass unlocked from each (Class.levelGateMet), and that is deed enough.
--- Novice carries none either -- every body holds it.
+-- Every playable class carries one: the seven ROOTS, the seventeen SUBCLASSES and the twenty-one
+-- CROSSINGS. A crossing's deed is ADDED to its level gate -- both parents' levels and a subclass unlocked
+-- from each (Class.levelGateMet) -- and is one act that needs both parents at once, done with the
+-- parents' own kit before the body ever wears the crossing (authored 2026-11-03).
+-- Novice carries none -- every body holds it.
 --
 -- The deed keys are Combat.tally event names, so a counter here is the same fact the fight already
 -- counts (see the vocabulary block above Combat.tally in models/combat.lua).
@@ -38,4 +40,27 @@ return {
     trapper      = { deed = "rootApplied",   count = 10,  label = "Root 10 foes" },
     bombardier   = { deed = "areaTriple",    count = 5,   label = "Catch 3 or more foes in one area, 5 times" },
     poisoner     = { deed = "poisonApplied", count = 20,  label = "Poison foes 20 times" },
+
+    -- Crossings: both parents' levels + a subclass of each (`requires`) + the deed + a seal.
+    crusader      = { deed = "killHoly",       count = 10,  label = "Fell 10 demons or undead with melee blows" },
+    champion      = { deed = "killTaunted",    count = 10,  label = "Fell 10 foes that were taunted onto you" },
+    duelist       = { deed = "duelHeld",       count = 8,   label = "Strike the same foe on 3 of your turns in a row, 8 times" },
+    skirmisher    = { deed = "killMoving",     count = 10,  label = "Fell 10 foes on a turn you also walked 3 or more tiles" },
+    battlemage    = { deed = "killSpellClose", count = 10,  label = "Fell 10 foes with spells cast from the tile beside them" },
+    warbrewer     = { deed = "draughtInMelee", count = 10,  label = "Drink 10 stat-raising draughts while standing beside a foe" },
+    apothecary    = { deed = "healByDraught",  count = 200, label = "Restore 200 HP to allies with consumables" },
+    inquisitor    = { deed = "killBlessed",    count = 10,  label = "Fell 10 foes that were carrying a buff" },
+    paladin       = { deed = "healBeside",     count = 200, label = "Restore 200 HP to allies standing beside you" },
+    theurge       = { deed = "longChannel",    count = 8,   label = "Finish 8 spells with a wind-up of 5 or more" },
+    totemist      = { deed = "healFromAfar",   count = 200, label = "Restore 200 HP to allies 3 or more tiles away, with ground you laid, a summon, or a thrown consumable" },
+    ninja         = { deed = "tilesBlinked",   count = 40,  label = "Cross 40 tiles without walking" },
+    poacher       = { deed = "killRooted",     count = 10,  label = "Fell 10 Rooted foes" },
+    saboteur      = { deed = "killByHazard",   count = 8,   label = "Fell 8 foes with hazards you laid" },
+    artificer     = { deed = "constructKill",  count = 8,   label = "Have your constructs fell 8 foes" },
+    herbalist     = { deed = "brewedBothWays", count = 6,   label = "Poison a foe and heal an ally with consumables in the same fight, 6 fights" },
+    plague_knight = { deed = "poisonBeside",   count = 15,  label = "Poison 15 foes standing beside you" },
+    vanguard      = { deed = "sunderApplied",  count = 10,  label = "Inflict Sundered on 10 foes" },
+    warden        = { deed = "stoppedMidWalk", count = 15,  label = "Stop 15 foes mid-walk with Root or Halt" },
+    spellbreaker  = { deed = "channelBroken",  count = 8,   label = "Interrupt 8 enemy channels" },
+    shaman        = { deed = "killCursed",     count = 10,  label = "Fell 10 foes while carrying a cursed piece" },
 }

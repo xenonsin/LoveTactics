@@ -42,15 +42,15 @@ end
 
 return {
     {
-        name = "Smoke is a rung-0 rogue consumable, pinned there, and on the standing rack",
+        name = "Smoke is a rung-2 rogue consumable, pinned there, and on the market's standing rack",
         fn = function()
             local def = assert(Item.defs.consumable_smoke, "consumable_smoke is not a blueprint")
             assert(def.type == "consumable" and def.class == "rogue", "a rogue consumable")
-            assert(def.unlockLevel == 0 and def.price == 25, "rung 0, 25 gold")
+            assert(def.unlockLevel == 2 and def.price == 25, "rung 2 (a fresh class's rung 0 is Act 0's kit), 25 gold")
             assert(def.activeAbility and def.activeAbility.consumesItem, "one Smoke is spent per throw")
-            assert(Grade.SLOT_PINS.consumable_smoke and Grade.SLOT_PINS.consumable_smoke.at == 0,
-                "pinned at rung 0, so a re-grade cannot gate the way out")
-            assert(Market.isStaple(def), "standing stock, like the draughts")
+            assert(Grade.SLOT_PINS.consumable_smoke and Grade.SLOT_PINS.consumable_smoke.at == 2,
+                "pinned at rung 2, so a re-grade cannot gate the way out any further")
+            assert(Market.isStaple(def, "consumable_smoke"), "standing stock, like the draughts")
         end,
     },
     {

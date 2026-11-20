@@ -7,17 +7,23 @@
 -- (Combat.firstThisTurn), which clear when the avatar's next turn starts. The author pointed at the
 -- Pincer Banner as the item that already carries the open version for anyone.
 --
--- Never authored on a blueprint: Trait.attach hands it to an A-rank partner for the fight
+-- AT S IT ANSWERS FROM RANGE: an S-rank partner need not stand beside the foe, only reach it with a
+-- weapon (ctx.canReach), so a bow or a staff partner gets the dual strike too (models/bond.lua).
+--
+-- Never authored on a blueprint: Trait.attach hands it to an A- or S-rank partner for the fight
 -- (Bond.traitsFor), and nothing else carries it.
 return {
     name = "Follow-up",
-    description = "When the avatar strikes a foe beside you, you strike it too. Once a round, free.",
+    description = "When the avatar strikes a foe beside you, you strike it too. At bond S, any foe you can reach. Once a round, free.",
     bondFollowUp = true,
     onAllyStrike = function(ctx)
         local striker, foe = ctx.ally, ctx.target
         if not (striker and striker.char and striker.char.id == "character_avatar") then return end
         if not (foe and foe.alive) then return end
-        if ctx.gap(foe) ~= 1 then return end
+        if ctx.gap(foe) ~= 1 then
+            local Combat = require("models.combat")
+            if Combat.bondRank(ctx.combat, ctx.unit) ~= "S" then return end
+        end
         if not ctx.canReach(foe) then return end
         local key = "bondFollowUp:" .. tostring(ctx.unit.char and ctx.unit.char.id)
         if not require("models.combat").firstThisTurn(striker, key) then return end

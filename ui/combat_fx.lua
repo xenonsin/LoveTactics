@@ -528,6 +528,12 @@ function CombatFx:playBeat(events, actor)
             self:floatText(e.unit, "+" .. tostring(e.amount), { 0.55, 0.95, 0.60 })
             if self.bursts then self.bursts:support(e.unit.x, e.unit.y, "motes") end
             Sound.play("battle.heal")
+        elseif e.type == "bond" then
+            -- A BOND DEED (models/combat.lua's Combat.bondDeed): the pair acted together, and the bond
+            -- grew. Fire Emblem's overhead pop -- a rose word over the partner, big enough to read as an
+            -- event rather than a number, on the same channel and timing as the heal figure beside it.
+            self:floatText(e.unit, "BOND +1", { 1.0, 0.55, 0.72 }, true, 1)
+            Sound.play("battle.buff")
         elseif e.type == "status" then
             -- A no-visual cue carried only for its sound: a status LANDING on a unit (models/status.lua
             -- pushes it on a fresh application). The badge/field the status paints is drawn elsewhere.

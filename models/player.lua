@@ -707,7 +707,6 @@ function Player.new()
         -- exist -- which is why it is saved rather than derived.
         rites = {},
         meal = nil,           -- the one supper bought at the Cafe and not yet eaten through (models/meal.lua)
-        materials = {},       -- material id -> count; spent at the Blacksmith (see models/material.lua)
         recipes = {},         -- item id -> tier level; a consumable bought at its vendor comes at this level
         newItems = {},        -- item id -> true; arrived in the stash and not yet looked at (Player.markNew)
         newStock = {},        -- item id -> true; put on a vendor's shelf by a quest and not yet looked at
@@ -726,8 +725,10 @@ function Player.new()
         ngPlus = 0,           -- completed campaigns carried forward; see Player.newGamePlus
     }
 
+    -- Forging stock is a stack on the shelf (models/material.lua), so the opening ore takes its slots
+    -- there like anything else the company owns.
     for matId, count in pairs(Player.defaults.startingMaterials or {}) do
-        player.materials[matId] = count
+        Player.addMaterial(player, matId, count)
     end
 
     -- The opening roster counts as "fielded last battle", so the deployment phase's first open
@@ -939,14 +940,85 @@ end
 -- Materials (forging stock; see models/material.lua and models/forge.lua)
 -- ---------------------------------------------------------------------------
 
--- How many of material `id` the player holds (0, not nil, for one never seen).
+-- MATERIALS ARE STACKS IN THE STASH AND THE PACK (models/material.lua), so every figure below is read
+-- off those two lists and nothing keeps a second count beside them.
+
+-- How many of material `id` the player holds (0, not nil, for one never seen), the shelf and the bag
+-- together: the Forge in town bills either, since a company may have packed its ore at the Armory.
 function Player.materialCount(player, id)
-    return (player.materials or {})[id] or 0
+    local n = 0
+    for _, list in ipairs({ player.stash or {}, player.pack or {} }) do
+        for _, item in ipairs(list) do
+            if item.id == id and item.type == "material" then n = n + (item.quantity or 1) end
+        end
+    end
+    return n
 end
 
+-- Put `amount` of material `id` where Player.stow would put a find: the pack underground, the shelf in
+-- town. Existing stacks top up first; a new stack takes a slot.
+--
+-- THE BAG HOLDS IT TO ITS CEILING, as a chest is held (Descent.carryMax): underground a new stack only
+-- opens while a slot is free, and what does not fit is left behind. Returns that leftover (0 when all of
+-- it landed) so a caller with a voice can say so -- a reward that silently fails to arrive reads as a
+-- bug. The shelf in town has no ceiling and always returns 0.
 function Player.addMaterial(player, id, amount)
-    player.materials = player.materials or {}
-    player.materials[id] = Player.materialCount(player, id) + (amount or 0)
+    local Material = require("models.material") -- lazily, beside the descent require below
+    local left = math.max(0, math.floor(amount or 0))
+    if left <= 0 or not Material.get(id) then return 0 end
+    local toPack = Player.findsToPack(player)
+    local list
+    if toPack then
+        player.pack = player.pack or {}
+        list = player.pack
+    else
+        player.stash = player.stash or {}
+        list = player.stash
+    end
+    for _, existing in ipairs(list) do
+        if existing.id == id and existing.type == "material" then
+            local room = Material.MAX_STACK - (existing.quantity or 1)
+            if room > 0 then
+                local moved = math.min(room, left)
+                existing.quantity = (existing.quantity or 1) + moved
+                left = left - moved
+                if left <= 0 then return 0 end
+            end
+        end
+    end
+    local cap = toPack and require("models.descent").carryMax(player) or math.huge
+    while left > 0 and #list < cap do
+        local stack = Material.instantiate(id, left)
+        list[#list + 1] = stack
+        left = left - stack.quantity
+    end
+    return left
+end
+
+-- Make the company's stock EXACTLY `counts` ({ [id] = n }, nil for none): every material stack comes
+-- off the stash and the pack, and what is named goes back on the shelf. For a harness or a report that
+-- has to seat a company at a known stock -- a pauper, or one rich enough that ore is not the question --
+-- now that there is no single field to assign. Ids in id order, so the shelf lays out the same each time.
+function Player.setMaterials(player, counts)
+    for _, list in ipairs({ player.stash or {}, player.pack or {} }) do
+        for i = #list, 1, -1 do
+            if list[i].type == "material" then table.remove(list, i) end
+        end
+    end
+    player.materials = nil
+    player.stash = player.stash or {}
+    local Material = require("models.material")
+    local ids = {}
+    for id in pairs(counts or {}) do ids[#ids + 1] = id end
+    table.sort(ids)
+    for _, id in ipairs(ids) do
+        local left = math.floor(counts[id] or 0)
+        while left > 0 and Material.get(id) do
+            local stack = Material.instantiate(id, left)
+            player.stash[#player.stash + 1] = stack
+            left = left - stack.quantity
+        end
+    end
 end
 
 -- Can the player pay a `{ [id] = count }` material cost in full?
@@ -961,8 +1033,22 @@ end
 -- false (charging nothing) otherwise -- callers branch on this rather than pre-checking.
 function Player.spendMaterials(player, cost)
     if not Player.canAffordMaterials(player, cost) then return false end
+    -- The shelf before the bag, and a stack that runs dry gives its slot back. Walked backwards so a
+    -- removal cannot skip the entry after it.
     for id, count in pairs(cost or {}) do
-        player.materials[id] = Player.materialCount(player, id) - count
+        local owed = count
+        for _, list in ipairs({ player.stash or {}, player.pack or {} }) do
+            for i = #list, 1, -1 do
+                local item = list[i]
+                if owed <= 0 then break end
+                if item.id == id and item.type == "material" then
+                    local take = math.min(owed, item.quantity or 1)
+                    item.quantity = (item.quantity or 1) - take
+                    owed = owed - take
+                    if item.quantity <= 0 then table.remove(list, i) end
+                end
+            end
+        end
     end
     return true
 end
@@ -1506,6 +1592,11 @@ function Player.atRisk(player, before)
     if not (player and before) then return out end
     local Item = require("models.item")
     local function key(it) return (it.id or "?") .. "#" .. tostring(it.level or 0) end
+    -- FORGING STOCK IS NEVER AT RISK either. It takes a slot in the bag (models/material.lua) but it is
+    -- banked the moment a fight pays it, as it was while it was a bare counter: a wipe does not take it
+    -- and the stair's toll does not price it, so a sack of ore cannot multiply what a find costs.
+    local Material = require("models.material")
+    local function exempt(it) return Item.isBound(it) or Material.isMaterial(it) end
 
     -- What was held at entry, by key -- and separately WHERE, by body and cell. Both are needed: the
     -- count decides how much is safe and the placement decides WHICH copy gets to be it.
@@ -1515,7 +1606,7 @@ function Player.atRisk(player, before)
         -- `pairs`, not a numeric walk: a live grid is keyed 1..9 with holes and the snapshot stores a
         -- sparse map. Both read the same this way.
         for cell, it in pairs(char.inventory or {}) do
-            if it and it.id and not Item.isBound(it) then
+            if it and it.id and not exempt(it) then
                 was[key(it)] = (was[key(it)] or 0) + (it.quantity or 1)
                 cells[cell] = key(it)
             end
@@ -1523,7 +1614,7 @@ function Player.atRisk(player, before)
         if char.id then placed[char.id] = cells end
     end
     for _, it in ipairs(before.stash or {}) do
-        if it and it.id and not Item.isBound(it) then
+        if it and it.id and not exempt(it) then
             was[key(it)] = (was[key(it)] or 0) + (it.quantity or 1)
         end
     end
@@ -1533,7 +1624,7 @@ function Player.atRisk(player, before)
     -- in is ever taken") is the same law, now held over a container that did not exist when it was
     -- written.
     for _, it in ipairs(before.pack or {}) do
-        if it and it.id and not Item.isBound(it) then
+        if it and it.id and not exempt(it) then
             was[key(it)] = (was[key(it)] or 0) + (it.quantity or 1)
         end
     end
@@ -1560,7 +1651,7 @@ function Player.atRisk(player, before)
         local cells = char.id and placed[char.id]
         if cells then
             for cell, it in pairs(char.inventory or {}) do
-                if it and it.id and not Item.isBound(it) and cells[cell] == key(it)
+                if it and it.id and not exempt(it) and cells[cell] == key(it)
                     and (was[key(it)] or 0) >= (it.quantity or 1) then
                     claim(key(it), it.quantity or 1)
                     safe[it] = true
@@ -1573,7 +1664,7 @@ function Player.atRisk(player, before)
     -- allowance on what a body is WEARING before what is loose is the rest of "leave the grid" -- the
     -- surplus lands in the pile, which is where a find sits until somebody equips it.
     local function consider(it)
-        if not (it and it.id) or Item.isBound(it) or safe[it] then return end
+        if not (it and it.id) or exempt(it) or safe[it] then return end
         local gained = claim(key(it), it.quantity or 1)
         if gained > 0 then out[it] = gained end
     end

@@ -1,4 +1,4 @@
--- THE WYVERNS: two over the glade, a third deeper, and nothing else. The fight that teaches the loop -- cut
+-- THE WYVERNS: three over the glade, give or take one, and nothing else. The fight that teaches the loop -- cut
 -- from range, go up when reached, come down on whoever stands alone -- before an alpha makes it a kill
 -- order. Wyverns only: a wolf would stand beside the company's stragglers and blur whether "alone" was
 -- the reason one of them was taken.
@@ -17,7 +17,8 @@ return {
     condition = function(ctx) return ctx.biome == "forest" end,
     rung = 2,
     composition = function(ctx)
-        return Band.fill({}, ctx, "character_wyvern", { base = 2, per = 6, max = 3 })
+        -- Three, not two: at two the seat rated lighter than the approach (400 against 600-750).
+        return Band.fill({}, ctx, "character_wyvern", { base = 3, per = 6, max = 4 })
     end,
     allies = { "character_stray_delver" },
     objective = {

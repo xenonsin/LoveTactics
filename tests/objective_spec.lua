@@ -368,6 +368,25 @@ return {
         end,
     },
     {
+        name = "a hold without orKillAll still ends on a cleared board, once no wave is owed",
+        fn = function()
+            -- The High Glade: every body felled and lying on its downed countdown, six ticks still on the
+            -- hold, nobody on the ground. Nothing is left to contest it, so the clock measures nothing.
+            local ground = { { x = 4, y = 4 } }
+            local foe = unit("enemy", 9, 9)
+            local combat = fakeCombat({ unit("party", 1, 1), foe }, { type = "hold", tiles = ground, duration = 30 })
+            assert(Combat.evaluate(combat) == nil, "a foe still standing keeps the hold open")
+            foe.alive = false
+            assert(Combat.evaluate(combat) == "win", "a cleared board with nothing owed is decided")
+
+            -- ...but a wave still to come is somebody left to contest it.
+            local owed = fakeCombat({ unit("party", 1, 1), unit("enemy", 9, 9) },
+                { type = "hold", tiles = ground, duration = 30, waves = { { at = 50, composition = { "character_bandit" } } } })
+            owed.units[2].alive = false
+            assert(Combat.evaluate(owed) == nil, "a lull before a wave lands is not a win")
+        end,
+    },
+    {
         name = "a timed objective counts its duration in ticks, the clock's own unit",
         fn = function()
             -- `duration` is quoted in the same unit `combat.clock` accumulates (elapsed initiative),

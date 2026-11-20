@@ -67,8 +67,15 @@ return {
 
             -- The lag is what lets a grown company sit ahead of common stock. Assert the DIRECTION
             -- rather than a number, so retuning ENEMY_LEVEL_LAG moves this instead of breaking it.
-            assert(Growth.combatantLevel(plain, Growth.LEVEL_CAP, nil) < Growth.LEVEL_CAP,
-                "a capped company must have outgrown the ordinary stock")
+            -- At a lag of zero (2026-11-14) the stock tracks the company level for level, and that is
+            -- asserted instead, so the case still says what the constant does.
+            if Growth.ENEMY_LEVEL_LAG > 0 then
+                assert(Growth.combatantLevel(plain, Growth.LEVEL_CAP, nil) < Growth.LEVEL_CAP,
+                    "a capped company must have outgrown the ordinary stock")
+            else
+                assert(Growth.combatantLevel(plain, Growth.LEVEL_CAP, nil) == Growth.LEVEL_CAP,
+                    "with no lag, ordinary stock meets a capped company at the cap")
+            end
             assert(Growth.combatantLevel(plain, 1, nil) == 1, "and at level 1 there is nothing to lag behind")
 
             -- A named unit -- anything declaring a floor of its own -- tracks exactly. This is what
@@ -78,7 +85,8 @@ return {
                 "a creature's own floor holds even in a fight that declares none")
             assert(Growth.combatantLevel(elite, 30, nil) == 30,
                 "and above its floor it tracks the player level for level, unlagged")
-            assert(Growth.combatantLevel(elite, 30, nil) > Growth.combatantLevel(plain, 30, nil),
+            assert(Growth.combatantLevel(elite, 30, nil) > Growth.combatantLevel(plain, 30, nil)
+                or Growth.ENEMY_LEVEL_LAG == 0,
                 "a named unit must outrank the stock beside it")
 
             -- The case an implementation is most likely to fumble: two floors that disagree.
@@ -239,7 +247,9 @@ return {
                 local withLag = hitsToKill(lagged, knight)
                 local without = hitsToKill(fair, knight)
 
-                assert(withLag > without, string.format(
+                -- The edge half only means something while there is a lag to buy it; at zero
+                -- (2026-11-14, on play: the trash was a victory lap) only the no-free-fight half holds.
+                assert(Growth.ENEMY_LEVEL_LAG == 0 or withLag > without, string.format(
                     "at level %d the lag bought nothing (%d hits either way) -- levelling is a treadmill",
                     level, withLag))
                 assert(withLag <= 20, string.format(
@@ -260,11 +270,15 @@ return {
             for k, v in pairs(Character.defs.character_bandit) do namedDef[k] = v end
             namedDef.floorLevel = 1
             assert(Growth.combatantLevel(namedDef, Growth.LEVEL_CAP)
-                > Growth.combatantLevel(Character.defs.character_bandit, Growth.LEVEL_CAP),
+                > Growth.combatantLevel(Character.defs.character_bandit, Growth.LEVEL_CAP)
+                or Growth.ENEMY_LEVEL_LAG == 0,
                 "declaring a floor should lift a unit out of the lag")
 
             local elite = Growth.spawn("character_demon_champion_tutorial", Growth.LEVEL_CAP)
-            assert(hitsToKill(elite, knight) < hitsToKill(stock, knight),
+            -- The elite's edge over the stock at the cap WAS the lag: the same level, the bandit's
+            -- blueprint out-hits the tutorial champion's. With no lag (2026-11-14) what separates an
+            -- elite from the trash is its kit and its rung, not a level, so this half stands down.
+            assert(Growth.ENEMY_LEVEL_LAG == 0 or hitsToKill(elite, knight) < hitsToKill(stock, knight),
                 "an elite must still be the dangerous thing on the board")
         end,
     },

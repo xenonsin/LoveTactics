@@ -1355,6 +1355,13 @@ Descent.FLOOR_CACHES = { min = 3, max = 4 }
 -- what it eats is empty road. See Descent.floorBudget for the things that DO compete.
 Descent.FLOOR_TRAPS = { min = 3, max = 5 }
 
+-- ...AND PARKED (2026-11-13), BAD ROAD AND WIRED LIDS BOTH. A floor trap fires on a step with no
+-- decision in front of it: nothing a company could do on the walk mitigated one, so it was a tax with
+-- no price offered. One flag from coming back -- floorQuest simply stops asking the generator for
+-- `trapCount` and `trappedChestChance`, and Overworld:placeTraps lays nothing when neither is asked.
+-- The arena's traps (laid by a Trapper in a fight) are untouched. Mimics are not traps and still roll.
+Descent.FLOOR_TRAPS_PARKED = true
+
 -- HOW MANY SIDE ROUTES A FLOOR SHUTS BEHIND A KEY (Overworld:placeSideGates).
 --
 -- ONE, AND NEVER THE ROAD TO THE STAIR. `keyCount` stays 0 and always will: that gates the OBJECTIVE,
@@ -2259,7 +2266,12 @@ Descent.OPENING_LEVEL = 2
 -- lower, and the company sits a level behind its ground through floor three: the Lady Chapel ran 56 ->
 -- 78 turns past tests/objective_fight_spec's budget of 70. At five the ramp from floor three down is
 -- the one it was, and floor one opens a level over a level-2 pair that levels on its first fights there.
-Descent.OPENING_DANGER = 5
+-- FOUR (2026-11-14), WITH THE LAG AT ZERO. Five was sized to put lagged stock at three; with
+-- Growth.ENEMY_LEVEL_LAG retired the same five put the opening floor's trash at FIVE against a level-2
+-- company, and early-floors measured the Wolf at 50%, the Pride at 33% and the White Wolf at 0%.
+-- Four puts the opening floor's stock a level over where it stood, two over a pair walking out of Act 0
+-- (tests/experience_spec.lua's bound), and every floor under it still deeper than the lagged ladder was.
+Descent.OPENING_DANGER = 4
 
 -- HOW MANY BODIES THE OPENING FLOOR FIELDS, and the number that fixes a floor priced for a company
 -- nobody has yet.
@@ -2440,7 +2452,8 @@ function Descent.expectedLevel(floor)
     local Experience = require("models.experience")
     local Growth = require("models.growth")
     local key = table.concat({ Experience.STEP, Descent.FLOORS, Descent.BOTTOM_DANGER,
-        Descent.OPENING_DANGER, Descent.OPENING_LEVEL, Growth.ENEMY_LEVEL_LAG }, ":")
+        Descent.OPENING_DANGER, Descent.OPENING_LEVEL, Growth.ENEMY_LEVEL_LAG,
+        Experience.PER_ACTION, Experience.PER_FELLING }, ":")
     if expectedKey ~= key then
         local perFight = 7 * Experience.PER_ACTION + 1.25 * Experience.PER_FELLING
         local xp = Experience.totalFor(Descent.OPENING_LEVEL)
@@ -3335,9 +3348,9 @@ end
 -- THE CEILING THIS COMPANY ACTUALLY HAS: the constant plus whatever it is carrying that widens it.
 --
 -- A FUNCTION RATHER THAN THE CONSTANT, because two places read this and they must not disagree -- the
--- refusal ("the chest stays shut") and the readout that warns about the refusal before it happens
--- (states/game.lua's "Carrying n / max"). A limit the player cannot see is one they meet by having a
--- chest refuse to open, and a limit the readout states WRONG is worse than either.
+-- overflow (what does not fit is put down on the ground, models/ground.lua) and the readout that warns
+-- about it before it happens (states/game.lua's "Carrying n / max"). A limit the player cannot see is
+-- one they meet by finding their finds on the floor, and a limit the readout states WRONG is worse.
 function Descent.carryMax(player)
     return Descent.bagSize(player) + Descent.haulBonus(player)
 end
@@ -3493,8 +3506,7 @@ function Descent.newProfile(chars)
     -- A clean run carries in nothing a campaign would have accumulated. Player.new seeds an opening
     -- stash, materials and recipes for a new GAME; a descent's company is the one body it walked in
     -- with, whoever joins it on the way down, and whatever the floors hand them.
-    profile.stash = {}
-    profile.materials = {}
+    profile.stash = {} -- the opening ore with it: materials are stacks on the shelf (models/material.lua)
     profile.recipes = {}
     profile.newItems = {}
     -- THE OPENING PURSE. A run's company starts with Descent.OPENING_GOLD and nothing else: it has
@@ -4581,7 +4593,8 @@ function Descent.floorQuest(run, player)
                 rows = rows,
                 encounters = stops,
                 cacheCount = { min = Descent.FLOOR_CACHES.min, max = Descent.FLOOR_CACHES.max },
-                trapCount = { min = Descent.FLOOR_TRAPS.min, max = Descent.FLOOR_TRAPS.max },
+                trapCount = not Descent.FLOOR_TRAPS_PARKED
+                    and { min = Descent.FLOOR_TRAPS.min, max = Descent.FLOOR_TRAPS.max } or nil,
                 vaultCount = { min = Descent.FLOOR_VAULTS.min, max = Descent.FLOOR_VAULTS.max },
                 sideGateCount = { min = Descent.FLOOR_SIDE_GATES.min, max = Descent.FLOOR_SIDE_GATES.max },
                 -- A HOLE IN THE FLOOR, but never on a floor whose stair a sin is standing on and never
@@ -4589,7 +4602,7 @@ function Descent.floorQuest(run, player)
                 -- walk into and be told "not this one" is worse than a floor that simply has none.
                 dropCount = (not Descent.isGeneralFloor(floor) and not Descent.isBottom(floor))
                     and { min = Descent.FLOOR_DROPS.min, max = Descent.FLOOR_DROPS.max } or nil,
-                trappedChestChance = Descent.TRAPPED_CHEST_CHANCE,
+                trappedChestChance = not Descent.FLOOR_TRAPS_PARKED and Descent.TRAPPED_CHEST_CHANCE or nil,
                 mimicChance = Descent.MIMIC_CHEST_CHANCE,
                 keyCount = 0,
                 -- The way back up, standing on the tile the party walks in on. See EXIT below.
@@ -4662,7 +4675,8 @@ function Descent.floorQuest(run, player)
             -- The texture count plus whatever fights the ends left unspent. See Descent.floorBudget.
             encounters = stops,
             cacheCount = { min = Descent.FLOOR_CACHES.min, max = Descent.FLOOR_CACHES.max },
-            trapCount = { min = Descent.FLOOR_TRAPS.min, max = Descent.FLOOR_TRAPS.max },
+            trapCount = not Descent.FLOOR_TRAPS_PARKED
+                and { min = Descent.FLOOR_TRAPS.min, max = Descent.FLOOR_TRAPS.max } or nil,
             vaultCount = { min = Descent.FLOOR_VAULTS.min, max = Descent.FLOOR_VAULTS.max },
             sideGateCount = { min = Descent.FLOOR_SIDE_GATES.min, max = Descent.FLOOR_SIDE_GATES.max },
             -- A HOLE IN THE FLOOR, but never on a floor whose stair a sin is standing on and never
@@ -4670,7 +4684,7 @@ function Descent.floorQuest(run, player)
             -- walk into and be told "not this one" is worse than a floor that simply has none.
             dropCount = (not Descent.isGeneralFloor(floor) and not Descent.isBottom(floor))
                 and { min = Descent.FLOOR_DROPS.min, max = Descent.FLOOR_DROPS.max } or nil,
-            trappedChestChance = Descent.TRAPPED_CHEST_CHANCE,
+            trappedChestChance = not Descent.FLOOR_TRAPS_PARKED and Descent.TRAPPED_CHEST_CHANCE or nil,
             mimicChance = Descent.MIMIC_CHEST_CHANCE,
             -- SLICE G: ...and WHICH stops may be one -- the chest alone, but every non-combat stop on
             -- Envy's waste (models/mimic.lua's Mimic.kindsOn). The Crown names none: the chest alone.

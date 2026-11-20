@@ -184,10 +184,10 @@ return {
             end
 
             local before = {}
-            for mat, n in pairs(player.materials) do before[mat] = n end
+            for mat, n in pairs(require("models.material").tally(player)) do before[mat] = n end
             local got, why = Salvage.breakDown(player, { id = "item_that_does_not_exist" })
             assert(got == nil and why == "unknown", "an unknown id refuses")
-            for mat, n in pairs(player.materials) do
+            for mat, n in pairs(require("models.material").tally(player)) do
                 assert(before[mat] == n, "a refused break must charge and pay nothing")
             end
         end,

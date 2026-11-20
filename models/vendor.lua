@@ -161,7 +161,7 @@ end
 -- (IT TOOK AN `id` FIRST, and does not now. The id was only ever there to look the item up in the
 -- `found` set; with that gate gone the parameter read nothing, and a parameter nothing reads is how a
 -- caller comes to pass the wrong thing in it and never find out.)
-function Vendor.lockReason(item, rung, unlocked, levels)
+function Vendor.lockReason(item, rung, unlocked, levels, id)
     if not item then return nil end
     -- TWO NUMBERS THAT USED TO BE ONE, and they still have to part -- but they part the other way round
     -- now that a found ware has a rung of its own.
@@ -185,6 +185,11 @@ function Vendor.lockReason(item, rung, unlocked, levels)
     -- Levels run 0..CLASS_LEVEL_CAP and so does this, so nothing is gated past the top of the ladder
     -- that opens it -- and rung 0 is the opening rack, held from the first morning.
     local gateRung = item.unlockLevel or 0
+    -- ...WITH ONE EXCEPTION, and it only ever lowers the gate: a root's FIRST RUNG (Class.opensFirst) --
+    -- what Act 0 handed over and what the unlock itself gives -- opens on the morning the class does,
+    -- wherever its rank sits. The rank stays the item's power level; only the door moves. Needs the
+    -- `id`, because a blueprint does not carry its own; a caller that has none gets the plain rank.
+    if id and gateRung > 0 and Class.opensFirst(id, item) then gateRung = 0 end
     -- AN EARNED CLASS'S STOCK is locked until that class is unlocked, on top of the rung gate -- and,
     -- if it names a `disciplineLevel`, until the class has grown that far.
     --
@@ -404,7 +409,7 @@ function Vendor.stock(vendorId, questsDone, recipes, unlocked, levels)
             local level = (recipes and recipes[id]) or 0
             local class = item.class
             local lockReason, earned, disciplineLevel, rung =
-                Vendor.lockReason(item, rungOf(item), unlocked, levels)
+                Vendor.lockReason(item, rungOf(item), unlocked, levels, id)
 
             stock[#stock + 1] = {
                 id = id,
@@ -481,7 +486,7 @@ function Vendor.hasMarkedStock(vendorId, marked, gates)
         local stocked = item and (item.price or Vendor.foundPrice(item))
         if stocked and Vendor.sells(def, item)
             and not (gates and Vendor.lockReason(item, gates.rung, gates.unlocked,
-                gates.levels)) then
+                gates.levels, id)) then
             return true
         end
     end

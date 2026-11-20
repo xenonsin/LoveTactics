@@ -2256,7 +2256,7 @@ Grade.SLOT_PINS = {
     -- THE CLASS-UNLOCK DESIGN'S PLACEMENTS (2026-10-15). Each sits where a class's unlock deed needs it, so
     -- a re-grade must not move it (docs: the class-unlock review, round 13 to 22).
     ability_charm = { at = 3, why = "Lust's first floor: the Beastmaster deed is charm 10 beasts" },
-    consumable_reviving_salts = { at = 0, why = "a standing item: the Necromancer deed is revive allies 15 times" },
+    consumable_reviving_salts = { at = 2, why = "first rung is Act 0 and the gifts (Class.opensFirst); was 0: a standing item: the Necromancer deed is revive allies 15 times" },
     ability_summon_fire_elemental = { at = 6, why = "a mage's first summon, one rung before the Summoner gate" },
     ability_brace = { at = 1, why = "the knight's root-unlock gift" },
     ability_quick_brew = { at = 1, why = "the alchemist's root-unlock gift" },
@@ -2283,14 +2283,14 @@ Grade.SLOT_PINS = {
     -- were at rung 0 by grade alone and the re-cut lifted them off the rack. The rule is CLAUDE.md's
     -- and it is not a grading question at all: "a rung is a gate, and a gate on a healing potion prices
     -- a need". All nine stand from the first visit.
-    consumable_ball_bearings = { at = 0, why = "a standing draught: a gate on it would price a need" },
-    consumable_clearwater_vial = { at = 0, why = "a standing draught: a gate on it would price a need" },
+    consumable_ball_bearings = { at = 2, why = "first rung is Act 0 and the gifts (Class.opensFirst); was 0: a standing draught: a gate on it would price a need" },
+    consumable_clearwater_vial = { at = 2, why = "first rung is Act 0 and the gifts (Class.opensFirst); was 0: a standing draught: a gate on it would price a need" },
     consumable_mana_potion = { at = 0, why = "a standing draught: a gate on it would price a need" },
-    consumable_net = { at = 0, why = "a standing draught: a gate on it would price a need" },
-    consumable_panacea = { at = 0, why = "a standing draught: a gate on it would price a need" },
-    consumable_stamina_potion = { at = 0, why = "a standing draught: a gate on it would price a need" },
+    consumable_net = { at = 2, why = "first rung is Act 0 and the gifts (Class.opensFirst); was 0: a standing draught: a gate on it would price a need" },
+    consumable_panacea = { at = 2, why = "first rung is Act 0 and the gifts (Class.opensFirst); was 0: a standing draught: a gate on it would price a need" },
+    consumable_stamina_potion = { at = 2, why = "first rung is Act 0 and the gifts (Class.opensFirst); was 0: a standing draught: a gate on it would price a need" },
     -- ...and the one way out of a fight that is going wrong, which is a need of the same kind (2026-10-24).
-    consumable_smoke = { at = 0, why = "a standing escape: a gate on the way out would price a need" },
+    consumable_smoke = { at = 2, why = "first rung is Act 0 and the gifts (Class.opensFirst); was 0: a standing escape: a gate on the way out would price a need" },
 
     -- THE CHASE IS THE DEEPEST THING ON ITS OWN LIST, which is the whole of the drop-rate design: a
     -- floor picks a rank before it looks at who died, so within one body's list the TIER IS THE RARITY
@@ -2305,10 +2305,10 @@ Grade.SLOT_PINS = {
     -- house that wanted it, and each kept its opening-shelf place, because being there from the first
     -- visit was the one thing the general store was really providing (tests/progression_spec.lua).
     utility_torch = { at = 0, why = "a rehomed general good: un-gated since the Cafe closed its shelf" },
-    utility_boots_of_speed = { at = 0, why = "a rehomed general good" },
-    utility_stormglass_rod = { at = 0, why = "a rehomed general good" },
-    consumable_witchlight_flare = { at = 0, why = "a rehomed general good" },
-    utility_wellspring_sandals = { at = 0, why = "a rehomed general good" },
+    utility_boots_of_speed = { at = 2, why = "first rung is Act 0 and the gifts (Class.opensFirst); was 0: a rehomed general good" },
+    utility_stormglass_rod = { at = 2, why = "first rung is Act 0 and the gifts (Class.opensFirst); was 0: a rehomed general good" },
+    consumable_witchlight_flare = { at = 2, why = "first rung is Act 0 and the gifts (Class.opensFirst); was 0: a rehomed general good" },
+    utility_wellspring_sandals = { at = 2, why = "first rung is Act 0 and the gifts (Class.opensFirst); was 0: a rehomed general good" },
     -- The resale rack is gone, so exactly one shelf sells the commonest thing in the game, and it sells
     -- it from the first visit.
     consumable_healing_potion = { at = 0, why = "the Crucible's steadiest seller, and nowhere else now" },
@@ -2320,7 +2320,7 @@ Grade.SLOT_PINS = {
     -- this thing IS is thirty gold and a fist-sized stone, the first answer a newcomer can afford to a
     -- foe standing out of reach. A gate in front of that sells nothing the player could not do by
     -- walking.
-    consumable_throwing_stone = { at = 0, why = "a rock: the cheapest ware in the arena, and gated by nothing" },
+    consumable_throwing_stone = { at = 2, why = "first rung is Act 0 and the gifts (Class.opensFirst); was 0: a rock: the cheapest ware in the arena, and gated by nothing" },
 
     -- THE ONE ITEM WHOSE WORTH IS NOT IN A FIGHT. It grades 0.0 and always will: it has no damage, no
     -- status, no target and no ability at all. What it buys is the run's entire haul, which happens on
@@ -2516,14 +2516,14 @@ Grade.SLOT_PINS = {
     -- Each reads as the house's own first lesson, which is what a quest-1 shelf is for: the Bastion
     -- sells refusing to fall, the Colosseum finding the gap in the plate, the Lodge the deeper wind
     -- and the killing eye, the Undercroft crossing the ground nobody else can.
-    utility_second_wind = { at = 0, why = "the Bastion's quest 1: what the ward line left it short of" },
+    utility_second_wind = { at = 2, why = "first rung is Act 0 and the gifts (Class.opensFirst); was 0: the Bastion's quest 1: what the ward line left it short of" },
     consumable_wine = { at = 1, why = "the Cathedral's quest 2: what the ward line left it short of" },
-    utility_duelists_reflex = { at = 0, why = "the Colosseum's quest 1, which opened nothing at all" },
-    ability_penetrating_strike = { at = 0, why = "the Colosseum's quest 1: retuned to the rung, not just moved to it" },
-    utility_endurance = { at = 0, why = "the Lodge's quest 1, which opened nothing at all" },
-    utility_executioners_eye = { at = 0, why = "the Lodge's quest 1" },
+    utility_duelists_reflex = { at = 2, why = "first rung is Act 0 and the gifts (Class.opensFirst); was 0: the Colosseum's quest 1, which opened nothing at all" },
+    ability_penetrating_strike = { at = 2, why = "first rung is Act 0 and the gifts (Class.opensFirst); was 0: the Colosseum's quest 1: retuned to the rung, not just moved to it" },
+    utility_endurance = { at = 2, why = "first rung is Act 0 and the gifts (Class.opensFirst); was 0: the Lodge's quest 1, which opened nothing at all" },
+    utility_executioners_eye = { at = 2, why = "first rung is Act 0 and the gifts (Class.opensFirst); was 0: the Lodge's quest 1" },
     weapon_hornbow_of_the_hunt = { at = 1, why = "the Lodge's quest 2, vacated by the eye above it" },
-    utility_feather_boots = { at = 0, why = "the Undercroft's quest 1: the thinnest shelf in the game" },
+    utility_feather_boots = { at = 2, why = "first rung is Act 0 and the gifts (Class.opensFirst); was 0: the Undercroft's quest 1: the thinnest shelf in the game" },
     consumable_smoke_bomb = { at = 1, why = "the Undercroft's quest 2" },
     -- THE GROVE'S FIRST SPELL (2026-09-23). The grader reads a summon and prices it near the top of
     -- the druid shelf, but a sapling is not the prize -- it is the grain Greenstep and Through the

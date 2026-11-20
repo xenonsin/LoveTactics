@@ -177,7 +177,8 @@ end
 -- over the two names. Hit and Avoid carry the stat card's gold chip for what they grew by; each verb the
 -- rank hands over gets a "New" pill, since those are the part a player has to learn. Its own height:
 -- a bond card has two to four rows, not nine.
-LevelupCard.BOND_VERBS = { C = {}, B = { "Trade Places", "Teamwork" }, A = { "Follow-up", "Stand Firm" } }
+LevelupCard.BOND_VERBS = { C = {}, B = { "Trade Places", "Teamwork" }, A = { "Follow-up", "Stand Firm" },
+    S = { "Follow-up at range" } }
 
 function LevelupCard.showBond(avatar, partner, fromRank, toRank, opts)
     opts = opts or {}

@@ -314,7 +314,7 @@ return {
 
         -- Nothing a campaign would have accumulated comes in with it.
         assert(#profile.stash == 0, "a clean run carries no stash in")
-        assert(next(profile.materials) == nil, "nor forging stock")
+        assert(next(require("models.material").tally(profile)) == nil, "nor forging stock")
         assert(next(profile.completedQuests) == nil, "nor a campaign's finished quests")
         assert(profile.deepest == 0 and next(profile.standing) == nil, "nor any record of a past run")
     end },

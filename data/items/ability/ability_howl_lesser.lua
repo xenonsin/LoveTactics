@@ -28,6 +28,29 @@
 local RING = 2          -- tiles; hers is 3 (ability_howl.lua), and the difference is meant to be read
 local FEAR_TICKS = 10   -- ~2 turns at Status.TICKS_PER_TURN: the turn you read it on, and the turn it buys
 
+-- WHEN IT IS WORTH A TURN: some foe the ring could catch this turn is not ALREADY cowering. Without
+-- this the rule was unconditional, and the planner credits a hostile status whether or not it is
+-- already standing (AI's STATUS term has no "already has it" guard, unlike BUFF) -- so an alpha with
+-- the stamina howled every single turn at a party that was already frightened, and never bit. Reach
+-- is the ring plus the alpha's walk, measured square (Chebyshev) because the ring is a square.
+local function worthHowling(ctx)
+    local Combat = require("models.combat")
+    local Status = require("models.status")
+    local me = ctx.unit
+    local reach = RING + Combat.moveBudget(me)
+    for _, u in ipairs(ctx.combat.units) do
+        if u.alive and u.side ~= me.side and not Status.has(u, "status_cowering") then
+            for j = 0, (u.h or 1) - 1 do
+                for i = 0, (u.w or 1) - 1 do
+                    local d = math.max(math.abs(u.x + i - me.x), math.abs(u.y + j - me.y))
+                    if d <= reach then return true end
+                end
+            end
+        end
+    end
+    return false
+end
+
 return {
     name = "Howl",
     description = "Frightens every foe within two tiles: they move fewer spaces.",
@@ -59,7 +82,8 @@ return {
                 return out
             end,
         },
-        ai = { priority = "high", act = "cast" },
+        ai = { priority = "high", act = "cast", label = "a foe in reach is not yet cowering",
+               whenFn = worthHowling },
         effect = function(fx)
             -- Sweep the very footprint aoeCells drew and frighten every foe on it. Allies and the
             -- howler stand on those tiles too, so they are filtered out here rather than in the shape.

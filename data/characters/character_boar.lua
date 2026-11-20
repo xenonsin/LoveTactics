@@ -20,13 +20,8 @@ return {
     palate = "ability_gore", -- what Gula takes when she eats one (models/palate.lua)
     sprite = "assets/chars/boar.png",
     stats = {
-        -- THE 10 POOL IS THE RATE LIMITER ON GORE, and it is load-bearing rather than incidental. A
-        -- charge costs the whole bar at 1 stamina a tick, which is what makes it an opener and what
-        -- keeps the ordinary road fight inside tests/skirmish_spec.lua's budget. Raising this to 14
-        -- with 2 regen -- to stop a boar in a LONG fight idling after its charge -- was measured and
-        -- reverted the same hour: the road fight went from 19 unit-turns to 44, because every point
-        -- of stamina is another telegraphed charge and the charge is tempo-negative by construction
-        -- (see ability_gore.lua's own note). The idling is real; the fix is not here.
+        -- The pool no longer limits Gore, which is free since 2026-11-13 (a boar only charges); it is
+        -- what the tusks' Feral Instinct counter pays from.
         health = 50, mana = 0, stamina = 10,
         damage = 14, magicDamage = 0,
         defense = 7, magicDefense = 1,
@@ -53,9 +48,9 @@ return {
     -- catalogue, not the route for the commonest animal on the road. Spoils reads `def.drops` with no
     -- kind gate; what the bestiary forbids is a creature's own KIT entering the pool, which this is not.
     drops = { "armor_bristlehide", "weapon_unclosing_spear" },
-    -- What it does on the turns it could not line anybody up. Named so the fallback is the jab rather
-    -- than whatever the grid happens to list first, since the charge is now also in there.
-    defaultAction = "weapon_tusks",
+    -- A BOAR ONLY CHARGES (2026-11-13). Gore is free and reaches point-blank, so it is the turn at
+    -- every range; the tusks stay in the grid only as what Feral Instinct swings back with.
+    defaultAction = "ability_gore",
     -- Basic tactics (models/ai.lua). The charge carries its own rule (ability_gore's `ai`), and that
     -- rule is reached FIRST -- an item's rule sits above the body's in AI.rulesFor -- so the order here
     -- reads: line somebody up if you can, and otherwise go for the throat that is already open.

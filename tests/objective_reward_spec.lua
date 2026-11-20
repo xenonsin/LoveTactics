@@ -64,7 +64,10 @@ return {
         assert(Item.defs[out.items[1]], "which is a real item")
 
         -- THE WHOLE POINT OF THE SPLIT: previewing is not taking. Nothing above may have moved the player.
-        assert(#(player.stash or {}) == 0, "the piece is not in the stash yet")
+        -- (The opening ore sits on the shelf as stacks, models/material.lua; only an item would be news.)
+        for _, held in ipairs(player.stash or {}) do
+            assert(held.type == "material", "the piece is not in the stash yet")
+        end
         assert((player.gold or 0) == Player.new().gold, "and the purse is untouched")
     end },
 

@@ -40,8 +40,8 @@
 -- Combat.aoeCells offers, as utility_wolfsong_horn does) covering the LANE tiles ahead of the boar.
 -- The telegraph, fx.aoeUnits and the AI's own scoring then all read one and the same set of tiles.
 --
--- `minRange = 2` is what keeps it a charge rather than a shove: a foe already adjacent is not a foe you
--- get a run-up at, so the boar bites that one instead (weapon_tusks). And because the footprint is the
+-- A foe already adjacent is charged too (since 2026-11-13; it was `minRange = 2` and a bite): the boar
+-- pins it on the tusks and drives it down the lane. And because the footprint is the
 -- lane rather than a radius, a foe standing in range but OFF the line is caught by nothing -- the
 -- planner prices the cast at zero and refuses it (AI.scoreCandidate's `outcome` gate). The boar charges
 -- when you are on its line and only then, enforced by arithmetic rather than by a rule anybody wrote.
@@ -77,7 +77,10 @@ return {
         target = "tile",
         allowOccupied = true, -- the lane is aimed at a body, so the planner can see it (see the header)
         range = LANE,
-        minRange = 2,         -- adjacent is a bite, not a charge
+        -- A BOAR ONLY CHARGES (2026-11-13, the author's call). An adjacent foe is not bitten; it is
+        -- pinned on the tusks and driven down the lane (Combat.chargeInto's pinned form), so there is
+        -- no range at which the animal does anything else.
+        minRange = 1,
         -- THE WIND-UP IS THE PRICE, AND IT IS THE ONLY PRICE. `speed` is what the turn bills on top of
         -- the tell, and billing a slow action there as well charges twice for one commitment. All three
         -- numbers below were MEASURED rather than judged, through models/autobattle.lua over eight
@@ -99,9 +102,12 @@ return {
         -- worth reading, and the run carries the boar three tiles on an action it did not spend its move
         -- on, which is most of what makes the trade honest. tests/skirmish_spec.lua is what caught the
         -- first two cuts and is what will catch the next one.
+        --
+        -- SUPERSEDED IN PART (2026-11-13): the author wants a boar that only ever charges, so the cost
+        -- is gone and the wind-up is now the WHOLE price, every turn rather than once. The opener
+        -- measurement above is history; tests/skirmish_spec.lua still holds the road fight's budget.
         speed = 2,
         windup = 3,           -- the lane is committed here, and everyone gets to read it
-        cost = { stat = "stamina", amount = 10 },
         -- The slot-0 ability number (ability_fire_bolt's own curve), and deliberately NOT more. An
         -- item's `damage` is ADDED to the bearer's own Damage, so the boar's 14 is most of what lands
         -- either way -- a gore is about 13 where a jab is about 12, and doubling this figure to 10

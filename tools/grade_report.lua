@@ -163,11 +163,20 @@ end
 -- "A ladder has to be anchored to something that does not move when the rungs do" is Balance's own
 -- sentence about this, written after the same mistake in the other direction. The anchors are pinned
 -- for that reason before any argument about what they are worth.
+--
+-- PINNED, BUT NO LONGER ALL TO 0 (2026-11-13). Rung 0 of a root is what Act 0 handed over and what the
+-- unlock gives (Class.opensFirst), so an anchor that is neither -- the iron axe, the wand, the longbow --
+-- waits on Class.FIRST_RUNG_EVICTED_TO with the rest of the old opening rack. The value is the slot.
 local function anchorItems()
     local Balance = require("models.balance")
     local pinned = {}
-    for _, id in pairs(Balance.FAMILY_BASE) do pinned[id] = true end
-    pinned[Balance.ABILITY_BASE] = true
+    local function seat(id)
+        local def = Item.defs[id]
+        local first = not (def and Class.isRoot(def.class)) or Class.opensFirst(id, def)
+        pinned[id] = first and 0 or Class.FIRST_RUNG_EVICTED_TO
+    end
+    for _, id in pairs(Balance.FAMILY_BASE) do seat(id) end
+    seat(Balance.ABILITY_BASE)
     return pinned
 end
 
@@ -233,7 +242,7 @@ local function planFor(class, maxGate, pinned)
     for _, row in ipairs(asc) do
         local pin = Grade.SLOT_PINS[row.id]
         if pinned[row.id] or (pin and pin.at) then
-            row.want = pinned[row.id] and 0 or pin.at
+            row.want = pinned[row.id] or pin.at
             row.pinned = pinned[row.id] and "ladder anchor" or pin.why
             taken[row.want] = (taken[row.want] or 0) + 1
         else
@@ -335,9 +344,16 @@ local function planFor(class, maxGate, pinned)
     -- houses; the alchemist's weapons are all its own poisons and none is a family base, so the rule has
     -- to be asked per house rather than assumed from the base list. Cheapest-to-grade goes down, since
     -- the opening weapon should be the plainest thing on the rack.
+    --
+    -- IT OPENS ON THE SECOND RACK NOW, not the first (2026-11-13). Rung 0 of a root is Act 0's kit and the
+    -- unlock gifts (Class.opensFirst) and nothing else, so the opener waits with the rest of the old
+    -- opening rack on Class.FIRST_RUNG_EVICTED_TO -- the house still arms a newcomer, two levels in.
+    local OPENER_RUNG = Class.FIRST_RUNG_EVICTED_TO
     local hasOpener = false
     for _, row in ipairs(asc) do
-        if row.def.type == "weapon" and row.want <= 0 and not Class.isEarned(row.def.class) then hasOpener = true end
+        if row.def.type == "weapon" and row.want <= OPENER_RUNG and not Class.isEarned(row.def.class) then
+            hasOpener = true
+        end
     end
     if not hasOpener then
         -- CHOSEN ON RAW GRADE, not on the adjusted order, and that is the difference between a rule and
@@ -355,7 +371,7 @@ local function planFor(class, maxGate, pinned)
                 end
             end
         end
-        if opener then opener.want, opener.pinned = 0, "this house's opening weapon" end
+        if opener then opener.want, opener.pinned = OPENER_RUNG, "this house's opening weapon" end
     end
     return asc, blind
 end

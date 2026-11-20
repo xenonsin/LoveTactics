@@ -271,13 +271,34 @@
 -- planner to discount a wind-up against bodies that can walk out of it (the honest fix, left owed).
 -- Measured at DEPTH 11, each fight on its own ground, four bodies, RNG pinned per fight.
 
+-- ---------------------------------------------------------------------------
+-- AND A SIXTH ROLL, 2026-11-19, ON THE ENEMY HEALTH SCALE. Every row moved, so every fight was rolled.
+-- ---------------------------------------------------------------------------
+--
+-- Growth.ENEMY_HEALTH_SCALE = 1.5 gives every spawned body half as much health again, on the author's
+-- call from played traces (the wood was a victory lap: hawks and wolves felled in one blow). The budget
+-- now reads that scale (22 -> 33, tests/skirmish_spec.lua), so a row stays here only while it is past
+-- the SCALED budget. Measured with every fight printed rather than the first failure, which had hidden
+-- thirty-seven others behind the Tribunal:
+--
+--     bone orchard    25 -> 56      the heave       24 -> 41
+--     tribunal        24 -> 37
+--
+-- ...and three new, past 33 for the first time: the lower court (72), the Pride's court (34) and the
+-- reed choir (34). The lower court is the one to look at first -- twice the budget at the scale is not
+-- the scale alone.
+
 return {
     -- THE CROWN'S BESTIARY, SLICE A
     -- The fifth roll: an ordinary undead stop the Fireball's miss carries over the budget.
-    encounter_the_bone_orchard = 25,
+    encounter_the_bone_orchard = 56,
     -- (2026-10-25) The defending knight now walks out to answer threats to any party member
     -- (models/ai.lua AI.knightGuard, e6cddba3) instead of holding the avatar's ring: one unit-turn
     -- longer here, 22 -> 23. Recorded at 24 on Keno's call -- the knight is doing its job.
-    encounter_crown_the_tribunal = 24,
-    encounter_sloth_the_heave = 24, -- the same knight change, 22 -> 23; recorded on the same call
+    encounter_crown_the_tribunal = 37,
+    encounter_sloth_the_heave = 41, -- the same knight change, 22 -> 23; recorded on the same call
+    -- The sixth roll's three new rows (above).
+    encounter_crown_the_lower_court = 72,
+    encounter_pride_the_court = 34,
+    encounter_the_reed_choir = 34,
 }

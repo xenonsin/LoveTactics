@@ -15,10 +15,15 @@ return {
     archetype = "shadow",
     coffer = 15,
     stats = {
-        health = 50, mana = 0, stamina = 20,
+        -- 50 / 6 -> 40 / 1 (2026-11-14), when Growth.ENEMY_HEALTH_SCALE put every body's health up by
+        -- half. This one grows on the knight table (+6 health, +2 defense a level), so at the floor it is
+        -- measured on it already carries twenty-odd points of armour the blueprint never wrote; it read
+        -- eight hits against a 3-6 band, and the innate coat was the only knob that moved it. It is still
+        -- the line's shield -- the plate comes from its levels and its Oath, not this literal.
+        health = 40, mana = 0, stamina = 20,
         staminaRegen = 2,
         damage = 13, magicDamage = 0,
-        defense = 6, magicDefense = 4, -- 7 after the race
+        defense = 1, magicDefense = 4, -- 2 after the race
         movement = 5, -- 4 after the race; the Oath's plate takes one more
         speed = 3,
         skill = 5, luck = 4,

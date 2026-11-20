@@ -371,9 +371,12 @@ return {
                 --
                 -- The consumable is the exception and still opens un-gated: a consumable keeps its
                 -- price, because the stock decision made before a descent has to be makeable.
+                -- ...and "un-gated" became THE OPENING RACK on 2026-11-13, which is rung 2: a fresh class's
+                -- rung 0 is Act 0's kit and its unlock gifts (Class.opensFirst). The Market's standing
+                -- rack still deals it from the first morning (Market.STANDING).
                 if def.price then
-                    assert((def.unlockLevel or 0) == 0,
-                        id .. " was available from the first visit at the Cafe and must stay so")
+                    assert((def.unlockLevel or 0) <= require("models.class").FIRST_RUNG_EVICTED_TO,
+                        id .. " was available from the first visit at the Cafe and must stay on the opening rack")
                 else
                     -- A DEPTH, AND DELIBERATELY NOT A SHALLOW ONE. These sat at rung 0 because the
                     -- general store handed them over on the first visit -- a hand-carve, not a grade.
@@ -423,11 +426,12 @@ return {
                 -- The consumable keeps its first-visit promise outright, since it kept its price.
                 if def.price then
                     local opening
-                    for _, entry in ipairs(Vendor.stock(vendorId, 0)) do
+                    local rack = require("models.class").FIRST_RUNG_EVICTED_TO
+                    for _, entry in ipairs(Vendor.stock(vendorId, rack)) do
                         if entry.id == id then opening = entry end
                     end
                     assert(opening and not opening.locked,
-                        id .. " is priced and must be buyable on the first visit")
+                        id .. " is priced and must be buyable on the opening rack")
                 end
                 end -- `if def.unstocked then ... else` -- see the trophy note above
             end

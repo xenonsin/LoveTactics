@@ -22,7 +22,7 @@ end
 
 return {
     name = "Raking Talons",
-    description = "Rakes a foe and flies back. Below half health, it stays and feeds on them instead.",
+    description = "Rakes a foe up to two tiles off and flies back. Below half health, it stays and feeds on them instead.",
     flavor = "It does not kill what it catches. It starts eating, and lets that take care of it.",
     sprite = "assets/items/weapon_raking_talons.png",
     type = "weapon",
@@ -32,8 +32,13 @@ return {
     traits = { "trait_swoop", "trait_mantling" },
     activeAbility = {
         target = "enemy",
-        range = 1,
+        -- Two tiles: the stoop drops on its quarry from a wing's length off, so the run Swoop pays for
+        -- is not spent landing beside it.
+        range = 2,
         speed = 3,
+        -- The planner reads this (models/ai.lua): the hawk ends the turn back on its perch, so it takes
+        -- the longest run its Swoop pays for and judges danger where it will land, not where it struck.
+        returnsToStart = true,
         cost = { stat = "stamina", amount = 4 },
         damage = Curve.ramp(4, 14),
         effect = function(fx)

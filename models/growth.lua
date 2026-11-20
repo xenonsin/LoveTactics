@@ -92,7 +92,30 @@ Growth.ENEMY_DAMAGE_GROWTH = 3
 -- two rungs under it on the Crown, which is the "felt edge" the original number was reaching for,
 -- stated in a unit that cannot drift. Read through Growth.laggedLevel so the model and the specs that
 -- assert on it cannot hold two copies of the arithmetic.
-Growth.ENEMY_LEVEL_LAG = 2
+--
+-- ZERO (2026-11-14), ON PLAY. The combat traces of a real run on the wood's two floors read as a victory
+-- lap from end to end -- hawks and wolves felled in one blow, the Sated, the Open Roof and the Pit Garth
+-- won without the company taking a point -- and the lag was half of why: the ordinary stock was two rungs
+-- under a floor the company already stands two rungs over (Experience.REWARD_GRACE's equilibrium). The
+-- trash no longer lags. The function stays, so the arithmetic keeps one owner if a lag comes back.
+Growth.ENEMY_LEVEL_LAG = 0
+
+-- HOW MUCH MORE OF A BODY THERE IS THAN ITS BLUEPRINT AND ITS LEVELS SAY, applied to the health of every
+-- spawned (non-roster) body at Growth.spawn.
+--
+-- WHY A SCALE AND NOT A RE-AUTHOR. Measured 2026-11-14 against a real save: a blow is almost all STAT.
+-- The avatar on a fighter table swings 16 + 3 a level, so at level eight it brings 35 damage to a sword
+-- whose own power is 6; the mage table does the same for Gyeom's wand. Ordinary stock grows 4 health a
+-- level from bases of 14-50 and buys no defense at all, so hits-to-kill sat at about one and a half from
+-- floor one down -- every line body at the bottom edge of Balance.TTK's band, every chaff body inside one
+-- blow -- and four bodies acting to the stock's one meant most fights ended before anything swung back.
+-- The ratio was flat in level, which is why it is a ratio here: every body is short by about the same
+-- share, at every depth, so the one fix that moves them together is one multiplier. Balance.TTK's bands
+-- were raised by the same factor, so the balance suite still reads "fair" as the same shape of fight.
+--
+-- tools/balance_rescale.lua's growthDelta reads the grown-minus-blueprint difference through spawn, so a
+-- health solve it proposes includes this factor; read its health edits as grown-space, not literal.
+Growth.ENEMY_HEALTH_SCALE = 1.5
 
 -- What ordinary stock spawns at, against a world minted at `level`. The one owner of the lag's
 -- arithmetic -- tests/enemy_scaling_spec.lua kept a second copy of the old expression, which is how a
@@ -459,6 +482,19 @@ function Growth.spawn(id, playerLevel, battleFloor, carried)
         end
         scale(BOSS_DURABILITY, Growth.bossShare(level, ref))
         scale(BOSS_OFFENCE, Growth.bossHitShare(level, ref))
+    end
+
+    -- Growth.ENEMY_HEALTH_SCALE, after the boss curve so a shallow general is scaled as the smaller
+    -- version of herself and THEN given the same extra share as everything else. `scaling = false`
+    -- opts out here too: those bodies' arithmetic is load-bearing (the prologue's grunt).
+    if not (def and def.scaling == false) and Growth.ENEMY_HEALTH_SCALE ~= 1 then
+        local hp = char.stats.health
+        if type(hp) == "table" then
+            hp.max = math.max(1, math.floor((hp.max or 0) * Growth.ENEMY_HEALTH_SCALE + 0.5))
+            hp.current = hp.max
+        elseif type(hp) == "number" then
+            char.stats.health = math.max(1, math.floor(hp * Growth.ENEMY_HEALTH_SCALE + 0.5))
+        end
     end
     return char
 end

@@ -26,7 +26,7 @@ return {
             { "Visit priest class trainer", tag = 3, answer = "shelf", when = { offer = "shelf" } },
             { "Heal an injury", tag = 4, answer = "mend", when = { offer = "mend" } },
             { "Lift a curse", tag = 6, answer = "lift", when = { offer = "lift" } },
-            { "Leave", tag = 5, answer = "leave" },
+            { "Leave", tag = 5, answer = "leave", when = { offer = "leave" } },
         } },
     },
 }

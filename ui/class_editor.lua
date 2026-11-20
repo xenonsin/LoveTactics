@@ -1588,12 +1588,15 @@ function ClassEditor:drawRequirement(row, x, y, w)
     y = caption("TO UNLOCK", x, y, w, small) + 2
 
     -- A tick or an empty ring before each line, drawn rather than typed: "+ / -" read as a diff.
+    -- A line WRAPS inside the pane: a crossing's deed can run past one line (the Totemist's names three
+    -- sources), and a single print would run it out of the pane.
     local function line(text, met)
         checkMark(x, y + small:getHeight() / 2, met)
         Theme.set(met and Theme.ink or Theme.muted)
         love.graphics.setFont(small)
-        love.graphics.print(text, x + 16, y)
-        y = y + small:getHeight() + 4
+        love.graphics.printf(text, x + 16, y, w - 16, "left")
+        local _, lines = small:getWrap(text, w - 16)
+        y = y + small:getHeight() * math.max(1, #lines) + 4
     end
 
     -- THE FIRST PICK ASKS NOTHING. Rowan's recommendation stands in for the whole checklist, and
@@ -1618,7 +1621,7 @@ function ClassEditor:drawRequirement(row, x, y, w)
     end
     line(gate, Class.levelGateMet(char, row.id))
 
-    -- The deed, with its counter. A crossing has none.
+    -- The deed, with its counter. Every class but the Novice carries one.
     local held, needed, label = Class.deedProgress(char, row.id)
     if label then
         line(string.format("%s (%d / %d)", label, math.min(held, needed), needed), held >= needed)

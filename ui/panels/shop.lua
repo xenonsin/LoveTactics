@@ -924,6 +924,8 @@ function Shop:refresh()
         self:buildFenceRows()
     else -- sell
         for i, item in ipairs(self.player.stash or {}) do
+          -- Forging stock shares the shelf (models/material.lua) but is no counter's merchandise.
+          if item.type ~= "material" then
             local value = Vendor.sellValue(item)
             local qty = (item.quantity or 1) > 1 and ("  x" .. item.quantity) or ""
             self.rows[#self.rows + 1] = {
@@ -931,6 +933,7 @@ function Shop:refresh()
                 label = (item.name or "?") .. "  -  " .. (value > 0 and (value .. "g") or "--") .. qty,
                 locked = value <= 0,
             }
+          end
         end
     end
 
@@ -1038,6 +1041,7 @@ function Shop:buildFenceRows()
 
     if not self.swapFrom then
         for i, item in ipairs(self.player.stash or {}) do
+          if item.type ~= "material" then -- forging stock is no fence's trade either (see the Sell tab)
             local offers = Vendor.swapOffers(self.vendorId, item, self.shelfRung, recipes, unlocked, levels)
             local fee = Vendor.swapFee(item)
             -- An item with nothing to trade for is LISTED AND GREYED rather than hidden, for the same
@@ -1049,6 +1053,7 @@ function Shop:buildFenceRows()
                 label = (item.name or "?") .. "  -  " .. (#offers > 0 and (fee .. "g") or "--"),
                 locked = #offers == 0 or not fee,
             }
+          end
         end
         return
     end

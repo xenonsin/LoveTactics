@@ -362,6 +362,11 @@ function OverworldMap:arrive(revealed)
         -- Announced AFTER the haul is banked, so the line a player reads is the haul they now hold.
         if self.onPickup then self.onPickup("cache", c.cache, c) end
     end
+    -- WHAT A FULL BAG LEFT LYING HERE (models/ground.lua). Not `picked`: a pile is taken a piece at a
+    -- time as the bag has room, so it stays on the cell until the last piece is gone.
+    if c.ground and #c.ground > 0 and self.onPickup then
+        self.onPickup("ground", c.ground, c)
+    end
     -- THE BAD GROUND, sprung by standing on it (Overworld:placeTraps). Before the encounter check and
     -- after the pickups, which is the order the tile actually happens in: the floor gives way as you
     -- arrive, and whatever is here to be met is met by a company that has already taken it.
@@ -1531,6 +1536,30 @@ function OverworldMap:drawMarkers()
                     love.graphics.setLineWidth(1.5)
                     love.graphics.polygon("line", x1, y1, x2, y2, x3, y3)
                     love.graphics.setLineWidth(1)
+                end
+
+                -- FINDS LEFT ON THE GROUND (models/ground.lua): a tied sack, pale cloth against the
+                -- cache's copper wedge -- the same "walk here and take it" family, but a thing the
+                -- company put down rather than one the floor laid. A count when more than one lies here.
+                if c.ground and #c.ground > 0 then
+                    local cx, cy = wx + s / 2, wy + s * 0.58
+                    local r = s * 0.24
+                    love.graphics.setColor(0.10, 0.08, 0.06, 0.75)
+                    love.graphics.circle("fill", cx, cy, r + 1.5)
+                    love.graphics.polygon("fill", cx - r * 0.55 - 1, cy - r * 1.55 - 1,
+                        cx + r * 0.55 + 1, cy - r * 1.55 - 1, cx, cy - r * 0.6)
+                    love.graphics.setColor(0.86, 0.80, 0.66)
+                    love.graphics.circle("fill", cx, cy, r)
+                    love.graphics.polygon("fill", cx - r * 0.55, cy - r * 1.55,
+                        cx + r * 0.55, cy - r * 1.55, cx, cy - r * 0.6)
+                    love.graphics.setColor(0.45, 0.32, 0.20)
+                    love.graphics.setLineWidth(1.5)
+                    love.graphics.line(cx - r * 0.45, cy - r * 0.85, cx + r * 0.45, cy - r * 0.85)
+                    love.graphics.setLineWidth(1)
+                    if #c.ground > 1 then
+                        love.graphics.setColor(0.15, 0.11, 0.07)
+                        love.graphics.printf(tostring(#c.ground), wx, cy - 8, s, "center")
+                    end
                 end
 
                 -- BAD GROUND THE COMPANY HAS FOUND (Overworld:placeTraps, Trap.detectRadiusFor). An

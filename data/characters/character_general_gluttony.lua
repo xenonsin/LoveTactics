@@ -49,13 +49,19 @@ return {
     portrait = "assets/portraits/general_gluttony.png", -- large VN portrait for conversations (falls back if missing)
     archetype = "aggressive",
     eats = true, -- takes the power of what it eats, and keeps all of it (models/palate.lua)
+    -- RAISED 2026-11-14, on a played trace: she fielded 169 health and acted four times in twenty-seven
+    -- turns, and fell to five blows having landed one Breath. Health 240 -> 320 and damage 22 -> 28 so a
+    -- company that rushes her past the wolves has to stand in front of her for a while and pay for it, and
+    -- speed 3 -> 5 so she takes a turn for about every one of a body in the company rather than one in
+    -- four -- the race against her palate has to have her in it. Movement stays 3: she is still slow on
+    -- her feet, and the Breath is still how the food comes to her.
     stats = {
-        health = 240, mana = 0, stamina = 30,
+        health = 320, mana = 0, stamina = 30,
         staminaRegen = 4,
-        damage = 22, magicDamage = 0, -- the copies are her threat; her own bite is only a bite
+        damage = 28, magicDamage = 0, -- the copies are her threat; her own bite is only a bite
         defense = 13, magicDefense = 5, -- thin against the magic she never learned: bring a caster
         movement = 3, -- slow; the Breath brings you to her
-        speed = 3,
+        speed = 5,
         -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
         -- attacker's crit. Authored, and never grown -- these are what this body IS.
         skill = 6, luck = 3,

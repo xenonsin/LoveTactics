@@ -114,6 +114,12 @@ function Hazard.allied(hazard, side)
     return not hazard.side or not side or hazard.side == side
 end
 
+-- WHO MADE this ground, for the class deeds that credit its work to a body: `laidBy` when a cast laid it
+-- (fx.placeHazard stamps it), else the `owner` holding it open. Nil for weather the arena simply had.
+function Hazard.maker(hazard)
+    return hazard and (hazard.laidBy or hazard.owner) or nil
+end
+
 -- Build the effect context handed to a hazard def's hooks. Combat/Status are required lazily (at
 -- call time, not load time) so combat.lua -> hazard.lua stays a one-way dependency.
 local function ctxFor(combat, hazard, unit)
@@ -138,11 +144,20 @@ local function ctxFor(combat, hazard, unit)
                 opts = opts or {}
                 opts.source = hazard.id
             end
-            return Status.apply(combat, tgt, id, opts)
+            local landed = Status.apply(combat, tgt, id, opts)
+            Combat.tallyStopDeed(Hazard.maker(hazard), tgt, id, landed) -- the Warden's deed
+            return landed
         end,
         heal = function(tgt, amount)
             if not tgt then return 0 end
-            return Combat.applyHeal(combat, tgt, amount)
+            local h = Combat.applyHeal(combat, tgt, amount)
+            -- THE TOTEMIST'S DEED: ground somebody laid healing one of theirs three or more tiles off.
+            local maker = Hazard.maker(hazard)
+            if h > 0 and maker and maker.alive and tgt ~= maker and tgt.side == maker.side
+                and Combat.unitGap(maker, tgt) >= 3 then
+                Combat.tally(maker, "healFromAfar", h)
+            end
+            return h
         end,
         -- Pour a RESOURCE back -- mana, stamina -- rather than health. The peer of `heal` above, and
         -- deliberately not folded into it: healing is a wound closing and this is a pool refilling, and
@@ -170,7 +185,14 @@ local function ctxFor(combat, hazard, unit)
             -- Silenced. Immunity to being hurt by weather is a different claim from immunity to weather.
             local Trait = require("models.trait")
             if tgt.summoner and Trait.flag(tgt.summoner, "summonsShrugHazards") then return 0 end
-            return Combat.dealFlatDamage(combat, tgt, amount, tags, hazard.name or hazard.id)
+            local wasAlive = tgt.alive and not tgt.incapacitated
+            local dealt = Combat.dealFlatDamage(combat, tgt, amount, tags, hazard.name or hazard.id)
+            -- THE SABOTEUR'S DEED: a foe of whoever laid this ground fell to it.
+            local maker = Hazard.maker(hazard)
+            if maker and wasAlive and not (tgt.alive and not tgt.incapacitated) and tgt.side ~= maker.side then
+                Combat.tally(maker, "killByHazard", 1)
+            end
+            return dealt
         end,
         -- TAKE THE BODY UNDER. Its own verb rather than ctx.damage with a large number, because
         -- drowning is not a big hit: it seals (no revive window, nothing left on the tile) and it
@@ -267,7 +289,8 @@ function Hazard.onEnter(combat, unit, x, y)
         -- own line by standing in its own weather.
         if h.halts and not shrugged and unit.alive and not Hazard.allied(h, unit.side) then
             local Status = require("models.status")
-            Status.apply(combat, unit, "status_halted", { applier = h.owner })
+            local landed = Status.apply(combat, unit, "status_halted", { applier = h.owner })
+            require("models.combat").tallyStopDeed(Hazard.maker(h), unit, "status_halted", landed)
         end
     end
 end

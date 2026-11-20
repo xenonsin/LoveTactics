@@ -46,11 +46,16 @@ local function fenceVendorId()
 end
 
 -- An unlocked, priced ware on the fence's own shelf: the thing a player would plausibly be holding.
+-- The rack the fence is probed at: the old opening rack, which a root's shelf opens on rung 2 since a
+-- fresh class's rung 0 became Act 0's kit and its unlock gifts (Class.opensFirst) -- two pieces, with
+-- nothing of the same worth beside them to trade for.
+local RUNG = require("models.class").FIRST_RUNG_EVICTED_TO
+
 local function anySwappable(vendorId)
-    for _, entry in ipairs(Vendor.stock(vendorId, 0, {}, {}, {})) do
+    for _, entry in ipairs(Vendor.stock(vendorId, RUNG, {}, {}, {})) do
         if not entry.locked and entry.price then
             local item = Item.instantiate(entry.id)
-            if #Vendor.swapOffers(vendorId, item, 0, {}, {}, {}) > 0 then return item, entry end
+            if #Vendor.swapOffers(vendorId, item, RUNG, {}, {}, {}) > 0 then return item, entry end
         end
     end
 end
@@ -77,7 +82,7 @@ return {
             local item, entry = anySwappable(vid)
             assert(item, "no shipped ware on the fence's own opening shelf can be traded at all")
             local worth = entry.price
-            for _, offer in ipairs(Vendor.swapOffers(vid, item, 0, {}, {}, {})) do
+            for _, offer in ipairs(Vendor.swapOffers(vid, item, RUNG, {}, {}, {})) do
                 assert(offer.price >= worth * (1 - Vendor.SWAP_BAND)
                     and offer.price <= worth * (1 + Vendor.SWAP_BAND),
                     string.format("%s (%dg) offered for %s (%dg) is outside the band",

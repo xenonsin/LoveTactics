@@ -51,7 +51,9 @@ local function ctxFor(combat, trap, victim)
         end,
         applyStatus = function(tgt, id, opts)
             if not tgt then return nil end
-            return Status.apply(combat, tgt, id, opts)
+            local landed = Status.apply(combat, tgt, id, opts)
+            Combat.tallyStopDeed(trap.placer, tgt, id, landed) -- a snare that caught a walker (the Warden's)
+            return landed
         end,
         -- SINK A HEX INTO ONE PIECE OF THE VICTIM'S KIT (models/curse.lua). The trap's version of
         -- fx.curse, and the vector a curse is most at home on: a thing laid in the ground that gets into

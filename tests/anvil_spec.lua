@@ -19,7 +19,7 @@ local Player = require("models.player")
 local function pauper()
     local p = Player.new()
     p.gold = 0
-    p.materials = {}
+    Player.setMaterials(p, {})
     p.roster = { Character.instantiate("character_knight") }
     for i = 1, Character.MAX_INVENTORY do p.roster[1].inventory[i] = nil end
     return p
@@ -138,7 +138,7 @@ return {
             assert(fresh ~= item, "an upgrade bakes a NEW instance from the blueprint (Item.instantiate)")
             assert(fresh.name:find("%+1$"), "the level rides on the name: " .. tostring(fresh.name))
             assert(p.gold == 0, "the road charged gold for a gift")
-            for _, n in pairs(p.materials or {}) do
+            for _, n in pairs(require("models.material").tally(p)) do
                 assert(n == 0, "the road charged materials for a gift")
             end
         end,

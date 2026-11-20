@@ -2298,7 +2298,10 @@ local CELL_FIELDS = { "tile", "seen", "cleared", "picked", "encounter", "gate", 
                       -- An authored chokepoint's letter (fromLayout). Act 0's scripted fights are owed
                       -- "by" one, and a save that dropped it let a reloaded company walk the whole of
                       -- floor one without meeting a fight (2026-10-23).
-                      "choke" }
+                      "choke",
+                      -- What a full bag left lying here (models/ground.lua): item snapshots, plain data,
+                      -- so a pile is still there after a resume or a climb back up within the run.
+                      "ground" }
 
 -- Snapshot the floor to plain data (no metatable, no love objects, no functions). It cannot be
 -- regenerated from a seed on load -- the encounter pool is drawn in an unspecified (`pairs`) order --

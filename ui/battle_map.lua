@@ -272,7 +272,8 @@ end
 --   aoe    -> an armed AoE ability's blast footprint around the aimed cell (bright red/green)
 --   threat -> default-attack reach (red), the band beyond `move` shown during MOVE mode
 --   traps  -> runtime trap objects the viewer can see (own + detected), drawn under the units
---   logSubjects -> { x, y, unit } marks for the units the hovered combat-log line is about (white)
+--   logSubjects -> { x, y, unit } marks for the units the hovered combat-log line is about (white);
+--                  logSubjectsApart draws them without the thread (a bond plate's partners)
 --   rally  -> your own lines (Combat.rallyGround), outlined quietly for the whole fight
 function BattleMap:setOverlays(overlays)
     self.overlays = overlays or { move = {}, range = {}, threat = {}, traps = {}, hazards = {}, walls = {}, props = {}, charges = {} }
@@ -2104,7 +2105,8 @@ function BattleMap:drawHighlights()
             return self:cellBox(m.x, m.y, m.unit and m.unit.w, m.unit and m.unit.h)
         end
         local ax, ay, aw, ah = box(subjects[1])
-        if #subjects > 1 then
+        -- A bond plate's partners are each an answer on their own, not a relation: no thread between them.
+        if #subjects > 1 and not self.overlays.logSubjectsApart then
             love.graphics.setColor(1, 1, 1, 0.20 + 0.25 * pulse)
             love.graphics.setLineWidth(2)
             for i = 2, #subjects do

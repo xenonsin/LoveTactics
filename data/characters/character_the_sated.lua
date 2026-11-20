@@ -6,10 +6,17 @@
 -- the bell it reads:
 --
 --     meals   damage  defense  move  speed
---       3       18      13       1     2      at the bell: a door across the dry line
---       2       15      10       2     3
---       1       12       7       3     4
---       0        9       4       4     5      empty: a large, quick, soft animal that chases
+--       3       18      13       3     2      at the bell: a door across the dry line
+--       2       15      10       4     3
+--       1       12       7       5     4
+--       0        9       4       6     5      empty: a large, quick, soft animal that chases
+--
+-- MOVE 3 AT THE BELL, NOT 1 (2026-11-14). The table above shipped two lower, and a four-tile body with one
+-- point of movement could not get anywhere on its own floor. A 2x2 body pays for the roughest tile under
+-- the block it steps into (models/combat.lua's stepTerrainCost), and the wood is scattered with forest at
+-- 2. Seated at the top of the floor-1 stair board, one forest tile below it and one beside it, it had
+-- one legal step, sideways, and stood there for the whole fight in five seeds of six. It was raised to 2
+-- and then to 3 on the author's call: it can cross a tile of forest and still close the ground.
 --
 -- HOW THE COUNT MOVES, and none of it is read off its health bar (round one's note: "just like lose more"):
 --   SPENT    Retch (a bile cone that sets Acid) and Settle (a two-tile heave of the whole body) each cost
@@ -41,7 +48,7 @@ return {
         -- EMPTY. Three meals put +9 / +9 / -3 / -3 on top at the bell (status_full).
         damage = 9, magicDamage = 0,
         defense = 4, magicDefense = 5,
-        movement = 4,
+        movement = 6,
         speed = 5,
         -- Accuracy (docs/accuracy.md): skill raises Hit and Crit, luck raises Avoid and blunts an
         -- attacker's crit. Authored, and never grown -- these are what this body IS.

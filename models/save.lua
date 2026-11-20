@@ -583,10 +583,8 @@ function Save.snapshot(player)
         if type(n) == "number" and n > 0 then bounties[id] = n end
     end
 
-    local materials = {}
-    for id, count in pairs(player.materials or {}) do
-        if count and count > 0 then materials[id] = count end
-    end
+    -- Materials are not written here any more: they are stacks in the stash and the pack (models/
+    -- material.lua) and ride those lists through snapshotItem like everything else on them.
 
     -- Consumable recipe tiers. Omit level 0 (the default) so an un-refined game diffs clean.
     local recipes = {}
@@ -939,7 +937,6 @@ function Save.snapshot(player)
                 return out
             end)(),
         } or nil,
-        materials = materials,
         recipes = recipes,
         visitedVendors = visitedVendors,
         found = found,
@@ -1042,6 +1039,10 @@ end
 -- its price was removed) restores READ rather than vanishing. Identify.sealed answers nil there, and
 -- losing the piece would be worse than revealing it -- the player still owns a thing they went and found.
 local function restoreItem(itemSnap)
+    -- A MATERIAL STACK (models/material.lua): an id and a count, nothing else to restore.
+    if Material.defs[itemSnap.id] then
+        return Material.instantiate(itemSnap.id, itemSnap.quantity)
+    end
     if (itemSnap.unidentified or 0) > 0 then
         local Identify = require("models.identify")
         -- The hex rides in as a fourth argument rather than being re-rolled, for the same reason the
@@ -1223,7 +1224,7 @@ function Save.restore(snap)
 
     local stash = {}
     for _, itemSnap in ipairs(snap.stash or {}) do
-        if known(Item.defs, itemSnap.id) then
+        if known(Item.defs, itemSnap.id) or known(Material.defs, itemSnap.id) then
             stash[#stash + 1] = restoreItem(itemSnap)
         end
     end
@@ -1234,7 +1235,7 @@ function Save.restore(snap)
     -- only its grids, which is true of every save written before the bag existed.
     local pack = {}
     for _, itemSnap in ipairs(snap.pack or {}) do
-        if known(Item.defs, itemSnap.id) then
+        if known(Item.defs, itemSnap.id) or known(Material.defs, itemSnap.id) then
             pack[#pack + 1] = restoreItem(itemSnap)
         end
     end
@@ -1360,10 +1361,32 @@ function Save.restore(snap)
         end
     end
 
-    -- Materials are dropped if the id no longer exists in data/ (a removed tier), like every other id.
-    local materials = {}
+    -- A SAVE FROM BEFORE MATERIALS TOOK SLOTS carries them as a bare `{ [id] = count }`. Folded onto the
+    -- shelf as stacks, topping up any already there, in id order so a load always lays them out the same
+    -- way. An id no longer in data/ (a removed tier) is dropped, like every other id.
+    local legacyIds = {}
     for id, count in pairs(snap.materials or {}) do
-        if known(Material.defs, id) and count and count > 0 then materials[id] = count end
+        if known(Material.defs, id) and type(count) == "number" and count > 0 then
+            legacyIds[#legacyIds + 1] = id
+        end
+    end
+    table.sort(legacyIds)
+    for _, id in ipairs(legacyIds) do
+        local left = math.floor(snap.materials[id])
+        for _, existing in ipairs(stash) do
+            if existing.id == id and existing.type == "material" then
+                local moved = math.min(left, Material.MAX_STACK - (existing.quantity or 1))
+                if moved > 0 then
+                    existing.quantity = (existing.quantity or 1) + moved
+                    left = left - moved
+                end
+            end
+        end
+        while left > 0 do
+            local stack = Material.instantiate(id, left)
+            stash[#stash + 1] = stack
+            left = left - stack.quantity
+        end
     end
 
     -- Recipe tiers for items that still exist in data/ (a removed consumable drops its tier).
@@ -1554,7 +1577,6 @@ function Save.restore(snap)
         -- A meal id that vanished from data/ is dropped rather than crashing the load, exactly like a
         -- removed item or character -- and reads as a company that has not eaten.
         meal = known(require("models.meal").defs, snap.meal) and snap.meal or nil,
-        materials = materials,
         recipes = recipes,
         visitedVendors = visitedVendors,
         found = found,

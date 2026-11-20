@@ -285,14 +285,15 @@ return {
         name = "Mark Target marks a foe; Called Shot hits a marked foe harder than an unmarked one",
         fn = function()
             local caster = withGrid("character_archer", { "ability_mark_target", "weapon_iron_bow", "ability_called_shot" })
+            -- Both foes inside the iron bow's 3: Called Shot borrows the bow's reach (rangeFromAdjacent).
             local c = Combat.new(arena(8, 8), { unit(caster, 1, 1) },
-                { unit(dummy("character_bandit"), 1, 4), unit(dummy("character_bandit"), 2, 4) })
+                { unit(dummy("character_bandit"), 1, 4), unit(dummy("character_bandit"), 2, 3) })
             local u = c.units[1]
             u.char.stats.stamina.current = 60
             local mark = itemOf(u.char, "ability_mark_target")
             local called = itemOf(u.char, "ability_called_shot")
             local marked = Combat.unitAt(c, 1, 4)
-            local plain = Combat.unitAt(c, 2, 4)
+            local plain = Combat.unitAt(c, 2, 3)
 
             refresh(c, u)
             assert(Combat.useItem(c, u, mark, 1, 4), "the mark lands")
@@ -300,7 +301,7 @@ return {
 
             refresh(c, u)
             local plainHp = plain.char.stats.health.current
-            assert(Combat.useItem(c, u, called, 2, 4), "called shot on the unmarked foe")
+            assert(Combat.useItem(c, u, called, 2, 3), "called shot on the unmarked foe")
             local plainDmg = plainHp - plain.char.stats.health.current
 
             refresh(c, u)

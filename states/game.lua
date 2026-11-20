@@ -264,6 +264,60 @@ local function carryRoom()
     return Descent.carryRoom(game.player)
 end
 
+-- THE CELL THE COMPANY IS STANDING ON, which is where anything the bag cannot take is put down
+-- (models/ground.lua). Nil off the map.
+function game:groundHere()
+    local map = game.map
+    return map and map.grid and map.grid:get(map.px, map.py) or nil
+end
+
+-- Does this piece go in the bag right now (a free slot, or a stack the bag can absorb whole)?
+function game:bagTakes(item)
+    return require("models.ground").fits(game.player, item, carryRoom)
+end
+
+-- PUT DOWN WHAT DOES NOT FIT, on this cell, and say so. `items` are live instances; returns how many
+-- were put down. A reward that silently fails to arrive reads as a bug, and a reward thrown away reads
+-- as the game eating it -- so the surplus lies where it fell and the map marks it until it is collected.
+function game:leaveOnGround(items, cell)
+    if not (items and #items > 0) then return 0 end
+    cell = cell or game:groundHere()
+    local Ground = require("models.ground")
+    local n = 0
+    for _, item in ipairs(items) do
+        if cell and Ground.drop(cell, item) then n = n + 1 end
+    end
+    if n > 0 then
+        game:pushToast(n .. (n == 1 and " find" or " finds") ..
+            " left on the ground here -- the pack is full. Come back for " .. (n == 1 and "it" or "them") .. ".")
+    end
+    return n
+end
+
+-- WALKING ONTO A PILE picks up whatever fits now (ui/overworld_map.lua's arrive -> onPickup "ground").
+function game:pickUpGround(cell)
+    local Ground = require("models.ground")
+    if not (game.player and Ground.has(cell)) then return end
+    local taken, left = Ground.pickUp(game.player, cell, carryRoom)
+    for _, item in ipairs(taken) do
+        if item.type ~= "material" and not item.unidentified then
+            Player.markNew(game.player, Player.NEW_STASH, item.id)
+        end
+        if Player.onItemGranted then Player.onItemGranted(item) end
+    end
+    if #taken > 0 then
+        game:pushToast("Picked up " .. #taken .. (#taken == 1 and " find" or " finds") .. " from the ground" ..
+            (left > 0 and (" -- " .. left .. " still lying here, the pack is full") or ""))
+    elseif left > 0 then
+        game:pushToast(left .. (left == 1 and " find is" or " finds are") ..
+            " lying here -- the pack is full")
+    end
+    if #taken > 0 then
+        if game.refreshHaul then game:refreshHaul() end
+        Player.save()
+    end
+end
+
 local function backContains(x, y)
     return rectContains(backRect(), x, y)
 end
@@ -319,7 +373,8 @@ end
 -- are the only two marks that pay out WITHOUT opening a panel -- they are simply taken as the token
 -- crosses them -- so this toast is the whole of their feedback, and the only place the copper wedge on
 -- the trail ever names itself. Materials are listed by name and count, sorted so the same haul always
--- reads the same way; they ride the run in `cacheHaul` and are banked by Quest.complete.
+-- reads the same way; underground they go straight into the bag (game:stowCacheHaul), and on a quest
+-- road from town they ride the run in `cacheHaul` and are banked at the exit (game:bankHaul).
 local function announcePickup(kind, payload)
     if kind == "key" then
         game:pushToast("Key taken -- it opens a barred gate")
@@ -587,9 +642,12 @@ function game:refreshHaul()
         items = items + n
     end
 
+    -- Stock is counted off the stash and the pack on both sides (Material.tally reads a snapshot the same
+    -- way it reads the live company), since a material is a stack in those lists now.
     local materials = 0
-    for id, n in pairs(game.player.materials or {}) do
-        local gained = (n or 0) - ((entry.materials or {})[id] or 0)
+    local was = Material.tally(entry)
+    for id, n in pairs(Material.tally(game.player)) do
+        local gained = (n or 0) - (was[id] or 0)
         if gained > 0 then materials = materials + gained end
     end
     -- The run's unbanked cache haul rides on the map, not the player, until the objective pays it out --
@@ -1029,15 +1087,28 @@ function game:openLanding(cell)
     if game.player then
         if dropId then
             local item = Item.instantiate(dropId)
-            Player.stow(game.player, item)
-            Player.markNew(game.player, Player.NEW_STASH, dropId)
+            -- A full bag puts her piece down on the stair's cell rather than over the ceiling.
+            if game.descent and not game:bagTakes(item) then
+                game:leaveOnGround({ item }, cell)
+            else
+                Player.stow(game.player, item)
+                Player.markNew(game.player, Player.NEW_STASH, dropId)
+            end
         else
             -- NOTHING OF HERS LEFT, so the house pays in its own stock -- the material its bench bills in
             -- (models/material.lua). It is the one payout that cannot run out and the one that still says
             -- whose circle this was, which is more than gold could do.
             local houseMat = beaten and Material.houseFor((Vendor.get(beaten.vendor) or {}).class)
             if houseMat then
-                Player.addMaterial(game.player, houseMat, Descent.SPENT_SET_STOCK)
+                local over = Player.addMaterial(game.player, houseMat, Descent.SPENT_SET_STOCK)
+                local spill = {}
+                while over > 0 do
+                    local stack = Material.instantiate(houseMat, over)
+                    if not stack then break end
+                    spill[#spill + 1] = stack
+                    over = over - (stack.quantity or over)
+                end
+                game:leaveOnGround(spill, cell)
             else
                 Player.addGold(game.player, Descent.SPENT_SET_GOLD)
             end
@@ -1305,13 +1376,46 @@ end
 -- Reached three ways -- the last box ticked, the player walking out, or the ground beaten -- and a wipe
 -- deliberately does NOT come through here: an unbanked haul is simply lost, which is what wipeRun's
 -- penalty already says about gold and stock.
+-- A CACHE'S STOCK GOES IN THE BAG THE MOMENT IT IS TAKEN, wherever finds go in the bag (Player.findsToPack:
+-- underground, and through Act 0). Holding it on the map until an exit banked it meant it skipped the pack
+-- entirely: a quest exit filed it on the town shelf, and the descent's climb-out never banked it at all.
+-- In the bag it is a find like any chest's -- held to Descent.carryMax, counted by Descent.carried, and
+-- emptied onto the shelf by Player.unpack on the way home. Where finds do NOT go in the bag (a quest road
+-- from town) the haul keeps riding the map and bankHaul below pays it in at the exit, as it always did.
+function game:stowCacheHaul()
+    local haul = game.map and game.map.cacheHaul
+    if not (haul and game.player and Player.findsToPack(game.player)) then return end
+    local left = 0
+    local spill = {}
+    for id, n in pairs(haul) do
+        if (n or 0) > 0 then
+            local over = Player.addMaterial(game.player, id, n)
+            -- What the bag could not take is put down on this cell rather than lost (models/ground.lua).
+            while over > 0 do
+                local stack = Material.instantiate(id, over)
+                if not stack then break end
+                spill[#spill + 1] = stack
+                over = over - (stack.quantity or over)
+            end
+        end
+    end
+    game.map.cacheHaul = {}
+    game:leaveOnGround(spill)
+end
+
 function game:bankHaul()
     local haul = game.map and game.map.cacheHaul
     if haul and game.player then
+        local left = 0
         for id, n in pairs(haul) do
-            if (n or 0) > 0 then Player.addMaterial(game.player, id, n) end
+            if (n or 0) > 0 then left = left + Player.addMaterial(game.player, id, n) end
         end
         game.map.cacheHaul = {}
+        -- The bag holds stock to its ceiling like any find (Player.addMaterial); say what did not fit.
+        if left > 0 and game.pushToast then
+            game:pushToast(left .. " crafting material" .. (left == 1 and "" or "s")
+                .. " left behind -- there is no room to carry it")
+        end
     end
     -- The supper is spent by the day, not by the first fight that ends well.
     if game.player then Meal.clear(game.player) end
@@ -1811,7 +1915,12 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
             end
         end,
         -- A cache/key taken by walking over it: name it on screen (see announcePickup).
-        onPickup = function(kind, payload) announcePickup(kind, payload) end,
+        onPickup = function(kind, payload, cell)
+            -- A pile the bag could not take earlier (models/ground.lua): its own toast, not a cache's.
+            if kind == "ground" then game:pickUpGround(cell) return end
+            if kind == "cache" then game:stowCacheHaul() end
+            announcePickup(kind, payload)
+        end,
         -- What colours a fight's marker and counts its pips: where the company stands against THIS fight
         -- (models/muster.lua). The map owns no roster and does no comparing -- it asks.
         musterBand = function(cell) return game:musterBand(cell) end,
@@ -1846,6 +1955,7 @@ function game.enter(self, quest, _legacyPrestige, player, onComplete, resume)
         game.map.px, game.map.py = resume.px or game.map.px, resume.py or game.map.py
         game.map.keysHeld = resume.keysHeld or {}
         game.map.cacheHaul = resume.cacheHaul or {}
+        game:stowCacheHaul() -- a save from before caches went in the bag: pack what it was holding
         -- Restore the party's attrition (HP/mana/stamina) captured with the run, clamped to each pool's
         -- max. A resume is NOT a hub visit, so nothing else refills these -- reloading must not heal the
         -- party (that would make Continue a free heal). Keyed by char id, like the run snapshot stored them.
@@ -2587,7 +2697,9 @@ function game:openEncounter(cell, opts)
                 -- be the second thing in this file that believes it knows what "carrying" means.
                 --
                 -- UNCAPPED OFF A DESCENT -- see carryRoom at the top of this file.
-                local left = 0
+                -- (2026-11-14) WHAT DOES NOT FIT IS PUT DOWN, not thrown away: the surplus lies on the
+                -- cell the fight was fought from and the map marks it (models/ground.lua).
+                local spill = {}
                 -- ...AND A FIND ARRIVES AT THE LEVEL ITS FLOOR IMPLIES (Spoils.foundLevel). Applied at
                 -- the GRANT rather than folded into `spoils.loot`, which stays a plain list of ids --
                 -- the same reason `sealed` is a field of its own: every reader of `loot` (the summary
@@ -2595,10 +2707,12 @@ function game:openEncounter(cell, opts)
                 -- Nil off a descent, so the campaign hands over base pieces exactly as it did.
                 local foundAt = game.quest and game.quest.floorLevel or nil
                 for _, id in ipairs(spoils.loot or {}) do
-                    if carryRoom() <= 0 then
-                        left = left + 1
+                    local level = Spoils.foundLevel(foundAt)
+                    local piece = Item.instantiate(id, nil, level)
+                    if piece and not game:bagTakes(piece) then
+                        spill[#spill + 1] = piece
                     else
-                        Player.grantItem(game.player, id, Spoils.foundLevel(foundAt))
+                        Player.grantItem(game.player, id, level)
                     end
                 end
                 -- ...and the unread find, on the rare stop that paid one (models/identify.lua). Granted
@@ -2606,25 +2720,31 @@ function game:openEncounter(cell, opts)
                 -- HUSK, and the id it is really built on is the one thing the player has not bought yet.
                 for _, find in ipairs(spoils.sealed or {}) do
                     if carryRoom() <= 0 then
-                        left = left + 1
+                        local husk = Identify.sealed(find.id, find.floor)
+                        if husk then spill[#spill + 1] = husk end
                     else
                         Identify.grant(game.player, find.id, find.floor)
                     end
-                end
-                -- SAID OUT LOUD, always. A reward that silently fails to arrive reads as a bug however
-                -- correct the bookkeeping is -- the same rule the errand's spent first-clear bonus is
-                -- announced under.
-                if left > 0 then
-                    game:pushToast(left .. (left == 1 and " find left behind" or " finds left behind") ..
-                        " -- there is no room to carry it")
                 end
                 -- The salvage floor: every won fight leaves forging stock behind, so a stop that
                 -- rolled no loot is still worth having stopped at (models/spoils.lua). Banked straight
                 -- to the player rather than onto the run's cache haul, because a cleared fight does not
                 -- un-clear -- there is nothing here for the objective's double-payout guard to protect.
+                --
+                -- A material takes a slot in the bag now (models/material.lua), so a full one leaves the
+                -- surplus behind and says so, in the words the finds' toast above uses.
                 for id, n in pairs(spoils.materials or {}) do
-                    Player.addMaterial(game.player, id, n)
+                    local over = Player.addMaterial(game.player, id, n)
+                    while over > 0 do
+                        local stack = Material.instantiate(id, over)
+                        if not stack then break end
+                        spill[#spill + 1] = stack
+                        over = over - (stack.quantity or over)
+                    end
                 end
+                -- SAID OUT LOUD, always, by leaveOnGround's own toast: a reward that silently fails to
+                -- arrive reads as a bug however correct the bookkeeping is.
+                game:leaveOnGround(spill)
                 Player.save()
             end
 
@@ -3815,18 +3935,11 @@ function game:openEncounter(cell, opts)
         -- An empty cache is one with nothing legible AND nothing unread in it.
         if #loot == 0 and #sealed == 0 then cell.cleared = true; saveRun(); return end
 
-        -- A FULL BAG REFUSES THE WHOLE CHEST, which is the opposite call to a fight's takings and the
-        -- difference is what the thing IS: a chest is one object with a lid, and a pile off several
-        -- bodies is not. Splitting a chest would mean opening it, taking two of its four and watching
-        -- the other two evaporate -- the game eating a reward in front of the player. Refusing it whole
-        -- leaves the lid shut.
-        --
-        -- AND THE CELL IS LEFT UNCLEARED, so the chest is still standing there -- for the rest of this
-        -- run (Descent.keepFloor keeps the board on the run).
-        if #loot + #sealed > carryRoom() then
-            game:pushToast("The chest stays shut -- there is no room to carry what is in it")
-            return
-        end
+        -- A FULL BAG NO LONGER REFUSES THE CHEST (2026-11-14). It used to keep the lid shut, because
+        -- splitting a chest meant watching the pieces that did not fit evaporate. They do not evaporate
+        -- any more: what the bag cannot take is put down on this cell (models/ground.lua, onCollect
+        -- below) and the map marks it, so the chest opens like any other and the company comes back
+        -- for the rest.
 
         -- A WIRED LID, AND WHETHER THE COMPANY CAN SEE IT (Overworld:placeTraps' second half).
         --
@@ -3881,12 +3994,24 @@ function game:openEncounter(cell, opts)
                         (n == 1 and " body hurt" or " bodies hurt"))
                     require("models.sound").play("battle.hit")
                 end
+                local spill = {}
                 for _, id in ipairs(loot) do
-                    Player.grantItem(game.player, id)
+                    local piece = Item.instantiate(id)
+                    if piece and not game:bagTakes(piece) then
+                        spill[#spill + 1] = piece
+                    else
+                        Player.grantItem(game.player, id)
+                    end
                 end
                 for _, find in ipairs(sealed) do
-                    Identify.grant(game.player, find.id, find.floor)
+                    if carryRoom() <= 0 then
+                        local husk = Identify.sealed(find.id, find.floor)
+                        if husk then spill[#spill + 1] = husk end
+                    else
+                        Identify.grant(game.player, find.id, find.floor)
+                    end
                 end
+                game:leaveOnGround(spill, cell)
                 if game.tutorial == "flight" and not game.itemsVisible then
                     game.itemsVisible = true
                     game.coach = "loadout" -- the loot has somewhere to go now; introduce the panel

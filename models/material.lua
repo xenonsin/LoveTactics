@@ -1,8 +1,13 @@
--- Materials: the raw stock spent at the Forge to upgrade gear. Unlike items, a material is not
--- carried in a character's 3x3 grid -- it is a plain resource the player accrues (player.materials =
--- { [id] = count }) and the forge consumes. Blueprints live in data/materials/<id>.lua (name,
--- description, sprite, tier, and -- for a house stock -- class). Pure logic (only the tolerant Sprite
--- loader), headless-safe.
+-- Materials: the raw stock spent at the Forge to upgrade gear. Blueprints live in
+-- data/materials/<id>.lua (name, description, sprite, tier, and -- for a house stock -- class). Pure
+-- logic (only the tolerant Sprite loader), headless-safe.
+--
+-- A MATERIAL TAKES A SLOT (2026-11-02). It used to be a bare counter (player.materials = { [id] = n })
+-- that cost nothing to carry, so the one resource a company hauled the most of was the one the bag never
+-- weighed. It is a STACK in the stash or the pack now (Material.instantiate), merged by id like a draught
+-- and capped at Material.MAX_STACK a slot, so a bag full of ore is a bag with no room for the next find.
+-- It is never worn: Character.canCarry refuses it, which is the one equip gate every grid path asks.
+-- Player.materialCount / addMaterial / spendMaterials are still the only way anything reads or moves it.
 --
 -- TWO FAMILIES, because a material has exactly two jobs and one table cannot do both:
 --
@@ -17,6 +22,7 @@
 -- are deep in the ladder", which the ladder already said. See docs/progression.md.
 
 local Registry = require("models.registry")
+local Sprite = require("models.sprite")
 
 local Material = {}
 
@@ -24,6 +30,57 @@ Material.defs = Registry.load("data/materials", "data.materials")
 
 function Material.get(id)
     return Material.defs[id]
+end
+
+-- How many of one material a single stash or pack slot holds. Deep against a draught's nine because a
+-- fight pays stock every time (Spoils.materials) and a run is about sixty-five of them: at nine a slot,
+-- the ore alone would fill the bag twice over before the first floor's stair.
+Material.MAX_STACK = 99
+
+-- Is `item` (an instance, or a snapshot of one) a material stack? Asked by id, so a save's bare
+-- `{ id, quantity }` answers the same as the live stack it was written from.
+function Material.isMaterial(item)
+    return type(item) == "table" and item.id ~= nil and Material.defs[item.id] ~= nil
+end
+
+-- A fresh stack of `quantity` (clamped to 1..MAX_STACK) of material `id`, shaped like an item instance
+-- so the stash and the pack can hold, draw, sort and merge it with no branch of their own: `type` is
+-- "material" (Item.isStackable reads it), `level` is 0, and the rest is the blueprint's words.
+function Material.instantiate(id, quantity)
+    local def = Material.defs[id]
+    assert(def, "unknown material id: " .. tostring(id))
+    return {
+        id = id,
+        name = def.name,
+        description = def.description,
+        sprite = Sprite.load(def.sprite),
+        type = "material",
+        material = true,
+        tier = def.tier,
+        house = def.house,
+        maxStack = Material.MAX_STACK,
+        level = 0,
+        quantity = math.max(1, math.min(quantity or 1, Material.MAX_STACK)),
+    }
+end
+
+-- { [id] = count } over the stash and the pack of `holder` -- a live player or a Save.snapshot of one,
+-- which store the same lists. An older snapshot's bare `materials` counter is folded in too, so a
+-- readout diffing against an entry written before materials took slots still adds up.
+function Material.tally(holder)
+    local out = {}
+    if not holder then return out end
+    for _, list in ipairs({ holder.stash or {}, holder.pack or {} }) do
+        for _, item in ipairs(list) do
+            if Material.isMaterial(item) then
+                out[item.id] = (out[item.id] or 0) + (item.quantity or 1)
+            end
+        end
+    end
+    for id, n in pairs(holder.materials or {}) do
+        if Material.defs[id] then out[id] = (out[id] or 0) + (n or 0) end
+    end
+    return out
 end
 
 -- ---------------------------------------------------------------------------

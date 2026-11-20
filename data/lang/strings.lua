@@ -429,13 +429,13 @@ return {
     ["line.conversation_prologue_arrival.3"] = { en = "PLACEHOLDER -- why a champion was on floor one at all, said in front of the guild.", ja = "" },  -- TODO
     ["line.conversation_prologue_arrival.4"] = { en = "PLACEHOLDER -- what that means for the city above the Rift.", ja = "" },  -- TODO
     ["line.conversation_prologue_arrival.5"] = { en = "Let's collect our pay and see what work The Rift is offering, {name}.", ja = "" },  -- TODO
-    ["line.conversation_prologue_arrival.6"] = { en = "PLACEHOLDER -- she says the Champion's blow is still on her, and she is hurt.", ja = "" },  -- TODO
-    ["line.conversation_prologue_arrival.7"] = { en = "PLACEHOLDER -- and that she needs a priest at the Cathedral before anything else.", ja = "" },  -- TODO
     ["line.conversation_prologue_arrival.8"] = { en = "PLACEHOLDER -- she stands as the guild's witness: the avatar took it down.", ja = "" },  -- TODO
     ["line.conversation_prologue_arrival.9"] = { en = "PLACEHOLDER -- the attendant takes the horn and her word, and asks what class the avatar will be entered as.", ja = "" },  -- TODO
     ["line.conversation_prologue_classes.1"] = { en = "PLACEHOLDER -- the fight is won, and that is the first of what we came down here to do.", ja = "" },  -- TODO
     ["line.conversation_prologue_classes.2"] = { en = "PLACEHOLDER -- why they came down: to make a name, which is what the guild ranks.", ja = "" },  -- TODO
     ["line.conversation_prologue_classes.3"] = { en = "PLACEHOLDER -- and that floor one is where everybody's starts.", ja = "" },  -- TODO
+    ["line.conversation_prologue_mend.1"] = { en = "PLACEHOLDER -- she says the Champion's blow is still on her, and she is hurt.", ja = "" },  -- TODO
+    ["line.conversation_prologue_mend.2"] = { en = "PLACEHOLDER -- and that she needs a priest at the Cathedral before anything else.", ja = "" },  -- TODO
     ["line.conversation_prologue_opening.1"] = { en = "PLACEHOLDER -- a city built around a rift, a hole in the world that goes down and does not close.", ja = "" },  -- TODO
     ["line.conversation_prologue_opening.2"] = { en = "PLACEHOLDER -- the whole city lives on what adventurers carry up out of it.", ja = "" },  -- TODO
     ["line.conversation_prologue_opening.3"] = { en = "PLACEHOLDER -- and you have come to go down, and make a name for yourself.", ja = "" },  -- TODO
@@ -645,6 +645,7 @@ return {
     ["title.conversation_hunters_lodge_vendor_intro"] = { en = "The Hunter's Lodge", ja = "" },  -- TODO
     ["title.conversation_prologue_arrival"] = { en = "After the Breach", ja = "" },  -- TODO
     ["title.conversation_prologue_classes"] = { en = "What We Came Down For", ja = "" },  -- TODO
+    ["title.conversation_prologue_mend"] = { en = "Rowan's Wound", ja = "" },  -- TODO
     ["title.conversation_prologue_opening"] = { en = "The Rift", ja = "" },  -- TODO
     ["title.conversation_prologue_ruins"] = { en = "First Job", ja = "" },  -- TODO
     ["title.conversation_prologue_village"] = { en = "The Breach", ja = "" },  -- TODO

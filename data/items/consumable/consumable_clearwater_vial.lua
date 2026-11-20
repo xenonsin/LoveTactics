@@ -22,7 +22,7 @@ return {
     tags = { "potion", "restorative" },
     class = "alchemist",
     price = 30,
-    unlockLevel = 0,
+    unlockLevel = 2,
     activeAbility = {
         target = "self",
         support = true,

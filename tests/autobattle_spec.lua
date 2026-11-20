@@ -179,7 +179,16 @@ return {
             local EncounterModel = require("models.encounter")
 
             local roster = {}
-            for i = 1, 4 do roster[i] = Character.instantiate("character_knight") end
+            -- Grown to the level the opening floor's stock spawns at. They were level-1 knights while
+            -- that stock was lagged to three; with Growth.ENEMY_LEVEL_LAG at zero and enemy health up
+            -- by half (2026-11-14) a level-1 company loses the pack, and the odds are not this case's
+            -- business -- the chain is.
+            local Growth = require("models.growth")
+            local stockLevel = Growth.combatantLevel({}, require("models.descent").dangerLevel({ floor = 1 }))
+            for i = 1, 4 do
+                roster[i] = Character.instantiate("character_knight")
+                Growth.resolve(roster[i], stockLevel)
+            end
 
             -- SEEDED, AND IT WAS NOT. `EncounterBattle.build` falls back to `Arena.randomSeed()`,
             -- so this case used to deal itself a fresh arena and a fresh pack on every run and then

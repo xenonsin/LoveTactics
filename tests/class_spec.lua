@@ -141,10 +141,14 @@ return {
             -- The shelf-side reading of the ladder: progression_spec asserts each vendor has SOMETHING
             -- on its opening shelf, which a torch would satisfy. This asks for a weapon -- a class you
             -- cannot buy a weapon from before running a single quest is a class you cannot start playing.
+            --
+            -- TWO LEVELS IN since 2026-11-13: a fresh class's rung 0 is Act 0's kit and its unlock gifts
+            -- (Class.opensFirst), and the old opening rack -- its weapons with it -- waits on
+            -- Class.FIRST_RUNG_EVICTED_TO. The company walks into that first morning already armed.
             for class in pairs(Class.roots()) do
                 local entry = false
                 for _, w in ipairs(weaponsOf(class)) do
-                    if (w.def.unlockLevel or 0) <= 0 then entry = true end
+                    if (w.def.unlockLevel or 0) <= Class.FIRST_RUNG_EVICTED_TO then entry = true end
                 end
                 assert(entry, class .. " sells no opening-shelf weapon: nothing to start with")
             end

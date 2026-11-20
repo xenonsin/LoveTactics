@@ -247,6 +247,28 @@ return {
         end,
     },
     {
+        -- The alpha howled every turn it could pay for: its rule was unconditional, and the planner
+        -- credits a fear landed on a body that is already afraid. It howls at a party that is not yet
+        -- cowering, and bites one that already is.
+        name = "the alpha howls at an unafraid party and bites a cowering one",
+        fn = function()
+            local AI = require("models.ai")
+            local function planned(frightened)
+                local c = Combat.new(arena(9, 5), { unit(prey(5, 0, 200), 4, 3) },
+                    { unit("character_wolf_alpha", 5, 3) })
+                local target, alpha = c.units[1], c.units[2]
+                if frightened then Status.apply(c, target, "status_cowering", { duration = 10 }) end
+                openTurn(c, alpha)
+                local plan = AI.plan(c, alpha)
+                return plan and plan.item and plan.item.id
+            end
+            local fresh, afraid = planned(false), planned(true)
+            assert(fresh == "ability_howl_lesser", "an unafraid party is howled at: " .. tostring(fresh))
+            assert(afraid ~= "ability_howl_lesser", "an afraid party is not howled at again: "
+                .. tostring(afraid))
+        end,
+    },
+    {
         name = "her howl frightens the ring AND brings an alpha",
         fn = function()
             local c = Combat.new(arena(12, 9), { unit(prey(5, 0, 200), 4, 3) },

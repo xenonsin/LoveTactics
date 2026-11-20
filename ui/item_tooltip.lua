@@ -1026,6 +1026,12 @@ end
 -- Draw the tooltip for `item` anchored near (mx, my). `maxRight` caps the box's right edge so it
 -- never slides under a side panel (defaults to the screen width). No-op when item is nil.
 function ItemTooltip.draw(item, mx, my, maxRight, actor, owner, warn)
+    -- A STACK OF FORGING STOCK on the shelf or in the bag (models/material.lua) has nothing an item
+    -- tooltip reads -- no stats, no cast -- and its own card already says what it is and where more comes
+    -- from. Required lazily: both tooltips sit on top of the models, and neither needs the other loaded.
+    if item and item.type == "material" then
+        return require("ui.material_tooltip").draw(item.id, mx, my, maxRight, require("models.player").active)
+    end
     local layout = ItemTooltip.measure(item, actor, owner, warn)
     if not layout then return end
     local w, h = layout.w, layout.h

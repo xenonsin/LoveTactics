@@ -411,7 +411,7 @@ function M.walkForgeEconomy()
             local rungs = require("models.errand").tiers(v.id)
             for done = 0, rungs do
                 local player = Balance.playerAt(math.max(1, done), v.id, done)
-                player.materials = {}
+                require("models.player").setMaterials(player, {})
                 local ceiling = Forge.ceilingFor(player, sample.def)
                 local item = Item.instantiate(sample.id, 1, math.max(0, ceiling - 1))
                 local cost = Forge.upgradeCost(player, item)

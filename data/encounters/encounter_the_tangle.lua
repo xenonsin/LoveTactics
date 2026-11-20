@@ -21,7 +21,8 @@ return {
     -- Encounter.STRAY_SHARE, so the first floor still meets a spider now and then.
     rung = 2,
     composition = function(ctx)
-        return Band.fill({}, ctx, "character_giant_spider", { base = 2, per = 6 })
+        -- Three, not two: at two the seat rated lighter than the approach (397 against 600-750).
+        return Band.fill({}, ctx, "character_giant_spider", { base = 3, per = 6, max = 4 })
     end,
     objective = {
         type = "reach", region = "far", place = "through the web", enemy = "the spiders",

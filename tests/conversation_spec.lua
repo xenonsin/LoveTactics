@@ -453,10 +453,14 @@ return {
                         .. "line in the scene that always exists")
                     assert(desk.choices and #desk.choices > 0, id .. ": the desk offers nothing")
 
-                    -- An ungated way out, so a desk whose every room is shut is still leavable.
+                    -- An ungated way out, so a desk whose every room is shut is still leavable. The one
+                    -- gate allowed is `offer = "leave"`, which Counter.context opens on every desk but the
+                    -- one the first morning holds -- and that one always has the mending on it.
                     local exit
                     for _, c in ipairs(desk.choices) do
-                        if c.answer == Counter.LEAVE and c.when == nil then exit = c end
+                        local w = c.when
+                        local leaveGate = w ~= nil and w.offer == Counter.LEAVE and next(w, next(w)) == nil
+                        if c.answer == Counter.LEAVE and (w == nil or leaveGate) then exit = c end
                     end
                     assert(exit, id .. ": the desk has no ungated '" .. Counter.LEAVE .. "' option")
 

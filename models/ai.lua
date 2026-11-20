@@ -1528,12 +1528,40 @@ function AI.scoreCandidate(combat, unit, cand, w, previews)
     -- routinely negative, and a unit that demands a positive net simply refuses to fight.
     cand.outcome = score
 
+    -- A STRIKE THAT FLIES HOME (`returnsToStart`: the hawk's Talons, the Raking Talons) ends the turn
+    -- on the tile it began on, so the road out costs nothing and the stand tile is never where it
+    -- stays. Priced as such: no step penalty, the ground judged at the perch rather than the strike
+    -- tile (AI.riskScore reads the same flag), and whatever a run is worth in damage -- Swoop's +1 a
+    -- tile -- credited off the bearer's own traits, measured as though it stood on the stand tile.
+    -- Without this the planner took the nearest tile beside its mark every time: the preview is
+    -- memoised per aim cell, so it never saw the run, and the step penalty argued against it.
+    local ab = cand.item.activeAbility
+    local flyHome = ab and ab.returnsToStart
+    if flyHome and cand.target and cand.outcome > 0 and cand.moved then
+        local ox, oy = unit.x, unit.y
+        local sx, sy = unit.turnStartX, unit.turnStartY
+        unit.turnStartX, unit.turnStartY = ox, oy
+        local still = Trait.outgoingDamageBonus(combat, unit, cand.target, cand.item, ab.tags or cand.item.tags)
+        unit.x, unit.y = cand.x, cand.y
+        local ran = Trait.outgoingDamageBonus(combat, unit, cand.target, cand.item, ab.tags or cand.item.tags)
+        unit.x, unit.y = ox, oy
+        unit.turnStartX, unit.turnStartY = sx, sy
+        local run = math.max(0, ran - still)
+        if run > 0 then
+            local odds = Combat.landChance(combat, unit, cand.target, cand.item)
+            score = score + run * odds * w.DAMAGE
+            cand.outcome = score
+        end
+    end
+    local gx, gy = cand.x, cand.y
+    if flyHome then gx, gy = unit.x, unit.y end
+
     -- Ground bias: the zones under this tile, plus any powder keg near enough to reach it. One term,
     -- because they are one judgement -- "do I want to be standing here when my turn ends" -- and a
     -- planner that weighed fire but strolled into a barrel's blast would read as the same mistake.
-    score = score + (Hazard.tileBias(combat, cand.x, cand.y, unit.side, unit)
-        + Prop.tileBias(combat, cand.x, cand.y)) * w.HAZARD
-    score = score - (cand.steps or 0) * w.STEPS
+    score = score + (Hazard.tileBias(combat, gx, gy, unit.side, unit)
+        + Prop.tileBias(combat, gx, gy)) * w.HAZARD
+    if not flyHome then score = score - (cand.steps or 0) * w.STEPS end
     -- ...and the road there. Priced separately from the stop tile, because they are different mistakes:
     -- standing in the web is one, walking through three strands to reach clean ground is the other.
     score = score - (cand.toll or 0) * (w.ROUTE_HAZARD or 0)
@@ -1568,7 +1596,11 @@ function AI.riskScore(combat, unit, cand, w, threat)
     -- ...and what everyone ELSE could do to me for ending my turn here. Read off the same
     -- Combat.threatMap the player's purple danger overlay is drawn from, so the AI is respecting
     -- the very zone the game teaches the player to respect.
-    local src = threat[cand.x .. "," .. cand.y]
+    -- A strike that flies home (`returnsToStart`, see scoreCandidate) ends the turn on the perch, so
+    -- the perch is the tile the field answers at; the counter above was still thrown at the strike tile.
+    local rx, ry = cand.x, cand.y
+    if cand.item and cand.item.activeAbility and cand.item.activeAbility.returnsToStart then rx, ry = unit.x, unit.y end
+    local src = threat[rx .. "," .. ry]
     if src then
         -- ...DISCOUNTED BY THE COVER UNDERFOOT, which is the term that finally lets the enemy take
         -- ground. Everything above counts WHO can reach this tile; nothing counted how likely any of
@@ -1598,7 +1630,7 @@ function AI.riskScore(combat, unit, cand, w, threat)
         -- dice themselves -- without it the whole branch would sit outside the suite's reachable
         -- domain and be green for the wrong reason.
         local cover = Combat.boardRolls(combat)
-            and Combat.terrainAvoid(combat, cand.x, cand.y, unit) or 0
+            and Combat.terrainAvoid(combat, rx, ry, unit) or 0
         risk = risk + #src * w.EXPOSURE * math.max(0, 1 - cover / 100)
 
         -- STANDOFF: how close the nearest threat actually is, and the term that keeps a kiter kiting
@@ -1621,7 +1653,7 @@ function AI.riskScore(combat, unit, cand, w, threat)
         if w.STANDOFF > 0 then
             local closest
             for _, s in ipairs(src) do
-                local d = manhattan(cand.x, cand.y, s.x, s.y)
+                local d = manhattan(rx, ry, s.x, s.y)
                 if not closest or d < closest then closest = d end
             end
             risk = risk + w.STANDOFF / math.max(1, closest or 1)

@@ -20,7 +20,7 @@ return {
     tags = { "dagger", "pierce", "physical", "melee" },
     class = "rogue",
     price = 80,
-    unlockLevel = 0,
+    unlockLevel = 2,
     activeAbility = {
         target = "enemy",
         range = 1,

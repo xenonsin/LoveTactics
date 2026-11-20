@@ -35,7 +35,7 @@ return {
     -- The counter-to-your-own-trick reading is a nice line; the mixing bench is the item.
     class = "alchemist",
     price = 30,
-    unlockLevel = 0,
+    unlockLevel = 2,
     maxStack = 3,
     activeAbility = {
         target = "tile",

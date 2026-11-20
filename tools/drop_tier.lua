@@ -334,7 +334,9 @@ local ALWAYS_STOCKED = {
 local function staysPriced(def, id)
     if ALWAYS_STOCKED[id] then return true end
     if def.type == "ability" or def.type == "consumable" then return true end
-    if def.type == "weapon" and (def.unlockLevel or 0) == 0 then return true end
+    -- The opener rung is Class.FIRST_RUNG_EVICTED_TO since 2026-11-13: rung 0 of a root is Act 0's kit
+    -- and the unlock gifts, and the old opening rack -- the iron weapons with it -- moved up two.
+    if def.type == "weapon" and (def.unlockLevel or 0) <= Class.FIRST_RUNG_EVICTED_TO then return true end
     return false
 end
 

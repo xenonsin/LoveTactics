@@ -773,8 +773,10 @@ return {
             local plain = Character.instantiate(id)
             local grown = Character.instantiate(id)
             Growth.resolve(grown, Growth.BOSS_REFERENCE_LEVEL)
-            assert(top.stats.health.max == grown.stats.health.max,
-                "a boss at its reference level must be exactly what the blend made it")
+            -- ...times Growth.ENEMY_HEALTH_SCALE, which every spawned body carries on top of its blend.
+            assert(top.stats.health.max
+                == math.floor(grown.stats.health.max * Growth.ENEMY_HEALTH_SCALE + 0.5),
+                "a boss at its reference level must be exactly what the blend made it (times the enemy health scale)")
             assert(plain, "and the blueprint still instantiates unscaled")
 
             assert(shallow.stats.health.max < top.stats.health.max,
@@ -790,12 +792,14 @@ return {
                 and Growth.bossHitShare(Growth.BOSS_REFERENCE_LEVEL) == 1,
                 "and neither share touches the level the numbers were written for")
 
-            -- Nothing that is not a boss is touched at all.
+            -- Nothing that is not a boss is touched by the boss curve -- only the enemy health scale
+            -- every spawned body carries.
             local ordinary = Character.instantiate("character_bandit")
             Growth.resolve(ordinary, 1)
             local spawned = Growth.spawn("character_bandit", 1, 1)
-            assert(spawned.stats.health.max == ordinary.stats.health.max,
-                "an ordinary body is spawned exactly as the blend leaves it")
+            assert(spawned.stats.health.max
+                == math.floor(ordinary.stats.health.max * Growth.ENEMY_HEALTH_SCALE + 0.5),
+                "an ordinary body is spawned exactly as the blend leaves it (times the enemy health scale)")
         end,
     },
     {

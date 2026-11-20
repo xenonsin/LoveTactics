@@ -20,7 +20,7 @@ return {
     tags = { "physical" },
     class = "fighter",
     price = 30,
-    unlockLevel = 0,
+    unlockLevel = 2,
     maxStack = 12, -- ammunition: a fuller stack than the default 9
     activeAbility = {
         target = "enemy",

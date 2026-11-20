@@ -55,7 +55,10 @@ return {
     -- to falling. The howl sits above it, because a ring of Cowering is worth more before the pack
     -- closes than after.
     ai = {
-        { priority = "high", act = "cast", item = "ability_howl_lesser" },
+        -- Gated by the howl's own test (ability_howl_lesser.lua): only while some foe in reach is not
+        -- already cowering. Unconditional, this howled every turn it could pay for and never bit.
+        { priority = "high", act = "cast", item = "ability_howl_lesser",
+          whenFn = require("data.items.ability.ability_howl_lesser").activeAbility.ai.whenFn },
         { priority = "high", act = "attack", targetPref = "lowest_hp",
           when = { subject = "foe_lowest_hp", test = "hp_pct_below", value = 0.5 } },
     },

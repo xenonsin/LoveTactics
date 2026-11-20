@@ -23,7 +23,8 @@
 -- `objective` posture on any fight that is not a plain kill-all.
 --
 -- Prints one row per fight: id, kind, floor, win rate, mean unit-turns, mean company bodies down at the
--- end (dead or incapacitated -- `alive` false), and for anything under 70% who fell most and who was
+-- end (dead or incapacitated -- `alive` false), the mean share of the company's health pool gone at the
+-- end (hpLost; a fallen body counts its whole pool), and for anything under 70% who fell most and who was
 -- left standing. `verbose` also prints each trial.
 
 local Autobattle = require("models.autobattle")
@@ -154,8 +155,15 @@ local function trial(f, seed)
         end
     end
     local down, fell, standing, foes = 0, {}, {}, 0
+    local hpMax, hpLeft = 0, 0
     for _, u in ipairs(combat.units) do
         if u.side == "party" and Combat.isPlayerControlled(u) then
+            -- HP LOST: "down" cannot tell a scratch from a company that limped out on its last body, and
+            -- a fight that is too easy reads 0.00 down either way. A fallen body counts its whole pool.
+            local hp = u.char.stats.health
+            local max = Combat.unreservedMax(u.char, "health")
+            hpMax = hpMax + max
+            if u.alive then hpLeft = hpLeft + ((type(hp) == "table") and (hp.current or 0) or max) end
             if not u.alive then down = down + 1; fell[#fell + 1] = nameOf(u) end
         elseif u.side ~= "party" then
             foes = foes + 1
@@ -163,6 +171,7 @@ local function trial(f, seed)
         end
     end
     return { result = result, turns = turns, down = down, fell = fell, standing = standing, foes = foes,
+        hpLost = hpMax > 0 and (1 - hpLeft / hpMax) or 0,
         objType = obj and obj.type or "killAll" }
 end
 
@@ -198,15 +207,15 @@ function M.run(args)
         for _, s in ipairs(parts) do print("    " .. s) end
     end
     print("")
-    print(string.format("  %-44s %-9s %5s %6s %7s %6s %6s  %s", "fight", "kind", "floor", "win", "turns",
-        "down", "weight", "objective"))
+    print(string.format("  %-44s %-9s %5s %6s %7s %6s %6s %6s  %s", "fight", "kind", "floor", "win", "turns",
+        "down", "hpLost", "weight", "objective"))
 
     local flagged = {}
     for floor = lo, hi do
         local list = fightsOn(floor)
         for _, f in ipairs(list) do
             if not only or tostring(f.id):find(only, 1, true) then
-                local wins, turns, down, stalls = 0, 0, 0, 0
+                local wins, turns, down, stalls, hpLost = 0, 0, 0, 0, 0
                 local fellCount, standCount, objType = {}, {}, nil
                 for s = 1, seeds do
                     local ok, r = pcall(trial, f, M.SEED_BASE + s * 7919 + floor)
@@ -217,7 +226,7 @@ function M.run(args)
                     objType = r.objType
                     if r.result == "win" then wins = wins + 1 end
                     if r.result == nil then stalls = stalls + 1 end
-                    turns, down = turns + r.turns, down + r.down
+                    turns, down, hpLost = turns + r.turns, down + r.down, hpLost + r.hpLost
                     for _, n in ipairs(r.fell) do fellCount[n] = (fellCount[n] or 0) + 1 end
                     if r.result ~= "win" then
                         for _, n in ipairs(r.standing) do standCount[n] = (standCount[n] or 0) + 1 end
@@ -229,8 +238,8 @@ function M.run(args)
                     end
                 end
                 local rate = wins / seeds
-                print(string.format("  %-44s %-9s %5d %5.0f%% %7.1f %6.2f %6s  %s%s", tostring(f.id), f.kind,
-                    floor, rate * 100, turns / seeds, down / seeds,
+                print(string.format("  %-44s %-9s %5d %5.0f%% %7.1f %6.2f %5.0f%% %6s  %s%s", tostring(f.id), f.kind,
+                    floor, rate * 100, turns / seeds, down / seeds, hpLost / seeds * 100,
                     f.weight and string.format("%.2f", f.weight) or "-", tostring(objType),
                     stalls > 0 and string.format("  (%d undecided at 400)", stalls) or ""))
                 if rate < M.FLAG then

@@ -11,6 +11,12 @@ local Class = require("models.class")
 local Character = require("models.character")
 local Item = require("models.item")
 local Player = require("models.player")
+-- Bottomless forging stock, as stacks on the shelf (materials take slots now, models/material.lua).
+local function plenty(n)
+    local t = {}
+    for id in pairs(require("models.material").defs) do t[id] = n or 999 end
+    return t
+end
 local Vendor = require("models.vendor")
 local Quest = require("models.quest")
 local Errand = require("models.errand") -- the rungs a house asks for, which are the rungs its bench climbs
@@ -32,7 +38,7 @@ local function richPlayer(level)
     local bank = Class.classLevelCost(level)
     local p = Player.new()
     p.gold = 100000
-    p.materials = setmetatable({}, { __index = function() return 9999 end })
+    Player.setMaterials(p, plenty())
     local deep = Character.instantiate("character_knight")
     deep.technique = setmetatable({}, { __index = function() return bank end })
     deep.techniqueSpent = {}
@@ -255,7 +261,7 @@ return {
             local id, def = anyDisciplineItem()
             local p = Player.new()
             p.gold = 100000
-            p.materials = setmetatable({}, { __index = function() return 9999 end })
+            Player.setMaterials(p, plenty())
             local holder = Character.instantiate("character_knight")
             holder.technique, holder.techniqueSpent = { [def.class] = 100000 }, {}
             p.roster = { holder }

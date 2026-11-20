@@ -1,4 +1,4 @@
--- THE MANTICORES: a mated pair over the glade, and a third deeper. Manticores and nothing else -- a wolf
+-- THE MANTICORES: three over the glade, give or take one. Manticores and nothing else -- a wolf
 -- in the fight would take the volley's first quills and blur whose bite is coming next, and the whole
 -- fight is a company reading its own Quilled badges.
 --
@@ -17,6 +17,8 @@ return {
     condition = function(ctx) return ctx.biome == "forest" end,
     rung = 2,
     composition = function(ctx)
-        return Band.fill({}, ctx, "character_manticore", { base = 2, per = 6, max = 3 })
+        -- Three, not two: at two the seat's own fight rated 430 against the approach's 600-750, so the
+        -- second floor was lighter than the first and a company arriving there walked it off.
+        return Band.fill({}, ctx, "character_manticore", { base = 3, per = 6, max = 4 })
     end,
 }

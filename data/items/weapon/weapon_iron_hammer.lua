@@ -13,7 +13,7 @@ return {
     hands = 2, -- a two-handed maul (Dual Wield can pair it only once forged to +5)
     class = "fighter",
     price = 80,
-    unlockLevel = 0,
+    unlockLevel = 2,
     activeAbility = {
         target = "enemy",
         range = 1,

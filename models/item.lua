@@ -344,9 +344,10 @@ end
 -- Combat.useItem decrements a stack on a consuming use, removing the slot only at 0.
 Item.DEFAULT_MAX_STACK = 9
 
--- Is this item (instance or def) allowed to stack? Consumables only.
+-- Is this item (instance or def) allowed to stack? Consumables, and the forging stock that shares the
+-- stash and the pack with them (models/material.lua's Material.instantiate), whose `maxStack` it carries.
 function Item.isStackable(item)
-    return item ~= nil and item.type == "consumable"
+    return item ~= nil and (item.type == "consumable" or item.type == "material")
 end
 
 -- The maximum count a stack of this item may hold (1 for anything non-stackable).

@@ -25,7 +25,7 @@ return {
     tags = { "smoke" },
     class = "rogue",
     price = 25,
-    unlockLevel = 0,
+    unlockLevel = 2,
     activeAbility = {
         target = "self",
         range = 0,

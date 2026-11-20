@@ -188,7 +188,12 @@ function Trace.open(combat, meta)
     put(string.format("board      %s, biome %s", tostring(meta.layout or "rolled"), tostring(meta.biome or "-")))
     put(string.format("day %s   prestige %s   enemy level %s",
         tostring(meta.day or "-"), tostring(meta.prestige or "-"), tostring(meta.enemyLevel or "-")))
-    writeRoster("party", side(combat, "party"))
+    -- THE PARTY IS NOT ON THE BOARD YET WHEN A DEPLOYMENT PHASE IS COMING: the trace opens as the
+    -- battle is built and the company is placed later, so this block printed empty on every rift fight
+    -- and the file carried the enemies' numbers but never the company's. Deferred to the first logged
+    -- line after the company arrives (Trace.record), which is the bell.
+    local party = side(combat, "party")
+    if #party > 0 then writeRoster("party", party) else live.partyPending = true end
     writeRoster("enemies", side(combat, "enemy"))
 
     -- From here every logEvent is mirrored. The hook is a plain field on the Combat module rather than
@@ -210,6 +215,13 @@ end
 -- the file reads as rounds rather than as one 300-line paragraph.
 function Trace.record(combat, entry)
     if not live or live.combat ~= combat or not entry then return end
+    if live.partyPending then
+        local party = side(combat, "party")
+        if #party > 0 then
+            live.partyPending = nil
+            writeRoster("party (as deployed)", party)
+        end
+    end
     local turn = entry.turn or 0
     if turn ~= live.turn then
         live.turn = turn

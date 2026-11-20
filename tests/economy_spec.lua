@@ -24,6 +24,12 @@ local Item = require("models.item")
 local Vendor = require("models.vendor")
 local Spoils = require("models.spoils")
 local Player = require("models.player")
+-- Bottomless forging stock, as stacks on the shelf (materials take slots now, models/material.lua).
+local function plenty(n)
+    local t = {}
+    for id in pairs(require("models.material").defs) do t[id] = n or 999 end
+    return t
+end
 
 return {
     -- ---------------------------------------------------------------------
@@ -309,7 +315,7 @@ return {
             local Character = require("models.character")
             local p = Player.new()
             p.gold = 100000
-            p.materials = setmetatable({}, { __index = function() return 9999 end })
+            Player.setMaterials(p, plenty())
             local knight = Character.instantiate("character_knight")
             knight.technique, knight.techniqueSpent = {}, {} -- no technique banked at all
             p.roster = { knight }
@@ -329,11 +335,11 @@ return {
             local _, lockedWhy = Forge.upgradeTo(p, fresh, ceiling + 1, "gold")
             assert(lockedWhy == "locked", "gold forged past the ceiling: " .. tostring(lockedWhy))
             -- The stock holds: gold stands in for technique only.
-            p.materials = {}
+            Player.setMaterials(p, {})
             local _, matWhy = Forge.upgrade(p, fresh, "gold")
             assert(matWhy == "materials", "gold paid for the craft stock: " .. tostring(matWhy))
             -- A short purse is refused as gold.
-            p.materials = setmetatable({}, { __index = function() return 9999 end })
+            Player.setMaterials(p, plenty())
             p.gold = 0
             local _, goldWhy = Forge.upgrade(p, fresh, "gold")
             assert(goldWhy == "gold", "an empty purse forged: " .. tostring(goldWhy))

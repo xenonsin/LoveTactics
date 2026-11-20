@@ -44,7 +44,7 @@
 -- morning wide and is spent by the deed; every other morning the plaza still refuses nothing.
 --
 -- What spends it
--- is the DEED, not the door (introAdvance): `player.hubIntro` runs "arrival" -> "ward" -> nil, and the
+-- is the DEED, not the door (introAdvance): `player.hubIntro` runs "arrival" -> "pick" -> "ward" -> nil, and the
 -- "ward" stage is the ledger both this bubble and the mending room read (see coachingMend,
 -- teachInjuries and ui/panels/ward.lua). A flag cleared by opening a card would mark the lesson landed
 -- for somebody who walked in, looked around and walked out again.
@@ -155,8 +155,9 @@ local BURGER_X, BURGER_Y = 18, 18
 
 -- THE FIRST MORNING, WHICH IS ONE LEDGER READ IN TWO PLACES.
 --
--- `player.hubIntro` runs "arrival" -> "ward" -> nil. The arrival is Rowan's scene, played over the city
--- the player is now looking at. The "ward" stage after it is the FACT the rest of the morning is built
+-- `player.hubIntro` runs "arrival" -> "pick" -> "ward" -> nil. The arrival is Rowan's scene, played over the city
+-- the player is now looking at; "pick" holds the class panel open and ends on her asking for a priest
+-- (afterFirstPick). The "ward" stage after it is the FACT the rest of the morning is built
 -- on: the company walks out of Act 0 carrying Rowan's injury, and while that injury is unattended this
 -- is still the first morning. Two surfaces ask it -- the bubble on the Cathedral's plate out here
 -- (hub.draw), and the room behind that door, which uses it to teach itself (teachInjuries, and the row
@@ -563,6 +564,24 @@ end
 -- IT IS A SCREEN OF ITS OWN, not the Armory's Loadout opened on its Classes tab: the Party panel with
 -- one tab (`only`) and the avatar alone on its rail, so nothing on it is a way off the pick -- no Loadout
 -- tab, no debug pill, no Rowan to click across to.
+--
+-- AND ITS CLOSE IS WHERE ROWAN ASKS FOR A PRIEST (2026-11-02). The arrival hands over in the "pick"
+-- stage; shutting the panel with the class taken plays conversation_prologue_mend, and only as that
+-- scene clears does the morning turn to "ward" -- the bubble, the refusal and the mend-only desk all
+-- read that stage, so none of them goes up before she has said why. A save quit mid-pick does not
+-- carry the stage (hubIntro is never saved), so it reopens the pick and nothing after it.
+local function afterFirstPick()
+    dismissPanel()
+    if hub.player.hubIntro ~= "pick" then return end
+    Conversation.play("conversation_prologue_mend", function()
+        hub.player.hubIntro = "ward"
+        -- The bubble goes up as this scene clears, so the cursor has to move with it: the stage was
+        -- "pick" when the board was seated, and focusMendCard no-ops then.
+        focusMendCard()
+        Player.save()
+    end)
+end
+
 local function openFirstPick()
     local avatar
     for _, char in ipairs(hub.player.roster or {}) do
@@ -574,7 +593,7 @@ local function openFirstPick()
         party = avatar and { avatar } or nil,
         only = "classes",
         holdOpen = function() return Class.pickOwed(hub.player, avatar) end,
-        onClose = dismissPanel,
+        onClose = afterFirstPick,
     })
     activePanel:focusChar(1)
     activePanel:setMode("classes")
@@ -751,16 +770,14 @@ function hub.enter()
     -- injury is seen to (introAdvance). A loaded save never carries this flag at all.
     if hub.player.hubIntro == "arrival" then
         Conversation.play("conversation_prologue_arrival", function()
-            hub.player.hubIntro = "ward"
+            -- Not "ward" yet: Rowan asks for the priest when the pick's panel shuts (afterFirstPick).
+            hub.player.hubIntro = "pick"
             -- ROWAN'S RECOMMENDATION (2026-10-23): the scene ends with her putting the avatar's name to
             -- the guild, and the pick it buys is made on the spot (openFirstPick).
             -- The horn is the proof the recommendation is made over, and it stays on the counter.
             Player.spendMaterials(hub.player, { material_champion_horn = 1 })
             hub.player.classPick = true
             openFirstPick()
-            -- The bubble goes up as this scene clears, so the cursor has to move with it: the flag was
-            -- "arrival" when the board was seated a few lines above, and focusMendCard no-ops then.
-            focusMendCard()
             Player.save()
         end)
         return -- nothing else opens over the arrival; there is no pending summary on a first visit

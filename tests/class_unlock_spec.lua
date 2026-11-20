@@ -48,23 +48,23 @@ return {
         assert(Class.boostOf(a) == nil, "the Novice buys no boost")
     end },
 
-    { name = "the requirement table names every root and subclass, and no crossing", fn = function()
+    { name = "the requirement table names every playable class but the Novice", fn = function()
         local want = 0
         for id in pairs(Class.defs) do
             local req = Class.requirementOf(id)
-            if Class.isPlayable(id) and (Class.isRoot(id) or Class.arity(id) == 1) then
+            if Class.isPlayable(id) and not Class.isStarter(id) then
                 want = want + 1
                 assert(req, id .. " has no deed")
                 assert(type(req.deed) == "string" and req.count > 0 and type(req.label) == "string",
                     id .. ": a malformed requirement")
             else
-                assert(req == nil, id .. " should carry no deed (a crossing, the starter or not a career)")
+                assert(req == nil, id .. " should carry no deed (the starter, or not a career)")
             end
         end
-        assert(want == 24, "7 roots + 17 subclasses, found " .. want)
+        assert(want == 45, "7 roots + 17 subclasses + 21 crossings, found " .. want)
         local n = 0
         for _ in pairs(Class.requirements) do n = n + 1 end
-        assert(n == 24, "no stray rows in data/class_requirements.lua")
+        assert(n == 45, "no stray rows in data/class_requirements.lua")
     end },
 
     { name = "a root unlocks at Novice 1 plus its deed, and the seal is spent in town", fn = function()
@@ -130,8 +130,10 @@ return {
         end
         assert(not Class.levelGateMet(c, "champion"), "no subclass unlocked on either side")
         c.unlocked = { knight = true, bulwark = true, warlord = true }
-        assert(Class.levelGateMet(c, "champion") and Class.canUnlock(c, "champion"),
-            "a subclass of each parent + both levels, and a crossing asks no deed")
+        assert(Class.levelGateMet(c, "champion"), "a subclass of each parent + both levels meets the gate")
+        assert(not Class.canUnlock(c, "champion"), "but a crossing owes its deed as well")
+        c.deeds.killTaunted = 10
+        assert(Class.canUnlock(c, "champion"), "gate + deed meets it")
     end },
 
     { name = "a body standing in a class keeps it, through a save and a switch", fn = function()
@@ -293,6 +295,38 @@ return {
         panel:keypressed("1")
         assert(panel.mode == "classes", "no number key reaches the Loadout")
         assert(panel:close() == false, "and it holds open while the pick is owed")
+    end },
+
+    -- ROWAN ASKS FOR THE PRIEST AFTER THE PICK, NOT BEFORE IT: the arrival hands over in the "pick"
+    -- stage, the pick's panel closes into conversation_prologue_mend, and only that scene's close turns
+    -- the morning to "ward" (which raises the Cathedral bubble, the refusal and the mend-only desk). Read
+    -- off the source, because states/hub.lua cannot be loaded headless.
+    { name = "the first pick closes into Rowan's wound, and only then is the Cathedral coached", fn = function()
+        local src = assert(love.filesystem.read("states/hub.lua"))
+        local function body(fname)
+            local from = assert(src:find("local function " .. fname .. "%("), fname .. " is gone")
+            return src:sub(from, (src:find("\nend", from, true)))
+        end
+        local arrival = src:match('Conversation%.play%("conversation_prologue_arrival".-\n        end%)')
+        assert(arrival, "the arrival scene is no longer played")
+        assert(arrival:find('hubIntro = "pick"', 1, true) and not arrival:find('hubIntro = "ward"', 1, true),
+            "the arrival must hand over to the pick, not straight to the mending")
+        assert(body("openFirstPick"):find("onClose = afterFirstPick", 1, true),
+            "closing the first pick must lead into Rowan's scene")
+        local after = body("afterFirstPick")
+        local scene = after:find('"conversation_prologue_mend"', 1, true)
+        local ward = after:find('hubIntro = "ward"', 1, true)
+        assert(scene and ward and scene < ward, "the mending is coached only once Rowan has asked for it")
+        local mend = require("data.conversations.prologue.conversation_prologue_mend")
+        local arrivalScene = require("data.conversations.prologue.conversation_prologue_arrival")
+        for _, line in ipairs(arrivalScene.script) do
+            assert(not tostring(line[2]):find("Cathedral", 1, true), "the arrival still asks for the priest")
+        end
+        local asks = false
+        for _, line in ipairs(mend.script) do
+            if tostring(line[2]):find("Cathedral", 1, true) then asks = true end
+        end
+        assert(asks, "Rowan's wound scene no longer names the Cathedral")
     end },
 
     -- "YOU START WITH" MAY NEVER PROMISE A GIFT THE UNLOCK DOES NOT HAND OVER: the preview reads the same
@@ -463,7 +497,8 @@ return {
     { name = "the three moved items sit where the design put them", fn = function()
         assert(Item.defs.ability_charm.unlockLevel == 3 and Item.defs.ability_charm.class == "thief",
             "Charm: thief, rung 3")
-        assert(Item.defs.consumable_reviving_salts.unlockLevel == 0, "Reviving Salts: a standing item")
+        assert(Item.defs.consumable_reviving_salts.unlockLevel == 2,
+            "Reviving Salts: the alchemist's rung 2, with the rest of the old opening rack")
         local sfe = Item.defs.ability_summon_fire_elemental
         assert(sfe.class == "mage" and sfe.unlockLevel == 6, "Summon Fire Elemental: mage, rung 6")
     end },

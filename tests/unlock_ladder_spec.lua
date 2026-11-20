@@ -209,14 +209,17 @@ return {
                 if Class.isRoot(id) then unlocked[id] = true; levels[id] = 0 end
             end
 
+            -- THE RE-ARM RACK IS RUNG 2 since 2026-11-13 (Class.FIRST_RUNG_EVICTED_TO): rung 0 of a fresh
+            -- class is Act 0's kit and its unlock gifts (Class.opensFirst), so the weapon is asked there.
+            local REARM = Class.FIRST_RUNG_EVICTED_TO
             local fat, unarmed = {}, {}
             for _, vendor in ipairs(HOUSES) do
                 local gear, weapon = 0, false
                 for _, row in ipairs(Vendor.stock(vendor, 0, nil, unlocked, levels)) do
-                    if not row.locked and row.type ~= "consumable" then
-                        gear = gear + 1
-                        if row.type == "weapon" then weapon = true end
-                    end
+                    if not row.locked and row.type ~= "consumable" then gear = gear + 1 end
+                end
+                for _, row in ipairs(Vendor.stock(vendor, REARM, nil, unlocked, levels)) do
+                    if not row.locked and row.type == "weapon" then weapon = true end
                 end
                 if gear > MAX_GEAR_PER_HOUSE then
                     fat[#fat + 1] = string.format("%s opens %d", vendor, gear)
@@ -299,14 +302,16 @@ return {
                     cum[rung] = open
                 end
                 -- The bottom quarter of the ladder against the top quarter, counting only what each
-                -- OPENED -- so the opening rack's own rows cannot flatter the front.
-                local low = cum[q] - cum[0]
+                -- OPENED -- so the opening rack's own rows cannot flatter the front. That rack opens on
+                -- Class.FIRST_RUNG_EVICTED_TO since 2026-11-13, so the bottom quarter is counted from there.
+                local rack = Class.FIRST_RUNG_EVICTED_TO
+                local low = cum[rack + q] - cum[rack]
                 local high = cum[Class.CLASS_LEVEL_CAP] - cum[Class.CLASS_LEVEL_CAP - q]
                 cityLow, cityHigh = cityLow + low, cityHigh + high
                 if low > high * HOUSE_SLACK and (low - high) > q * HOUSE_FLOOR_PER_RUNG then
                     heavy[#heavy + 1] = string.format(
-                        "%s deals %d over rungs 1-%d and %d over %d-%d (%.2fx, and %d wares ahead " ..
-                        "against a floor of %d)", vendor, low, q, high,
+                        "%s deals %d over rungs %d-%d and %d over %d-%d (%.2fx, and %d wares ahead " ..
+                        "against a floor of %d)", vendor, low, rack + 1, rack + q, high,
                         Class.CLASS_LEVEL_CAP - q + 1, Class.CLASS_LEVEL_CAP, low / math.max(1, high),
                         low - high, q * HOUSE_FLOOR_PER_RUNG)
                 end
