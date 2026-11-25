@@ -222,7 +222,7 @@ end
 Encounter.MARKER_KINDS = {
     "combat", "elite", "pack", "objective", "quest", "ward", "leadin",
     "treasure", "rest", "merchant", "crossroads", "event",
-    "relic_cache", "shrine", "weeping_stone", "anvil", "lectern", "translation",
+    "relic_cache", "shrine", "weeping_stone", "hoist", "mule", "anvil", "lectern", "translation",
     "spinner", "dark", "drop", "stair", "ascent", "road",
     "carcass", "watering_hole", "maw", -- Gluttony's own stops (Descent.SINS' gluttony `stops`)
     "still_pool", "mooring_post", "ferry", -- ...and Lust's
@@ -256,6 +256,8 @@ Encounter.GLOSS = {
     relic_cache   = "A reliquary. Something rare is sealed inside it.",
     shrine        = "An altar that trades. It wants gold up front, and what it gives back bites.",
     weeping_stone = "A stone that deals in rare goods and charges a body for them.",
+    hoist         = "A basket on a rope to the city. It sends a few finds to the stash, once.",
+    mule          = "A pack animal standing loose. Take it, and it carries finds up to the stash.",
     anvil         = "A cold forge. One piece you are carrying is tempered here, for nothing.",
     -- GLUTTONY'S THREE (2026-09-29). Placeholder copy for the author's.
     carcass       = "A fresh kill. Pick it over for a find, or eat to heal.",

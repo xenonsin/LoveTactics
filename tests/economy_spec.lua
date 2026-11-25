@@ -246,7 +246,12 @@ return {
             p.gold = 500
             assert(require("models.descent").goldAtRisk(p, { gold = 500 }) == 0,
                 "a wipe would take gold the company walked in with")
-            assert(require("models.descent").goldAtRisk(p, { gold = 200 }) == 300,
+            -- (2026-11-24) Gold is a stack and none goes down, so what is at risk is the BAG's coin
+            -- (tests/gold_stack_spec.lua): the shelf's 500 above is not, whatever the entry says.
+            assert(require("models.descent").goldAtRisk(p, { gold = 200 }) == 0,
+                "a wipe would take coin that never left the shelf")
+            p.pack[#p.pack + 1] = require("models.material").instantiate("material_gold", 300)
+            assert(require("models.descent").goldAtRisk(p, { gold = 0 }) == 300,
                 "a wipe would not take exactly the gold found")
 
             local Descent = require("models.descent")

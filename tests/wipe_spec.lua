@@ -92,32 +92,30 @@ return {
 
             local out = Descent.wipe(player, run)
             assert(out.lost == 1, "one piece was found this trip and " .. out.lost .. " were lost")
-            assert(#player.stash == 1 and player.stash[1].id == "weapon_iron_sword",
-                "the sword they brought was taken with the haul")
+            local swords = 0
+            for _, it in ipairs(player.stash) do
+                if it.id == "weapon_iron_sword" then swords = swords + 1 end
+            end
+            assert(swords == 1, "the sword they brought was taken with the haul")
             assert(player.gold == gold and out.gold == 0, "a wipe took gold the company walked in with")
         end,
     },
     {
-        name = "a wipe loses the gold found this run and never the gold the company walked in with",
+        -- (2026-11-24) Gold is a stack, and none goes down: the shelf's coin stays in town and the bag
+        -- starts every run empty (tests/gold_stack_spec.lua holds the rest).
+        name = "a wipe loses the gold found this run and never the gold left in town",
         fn = function()
             local player, run, rowan = company()
             Descent.setParty(run, { rowan.id })
-            player.gold = 120 -- what they walked in with: the opening purse, topped up at the Gate
+            player.gold = 120 -- on the shelf, in town
+            player.descentRun = run
             run.entry = Save.snapshot(player)
-            Player.addGold(player, 340) -- earned down there
+            assert(player.gold == 0, "the shelf's coin went down the stair")
+            Player.addGold(player, 340) -- earned down there, into the bag
             local out = Descent.wipe(player, run)
             assert(out.gold == 340, "the wipe took " .. tostring(out.gold) .. " of the 340 gold found")
-            assert(player.gold == 120, "the wipe left " .. player.gold .. " where 120 was walked in with")
-
-            -- A company that spent below what it brought loses nothing more.
-            player, run, rowan = company()
-            Descent.setParty(run, { rowan.id })
-            player.gold = 120
-            run.entry = Save.snapshot(player)
-            Player.spendGold(player, 50)
-            Player.addGold(player, 30)
-            out = Descent.wipe(player, run)
-            assert(out.gold == 0 and player.gold == 100, "a wipe reached below the gold walked in with")
+            player.descentRun = nil
+            assert(player.gold == 120, "the wipe left " .. player.gold .. " where 120 stayed in town")
 
             -- No entry snapshot, nothing at stake.
             assert(Descent.goldAtRisk(player, nil) == 0, "gold is at risk with no entry snapshot")

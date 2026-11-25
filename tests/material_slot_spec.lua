@@ -3,9 +3,9 @@
 -- A material was a bare counter on the player, so the thing a company hauled the most of weighed nothing
 -- in the bag. It is a stack in the stash or the pack now, and the rules this file holds are the ones that
 -- make that true without moving anything else: it takes a slot and merges like a draught, the bag holds
--- it to its ceiling, it is never worn, a spend frees its slot, a save carries it (an old save's counter
--- is folded onto the shelf), and it is never "at risk" -- a wipe and a toll leave it exactly as the
--- counter left it.
+-- it with no ceiling, it is never worn, a spend frees its slot, a save carries it (an old save's counter
+-- is folded onto the shelf), and the toll never prices it. (A wipe DOES take the stock in the bag since
+-- 2026-11-24 -- Descent.wipe, tests/send_up_spec.lua.)
 
 local Player = require("models.player")
 local Descent = require("models.descent")
@@ -60,16 +60,15 @@ return {
         assert(Player.materialCount(player, SCRAP) == n, "the count disagrees with the shelf")
     end },
 
-    { name = "underground stock lands in the bag and stops at its ceiling", fn = function()
+    { name = "underground stock lands in the bag, which has no ceiling", fn = function()
+        -- (2026-11-24) The bag has no bottom (Descent.carryMax), so stock always lands.
         local player = underground(bare())
-        local cap = Descent.carryMax(player)
-        for _ = 1, cap - 1 do
+        for _ = 1, 50 do
             player.pack[#player.pack + 1] = require("models.item").instantiate("weapon_iron_sword")
         end
-        assert(Player.addMaterial(player, SCRAP, 2) == 0, "the last free slot refused the stock")
-        assert(Descent.carried(player) == cap, "a stack of ore did not take a bag slot")
-        assert(Player.addMaterial(player, SCRAP, 1) == 0, "a full bag refused to top up a stack it holds")
-        assert(Player.addMaterial(player, STEEL, 2) == 2, "a full bag took a new stack past its ceiling")
+        assert(Player.addMaterial(player, SCRAP, 2) == 0, "a full-looking bag refused the stock")
+        assert(Player.addMaterial(player, STEEL, 2) == 0, "the bag refused a new stack")
+        assert(Descent.carried(player) == 52, "a stack of ore did not take a bag slot")
         assert(countIn(player.stash, SCRAP) == 0, "stock found underground reached the town shelf")
     end },
 
@@ -111,7 +110,7 @@ return {
         assert(old.materials == nil, "the old counter survived the load beside the stacks")
     end },
 
-    { name = "stock is never at risk: a wipe and a toll leave it where it is", fn = function()
+    { name = "stock is never priced by the toll: the haul diff leaves it where it is", fn = function()
         local player = underground(bare())
         Player.addMaterial(player, SCRAP, 4)
         assert(next(Player.atRisk(player, player.descentRun.entry)) == nil, "found stock counts as at risk")

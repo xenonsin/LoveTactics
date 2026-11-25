@@ -359,51 +359,41 @@ return {
         end
     end },
 
-    { name = "the trophy widens the company's bag, best rather than sum", fn = function()
+    { name = "the trophy widens every send-up, best rather than sum", fn = function()
+        -- (2026-11-24) The bag has no ceiling now, so `haulBonus` widens what the hoist and the mule
+        -- take (SendUp.limit) instead of the bag. Its reach is unchanged: the pack and the grids, never
+        -- the town shelf, and best rather than sum.
         local Player = require("models.player")
         local Character = require("models.character")
+        local SendUp = require("models.send_up")
         local player = Player.new()
-        assert(Descent.carryMax(player) == Descent.CARRY_MAX,
-            "a company carrying no bag reads as widened, which deletes the whole reward")
+        assert(SendUp.limit(player, "hoist") == SendUp.HOIST_LIMIT,
+            "a company carrying no trophy reads as widened, which deletes the whole reward")
 
         local def = Item.defs[Mimic.TROPHY.id]
         assert((def.haulBonus or 0) > 0, "the trophy's own half does nothing on the road")
 
-        -- IN THE PACK, and that is now literal rather than a figure of speech. The ceiling is a fact
-        -- about the COMPANY, so which pocket it is in is not a decision anybody made -- the same reach
-        -- Trap.detectRadiusFor and Player.visionBonus take.
-        --
-        -- IT USED TO BE THE STASH, AND THAT WAS THE BUG: a bag on the town shelf widened the ceiling of
-        -- a company nine floors away from the shelf. The shelf is out of reach down there, so a widener
-        -- sitting on it is not being carried by anybody (models/descent.lua's Descent.haulBonus).
         Player.addToPack(player, Item.instantiate(Mimic.TROPHY.id))
-        local widened = Descent.CARRY_MAX + def.haulBonus
-        assert(Descent.carryMax(player) == widened,
-            "the bag in the packs did not widen the ceiling: " .. Descent.carryMax(player))
+        assert(SendUp.limit(player, "hoist") == SendUp.HOIST_LIMIT + def.haulBonus,
+            "the trophy in the pack did not widen the hoist")
+        assert(SendUp.limit(player, "mule") == SendUp.MULE_LIMIT + def.haulBonus,
+            "the trophy in the pack did not widen the mule")
 
-        -- ...AND IN A GRID, which is where it will actually live, since the same cell is what pays for
-        -- it in a fight.
         local other = Player.new()
         Character.addItem(other.roster[1], Item.instantiate(Mimic.TROPHY.id))
-        assert(Descent.carryMax(other) == widened, "the bag in a body's grid did not widen the ceiling")
+        assert(SendUp.limit(other, "hoist") == SendUp.HOIST_LIMIT + def.haulBonus,
+            "the trophy in a body's grid did not widen the hoist")
 
-        -- BEST, NOT SUM: two bags are not twice the bag. Without this the one item in the game that
-        -- widens the ceiling would be farmable into an unbounded pack.
+        -- BEST, NOT SUM: two trophies are not twice the send.
         Player.addToPack(player, Item.instantiate(Mimic.TROPHY.id))
-        assert(Descent.carryMax(player) == widened, "two bags stacked into a bigger ceiling")
+        assert(SendUp.limit(player, "hoist") == SendUp.HOIST_LIMIT + def.haulBonus,
+            "two trophies stacked into a bigger send")
 
-        -- ...AND A THIRD LEFT AT HOME WIDENS NOTHING, which is the leak stated as an assertion rather
-        -- than only in a comment: the shelf is unreachable underground, so what is on it cannot be
-        -- adding to what the company can carry out.
+        -- ...AND ONE LEFT AT HOME WIDENS NOTHING: the shelf is out of reach underground.
         local homebody = Player.new()
         Player.addToStash(homebody, Item.instantiate(Mimic.TROPHY.id))
-        assert(Descent.carryMax(homebody) == Descent.CARRY_MAX,
-            "a bag left on the town shelf is still widening the ceiling nine floors down")
-
-        -- AND THE ROOM MOVES WITH IT, which is the half a player actually meets: the refusal that keeps
-        -- a chest shut reads this, and so does the "Carrying n / max" line that warns about it.
-        assert(Descent.carryRoom(player) == Descent.carryMax(player) - Descent.carried(player),
-            "the ceiling widened and the room did not")
+        assert(SendUp.limit(homebody, "hoist") == SendUp.HOIST_LIMIT,
+            "a trophy left on the town shelf is still widening the send nine floors down")
     end },
 
     { name = "utility_still_hungry bites for what the company is carrying, and nothing when empty", fn = function()

@@ -231,6 +231,26 @@ local function useRect()
     return rowRect(slot)
 end
 
+-- THE RIFT MULE'S BUTTON (2026-11-24, models/send_up.lua): last in the row, on every descent floor once
+-- the company has found the mule on floor five. On the `game` table rather than as a file local, because
+-- this chunk sits near Lua 5.1's two-hundred-local ceiling.
+function game.muleVisible()
+    if not (game.descent and game.player) or game.tutorial or game.scripted then return false end
+    return require("models.send_up").muleUnlocked(game.player)
+end
+
+function game.muleRect()
+    local slot = 1
+    if backVisible() then slot = slot + 1 end
+    if game.itemsVisible then slot = slot + 1 end
+    if useVisible() then slot = slot + 1 end
+    return rowRect(slot)
+end
+
+-- (A MULE IS BACK, 2026-11-24 -- the Rift Mule, found once on floor five, models/send_up.lua -- with a
+-- send-up verb and a rest timer but no cap: the bag has no bottom now and the wipe empties it. What
+-- follows is the history of the first one.)
+--
 -- THE MULE IS DELETED (models/mule.lua, gone). Its cap, its send-home verb and its trip timer went
 -- together, and so did the button that stood here, its keybind and its HUD readout. What it existed to
 -- create was a bet with a ceiling -- "a bet with no ceiling is not a bet", in its own words -- against a
@@ -1433,6 +1453,59 @@ function saveRun()
         -- than at each of them. One call site instead of a dozen that could each forget.
         game:refreshHaul()
     end
+end
+
+-- SEND A FEW FINDS UP TO THE CITY (models/send_up.lua): the hoist on this floor (`source = "hoist"`, the
+-- stop's `cell`) or the Rift Mule's button (`source = "mule"`). One panel for both; the hoist is spent
+-- when something goes up it, the mule goes away for its rest. Picking nothing and leaving spends neither.
+function game:openSendUp(source, cell)
+    local SendUpModel = require("models.send_up")
+    local isMule = (source == "mule")
+    if isMule then
+        local ok, why = SendUpModel.muleReady(game.player)
+        if not ok then
+            if why == "away" then
+                local n = SendUpModel.muleAway(game.player)
+                game:pushToast("The mule is up top. Back in " .. n .. (n == 1 and " fight." or " fights."))
+            elseif why == "empty" then
+                game:pushToast("The bag is empty. Nothing to send up.")
+            end
+            return
+        end
+    end
+    local items = SendUpModel.candidates(game.player)
+    if #items == 0 then
+        -- The hoist keeps its use: a company with an empty bag has spent nothing by looking.
+        game:pushToast("The bag is empty. Nothing to send up.")
+        return
+    end
+    local limit = SendUpModel.limit(game.player, source)
+    local prompt = isMule
+        and ("The mule takes " .. limit .. " up to the stash, then is gone for "
+            .. SendUpModel.MULE_REST .. " fights. A wipe loses the rest of the bag.")
+        or ("A basket on a rope, up to the stash. It takes " .. limit
+            .. " and goes once. A wipe loses the rest of the bag.")
+    game.activePanel = require("ui.panels.send_up").new({
+        title = isMule and "The Rift Mule" or ((cell and cell.encounter and cell.encounter.name) or "The Hoist"),
+        prompt = prompt,
+        items = items,
+        limit = limit,
+        onSend = function(chosen)
+            local sent
+            if isMule then
+                sent = SendUpModel.dispatchMule(game.player, chosen)
+            else
+                sent = SendUpModel.send(game.player, chosen, limit)
+                if cell and #sent > 0 then cell.cleared = true end
+            end
+            game.activePanel = nil
+            if #sent > 0 then
+                game:pushToast("Sent up to the stash: " .. #sent .. (#sent == 1 and " piece." or " pieces."))
+            end
+            saveRun()
+        end,
+        onClose = function() game.activePanel = nil end,
+    })
 end
 
 -- prestige defaults to 1 when a quest is launched without it (e.g. dev/test).
@@ -2772,6 +2845,10 @@ function game:openEncounter(cell, opts)
             -- grids fresh every time. Runs after them for the ordering the Tithe wants -- a rule that
             -- gags recovery is on the unit by then.
             fireItems("encounterCleared", { cell = cell, spoils = spoils })
+            -- ...and a fight nearer the Rift Mule's return, if it is up top (models/send_up.lua).
+            if game.descent and require("models.send_up").tickMule(game.player) then
+                game:pushToast("The mule is back.")
+            end
 
             -- AN ELITE DROPS A RELIC (2026-10-24, models/relic.lua): one, at most once per floor per
             -- trip, rolled off this floor's pool. Here because a fought elite and a walked-off one both
@@ -3656,7 +3733,8 @@ function game:openEncounter(cell, opts)
                     local wiped = Descent.wipe(game.player, game.descent)
                     game.player.pendingDead, game.player.pendingGoldLost = wiped.dead, wiped.gold
 
-                    -- What is left in the bag is what they packed at the Gate, and that comes home.
+                    -- The bag is gone with the haul (Descent.wipe), forging stock included; what is left
+                    -- is bound pieces, which a wipe never takes, and that comes home.
                     Player.unpack(game.player)
 
                     -- (counted trips, 2026-10-23) A WIPE ALWAYS COUNTS AS A TRIP (Gate.homecoming).
@@ -4242,6 +4320,24 @@ function game:openEncounter(cell, opts)
     -- always takes something, and so that it can never reduce a body below a single point.
     -- Live again since 2026-10-24: un-parked, guaranteed from floor two (Descent.relicStops), dealt
     -- afresh every trip, and its price written on the trip's ledger so the way out gives it back.
+    -- THE HOIST (2026-11-24, models/send_up.lua): a few finds up to the city, once a floor. Leaving
+    -- without sending keeps it; the cell clears on the send (game:openSendUp).
+    if kind == "hoist" then
+        game:openSendUp("hoist", cell)
+        return
+    end
+
+    -- THE RIFT MULE, found on floor five: walking onto it is the whole stop. The button is on every
+    -- floor's map from here on (game.muleVisible), saved on the player.
+    if kind == "mule" then
+        cell.cleared = true
+        if require("models.send_up").unlockMule(game.player) then
+            game:pushToast("The mule follows you now. Send Mule (M) carries finds up to the stash.")
+        end
+        saveRun()
+        return
+    end
+
     if kind == "weeping_stone" then
         local enc = cell.encounter
         Relic.freshForTrip(enc, Relic.tripOf(game.player))
@@ -5785,6 +5881,12 @@ function game.drawHud()
     -- Potions button (drink a draught), beside Items. Same visibility gate save for the flight tutorial.
     if useVisible() then drawRowButton(useRect(), "Potions") end
 
+    -- The Rift Mule: "Send Mule" while it is here, the fights left while it is up top.
+    if game.muleVisible() then
+        local away = require("models.send_up").muleAway(game.player)
+        drawRowButton(game.muleRect(), away > 0 and ("Mule: " .. away) or "Send Mule")
+    end
+
     -- Always-on party HP/mana strip: the run's attrition, legible while routing (models/player.lua).
     -- Pass the mouse (logical space) so the per-companion ability badge shows its tooltip on hover.
     local mx, my
@@ -5835,41 +5937,16 @@ function game.drawHud()
         y = y + 44
     end
 
-    -- WHAT THE COMPANY IS CARRYING, AGAINST WHAT IT CAN (Descent.CARRY_MAX).
+    -- WHAT THE COMPANY IS CARRYING: a count of the bag, and what a wipe would cost.
     --
-    -- THIS READOUT WAS DELETED AND THE NOTE ABOVE SAYS WHY: "a wipe takes nothing material now, so
-    -- every find was already the player's the moment it landed", leaving a count that fed no decision.
-    -- Both halves of that have reversed. A wipe loses the haul (Descent.wipe), so the
-    -- number is a stake again; and the bag has a bottom, so it is a LIMIT -- and a limit the player
-    -- cannot see is one they meet by having a chest refuse to open.
-    --
-    -- IT IS THE SAME RULE THE PURSE ABOVE DRAWS ON: a spending limit is most worth stating at the
-    -- moment it binds, which means it has to already be on screen before it does.
-    --
-    -- THE NUMBER GOES AMBER AS IT FILLS AND RED WHEN IT IS FULL, because the thing it is warning about
-    -- is not "you have a lot" but "the next find will not come with you".
+    -- THE BAG HAS NO BOTTOM (2026-11-24), so this states a stake rather than a limit: everything in it
+    -- is lost on a wipe (Descent.wipe) unless the hoist or the mule sends it up first (models/send_up.lua).
+    -- It counts the BAG and not the haul (Descent.carried, not Descent.found) because the bag is what
+    -- the wipe empties. It was "Carrying n / max" while the bag had a ceiling.
     if game.descent then
-        -- THE BAG, NOT THE HAUL (Descent.carried, not Descent.found). This readout exists to warn
-        -- about a refusal, and what refuses is the bag being full -- so it counts what is IN the bag,
-        -- the rations the player packed included. It read the haul while the two were one number;
-        -- reading it now would leave a company whose pack was full of draughts looking at a
-        -- comfortable figure one step before the chest would not open.
-        local carried = Descent.carried(game.player)
-        -- ...AND THE CEILING IS THE COMPANY'S, not the constant. A piece of gear may widen it
-        -- (Descent.haulBonus), and this readout exists precisely to warn about the refusal one line
-        -- before it happens -- so a number here that disagreed with what carryRoom actually allows
-        -- would be worse than having no readout at all.
-        local max = Descent.carryMax(game.player)
         love.graphics.setColor(Theme.muted)
         love.graphics.printf("Carrying", x - 240, y, 240, "right")
-        if carried >= max then
-            love.graphics.setColor(Theme.accentWeapon)
-        elseif carried >= max * 0.75 then
-            love.graphics.setColor(Theme.accentAmber)
-        else
-            love.graphics.setColor(Theme.muted)
-        end
-        love.graphics.printf(carried .. " / " .. max, x - 240, y + 18, 240, "right")
+        love.graphics.printf(tostring(Descent.carried(game.player)), x - 240, y + 18, 240, "right")
         love.graphics.setColor(1, 1, 1)
         y = y + 44
     end
@@ -5954,6 +6031,8 @@ function game.drawHud()
     -- otherwise. The items key only appears once the Loadout button itself does.
     local items = game.itemsVisible and (InputMode.isGamepad() and "Y: party      " or "I: party      ") or ""
     local use = useVisible() and (InputMode.isGamepad() and "X: potions      " or "U: potions      ") or ""
+    -- ...and the mule, once found (game.muleVisible). Appended to `use` so the two lines below carry it.
+    if game.muleVisible() then use = use .. (InputMode.isGamepad() and "LB: mule      " or "M: mule      ") end
     -- The "back to hub" hint is dropped alongside the button itself -- during the flight tutorial, and
     -- on every floor of a descent, which has no Back button any more (see backVisible). It read
     -- "Esc: end run" down there, which was true and was the problem: one keystroke, on the key every
@@ -6018,7 +6097,8 @@ function game:cursorKind(x, y)
         return game.activePanel.cursorKind and game.activePanel:cursorKind(x, y) or "arrow"
     end
     if (backVisible() and backContains(x, y)) or (game.itemsVisible and rectContains(itemsRect(), x, y))
-        or (useVisible() and rectContains(useRect(), x, y)) then
+        or (useVisible() and rectContains(useRect(), x, y))
+        or (game.muleVisible() and rectContains(game.muleRect(), x, y)) then
         return "hand"
     end
     return "arrow"
@@ -6034,6 +6114,8 @@ function game.mousepressed(x, y, button)
         openLoadout()
     elseif button == 1 and useVisible() and rectContains(useRect(), x, y) then
         openConsumables()
+    elseif button == 1 and game.muleVisible() and rectContains(game.muleRect(), x, y) then
+        game:openSendUp("mule")
     else
         game.map:mousepressed(x, y, button)
     end
@@ -6076,6 +6158,8 @@ function game.keypressed(key)
         openLoadout()
     elseif key == "u" and useVisible() then
         openConsumables()
+    elseif key == "m" and game.muleVisible() then
+        game:openSendUp("mule")
     else
         game.map:keypressed(key)
     end
@@ -6091,6 +6175,8 @@ function game.gamepadpressed(joystick, button)
         openLoadout()
     elseif button == "x" and useVisible() then
         openConsumables()
+    elseif button == "leftshoulder" and game.muleVisible() then
+        game:openSendUp("mule")
     else
         game.map:gamepadpressed(joystick, button)
     end

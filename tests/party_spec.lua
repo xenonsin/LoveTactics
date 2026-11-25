@@ -57,14 +57,20 @@ return {
         name = "buying spends gold and drops the item in the stash",
         fn = function()
             local p = Player.new()
-            p.gold = 1000
+            -- The stash first: gold is a stack ON it (Player.bindGold), so replacing the stash after
+            -- setting the purse would throw the purse away with the old list.
             p.stash = {}
+            p.gold = 1000
             local price = Item.defs[pricedId].price
             assert(Player.spendGold(p, price), "should afford the buy")
             Player.addToStash(p, Item.instantiate(pricedId))
             assert(p.gold == 1000 - price, "gold not deducted by price")
-            assert(#p.stash == 1, "bought item not added to stash")
-            assert(p.stash[1].id == pricedId, "wrong item in stash")
+            local bought = {}
+            for _, it in ipairs(p.stash) do
+                if not require("models.material").isCurrency(it) then bought[#bought + 1] = it end
+            end
+            assert(#bought == 1, "bought item not added to stash")
+            assert(bought[1].id == pricedId, "wrong item in stash")
         end,
     },
     {

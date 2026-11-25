@@ -152,44 +152,40 @@ The codebase is organized into layers loaded via `require()`. See
   meter. See [docs/injuries.md](docs/injuries.md). Injuries outlive the trip and the roster is
   unbounded, so a bad trip costs **a body on the bench**, never a bill — the law in
   [docs/the-count.md](docs/the-count.md). What a company carries down is what the four
-  who walk down have in their grids **and what is in the PACK** (`player.pack`); the stash stays in town.
+  who walk down have in their grids, **and nothing else**; the stash stays in town.
 
-  **THE BAG IS THE ONLY CONTAINER UNDERGROUND, AND IT IS WHERE EVERY FIND LANDS.** The law above was
-  written before there was one, and it was enforced in exactly one place -- the Use panel -- while the
-  Loadout screen went on showing the whole town shelf as a live drag source on floor nine. It is a real
-  container now, packed at the Armory or at the Gate (`ui/panels/party.lua`'s `pool = "both"` stacks a
-  **pack band over the stash** in one column, empty slots drawn; a piece moves across by drag,
-  click-to-place, or the one-press send -- right-click, X -- and the band holds the bag to
-  `Descent.carryMax` exactly as a chest does; underground the column is the bag alone). It replaced a
-  Stash | Pack switch that showed one container at a time and dropped the hand when it flipped, so a
-  draught reached the bag only by way of somebody's grid (`tests/pack_band_spec.lua`). `Player.stow` is the ONE seam that routes a grant -- a chest, a fight's
-  spoils, a lift off a pocket, a pile picked back up -- so no other seam on the way in learns a rule;
-  `Player.packOpen` is the flag, and it reads `descentRun.entry` rather than `descentRun`, because the
-  run is seated the moment you walk onto the Gate screen and a company packing a bag there is still
-  standing in the city. Both exits empty it onto the shelf (`Player.unpack`). **Act 0's finds land in
-  the bag too** (`Player.findsToPack` = packOpen or `prologueBeat` set, 2026-10-25) and ride into the city
-  packed; it is a separate question from `packOpen` because `packOpen` also means "not in town" to the
-  class screen, and the Champion opens one inside Act 0.
+  **NOTHING IS PACKED IN TOWN, THE BAG HAS NO BOTTOM, AND A WIPE EMPTIES IT (2026-11-24).** The bag
+  (`player.pack`) is the rift's container: every find lands in it, it holds any number
+  (`Descent.carryMax` answers `math.huge`, so no chest refuses), and `Descent.wipe` empties all of it
+  (forging stock included -- the hoist and the mule can send it up; only bound pieces stay) on top of
+  the trip's finds. The town screens show the stash
+  alone -- the Armory/Gate pack band (`pool = "both"`) and the bag upgrades (`Descent.buyBagStep`,
+  `player.packUpgrades`, ignored on load) are gone -- and `Player.unpack` empties anything left in the
+  bag on entering the city and at the top of the stair. `Player.stow` is the ONE seam that routes a
+  grant, so no other seam learns a rule; `Player.packOpen` is the flag, and it reads `descentRun.entry`
+  rather than `descentRun`. **Act 0's finds land in the bag too** (`Player.findsToPack` = packOpen or
+  `prologueBeat` set) and are unpacked onto the shelf when the city is reached.
 
-  **THE BAG STARTS AT 10 AND IS BOUGHT UP** (2026-10-25): `Descent.CARRY_MAX` is the base, and the
-  pack band's header in the Armory/Gate panel sells `Descent.CARRY_STEP` (2) slots a step up to
-  `Descent.CARRY_CAP` (40), the price doubling from `Descent.CARRY_PRICE` (25g)
-  (`Descent.buyBagStep`, `player.packUpgrades`, saved). `haulBonus` gear still adds on top.
+  **TWO WAYS TO BANK PART OF THE HAUL MID-RUN** (`models/send_up.lua`, `ui/panels/send_up.lua`): the
+  **Hoist**, a stop on every floor (`kind = "hoist"`, `Descent.sendUpStops`, a seat of its own in
+  `floorBudget`) that sends `SendUp.HOIST_LIMIT` (3) pieces from the bag to the stash once; and the
+  **Rift Mule**, found once on floor `SendUp.MULE_FLOOR` (5, `kind = "mule"`, `Descent.muleStops`,
+  `player.riftMule` saved), after which a *Send Mule* button on every floor's map (M, left shoulder)
+  sends `SendUp.MULE_LIMIT` (2) and the mule is away for `SendUp.MULE_REST` (5) won fights
+  (`run.muleRest`). It never fights. A send writes the piece into `run.entry.stash`, or the wipe's diff
+  would still read it as a find. `haulBonus` gear (Still Hungry, +2) widens both sends.
 
-  **AND IT MADE ONE NUMBER INTO TWO, WHICH MUST NOT BE COLLAPSED AGAIN.** `Descent.carried` counts the
-  BAG -- slots, rations included, against `Descent.carryMax` (the bought bag; **28** was its old fixed size -- twenty of
-  finding plus eight of supplies) -- and is what the chest refusal and the *"Carrying n / max"* readout ask. `Descent.found`
-  is the old diff against the entry snapshot -- quantities -- and is what the stair's toll
-  (`Descent.tollFor`) and Still Hungry's bite ask. A toll priced against the bag would quote a share of
-  the company's own draughts and then fail to take them, since `Player.takeAtRisk` only ever hands over
-  finds: *a stair that could reach into somebody's hand for their sword would be a robbery rather than
-  a price*. `tests/pack_spec.lua` holds both halves.
+  **AND THE BAG IS ONE NUMBER AND THE HAUL ANOTHER, WHICH MUST NOT BE COLLAPSED.** `Descent.carried`
+  counts the BAG (slots) and is what the *"Carrying n"* readout asks. `Descent.found` is the diff
+  against the entry snapshot -- quantities -- and is what the stair's toll (`Descent.tollFor`) and Still
+  Hungry's bite ask: *a stair that could reach into somebody's hand for their sword would be a robbery
+  rather than a price*. `tests/pack_spec.lua` holds both halves.
 
   **A wipe ends the run and costs three things (2026-10-24, `Descent.wipe`).** *A fall is a fall:* every
   body knocked out is injured, win, rout or wipe, through `game:inflictInjuries` -- the avatar, Rowan,
   Xin and the companions come home injured. *The haul is lost:* the trip's finds (`Player.takeAtRisk`'s
-  diff against the company as it walked in) are gone outright; nothing the company owned when it walked
-  in is taken. *Hires who fell die:* every hire in the expedition leaves the roster for good
+  diff against the company as it walked in) and everything else in the bag are gone outright; nothing
+  the company owned in its grids or on the shelf when it walked in is taken. *Hires who fell die:* every hire in the expedition leaves the roster for good
   (`Hire.dismiss` -- the company's gear on the body goes back to the stash), and the city's rout notice
   names them. A wipe still counts as a trip (`Gate.homecoming`). (The carrier that held the haul on the
   fall tile and the stranded hires lasted one day, 2026-10-23, and went with the persistent rift.)
@@ -359,6 +355,14 @@ The codebase is organized into layers loaded via `require()`. See
   path string rather than crashing, so art can land incrementally — which also means the art debt is
   invisible without a sweep. [docs/art-assets.md](docs/art-assets.md) holds the specs, sourcing and
   artist brief; `& "E:\LOVE\lovec.exe" . art-report` counts what is still outstanding.
+  **GOLD IS A STACK, AND NONE GOES DOWN (2026-11-24).** The coin is an item
+  (`data/materials/material_gold.lua`, a `currency` material kept out of every forging-stock count):
+  one slot in the stash in town, one in the bag underground. `player.gold` is a VIEW onto the stack in
+  the container `Player.packOpen` names (`Player.bindGold`, a metatable set by `Player.new` and
+  `Save.restore`; a test's plain `{ gold = n }` table stays a number), so the hundred-odd readers and
+  writers spend the right coin unchanged. The bag starts every run empty and the Gate opens no purse:
+  a run spends what it finds, a wipe loses the bag's coin, the hoist and the mule can send it up, and
+  climbing out merges it onto the shelf. `tests/gold_stack_spec.lua`.
 - **`art/`** — hand-made and commissioned art, **tracked** (where `assets/` is gitignored build output).
   `. art-build` regenerates every composed icon and token unconditionally, then copies `art/` over
   `assets/` so drawn art wins by landing second; `. art-build stale` fails when `assets/` is behind its

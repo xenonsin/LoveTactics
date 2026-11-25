@@ -57,6 +57,11 @@ function MaterialTooltip.measure(id, player)
     local source = house
         and ("Dropped by caches on quests sponsored by " .. house .. ". Running one house's line stocks another house's bench.")
         or "Dropped by caches at the ends of overworld trails. The further off the main path, the richer the grade and the larger the payout."
+    -- GOLD IS A MATERIAL ONLY TO RIDE THE CONTAINERS (data/materials/material_gold.lua); it is not stock.
+    if def.currency then
+        family = "Currency"
+        source = "Found in the rift. None of it goes down the stair; a wipe loses what is in the bag."
+    end
 
     local blocks = {}
     local h = PAD

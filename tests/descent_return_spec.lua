@@ -204,117 +204,51 @@ return {
         end,
     },
     {
-        -- THE BAG HAS A BOTTOM AGAIN, and it is the same reversal as the floor count: models/mule.lua's
-        -- ceiling was deleted because "the wipe takes nothing now, so the ceiling was guarding a stake
-        -- that no longer exists". The wipe takes the haul again, so the stake is back.
-        --
-        -- AND IT COUNTS THE BAG NOW, NOT THE DIFF. This case used to fill the STASH and assert that
-        -- the ceiling saw it, because the ceiling was Player.atRisk and the stash was where a find
-        -- landed. Both halves moved: a find lands in player.pack (Player.stow) and the ceiling counts
-        -- that container's slots (Descent.carried). What the case is FOR is unchanged -- the shelf at
-        -- home is unbounded and the bag is not -- so it is rewritten rather than deleted.
-        name = "the bag counts what is in it, the shelf at home is unbounded, and town is not the bag",
+        -- THE BAG HAS NO BOTTOM (2026-11-24): nothing is packed in town, every find lands in the bag, and
+        -- a wipe empties it, so the stake is bounded by the risk of carrying it rather than by a ceiling.
+        -- What this case held while the bag had one -- the shelf at home is not the bag, and the diff is
+        -- its own question -- still holds, and is kept.
+        name = "the bag counts what is in it and has no ceiling, and the shelf at home is not the bag",
         fn = function()
             local Item = require("models.item")
             local Character = require("models.character")
 
             local player = Player.new()
             player.roster = { Character.instantiate("character_knight") }
-            -- A COMPANY THAT MARCHED IN RICH -- on the SHELF, well past the cap, and none of it in the
-            -- bag. The town's stock has never been what the ceiling measures.
-            for _ = 1, Descent.CARRY_MAX + 5 do
+            -- A COMPANY THAT MARCHED IN RICH -- on the SHELF, and none of it in the bag.
+            for _ = 1, 15 do
                 Player.addToStash(player, Item.instantiate("weapon_iron_sword"))
             end
             local run = Descent.new(player, 7)
             run.entry = Save.snapshot(player)
 
-            assert(Descent.carried(player) == 0,
-                "the shelf at home is being counted against the bag")
-            assert(Descent.carryRoom(player) == Descent.CARRY_MAX,
-                "a company with an empty bag has the whole of it free")
+            assert(Descent.carried(player) == 0, "the shelf at home is being counted against the bag")
 
-            -- ...AND THE SHELF STAYS UNBOUNDED. The cap is on what they CARRY, which is why the stash
-            -- can hold more than CARRY_MAX without anything being wrong.
-            assert(#player.stash > Descent.CARRY_MAX,
-                "the fixture did not actually exceed the cap; the next assertion proves nothing")
-
-            -- PACKED, one at a time, until the bag is full. Straight into the pack rather than through
-            -- Player.stow: what is being measured here is the container, not the routing (that is
-            -- tests/pack_spec.lua's question).
-            for _ = 1, Descent.CARRY_MAX do
+            -- A HUNDRED FINDS AND STILL ROOM: no chest refuses, nothing is put down on the floor.
+            for _ = 1, 100 do
                 Player.addToPack(player, Item.instantiate("weapon_iron_sword"))
             end
-            assert(Descent.carried(player) == Descent.CARRY_MAX,
-                "packed " .. Descent.CARRY_MAX .. " and the bag reads " .. Descent.carried(player))
-            assert(Descent.carryRoom(player) == 0, "the bag should be full")
+            assert(Descent.carried(player) == 100, "packed 100 and the bag reads " .. Descent.carried(player))
+            assert(Descent.carryRoom(player) > 0, "the bag filled up; it has no bottom")
+            assert(Descent.carryMax(player) == math.huge, "the bag grew a ceiling")
 
-            -- OVER THE LINE READS AS FULL rather than as owing slots -- a cap lowered between saves
-            -- must not hand back a negative that a caller then adds to something.
-            Player.addToPack(player, Item.instantiate("weapon_iron_sword"))
-            assert(Descent.carryRoom(player) == 0, "an over-full bag reported negative room")
-
-            -- AND THE DIFF SURVIVES AS ITS OWN QUESTION. Everything above was packed after the entry
-            -- snapshot, so the trip has "found" all of it -- but the two numbers answer different
-            -- questions and the stair must only ever see this one (Descent.tollFor).
+            -- AND THE DIFF SURVIVES AS ITS OWN QUESTION (Descent.tollFor reads it, never the bag).
             assert(Descent.found(player, run) > 0,
                 "the haul diff stopped seeing what was added after the snapshot")
         end,
     },
     {
-        -- A cap nobody can reach is not a cap, and one that binds on floor one is a different game.
-        -- (2026-10-25) The STARTING bag is small on purpose -- ten, and the rest is bought -- so the
-        -- promises moved to the bag gold can buy.
-        name = "the bag starts small, and gold grows it to one worth filling and small enough to bite",
+        -- THE BAG IS NO LONGER BOUGHT UP (2026-11-24). A save that bought steps carries `packUpgrades`;
+        -- it is read as nothing and the bag is unbounded either way.
+        name = "the bag steps are gone, and an old save's steps change nothing",
         fn = function()
-            assert(Descent.CARRY_MAX < Descent.CARRY_CAP, "a starting bag with nothing left to buy")
-            assert((Descent.CARRY_CAP - Descent.CARRY_MAX) % Descent.CARRY_STEP == 0,
-                "the last step overshoots the cap and the bag stops between two sizes")
-            assert(Descent.CARRY_CAP <= 40,
-                "a bag this big (" .. Descent.CARRY_CAP .. ") is never reached, which is the mule's "
-                .. "own complaint: a bet with no ceiling is not a bet")
-            -- ...AND THE BOUGHT BAG HAS TO LEAVE ROOM FOR A TRIP ON TOP OF THE RATIONS (models/descent.lua's
-            -- header: twenty of finding plus eight of supplies).
-            assert(Descent.CARRY_CAP >= 20 + 8,
-                "the biggest bag no longer holds a provisioned company plus four floors of finding")
-        end,
-    },
-    {
-        name = "a bag step costs twice the last, adds its slots, and stops at the cap",
-        fn = function()
-            local player = { gold = 0, roster = {}, pack = {} }
-            assert(Descent.carryMax(player) == Descent.CARRY_MAX, "a new company's bag is not the base")
-            assert(Descent.bagStepPrice(player) == Descent.CARRY_PRICE, "the first step is not the base price")
-            local ok, why = Descent.buyBagStep(player)
-            assert(not ok and why == "gold", "a step was sold to an empty purse")
-            assert(Descent.carryMax(player) == Descent.CARRY_MAX, "a refused step still grew the bag")
-
-            player.gold = 10 ^ 9
-            local price, steps = Descent.CARRY_PRICE, 0
-            while Descent.bagStepPrice(player) do
-                assert(Descent.bagStepPrice(player) == price, "step " .. steps .. " is not double the last")
-                local before = player.gold
-                assert(Descent.buyBagStep(player), "an affordable step was refused")
-                assert(before - player.gold == price, "the step charged something other than its price")
-                steps, price = steps + 1, price * 2
-                assert(Descent.carryMax(player) == Descent.CARRY_MAX + steps * Descent.CARRY_STEP,
-                    "step " .. steps .. " did not add its slots")
-            end
-            assert(Descent.carryMax(player) == Descent.CARRY_CAP, "the bought bag stops short of the cap")
-            local ok2, why2 = Descent.buyBagStep(player)
-            assert(not ok2 and why2 == "full", "a step was sold past the cap")
-        end,
-    },
-    {
-        name = "the bag's steps ride a save",
-        fn = function()
-            local Save = require("models.save")
-            local Player = require("models.player")
-            local player = Player.new()
-            player.gold = 1000
-            assert(Descent.buyBagStep(player) and Descent.buyBagStep(player), "two steps refused")
-            local back = Save.restore(Save.decode("return " .. Save.encode(Save.snapshot(player), 0)))
-            assert(Descent.carryMax(back) == Descent.CARRY_MAX + 2 * Descent.CARRY_STEP,
-                "the bag came back from the save at " .. Descent.carryMax(back))
+            assert(Descent.buyBagStep == nil and Descent.bagStepPrice == nil and Descent.CARRY_MAX == nil,
+                "the bag-step purchase is still on the model")
+            local snap = Save.snapshot(Player.new())
+            snap.packUpgrades = 3
+            local back = Save.restore(Save.decode("return " .. Save.encode(snap, 0)))
+            assert(back.packUpgrades == nil, "an old save's bag steps came back onto the player")
+            assert(Descent.carryMax(back) == math.huge, "an old save's bag came back with a ceiling")
         end,
     },
     {

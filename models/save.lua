@@ -743,7 +743,7 @@ function Save.snapshot(player)
         -- from runsStarted, which would hand a company of empty dips the trips it never earned.
         tripsCounted = (runsStarted or (player.tripsCounted or 0) > 0) and (player.tripsCounted or 0) or nil,
         purseTrip = player.purseTrip,
-        packUpgrades = player.packUpgrades, -- steps bought on the bag (Descent.buyBagStep)
+        riftMule = player.riftMule or nil, -- the Rift Mule, found on floor 5 (models/send_up.lua)
         ngPlus = ngPlus,
         campaignsFinished = campaignsFinished,
         day = day,
@@ -1469,7 +1469,9 @@ function Save.restore(snap)
     -- so the two never collide -- this one is consumed once, on resume.
     local resumeRun = snap.run and Save.restoreRun(snap.run) or nil
 
-    return {
+    -- GOLD IS A STACK IN THE STASH (2026-11-24): `gold` here is folded onto it, or dropped when the
+    -- stash already carries the stack (Player.bindGold), and the player is bound to the view on return.
+    local restored = {
         gold = snap.gold or 0,
         -- Zero for a save from before the split and for anybody standing in town (models/scrip.lua), and
         -- the two are the same state as far as this is concerned: no expedition open, no run coin.
@@ -1487,7 +1489,8 @@ function Save.restore(snap)
         tripsCounted = tonumber(snap.tripsCounted) or math.max(0, (tonumber(snap.runsStarted) or 0)
             - ((type(snap.descentRun) == "table") and 1 or 0)),
         purseTrip = tonumber(snap.purseTrip),
-        packUpgrades = tonumber(snap.packUpgrades), -- absent: the bag a company starts with
+        riftMule = snap.riftMule == true or nil, -- absent: not found yet
+        -- (`packUpgrades`, the bag steps bought before 2026-11-24, is ignored: the bag has no ceiling.)
         hireBoard = snap.hireBoard and {
             trip = tonumber(snap.hireBoard.trip) or 0,
             offers = snap.hireBoard.offers or {},
@@ -1634,6 +1637,7 @@ function Save.restore(snap)
         -- company that has never gone down, and for every save written before there was a stair.
         descentRun = snap.descentRun and require("models.descent").restore(snap.descentRun) or nil,
     }
+    return require("models.player").bindGold(restored)
 end
 
 -- ---------------------------------------------------------------------------

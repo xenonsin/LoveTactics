@@ -640,6 +640,11 @@ local function markerColor(kind, enc)
     -- to find that out was to walk onto it. See the header of Encounter.opensBattle: a marker that
     -- promises a fight the state then does not run is a lie.
     if kind == "weeping_stone" then return 0.62, 0.38, 0.72 end
+    -- THE HOIST (models/send_up.lua) sends finds up a shaft to the city: hemp and old timber, a dusty
+    -- brown kept clear of the merchant's gold and the ascent's cold daylight. The basket mark says what.
+    if kind == "hoist" then return 0.78, 0.62, 0.52 end
+    -- ...and THE MULE, which does the same job once found, wears the same hemp brown; the mark differs.
+    if kind == "mule" then return 0.78, 0.62, 0.52 end
     if kind == "crossroads" then return 0.70, 0.72, 0.80 end     -- a branching dilemma: a gamble
     -- GLUTTONY'S TWO DILEMMAS wear the crossroads' grey-blue: they are the same thing to the eye, a stop
     -- that asks one question, and the mark (a bone, a pool) says which. The anvil and the lectern rule.
@@ -924,6 +929,39 @@ function MarkerIcon.weeping_stone(x, y, w, h, r, g, b, a)
     love.graphics.circle("fill", x + w * 0.5, y + h * 0.66, w * 0.11)
     love.graphics.polygon("fill", x + w * 0.5, y + h * 0.44,
         x + w * 0.61, y + h * 0.68, x + w * 0.39, y + h * 0.68)
+end
+
+-- A basket on a rope under a pulley: the Hoist, which sends a few finds up to the city, once a floor.
+function MarkerIcon.hoist(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a)
+    -- The beam and the pulley wheel hanging off it.
+    love.graphics.rectangle("fill", x + w * 0.14, y + h * 0.08, w * 0.72, h * 0.08, 1, 1)
+    love.graphics.circle("fill", x + w * 0.5, y + h * 0.24, w * 0.10)
+    -- The rope.
+    love.graphics.rectangle("fill", x + w * 0.47, y + h * 0.30, w * 0.06, h * 0.30)
+    -- The basket: wider at the mouth than the base.
+    love.graphics.polygon("fill", x + w * 0.22, y + h * 0.58, x + w * 0.78, y + h * 0.58,
+        x + w * 0.68, y + h * 0.92, x + w * 0.32, y + h * 0.92)
+    -- Its weave, in the deeper shade the other marks use for their detail.
+    love.graphics.setColor(r * 0.35, g * 0.35, b * 0.35, a)
+    love.graphics.rectangle("fill", x + w * 0.27, y + h * 0.70, w * 0.46, h * 0.05)
+end
+
+-- A mule's head, long ears up: the Rift Mule, found once on floor five (models/send_up.lua).
+function MarkerIcon.mule(x, y, w, h, r, g, b, a)
+    love.graphics.setColor(r, g, b, a)
+    -- The two ears.
+    love.graphics.polygon("fill", x + w * 0.30, y + h * 0.06, x + w * 0.42, y + h * 0.38, x + w * 0.28, y + h * 0.40)
+    love.graphics.polygon("fill", x + w * 0.70, y + h * 0.06, x + w * 0.72, y + h * 0.40, x + w * 0.58, y + h * 0.38)
+    -- The long face, narrowing to the muzzle.
+    love.graphics.polygon("fill", x + w * 0.26, y + h * 0.36, x + w * 0.74, y + h * 0.36,
+        x + w * 0.64, y + h * 0.94, x + w * 0.36, y + h * 0.94)
+    -- Eyes and nostrils in the deeper shade.
+    love.graphics.setColor(r * 0.35, g * 0.35, b * 0.35, a)
+    love.graphics.circle("fill", x + w * 0.38, y + h * 0.50, w * 0.04)
+    love.graphics.circle("fill", x + w * 0.62, y + h * 0.50, w * 0.04)
+    love.graphics.circle("fill", x + w * 0.44, y + h * 0.84, w * 0.03)
+    love.graphics.circle("fill", x + w * 0.56, y + h * 0.84, w * 0.03)
 end
 
 -- An anvil: the Cold Forge, where one carried piece takes a free rung. Drawn as the silhouette and not

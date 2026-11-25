@@ -517,6 +517,10 @@ return {
                     string.format("seed %d: floor %d has no Merchant", seed, floor))
                 assert(countKind(grid, "rest") >= 1,
                     string.format("seed %d: floor %d has no Rest", seed, floor))
+                -- ...and the hoist, on every floor (models/send_up.lua): the one way to bank a find
+                -- that a company does not have to carry in a grid cell.
+                assert(countKind(grid, "hoist") == 1,
+                    string.format("seed %d: floor %d has %d hoists", seed, floor, countKind(grid, "hoist")))
                 assert(countKind(grid, "relic_cache") == 0, string.format(
                     "seed %d: floor %d placed a Reliquary, which is still parked", seed, floor))
                 if floor == 1 then
@@ -534,11 +538,14 @@ return {
     -- guarantee and the budget, so a floor that guarantees it is exactly one stop bigger.
     { name = "a floor that guarantees the Stone is one stop bigger, and floor one is not",
       fn = function()
+        -- ...and every floor is one stop bigger again for its hoist (Descent.sendUpStops, 2026-11-24).
+        local hoist = #Descent.sendUpStops(1)
+        assert(hoist == 1, "a floor guarantees " .. hoist .. " hoists")
         local one = Descent.floorBudget(1, 1)
-        assert(one.min == Descent.FLOOR_TEXTURE + select(2, Descent.floorBudget(1, 1)),
+        assert(one.min == Descent.FLOOR_TEXTURE + select(2, Descent.floorBudget(1, 1)) + hoist,
             "floor one's budget moved with the relics")
         local two, seated = Descent.floorBudget(1, 2)
-        assert(two.min == Descent.FLOOR_TEXTURE + seated + 1,
+        assert(two.min == Descent.FLOOR_TEXTURE + seated + 1 + hoist,
             "floor two's budget does not make a place for its Weeping Stone")
     end },
 }

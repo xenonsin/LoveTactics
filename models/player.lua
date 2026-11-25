@@ -174,12 +174,12 @@ end
 -- prints on its own screen. What that law had no container for was the OTHER half of it: a company
 -- that can only bring what fits in four 3x3 grids is a company choosing between a build and a potion,
 -- because the grid is the build (ui/adjacency_links.lua) and every draught in it costs an adjacency.
--- So the bag is a thing of its own, packed at the Gate, and it is where every find of the trip lands.
+-- So the bag is a thing of its own, and it is where every find of the trip lands.
 --
--- IT HAS A BOTTOM, which the stash pointedly does not (Descent.carryMax). That is not a second rule
--- bolted on: the ceiling already existed and already refused chests, it simply had nothing to measure
--- but a diff. It measures a container now, and the difference the player feels is that the draughts
--- they chose to bring are sitting in the slots the next chest wanted.
+-- (2026-11-24) NOTHING IS PACKED IN TOWN, THE BAG HAS NO BOTTOM, AND A WIPE EMPTIES IT. A company walks
+-- down with its grids; the bag fills with finds and holds any number (Descent.carryMax); dying loses
+-- everything in it (Descent.wipe). The hoist and the Rift Mule send a few pieces up to the stash before
+-- that can happen (models/send_up.lua). It was packed at the Gate and capped from 2026-10 until then.
 --
 -- ...AND IT IS NOT THE PILE A WIPE LEAVES BEHIND, which is also called a pack and always has been
 -- (Descent.dropPack, deleted). Nothing seats a pile any more (a wipe loses the haul, Descent.wipe).
@@ -293,8 +293,13 @@ end
 -- CALLED ON BOTH EXITS, and the symmetry is the same one states/game.lua argues for the floor stack: if
 -- climbing out unpacked the bag and dying did not, a company that fell would find its rations sealed in
 -- a container it could not open in town -- a price on having lost, which docs/the-count.md forbids by
--- name. On the wipe path the finds have already been lifted onto the pile (Player.takeAtRisk), so what
--- is left in here is exactly what the company packed, and it goes home.
+-- name. On the wipe path the bag has already been emptied (Descent.wipe), so all that is left in here
+-- is bound pieces, which a wipe never takes, and they go home.
+--
+-- ALSO CALLED ON THE WAY INTO TOWN AND DOWN THE STAIR (states/hub.lua, states/gate.lua), for Act 0's
+-- finds, which ride into the city in the bag, and for a save packed before the bag stopped being packed
+-- in town (2026-11-24): the town screens no longer show the bag, so anything in it there is emptied
+-- onto the shelf where they can see it.
 --
 -- THROUGH addToStash RATHER THAN stow, deliberately: this runs as the trip closes and the answer must
 -- be the shelf whichever side of the flag the caller has got to. A drain that could put the bag back in
@@ -635,9 +640,8 @@ function Player.new()
         roster = roster,
         lastDeployed = {}, -- char ids fielded last battle; the deployment phase's opening pick (Player.noteDeployed)
         stash = {}, -- unequipped items; unbounded (see Player.addToStash)
-        -- WHAT THE COMPANY IS CARRYING: the bag packed at the Gate, and underground the only one they
-        -- have (see Player.packOpen). Bounded, where the shelf above is not (Descent.carryMax). Empty
-        -- in town on a fresh company and emptied onto the shelf every time one climbs out.
+        -- WHAT THE COMPANY IS CARRYING underground: the trip's finds (see Player.packOpen). Unbounded,
+        -- lost on a wipe (Descent.wipe), and emptied onto the shelf every time a company climbs out.
         pack = {},
         completedQuests = {}, -- quest id -> true; keeps finished quests off the board AND is a vendor's standing (Quest.sponsorProgress)
         -- (THE POSTINGS IN HAND STOOD HERE.) Spent on taking one and put back on finishing it;
@@ -741,12 +745,97 @@ function Player.new()
         Player.addToStash(player, Item.instantiate(itemId))
     end
 
-    return player
+    -- The opening purse becomes the stash's gold stack (Player.bindGold).
+    return Player.bindGold(player)
 end
 
 -- ---------------------------------------------------------------------------
 -- Progression: gold, prestige
 -- ---------------------------------------------------------------------------
+
+-- GOLD IS A STACK, AND `player.gold` IS A VIEW ONTO IT (2026-11-24).
+--
+-- The coin is an item (data/materials/material_gold.lua): one stack in the stash in town, taking a slot,
+-- and one in the BAG underground. None goes down the stair -- the bag starts every run empty -- so what
+-- a company spends down there is what it found down there, a wipe loses it with the bag, and climbing
+-- out lands it on the shelf (Player.unpack merges the two stacks).
+--
+-- A VIEW RATHER THAN A REWRITE. A hundred-odd sites read and write `player.gold` -- the shops, the
+-- Forge, the road merchant, a Mammonite paying for a blow -- and every one of them means "the coin this
+-- company can reach right now". A metatable answers that question for all of them: reading `gold` sums
+-- the stack in the container Player.packOpen names, writing it sets that stack (removing it at zero).
+-- Only players built by Player.new or Save.restore are bound; a test's plain `{ gold = 0 }` stays a
+-- plain number, which is what it was written against.
+local function goldList(player)
+    if Player.packOpen(player) then
+        local pack = rawget(player, "pack")
+        if not pack then pack = {}; rawset(player, "pack", pack) end
+        return pack
+    end
+    local stash = rawget(player, "stash")
+    if not stash then stash = {}; rawset(player, "stash", stash) end
+    return stash
+end
+
+local function goldOf(list)
+    local Material = require("models.material")
+    local n = 0
+    for _, it in ipairs(list) do
+        if Material.isCurrency(it) then n = n + (it.quantity or 0) end
+    end
+    return n
+end
+
+local function setGold(player, value)
+    local Material = require("models.material")
+    local list = goldList(player)
+    value = math.max(0, math.floor(tonumber(value) or 0))
+    local kept = false
+    for i = #list, 1, -1 do
+        local it = list[i]
+        if Material.isCurrency(it) then
+            if kept or value == 0 then
+                table.remove(list, i)
+            else
+                it.quantity, it.maxStack, kept = value, math.huge, true
+            end
+        end
+    end
+    if not kept and value > 0 then list[#list + 1] = Material.instantiate(Material.GOLD, value) end
+end
+
+local GOLD_VIEW = {
+    __index = function(player, key)
+        if key == "gold" then return goldOf(goldList(player)) end
+    end,
+    __newindex = function(player, key, value)
+        if key == "gold" then setGold(player, value) else rawset(player, key, value) end
+    end,
+}
+
+-- Bind `player`'s gold to its stack, folding a raw `gold` number in. A save written before gold was an
+-- item carries only the number, which goes onto the shelf; a newer save carries the stack AND the number
+-- (Save.snapshot still writes it), and the number is dropped so the coin is not counted twice. Returns
+-- the player.
+function Player.bindGold(player)
+    if not player or getmetatable(player) == GOLD_VIEW then return player end
+    local raw = rawget(player, "gold")
+    rawset(player, "gold", nil)
+    local Material = require("models.material")
+    local hasStack = false
+    for _, list in ipairs({ rawget(player, "stash") or {}, rawget(player, "pack") or {} }) do
+        for _, it in ipairs(list) do
+            if Material.isCurrency(it) then hasStack = true; it.maxStack = math.huge end
+        end
+    end
+    setmetatable(player, GOLD_VIEW)
+    if not hasStack and (tonumber(raw) or 0) > 0 then
+        local stash = rawget(player, "stash") or {}
+        rawset(player, "stash", stash)
+        stash[#stash + 1] = Material.instantiate(Material.GOLD, raw)
+    end
+    return player
+end
 
 function Player.addGold(player, amount)
     player.gold = player.gold + amount
@@ -958,10 +1047,9 @@ end
 -- Put `amount` of material `id` where Player.stow would put a find: the pack underground, the shelf in
 -- town. Existing stacks top up first; a new stack takes a slot.
 --
--- THE BAG HOLDS IT TO ITS CEILING, as a chest is held (Descent.carryMax): underground a new stack only
--- opens while a slot is free, and what does not fit is left behind. Returns that leftover (0 when all of
--- it landed) so a caller with a voice can say so -- a reward that silently fails to arrive reads as a
--- bug. The shelf in town has no ceiling and always returns 0.
+-- HELD TO Descent.carryMax, which has been unbounded since 2026-11-24, so this always lands everything
+-- and returns 0. The leftover it returns is kept for a caller with a voice, should the bag ever take a
+-- ceiling again -- a reward that silently fails to arrive reads as a bug.
 function Player.addMaterial(player, id, amount)
     local Material = require("models.material") -- lazily, beside the descent require below
     local left = math.max(0, math.floor(amount or 0))
@@ -1002,7 +1090,9 @@ end
 function Player.setMaterials(player, counts)
     for _, list in ipairs({ player.stash or {}, player.pack or {} }) do
         for i = #list, 1, -1 do
-            if list[i].type == "material" then table.remove(list, i) end
+            if list[i].type == "material" and not require("models.material").isCurrency(list[i]) then
+                table.remove(list, i) -- forging stock only; the gold stack is not stock
+            end
         end
     end
     player.materials = nil
@@ -1012,7 +1102,9 @@ function Player.setMaterials(player, counts)
     for id in pairs(counts or {}) do ids[#ids + 1] = id end
     table.sort(ids)
     for _, id in ipairs(ids) do
-        local left = math.floor(counts[id] or 0)
+        -- Forging stock only: a count naming the gold id is ignored, so a "plenty of everything" table
+        -- built off Material.defs does not quietly fatten the purse (Material.isCurrency).
+        local left = Material.isCurrency(id) and 0 or math.floor(counts[id] or 0)
         while left > 0 and Material.get(id) do
             local stack = Material.instantiate(id, left)
             player.stash[#player.stash + 1] = stack
@@ -1592,9 +1684,9 @@ function Player.atRisk(player, before)
     if not (player and before) then return out end
     local Item = require("models.item")
     local function key(it) return (it.id or "?") .. "#" .. tostring(it.level or 0) end
-    -- FORGING STOCK IS NEVER AT RISK either. It takes a slot in the bag (models/material.lua) but it is
-    -- banked the moment a fight pays it, as it was while it was a bare counter: a wipe does not take it
-    -- and the stair's toll does not price it, so a sack of ore cannot multiply what a find costs.
+    -- FORGING STOCK IS NEVER COUNTED HERE either: the stair's toll does not price it, so a sack of ore
+    -- cannot multiply what a find costs. (A wipe DOES take it since 2026-11-24 -- Descent.wipe empties
+    -- the whole bag, ore included -- but that is the bag's rule, not this diff's.)
     local Material = require("models.material")
     local function exempt(it) return Item.isBound(it) or Material.isMaterial(it) end
 

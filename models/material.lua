@@ -58,10 +58,24 @@ function Material.instantiate(id, quantity)
         material = true,
         tier = def.tier,
         house = def.house,
-        maxStack = Material.MAX_STACK,
+        maxStack = def.currency and math.huge or Material.MAX_STACK,
         level = 0,
-        quantity = math.max(1, math.min(quantity or 1, Material.MAX_STACK)),
+        quantity = def.currency and math.max(1, math.floor(quantity or 1))
+            or math.max(1, math.min(quantity or 1, Material.MAX_STACK)),
     }
+end
+
+-- GOLD IS A STACK IN THE STASH (2026-11-24): `data/materials/material_gold.lua`, one slot however much
+-- of it there is, and `player.gold` is a view onto it (models/player.lua's Player.bindGold). It is a
+-- material only so the stash, the bag, the save and the wipe carry it with no branch of their own; it
+-- is NOT forging stock, so every place that counts or lists stock skips it (Material.isCurrency).
+Material.GOLD = "material_gold"
+
+-- Is `item` (an instance, a snapshot, or a bare id) the currency stack?
+function Material.isCurrency(item)
+    local id = type(item) == "table" and item.id or item
+    local def = id and Material.defs[id]
+    return def ~= nil and def.currency == true
 end
 
 -- { [id] = count } over the stash and the pack of `holder` -- a live player or a Save.snapshot of one,
@@ -72,7 +86,7 @@ function Material.tally(holder)
     if not holder then return out end
     for _, list in ipairs({ holder.stash or {}, holder.pack or {} }) do
         for _, item in ipairs(list) do
-            if Material.isMaterial(item) then
+            if Material.isMaterial(item) and not Material.isCurrency(item) then
                 out[item.id] = (out[item.id] or 0) + (item.quantity or 1)
             end
         end
@@ -206,13 +220,15 @@ end
 function Material.list()
     local list = {}
     for id, def in pairs(Material.defs) do
-        list[#list + 1] = {
-            id = id,
-            name = def.name,
-            description = def.description,
-            tier = def.tier or 1,
-            class = def.class,
-        }
+        if not def.currency then -- gold is not forging stock (Material.isCurrency)
+            list[#list + 1] = {
+                id = id,
+                name = def.name,
+                description = def.description,
+                tier = def.tier or 1,
+                class = def.class,
+            }
+        end
     end
     table.sort(list, function(a, b)
         if (a.class ~= nil) ~= (b.class ~= nil) then return b.class ~= nil end

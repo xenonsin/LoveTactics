@@ -358,12 +358,9 @@ local function newPanel(moduleName, vendorId, title, onClose)
         -- The Armory (Loadout) shelf gets a weapon-type / discipline filter over the stash; other
         -- buildings' panels ignore the field.
         filters = (moduleName == "party") and armoryFilters(hub.player) or nil,
-        -- THE ARMORY IS WHERE THE BAG IS PACKED, and it is the natural home for it rather than a second
-        -- job bolted onto a gear screen: the shelf is already here, the grids are already here, and
-        -- deciding what a body carries and what the company carries are the same afternoon's work. The
-        -- Gate gets the same switch, which makes it the LAST chance to change the bag rather than the
-        -- only one (states/gate.lua).
-        pool = (moduleName == "party") and "both" or nil,
+        -- (THE BAG WAS PACKED HERE, over the stash in the same column, until 2026-11-24. Nothing is packed
+        -- in town now: a company walks down with its grids, and the bag is the rift's alone. So the
+        -- Armory shows the stash, as every other town screen does.)
         -- THE TACTICS TAB IS NOT THERE ON THE FIRST MORNING. It arrives when the first trip ends, by
         -- whichever exit comes first -- home to the city, or down onto floor two (Descent.tacticsUnlocked)
         -- -- because a rule list offered before the player has taken a turn is a shortcut past the thing
@@ -638,6 +635,12 @@ function hub.enter()
     -- back through Act 0 because nothing out there can answer it (Descent.classesUnlocked). Stamped
     -- before any panel is built, so the first visit's own Armory already has it.
     Descent.markCityReached(hub.player)
+    -- NOTHING SITS IN THE BAG IN TOWN (2026-11-24): the town screens show the stash alone, so Act 0's
+    -- finds, which ride into the city in the bag, and an old save packed at the Gate go onto the shelf.
+    if not Player.packOpen(hub.player) and #(hub.player.pack or {}) > 0 then
+        Player.unpack(hub.player)
+        Player.save()
+    end
     -- ...and SEPARATELY, whether this arrival is a coming HOME: the same screen, asked of a company that
     -- has already been out (Player.expeditionsOut -- a floor descended or a bounty finished). That is
     -- the first half of the Tactics gate (Descent.tacticsUnlocked), and it can only be stamped here --

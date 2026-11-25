@@ -73,11 +73,6 @@ local SLOT_MIN, SLOT_GAP_TIGHT = 56, 8
 -- What the stash needs to stay a stash: three columns of ui/pool_grid.lua's 64px cells and their
 -- gaps. Below three it reads as a list with a scrollbar, which is not what the drag target is for.
 local POOL_MIN_W = 64 * 3 + 8 * 2
--- The pack band's cell, on a screen that shows the bag over the stash (opts.pool == "both"). Smaller than
--- the stash's 64 so the whole bag fits above it in one column -- seven across in the authored width,
--- four rows for the 28 -- which is what lets a draught go from the shelf to the bag in one short drag.
--- No name strip at this size (ui/pool_grid.lua's NAME_MIN); the hover box names the piece.
-local PACK_CELL, PACK_GAP = 46, 4
 -- The focus sheet's authored width, and the narrowest it may be and still hold two stat columns.
 -- Under that it is dropped rather than clipped (see the layout).
 local FOCUS_W, FOCUS_MIN_W = 300, 200
@@ -346,70 +341,26 @@ function Party.tabOpen(player, mode)
     return true
 end
 
--- THE POOL COLUMN: the pack band (where both containers are in reach), the stash under it, and the
--- stash header's controls. Lifted out of Party.new so that enlarging the bag (Party:buyPackRoom) can
--- lay the band out again at its new size -- every rect below it hangs off how tall the band is.
+-- THE POOL COLUMN: the container this screen shows (the stash in town, the bag underground) and its
+-- header's controls. Lifted out of Party.new while a pack band sat above it and was laid out again at
+-- every bag size.
 function Party:layoutPool()
     local f = self.poolFrame
     local poolX, poolW, contentY, bottom = f.x, f.w, f.top, f.bottom
     self.poolHeaderY = contentY
     local poolTop = contentY + 24
-    local Descent = require("models.descent")
-    local function carryMax() return Descent.carryMax(self.player) end
-
-    -- THE PACK BAND, over the stash in the same column, on a screen that can reach both containers. It
-    -- REPLACED a Stash | Pack switch that showed one container at a time and dropped whatever was in
-    -- hand when it flipped, so a draught could only reach the bag by way of somebody's grid. Every game
-    -- this one borrows its provisioning from keeps both lists on screen while you move things between
-    -- them (Darkest Dungeon's provisioning, Fire Emblem's convoy, Diablo's stash).
-    --
-    -- SIZED TO THE WHOLE BAG, empty slots and all, so the room left is a thing you see rather than a
-    -- number you subtract. Where the column is too short to hold every row and still leave the stash a
-    -- row of its own (a handheld), the band scrolls instead -- the stash under it is the thing being
-    -- packed FROM, and a band that pushed it off the screen would be the old switch again.
+    -- (THE PACK BAND STOOD HERE: the bag drawn over the stash in the same column, on the town screens
+    -- that packed it -- the Armory and the Gate. Nothing is packed in town since 2026-11-24, so no
+    -- screen opens with `pool = "both"` and the band is gone; the panel's two-container verbs below
+    -- answer for one container when `self.packPool` is nil, which it now always is.)
     self.packPool = nil
-    self.bagBtn = nil
-    if self.pool_ == "both" then
-        self.packHeaderY = contentY
-        local cols = math.max(1, math.floor((poolW + PACK_GAP) / (PACK_CELL + PACK_GAP)))
-        local rows = math.max(1, math.ceil(carryMax() / cols))
-        local full = rows * PACK_CELL + (rows - 1) * PACK_GAP
-        local room = (bottom - poolTop) - 8 - 24 - PoolGrid.heightForRows(1)
-        local scrolls = full > room
-        local bandH = scrolls and math.max(PoolGrid.ARROW_H * 2 + PACK_CELL, room) or full
-        self.packPool = PoolGrid.new({
-            x = poolX, y = poolTop, w = poolW, h = bandH,
-            cell = PACK_CELL, gap = PACK_GAP, arrows = scrolls, slots = carryMax,
-        })
-        self.packPool.side = "pack"
-        -- THE BAG'S OWN CONTROL, at the right end of its header: two more slots for gold
-        -- (Party:openBagStep). Only on this screen, which is only ever in town -- underground the
-        -- column is the bag alone and nobody down there is selling bags.
-        -- Sized to its label, which is laid out again after every step (the price doubles). Where the
-        -- header cannot seat the caption beside it (a handheld's narrow column), the key hint is the part
-        -- that goes: the price is the decision.
-        self.bagShort = false
-        local label = self:bagButtonLabel("Start")
-        if label then
-            local font = self.smallFont
-            local bw = math.max(font:getWidth(label), font:getWidth(self:bagButtonLabel("U"))) + 16
-            if bw > poolW - (font:getWidth("Pack 99 / 99") + 12) then
-                self.bagShort = true
-                bw = font:getWidth(self:bagButtonLabel()) + 16
-            end
-            self.bagBtn = { x = poolX + poolW - bw, y = self.packHeaderY - 2, w = bw, h = 20 }
-        end
-        self.poolHeaderY = poolTop + bandH + 8
-        poolTop = self.poolHeaderY + 24
-    end
 
     self.pool = PoolGrid.new({
         x = poolX,
         y = poolTop,
         w = poolW,
         h = bottom - poolTop,
-        -- Underground the column IS the bag, and draws its empty slots for the same reason the band does.
-        slots = (self.pool_ == "pack") and carryMax or nil,
+        -- Underground the column IS the bag, and the bag has no bottom (Descent.carryMax): no empty slots.
         -- The red corner dot on anything that arrived in the stash and has not been looked at
         -- (Player.markNew). Cleared on a look, and persisted then and there: the Armory is a screen a
         -- player can close by walking out of the city, so a mark cleared here must not come back.
@@ -482,12 +433,9 @@ function Party.new(opts)
     --            passes the expedition underground (models/descent.lua's Descent.party), because a
     --            member left in town is not standing here to be kitted. Same shape and same name as
     --            ui/panels/consumables.lua's own narrowing, so the two read alike
-    --   pool     which container the pool column shows: "stash" (default, the town shelf), "pack" (the
-    --            bag the company is carrying -- the only one reachable underground), or "both", which
-    --            stacks the pack's band over the stash in the one column and is what provisioning is
-    --            done on (the Armory and the Gate)
-    --   gridSendTo  on a "both" screen, where the one-press send puts a piece taken off a body's grid:
-    --            "stash" (default, the Armory) or "pack" (the Gate, where the bag is what is being filled)
+    --   pool     which container the pool column shows: "stash" (default, the town shelf) or "pack" (the
+    --            bag the company is carrying -- the only one reachable underground). ("both", the pack
+    --            band over the stash, and `gridSendTo` beside it went when town packing did, 2026-11-24.)
     -- ...and the CAMPAIGN's own gate on top of the host's (Party.tabOpen), for the save file's company
     -- only -- `persist` is this panel's word for that, so the draft and the debug editor are untouched.
     local campaign = opts.persist ~= false and type(opts.player) == "table"
@@ -511,7 +459,6 @@ function Party.new(opts)
     -- is already the PoolGrid widget on this object and two things called `pool` one line apart is how
     -- a file starts lying to its own reader.
     self.pool_ = opts.pool or "stash"
-    self.gridSendTo = opts.gridSendTo
     self.onFilterChanged = opts.onFilterChanged
     self.filterCursor = 1
     self.filterOpen = false -- the stash filter dropdown starts closed, behind its "Filter" toggle
@@ -840,69 +787,6 @@ function Party:confirmDismiss(char)
     })
 end
 
--- ENLARGING THE BAG (Descent.buyBagStep): two slots a step, each twice the price of the last. Offered
--- wherever the pack band is drawn -- the Armory and the Gate, both in town -- until the bag is as big
--- as gold makes it, and then the control is gone rather than greyed: there is nothing left to buy.
-function Party:bagStepOffered()
-    return self.bagBtn ~= nil and not self.debugAll
-        and require("models.descent").bagStepPrice(self.player) ~= nil
-end
-
--- `key` forces the hint ("Start" | "U"); the layout sizes the button to the wider one, so switching
--- between a pad and the keyboard never spills the label.
-function Party:bagButtonLabel(key)
-    local Descent = require("models.descent")
-    local price = Descent.bagStepPrice(self.player)
-    if not price then return nil end
-    local text = string.format("+%d slots  %d gold", Descent.CARRY_STEP, price)
-    if self.bagShort then return text end
-    return text .. " (" .. (key or (InputMode.isGamepad() and "Start" or "U")) .. ")"
-end
-
-function Party:openBagStep()
-    if not self:bagStepOffered() then return end
-    local Descent = require("models.descent")
-    local price = Descent.bagStepPrice(self.player)
-    local size = Descent.bagSize(self.player)
-    if (self.player.gold or 0) < price then
-        self:setMsg(string.format("Two more slots cost %d gold.", price), false)
-        return
-    end
-    self.modal = Choice.new({
-        title = "Enlarge the Pack?",
-        prompt = string.format("Pack %d → %d slots  -  %d gold", size,
-            math.min(Descent.CARRY_CAP, size + Descent.CARRY_STEP), price),
-        options = {
-            { label = "Buy", cb = function() self.modal = nil; self:buyBagStep() end },
-            { label = "Cancel", cb = function() self.modal = nil end },
-        },
-        onClose = function() self.modal = nil end,
-    })
-end
-
-function Party:buyBagStep()
-    if not require("models.descent").buyBagStep(self.player) then return end
-    -- The band is sized to the whole bag, so a bigger bag is a new layout of the column under it.
-    self:layoutPool()
-    self:setFocus(self.focus)
-    if Player.save then Player.save() end
-end
-
-function Party:drawBagButton()
-    local r = self.bagBtn
-    if not (r and self:bagStepOffered()) then return end
-    local price = require("models.descent").bagStepPrice(self.player)
-    local afford = (self.player.gold or 0) >= price
-    Theme.set(Theme.panel2)
-    love.graphics.rectangle("fill", r.x, r.y, r.w, r.h, 5, 5)
-    Theme.set(afford and Theme.accentAmber or Theme.frame)
-    love.graphics.rectangle("line", r.x, r.y, r.w, r.h, 5, 5)
-    love.graphics.setFont(self.smallFont)
-    Theme.set(afford and Theme.ink or Theme.muted)
-    love.graphics.printf(self:bagButtonLabel(), r.x, r.y + (r.h - self.smallFont:getHeight()) / 2, r.w, "center")
-    love.graphics.setColor(1, 1, 1)
-end
-
 function Party:textinput(t)
     if self.modal and self.modal.textinput then self.modal:textinput(t) end
 end
@@ -1100,11 +984,9 @@ end
 -- temporary, guarded and development-only; doing it with the real pack would mean Party:close's
 -- Player.save() could write the bag over the town's entire shelf if any path returned early, and a
 -- save-destroying failure guarded only by line ordering is not a design.
--- WHICH CONTAINER THE COLUMN'S MAIN LIST SHOWS. On a "both" screen that is the stash, with the bag
--- in its own band above it (self.packPool); every verb below takes the side it acts on, defaulting to
--- this one, so a path that was written before there were two containers still reaches the right list.
+-- WHICH CONTAINER THE COLUMN'S MAIN LIST SHOWS. Every verb below takes the side it acts on, defaulting
+-- to this one.
 function Party:poolSource()
-    if self.pool_ == "both" then return "stash" end
     return self.pool_ or "stash"
 end
 
@@ -1490,33 +1372,16 @@ end
 -- THE BAG'S CEILING, ON THE SCREENS THAT FILL IT
 -- ---------------------------------------------------------------------------
 --
--- A chest has always refused once the bag was full (states/game.lua, Descent.carryRoom), but packing it
--- never did: the Gate would load forty pieces into a 28-slot bag and the first chest on floor one
--- would then stay shut. The packing screens hold the bag to the same ceiling the chest does.
---
--- ONLY THE PACKING SCREENS. Underground the column IS the bag, and a body taking a piece off has
--- nowhere else to put it; refusing there would make a full bag a reason a member cannot undress.
--- How many of `item` the bag can still take: everything while a slot is free, else what its own
--- matching stacks have room for (a draught can still top up the draughts already packed).
+-- How many of `item` the bag can still take: all of it. The bag has had no ceiling since 2026-11-24
+-- (Descent.carryMax); this held the town's packing screens to one while it had. Kept as the one place
+-- a move into the bag asks, so a ceiling that came back would be enforced here once.
 function Party:packRoomFor(item)
-    if self.pool_ ~= "both" or not item then return math.huge end
-    local Descent = require("models.descent")
-    local pack = self:poolList("pack")
-    if #pack < Descent.carryMax(self.player) then return math.huge end
-    if not Item.isStackable(item) then return 0 end
-    local room = 0
-    for _, existing in ipairs(pack) do
-        if existing.id == item.id and (existing.level or 0) == (item.level or 0) and Item.isStackable(existing) then
-            room = room + math.max(0, Item.maxStack(existing) - (existing.quantity or 1))
-        end
-    end
-    return room
+    return math.huge
 end
 
--- The refusal, in the words the bag's own caption uses.
+-- The refusal, should packRoomFor ever answer short.
 function Party:sayPackFull()
-    local Descent = require("models.descent")
-    self:setMsg("The pack is full (" .. #self:poolList("pack") .. " / " .. Descent.carryMax(self.player) .. ").", false)
+    self:setMsg("The pack is full.", false)
 end
 
 -- Send the grid item in `cell` out to a container: `side`, or the column's own list.
@@ -1579,10 +1444,8 @@ function Party:moveAcross(from, poolIndex)
     return true
 end
 
--- Where the send takes a piece off a body's grid: the bag at the Gate (opts.gridSendTo), the shelf at
--- the Armory, and the one container there is anywhere else.
+-- Where the send takes a piece off a body's grid: the one container this screen shows.
 function Party:gridSendSide()
-    if self.pool_ == "both" then return self.gridSendTo or "stash" end
     return self:poolSource()
 end
 
@@ -2445,7 +2308,6 @@ function Party:draw()
         self:drawFocus()
         self:drawMemberGrid()
         self:drawPool()
-        self:drawBagButton()
         self:drawSortButton()
         self:drawFilterButton()
         -- The dropdowns last, so whichever is open overlays the top of the stash. Only one ever is:
@@ -2927,38 +2789,19 @@ function Party:drawModeSelector()
     love.graphics.setColor(1, 1, 1)
 end
 
--- What the pool column is called, and how full it is.
---
--- THE PACK QUOTES ITS CEILING AND THE SHELF DOES NOT, because only one of them has one: the bag is
--- capped (Descent.carryMax) and the town's shelf is unbounded and always will be. A count with no
--- denominator beside a count with one is the honest pair -- a "/ inf" on the shelf would invent a limit
--- to reassure the player about, and a bare number on the bag would hide the one that matters.
+-- What the pool column is called, and how full it is. Neither container has a ceiling (the bag lost
+-- its own on 2026-11-24, Descent.carryMax), so both quote a bare count.
 function Party:poolCaption(side)
     side = side or self:poolSource()
     if self.debugAll then return "Catalog (all items)" end
     if side == "pack" then
-        local Descent = require("models.descent")
-        local held = #((self.player and self.player.pack) or {})
-        return "Pack " .. held .. " / " .. Descent.carryMax(self.player)
+        return "Pack (" .. #((self.player and self.player.pack) or {}) .. ")"
     end
     return "Stash (" .. #((self.player and self.player.stash) or {}) .. ")"
 end
 
 function Party:drawPool()
     love.graphics.setFont(self.smallFont)
-    -- The band's count goes amber as the bag fills and red when it is full, as the overworld's own
-    -- "Carrying n / max" readout does (states/game.lua): the figure is warning about the refusal one
-    -- move before it happens.
-    if self.packPool then
-        local Descent = require("models.descent")
-        local held, max = #self:poolList("pack"), Descent.carryMax(self.player)
-        if held >= max then Theme.set(Theme.accentWeapon)
-        elseif held >= max * 0.75 then Theme.set(Theme.accentAmber)
-        else Theme.set(Theme.muted) end
-        love.graphics.print(self:poolCaption("pack"), self.packPool.x, self.packHeaderY)
-        love.graphics.setColor(1, 1, 1)
-        self.packPool:draw()
-    end
     Theme.set(Theme.muted)
     love.graphics.print(self:poolCaption(), self.pool.x, self.poolHeaderY)
     love.graphics.setColor(1, 1, 1)
@@ -3301,7 +3144,6 @@ function Party:cursorKind(x, y)
     local editor = self:columnEditor()
     if editor then return editor:cursorKind(x, y) end
     if self.filterBtn and pointIn(self.filterBtn, x, y) then return "hand" end
-    if self.bagBtn and self:bagStepOffered() and pointIn(self.bagBtn, x, y) then return "hand" end
     if self:filterIndexAt(x, y) then return "hand" end
     if self.grid:indexAt(x, y) or self:poolOver(x, y) then return "hand" end
     return "arrow"
@@ -3424,10 +3266,6 @@ function Party:mousepressed(x, y, button)
         return
     end
 
-    if self.bagBtn and self:bagStepOffered() and pointIn(self.bagBtn, x, y) then
-        self:openBagStep()
-        return
-    end
     if self.sortBtn and pointIn(self.sortBtn, x, y) then
         self:toggleSortPanel()
         return
@@ -3562,8 +3400,6 @@ function Party:keypressed(key)
         self:toggleGrowthPeek()
     elseif key == "m" and not editor then
         self:openManage()
-    elseif key == "u" and not editor then
-        self:openBagStep() -- enlarge the pack; a no-op wherever the band is not drawn
     elseif key == "x" and not editor then
         self:sendFocused()
     elseif key == "tab" then
@@ -3636,10 +3472,6 @@ function Party:gamepadpressed(joystick, button)
         else
             self:sendFocused()
         end
-    elseif button == "start" then
-        -- The keyboard's U: enlarge the pack. Start was free here -- the hub forwards every button to an
-        -- open panel and only opens its menu when none is.
-        self:openBagStep()
     elseif button == "rightstick" then
         -- The keyboard's M: the one button this panel had left, spent on the one member-level verb a
         -- hire has that nobody else does.

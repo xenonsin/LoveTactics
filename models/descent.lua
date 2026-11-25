@@ -1316,8 +1316,25 @@ function Descent.floorBudget(ends, floor)
     local seated = math.max(0, Descent.floorSeen(floor) - math.max(1, ends or 1))
     -- ...plus a place for each relic stop the floor guarantees (Descent.relicStops), so the Weeping
     -- Stone's return seats on a stop of its own rather than on one the elites or the texture had.
-    local stops = Descent.FLOOR_TEXTURE + seated + #Descent.relicStops(floor)
+    -- ...and the hoist (Descent.sendUpStops), on every floor, for the same reason.
+    local stops = Descent.FLOOR_TEXTURE + seated + #Descent.relicStops(floor) + #Descent.sendUpStops(floor)
     return { min = stops, max = stops }, seated
+end
+
+-- THE HOIST, ON EVERY FLOOR (2026-11-24): the stop that sends a few finds up to the city, once
+-- (models/send_up.lua). Its own list for the reason relicStops is: guaranteeKinds and floorBudget both
+-- read it, so the guarantee and the seat made for it cannot move apart.
+function Descent.sendUpStops(floor)
+    return { "hoist" }
+end
+
+-- THE RIFT MULE WAITS ON FLOOR FIVE until the company finds it (models/send_up.lua), and is never
+-- placed again after. Not counted in floorBudget, which has no player to ask: on the one floor that
+-- carries it, it takes a texture seat.
+function Descent.muleStops(player, floor)
+    local SendUp = require("models.send_up")
+    if (floor or 1) == SendUp.MULE_FLOOR and not SendUp.muleUnlocked(player) then return { "mule" } end
+    return {}
 end
 
 -- THE RELIC STOPS A FLOOR GUARANTEES (2026-10-24): the Weeping Stone, from floor two. Its own list,
@@ -3233,58 +3250,23 @@ end
 -- What a company can carry out
 -- ---------------------------------------------------------------------------
 
--- HOW MANY FINDS THE COMPANY CAN HOLD AT ONCE, underground.
+-- HOW MANY FINDS THE COMPANY CAN HOLD AT ONCE, underground: ANY NUMBER (2026-11-24).
 --
--- THE CEILING IS BACK BECAUSE THE STAKE IT BOUNDED IS BACK. models/mule.lua owned this and was deleted,
--- and states/game.lua records exactly why: "what it existed to create was a bet with a ceiling -- 'a bet
--- with no ceiling is not a bet', in its own words -- against a wipe that took the haul. The wipe takes
--- nothing now, so the ceiling was guarding a stake that no longer exists."
+-- THE BAG HAS NO BOTTOM, AND THE WIPE TAKES ALL OF IT. A company walks down with what is in its grids --
+-- nothing is packed in town any more -- and everything it finds lands in the bag (Player.stow). So there
+-- is no chest to refuse and no ceiling to buy up: what bounds the haul is the risk of carrying it. Dying
+-- empties the bag (Descent.wipe), and the only ways to bank part of it before climbing out are the hoist
+-- on every floor and the Rift Mule (models/send_up.lua), each a short list rather than the whole bag.
 --
--- The wipe takes the haul again (Descent.dropPack), so that sentence has reversed under its own terms
--- and the cap comes back with it -- the second system this week to be restored by the return of the
--- thing it justified deleting, after FLOORS_PER_CIRCLE. Nothing new is claimed here that the mule did
--- not claim first.
+-- (It was a ceiling from 2026-09 to 2026-11-24: twenty-eight slots, then ten bought up to forty at the
+-- Armory with Descent.buyBagStep. The ceiling bounded a stake the player could not bank mid-run; a
+-- send-up is that bound now, chosen piece by piece, so the ceiling and the bag upgrades went.)
 --
--- IT IS A CAP ON THE BAG, NOT ON THE STASH. The number this counts is Descent.carried -- the size of
--- the pack the company is actually carrying (models/player.lua) -- so the shelf at home stays unbounded
--- and always will. A company that climbs out empties the bag onto that shelf and walks back down with
--- whatever it chose to repack.
+-- THE DIFF IS NOT GONE. It is Descent.found below, and it has two readers who must never see the bag's
+-- count: the stair takes a share of the HAUL, and the gullet bites on the HAUL. See that header.
 --
--- IT USED TO COUNT THE DIFF, and the move is the whole of what the pack bought. The ceiling was
--- measured against Player.atRisk -- what the trip had FOUND -- because there was no container to
--- measure instead: the company carried its finds in nine-cell grids and an unbounded shelf it could
--- somehow reach from floor nine. What the diff could never say is the thing the bag is for -- that a
--- draught packed in town costs a slot a blade might have filled -- because a draught packed in town is
--- not a find, and the diff correctly reads it as zero. One bag, one ceiling, one count.
---
--- THE DIFF IS NOT GONE. It is Descent.found below, and it has two readers who must never see this
--- number: the stair takes a share of the HAUL, and the gullet bites on the HAUL. See that header.
---
--- TWENTY-EIGHT, AND THE EIGHT IS WHAT PROVISIONING COSTS. Twenty was the find budget alone -- a floor
--- pays roughly three to six pieces (Spoils.SEALED_CHANCE plus rolled loot over 3-4 fights), so twenty
--- was about four floors of finding, measured against a bag that carried nothing else. The bag carries
--- the trip's supplies now, so the same four floors needs the same twenty slots PLUS whatever the
--- company chose to bring: two stacks of draughts, a torch, a charm, room for a spare blade -- eight.
--- The find budget is deliberately unmoved. What is new is not that the bag is tighter, it is that the
--- PLAYER now decides how tight it is, and a company that packs nothing has exactly the four floors it
--- had before. Measure it with a real descent before trusting it; `. board-report` cannot answer this
--- one, because what it counts is stops rather than what they pay.
---
--- SLOTS, NOT QUANTITIES: a stack of five draughts is one slot, bounded by Item.maxStack. A cell in the
--- pool column is a slot, so the container and the readout over it mean the same thing. Descent.found
--- below still counts quantities, because the toll spends quantities -- the two questions were always
--- different and only ever looked alike while one number answered both.
---
--- (2026-10-25) TEN TO START, AND THE REST IS BOUGHT. The twenty-eight above is no longer where a
--- company begins: it begins on ten and pays at the Armory for two slots a step (Descent.buyBagStep),
--- up to forty. So the bag is a thing a company grows into, the twenty-eight a mid-campaign bag rather
--- than a given, and every argument above about what a full bag holds is an argument about where the
--- steps are worth buying to. CARRY_MAX keeps its name as the BASE because haulBonus and every reader
--- of carryMax already sit on top of it.
-Descent.CARRY_MAX = 10
-Descent.CARRY_STEP = 2   -- slots one purchase adds
-Descent.CARRY_CAP = 40   -- the biggest bag gold buys (haulBonus gear still adds over it)
-Descent.CARRY_PRICE = 25 -- gold for the first step; each step after costs twice the one before
+-- SLOTS, NOT QUANTITIES: Descent.carried counts slots (a stack of five draughts is one), and
+-- Descent.found counts quantities, because the toll spends quantities.
 
 -- HOW MUCH IS IN THE BAG: a count of the pack, and nothing derived.
 --
@@ -3316,21 +3298,15 @@ function Descent.found(player, run)
     return n
 end
 
--- WHAT A PIECE OF GEAR MAY ADD TO THAT CEILING (`haulBonus` on an item, models/item.lua).
+-- WHAT A PIECE OF GEAR ADDS TO EVERY SEND-UP (`haulBonus` on an item, models/item.lua): extra pieces
+-- the hoist and the mule take (SendUp.limit). It widened the bag's ceiling while the bag had one.
 --
 -- BEST RATHER THAN SUM, exactly as Trap.detectRadiusFor and Player.visionBonus are, and for the reason
--- those two give: two bags are not twice the bag, and a company that has found a better one should feel
--- the upgrade rather than the stack. It is also what stops the one item that carries this from being
--- farmed into an unbounded pack.
+-- those two give: two of a thing are not twice the thing, and it keeps the one item that carries this
+-- from being farmed into a send that empties the bag.
 --
--- WALKS THE ROSTER AND THE PACK, the same reach those two take and right for the same reason: the
--- ceiling is a fact about what the COMPANY can carry out, not about which body is wearing the thing,
--- and which pocket it is in is not a decision anybody made.
---
--- IT USED TO WALK THE STASH, AND THAT WAS THIS WHOLE FEATURE'S LEAK sitting in the one place nobody
--- would look for it: a bag left at home on the town shelf widened the ceiling of a company nine floors
--- underground. The shelf is out of reach down there -- that is the law -- so a widener sitting on it
--- cannot be carrying anything. The pack is where a bag the company actually brought is sitting.
+-- WALKS THE ROSTER AND THE PACK and never the stash: the town shelf is out of reach underground, so a
+-- piece sitting on it cannot be helping anybody carry anything.
 function Descent.haulBonus(player)
     local Character = require("models.character")
     local best = 0
@@ -3345,46 +3321,16 @@ function Descent.haulBonus(player)
     return best
 end
 
--- THE CEILING THIS COMPANY ACTUALLY HAS: the constant plus whatever it is carrying that widens it.
---
--- A FUNCTION RATHER THAN THE CONSTANT, because two places read this and they must not disagree -- the
--- overflow (what does not fit is put down on the ground, models/ground.lua) and the readout that warns
--- about it before it happens (states/game.lua's "Carrying n / max"). A limit the player cannot see is
--- one they meet by finding their finds on the floor, and a limit the readout states WRONG is worse.
+-- THE CEILING: none. Kept as a function because the overflow (models/ground.lua), the material grant
+-- (Player.grantMaterial) and every chest ask it, and an unbounded answer keeps all of them taking
+-- everything without each learning that the bag changed.
 function Descent.carryMax(player)
-    return Descent.bagSize(player) + Descent.haulBonus(player)
+    return math.huge
 end
 
--- THE BAG ITSELF, before any gear widens it: the base plus every step bought, never over the cap.
-function Descent.bagSize(player)
-    local steps = (player and player.packUpgrades) or 0
-    return math.min(Descent.CARRY_CAP, Descent.CARRY_MAX + Descent.CARRY_STEP * steps)
-end
-
--- What the NEXT step costs, or nil when the bag is as big as gold makes it. Doubling: 25, 50, 100, ...
-function Descent.bagStepPrice(player)
-    if Descent.bagSize(player) >= Descent.CARRY_CAP then return nil end
-    local steps = (player and player.packUpgrades) or 0
-    return Descent.CARRY_PRICE * 2 ^ steps
-end
-
--- Buy one step: true, or false plus a reason ("full" | "gold"). Persistence is the caller's call.
-function Descent.buyBagStep(player)
-    local price = Descent.bagStepPrice(player)
-    if not price then return false, "full" end
-    if not require("models.player").spendGold(player, price) then return false, "gold" end
-    player.packUpgrades = (player.packUpgrades or 0) + 1
-    return true
-end
-
--- How many more the company could pick up before the bag is full. Never negative: a company that is
--- somehow over the line (a cap lowered between saves, a bag put down) reads as full rather than as
--- owing slots.
---
--- THE RUN IS NO LONGER ASKED FOR. The room left in a bag is a fact about the bag; it was a fact about
--- the run only while the ceiling counted a diff.
+-- How many more the company could pick up: always room.
 function Descent.carryRoom(player)
-    return math.max(0, Descent.carryMax(player) - Descent.carried(player))
+    return math.huge
 end
 
 -- ---------------------------------------------------------------------------
@@ -3453,8 +3399,27 @@ function Descent.wipe(player, run)
     if not player then return out end
     local haul = Player.takeAtRisk(player, run and run.entry)
     out.lost = #haul
+    -- The gold is read BEFORE the bag is emptied, since the bag is where it is (Descent.goldAtRisk).
     out.gold = Descent.goldAtRisk(player, run and run.entry)
-    player.gold = (player.gold or 0) - out.gold
+    -- ...AND THE WHOLE BAG (2026-11-24), not only the finds in it. The bag is the rift's container and
+    -- nothing from town is packed into it, so what is left after the haul is what the company moved
+    -- into it from a grid down here -- and the rule is "everything in the bag is lost". FORGING STOCK
+    -- GOES TOO (2026-11-24): it sits in the bag like any find, and the hoist and the mule can send it
+    -- up. (The toll still never prices it: Player.atRisk exempts it, and that is the toll's question.)
+    -- Only bound pieces stay, which nothing in the game may part from their bearer.
+    local Item = require("models.item")
+    local pack = player.pack or {}
+    for i = #pack, 1, -1 do
+        local it = pack[i]
+        if not Item.isBound(it) then
+            table.remove(pack, i)
+            -- The gold stack is counted in `out.gold`, not as a piece.
+            if not require("models.material").isCurrency(it) then out.lost = out.lost + 1 end
+        end
+    end
+    -- A bound player's gold went with the bag above. A plain table (a fixture) keeps gold as one number,
+    -- so it is charged here as it always was.
+    if getmetatable(player) == nil then player.gold = (player.gold or 0) - out.gold end
     local hires = {}
     for _, char in ipairs(run and Descent.party(run, player) or {}) do
         if Hire.isHire(char) then hires[#hires + 1] = char end
@@ -3465,11 +3430,22 @@ function Descent.wipe(player, run)
     return out
 end
 
--- The coin a wipe would take right now: the purse above what the company walked in with, never below
--- nought. No entry snapshot (no run, or the prologue's scripted legs) means nothing is at stake.
+-- The coin a wipe would take right now: THE GOLD IN THE BAG (2026-11-24). Gold is a stack, and none of
+-- it goes down the stair (Player.bindGold), so every coin in the bag was found on this run. It was the
+-- purse above the entry snapshot while gold was one number. No entry snapshot (no run, or the
+-- prologue's scripted legs) means nothing is at stake.
 function Descent.goldAtRisk(player, entry)
     if not (player and entry) then return 0 end
-    return math.max(0, math.floor((player.gold or 0) - (entry.gold or 0)))
+    local Material = require("models.material")
+    local n = 0
+    for _, it in ipairs(player.pack or {}) do
+        if Material.isCurrency(it) then n = n + (it.quantity or 0) end
+    end
+    if n == 0 and getmetatable(player) == nil then
+        -- A plain table (a fixture, a tool) has no stacks: the old reading still holds for it.
+        return math.max(0, math.floor((player.gold or 0) - (entry.gold or 0)))
+    end
+    return math.floor(n)
 end
 
 -- What the city says to a routed company (states/hub.lua). `goldLost` and `dead` are Descent.wipe's.
@@ -4530,6 +4506,8 @@ local function guaranteeKinds(player, floor)
     -- eligible in the pool again (its blueprint is un-parked) and is never guaranteed, as before.
     local kinds = { "rest", "merchant" }
     for _, k in ipairs(Descent.relicStops(floor)) do kinds[#kinds + 1] = k end
+    for _, k in ipairs(Descent.sendUpStops(floor)) do kinds[#kinds + 1] = k end
+    for _, k in ipairs(Descent.muleStops(player, floor)) do kinds[#kinds + 1] = k end
     return kinds
 end
 
@@ -5708,6 +5686,8 @@ function Descent.snapshot(run)
         leg = run.leg or 0,
         -- (counted trips, 2026-10-23) Fights won this run -- what makes a homecoming count (Gate.homecoming).
         fightsWon = (run.fightsWon or 0) > 0 and run.fightsWon or nil,
+        -- Fights until the Rift Mule is back from a trip up (models/send_up.lua); nil while it is here.
+        muleRest = (run.muleRest or 0) > 0 and run.muleRest or nil,
         pending = pending,
         -- (Iselle's tally STOOD HERE and has moved to the player -- see Descent.count for why. A run
         -- that resets on extraction cannot carry a number the city has to keep reading. models/save.lua
@@ -5798,6 +5778,7 @@ function Descent.restore(snap)
         prowl = snap.prowl or 0,
         leg = snap.leg or 0,
         fightsWon = tonumber(snap.fightsWon) or nil, -- (counted trips) see snapshot
+        muleRest = tonumber(snap.muleRest) or nil, -- the Rift Mule's trip up (models/send_up.lua)
         pending = pending,
         -- (No `count` -- the tally is the player's. models/save.lua carries an old save's forward.)
         tollPaid = (function()                                              -- ...and see snapshot

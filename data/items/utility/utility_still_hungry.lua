@@ -3,9 +3,9 @@
 -- ONE OBJECT, ONE SENTENCE, and the two halves are the same idea rather than a passive bolted to an
 -- active: IT HOLDS WHAT YOU TAKE, AND THE FULLER IT IS THE HARDER IT BITES.
 --
---   out of a fight -- `haulBonus`, six more finds on the company's carry ceiling (Descent.carryMax,
---   twenty without it). The first item in the game to touch that number, and it answers a refusal the
---   player has certainly already met: "the chest stays shut -- there is no room to carry what is in it".
+--   out of a fight -- `haulBonus`, two more finds on every send-up, the hoist's and the mule's
+--   (SendUp.limit). (2026-11-24: it was six more on the bag's carry ceiling until the bag lost its
+--   ceiling. A send is three pieces, so two is the same order of help that six was against twenty.)
 --
 --   in a fight -- a bite whose weight is WHAT THIS TRIP HAS FOUND (Descent.found), the same figure the
 --   stair prices its toll against (Descent.tollFor). One number, two readers, so the item and the toll
@@ -74,7 +74,7 @@ end
 
 return {
     name = "Still Hungry",
-    description = "Bites an adjacent foe for more the more your company is carrying, and holds six finds more.",
+    description = "Bites an adjacent foe for more the more your company is carrying. Every send-up takes 2 more finds.",
     flavor = "You fed it a company and it swallowed the chest around itself. It is still hungry.",
     sprite = "assets/items/utility_still_hungry.png",
     type = "utility",
@@ -82,9 +82,8 @@ return {
     class = "mammonite",
     unlockLevel = 1,
     unstocked = true,
-    -- The half that works on the road. Six is about a floor and a half of extra trip against a twenty
-    -- find ceiling -- felt on the long dive this is meant to extend, invisible on a short one.
-    haulBonus = 6,
+    -- The half that works on the road: two more pieces on every hoist and every mule trip.
+    haulBonus = 2,
     activeAbility = {
         description = "Bites an adjacent foe, scaled by what the company is carrying.",
         target = "enemy",

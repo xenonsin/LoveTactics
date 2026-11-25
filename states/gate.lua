@@ -95,6 +95,9 @@ local function descend()
     end
     local run = gate.run or Descent.new(gate.player)
     run.entry = nil
+    -- THE BAG GOES DOWN EMPTY (2026-11-24): nothing from town rides in it. Anything an old save packed
+    -- goes back on the shelf before the entry snapshot is taken.
+    Player.unpack(gate.player)
     Player.active = gate.player
     State.switch(require("states.game"), Descent.floorQuest(run, gate.player), nil, gate.player)
 end
@@ -168,35 +171,31 @@ function gate:build()
     -- before going down rather than to an afternoon in town, put this row back and take the Arcanum's
     -- `bestiary` offer out -- but do not do BOTH: two doors onto one record is one door.)
 
-    -- PACK THE BAG, AND THIS IS THE LAST CHANCE RATHER THAN THE ONLY ONE. The same screen is behind
+    -- KIT THE COMPANY, AND THIS IS THE LAST CHANCE RATHER THAN THE ONLY ONE. The same screen is behind
     -- the Armory's door (states/hub.lua), where the shelf lives and where a player does the afternoon's
     -- sorting; what this row adds is the one thing the Armory cannot know -- WHO IS GOING. The rail is
     -- narrowed to the four standing on the plates above, so a kit change here is made against the
     -- company that is about to walk down rather than against the roster.
     --
+    -- WHAT IS IN THE GRIDS IS ALL THAT GOES DOWN (2026-11-24). This row packed a bag until then; nothing
+    -- is packed in town now, and the bag is where the rift's finds land.
+    --
     -- ABOVE THE STAIR ROWS' OWN PLACE IN THE LIST but below them on the screen is deliberate: the stair
     -- is what this screen is FOR (see the header), and a provisioning row that pushed it down the menu
     -- would put an errand in front of the decision.
     items[#items + 1] = {
-        label = "Pack the bag  (" .. #((gate.player and gate.player.pack) or {}) ..
-                " / " .. Descent.carryMax(gate.player) .. ")",
+        label = "Ready the company",
         action = function()
             gate.panel = require("ui.panels.party").new({
                 player = gate.player,
-                title = "The Company's Pack",
+                title = "Ready the Company",
                 party = Descent.party(gate.run, gate.player),
-                pool = "both",
-                -- A piece sent off a body here is being packed, not put away: the shelf is a walk back.
-                gridSendTo = "pack",
                 -- The two teaching tabs answer to the city, not to this screen: a body at the mouth of
                 -- the stair has the same ladder it had in the Armory an hour ago.
                 tactics = Descent.tacticsUnlocked(gate.player),
                 classes = Descent.classesUnlocked(gate.player),
                 onClose = function()
                     gate.panel = nil
-                    -- REBUILT, because the row above quotes how full the bag is and the player has just
-                    -- been filling it. A menu label that still read 4 / 28 over a packed bag would be
-                    -- the readout disagreeing with the screen it was printed on.
                     gate:build()
                 end,
             })
@@ -252,7 +251,9 @@ function gate.enter(self, opts)
     --
     -- (counted trips, 2026-10-23) ...AND ONCE PER COUNTED TRIP. A dip that won nothing and climbed
     -- straight out is not a trip (models/gate.lua's Gate.homecoming), so it does not refill the purse.
-    if fresh then require("models.gate").payPurse(gate.player, Descent.OPENING_GOLD) end
+    --
+    -- (2026-11-24) NO PURSE OPENS. Gold is a stack in the stash and none of it goes down the stair
+    -- (Player.bindGold): a run spends what it finds. Gate.payPurse stays on the model, uncalled.
     gate.panel = nil
     -- THE ROUT'S NOTICE IS NOT THIS SCREEN'S ANY MORE, because a routed company does not wake here.
     --
@@ -378,10 +379,8 @@ function gate.draw()
     -- which is the one way this game does not teach. One line, on the screen where the bag is still
     -- changeable -- and the row above it is where they change it.
     --
-    -- THE SENTENCE USED TO END "the stash stays here" AND MEAN THERE WAS NOWHERE ELSE. It was true and
-    -- it described a company that could only bring what fitted in four nine-cell grids, which is a
-    -- company choosing between a build and a potion. The bag is the answer to that, so the line names
-    -- it; what has not changed, and is the half still worth saying out loud, is that the shelf stays.
+    -- WHAT GOES DOWN IS THE GRIDS (2026-11-24). The line named the bag while the bag was packed in town;
+    -- it is the rift's now, so the line says the other half: what is found down there can be lost.
     --
     -- MEASURED OFF THE PICKER RATHER THAN PLACED. It was authored at a fixed y = 250 and drew straight
     -- through the four expedition plates, which start at 206 and are as tall as the roster under them.
@@ -391,7 +390,7 @@ function gate.draw()
     if gate.picker then
         love.graphics.setFont(Theme.body(13))
         Theme.set(Theme.muted)
-        love.graphics.printf("They carry their grids and the bag. The stash stays here.",
+        love.graphics.printf("They carry their grids. The stash stays here. A wipe loses the bag.",
             gate.picker.x, gate.picker.y + gate.picker:height() + 6, 520, "left")
         love.graphics.setColor(1, 1, 1)
     end

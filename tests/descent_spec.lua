@@ -313,7 +313,12 @@ return {
         assert(#profile.lastDeployed == 0, "and nobody pre-selected for a deployment that cannot happen")
 
         -- Nothing a campaign would have accumulated comes in with it.
-        assert(#profile.stash == 0, "a clean run carries no stash in")
+        -- (2026-11-24) The opening purse is a gold stack on the shelf (Player.bindGold), so the stash
+        -- holds that and nothing else.
+        local Material = require("models.material")
+        for _, it in ipairs(profile.stash) do
+            assert(Material.isCurrency(it), "a clean run carries no stash in: " .. tostring(it.id))
+        end
         assert(next(require("models.material").tally(profile)) == nil, "nor forging stock")
         assert(next(profile.completedQuests) == nil, "nor a campaign's finished quests")
         assert(profile.deepest == 0 and next(profile.standing) == nil, "nor any record of a past run")
